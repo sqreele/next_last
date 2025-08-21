@@ -14,7 +14,7 @@ import axios from "axios";
 
 export type CreatePreventiveMaintenanceData = {
   pmtitle: string;
-  property_id: string;
+  // property_id is not sent to backend - it's determined by the machines assigned
   machine_ids: string[];
   scheduled_date: string;
   frequency: string;
@@ -382,7 +382,8 @@ class PreventiveMaintenanceService {
         data.machine_ids.forEach((id) => formData.append('machine_ids', id));
       }
       
-      if (data.property_id) formData.append('property_id', data.property_id);
+      // Note: property_id is not sent to backend - it's determined by the machines assigned
+      // if (data.property_id) formData.append('property_id', data.property_id);
 
       // Add image files directly to the initial request
       if (data.before_image instanceof File) {
@@ -533,9 +534,10 @@ class PreventiveMaintenanceService {
         }
       }
       
-      if (data.property_id !== undefined) {
-        formData.append('property_id', data.property_id || '');
-      }
+      // Note: property_id is not sent to backend - it's determined by the machines assigned
+      // if (data.property_id !== undefined) {
+      //   formData.append('property_id', data.property_id || '');
+      // }
       
       // Add image files directly to the formData
       if (data.before_image instanceof File) {

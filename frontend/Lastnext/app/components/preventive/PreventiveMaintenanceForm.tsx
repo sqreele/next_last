@@ -82,62 +82,149 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const [loadingMachines, setLoadingMachines] = useState<boolean>(true);
 
   const formatDateForInput = useCallback((date: Date): string => {
-    // Use UTC methods to avoid timezone issues
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    // Use local methods to match the user's timezone for datetime-local inputs
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const result = `${year}-${month}-${day}T${hours}:${minutes}`;
+    console.log('[formatDateForInput] Input Date:', date, 'Output:', result);
+    return result;
   }, []);
 
   // Helper function to convert datetime-local values to ISO 8601 format
   const convertToISO8601 = useCallback((dateTimeLocal: string): string => {
-    if (!dateTimeLocal) return '';
+    console.log('[convertToISO8601] Input:', dateTimeLocal, 'Type:', typeof dateTimeLocal);
+    
+    if (!dateTimeLocal) {
+      console.log('[convertToISO8601] Empty input, returning empty string');
+      return '';
+    }
     
     try {
       // Create a Date object from the datetime-local value
       // This assumes the datetime-local value is in the user's local timezone
       const date = new Date(dateTimeLocal);
+      console.log('[convertToISO8601] Created Date object:', date, 'Valid:', !isNaN(date.getTime()));
       
       // Check if the date is valid
       if (isNaN(date.getTime())) {
         throw new Error('Invalid date');
       }
       
-      // Convert to ISO 8601 format with timezone offset
-      const isoString = date.toISOString();
-      console.log('[FORM] Date conversion:', { input: dateTimeLocal, output: isoString });
+      // Convert to ISO 8601 format in local timezone with timezone offset
+      // Django expects: YYYY-MM-DDThh:mm[:ss[.uuuuuu]][+HH:MM|-HH:MM|Z]
+      // We'll create a format that preserves the local timezone offset
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      
+      // Get timezone offset in minutes
+      const timezoneOffset = date.getTimezoneOffset();
+      const offsetHours = Math.abs(Math.floor(timezoneOffset / 60));
+      const offsetMinutes = Math.abs(timezoneOffset % 60);
+      const offsetSign = timezoneOffset <= 0 ? '+' : '-';
+      
+      const isoString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
+      
+      console.log('[convertToISO8601] Successfully converted to local timezone with offset:', { 
+        input: dateTimeLocal, 
+        output: isoString,
+        localDate: date.toString(),
+        utcDate: date.toUTCString(),
+        timezoneOffset,
+        offsetSign,
+        offsetHours,
+        offsetMinutes
+      });
       return isoString;
     } catch (error) {
-      console.error('Error converting datetime-local to ISO 8601:', error, 'Input:', dateTimeLocal);
+      console.error('[convertToISO8601] Error converting datetime-local to ISO 8601:', error, 'Input:', dateTimeLocal);
       
-      // Fallback: try to parse as is and add timezone
-      // This handles cases where the date might be in a different format
-      try {
-        // If it's already in ISO format, return as is
-        if (dateTimeLocal.includes('T') && (dateTimeLocal.includes('Z') || dateTimeLocal.includes('+'))) {
-          return dateTimeLocal;
-        }
-        
-        // If it's in YYYY-MM-DDTHH:mm format, add seconds and timezone
-        if (dateTimeLocal.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
-          const fallbackDate = new Date(dateTimeLocal + ':00');
-          if (!isNaN(fallbackDate.getTime())) {
-            return fallbackDate.toISOString();
-          }
-        }
-        
-        // Last resort: try to construct ISO string manually
-        const fallback = `${dateTimeLocal}:00.000Z`;
-        console.warn('[FORM] Using fallback date format:', fallback);
-        return fallback;
-      } catch (fallbackError) {
-        console.error('Fallback date conversion also failed:', fallbackError);
-        throw new Error(`Failed to convert date: ${dateTimeLocal}`);
+      // If it's already in ISO format, return as is
+      if (dateTimeLocal.includes('T') && (dateTimeLocal.includes('Z') || dateTimeLocal.includes('+'))) {
+        console.log('[convertToISO8601] Input already in ISO format, returning as is:', dateTimeLocal);
+        return dateTimeLocal;
       }
+      
+      // If it's in YYYY-MM-DDTHH:mm format, add seconds and convert to ISO with timezone
+      if (dateTimeLocal.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
+        console.log('[convertToISO8601] Input in YYYY-MM-DDTHH:mm format, adding seconds and converting to ISO with timezone');
+        const fallbackDate = new Date(dateTimeLocal + ':00');
+        if (!isNaN(fallbackDate.getTime())) {
+          // Use the same timezone-aware conversion
+          const year = fallbackDate.getFullYear();
+          const month = String(fallbackDate.getMonth() + 1).padStart(2, '0');
+          const day = String(fallbackDate.getDate()).padStart(2, '0');
+          const hours = String(fallbackDate.getHours()).padStart(2, '0');
+          const minutes = String(fallbackDate.getMinutes()).padStart(2, '0');
+          const seconds = String(fallbackDate.getSeconds()).padStart(2, '0');
+          
+          const timezoneOffset = fallbackDate.getTimezoneOffset();
+          const offsetHours = Math.abs(Math.floor(timezoneOffset / 60));
+          const offsetMinutes = Math.abs(timezoneOffset % 60);
+          const offsetSign = timezoneOffset <= 0 ? '+' : '-';
+          
+          const fallbackISO = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
+          
+          console.log('[convertToISO8601] Fallback conversion successful:', fallbackISO);
+          return fallbackISO;
+        }
+      }
+      
+      // Last resort: try to construct ISO string manually with timezone offset
+      const fallback = `${dateTimeLocal}:00+00:00`;
+      console.warn('[convertToISO8601] Using last resort fallback format:', fallback);
+      return fallback;
     }
   }, []);
+
+  // Helper function to validate ISO 8601 datetime format
+  const validateISO8601Format = useCallback((isoString: string): boolean => {
+    // Django expects: YYYY-MM-DDThh:mm[:ss[.uuuuuu]][+HH:MM|-HH:MM|Z]
+    // Our format: YYYY-MM-DDThh:mm:ss+HH:MM or YYYY-MM-DDThh:mm:ss-HH:MM
+    const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
+    const isValid = isoRegex.test(isoString);
+    console.log('[validateISO8601Format]', { isoString, isValid });
+    return isValid;
+  }, []);
+
+  // Helper function to ensure datetime-local input format
+  const ensureDateTimeLocalFormat = useCallback((dateString: string): string => {
+    console.log('[ensureDateTimeLocalFormat] Input:', dateString, 'Type:', typeof dateString);
+    
+    if (!dateString) {
+      console.log('[ensureDateTimeLocalFormat] Empty input, returning empty string');
+      return '';
+    }
+    
+    // If it's already in datetime-local format, return as is
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
+      console.log('[ensureDateTimeLocalFormat] Input already in datetime-local format, returning as is:', dateString);
+      return dateString;
+    }
+    
+    // If it's a Date object or ISO string, convert to datetime-local format
+    try {
+      const date = new Date(dateString);
+      console.log('[ensureDateTimeLocalFormat] Created Date object:', date, 'Valid:', !isNaN(date.getTime()));
+      
+      if (!isNaN(date.getTime())) {
+        const formattedDate = formatDateForInput(date);
+        console.log('[ensureDateTimeLocalFormat] Successfully formatted to datetime-local:', formattedDate);
+        return formattedDate;
+      }
+    } catch (error) {
+      console.error('[ensureDateTimeLocalFormat] Error ensuring datetime-local format:', error);
+    }
+    
+    console.log('[ensureDateTimeLocalFormat] Could not convert, returning original:', dateString);
+    return dateString;
+  }, [formatDateForInput]);
 
   // Use a static default date to avoid hydration issues
   const [defaultScheduledDate, setDefaultScheduledDate] = useState<string>('');
@@ -148,7 +235,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
-    setDefaultScheduledDate(`${year}-${month}-${day}T09:00`);
+    const defaultDate = `${year}-${month}-${day}T09:00`;
+    console.log('[useEffect] Setting default scheduled date:', defaultDate);
+    setDefaultScheduledDate(defaultDate);
   }, []);
 
 
@@ -175,6 +264,11 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         const scheduledDate = new Date(values.scheduled_date);
         if (isNaN(scheduledDate.getTime())) {
           errors.scheduled_date = 'Invalid scheduled date format';
+        } else {
+          // Ensure the date is not in the past for new records
+          if (!pmId && scheduledDate < new Date()) {
+            errors.scheduled_date = 'Scheduled date cannot be in the past';
+          }
         }
       } catch (error) {
         errors.scheduled_date = 'Invalid scheduled date format';
@@ -186,6 +280,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         const completedDate = new Date(values.completed_date);
         if (isNaN(completedDate.getTime())) {
           errors.completed_date = 'Invalid completed date format';
+        } else if (values.scheduled_date) {
+          // Ensure completed date is not before scheduled date
+          const scheduledDate = new Date(values.scheduled_date);
+          if (completedDate < scheduledDate) {
+            errors.completed_date = 'Completed date cannot be before scheduled date';
+          }
         }
       } catch (error) {
         errors.completed_date = 'Invalid completed date format';
@@ -215,6 +315,13 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
     if (currentData) {
       console.log('[getInitialValues] currentData:', currentData);
+      console.log('[getInitialValues] Date fields from currentData:', {
+        scheduled_date: currentData.scheduled_date,
+        scheduled_date_type: typeof currentData.scheduled_date,
+        completed_date: currentData.completed_date,
+        completed_date_type: typeof currentData.completed_date
+      });
+      
       const topicIds: number[] = currentData.topics
         ?.map((topic: Topic | number) =>
           typeof topic === 'object' && 'id' in topic ? topic.id : typeof topic === 'number' ? topic : null
@@ -247,14 +354,24 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       const selectedTopics = topicIds || [];
       const selectedMachineIds = finalMachineIds || [];
 
+      const scheduledDate = currentData.scheduled_date
+        ? ensureDateTimeLocalFormat(currentData.scheduled_date)
+        : defaultScheduledDate;
+      const completedDate = currentData.completed_date
+        ? ensureDateTimeLocalFormat(currentData.completed_date)
+        : '';
+
+      console.log('[getInitialValues] Processed date fields:', {
+        scheduled_date: scheduledDate,
+        scheduled_date_type: typeof scheduledDate,
+        completed_date: completedDate,
+        completed_date_type: typeof completedDate
+      });
+
       return {
         pmtitle: currentData.pmtitle || '',
-        scheduled_date: currentData.scheduled_date
-          ? formatDateForInput(new Date(currentData.scheduled_date))
-          : defaultScheduledDate,
-        completed_date: currentData.completed_date
-          ? formatDateForInput(new Date(currentData.completed_date))
-          : '',
+        scheduled_date: scheduledDate,
+        completed_date: completedDate,
         frequency: validateFrequency(currentData.frequency || 'monthly'),
         custom_days: customDays,
         notes: currentData.notes || '',
@@ -494,6 +611,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     const { setSubmitting, resetForm } = formikHelpers;
     let isMounted = true;
 
+    console.log('[FORM] handleSubmit called with values:', {
+      ...values,
+      scheduled_date: values.scheduled_date,
+      scheduled_date_type: typeof values.scheduled_date,
+      scheduled_date_length: values.scheduled_date?.length,
+      completed_date: values.completed_date,
+      completed_date_type: typeof values.completed_date,
+      completed_date_length: values.completed_date?.length
+    });
+
     clearError();
     setSubmitError(null);
     setIsLoading(true);
@@ -531,14 +658,14 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
       const dataForService: CreatePreventiveMaintenanceData = {
         pmtitle: values.pmtitle.trim() || 'Untitled Maintenance',
-        scheduled_date: convertToISO8601(values.scheduled_date),
+        scheduled_date: scheduledDateISO,
         frequency: values.frequency,
         custom_days: values.frequency === 'custom' && values.custom_days ? Number(values.custom_days) : undefined,
         notes: values.notes?.trim() || '',
-        property_id: values.property_id || '',
+        // Note: property_id is not sent to backend - it's determined by the machines assigned
         topic_ids: values.selected_topics && values.selected_topics.length > 0 ? values.selected_topics : [],
         machine_ids: values.selected_machine_ids && values.selected_machine_ids.length > 0 ? values.selected_machine_ids : [],
-        completed_date: values.completed_date ? convertToISO8601(values.completed_date) : undefined,
+        completed_date: completedDateISO,
         before_image: hasBeforeImageFile ? values.before_image_file! : undefined,
         after_image: hasAfterImageFile ? values.after_image_file! : undefined,
         procedure: values.procedure?.trim() || '',
@@ -551,13 +678,62 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         return value;
       }, 2));
 
-      // Debug date conversion
-      console.log('[FORM] Date conversion debug:', {
-        original_scheduled_date: values.scheduled_date,
-        converted_scheduled_date: convertToISO8601(values.scheduled_date),
-        original_completed_date: values.completed_date,
-        converted_completed_date: values.completed_date ? convertToISO8601(values.completed_date) : undefined
+      // Log the final date formats being sent
+      console.log('[FORM] Final date formats:', {
+        scheduled_date: dataForService.scheduled_date,
+        completed_date: dataForService.completed_date,
+        scheduled_date_type: typeof dataForService.scheduled_date,
+        completed_date_type: typeof dataForService.completed_date
       });
+
+      // Log the complete data being sent to the backend
+      console.log('[FORM] Complete data being sent to backend:', {
+        ...dataForService,
+        scheduled_date: dataForService.scheduled_date,
+        completed_date: dataForService.completed_date,
+        before_image: dataForService.before_image ? 'File present' : 'No file',
+        after_image: dataForService.after_image ? 'File present' : 'No file'
+      });
+
+      // Additional debugging: Check the exact string values being sent
+      console.log('[FORM] Raw date string values:', {
+        scheduled_date_raw: JSON.stringify(dataForService.scheduled_date),
+        completed_date_raw: JSON.stringify(dataForService.completed_date),
+        scheduled_date_length: dataForService.scheduled_date?.length,
+        completed_date_length: dataForService.completed_date?.length
+      });
+
+      // Additional validation before sending to backend
+      console.log('[FORM] Data validation before sending:', {
+        pmtitle: dataForService.pmtitle,
+        scheduled_date: dataForService.scheduled_date,
+        frequency: dataForService.frequency,
+        custom_days: dataForService.custom_days,
+        // property_id not sent to backend - determined by machines
+        topic_ids: dataForService.topic_ids,
+        machine_ids: dataForService.machine_ids,
+        completed_date: dataForService.completed_date,
+        has_before_image: !!dataForService.before_image,
+        has_after_image: !!dataForService.after_image
+      });
+
+      // Validate required fields
+      if (!dataForService.scheduled_date) {
+        throw new Error('Scheduled date is required');
+      }
+      if (!dataForService.frequency) {
+        throw new Error('Frequency is required');
+      }
+      if (dataForService.frequency === 'custom' && !dataForService.custom_days) {
+        throw new Error('Custom days is required when frequency is custom');
+      }
+      // Note: property_id validation removed - it's determined by the machines assigned
+      if (!dataForService.topic_ids || dataForService.topic_ids.length === 0) {
+        throw new Error('At least one topic is required');
+      }
+      if (!dataForService.machine_ids || dataForService.machine_ids.length === 0) {
+        throw new Error('At least one machine is required');
+      }
 
       const maintenanceIdToUpdate = pmId || (actualInitialData?.pm_id ?? null);
       let response: ServiceResponse<PreventiveMaintenance>;
@@ -597,9 +773,18 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       if (!isMounted) return;
       
       console.error('[FORM] handleSubmit - Error submitting form:', error);
+      console.error('[FORM] Error response details:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers
+      });
+      
       let errorMessage = 'An unexpected error occurred.';
       if (error.response?.data) {
         const responseData = error.response.data;
+        console.log('[FORM] Backend error response data:', responseData);
+        
         if (typeof responseData === 'string') errorMessage = responseData;
         else if (responseData.detail) errorMessage = responseData.detail;
         else if (responseData.message) errorMessage = responseData.message;
@@ -649,8 +834,33 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         validate={validateForm}
         onSubmit={handleSubmit}
         enableReinitialize
+        onSubmit={(values, formikHelpers) => {
+          console.log('[Formik] onSubmit called with values:', {
+            ...values,
+            scheduled_date: values.scheduled_date,
+            scheduled_date_type: typeof values.scheduled_date,
+            scheduled_date_length: values.scheduled_date?.length,
+            completed_date: values.completed_date,
+            completed_date_type: typeof values.completed_date,
+            completed_date_length: values.completed_date?.length
+          });
+          return handleSubmit(values, formikHelpers);
+        }}
       >
-        {({ values, errors, touched, isSubmitting, setFieldValue }) => (
+        {({ values, errors, touched, isSubmitting, setFieldValue }) => {
+          // Debug form values changes
+          React.useEffect(() => {
+            console.log('[Formik] Form values changed:', {
+              scheduled_date: values.scheduled_date,
+              scheduled_date_type: typeof values.scheduled_date,
+              scheduled_date_length: values.scheduled_date?.length,
+              completed_date: values.completed_date,
+              completed_date_type: typeof values.completed_date,
+              completed_date_length: values.completed_date?.length
+            });
+          }, [values.scheduled_date, values.completed_date]);
+
+          return (
           <Form aria-label="Preventive Maintenance Form">
             <div className="mb-6">
               <label htmlFor="property_id" className="block text-sm font-medium text-gray-700 mb-1">
@@ -1087,7 +1297,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               </div>
             </div>
           </Form>
-        )}
+        );
+        }}
       </Formik>
     </div>
   );

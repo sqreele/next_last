@@ -322,13 +322,15 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
     property_id = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     procedure = serializers.SerializerMethodField()
+    before_image_url = serializers.SerializerMethodField()
+    after_image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = PreventiveMaintenance
         fields = [
             'pm_id', 'job_id', 'job_description', 'scheduled_date', 'completed_date',
             'frequency', 'next_due_date', 'status', 'topics', 'machines', 'property_id',
-            'procedure', 'notes'
+            'procedure', 'notes', 'before_image_url', 'after_image_url'
         ]
         list_serializer_class = serializers.ListSerializer
 
@@ -356,6 +358,18 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
 
     def get_procedure(self, obj):
         return obj.procedure
+
+    def get_before_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.before_image and request:
+            return request.build_absolute_uri(obj.before_image.url)
+        return None
+
+    def get_after_image_url(self, obj):
+        request = self.context.get('request')
+        if obj.after_image and request:
+            return request.build_absolute_uri(obj.after_image.url)
+        return None
 
 class MachineDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer for machine details view"""

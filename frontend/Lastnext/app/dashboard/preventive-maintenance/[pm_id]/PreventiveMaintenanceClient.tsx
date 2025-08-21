@@ -298,7 +298,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   const afterImageUrl = getAfterImageUrl();
   
   // Helper function to format dates
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     
     try {

@@ -1,6 +1,6 @@
 // PDFMaintenanceGenerator.tsx
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { 
@@ -69,11 +69,37 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
       console.log('PDF Debug - Maintenance data received:', maintenanceData.map(item => ({
         id: item.id,
         pm_id: item.pm_id,
+        pmtitle: item.pmtitle,
+        job_description: item.job_description,
+        procedure: item.procedure,
+        notes: item.notes,
         before_image_url: item.before_image_url,
         after_image_url: item.after_image_url,
         hasBeforeImage: !!item.before_image_url,
         hasAfterImage: !!item.after_image_url
       })));
+      
+      // Log first item in detail to see all available fields
+      if (maintenanceData.length > 0) {
+        console.log('PDF Debug - First maintenance item structure:', maintenanceData[0]);
+        console.log('PDF Debug - Available fields:', Object.keys(maintenanceData[0]));
+        
+        // Check if critical fields are missing
+        const criticalFields = ['pmtitle', 'procedure', 'notes', 'job_description'];
+        const missingFields = criticalFields.filter(field => !maintenanceData[0][field]);
+        if (missingFields.length > 0) {
+          console.warn('PDF Debug - Missing critical fields:', missingFields);
+        }
+        
+        // Check data types
+        criticalFields.forEach(field => {
+          if (maintenanceData[0][field] !== undefined) {
+            console.log(`PDF Debug - Field "${field}" type:`, typeof maintenanceData[0][field], 'value:', maintenanceData[0][field]);
+          }
+        });
+      }
+    } else {
+      console.log('PDF Debug - No maintenance data received');
     }
   }, [maintenanceData]);
   
@@ -96,11 +122,11 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
   const [filterTopic, setFilterTopic] = useState(initialFilters?.topic || 'all');
 
   // Helper functions
-  const getTaskStatus = (item: PreventiveMaintenance) => {
+  const getTaskStatus = useCallback((item: PreventiveMaintenance) => {
     return determinePMStatus(item);
-  };
+  }, []);
 
-  const getTopicsString = (topics: Topic[] | number[] | null | undefined) => {
+  const getTopicsString = useCallback((topics: Topic[] | number[] | null | undefined) => {
     if (!topics || topics.length === 0) return 'No topics';
     
     if (typeof topics[0] === 'object' && 'title' in topics[0]) {
@@ -108,10 +134,10 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
     }
     
     return (topics as number[]).join(', ');
-  };
+  }, []);
 
   // Helper function to get safe image URL for PDF compatibility
-  const getSafeImageUrl = async (imageUrl: string | null | undefined): Promise<string | undefined> => {
+  const getSafeImageUrl = useCallback(async (imageUrl: string | null | undefined): Promise<string | undefined> => {
     if (!imageUrl) return undefined;
     
     console.log('PDF Debug - Processing image URL:', imageUrl);
@@ -127,6 +153,11 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
       const baseUrl = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000';
       fullUrl = `${baseUrl}${imageUrl}`;
       console.log('PDF Debug - Constructed full URL:', fullUrl);
+    } else if (imageUrl && imageUrl.startsWith('/')) {
+      // Handle other relative URLs
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      fullUrl = `${baseUrl}${imageUrl}`;
+      console.log('PDF Debug - Constructed full URL from relative path:', fullUrl);
     } else {
       // Try the getImageUrl function as fallback
       const url = getImageUrl(imageUrl);
@@ -135,13 +166,24 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
       fullUrl = url;
     }
     
-
+    // Test if the image URL is accessible
+    try {
+      const response = await fetch(fullUrl, { method: 'HEAD' });
+      if (!response.ok) {
+        console.warn('PDF Debug - Image URL not accessible:', fullUrl, 'Status:', response.status);
+        return undefined;
+      }
+      console.log('PDF Debug - Image URL accessible:', fullUrl);
+    } catch (error) {
+      console.warn('PDF Debug - Error checking image URL:', fullUrl, error);
+      return undefined;
+    }
     
     return fullUrl;
-  };
+  }, []);
 
   // ✅ Updated getUniqueMachines function to provide better options
-  const getUniqueMachines = (): MachineOption[] => {
+  const getUniqueMachines = useMemo((): MachineOption[] => {
     const machineOptions: MachineOption[] = [];
     const seen = new Set<string>();
     
@@ -163,49 +205,61 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
     });
     
     return machineOptions.sort((a, b) => a.label.localeCompare(b.label));
-  };
+  }, [maintenanceData]);
 
   // ✅ Updated client-side filtering with improved machine handling
-  const filteredData = maintenanceData.filter((item: PreventiveMaintenance) => {
-    const actualStatus = getTaskStatus(item);
-    const statusMatch = filterStatus === 'all' || actualStatus === filterStatus;
-    const frequencyMatch = filterFrequency === 'all' || item.frequency === filterFrequency;
-    
-    // ✅ Use improved itemMatchesMachine function
-    const machineMatch = itemMatchesMachine(item, filterMachine);
-    
-    // Debug logging for machine filtering
-    if (filterMachine !== 'all' && process.env.NODE_ENV === 'development') {
-      console.log(`🔍 Filtering item ${item.pm_id} with machine filter "${filterMachine}":`, {
-        matches: machineMatch,
-        item_machines: item.machines?.map(m => ({ id: m.machine_id, name: m.name })),
-        filter: filterMachine
-      });
-    }
-    
-    const searchMatch = !searchTerm || 
-      item.pmtitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.pm_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getMachinesString(item.machines).toLowerCase().includes(searchTerm.toLowerCase());
-    
-    let dateMatch = true;
-    if (dateRange.start && dateRange.end) {
-      const itemDate = new Date(item.scheduled_date);
-      const startDate = new Date(dateRange.start);
-      const endDate = new Date(dateRange.end);
-      dateMatch = itemDate >= startDate && itemDate <= endDate;
-    }
-    
-    const completedMatch = includeCompleted || actualStatus !== 'completed';
-    
-    const topicMatch = filterTopic === 'all' || (item.topics && item.topics.some((t: any) => t.id === filterTopic));
-    
-    return statusMatch && frequencyMatch && machineMatch && dateMatch && completedMatch && searchMatch && topicMatch;
-  });
+  const filteredData = useMemo(() => {
+    return maintenanceData.filter((item: PreventiveMaintenance) => {
+      const actualStatus = getTaskStatus(item);
+      const statusMatch = filterStatus === 'all' || actualStatus === filterStatus;
+      const frequencyMatch = filterFrequency === 'all' || item.frequency === filterFrequency;
+      
+      // ✅ Use improved itemMatchesMachine function
+      const machineMatch = itemMatchesMachine(item, filterMachine);
+      
+      // Debug logging for machine filtering
+      if (filterMachine !== 'all' && process.env.NODE_ENV === 'development') {
+        console.log(`🔍 Filtering item ${item.pm_id} with machine filter "${filterMachine}":`, {
+          matches: machineMatch,
+          item_machines: item.machines?.map(m => ({ id: m.machine_id, name: m.name })),
+          filter: filterMachine
+        });
+      }
+      
+      const searchMatch = !searchTerm || 
+        item.pmtitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.pm_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.notes?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getMachinesString(item.machines).toLowerCase().includes(searchTerm.toLowerCase());
+      
+      let dateMatch = true;
+      if (dateRange.start && dateRange.end) {
+        const itemDate = new Date(item.scheduled_date);
+        const startDate = new Date(dateRange.start);
+        const endDate = new Date(dateRange.end);
+        dateMatch = itemDate >= startDate && itemDate <= endDate;
+      }
+      
+      const completedMatch = includeCompleted || actualStatus !== 'completed';
+      
+      const topicMatch = filterTopic === 'all' || (item.topics && item.topics.some((t: any) => t.id === filterTopic));
+      
+      return statusMatch && frequencyMatch && machineMatch && dateMatch && completedMatch && searchMatch && topicMatch;
+    });
+  }, [
+    maintenanceData, 
+    filterStatus, 
+    filterFrequency, 
+    filterMachine, 
+    searchTerm, 
+    dateRange.start, 
+    dateRange.end, 
+    includeCompleted, 
+    filterTopic
+  ]);
 
   // ✅ Test machine filtering function
-  const testMachineFiltering = () => {
+  const testMachineFiltering = useCallback(() => {
     console.log('🧪 Testing machine filtering...');
     
     const testFilters = ['M258B868202', 'M251594E2C3', 'M25ECAF24CF', 'FCU240', 'The Elevelator  No. 1'];
@@ -217,10 +271,32 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
         console.log(`  - ${item.pm_id}: ${item.machines?.map(m => `${m.name} (${m.machine_id})`).join(', ')}`);
       });
     });
-  };
+  }, [maintenanceData]);
+
+  // Debug function to troubleshoot image issues
+  const debugImages = useCallback(() => {
+    console.log('🔍 Debugging images...');
+    console.log('Filtered data length:', filteredData.length);
+    
+    filteredData.forEach((item, index) => {
+      console.log(`Item ${index}:`, {
+        id: item.id,
+        before_image_url: item.before_image_url,
+        after_image_url: item.after_image_url,
+        hasBeforeImage: !!item.before_image_url,
+        hasAfterImage: !!item.after_image_url,
+        imageDataUrls: {
+          before: imageDataUrls[`before_${item.id}`],
+          after: imageDataUrls[`after_${item.id}`]
+        }
+      });
+    });
+    
+    console.log('All imageDataUrls:', imageDataUrls);
+  }, [filteredData.length, imageDataUrls]);
 
   // Convert image URL to base64 with proper proxy handling
-  const convertImageToBase64 = async (imageUrl: string): Promise<string> => {
+  const convertImageToBase64 = useCallback(async (imageUrl: string): Promise<string> => {
     try {
       console.log('PDF Debug - Converting image to base64:', imageUrl);
       
@@ -272,16 +348,24 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
       console.error('PDF Debug - Error in convertImageToBase64:', error);
       return imageUrl;
     }
-  };
+  }, []);
 
   // Convert images to base64 when includeImages changes
+  const imageConversionRef = useRef(false);
+  
   useEffect(() => {
+    // Prevent infinite loops by tracking if conversion is already in progress
+    if (imageConversionRef.current) {
+      return;
+    }
+    
     const convertImages = async () => {
       if (!includeImages || filteredData.length === 0) {
         setImageDataUrls({});
         return;
       }
       
+      imageConversionRef.current = true;
       console.log('Starting image conversion...');
       const newImageDataUrls: {[key: string]: string} = {};
       
@@ -309,18 +393,20 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
       } catch (error) {
         console.error('Error converting images:', error);
         setImageDataUrls({});
+      } finally {
+        imageConversionRef.current = false;
       }
     };
 
     convertImages();
-  }, [filteredData, includeImages]);
+  }, [includeImages, filteredData.length]); // Only depend on length, not the entire array
 
   // Test filtering when data changes
   useEffect(() => {
     if (maintenanceData.length > 0 && process.env.NODE_ENV === 'development') {
       testMachineFiltering();
     }
-  }, [maintenanceData]);
+  }, [maintenanceData, testMachineFiltering]);
 
   // Fetch data with initial filters when component mounts
   useEffect(() => {
@@ -344,7 +430,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
   }, [initialFilters]);
 
   // Format date for display
-  const formatDate = (dateString: string | null | undefined) => {
+  const formatDate = useCallback((dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -353,10 +439,10 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
+  }, []);
 
   // Get status color
-  const getStatusColor = (item: PreventiveMaintenance) => {
+  const getStatusColor = useCallback((item: PreventiveMaintenance) => {
     const status = getTaskStatus(item);
     switch (status) {
       case 'completed': return 'text-green-600';
@@ -364,10 +450,10 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
       case 'overdue': return 'text-red-600';
       default: return 'text-gray-600';
     }
-  };
+  }, [getTaskStatus]);
 
   // Get frequency color
-  const getFrequencyColor = (frequency: string) => {
+  const getFrequencyColor = useCallback((frequency: string) => {
     switch (frequency) {
       case 'daily': return 'text-blue-600';
       case 'weekly': return 'text-green-600';
@@ -376,10 +462,10 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
       case 'yearly': return 'text-red-600';
       default: return 'text-gray-600';
     }
-  };
+  }, []);
 
   // Enhanced PDF generation with better centering and image handling
-  const generatePDF = async () => {
+  const generatePDF = useCallback(async () => {
     const element = document.getElementById('pdf-content');
     if (!element) {
       console.error('PDF content element not found');
@@ -528,10 +614,10 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
     } finally {
       setIsGeneratingPDF(false);
     }
-  };
+  }, [includeImages]);
 
   // Download as HTML file
-  const downloadHTML = () => {
+  const downloadHTML = useCallback(() => {
     const htmlContent = document.getElementById('pdf-content')?.outerHTML;
     if (!htmlContent) return;
     
@@ -645,7 +731,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
+  }, []);
 
   if (isLoading) {
     return (
@@ -675,6 +761,57 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
             </h1>
           </div>
           <div className="flex space-x-3">
+            {process.env.NODE_ENV === 'development' && (
+              <>
+                <button
+                  onClick={debugImages}
+                  className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  title="Debug image issues in console"
+                >
+                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Debug Images
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('🔄 Manually refreshing maintenance data...');
+                    fetchMaintenanceItemsRef.current();
+                  }}
+                  className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  title="Manually refresh maintenance data"
+                >
+                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh Data
+                </button>
+                <button
+                  onClick={async () => {
+                    console.log('🧪 Testing API directly...');
+                    try {
+                      const response = await fetch('/api/preventive-maintenance/');
+                      const data = await response.json();
+                      console.log('🧪 Direct API response:', data);
+                      
+                      if (data.results && data.results.length > 0) {
+                        console.log('🧪 First item from API:', data.results[0]);
+                        console.log('🧪 Available fields:', Object.keys(data.results[0]));
+                      }
+                    } catch (error) {
+                      console.error('🧪 API test failed:', error);
+                    }
+                  }}
+                  className="flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                  title="Test API directly"
+                >
+                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  Test API
+                </button>
+              </>
+            )}
             <button
               onClick={generatePDF}
               disabled={isGeneratingPDF}
@@ -761,7 +898,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
               className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Machines</option>
-              {getUniqueMachines().map(machine => (
+              {getUniqueMachines.map(machine => (
                 <option key={machine.id} value={machine.id}>
                   {machine.label}
                 </option>
@@ -869,12 +1006,58 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
              <div>Total items: {maintenanceData.length}</div>
              <div>Filtered items: {filteredData.length}</div>
              <div>Machine filter: {filterMachine}</div>
-             <div>Available machines: {getUniqueMachines().length}</div>
+             <div>Available machines: {getUniqueMachines.length}</div>
+             
+             {/* Data Field Validation */}
+             {filteredData.length > 0 && (
+               <div className="mt-3">
+                 <h5 className="font-medium mb-2">Data Field Validation:</h5>
+                 <div className="grid grid-cols-2 gap-2 text-xs">
+                   <div>
+                     <strong>Items with pmtitle:</strong> {filteredData.filter(item => item.pmtitle).length}
+                   </div>
+                   <div>
+                     <strong>Items with job_description:</strong> {filteredData.filter(item => item.job_description).length}
+                   </div>
+                   <div>
+                     <strong>Items with procedure:</strong> {filteredData.filter(item => item.procedure).length}
+                   </div>
+                   <div>
+                     <strong>Items with notes:</strong> {filteredData.filter(item => item.notes).length}
+                   </div>
+                 </div>
+                 
+                 {/* Show sample data for first item */}
+                 {filteredData.length > 0 && (
+                   <details className="mt-2">
+                     <summary className="cursor-pointer font-medium">Sample Data (First Item)</summary>
+                     <div className="ml-4 mt-1 text-xs bg-white p-2 rounded border">
+                       <div><strong>pm_id:</strong> {filteredData[0].pm_id}</div>
+                       <div><strong>pmtitle:</strong> {filteredData[0].pmtitle || 'null'}</div>
+                       <div><strong>job_description:</strong> {filteredData[0].job_description || 'null'}</div>
+                       <div><strong>procedure:</strong> {filteredData[0].procedure || 'null'}</div>
+                       <div><strong>notes:</strong> {filteredData[0].notes || 'null'}</div>
+                     </div>
+                   </details>
+                 )}
+                 
+                 {/* Raw Data Structure Debug */}
+                 {filteredData.length > 0 && (
+                   <details className="mt-2">
+                     <summary className="cursor-pointer font-medium">Raw Data Structure (First Item)</summary>
+                     <div className="ml-4 mt-1 text-xs bg-white p-2 rounded border max-h-40 overflow-y-auto">
+                       <pre>{JSON.stringify(filteredData[0], null, 2)}</pre>
+                     </div>
+                   </details>
+                 )}
+               </div>
+             )}
+             
              {filterMachine !== 'all' && (
                <div className="mt-2">
                  <div className="font-medium">Items matching machine filter "{filterMachine}":</div>
-                 {maintenanceData.filter(item => itemMatchesMachine(item, filterMachine)).map(item => (
-                   <div key={item.pm_id} className="ml-4 text-xs">
+                 {maintenanceData.filter(item => itemMatchesMachine(item, filterMachine)).map((item, index) => (
+                   <div key={item.pm_id || `debug-item-${index}`} className="ml-4 text-xs">
                      {item.pm_id}: {item.machines?.map(m => `${m.name} (${m.machine_id})`).join(', ')}
                    </div>
                  ))}
@@ -883,7 +1066,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
              <details className="mt-2">
                <summary className="cursor-pointer font-medium">Available Machine Options</summary>
                <div className="ml-4 mt-1 text-xs">
-                 {getUniqueMachines().map(machine => (
+                 {getUniqueMachines.map(machine => (
                    <div key={machine.id}>{machine.id} → {machine.label}</div>
                  ))}
                </div>
@@ -969,6 +1152,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
                <tr className="bg-gray-100">
                  <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Task ID</th>
                  <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Title</th>
+                 <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Procedure</th>
                  <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Date</th>
                  <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Status</th>
                  <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Frequency</th>
@@ -978,11 +1162,14 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
                </tr>
              </thead>
              <tbody>
-               {filteredData.map((item) => (
-                 <tr key={item.id}>
+               {filteredData.map((item, index) => (
+                 <tr key={item.pm_id || `item-${index}`}>
                    <td className="border border-gray-300 px-3 py-2 font-mono text-xs">{item.pm_id}</td>
                    <td className="border border-gray-300 px-3 py-2 font-medium text-xs">
-                     {item.pmtitle || 'No title'}
+                     {item.pmtitle || item.job_description || 'No title'}
+                   </td>
+                   <td className="border border-gray-300 px-3 py-2 text-xs">
+                     {item.procedure || item.job_description || 'No procedure'}
                    </td>
                    <td className="border border-gray-300 px-3 py-2 text-xs">{formatDate(item.scheduled_date)}</td>
                    <td className={`border border-gray-300 px-3 py-2 font-medium text-xs ${getStatusColor(item)}`}>
@@ -1016,12 +1203,12 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
            Detailed Task Information
          </h2>
          
-         {filteredData.map((item) => (
-           <div key={item.id} className="mb-6 border border-gray-300 rounded-lg p-4">
+         {filteredData.map((item, index) => (
+           <div key={item.pm_id || `item-${index}`} className="mb-6 border border-gray-300 rounded-lg p-4">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                <div>
                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                   {item.pmtitle || 'No title'} ({item.pm_id})
+                   {item.pmtitle || item.job_description || 'No title'} ({item.pm_id})
                  </h3>
                  <div className="space-y-1 text-sm">
                    <div><strong>Scheduled Date:</strong> {formatDate(item.scheduled_date)}</div>
@@ -1037,6 +1224,24 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
                  </div>
                </div>
              </div>
+             
+             {/* Procedure and Job Description Section */}
+             {(item.procedure || item.job_description) && (
+               <div className="border-t border-gray-200 pt-3 mb-3">
+                 {item.procedure && (
+                   <div className="mb-3">
+                     <h4 className="font-medium text-gray-900 mb-2">Procedure:</h4>
+                     <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">{item.procedure}</p>
+                   </div>
+                 )}
+                 {item.job_description && (
+                   <div className="mb-3">
+                     <h4 className="font-medium text-gray-900 mb-2">Job Description:</h4>
+                     <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">{item.job_description}</p>
+                   </div>
+                 )}
+               </div>
+             )}
              
              {item.notes && (
                <div className="border-t border-gray-200 pt-3">
@@ -1073,56 +1278,87 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
                    {item.before_image_url && (
                      <div>
                        <p className="text-sm font-medium text-gray-700 mb-2">Before:</p>
-                                             <img 
-                        src={imageDataUrls[`before_${item.id}`] || item.before_image_url} 
-                        alt="Before maintenance"
-                         className="w-full h-auto rounded border border-gray-300"
-                         style={{ 
-                           maxHeight: '250px', 
-                           objectFit: 'contain',
-                           display: 'block',
-                           margin: '0 auto',
-                           backgroundColor: '#f9f9f9'
-                         }}
-                         crossOrigin="anonymous"
-                         onLoad={(e) => {
-                           console.log('PDF Debug - Before image loaded successfully for item:', item.id);
-                           console.log('PDF Debug - Image source:', e.currentTarget.src);
-                           e.currentTarget.style.backgroundColor = 'transparent';
-                         }}
-                         onError={(e) => {
-                           console.error('PDF Debug - Before image failed to load for item:', item.id);
-                           console.error('PDF Debug - Failed URL:', e.currentTarget.src);
-                           console.error('PDF Debug - Error details:', e);
-                           e.currentTarget.style.display = 'none';
-                         }}
-                       />
+                       <div className="relative">
+                         <img 
+                           src={imageDataUrls[`before_${item.id}`] || item.before_image_url} 
+                           alt="Before maintenance"
+                           className="w-full h-auto rounded border border-gray-300"
+                           style={{ 
+                             maxHeight: '250px', 
+                             objectFit: 'contain',
+                             display: 'block',
+                             margin: '0 auto',
+                             backgroundColor: '#f9f9f9'
+                           }}
+                           crossOrigin="anonymous"
+                           onLoad={(e) => {
+                             console.log('PDF Debug - Before image loaded successfully for item:', item.id);
+                             console.log('PDF Debug - Image source:', e.currentTarget.src);
+                             e.currentTarget.style.backgroundColor = 'transparent';
+                           }}
+                           onError={(e) => {
+                             console.error('PDF Debug - Before image failed to load for item:', item.id);
+                             console.error('PDF Debug - Failed URL:', e.currentTarget.src);
+                             console.error('PDF Debug - Error details:', e);
+                             // Show placeholder instead of hiding
+                             const img = e.currentTarget;
+                             img.style.display = 'none';
+                             const placeholder = document.createElement('div');
+                             placeholder.className = 'w-full h-48 bg-gray-200 rounded border border-gray-300 flex items-center justify-center';
+                             placeholder.innerHTML = `
+                               <div class="text-center text-gray-500">
+                                 <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                 </svg>
+                                 <p class="text-sm">Image not available</p>
+                               </div>
+                             `;
+                             img.parentNode?.insertBefore(placeholder, img.nextSibling);
+                           }}
+                         />
+                       </div>
                      </div>
                    )}
                    {item.after_image_url && (
                      <div>
                        <p className="text-sm font-medium text-gray-700 mb-2">After:</p>
-                                             <img 
-                        src={imageDataUrls[`after_${item.id}`] || item.after_image_url} 
-                        alt="After maintenance"
-                         className="w-full h-auto rounded border border-gray-300"
-                         style={{ 
-                           maxHeight: '250px', 
-                           objectFit: 'contain',
-                           display: 'block',
-                           margin: '0 auto',
-                           backgroundColor: '#f9f9f9'
-                         }}
-                         crossOrigin="anonymous"
-                         onLoad={(e) => {
-                           console.log('After image loaded for item:', item.id);
-                           e.currentTarget.style.backgroundColor = 'transparent';
-                         }}
-                         onError={(e) => {
-                           console.warn('Failed to load after image for item:', item.id);
-                           e.currentTarget.style.display = 'none';
-                         }}
-                       />
+                       <div className="relative">
+                         <img 
+                           src={imageDataUrls[`after_${item.id}`] || item.after_image_url} 
+                           alt="After maintenance"
+                           className="w-full h-auto rounded border border-gray-300"
+                           style={{ 
+                             maxHeight: '250px', 
+                             objectFit: 'contain',
+                             display: 'block',
+                             margin: '0 auto',
+                             backgroundColor: '#f9f9f9'
+                           }}
+                           crossOrigin="anonymous"
+                           onLoad={(e) => {
+                             console.log('PDF Debug - After image loaded successfully for item:', item.id);
+                             e.currentTarget.style.backgroundColor = 'transparent';
+                           }}
+                           onError={(e) => {
+                             console.error('PDF Debug - After image failed to load for item:', item.id);
+                             console.error('PDF Debug - Failed URL:', e.currentTarget.src);
+                             // Show placeholder instead of hiding
+                             const img = e.currentTarget;
+                             img.style.display = 'none';
+                             const placeholder = document.createElement('div');
+                             placeholder.className = 'w-full h-48 bg-gray-200 rounded border border-gray-300 flex items-center justify-center';
+                             placeholder.innerHTML = `
+                               <div class="text-center text-gray-500">
+                                 <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                 </svg>
+                                 <p class="text-sm">Image not available</p>
+                               </div>
+                             `;
+                             img.parentNode?.insertBefore(placeholder, img.nextSibling);
+                           }}
+                         />
+                       </div>
                      </div>
                    )}
                                  </div>

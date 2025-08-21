@@ -91,6 +91,54 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }, []);
 
+  // Helper function to convert datetime-local values to ISO 8601 format
+  const convertToISO8601 = useCallback((dateTimeLocal: string): string => {
+    if (!dateTimeLocal) return '';
+    
+    try {
+      // Create a Date object from the datetime-local value
+      // This assumes the datetime-local value is in the user's local timezone
+      const date = new Date(dateTimeLocal);
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        throw new Error('Invalid date');
+      }
+      
+      // Convert to ISO 8601 format with timezone offset
+      const isoString = date.toISOString();
+      console.log('[FORM] Date conversion:', { input: dateTimeLocal, output: isoString });
+      return isoString;
+    } catch (error) {
+      console.error('Error converting datetime-local to ISO 8601:', error, 'Input:', dateTimeLocal);
+      
+      // Fallback: try to parse as is and add timezone
+      // This handles cases where the date might be in a different format
+      try {
+        // If it's already in ISO format, return as is
+        if (dateTimeLocal.includes('T') && (dateTimeLocal.includes('Z') || dateTimeLocal.includes('+'))) {
+          return dateTimeLocal;
+        }
+        
+        // If it's in YYYY-MM-DDTHH:mm format, add seconds and timezone
+        if (dateTimeLocal.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
+          const fallbackDate = new Date(dateTimeLocal + ':00');
+          if (!isNaN(fallbackDate.getTime())) {
+            return fallbackDate.toISOString();
+          }
+        }
+        
+        // Last resort: try to construct ISO string manually
+        const fallback = `${dateTimeLocal}:00.000Z`;
+        console.warn('[FORM] Using fallback date format:', fallback);
+        return fallback;
+      } catch (fallbackError) {
+        console.error('Fallback date conversion also failed:', fallbackError);
+        throw new Error(`Failed to convert date: ${dateTimeLocal}`);
+      }
+    }
+  }, []);
+
   // Use a static default date to avoid hydration issues
   const [defaultScheduledDate, setDefaultScheduledDate] = useState<string>('');
 
@@ -114,27 +162,53 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     [userProperties]
   );
 
-  const validate = useCallback((values: FormValues): FormikErrors<FormValues> => {
+  // Form validation
+  const validateForm = (values: FormValues): FormikErrors<FormValues> => {
     const errors: FormikErrors<FormValues> = {};
-    if (!values.pmtitle) errors.pmtitle = 'Maintenance title is required';
+
+    if (!values.pmtitle?.trim()) errors.pmtitle = 'Title is required';
     if (!values.scheduled_date) errors.scheduled_date = 'Scheduled date is required';
+    
+    // Validate date formats
+    if (values.scheduled_date) {
+      try {
+        const scheduledDate = new Date(values.scheduled_date);
+        if (isNaN(scheduledDate.getTime())) {
+          errors.scheduled_date = 'Invalid scheduled date format';
+        }
+      } catch (error) {
+        errors.scheduled_date = 'Invalid scheduled date format';
+      }
+    }
+    
+    if (values.completed_date) {
+      try {
+        const completedDate = new Date(values.completed_date);
+        if (isNaN(completedDate.getTime())) {
+          errors.completed_date = 'Invalid completed date format';
+        }
+      } catch (error) {
+        errors.completed_date = 'Invalid completed date format';
+      }
+    }
+    
     if (!values.frequency) errors.frequency = 'Frequency is required';
-    else if (!FREQUENCY_OPTIONS.find((option) => option.value === values.frequency))
-      errors.frequency = 'Invalid frequency value';
-    if (values.frequency === 'custom' && (!values.custom_days || Number(values.custom_days) < 1))
+    if (values.frequency === 'custom' && (!values.custom_days || values.custom_days < 1)) {
       errors.custom_days = 'Custom days must be at least 1';
-    if (values.selected_topics.length === 0) errors.selected_topics = 'At least one topic must be selected';
-    if (!values.property_id) errors.property_id = 'Property selection is required';
-    // Uncomment if machine selection is mandatory:
+    }
+    if (values.frequency === 'custom' && values.custom_days && values.custom_days > 365) {
+      errors.custom_days = 'Custom days cannot exceed 365';
+    }
+    if (!values.property_id) errors.property_id = 'Property is required';
     if (!values.selected_machine_ids || values.selected_machine_ids.length === 0) {
       errors.selected_machine_ids = 'At least one machine must be selected';
     }
-    if (values.before_image_file && values.before_image_file.size > MAX_FILE_SIZE)
-      errors.before_image_file = 'Before image must be less than 5MB';
-    if (values.after_image_file && values.after_image_file.size > MAX_FILE_SIZE)
-      errors.after_image_file = 'After image must be less than 5MB';
+    if (!values.selected_topics || values.selected_topics.length === 0) {
+      errors.selected_topics = 'At least one topic must be selected';
+    }
+
     return errors;
-  }, []);
+  };
 
   const getInitialValues = useCallback((): FormValues => {
     const currentData = actualInitialData;
@@ -457,14 +531,14 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
       const dataForService: CreatePreventiveMaintenanceData = {
         pmtitle: values.pmtitle.trim() || 'Untitled Maintenance',
-        scheduled_date: values.scheduled_date,
+        scheduled_date: convertToISO8601(values.scheduled_date),
         frequency: values.frequency,
         custom_days: values.frequency === 'custom' && values.custom_days ? Number(values.custom_days) : undefined,
         notes: values.notes?.trim() || '',
         property_id: values.property_id || '',
         topic_ids: values.selected_topics && values.selected_topics.length > 0 ? values.selected_topics : [],
         machine_ids: values.selected_machine_ids && values.selected_machine_ids.length > 0 ? values.selected_machine_ids : [],
-        completed_date: values.completed_date || undefined,
+        completed_date: values.completed_date ? convertToISO8601(values.completed_date) : undefined,
         before_image: hasBeforeImageFile ? values.before_image_file! : undefined,
         after_image: hasAfterImageFile ? values.after_image_file! : undefined,
         procedure: values.procedure?.trim() || '',
@@ -476,6 +550,14 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         }
         return value;
       }, 2));
+
+      // Debug date conversion
+      console.log('[FORM] Date conversion debug:', {
+        original_scheduled_date: values.scheduled_date,
+        converted_scheduled_date: convertToISO8601(values.scheduled_date),
+        original_completed_date: values.completed_date,
+        converted_completed_date: values.completed_date ? convertToISO8601(values.completed_date) : undefined
+      });
 
       const maintenanceIdToUpdate = pmId || (actualInitialData?.pm_id ?? null);
       let response: ServiceResponse<PreventiveMaintenance>;
@@ -564,7 +646,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
       <Formik
         initialValues={getInitialValues()}
-        validate={validate}
+        validate={validateForm}
         onSubmit={handleSubmit}
         enableReinitialize
       >

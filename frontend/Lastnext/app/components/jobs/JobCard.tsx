@@ -22,9 +22,10 @@ import { formatDate, formatDateTime } from "@/app/lib/utils/date-utils";
 interface JobCardProps {
   job: Job;
   properties?: Property[];
+  viewMode?: 'grid' | 'list';
 }
 
-export function JobCard({ job, properties = [] }: JobCardProps) {
+export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProps) {
   const router = useRouter();
   const { selectedProperty } = useProperty();
   const [selectedImage, setSelectedImage] = useState<number>(0);
@@ -159,7 +160,11 @@ export function JobCard({ job, properties = [] }: JobCardProps) {
 
   return (
     <Card 
-      className="w-full max-w-md mx-auto flex flex-col transition-all duration-200 bg-white shadow hover:shadow-md cursor-pointer"
+      className={`w-full flex flex-col transition-all duration-200 bg-white shadow hover:shadow-md cursor-pointer ${
+        viewMode === 'list' 
+          ? "max-w-none" 
+          : "max-w-md mx-auto"
+      }`}
       onClick={handleCardClick}
     >
       <CardHeader className="flex-shrink-0 p-4 pb-3 border-b border-gray-100">
@@ -177,7 +182,7 @@ export function JobCard({ job, properties = [] }: JobCardProps) {
           </div>
           <Badge 
             variant="secondary"
-            className={cn("inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium flex-shrink-0", statusConfig.color)}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium flex-shrink-0 ${statusConfig.color}`}
           >
             {statusConfig.icon}
             <span>{statusConfig.label}</span>
@@ -186,8 +191,14 @@ export function JobCard({ job, properties = [] }: JobCardProps) {
       </CardHeader>
 
       <CardContent className="flex-grow p-4 space-y-4" onClick={(e) => e.stopPropagation()}>
-        <div className="space-y-2">
-          <div className="relative w-full aspect-video overflow-hidden rounded-md bg-gray-100">
+        <div className={`space-y-2 ${
+          viewMode === 'list' ? "flex gap-4" : ""
+        }`}>
+          <div className={`relative overflow-hidden rounded-md bg-gray-100 ${
+            viewMode === 'list' 
+              ? "w-32 h-24 flex-shrink-0" 
+              : "w-full aspect-video"
+          }`}>
             {imageUrls.length > 0 && imageUrls[selectedImage] && !failedImageIndexes.has(selectedImage) ? (
               <LazyImage
                 src={imageUrls[selectedImage]}
@@ -199,18 +210,18 @@ export function JobCard({ job, properties = [] }: JobCardProps) {
               <MissingImage className="w-full h-full" />
             )}
           </div>
-          {imageUrls.length > 1 && (
+          {imageUrls.length > 1 && viewMode === 'grid' && (
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
               {imageUrls.map((url, index) => (
                 <button
                   key={index}
                   type="button"
                   onClick={(e) => handleThumbnailClick(index, e)}
-                  className={cn(
-                    "w-14 h-14 flex-shrink-0 rounded-md overflow-hidden border transition-all",
-                    selectedImage === index ? "border-blue-500 ring-2 ring-blue-100" : "border-gray-200 hover:border-gray-300",
-                    (!url || failedImageIndexes.has(index)) && "opacity-60 cursor-not-allowed"
-                  )}
+                  className={`w-14 h-14 flex-shrink-0 rounded-md overflow-hidden border transition-all ${
+                    selectedImage === index ? "border-blue-500 ring-2 ring-blue-100" : "border-gray-200 hover:border-gray-300"
+                  } ${
+                    (!url || failedImageIndexes.has(index)) ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
                   disabled={!url || failedImageIndexes.has(index)}
                 >
                   {(!url || failedImageIndexes.has(index)) ? (
@@ -229,7 +240,9 @@ export function JobCard({ job, properties = [] }: JobCardProps) {
           )}
         </div>
 
-        <div className="flex items-start gap-2 bg-gray-50 p-3 rounded-lg">
+        <div className={`flex items-start gap-2 bg-gray-50 p-3 rounded-lg ${
+          viewMode === 'list' ? "flex-1" : ""
+        }`}>
           <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-gray-700 leading-relaxed line-clamp-2">
             {job.description || 'No description provided'}

@@ -8,6 +8,7 @@ import { Job, Property, TabValue } from "@/app/lib/types";
 import {
   Inbox, Clock, PlayCircle, CheckCircle2, XCircle,
   AlertTriangle, Filter, ChevronDown, Wrench, Settings,
+  Grid3X3, List
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent,
@@ -29,19 +30,20 @@ interface ExtendedJob extends Job {
 }
 
 const tabConfig = [
-  { value: "all", label: "All Jobs", icon: Inbox },
-  { value: "pending", label: "Pending", icon: Clock },
-  { value: "in_progress", label: "In Progress", icon: Settings },
-  { value: "waiting_sparepart", label: "Waiting Sparepart", icon: PlayCircle },
-  { value: "completed", label: "Completed", icon: CheckCircle2 },
-  { value: "cancelled", label: "Cancelled", icon: XCircle },
-  { value: "defect", label: "Defect", icon: AlertTriangle },
-  { value: "preventive_maintenance", label: "Maintenance", icon: Wrench },
+  { value: "all", label: "All Jobs", icon: Inbox, color: "bg-gray-100 text-gray-700" },
+  { value: "pending", label: "Pending", icon: Clock, color: "bg-yellow-100 text-yellow-700" },
+  { value: "in_progress", label: "In Progress", icon: Settings, color: "bg-blue-100 text-blue-700" },
+  { value: "waiting_sparepart", label: "Waiting Sparepart", icon: PlayCircle, color: "bg-orange-100 text-orange-700" },
+  { value: "completed", label: "Completed", icon: CheckCircle2, color: "bg-green-100 text-green-700" },
+  { value: "cancelled", label: "Cancelled", icon: XCircle, color: "bg-red-100 text-red-700" },
+  { value: "defect", label: "Defect", icon: AlertTriangle, color: "bg-red-100 text-red-700" },
+  { value: "preventive_maintenance", label: "Maintenance", icon: Wrench, color: "bg-purple-100 text-purple-700" },
 ] as const;
 
 export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilter }: JobsContentProps) {
   const [currentTab, setCurrentTab] = useState<TabValue>("all");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { selectedProperty } = useProperty();
 
   const filteredJobs = useMemo(() => {
@@ -75,64 +77,92 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
     setIsDropdownOpen(false);
   };
 
+  const currentTabConfig = tabConfig.find(tab => tab.value === currentTab);
+
   return (
-    <div className="w-full p-4 bg-white text-gray-800">
+    <div className="w-full">
+      {/* Header with View Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 border-b border-gray-100">
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold text-gray-900">Maintenance Jobs</h2>
+          <p className="text-sm text-gray-600">
+            {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} found
+          </p>
+        </div>
+        
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('grid')}
+            className="h-9 px-3"
+          >
+            <Grid3X3 className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+            className="h-9 px-3"
+          >
+            <List className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
       <Tabs
         defaultValue="all"
         className="w-full"
         value={currentTab}
         onValueChange={handleTabChange}
       >
-        <div className="space-y-4 mb-4">
-          {/* Desktop Tabs */}
-          <TabsList className="hidden md:grid md:grid-cols-7 gap-2 p-2 bg-gray-100 rounded-lg border border-gray-200">
-            {tabConfig.map(({ value, label, icon: Icon }) => (
-              <TabsTrigger 
-                key={value} 
-                value={value} 
-                className={cn(
-                  "flex items-center gap-2 py-2 px-3 text-sm font-medium text-gray-700",
-                  "data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm",
-                  "hover:bg-gray-200 hover:text-gray-900 rounded-md transition-colors"
-                )}
-              >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">{label}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        <div className="px-6 pt-4">
+          {/* Desktop Tabs - Horizontal Scrollable */}
+          <div className="hidden md:block overflow-x-auto">
+            <TabsList className="inline-flex h-12 items-center justify-center rounded-xl bg-gray-50 p-1 border border-gray-200">
+              {tabConfig.map(({ value, label, icon: Icon, color }) => (
+                <TabsTrigger 
+                  key={value} 
+                  value={value} 
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm hover:bg-gray-100 hover:text-gray-900 min-w-fit"
+                >
+                  <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
           {/* Mobile Dropdown */}
           <div className="md:hidden">
-            {isDropdownOpen && (
-              <div
-                className="fixed inset-0 bg-black/50 z-40"
-                onClick={() => setIsDropdownOpen(false)}
-              />
-            )}
             <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full h-12 flex items-center justify-between gap-2 text-sm font-medium text-gray-800 border-gray-300 bg-white hover:bg-gray-100"
+                  className="w-full h-12 flex items-center justify-between gap-2 text-sm font-medium text-gray-800 border-gray-200 bg-white hover:bg-gray-50 rounded-xl"
                 >
-                  <Filter className="w-5 h-5 text-gray-600" />
-                  <span className="truncate">
-                    {tabConfig.find((tab) => tab.value === currentTab)?.label || "All Jobs"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {currentTabConfig && (
+                      <>
+                        <currentTabConfig.icon className="w-5 h-5 text-gray-600" />
+                        <span className="truncate">{currentTabConfig.label}</span>
+                      </>
+                    )}
+                  </div>
                   <ChevronDown className="w-5 h-5 text-gray-600" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 
                 align="start" 
-                className="w-full min-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-md shadow-lg p-1 max-h-80 overflow-y-auto"
+                className="w-full min-w-[calc(100vw-3rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-2 max-h-80 overflow-y-auto"
                 sideOffset={4}
               >
-                {tabConfig.map(({ value, label, icon: Icon }) => (
+                {tabConfig.map(({ value, label, icon: Icon, color }) => (
                   <DropdownMenuItem
                     key={value}
                     onClick={() => handleTabChange(value)}
-                    className="flex items-center gap-2 py-2 px-3 text-sm text-gray-800 hover:bg-gray-100 hover:text-gray-900 cursor-pointer rounded-sm"
+                    className="flex items-center gap-3 py-3 px-4 text-sm text-gray-800 hover:bg-gray-50 hover:text-gray-900 cursor-pointer rounded-lg transition-colors"
                   >
                     <Icon className="w-5 h-5 flex-shrink-0" />
                     <span className="truncate">{label}</span>
@@ -151,6 +181,7 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
               properties={properties}
               selectedRoom={selectedRoom}
               onRoomFilter={onRoomFilter}
+              viewMode={viewMode}
             />
           </TabsContent>
         ))}

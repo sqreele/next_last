@@ -60,16 +60,21 @@ export default async function DashboardPage() {
     console.log('📋 Jobs fetched:', { count: jobs?.length });
     
     return (
-      <div className="space-y-8 p-4 sm:p-8 w-full">
-        <Suspense
-          fallback={
-            <div className="flex items-center justify-center p-4 text-sm sm:text-base text-gray-500">
-              Loading jobs and properties...
-            </div>
-          }
-        >
-          <DashboardClient jobs={jobs} properties={properties} />
-        </Suspense>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center min-h-[400px]">
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+                  <p className="text-lg font-medium text-gray-600">Loading dashboard...</p>
+                </div>
+              </div>
+            }
+          >
+            <DashboardClient jobs={jobs} properties={properties} />
+          </Suspense>
+        </div>
       </div>
     );
   } catch (error) {
@@ -99,28 +104,37 @@ export default async function DashboardPage() {
     
     // For other errors, render an error state with more details
     return (
-      <div className="flex flex-col items-center justify-center p-8 space-y-4">
-        <h1 className="text-xl font-bold text-red-600">Error Loading Dashboard</h1>
-        <p className="text-gray-600">There was a problem loading your dashboard data.</p>
-        {process.env.NODE_ENV === 'development' && error instanceof Error && (
-          <div className="text-sm text-gray-500 max-w-md text-center">
-            <p><strong>Error:</strong> {error.message}</p>
-            <p><strong>Type:</strong> {error.name}</p>
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center space-y-6">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+            <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
           </div>
-        )}
-        <div className="flex space-x-4">
-          <a 
-            href="/dashboard" 
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-          >
-            Try Again
-          </a>
-          <a 
-            href="/auth/signin" 
-            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-          >
-            Sign In Again
-          </a>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard Error</h1>
+            <p className="text-gray-600">There was a problem loading your dashboard data.</p>
+          </div>
+          {process.env.NODE_ENV === 'development' && error instanceof Error && (
+            <div className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4 text-left">
+              <p><strong>Error:</strong> {error.message}</p>
+              <p><strong>Type:</strong> {error.name}</p>
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button 
+              onClick={() => window.location.reload()}
+              className="flex-1 px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              Try Again
+            </button>
+            <a 
+              href="/auth/signin" 
+              className="flex-1 px-6 py-3 bg-gray-600 text-white font-medium rounded-xl hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            >
+              Sign In Again
+            </a>
+          </div>
         </div>
       </div>
     );

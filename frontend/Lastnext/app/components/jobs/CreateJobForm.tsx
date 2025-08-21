@@ -6,7 +6,7 @@ import * as Yup from 'yup';
 import axios from 'axios';
 import { Button } from "@/app/components/ui/button";
 import { Textarea } from "@/app/components/ui/textarea";
-import { Plus, ChevronDown, ChevronUp, Loader } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Loader, AlertCircle, CheckCircle, Upload, X, Building } from 'lucide-react';
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -78,70 +78,27 @@ const initialValues: FormValues = {
 };
 
 const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }) => {
+  const { data: session } = useSession();
+  const { selectedProperty } = useUser();
+  const { triggerJobCreation } = useJob();
+  const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const { triggerJobCreation } = useJob();
-  const { selectedProperty, userProfile } = useUser();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const getPropertyName = useCallback((propertyId: string | null): string => {
-    if (!propertyId) return 'No Property Selected';
-    const properties = userProfile?.properties ?? [];
-    const property = properties.find(p => p.property_id === propertyId);
-    return property?.name || `Property ${propertyId}`;
-  }, [userProfile?.properties]);
-
-  const fetchData = useCallback(async () => {
-    if (!session?.user?.accessToken) return;
-    const headers = { Authorization: `Bearer ${session.user.accessToken}` };
-
-    try {
-      setError(null);
-      if (!selectedProperty) {
-        setError('Please select a property first');
-        return;
-      }
-      const [roomsResponse, topicsResponse] = await Promise.all([
-        axios.get(`/api/rooms/?property=${selectedProperty}`, { headers }),
-        axios.get(`/api/topics/`, { headers }),
-      ]);
-
-      if (!Array.isArray(roomsResponse.data)) throw new Error('Invalid rooms data');
-      if (!Array.isArray(topicsResponse.data)) throw new Error('Invalid topics data');
-
-      setRooms(roomsResponse.data);
-      setTopics(topicsResponse.data);
-    } catch (fetchError) {
-      console.error('Fetch error:', fetchError);
-      setError('Failed to load rooms/topics.');
+  const validateFiles = (files: File[]) => {
+    if (!files || files.length === 0) {
+      return 'At least one image is required';
     }
-  }, [session?.user?.accessToken, selectedProperty]);
-
-  useEffect(() => {
-    if (status === 'authenticated' && session?.user?.accessToken) {
-      fetchData();
-    }
-  }, [status, session?.user?.accessToken, fetchData, selectedProperty]);
-
-  const formatApiErrors = (data: any): string => {
-    if (!data) return 'Unknown error';
-    if (typeof data === 'string') return data;
-    if (typeof data === 'object') {
-      if (data.detail) return data.detail;
-      return Object.entries(data)
-        .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
-        .join('; ');
-    }
-    return 'Validation failed';
-  };
-
-  const validateFiles = (files: File[]): string | null => {
-    if (!files.length) return 'At least one image is required';
     for (const file of files) {
-      if (!file.type.startsWith('image/')) return `File "${file.name}" is not an image`;
-      if (file.size > MAX_FILE_SIZE) return `File "${file.name}" exceeds 5MB limit`;
+      if (file.size > MAX_FILE_SIZE) {
+        return `File ${file.name} is too large (max 5MB)`;
+      }
+      if (!file.type.startsWith('image/')) {
+        return `File ${file.name} is not an image`;
+      }
     }
     return null;
   };
@@ -207,208 +164,355 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       router.push('/dashboard/myJobs');
     } catch (error) {
       console.error('Submission error:', error);
-      if (axios.isAxiosError(error)) {
-        setError(formatApiErrors(error.response?.data));
-      } else {
-        setError('Unexpected error occurred');
-      }
-    } finally {
+      setError('Failed to create job. Please try again.');
       setSubmitting(false);
     }
   };
 
-  if (status === 'loading') {
-    return (
-      <div className="text-center p-6">
-        <Loader className="inline-block animate-spin mr-2 h-5 w-5" /> Loading session...
-      </div>
-    );
-  }
+  const fetchData = useCallback(async () => {
+    if (!session?.user?.accessToken) {
+      console.log('No session or access token available');
+      return;
+    }
 
-  if (status === 'unauthenticated') {
-    return (
-      <div className="text-center p-6 space-y-4">
-        <p>Please log in to create a job.</p>
-        <Button onClick={() => signIn()}>Log In</Button>
-      </div>
-    );
-  }
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const [roomsResponse, topicsResponse] = await Promise.all([
+        axios.get(`${API_BASE_URL}/api/v1/rooms/`, {
+          headers: {
+            Authorization: `Bearer ${session.user.accessToken}`,
+          },
+        }),
+        axios.get(`${API_BASE_URL}/api/v1/topics/`, {
+          headers: {
+            Authorization: `Bearer ${session.user.accessToken}`,
+          },
+        })
+      ]);
+      setRooms(roomsResponse.data);
+      setTopics(topicsResponse.data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setError('Failed to fetch rooms and topics. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [session?.user?.accessToken]);
 
-  if (!selectedProperty) {
-    return (
-      <div className="w-full max-w-2xl mx-auto bg-white rounded-lg shadow-sm p-4 sm:p-6 border">
-        <Alert className="mb-6">
-          <AlertDescription>Please select a property first to create a maintenance job.</AlertDescription>
-        </Alert>
-        <Button onClick={() => router.push('/dashboard')}>Go to Dashboard</Button>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (session?.user?.accessToken) {
+      fetchData();
+    }
+  }, [fetchData, session?.user?.accessToken]);
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-white rounded-lg shadow-sm p-4 sm:p-6 border">
-      <h2 className="text-xl font-semibold mb-2 text-gray-800">Create New Maintenance Job</h2>
-      <p className="text-sm text-gray-600 mb-6">
-        For property: {getPropertyName(selectedProperty)}
-      </p>
-
+    <div className="space-y-8">
+      {/* Error Alert */}
       {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertDescription>{error}</AlertDescription>
+        <Alert className="border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">{error}</AlertDescription>
         </Alert>
       )}
 
-      <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={handleSubmit} enableReinitialize>
+      {/* Loading Indicator */}
+      {isLoading && (
+        <div className="flex items-center justify-center p-8">
+          <div className="flex items-center gap-3 text-blue-600">
+            <Loader className="h-6 w-6 animate-spin" />
+            <span className="text-lg font-medium">Loading form data...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Form - only show when not loading */}
+      {!isLoading && (
+        <Formik
+        initialValues={initialValues}
+        validationSchema={validationSchema}
+        onSubmit={handleSubmit}
+      >
         {({ values, errors, touched, setFieldValue, isSubmitting }) => (
-          <Form className="space-y-6">
-            {/* Description */}
-            <div className="space-y-1">
-              <Label htmlFor="description" className="font-medium">Description *</Label>
-              <Field
-                as={Textarea}
-                id="description"
-                name="description"
-                placeholder="Enter job description..."
-                disabled={isSubmitting}
-                className={`w-full min-h-[90px] ${touched.description && errors.description ? 'border-red-500' : 'border-gray-300'}`}
-              />
-              {touched.description && errors.description && <p className="text-xs text-red-600 mt-1">{errors.description}</p>}
-            </div>
-
-            {/* Status & Priority */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Status */}
-              <div className="space-y-1">
-                <Label className="font-medium">Status *</Label>
-                <Select
-                  value={values.status}
-                  onValueChange={(value) => value && setFieldValue('status', value)}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className={touched.status && errors.status ? 'border-red-500' : 'border-gray-300'}>
-                    <SelectValue placeholder="Select Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="waiting_sparepart">Waiting Sparepart</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-                {touched.status && errors.status && <p className="text-xs text-red-600 mt-1">{errors.status}</p>}
+          <Form className="space-y-8">
+            {/* Basic Information Section */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Plus className="h-5 w-5 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">Basic Information</h3>
               </div>
-
-              {/* Priority */}
-              <div className="space-y-1">
-                <Label className="font-medium">Priority *</Label>
-                <Select
-                  value={values.priority}
-                  onValueChange={(value) => value && setFieldValue('priority', value)}
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className={touched.priority && errors.priority ? 'border-red-500' : 'border-gray-300'}>
-                    <SelectValue placeholder="Select Priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
-                {touched.priority && errors.priority && <p className="text-xs text-red-600 mt-1">{errors.priority}</p>}
-              </div>
-            </div>
-
-            {/* Room */}
-            <div className="space-y-1">
-              <Label className="font-medium">Room *</Label>
-              <RoomAutocomplete
-                rooms={rooms}
-                selectedRoom={values.room}
-                onSelect={(selectedRoom) => setFieldValue('room', selectedRoom)}
-                disabled={isSubmitting}
-              />
-              {touched.room && errors.room && (
-                <p className="text-xs text-red-600 mt-1">
-                  {typeof errors.room === 'string' ? errors.room : (errors.room as FormikErrors<Room>).room_id}
-                </p>
-              )}
-            </div>
-
-            {/* Topic */}
-            <div className="space-y-1">
-              <Label className="font-medium">Topic *</Label>
-              <Select
-                value={values.topic.title}
-                onValueChange={(value) => {
-                  const topic = topics.find(t => t.title === value);
-                  if (topic) setFieldValue('topic', { title: topic.title, description: topic.description || '' });
-                }}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger className={touched.topic?.title && errors.topic?.title ? 'border-red-500' : 'border-gray-300'}>
-                  <SelectValue placeholder="Select Topic" />
-                </SelectTrigger>
-                <SelectContent>
-                  {topics.length ? topics.map(topic => (
-                    <SelectItem key={topic.id} value={topic.title}>
-                      {topic.title}
-                    </SelectItem>
-                  )) : (
-                    <SelectItem value="loading" disabled>Loading...</SelectItem>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Description */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="description" className="font-medium text-gray-700">
+                    Job Description <span className="text-red-500">*</span>
+                  </Label>
+                  <Field
+                    as={Textarea}
+                    id="description"
+                    name="description"
+                    placeholder="Describe the maintenance job in detail..."
+                    disabled={isSubmitting}
+                    className={`w-full min-h-[100px] p-4 text-base border-2 rounded-xl transition-all duration-200 ${
+                      touched.description && errors.description 
+                        ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
+                        : 'border-gray-200 focus:border-blue-500 focus:ring-blue-200'
+                    } focus:ring-4 focus:outline-none resize-none`}
+                  />
+                  {touched.description && errors.description && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.description}
+                    </p>
                   )}
-                </SelectContent>
-              </Select>
-              {touched.topic?.title && errors.topic?.title && <p className="text-xs text-red-600 mt-1">{errors.topic.title}</p>}
+                </div>
+
+                {/* Status and Priority */}
+                <div className="space-y-2">
+                  <Label className="font-medium text-gray-700">
+                    Status <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={values.status}
+                    onValueChange={(value) => setFieldValue('status', value)}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className={`h-12 border-2 rounded-xl transition-all duration-200 ${
+                      touched.status && errors.status ? 'border-red-300' : 'border-gray-200'
+                    }`}>
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="in_progress">In Progress</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {touched.status && errors.status && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.status}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="font-medium text-gray-700">
+                    Priority <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={values.priority}
+                    onValueChange={(value) => setFieldValue('priority', value)}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className={`h-12 border-2 rounded-xl transition-all duration-200 ${
+                      touched.priority && errors.priority ? 'border-red-300' : 'border-gray-200'
+                    }`}>
+                      <SelectValue placeholder="Select Priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {touched.priority && errors.priority && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.priority}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Remarks */}
-            <div className="space-y-1">
-              <Label htmlFor="remarks" className="font-medium">Remarks</Label>
-              <Field
-                as={Textarea}
-                id="remarks"
-                name="remarks"
-                placeholder="Enter additional remarks (optional)..."
-                disabled={isSubmitting}
-                className={`w-full min-h-[80px] ${touched.remarks && errors.remarks ? 'border-red-500' : 'border-gray-300'}`}
-              />
-              {touched.remarks && errors.remarks && <p className="text-xs text-red-600 mt-1">{errors.remarks}</p>}
+            {/* Assignment Section */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Building className="h-5 w-5 text-green-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">Assignment & Location</h3>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Room Selection */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label className="font-medium text-gray-700">
+                    Room <span className="text-red-500">*</span>
+                  </Label>
+                  <RoomAutocomplete
+                    rooms={rooms}
+                    selectedRoom={values.room}
+                    onSelect={(selectedRoom) => setFieldValue('room', selectedRoom)}
+                    disabled={isSubmitting}
+                  />
+                  {touched.room && errors.room && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {typeof errors.room === 'string' ? errors.room : (errors.room as FormikErrors<Room>).room_id}
+                    </p>
+                  )}
+                </div>
+
+                {/* Topic Selection */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label className="font-medium text-gray-700">
+                    Topic <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={values.topic.title}
+                    onValueChange={(value) => {
+                      const topic = topics.find(t => t.title === value);
+                      if (topic) setFieldValue('topic', { title: topic.title, description: topic.description || '' });
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className={`h-12 border-2 rounded-xl transition-all duration-200 ${
+                      touched.topic?.title && errors.topic?.title ? 'border-red-300' : 'border-gray-200'
+                    }`}>
+                      <SelectValue placeholder="Select a maintenance topic" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {topics.length ? topics.map(topic => (
+                        <SelectItem key={topic.id} value={topic.title}>
+                          {topic.title}
+                        </SelectItem>
+                      )) : (
+                        <SelectItem value="loading" disabled>Loading topics...</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {touched.topic?.title && errors.topic?.title && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.topic.title}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Files */}
-            <div className="space-y-1">
-              <Label className="font-medium">Images *</Label>
-              <FileUpload
-                onFileSelect={(selectedFiles) => setFieldValue('files', selectedFiles)}
-                error={touched.files && typeof errors.files === 'string' ? errors.files : undefined}
-                disabled={isSubmitting}
-              />
+            {/* Additional Details Section */}
+            <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-6 rounded-2xl border border-purple-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Plus className="h-5 w-5 text-purple-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">Additional Details</h3>
+              </div>
+              
+              <div className="space-y-6">
+                {/* Remarks */}
+                <div className="space-y-2">
+                  <Label htmlFor="remarks" className="font-medium text-gray-700">
+                    Remarks
+                  </Label>
+                  <Field
+                    as={Textarea}
+                    id="remarks"
+                    name="remarks"
+                    placeholder="Enter any additional remarks or special instructions..."
+                    disabled={isSubmitting}
+                    className={`w-full min-h-[100px] p-4 text-base border-2 rounded-xl transition-all duration-200 ${
+                      touched.remarks && errors.remarks 
+                        ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
+                        : 'border-gray-200 focus:border-purple-500 focus:ring-purple-200'
+                    } focus:ring-4 focus:outline-none resize-none`}
+                  />
+                  {touched.remarks && errors.remarks && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.remarks}
+                    </p>
+                  )}
+                </div>
+
+                {/* Checkboxes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-4 bg-white/60 rounded-xl border border-purple-200">
+                    <Checkbox
+                      id="is_defective"
+                      checked={values.is_defective}
+                      onCheckedChange={(checked) => setFieldValue('is_defective', checked)}
+                      disabled={isSubmitting}
+                      className="h-5 w-5 text-purple-600 border-2 border-purple-300 rounded"
+                    />
+                    <Label htmlFor="is_defective" className="text-gray-700 font-medium cursor-pointer">
+                      Is Defective?
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-4 bg-white/60 rounded-xl border border-purple-200">
+                    <Checkbox
+                      id="is_preventivemaintenance"
+                      checked={values.is_preventivemaintenance}
+                      onCheckedChange={(checked) => setFieldValue('is_preventivemaintenance', checked)}
+                      disabled={isSubmitting}
+                      className="h-5 w-5 text-purple-600 border-2 border-purple-300 rounded"
+                    />
+                    <Label htmlFor="is_preventivemaintenance" className="text-gray-700 font-medium cursor-pointer">
+                      Is Preventive Maintenance?
+                    </Label>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Checkboxes */}
-            <div className="flex items-center gap-4">
-              <Checkbox
-                checked={values.is_defective}
-                onCheckedChange={(checked) => setFieldValue('is_defective', checked)}
-                disabled={isSubmitting}
-              />
-              <Label>Is Defective?</Label>
-
-              <Checkbox
-                checked={values.is_preventivemaintenance}
-                onCheckedChange={(checked) => setFieldValue('is_preventivemaintenance', checked)}
-                disabled={isSubmitting}
-              />
-              <Label>Is Preventive Maintenance?</Label>
+            {/* File Upload Section */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-6 rounded-2xl border border-amber-100">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-amber-100 rounded-lg">
+                  <Upload className="h-5 w-5 text-amber-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900">Images & Documentation</h3>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="font-medium text-gray-700">
+                  Images <span className="text-red-500">*</span>
+                </Label>
+                <FileUpload
+                  onFileSelect={(selectedFiles) => setFieldValue('files', selectedFiles)}
+                  error={touched.files && typeof errors.files === 'string' ? errors.files : undefined}
+                  disabled={isSubmitting}
+                />
+                <p className="text-sm text-gray-500">
+                  Upload images to document the current condition or issue. Maximum file size: 5MB per image.
+                </p>
+              </div>
             </div>
 
-            <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? 'Creating...' : 'Create Job'}
-            </Button>
+            {/* Submit Button */}
+            <div className="flex justify-center">
+              <Button 
+                type="submit" 
+                disabled={isSubmitting} 
+                className="w-full max-w-md h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center gap-3">
+                    <Loader className="h-5 w-5 animate-spin" />
+                    <span>Creating Job...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <Plus className="h-5 w-5" />
+                    <span>Create Maintenance Job</span>
+                  </div>
+                )}
+              </Button>
+            </div>
           </Form>
         )}
       </Formik>
+      )}
     </div>
   );
 };

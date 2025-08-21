@@ -23,7 +23,10 @@ import {
   Printer,
   Settings,
   Building,
-  Camera
+  Camera,
+  ArrowUpRight,
+  CheckCircle,
+  Clock
 } from 'lucide-react';
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
 
@@ -359,11 +362,17 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   // Render machine list
   const renderMachines = () => {
     if (!maintenanceData.machines || maintenanceData.machines.length === 0) {
-      return <p className="text-gray-500 italic">No machines assigned</p>;
+      return (
+        <div className="text-center py-8">
+          <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+          <p className="text-gray-500 font-medium">No machines assigned</p>
+          <p className="text-gray-400 text-sm">This maintenance task is not associated with any specific machines</p>
+        </div>
+      );
     }
 
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {maintenanceData.machines.map((machine, index) => {
           const machineId = typeof machine === 'object' ? machine.machine_id : machine;
           const machineName = typeof machine === 'object' ? machine.name : null;
@@ -371,10 +380,19 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
           return (
             <div 
               key={index} 
-              className="flex items-center px-3 py-2 bg-gray-100 text-gray-800 text-sm rounded-lg"
+              className="bg-gradient-to-r from-slate-50 to-gray-50 p-4 rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200"
             >
-              <Wrench className="h-4 w-4 mr-2 text-gray-600" />
-              {machineName ? `${machineName} (${machineId})` : machineId}
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Wrench className="h-5 w-5 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-900">
+                    {machineName || 'Unnamed Machine'}
+                  </p>
+                  <p className="text-sm text-gray-600 font-mono">{machineId}</p>
+                </div>
+              </div>
             </div>
           );
         })}
@@ -412,204 +430,363 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
   return (
     <>
-      <div className="bg-white shadow-md rounded-lg p-6">
-        {/* Header with PDF Options */}
-        <div className="border-b pb-4 mb-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Maintenance Details</h2>
-            <div className="flex items-center space-x-3">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
+      <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
+        {/* Modern Header */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-b border-gray-100">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-100 rounded-xl">
+                <Wrench className="h-8 w-8 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Maintenance Details</h2>
+                <p className="text-gray-600 mt-1">ID: {maintenanceData.pm_id}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold shadow-sm ${statusInfo.color}`}>
                 {statusInfo.text}
               </span>
               
-              {/* PDF Generation Button */}
+              {/* Modern PDF Generation Button */}
               <button
                 onClick={() => setShowPDFOptions(!showPDFOptions)}
-                className="flex items-center px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-xl hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm font-medium transition-all duration-200 shadow-sm border border-gray-200 hover:shadow-md"
               >
-                <FileText className="h-4 w-4 mr-1" />
-                PDF Report
+                <FileText className="h-4 w-4" />
+                Export PDF
               </button>
             </div>
           </div>
 
-          {/* PDF Options Panel */}
+          {/* Modern PDF Options Panel */}
           {showPDFOptions && (
-            <div className="no-print mb-4 bg-gray-50 rounded-lg p-4 border">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-900 flex items-center">
-                  <Settings className="h-4 w-4 mr-2" />
-                  PDF Generation Options
+            <div className="no-print mb-6 bg-white rounded-xl p-6 border border-gray-200 shadow-lg">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-blue-600" />
+                  Export Options
                 </h3>
-                <div className="flex space-x-2">
+                <div className="flex gap-2">
                   <button
                     onClick={generatePDF}
-                    className="flex items-center px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm hover:shadow-md"
                   >
-                    <Printer className="h-3 w-3 mr-1" />
-                    Print PDF
+                    <Printer className="h-4 w-4" />
+                    Print
                   </button>
                   <button
                     onClick={downloadHTML}
-                    className="flex items-center px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-all duration-200 shadow-sm hover:shadow-md"
                   >
-                    <Download className="h-3 w-3 mr-1" />
-                    Download HTML
-                  </button>
-                  <button
-                    onClick={() => {
-                      const pdfContent = document.getElementById('pdf-content');
-                      if (pdfContent) {
-                        pdfContent.style.display = 'block';
-                        pdfContent.style.position = 'relative';
-                        pdfContent.style.zIndex = '1000';
-                        pdfContent.style.background = 'white';
-                        pdfContent.style.border = '2px solid red';
-                        setTimeout(() => {
-                          pdfContent.style.display = 'none';
-                        }, 5000);
-                      }
-                    }}
-                    className="flex items-center px-2 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700 transition-colors"
-                  >
-                    Test View
+                    <Download className="h-4 w-4" />
+                    Download
                   </button>
                 </div>
               </div>
               
-              <div className="flex flex-wrap gap-4 text-sm">
-                <label className="flex items-center">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                   <input
                     type="checkbox"
                     checked={includeDetails}
                     onChange={(e) => setIncludeDetails(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 mr-2"
+                    className="rounded border-gray-300 text-blue-600 mr-3 h-4 w-4"
                   />
-                  Include Detailed Information
+                  <span className="text-sm font-medium text-gray-700">Include Detailed Information</span>
                 </label>
-                <label className="flex items-center">
+                <label className="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                   <input
                     type="checkbox"
                     checked={includeImages}
                     onChange={(e) => setIncludeImages(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 mr-2"
+                    className="rounded border-gray-300 text-blue-600 mr-3 h-4 w-4"
                   />
-                  Include Before/After Images
+                  <span className="text-sm font-medium text-gray-700">Include Before/After Images</span>
                 </label>
-              </div>
-              
-              {/* Debug Information */}
-              <div className="mt-3 text-xs text-gray-500">
-                <p><strong>Debug Info:</strong></p>
-                <p>Before Image URL: {beforeImageUrl ? '✓ Available' : '✗ Missing'}</p>
-                <p>After Image URL: {afterImageUrl ? '✓ Available' : '✗ Missing'}</p>
-                {beforeImageUrl && <p className="truncate">Before: {beforeImageUrl}</p>}
-                {afterImageUrl && <p className="truncate">After: {afterImageUrl}</p>}
               </div>
             </div>
           )}
           
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex items-center">
-              <Clipboard className="h-4 w-4 mr-2 text-gray-600" />
-              <span className="text-gray-600 mr-2">Maintenance ID:</span>
-              <span className="font-medium">{maintenanceData.pm_id}</span>
+          {/* Modern Metadata Cards */}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Clipboard className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Maintenance ID</p>
+                  <p className="text-lg font-semibold text-gray-900">{maintenanceData.pm_id}</p>
+                </div>
+              </div>
             </div>
             
             {maintenanceData.property_id && (
-              <div className="flex items-center">
-                <Clipboard className="h-4 w-4 mr-2 text-gray-600" />
-                <span className="text-gray-600 mr-2">Property ID:</span>
-                <span className="font-medium">
-                  {Array.isArray(maintenanceData.property_id)
-                    ? maintenanceData.property_id.join(', ')
-                    : maintenanceData.property_id}
-                </span>
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <Building className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Property ID</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {Array.isArray(maintenanceData.property_id)
+                        ? maintenanceData.property_id.join(', ')
+                        : maintenanceData.property_id}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
             
-            <div className="flex items-center">
-              <Calendar className="h-4 w-4 mr-2 text-gray-600" />
-              <span className="text-gray-600 mr-2">Scheduled:</span>
-              <span className="font-medium">{formatDate(maintenanceData.scheduled_date)}</span>
+            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Calendar className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Scheduled</p>
+                  <p className="text-lg font-semibold text-gray-900">{formatDate(maintenanceData.scheduled_date)}</p>
+                </div>
+              </div>
             </div>
             
             {maintenanceData.completed_date && (
-              <div className="flex items-center">
-                <Calendar className="h-4 w-4 mr-2 text-gray-600" />
-                <span className="text-gray-600 mr-2">Completed:</span>
-                <span className="font-medium">{formatDate(maintenanceData.completed_date)}</span>
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Completed</p>
+                    <p className="text-lg font-semibold text-gray-900">{formatDate(maintenanceData.completed_date)}</p>
+                  </div>
+                </div>
               </div>
             )}
             
             {maintenanceData.next_due_date && (
-              <div className="flex items-center">
-                <Calendar className="h-4 w-4 mr-2 text-gray-600" />
-                <span className="text-gray-600 mr-2">Next Due:</span>
-                <span className="font-medium">{formatDate(maintenanceData.next_due_date)}</span>
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Clock className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">Next Due</p>
+                    <p className="text-lg font-semibold text-gray-900">{formatDate(maintenanceData.next_due_date)}</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
         </div>
         
-        {/* Associated Machines Section */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold mb-3">Associated Machines</h3>
-          {renderMachines()}
+        {/* Modern Maintenance Details Section */}
+        <div className="px-8 py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column */}
+            <div className="space-y-6">
+              {/* Maintenance Title */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-900">Maintenance Title</h4>
+                </div>
+                <p className="text-xl font-medium text-gray-800 leading-relaxed">
+                  {maintenanceData.pmtitle || 'No title provided'}
+                </p>
+              </div>
+
+              {/* Maintenance Procedure */}
+              {maintenanceData.procedure && (
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Clipboard className="h-5 w-5 text-green-600" />
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-900">Procedure</h4>
+                  </div>
+                  <div className="bg-white/60 p-4 rounded-xl">
+                    <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">{maintenanceData.procedure}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {maintenanceData.notes && (
+                <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-6 rounded-2xl border border-purple-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <FileText className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <h4 className="text-lg font-semibold text-gray-900">Notes</h4>
+                  </div>
+                  <div className="bg-white/60 p-4 rounded-xl">
+                    <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">{maintenanceData.notes}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-6">
+              {/* Frequency */}
+              <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-2xl border border-orange-100">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Clock className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-900">Frequency</h4>
+                </div>
+                <div className="bg-white/60 p-4 rounded-xl">
+                  <p className="text-2xl font-bold text-gray-800 capitalize">
+                    {maintenanceData.frequency}
+                    {maintenanceData.frequency === 'custom' && maintenanceData.custom_days && (
+                      <span className="block text-lg font-normal text-gray-600 mt-1">
+                        Every {maintenanceData.custom_days} days
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Topics */}
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-2xl border border-indigo-100">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-indigo-100 rounded-lg">
+                    <FileText className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <h4 className="text-lg font-semibold text-gray-900">Maintenance Topics</h4>
+                </div>
+                <div className="bg-white/60 p-4 rounded-xl">
+                  {maintenanceData.topics && maintenanceData.topics.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {maintenanceData.topics.map((topic, index) => {
+                        const topicTitle = typeof topic === 'object' && 'title' in topic ? topic.title : `Topic ${topic}`;
+                        return (
+                          <span 
+                            key={index} 
+                            className="inline-flex items-center px-3 py-2 bg-indigo-100 text-indigo-800 text-sm font-medium rounded-lg"
+                          >
+                            {topicTitle}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic">No topics assigned</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Modern Machines Section */}
+        <div className="px-8 py-6 border-t border-gray-100">
+          <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-6 rounded-2xl border border-gray-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gray-100 rounded-lg">
+                <Wrench className="h-6 w-6 text-gray-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">Associated Machines</h3>
+            </div>
+            <div className="bg-white/80 p-4 rounded-xl">
+              {renderMachines()}
+            </div>
+          </div>
         </div>
         
-        {/* Images Section */}
-        <h3 className="text-lg font-semibold mb-3">Maintenance Images</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          {beforeImageUrl ? (
-            <div>
-              <p className="text-gray-600 text-sm mb-2">Before Maintenance:</p>
-              <div 
-                className="relative w-full h-48 bg-gray-100 rounded-md overflow-hidden cursor-pointer group"
-                onClick={() => openImageModal(beforeImageUrl, 'Before Maintenance')}
-              >
-                <img
-                  src={beforeImageUrl}
-                  alt="Before Maintenance"
-                  className="w-full h-full object-contain"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 flex items-center justify-center transition-all duration-200">
-                  <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-75 rounded-full p-2 transition-opacity">
-                    <ZoomIn className="h-6 w-6 text-gray-800" />
+        {/* Modern Images Section */}
+        <div className="px-8 py-6 border-t border-gray-100">
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-2xl border border-amber-200">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <Camera className="h-6 w-6 text-amber-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900">Maintenance Images</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {beforeImageUrl ? (
+                <div className="bg-white/80 p-4 rounded-xl">
+                  <p className="text-gray-700 font-medium mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    Before Maintenance
+                  </p>
+                  <div 
+                    className="relative w-full h-56 bg-gray-100 rounded-xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-xl transition-all duration-300"
+                    onClick={() => openImageModal(beforeImageUrl, 'Before Maintenance')}
+                  >
+                    <img
+                      src={beforeImageUrl}
+                      alt="Before Maintenance"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
+                      <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                        <ZoomIn className="h-6 w-6 text-gray-800" />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center w-full h-48 bg-gray-100 rounded-md">
-              <p className="text-gray-500 italic">No before image</p>
-            </div>
-          )}
+              ) : (
+                <div className="bg-white/80 p-4 rounded-xl">
+                  <p className="text-gray-700 font-medium mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    Before Maintenance
+                  </p>
+                  <div className="flex items-center justify-center w-full h-56 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+                    <div className="text-center">
+                      <Camera className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500 font-medium">No before image</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-          {afterImageUrl ? (
-            <div>
-              <p className="text-gray-600 text-sm mb-2">After Maintenance:</p>
-              <div 
-                className="relative w-full h-48 bg-gray-100 rounded-md overflow-hidden cursor-pointer group"
-                onClick={() => openImageModal(afterImageUrl, 'After Maintenance')}
-              >
-                <img
-                  src={afterImageUrl}
-                  alt="After Maintenance"
-                  className="w-full h-full object-contain"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 flex items-center justify-center transition-all duration-200">
-                  <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-75 rounded-full p-2 transition-opacity">
-                    <ZoomIn className="h-6 w-6 text-gray-800" />
+              {afterImageUrl ? (
+                <div className="bg-white/80 p-4 rounded-xl">
+                  <p className="text-gray-700 font-medium mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    After Maintenance
+                  </p>
+                  <div 
+                    className="relative w-full h-56 bg-gray-100 rounded-xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-xl transition-all duration-300"
+                    onClick={() => openImageModal(afterImageUrl, 'After Maintenance')}
+                  >
+                    <img
+                      src={afterImageUrl}
+                      alt="After Maintenance"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
+                      <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                        <ZoomIn className="h-6 w-6 text-gray-800" />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-white/80 p-4 rounded-xl">
+                  <p className="text-gray-700 font-medium mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    After Maintenance
+                  </p>
+                  <div className="flex items-center justify-center w-full h-56 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+                    <div className="text-center">
+                      <Camera className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500 font-medium">No after image</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="flex items-center justify-center w-full h-48 bg-gray-100 rounded-md">
-              <p className="text-gray-500 italic">No after image</p>
-            </div>
-          )}
+          </div>
         </div>
 
         {error && (
@@ -619,48 +796,58 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row justify-between gap-4">
-          <Link
-            href="/dashboard/preventive-maintenance"
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 text-center"
-          >
-            Back to List
-          </Link>
+        {/* Modern Action Buttons */}
+        <div className="px-8 py-6 border-t border-gray-100 bg-gray-50">
+          <div className="flex flex-col sm:flex-row justify-between gap-4">
+            <Link
+              href="/dashboard/preventive-maintenance"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-white text-gray-700 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 text-center font-medium border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200"
+            >
+              <ArrowUpRight className="h-4 w-4 rotate-180" />
+              Back to List
+            </Link>
 
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-            {!maintenanceData.completed_date && (
+            <div className="flex flex-col sm:flex-row gap-3">
+              {!maintenanceData.completed_date && (
+                <button
+                  onClick={handleMarkComplete}
+                  disabled={isCompleting}
+                  className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 font-medium shadow-lg hover:shadow-xl transition-all duration-200 ${
+                    isCompleting ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  {isCompleting ? 'Completing...' : 'Mark Complete'}
+                </button>
+              )}
+              
+              <Link
+                href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-center font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                <Settings className="h-4 w-4" />
+                Edit
+              </Link>
+              
               <button
-                onClick={handleMarkComplete}
-                disabled={isCompleting}
-                className={`px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
-                  isCompleting ? 'opacity-50 cursor-not-allowed' : ''
+                onClick={handleDelete}
+                disabled={isLoading}
+                className={`flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl hover:from-red-600 hover:to-rose-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 font-medium shadow-lg hover:shadow-xl transition-all duration-200 ${
+                  isLoading ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
-                {isCompleting ? 'Completing...' : 'Mark Complete'}
+                <X className="h-4 w-4" />
+                {isLoading ? 'Deleting...' : 'Delete'}
               </button>
-            )}
-            
-            <Link
-              href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-center"
-            >
-              Edit
-            </Link>
-            <button
-              onClick={handleDelete}
-              disabled={isLoading}
-              className={`px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {isLoading ? 'Deleting...' : 'Delete'}
-            </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* PDF Content (Hidden on screen, visible when printing) */}
-      <div id="pdf-content" ref={printRef} className="hidden print:block bg-white">
+      {/* A4 PDF Content (Hidden on screen, visible when printing) */}
+      <div id="pdf-content" ref={printRef} className="hidden print:block">
+        {/* A4 Paper Container */}
+        <div className="a4-page bg-white mx-auto" style={{ width: '210mm', minHeight: '297mm', padding: '20mm', boxSizing: 'border-box' }}>
         {/* Header */}
         <div className="header text-center mb-8 border-b-2 border-gray-300 pb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Maintenance Record Report</h1>
@@ -704,6 +891,13 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                 <div className="mb-4">
                   <span className="font-medium text-gray-600">Notes:</span>
                   <p className="text-gray-700 mt-1">{maintenanceData.notes}</p>
+                </div>
+              )}
+
+              {maintenanceData.procedure && (
+                <div className="mb-4">
+                  <span className="font-medium text-gray-600">Procedure:</span>
+                  <p className="text-gray-700 mt-1 whitespace-pre-wrap">{maintenanceData.procedure}</p>
                 </div>
               )}
             </>
@@ -813,9 +1007,26 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
         </div>
 
         {/* Footer */}
-        <div className="border-t border-gray-300 pt-4 text-center text-sm text-gray-500">
-          <p>This report was automatically generated by the Facility Management System</p>
-          <p>© 2025 - Confidential and Proprietary Information</p>
+        <div className="mt-8 pt-6 border-t-2 border-gray-300 text-center">
+          <div className="grid grid-cols-3 gap-4 text-xs text-gray-600">
+            <div className="text-left">
+              <p><strong>Report Generated:</strong></p>
+              <p>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+            </div>
+            <div className="text-center">
+              <p><strong>Maintenance ID:</strong></p>
+              <p className="font-mono">{maintenanceData.pm_id}</p>
+            </div>
+            <div className="text-right">
+              <p><strong>Page:</strong></p>
+              <p>1 of 1</p>
+            </div>
+          </div>
+          <div className="mt-4 text-center text-gray-500">
+            <p className="text-sm">This report was automatically generated by the Facility Management System</p>
+            <p className="text-xs mt-1">© 2025 - Confidential and Proprietary Information</p>
+          </div>
+        </div>
         </div>
       </div>
 
@@ -857,18 +1068,70 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
           body {
             margin: 0;
             padding: 0;
+            background: white;
           }
+          
+          /* A4 Paper Styling */
+          .a4-page {
+            width: 210mm !important;
+            min-height: 297mm !important;
+            padding: 20mm !important;
+            margin: 0 auto !important;
+            background: white !important;
+            box-shadow: none !important;
+            border: none !important;
+            page-break-after: always;
+          }
+          
+          /* Typography for print */
+          h1 { font-size: 24pt !important; }
+          h2 { font-size: 18pt !important; }
+          h3 { font-size: 14pt !important; }
+          p { font-size: 10pt !important; line-height: 1.4 !important; }
+          .text-sm { font-size: 9pt !important; }
+          .text-xs { font-size: 8pt !important; }
+          
+          /* Images for print */
           img {
-            max-height: 300px !important;
-            max-width: 100% !important;
+            max-height: 120mm !important;
+            max-width: 80mm !important;
             page-break-inside: avoid;
             display: block !important;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
+            border: 1px solid #ccc !important;
           }
-          .maintenance-item {
+          
+          /* Grid layout for print */
+          .grid { display: block !important; }
+          .grid-cols-2 > * { 
+            display: block !important; 
+            margin-bottom: 10mm !important;
             page-break-inside: avoid;
           }
+          
+          /* Borders and spacing for print */
+          .border, .border-2 { border: 1px solid #000 !important; }
+          .rounded-lg, .rounded-xl, .rounded-2xl { border-radius: 0 !important; }
+          .shadow-lg, .shadow-xl { box-shadow: none !important; }
+          
+          /* Background colors for print */
+          .bg-gray-50, .bg-blue-100, .bg-green-100, .bg-purple-100, .bg-indigo-100, .bg-orange-100, .bg-amber-100 {
+            background: white !important;
+            border: 1px solid #000 !important;
+          }
+          
+          /* Status colors for print */
+          .bg-green-100 { background: #f0f9ff !important; }
+          .bg-red-100 { background: #fef2f2 !important; }
+          .bg-yellow-100 { background: #fffbeb !important; }
+          
+          /* Page breaks */
+          .maintenance-item, .a4-page > div {
+            page-break-inside: avoid;
+          }
+          
+          /* Hide screen-only elements */
           .hidden {
             display: none !important;
           }
@@ -878,6 +1141,13 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
           #pdf-content {
             display: none;
           }
+        }
+        
+        /* A4 Page styling for screen preview */
+        .a4-page {
+          background: white;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          border: 1px solid #e5e7eb;
         }
         
         /* Ensure images load properly */

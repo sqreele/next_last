@@ -1,0 +1,789 @@
+// ./app/components/document/JobsPDFGenerator.tsx
+// Note: @react-pdf/renderer only supports JPG, JPEG, PNG, and GIF image formats
+// WebP images are not supported and will show "No Image" placeholder
+// Last updated: 2025-01-13 - Fixed undefined variable references
+import React from 'react';
+import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
+import { Job, TabValue, FILTER_TITLES } from '@/app/lib/types';
+
+
+
+// ✅ Register Thai font (Sarabun)
+Font.register({
+  family: 'Sarabun',
+  fonts: [
+    { src: '/fonts/Sarabun-Regular.ttf', fontWeight: 'normal' },
+    { src: '/fonts/Sarabun-Bold.ttf', fontWeight: 'bold' },
+  ],
+});
+
+interface JobsPDFDocumentProps {
+  jobs: Job[];
+  filter: TabValue;
+  selectedProperty?: string | null;
+  propertyName?: string;
+  topics?: any[];
+  onTopicChange?: (topicId: string) => void;
+  includeDetails?: boolean;
+  includeImages?: boolean;
+  includeStatistics?: boolean;
+  reportTitle?: string;
+}
+
+const styles = StyleSheet.create({
+  page: {
+    padding: 15,
+    backgroundColor: '#ffffff',
+    fontFamily: 'Sarabun',
+  },
+  header: {
+    marginBottom: 15,
+    borderBottomWidth: 2,
+    borderColor: '#1e40af',
+    paddingBottom: 10,
+  },
+  headerText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 6,
+    color: '#1e40af',
+    textAlign: 'center',
+  },
+  subHeaderText: {
+    fontSize: 10,
+    marginBottom: 3,
+    color: '#374151',
+    textAlign: 'center',
+  },
+  metadata: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    padding: 6,
+    backgroundColor: '#f9fafb',
+    borderRadius: 3,
+  },
+  metadataItem: {
+    fontSize: 7,
+    color: '#6b7280',
+  },
+  statistics: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 12,
+    padding: 8,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 4,
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#1e40af',
+    marginBottom: 3,
+  },
+  statLabel: {
+    fontSize: 7,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  jobRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderColor: '#e5e7eb',
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    paddingLeft: '0%',
+    minHeight: 80,
+    maxHeight: 120,
+    marginBottom: 6,
+    break: false,
+    backgroundColor: '#ffffff',
+  },
+  jobRowAlternate: {
+    backgroundColor: '#f9fafb',
+  },
+  imageColumn: {
+    width: '18%',
+    marginRight: 100,
+    marginLeft: 0,
+    order: 1,
+  },
+  infoColumn: {
+    width: '52%',
+    paddingRight: 12,
+    order: 2,
+  },
+  statusColumn: {
+    width: '30%',
+    order: 3,
+  },
+  jobImage: {
+    width: 120,
+    height: 75,
+    objectFit: 'cover',
+    borderRadius: 3,
+  },
+  label: {
+    fontSize: 7,
+    color: '#6b7280',
+    marginBottom: 1,
+    fontWeight: 'bold',
+  },
+  value: {
+    fontSize: 7,
+    marginBottom: 2,
+    lineHeight: 1.1,
+    color: '#111827',
+  },
+  smallText: {
+    fontSize: 6,
+    lineHeight: 1.0,
+  },
+  statusBadge: {
+    fontSize: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 2,
+    marginBottom: 2,
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  priorityBadge: {
+    fontSize: 6,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 2,
+    marginBottom: 2,
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  dateText: {
+    fontSize: 6,
+    marginBottom: 2,
+    lineHeight: 1.0,
+    color: '#6b7280',
+  },
+  truncatedText: {
+    fontSize: 7,
+    marginBottom: 2,
+    lineHeight: 1.1,
+    maxLines: 3,
+  },
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#1e40af',
+    borderBottomWidth: 1,
+    borderBottomColor: '#d1d5db',
+    paddingBottom: 5,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 15,
+    left: 15,
+    right: 15,
+    textAlign: 'center',
+    fontSize: 6,
+    color: '#9ca3af',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 6,
+  },
+  pageNumber: {
+    position: 'absolute',
+    bottom: 15,
+    right: 15,
+    fontSize: 6,
+    color: '#9ca3af',
+  },
+  noDataMessage: {
+    textAlign: 'center',
+    fontSize: 10,
+    color: '#9ca3af',
+    marginTop: 40,
+    fontStyle: 'italic',
+  },
+});
+
+const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({ 
+  jobs, 
+  filter, 
+  selectedProperty, 
+  propertyName, 
+  topics, 
+  onTopicChange,
+  includeDetails = true,
+  includeImages = true,
+  includeStatistics = true,
+  reportTitle = 'Jobs Report'
+}) => {
+  // Debug logging
+  console.log('JobsPDFDocument Props:', {
+    jobsCount: jobs?.length || 0,
+    filter,
+    selectedProperty,
+    propertyName,
+    includeDetails,
+    includeImages,
+    includeStatistics,
+    reportTitle
+  });
+  // Enhanced property filtering that considers user's profile property selection
+  const filteredJobs = jobs.filter((job) => {
+    if (!selectedProperty) return true;
+
+    // Check direct property_id match
+    if (job.property_id === selectedProperty) return true;
+    
+    // Check properties array
+    if (job.properties && Array.isArray(job.properties)) {
+      return job.properties.some(prop => {
+        if (typeof prop === 'string' || typeof prop === 'number') {
+          return String(prop) === String(selectedProperty);
+        }
+        if (typeof prop === 'object' && prop !== null) {
+          return String(prop.property_id || prop.id) === String(selectedProperty);
+        }
+        return false;
+      });
+    }
+    
+    // Check profile_image.properties (if available)
+    if (job.profile_image?.properties && Array.isArray(job.profile_image.properties)) {
+      return job.profile_image.properties.some(prop => {
+        if (typeof prop === 'string' || typeof prop === 'number') {
+          return String(prop) === String(selectedProperty);
+        }
+        if (typeof prop === 'object' && prop !== null) {
+          return String(prop.property_id || prop.id) === String(selectedProperty);
+        }
+        return false;
+      });
+    }
+    
+    // Check rooms.properties (if available)
+    if (job.rooms && Array.isArray(job.rooms)) {
+      return job.rooms.some(room => {
+        if (room.properties && Array.isArray(room.properties)) {
+          return room.properties.some(prop => String(prop) === String(selectedProperty));
+        }
+        return false;
+      });
+    }
+    
+    return false;
+  });
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority?.toLowerCase()) {
+      case 'high': return '#dc2626';
+      case 'medium': return '#ea580c';
+      case 'low': return '#16a34a';
+      default: return '#6b7280';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'completed': return '#16a34a';
+      case 'in_progress': return '#2563eb';
+      case 'pending': return '#ea580c';
+      case 'cancelled': return '#dc2626';
+      case 'waiting_sparepart': return '#7c3aed';
+      default: return '#6b7280';
+    }
+  };
+
+  const getUserDisplayName = (user: any): string => {
+    if (!user) return 'Unassigned';
+    if (typeof user === 'string') return user;
+    if (typeof user === 'object') {
+      return user.name || user.username || user.displayName || user.email || String(user.id) || 'User';
+    }
+    return 'User';
+  };
+
+  // Helper function to get property information for display
+  const getPropertyDisplayInfo = (): { name: string; id: string | null } => {
+    if (!selectedProperty) {
+      return { name: 'All Properties', id: null };
+    }
+    
+    if (propertyName) {
+      return { name: propertyName, id: selectedProperty };
+    }
+    
+    // Try to find property name from jobs if available
+    const jobWithProperty = jobs.find(job => {
+      if (job.property_id === selectedProperty) return true;
+      if (job.properties?.some(prop => String(prop) === String(selectedProperty))) return true;
+      if (job.profile_image?.properties?.some(prop => String(prop) === String(selectedProperty))) return true;
+      if (job.rooms?.some(room => room.properties?.some(prop => String(prop) === String(selectedProperty)))) return true;
+      return false;
+    });
+    
+    if (jobWithProperty) {
+      return { name: `Property ${selectedProperty}`, id: selectedProperty };
+    }
+    
+    return { name: `Property ${selectedProperty}`, id: selectedProperty };
+  };
+
+  const truncateText = (text: string, maxLength: number = 120): string => {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  };
+
+  // Calculate comprehensive statistics
+  const totalJobs = filteredJobs.length;
+  const completedJobs = filteredJobs.filter(job => job.status === 'completed').length;
+  const inProgressJobs = filteredJobs.filter(job => job.status === 'in_progress').length;
+  const pendingJobs = filteredJobs.filter(job => job.status === 'pending').length;
+  const cancelledJobs = filteredJobs.filter(job => job.status === 'cancelled').length;
+  const waitingSparepartJobs = filteredJobs.filter(job => job.status === 'waiting_sparepart').length;
+  const highPriorityJobs = filteredJobs.filter(job => job.priority === 'high').length;
+  const mediumPriorityJobs = filteredJobs.filter(job => job.priority === 'medium').length;
+  const lowPriorityJobs = filteredJobs.filter(job => job.priority === 'low').length;
+  
+  // Calculate completion rate
+  const completionRate = totalJobs > 0 ? Math.round((completedJobs / totalJobs) * 100) : 0;
+  
+  // Calculate average response time (if completed jobs exist)
+  const completedJobDates = filteredJobs
+    .filter(job => job.status === 'completed' && job.completed_at)
+    .map(job => new Date(job.completed_at!).getTime() - new Date(job.created_at).getTime());
+  
+  const averageResponseTime = completedJobDates.length > 0 
+    ? Math.round(completedJobDates.reduce((sum, time) => sum + time, 0) / completedJobDates.length / (1000 * 60 * 60 * 24)) // Convert to days
+    : 0;
+
+  // Group jobs by status for better organization
+  const jobsByStatus = {
+    completed: filteredJobs.filter(job => job.status === 'completed'),
+    in_progress: filteredJobs.filter(job => job.status === 'in_progress'),
+    pending: filteredJobs.filter(job => job.status === 'pending'),
+    cancelled: filteredJobs.filter(job => job.status === 'cancelled'),
+    waiting_sparepart: filteredJobs.filter(job => job.status === 'waiting_sparepart'),
+  };
+
+  // Jobs per page for better pagination
+  const jobsPerPage = 6;
+  const pageGroups = [];
+  for (let i = 0; i < filteredJobs.length; i += jobsPerPage) {
+    pageGroups.push(filteredJobs.slice(i, i + jobsPerPage));
+  }
+
+  if (filteredJobs.length === 0) {
+    return (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          <View style={styles.header}>
+            <Text style={styles.headerText}>{reportTitle}</Text>
+            <Text style={styles.subHeaderText}>
+              {getPropertyDisplayInfo().name}
+              {getPropertyDisplayInfo().id && ` (ID: ${getPropertyDisplayInfo().id})`}
+            </Text>
+          </View>
+          <Text style={styles.noDataMessage}>No jobs found for the selected criteria.</Text>
+        </Page>
+      </Document>
+    );
+  }
+
+  // Add error boundary for PDF generation
+  try {
+
+  return (
+    <Document>
+      {pageGroups.map((jobGroup, pageIndex) => (
+        <Page key={pageIndex} size="A4" style={styles.page}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerText}>{reportTitle}</Text>
+            <Text style={styles.subHeaderText}>
+              {getPropertyDisplayInfo().name}
+              {getPropertyDisplayInfo().id && ` (ID: ${getPropertyDisplayInfo().id})`}
+            </Text>
+            <Text style={styles.subHeaderText}>
+              Filter: {FILTER_TITLES[filter] || filter} | Generated: {new Date().toLocaleDateString()}
+            </Text>
+          </View>
+
+          {/* Statistics Section - Only on first page */}
+          {pageIndex === 0 && includeStatistics && (
+            <>
+              <View style={styles.metadata}>
+                <Text style={styles.metadataItem}>Total Jobs: {totalJobs}</Text>
+                <Text style={styles.metadataItem}>Filter: {FILTER_TITLES[filter] || filter}</Text>
+                <Text style={styles.metadataItem}>Date: {new Date().toLocaleDateString()}</Text>
+              </View>
+              
+              <View style={styles.statistics}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{totalJobs}</Text>
+                  <Text style={styles.statLabel}>Total Jobs</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{completedJobs}</Text>
+                  <Text style={styles.statLabel}>Completed</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{inProgressJobs}</Text>
+                  <Text style={styles.statLabel}>In Progress</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{pendingJobs}</Text>
+                  <Text style={styles.statLabel}>Pending</Text>
+                </View>
+              </View>
+              
+              <View style={styles.statistics}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{completionRate}%</Text>
+                  <Text style={styles.statLabel}>Completion Rate</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{highPriorityJobs}</Text>
+                  <Text style={styles.statLabel}>High Priority</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{waitingSparepartJobs}</Text>
+                  <Text style={styles.statLabel}>Waiting Parts</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{averageResponseTime}d</Text>
+                  <Text style={styles.statLabel}>Avg Response</Text>
+                </View>
+              </View>
+            </>
+          )}
+
+          {/* Jobs List */}
+          {jobGroup.map((job, jobIndex) => {
+            // Debug logging for image data
+            if (includeImages) {
+              console.log(`Job ${job.job_id} image data:`, {
+                hasImages: !!job.images,
+                imagesLength: job.images?.length || 0,
+                hasImageUrls: !!job.image_urls,
+                imageUrlsLength: job.image_urls?.length || 0,
+                firstImage: job.images?.[0],
+                firstImageUrl: job.image_urls?.[0]
+              });
+            }
+            
+            return (
+            <View 
+              key={job.job_id} 
+              style={[
+                styles.jobRow, 
+                jobIndex % 2 === 0 ? {} : styles.jobRowAlternate
+              ]} 
+              wrap={false}
+            >
+              {/* Image Column */}
+              <View style={styles.imageColumn}>
+                {includeImages && ((job.images && job.images.length > 0) || (job.image_urls && job.image_urls.length > 0)) ? (
+                  (() => {
+                    try {
+                      // Get image URL from either images array or image_urls array
+                      let imageUrl: string;
+                      let imageSource = 'none';
+                      
+                      console.log('PDF Debug - Available image sources:', {
+                        hasImages: !!job.images,
+                        imagesLength: job.images?.length || 0,
+                        hasImageUrls: !!job.image_urls,
+                        imageUrlsLength: job.image_urls?.length || 0,
+                        firstImage: job.images?.[0],
+                        firstImageUrl: job.image_urls?.[0]
+                      });
+                    
+                    if (job.images && job.images.length > 0) {
+                      // Use JobImage object structure
+                      imageUrl = job.images[0].image_url;
+                      imageSource = 'job.images[0].image_url';
+                      console.log('PDF Debug - Using image from job.images:', imageUrl);
+                    } else if (job.image_urls && job.image_urls.length > 0) {
+                      // Use direct string array
+                      imageUrl = job.image_urls[0];
+                      imageSource = 'job.image_urls[0]';
+                      console.log('PDF Debug - Using image from job.image_urls:', imageUrl);
+                    } else {
+                      console.log('PDF Debug - No images found in either source');
+                      return (
+                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                          <Text style={{ fontSize: 8, color: '#9ca3af' }}>No Image</Text>
+                        </View>
+                      );
+                    }
+                    
+                    // For PDF generation, we need absolute URLs
+                    // Since the image URLs have already been processed by fixJobImageUrls,
+                    // they should already have the /media/ prefix
+                    if (imageUrl && !imageUrl.startsWith('http')) {
+                      // Try to use the environment variable first, then fallback to localhost
+                      const baseUrl = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000';
+                      
+                      console.log('PDF Environment Variables:', {
+                        NEXT_PUBLIC_MEDIA_URL: process.env.NEXT_PUBLIC_MEDIA_URL,
+                        NODE_ENV: process.env.NODE_ENV,
+                        baseUrl: baseUrl
+                      });
+                      console.log('PDF Image URL (relative):', imageUrl);
+                      
+                      // The image URL should already have /media/ prefix from fixJobImageUrls
+                      // Just add the base URL to make it absolute
+                      imageUrl = `${baseUrl}${imageUrl}`;
+                    }
+                    
+                    // For PDF generation, convert WebP to JPEG if needed
+                    // @react-pdf/renderer only supports JPG, JPEG, PNG, and GIF
+                    if (imageUrl && imageUrl.toLowerCase().endsWith('.webp')) {
+                      // If the image is WebP and no JPEG path is available, try to construct a JPEG URL
+                      console.log('PDF Debug - WebP image detected, attempting to use JPEG version');
+                      const jpegUrl = imageUrl.replace(/\.webp$/i, '.jpg');
+                      console.log('PDF Debug - Attempting JPEG URL:', jpegUrl);
+                      imageUrl = jpegUrl;
+                    }
+                    
+                    // Additional check: if we still have WebP after conversion attempts, show placeholder
+                    if (imageUrl && imageUrl.toLowerCase().includes('.webp')) {
+                      console.log('PDF Debug - WebP still detected after conversion attempts, showing placeholder');
+                      return (
+                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                          <Text style={{ fontSize: 8, color: '#9ca3af', textAlign: 'center' }}>
+                            WebP Image
+                          </Text>
+                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
+                            (Convert to JPEG)
+                          </Text>
+                        </View>
+                      );
+                    }
+                    
+                    // Final fallback: if we have a supported format, try to use it
+                    const finalImageExtension = imageUrl.split('.').pop()?.toLowerCase();
+                    if (finalImageExtension && ['jpg', 'jpeg', 'png', 'gif'].includes(finalImageExtension)) {
+                      console.log('PDF Debug - Using supported image format:', finalImageExtension);
+                    } else {
+                      console.log('PDF Debug - Unsupported format, showing placeholder');
+                      return (
+                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                          <Text style={{ fontSize: 8, color: '#9ca3af', textAlign: 'center' }}>
+                            No Image
+                          </Text>
+                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
+                            (Format not supported)
+                          </Text>
+                        </View>
+                      );
+                    }
+                    
+
+                    
+                    console.log('PDF Debug - Final image processing:', {
+                      originalUrl: job.images?.[0]?.image_url || job.image_urls?.[0],
+                      processedUrl: imageUrl,
+                      finalUrl: imageUrl,
+                      imageSource: imageSource,
+
+                      isWebP: imageUrl.toLowerCase().includes('.webp'),
+                      convertedToJpeg: imageUrl.toLowerCase().includes('.jpg') || imageUrl.toLowerCase().includes('.jpeg'),
+                      finalExtension: imageUrl.split('.').pop()?.toLowerCase()
+                    });
+                    
+                    // Try to load the image, but if it fails, show a placeholder
+                    console.log('PDF Debug - Attempting to load image:', imageUrl);
+                    
+                    // TEST: Try a simple test image first to verify PDF generation works
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('PDF Debug - Development mode, attempting to load test image');
+                    }
+                    
+                    // Safety check: ensure imageUrl is defined
+                    if (typeof imageUrl === 'undefined') {
+                      console.log('PDF Debug - imageUrl is undefined, showing placeholder');
+                      return (
+                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                          <Text style={{ fontSize: 8, color: '#ef4444', textAlign: 'center' }}>
+                            Image Error
+                          </Text>
+                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
+                            (Undefined URL)
+                          </Text>
+                        </View>
+                      );
+                    }
+                    
+                    // Try to load the image with better error handling
+                    console.log('PDF Debug - Final image URL to load:', imageUrl);
+                    
+                    // Check if the URL looks valid
+                    if (!imageUrl || imageUrl === 'undefined' || imageUrl === 'null') {
+                      console.log('PDF Debug - Invalid image URL, showing placeholder');
+                      return (
+                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                          <Text style={{ fontSize: 8, color: '#9ca3af', textAlign: 'center' }}>
+                            No Image
+                          </Text>
+                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
+                            (Invalid URL)
+                          </Text>
+                        </View>
+                      );
+                    }
+                    
+                    // Additional validation: check if URL has proper format
+                    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/media/')) {
+                      console.log('PDF Debug - Malformed image URL:', imageUrl);
+                      return (
+                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                          <Text style={{ fontSize: 8, color: '#9ca3af', textAlign: 'center' }}>
+                            No Image
+                          </Text>
+                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
+                            (Malformed URL)
+                          </Text>
+                        </View>
+                      );
+                    }
+                    
+                    // Final attempt to load the image
+                    console.log('PDF Debug - Attempting to load image with URL:', imageUrl);
+                    
+                    return (
+                      <Image
+                        src={imageUrl}
+                        style={styles.jobImage}
+                        cache={false}
+                      />
+                    );
+                    } catch (imageError) {
+                      console.error('PDF Image processing error:', imageError);
+                      return (
+                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                          <Text style={{ fontSize: 8, color: '#ef4444', textAlign: 'center' }}>
+                            Image Error
+                          </Text>
+                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
+                            Failed to load
+                          </Text>
+                        </View>
+                      );
+                    }
+                  })()
+                ) : (
+                  <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                    <Text style={{ fontSize: 8, color: '#9ca3af' }}>No Image</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Information Column */}
+              <View style={styles.infoColumn}>
+                <Text style={styles.label}>Location:</Text>
+                <Text style={styles.value}>
+                  {job.rooms && job.rooms.length > 0 
+                    ? job.rooms.map(room => room.name).join(', ')
+                    : 'N/A'
+                  }
+                </Text>
+                
+                <Text style={styles.label}>Topics:</Text>
+                <Text style={styles.value}>
+                  {job.topics && job.topics.length > 0 
+                    ? job.topics.map(topic => topic.title).join(', ')
+                    : 'N/A'
+                  }
+                </Text>
+                
+                <Text style={styles.label}>Staff:</Text>
+                <Text style={styles.value}>{getUserDisplayName(job.user)}</Text>
+                
+                <Text style={styles.label}>Description:</Text>
+                <Text style={styles.value}>{truncateText(job.description, 120)}</Text>
+                
+                <Text style={styles.label}>Remarks:</Text>
+                <Text style={styles.value}>
+                  {job.remarks ? truncateText(job.remarks, 80) : 'N/A'}
+                </Text>
+              </View>
+
+              {/* Status Column */}
+              <View style={styles.statusColumn}>
+                <Text style={styles.label}>Status:</Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(job.status) + '20', color: getStatusColor(job.status) }]}>
+                  <Text style={[styles.statusBadge, { backgroundColor: 'transparent', color: getStatusColor(job.status) }]}>
+                    {job.status.replace('_', ' ')}
+                  </Text>
+                </View>
+                
+                <Text style={styles.label}>Priority:</Text>
+                <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(job.priority) + '20', color: getPriorityColor(job.priority) }]}>
+                  <Text style={[styles.priorityBadge, { backgroundColor: 'transparent', color: getPriorityColor(job.priority) }]}>
+                    {job.priority}
+                  </Text>
+                </View>
+                
+                <Text style={styles.label}>Created:</Text>
+                <Text style={styles.dateText}>{formatDate(job.created_at)}</Text>
+                
+                <Text style={styles.label}>Updated:</Text>
+                <Text style={styles.dateText}>{formatDate(job.updated_at)}</Text>
+              </View>
+            </View>
+          );
+        })}
+
+          {/* Footer */}
+          <View style={styles.footer} fixed>
+            <Text>Generated by Facility Management System | {new Date().toLocaleDateString()}</Text>
+          </View>
+
+          {/* Page Number */}
+          <Text 
+            style={styles.pageNumber} 
+            render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} 
+            fixed 
+          />
+        </Page>
+      ))}
+    </Document>
+  );
+  } catch (error) {
+    console.error('PDF Generation Error:', error);
+    return (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          <View style={styles.header}>
+            <Text style={styles.headerText}>PDF Generation Error</Text>
+            <Text style={styles.subHeaderText}>An error occurred while generating the PDF</Text>
+          </View>
+          <Text style={styles.noDataMessage}>
+            Error: {error instanceof Error ? error.message : 'Unknown error occurred'}
+          </Text>
+        </Page>
+      </Document>
+    );
+  }
+};
+
+export default JobsPDFDocument;

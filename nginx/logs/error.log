@@ -1,0 +1,42 @@
+2025/02/02 14:20:11 [notice] 1#1: using the "epoll" event method
+2025/02/02 14:20:11 [notice] 1#1: nginx/1.27.3
+2025/02/02 14:20:11 [notice] 1#1: built by gcc 13.2.1 20240309 (Alpine 13.2.1_git20240309) 
+2025/02/02 14:20:11 [notice] 1#1: OS: Linux 6.11.0-9-generic
+2025/02/02 14:20:11 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+2025/02/02 14:20:11 [notice] 1#1: start worker processes
+2025/02/02 14:20:11 [notice] 1#1: start worker process 20
+2025/02/02 14:25:05 [notice] 1#1: signal 3 (SIGQUIT) received, shutting down
+2025/02/02 14:25:05 [notice] 20#20: gracefully shutting down
+2025/02/02 14:25:05 [notice] 20#20: exiting
+2025/02/02 14:25:05 [notice] 20#20: exit
+2025/02/02 14:25:05 [notice] 1#1: signal 17 (SIGCHLD) received from 20
+2025/02/02 14:25:05 [notice] 1#1: worker process 20 exited with code 0
+2025/02/02 14:25:05 [notice] 1#1: exit
+2025/02/02 14:25:58 [notice] 1#1: using the "epoll" event method
+2025/02/02 14:25:58 [notice] 1#1: nginx/1.27.3
+2025/02/02 14:25:58 [notice] 1#1: built by gcc 13.2.1 20240309 (Alpine 13.2.1_git20240309) 
+2025/02/02 14:25:58 [notice] 1#1: OS: Linux 6.11.0-9-generic
+2025/02/02 14:25:58 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+2025/02/02 14:25:58 [notice] 1#1: start worker processes
+2025/02/02 14:25:58 [notice] 1#1: start worker process 20
+2025/02/02 14:29:06 [notice] 1#1: signal 3 (SIGQUIT) received, shutting down
+2025/02/02 14:29:06 [notice] 20#20: gracefully shutting down
+2025/02/02 14:29:06 [notice] 20#20: exiting
+2025/02/02 14:29:06 [notice] 20#20: exit
+2025/02/02 14:29:06 [notice] 1#1: signal 17 (SIGCHLD) received from 20
+2025/02/02 14:29:06 [notice] 1#1: worker process 20 exited with code 0
+2025/02/02 14:29:06 [notice] 1#1: exit
+2025/02/02 14:29:17 [notice] 1#1: using the "epoll" event method
+2025/02/02 14:29:17 [notice] 1#1: nginx/1.27.3
+2025/02/02 14:29:17 [notice] 1#1: built by gcc 13.2.1 20240309 (Alpine 13.2.1_git20240309) 
+2025/02/02 14:29:17 [notice] 1#1: OS: Linux 6.11.0-9-generic
+2025/02/02 14:29:17 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1024:524288
+2025/02/02 14:29:17 [notice] 1#1: start worker processes
+2025/02/02 14:29:17 [notice] 1#1: start worker process 20
+2025/02/02 14:38:35 [notice] 1#1: signal 3 (SIGQUIT) received, shutting down
+2025/02/02 14:38:35 [notice] 20#20: gracefully shutting down
+2025/02/02 14:38:35 [notice] 20#20: exiting
+2025/02/02 14:38:35 [notice] 20#20: exit
+2025/02/02 14:38:35 [notice] 1#1: signal 17 (SIGCHLD) received from 20
+2025/02/02 14:38:35 [notice] 1#1: worker process 20 exited with code 0
+2025/02/02 14:38:35 [notice] 1#1: exit

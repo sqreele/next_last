@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")  // Ensure this points to your PostgreSQL database in .env
+}
+
+// Map to Django's existing auth_user table for basic user info
+model AuthUser {
+  id           Int      @id @default(autoincrement()) @map("id")
+  username     String   @unique @map("username") @db.VarChar(150)
+  email        String   @map("email") @db.VarChar(254)
+  password     String   @map("password") @db.VarChar(128)
+  first_name   String   @map("first_name") @db.VarChar(150)
+  last_name    String   @map("last_name") @db.VarChar(150)
+  is_active    Boolean  @default(true) @map("is_active")
+  is_staff     Boolean  @default(false) @map("is_staff")
+  is_superuser Boolean  @default(false) @map("is_superuser")
+  date_joined  DateTime @default(now()) @map("date_joined") @db.Timestamptz(6)
+  last_login   DateTime? @map("last_login") @db.Timestamptz(6)
+  
+  // Relations
+  userprofile UserProfile?
+  
+  @@map("auth_user")
+}
+
+// Map to Django's existing userprofile table for extended user info
+model UserProfile {
+  id                    Int      @id @default(autoincrement()) @map("id")
+  userId                Int      @unique @map("user_id") @db.Integer
+  positions             String?  @map("positions") @db.Text
+  profile_image         String?  @map("profile_image") @db.VarChar(100)
+  access_token          String?  @map("access_token") @db.Text
+  email_verified        Boolean  @default(false) @map("email_verified")
+  google_id             String?  @map("google_id") @db.VarChar(100)
+  login_provider        String?  @map("login_provider") @db.VarChar(50)
+  refresh_token         String?  @map("refresh_token") @db.Text
+  last_login_google     DateTime? @map("last_login_google") @db.Timestamptz(6)
+  reset_password_token  String?  @map("reset_password_token") @db.VarChar(128)
+  reset_password_expires_at DateTime? @map("reset_password_expires_at") @db.Timestamptz(6)
+  reset_password_used   Boolean  @default(false) @map("reset_password_used")
+  
+  // Relations
+  user                  AuthUser @relation(fields: [userId], references: [id])
+  properties            UserProfileProperty[]
+  
+  @@map("myappLubd_userprofile")
+}
+
+// Map to Django's existing property table
+model Property {
+  id          String   @id @map("property_id") @db.VarChar(255)
+  name        String   @map("name") @db.VarChar(255)
+  description String?  @map("description") @db.Text
+  created_at  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  
+  // Relations
+  userProfiles UserProfileProperty[]
+  
+  @@map("myappLubd_property")
+}
+
+// Map to Django's existing user-property relationship table
+model UserProfileProperty {
+  userprofileId Int     @map("userprofile_id") @db.Integer
+  propertyId    String  @map("property_id") @db.VarChar(255)
+  
+  // Relations
+  userprofile   UserProfile @relation(fields: [userprofileId], references: [id])
+  property      Property    @relation(fields: [propertyId], references: [id])
+  
+  @@map("myappLubd_userprofile_properties")
+  @@id([userprofileId, propertyId])
+}
+
+// NextAuth Account model (will be created if needed)
+model Account {
+  id                 String   @id @default(uuid()) @db.VarChar(255)
+  userId             String   @map("user_id") @db.VarChar(255)
+  type               String   @db.VarChar(255)
+  provider           String   @db.VarChar(255)
+  providerAccountId  String   @map("provider_account_id") @db.VarChar(255)
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?  @db.VarChar(255)
+  scope              String?  @db.VarChar(255)
+  id_token           String?  @db.Text
+  session_state      String?  @db.VarChar(255)
+  
+  @@unique([provider, providerAccountId])
+}
+
+// NextAuth Session model (will be created if needed)
+model Session {
+  id           String   @id @default(uuid()) @db.VarChar(255)
+  sessionToken String   @unique @map("session_token") @db.VarChar(255)
+  userId       String   @map("user_id") @db.VarChar(255)
+  expires      DateTime @db.Timestamp(6)
+}

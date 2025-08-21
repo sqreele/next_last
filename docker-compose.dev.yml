@@ -1,0 +1,97 @@
+version: '3.8'
+services:
+  frontend:
+    build:
+      context: ./frontend/Lastnext
+      dockerfile: Dockerfile
+      target: development
+    container_name: nextjs-frontend-dev
+    # Remove or comment out the user line to let container handle it
+    # user: "1001:1001"  
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PRIVATE_API_URL=http://backend:8000
+      - NEXT_PUBLIC_MEDIA_URL=http://localhost:8000
+      - API_URL=http://backend:8000
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=K/QdN0nOS9Sep9RDp8YCEsxDhGTmRWVW/7wR/0C8kuA=
+      - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://mylubd_user:Sqreele1234@db:5432/mylubd_db?schema=public
+    volumes:
+      - ./frontend/Lastnext:/app
+      - frontend_node_modules:/app/node_modules  # Named volume
+      - frontend_next_cache:/app/.next          # Named volume
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+      - db
+    networks:
+      - dev-network
+
+  backend:
+    build: 
+      context: ./backend/myLubd
+      dockerfile: Dockerfile
+    container_name: django-backend-dev
+    volumes:
+      - ./backend/myLubd/src:/app/src
+      - media_volume_dev:/app/media
+      - static_volume_dev:/app/static
+    environment:
+      - DJANGO_SETTINGS_MODULE=myLubd.settings
+      - PYTHONPATH=/app
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,backend,0.0.0.0
+      - DJANGO_CORS_ORIGINS=http://localhost:3000
+      - SQL_ENGINE=django.db.backends.postgresql
+      - SQL_DATABASE=mylubd_db
+      - SQL_USER=mylubd_user
+      - SQL_PASSWORD=Sqreele1234
+      - SQL_HOST=db
+      - SQL_PORT=5432
+      - NEXTAUTH_SECRET=K/QdN0nOS9Sep9RDp8YCEsxDhGTmRWVW/7wR/0C8kuA=
+      - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    command: python manage.py runserver 0.0.0.0:8000
+    networks:
+      - dev-network
+
+  db:
+    image: postgres:13-alpine
+    container_name: db-dev
+    environment:
+      - POSTGRES_DB=mylubd_db
+      - POSTGRES_USER=mylubd_user
+      - POSTGRES_PASSWORD=Sqreele1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mylubd_user -d mylubd_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dev-network
+
+networks:
+  dev-network:
+    driver: bridge
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  static_volume_dev:
+    driver: local
+  media_volume_dev:
+    driver: local
+  frontend_node_modules:    # Named volume for node_modules
+    driver: local
+  frontend_next_cache:      # Named volume for .next cache
+    driver: local

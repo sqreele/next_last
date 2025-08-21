@@ -1,0 +1,167 @@
+version: '3.8'
+services:
+  frontend:
+    build:
+      context: ./frontend/Lastnext
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://pcms.live}
+        - NEXT_PRIVATE_API_URL=${NEXT_PRIVATE_API_URL:-http://django-backend:8000}
+        - API_URL=${API_URL:-http://django-backend:8000}
+        - NEXTAUTH_URL=${NEXTAUTH_URL:-https://pcms.live}
+        - NEXTAUTH_SECRET=K/QdN0nOS9Sep9RDp8YCEsxDhGTmRWVW/7wR/0C8kuA=
+        - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
+        - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+        - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+    container_name: nextjs-frontend
+    restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://pcms.live}
+      - NEXT_PRIVATE_API_URL=${NEXT_PRIVATE_API_URL:-http://django-backend:8000}
+      - API_URL=${API_URL:-http://django-backend:8000}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://pcms.live}
+      - NEXTAUTH_SECRET=K/QdN0nOS9Sep9RDp8YCEsxDhGTmRWVW/7wR/0C8kuA=
+      - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://mylubd_user:Sqreele1234@db:5432/mylubd_db
+    volumes:
+      - ./frontend/Lastnext/prisma:/app/prisma
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+      - db
+    networks:
+      - app-network
+
+  backend:
+    build: 
+      context: ./backend/myLubd
+      dockerfile: Dockerfile
+    container_name: django-backend
+    restart: unless-stopped
+    volumes:
+      - ./backend/myLubd/src:/app/src
+      - static_volume:/app/static
+      - media_volume:/app/media
+      - backup_volume:/root/my_project/backend/backups
+    environment:
+      - DJANGO_SETTINGS_MODULE=myLubd.settings  # ✅ Fixed the incorrect setting
+      - PYTHONPATH=/app  
+      - NEXTAUTH_SECRET=K/QdN0nOS9Sep9RDp8YCEsxDhGTmRWVW/7wR/0C8kuA=
+      - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://pcms.live}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://pcms.live}
+      - DEBUG=0
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1] pcms.live www.pcms.live django-backend
+      - DJANGO_CORS_ORIGINS=https://pcms.live
+      - SQL_ENGINE=django.db.backends.postgresql
+      - SQL_DATABASE=${POSTGRES_DB:-mylubd_db}
+      - SQL_USER=${POSTGRES_USER:-mylubd_user}
+      - SQL_PASSWORD=${POSTGRES_PASSWORD:-Sqreele1234}
+      - SQL_HOST=db
+      - SQL_PORT=5432
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-mylubd_user}:${POSTGRES_PASSWORD:-Sqreele1234}@db:5432/${POSTGRES_DB:-mylubd_db}?schema=public
+    healthcheck:
+      test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/health/'); response = conn.getresponse(); exit(0 if response.status == 200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    expose:
+      - "8000"
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+  db:
+    image: postgres:13-alpine
+    container_name: db
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-mylubd_db}
+      - POSTGRES_USER=${POSTGRES_USER:-mylubd_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-Sqreele1234}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mylubd_user} -d ${POSTGRES_DB:-mylubd_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"  # This exposes the port to the host machine
+    expose:
+      - "5432" 
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/cloudflare.conf:/etc/nginx/cloudflare.conf:ro
+      - ./nginx/letsencrypt:/etc/letsencrypt:ro
+      - ./nginx/certbot:/var/www/certbot:ro
+      - static_volume:/usr/share/nginx/html/static:ro
+      - media_volume:/usr/share/nginx/html/media:ro
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - app-network
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    restart: unless-stopped
+    volumes:
+      - ./nginx/letsencrypt:/etc/letsencrypt
+      - ./nginx/certbot:/var/www/certbot
+    environment:
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL:-admin@pcms.live}
+    depends_on:
+      - nginx
+    entrypoint: "/bin/sh"
+    command: -c 'echo "0 0,12 * * * certbot renew --quiet" | crontab - && crond -f'
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    name: pcms_network
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+    name: pcms_postgres_data
+  static_volume:
+    driver: local
+    name: pcms_static_volume
+  media_volume:
+    driver: local
+    name: pcms_media_volume
+  backup_volume:  # ✅ Backup Volume Added
+    driver: local
+    name: pcms_backup_volume

@@ -1,0 +1,3 @@
+# Ignore SSL materials (do not commit secrets)
+nginx/ssl/*
+!nginx/ssl/README.txt

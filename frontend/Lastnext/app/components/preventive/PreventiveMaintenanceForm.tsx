@@ -656,6 +656,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         return;
       }
 
+      // Prepare ISO 8601 strings for dates
+      const scheduledDateISO = convertToISO8601(ensureDateTimeLocalFormat(values.scheduled_date));
+      const completedDateISO = values.completed_date
+        ? convertToISO8601(ensureDateTimeLocalFormat(values.completed_date))
+        : undefined;
+
       const dataForService: CreatePreventiveMaintenanceData = {
         pmtitle: values.pmtitle.trim() || 'Untitled Maintenance',
         scheduled_date: scheduledDateISO,
@@ -832,7 +838,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       <Formik
         initialValues={getInitialValues()}
         validate={validateForm}
-        onSubmit={handleSubmit}
         enableReinitialize
         onSubmit={(values, formikHelpers) => {
           console.log('[Formik] onSubmit called with values:', {

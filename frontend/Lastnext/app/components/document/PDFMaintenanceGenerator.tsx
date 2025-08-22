@@ -85,16 +85,17 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
         console.log('PDF Debug - Available fields:', Object.keys(maintenanceData[0]));
         
         // Check if critical fields are missing
-        const criticalFields = ['pmtitle', 'procedure', 'notes', 'job_description'];
-        const missingFields = criticalFields.filter(field => !maintenanceData[0][field]);
+        const criticalFields: (keyof PreventiveMaintenance)[] = ['pmtitle', 'procedure', 'notes', 'job_description'];
+        const missingFields = criticalFields.filter(field => !maintenanceData[0]?.[field]);
         if (missingFields.length > 0) {
           console.warn('PDF Debug - Missing critical fields:', missingFields);
         }
         
         // Check data types
         criticalFields.forEach(field => {
-          if (maintenanceData[0][field] !== undefined) {
-            console.log(`PDF Debug - Field "${field}" type:`, typeof maintenanceData[0][field], 'value:', maintenanceData[0][field]);
+          const value = maintenanceData[0]?.[field];
+          if (value !== undefined) {
+            console.log(`PDF Debug - Field "${String(field)}" type:`, typeof value, 'value:', value);
           }
         });
       }

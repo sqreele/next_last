@@ -118,6 +118,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 # Build arguments for flexible configuration
 ARG NEXT_PUBLIC_API_URL=https://pcms.live
 ARG NEXT_PRIVATE_API_URL=http://django-backend:8000
+ARG NEXT_PUBLIC_MEDIA_URL=https://pcms.live
 ARG API_URL=http://django-backend:8000
 ARG NEXTAUTH_URL=https://pcms.live
 ARG NEXTAUTH_SECRET
@@ -129,6 +130,7 @@ ARG DATABASE_URL=postgresql://mylubd_user:Sqreele1234@db:5432/mylubd_db?schema=p
 # Set environment variables from build args
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} \
     NEXT_PRIVATE_API_URL=${NEXT_PRIVATE_API_URL} \
+    NEXT_PUBLIC_MEDIA_URL=${NEXT_PUBLIC_MEDIA_URL} \
     API_URL=${API_URL} \
     NEXTAUTH_URL=${NEXTAUTH_URL} \
     NEXTAUTH_SECRET=${NEXTAUTH_SECRET} \

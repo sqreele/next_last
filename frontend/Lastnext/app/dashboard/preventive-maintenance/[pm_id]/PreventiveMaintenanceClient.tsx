@@ -325,6 +325,36 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
       return 'Invalid Date';
     }
   };
+
+  // Helper function to format current date/time for reports (locale-independent)
+  const formatCurrentDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const month = monthNames[now.getMonth()];
+    const day = now.getDate();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes.toString().padStart(2, '0');
+    
+    return `${month} ${day}, ${year} at ${displayHours}:${displayMinutes} ${ampm}`;
+  };
+
+  // Helper function to format current date for reports (locale-independent)
+  const formatCurrentDate = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = monthNames[now.getMonth()];
+    const day = now.getDate();
+    
+    return `${month} ${day}, ${year}`;
+  };
   
   // Status functions
   const getTaskStatus = () => {
@@ -714,10 +744,10 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {beforeImageUrl ? (
                 <div className="bg-white/80 p-4 rounded-xl">
-                  <p className="text-gray-700 font-medium mb-3 flex items-center gap-2">
+                  <div className="text-gray-700 font-medium mb-3 flex items-center gap-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     Before Maintenance
-                  </p>
+                  </div>
                   <div 
                     className="relative w-full h-56 bg-gray-100 rounded-xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-xl transition-all duration-300"
                     onClick={() => openImageModal(beforeImageUrl, 'Before Maintenance')}
@@ -736,10 +766,10 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                 </div>
               ) : (
                 <div className="bg-white/80 p-4 rounded-xl">
-                  <p className="text-gray-700 font-medium mb-3 flex items-center gap-2">
+                  <div className="text-gray-700 font-medium mb-3 flex items-center gap-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     Before Maintenance
-                  </p>
+                  </div>
                   <div className="flex items-center justify-center w-full h-56 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300">
                     <div className="text-center">
                       <Camera className="h-12 w-12 text-gray-400 mx-auto mb-2" />
@@ -751,10 +781,10 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
               {afterImageUrl ? (
                 <div className="bg-white/80 p-4 rounded-xl">
-                  <p className="text-gray-700 font-medium mb-3 flex items-center gap-2">
+                  <div className="text-gray-700 font-medium mb-3 flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     After Maintenance
-                  </p>
+                  </div>
                   <div 
                     className="relative w-full h-56 bg-gray-100 rounded-xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-xl transition-all duration-300"
                     onClick={() => openImageModal(afterImageUrl, 'After Maintenance')}
@@ -773,10 +803,10 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                 </div>
               ) : (
                 <div className="bg-white/80 p-4 rounded-xl">
-                  <p className="text-gray-700 font-medium mb-3 flex items-center gap-2">
+                  <div className="text-gray-700 font-medium mb-3 flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     After Maintenance
-                  </p>
+                  </div>
                   <div className="flex items-center justify-center w-full h-56 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300">
                     <div className="text-center">
                       <Camera className="h-12 w-12 text-gray-400 mx-auto mb-2" />
@@ -851,13 +881,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
         {/* Header */}
         <div className="header text-center mb-8 border-b-2 border-gray-300 pb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Maintenance Record Report</h1>
-          <p className="text-gray-600">Generated on {new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}</p>
+          <p className="text-gray-600">Generated on {formatCurrentDateTime()}</p>
           <div className="flex justify-center items-center mt-4 text-sm text-gray-500">
             <Building className="h-4 w-4 mr-2" />
             Facility Management System
@@ -1011,7 +1035,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
           <div className="grid grid-cols-3 gap-4 text-xs text-gray-600">
             <div className="text-left">
               <p><strong>Report Generated:</strong></p>
-              <p>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+              <p>{formatCurrentDate()}</p>
             </div>
             <div className="text-center">
               <p><strong>Maintenance ID:</strong></p>

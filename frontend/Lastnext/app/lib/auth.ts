@@ -219,13 +219,17 @@ export const authOptions: NextAuthOptions = {
         hasUser: !!user,
         hasToken: !!token,
         userKeys: user ? Object.keys(user) : [],
-        tokenKeys: token ? Object.keys(token) : []
+        tokenKeys: token ? Object.keys(token) : [],
+        userProperties: user?.properties,
+        userPropertiesLength: user?.properties?.length || 0,
+        userFull: user
       });
 
       // Initial sign in
       if (user) {
         console.log("🔐 Initial sign in - setting token data");
         console.log("🔐 User properties being stored:", user.properties?.length || 0);
+        console.log("🔐 Full user object received:", user);
         
         const newToken = {
           ...token,

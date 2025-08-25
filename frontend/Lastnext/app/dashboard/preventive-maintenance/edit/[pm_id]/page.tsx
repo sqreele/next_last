@@ -81,10 +81,14 @@ export default function EditPreventiveMaintenancePage() {
   useEffect(() => {
     const loadMaintenance = async () => {
       if (pmId) {
+        console.log('[EDIT FORM] Loading maintenance data for PM ID:', pmId);
         const data = await fetchMaintenanceById(pmId);
+        console.log('[EDIT FORM] Fetched maintenance data:', data);
         if (data) {
           setMaintenance(data);
           populateForm(data);
+        } else {
+          console.error('[EDIT FORM] No maintenance data returned for PM ID:', pmId);
         }
       }
     };
@@ -92,15 +96,47 @@ export default function EditPreventiveMaintenancePage() {
     loadMaintenance();
   }, [pmId, fetchMaintenanceById]);
 
+  // Debug: Monitor form state changes
+  useEffect(() => {
+    console.log('[EDIT FORM] Form state changed:', formState);
+  }, [formState]);
+
   // Populate form with existing data
   const populateForm = (data: PreventiveMaintenance) => {
+    // Helper function to convert ISO datetime to datetime-local format
+    const convertToDateTimeLocal = (isoString: string | null | undefined): string => {
+      if (!isoString) return '';
+      try {
+        const date = new Date(isoString);
+        if (isNaN(date.getTime())) return '';
+        
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      } catch (error) {
+        console.error('Error converting date:', error);
+        return '';
+      }
+    };
+
+    console.log('[EDIT FORM] populateForm debug:', {
+      incoming_data: data,
+      pmtitle_from_data: data.pmtitle,
+      pmtitle_type: typeof data.pmtitle,
+      pmtitle_length: data.pmtitle?.length || 0
+    });
+
     setFormState({
       pmtitle: data.pmtitle || '',
-      scheduled_date: data.scheduled_date ? data.scheduled_date.split('T')[0] : '',
+      scheduled_date: convertToDateTimeLocal(data.scheduled_date),
       frequency: data.frequency as FrequencyType,
       custom_days: data.custom_days ?? null,  // Ensure null instead of undefined
       notes: data.notes || '',
-      completed_date: data.completed_date ? data.completed_date.split('T')[0] : '',
+      completed_date: convertToDateTimeLocal(data.completed_date),
       topic_ids: data.topics ? data.topics.map(t => typeof t === 'object' ? t.id : t) : [],
       machine_ids: data.machines ? data.machines.map(m => typeof m === 'object' ? m.machine_id : m) : [],
       before_image_file: null,
@@ -112,6 +148,7 @@ export default function EditPreventiveMaintenancePage() {
 
   // Handle form input changes
   const handleInputChange = (field: keyof FormState, value: any) => {
+    console.log('[EDIT FORM] handleInputChange:', { field, value, currentFormState: formState });
     setFormState(prev => ({ ...prev, [field]: value }));
     setIsDirty(true);
     
@@ -183,6 +220,39 @@ export default function EditPreventiveMaintenancePage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Helper function to convert datetime-local to Django-compatible format
+  const convertDateTimeForBackend = (dateTimeLocal: string): string => {
+    if (!dateTimeLocal) return '';
+    
+    try {
+      // If it's already in the right format (YYYY-MM-DDTHH:mm), return as is
+      if (dateTimeLocal.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
+        return dateTimeLocal;
+      }
+      
+      // If it's a date only (YYYY-MM-DD), add default time
+      if (dateTimeLocal.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return `${dateTimeLocal}T09:00`;
+      }
+      
+      // Try to parse and convert
+      const date = new Date(dateTimeLocal);
+      if (!isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+      
+      return dateTimeLocal;
+    } catch (error) {
+      console.error('Error converting date:', error);
+      return dateTimeLocal;
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,13 +263,31 @@ export default function EditPreventiveMaintenancePage() {
     clearError();
 
     try {
+      // Convert dates to proper format for backend
+      const scheduledDate = convertDateTimeForBackend(formState.scheduled_date);
+      const completedDate = formState.completed_date ? convertDateTimeForBackend(formState.completed_date) : undefined;
+      
+      console.log('[EDIT FORM] Date conversion debug:', {
+        original_scheduled_date: formState.scheduled_date,
+        converted_scheduled_date: scheduledDate,
+        original_completed_date: formState.completed_date,
+        converted_completed_date: completedDate
+      });
+
+      console.log('[EDIT FORM] Title debug:', {
+        original_pmtitle: formState.pmtitle,
+        trimmed_pmtitle: formState.pmtitle.trim(),
+        pmtitle_length: formState.pmtitle.length,
+        pmtitle_type: typeof formState.pmtitle
+      });
+
       const updateData: UpdatePreventiveMaintenanceData = {
         pmtitle: formState.pmtitle.trim(),
-        scheduled_date: formState.scheduled_date,
+        scheduled_date: scheduledDate,
         frequency: formState.frequency,
         custom_days: formState.frequency === 'custom' ? (formState.custom_days === null ? undefined : formState.custom_days) : undefined,
         notes: formState.notes.trim(),
-        completed_date: formState.completed_date || undefined,
+        completed_date: completedDate,
         topic_ids: formState.topic_ids,
         machine_ids: formState.machine_ids,
         before_image: formState.before_image_file || undefined,
@@ -340,7 +428,7 @@ export default function EditPreventiveMaintenancePage() {
                   Scheduled Date *
                 </label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={formState.scheduled_date}
                   onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -409,7 +497,7 @@ export default function EditPreventiveMaintenancePage() {
                   Completed Date
                 </label>
                 <input
-                  type="date"
+                  type="datetime-local"
                   value={formState.completed_date}
                   onChange={(e) => handleInputChange('completed_date', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

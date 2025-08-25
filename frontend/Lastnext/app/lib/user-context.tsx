@@ -109,6 +109,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         };
       });
 
+      console.log('Normalized properties:', normalizedProperties);
+
       // Create user profile with properties
       const profile: UserProfile = {
         id: profileData.id,
@@ -127,7 +129,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setError(null);
 
       // Set selected property if not already set
-      if (normalizedProperties.length > 0 && !selectedProperty) {
+      if (normalizedProperties.length > 0) {
         const storedPropertyId = localStorage.getItem('selectedPropertyId');
         const defaultPropertyId = storedPropertyId && normalizedProperties.some((p: any) => 
           getPropertyId(p) === storedPropertyId
@@ -149,7 +151,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [session?.user?.accessToken, selectedProperty, lastFetched, userProfile, getPropertyId]);
+  }, [session?.user?.accessToken, getPropertyId]); // Removed problematic dependencies
 
   useEffect(() => {
     let mounted = true;

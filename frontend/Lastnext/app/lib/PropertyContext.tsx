@@ -92,7 +92,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       });
       
       // If no properties found and user is not loading, try to refresh
-      if (!userLoading && userRefetch) {
+      if (!userLoading) {
         logDebug('No properties found, attempting to refresh user profile...');
         setTimeout(() => {
           refreshProperties();

@@ -44,6 +44,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { MobileNav as BottomNav } from '@/app/components/ui/mobile-nav';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
@@ -70,10 +71,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="flex flex-1 flex-col">
         <MobileHeader />
         <DesktopHeader sidebarCollapsed={isSidebarCollapsed} />
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto transition-colors">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto transition-colors pb-20 md:pb-0">
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
         <PropertyDebug />
+        <BottomNav />
       </div>
     </div>
   );

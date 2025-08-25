@@ -631,6 +631,13 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
         
         scheduled_date = data.get('scheduled_date')
         completed_date = data.get('completed_date')
+
+        # On create (no instance yet), prevent scheduling in the past
+        if self.instance is None and scheduled_date:
+            if scheduled_date < timezone.now():
+                raise serializers.ValidationError({
+                    'scheduled_date': 'Scheduled date cannot be in the past'
+                })
         
         if scheduled_date and completed_date and completed_date < scheduled_date:
             raise serializers.ValidationError({
@@ -736,6 +743,13 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
 
         scheduled_date = data.get('scheduled_date')
         completed_date = data.get('completed_date')
+
+        # On create (no instance yet), prevent scheduling in the past
+        if self.instance is None and scheduled_date:
+            if scheduled_date < timezone.now():
+                raise serializers.ValidationError({
+                    'scheduled_date': 'Scheduled date cannot be in the past'
+                })
 
         if scheduled_date and completed_date and completed_date < scheduled_date:
             raise serializers.ValidationError({

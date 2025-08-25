@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { Formik, Form, Field, FormikErrors, useFormikContext, FormikHelpers } from 'formik';
 import Link from 'next/link';
@@ -231,14 +231,17 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   // Set the default date after component mounts to avoid hydration issues
   useEffect(() => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const defaultDate = `${year}-${month}-${day}T09:00`;
+    // Default to a time slightly in the future to avoid accidental "past" validation
+    const nowPlusFiveMinutes = new Date(Date.now() + 5 * 60 * 1000);
+    const defaultDate = formatDateForInput(nowPlusFiveMinutes);
     console.log('[useEffect] Setting default scheduled date:', defaultDate);
     setDefaultScheduledDate(defaultDate);
-  }, []);
+  }, [formatDateForInput]);
+
+  // Calculate min selectable scheduled date for create mode
+  const minScheduledDateForCreate = useMemo(() => {
+    return formatDateForInput(new Date(Date.now() + 60 * 1000));
+  }, [formatDateForInput]);
 
 
 
@@ -928,6 +931,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 className={`w-full p-2 border rounded-md ${
                   errors.scheduled_date && touched.scheduled_date ? 'border-red-500' : 'border-gray-300'
                 }`}
+                min={pmId || actualInitialData ? undefined : minScheduledDateForCreate}
               />
               {errors.scheduled_date && touched.scheduled_date && (
                 <p className="mt-1 text-sm text-red-500">{errors.scheduled_date}</p>

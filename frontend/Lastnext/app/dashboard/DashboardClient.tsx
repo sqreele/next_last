@@ -5,7 +5,7 @@ import JobsContent from './JobsContent';
 import { Job, Property } from '@/app/lib/types';
 import { useSession } from 'next-auth/react';
 import { Building, User, Calendar } from 'lucide-react';
-import { MobileNav, MobileTopBar } from '@/app/components/ui/mobile-nav';
+import { MobileTopBar } from '@/app/components/ui/mobile-nav';
 
 interface DashboardClientProps {
   jobs: Job[];
@@ -27,7 +27,7 @@ export default function DashboardClient({ jobs, properties }: DashboardClientPro
   const completedJobs = jobs.filter(job => job.status === 'completed').length;
 
   return (
-    <div className="space-y-6 pb-20 md:pb-6">
+    <div className="space-y-6">
       {/* Mobile Top Bar */}
       <MobileTopBar />
       
@@ -115,8 +115,7 @@ export default function DashboardClient({ jobs, properties }: DashboardClientPro
         />
       </div>
       
-      {/* Mobile Navigation */}
-      <MobileNav />
+      
     </div>
   );
 } 

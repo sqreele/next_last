@@ -685,6 +685,13 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             'completed_date': {'required': False},
             'next_due_date': {'required': False},
         }
+    
+    def to_internal_value(self, data):
+        print(f"=== DEBUG: to_internal_value ===")
+        print(f"Input data: {data}")
+        result = super().to_internal_value(data)
+        print(f"Result: {result}")
+        return result
 
     def get_before_image_url(self, obj):
         request = self.context.get('request')
@@ -706,13 +713,25 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         return None
 
     def create(self, validated_data):
+        print(f"=== DEBUG: PreventiveMaintenanceCreateUpdateSerializer.create ===")
+        print(f"validated_data: {validated_data}")
+        print(f"pmtitle in validated_data: {validated_data.get('pmtitle')}")
+        
         topic_ids = validated_data.pop('topic_ids', [])
         machine_ids = validated_data.pop('machine_ids', [])
+        
+        print(f"After popping arrays - validated_data: {validated_data}")
+        
         instance = super().create(validated_data)
+        print(f"Created instance: {instance}")
+        print(f"Instance pmtitle: {instance.pmtitle}")
+        
         if topic_ids:
             instance.topics.set(topic_ids)
         if machine_ids:
             instance.machines.set(Machine.objects.filter(machine_id__in=machine_ids))
+        
+        print(f"Final instance pmtitle: {instance.pmtitle}")
         return instance
 
     def update(self, instance, validated_data):

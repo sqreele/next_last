@@ -113,33 +113,21 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         throw new Error('Invalid date');
       }
       
-      // Convert to ISO 8601 format in local timezone with timezone offset
-      // Django expects: YYYY-MM-DDThh:mm[:ss[.uuuuuu]][+HH:MM|-HH:MM|Z]
-      // We'll create a format that preserves the local timezone offset
+      // Create a format that Django can parse: YYYY-MM-DDThh:mm
+      // This matches Django's expected format without seconds
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       const hours = String(date.getHours()).padStart(2, '0');
       const minutes = String(date.getMinutes()).padStart(2, '0');
-      const seconds = String(date.getSeconds()).padStart(2, '0');
       
-      // Get timezone offset in minutes
-      const timezoneOffset = date.getTimezoneOffset();
-      const offsetHours = Math.abs(Math.floor(timezoneOffset / 60));
-      const offsetMinutes = Math.abs(timezoneOffset % 60);
-      const offsetSign = timezoneOffset <= 0 ? '+' : '-';
+      const isoString = `${year}-${month}-${day}T${hours}:${minutes}`;
       
-      const isoString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
-      
-      console.log('[convertToISO8601] Successfully converted to local timezone with offset:', { 
+      console.log('[convertToISO8601] Successfully converted to ISO 8601:', { 
         input: dateTimeLocal, 
         output: isoString,
         localDate: date.toString(),
-        utcDate: date.toUTCString(),
-        timezoneOffset,
-        offsetSign,
-        offsetHours,
-        offsetMinutes
+        utcDate: date.toUTCString()
       });
       return isoString;
     } catch (error) {
@@ -151,33 +139,26 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         return dateTimeLocal;
       }
       
-      // If it's in YYYY-MM-DDTHH:mm format, add seconds and convert to ISO with timezone
+      // If it's in YYYY-MM-DDTHH:mm format, add seconds and convert to ISO
       if (dateTimeLocal.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
-        console.log('[convertToISO8601] Input in YYYY-MM-DDTHH:mm format, adding seconds and converting to ISO with timezone');
+        console.log('[convertToISO8601] Input in YYYY-MM-DDTHH:mm format, adding seconds and converting to ISO');
         const fallbackDate = new Date(dateTimeLocal + ':00');
         if (!isNaN(fallbackDate.getTime())) {
-          // Use the same timezone-aware conversion
+          // Use the same format: YYYY-MM-DDThh:mm
           const year = fallbackDate.getFullYear();
           const month = String(fallbackDate.getMonth() + 1).padStart(2, '0');
           const day = String(fallbackDate.getDate()).padStart(2, '0');
           const hours = String(fallbackDate.getHours()).padStart(2, '0');
           const minutes = String(fallbackDate.getMinutes()).padStart(2, '0');
-          const seconds = String(fallbackDate.getSeconds()).padStart(2, '0');
           
-          const timezoneOffset = fallbackDate.getTimezoneOffset();
-          const offsetHours = Math.abs(Math.floor(timezoneOffset / 60));
-          const offsetMinutes = Math.abs(timezoneOffset % 60);
-          const offsetSign = timezoneOffset <= 0 ? '+' : '-';
-          
-          const fallbackISO = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
-          
+          const fallbackISO = `${year}-${month}-${day}T${hours}:${minutes}`;
           console.log('[convertToISO8601] Fallback conversion successful:', fallbackISO);
           return fallbackISO;
         }
       }
       
-      // Last resort: try to construct ISO string manually with timezone offset
-      const fallback = `${dateTimeLocal}:00+00:00`;
+      // Last resort: try to construct ISO string manually
+      const fallback = `${dateTimeLocal}:00`;
       console.warn('[convertToISO8601] Using last resort fallback format:', fallback);
       return fallback;
     }
@@ -186,8 +167,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   // Helper function to validate ISO 8601 datetime format
   const validateISO8601Format = useCallback((isoString: string): boolean => {
     // Django expects: YYYY-MM-DDThh:mm[:ss[.uuuuuu]][+HH:MM|-HH:MM|Z]
-    // Our format: YYYY-MM-DDThh:mm:ss+HH:MM or YYYY-MM-DDThh:mm:ss-HH:MM
-    const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/;
+    // Our format: YYYY-MM-DDThh:mm (local time, no timezone, no seconds)
+    const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
     const isValid = isoRegex.test(isoString);
     console.log('[validateISO8601Format]', { isoString, isValid });
     return isValid;
@@ -265,9 +246,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         if (isNaN(scheduledDate.getTime())) {
           errors.scheduled_date = 'Invalid scheduled date format';
         } else {
-          // Ensure the date is not in the past for new records
-          if (!pmId && scheduledDate < new Date()) {
-            errors.scheduled_date = 'Scheduled date cannot be in the past';
+          // Allow scheduling for current day and past dates for record-keeping
+          // Only show warning for dates more than 1 day in the past
+          if (!pmId) {
+            const now = new Date();
+            const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            
+            if (scheduledDate < oneDayAgo) {
+              // Allow but show a warning - this could be for record-keeping
+              console.warn('Scheduled date is more than 1 day in the past:', scheduledDate);
+            }
           }
         }
       } catch (error) {
@@ -657,10 +645,20 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       }
 
       // Prepare ISO 8601 strings for dates
-      const scheduledDateISO = convertToISO8601(ensureDateTimeLocalFormat(values.scheduled_date));
+      const scheduledDateISO = convertToISO8601(values.scheduled_date);
       const completedDateISO = values.completed_date
-        ? convertToISO8601(ensureDateTimeLocalFormat(values.completed_date))
+        ? convertToISO8601(values.completed_date)
         : undefined;
+
+      // Debug: Log the exact date conversion process
+      console.log('[FORM] Date conversion debug:', {
+        original_scheduled_date: values.scheduled_date,
+        converted_scheduled_date: scheduledDateISO,
+        original_completed_date: values.completed_date,
+        converted_completed_date: completedDateISO,
+        scheduled_date_type: typeof scheduledDateISO,
+        completed_date_type: typeof completedDateISO
+      });
 
       const dataForService: CreatePreventiveMaintenanceData = {
         pmtitle: values.pmtitle.trim() || 'Untitled Maintenance',

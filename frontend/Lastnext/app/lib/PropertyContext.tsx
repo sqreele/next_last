@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useUser } from "@/app/lib/user-context";
 
 interface Property {
   property_id: string; // e.g., "PAA1A6A0E"
@@ -22,6 +23,7 @@ const PropertyContext = createContext<PropertyContextType | undefined>(undefined
 
 export function PropertyProvider({ children }: { children: ReactNode }) {
   const { data: session } = useSession();
+  const { userProfile, loading: userLoading, refetch: userRefetch } = useUser();
   const [selectedProperty, setSelectedPropertyState] = useState<string | null>(null);
   const [userProperties, setUserProperties] = useState<Property[]>([]);
   
@@ -32,21 +34,73 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     console.log(`[PropertyContext] ${message}`, data !== undefined ? data : '');
   }, []);
   
-  // Get and normalize properties from session
+  // Manual refresh function for debugging
+  const refreshProperties = useCallback(async () => {
+    logDebug('Manual refresh triggered');
+    if (userRefetch) {
+      try {
+        await userRefetch();
+        logDebug('User profile refreshed');
+      } catch (error) {
+        logDebug('Error refreshing user profile:', error);
+      }
+    }
+  }, [userRefetch, logDebug]);
+  
+  // Get and normalize properties from session or user context
   useEffect(() => {
-    logDebug(`Properties from session useEffect triggered:`, {
+    // Don't process properties if user context is still loading
+    if (userLoading) {
+      logDebug('User context still loading, waiting...');
+      return;
+    }
+
+    logDebug(`Properties useEffect triggered:`, {
       hasSession: !!session,
       hasUser: !!session?.user,
-      hasProperties: !!session?.user?.properties,
-      propertiesCount: session?.user?.properties?.length || 0,
-      properties: session?.user?.properties
+      sessionPropertiesCount: session?.user?.properties?.length || 0,
+      hasUserProfile: !!userProfile,
+      userProfilePropertiesCount: userProfile?.properties?.length || 0,
+      sessionProperties: session?.user?.properties,
+      userProfileProperties: userProfile?.properties,
+      userProfileLoading: userProfile === undefined ? 'undefined' : userProfile === null ? 'null' : 'loaded',
+      userLoading,
+      userProfileType: typeof userProfile,
+      userProfileKeys: userProfile ? Object.keys(userProfile) : [],
+      userProfileFull: userProfile
     });
     
-    if (session?.user?.properties) {
-      // Get properties from session
-      const properties = session.user.properties;
-      logDebug(`Got ${properties.length} properties from session:`, properties);
+    // Try to get properties from session first
+    let properties: any[] = [];
+    let source = 'none';
+    
+    if (session?.user?.properties && session.user.properties.length > 0) {
+      properties = session.user.properties;
+      source = 'session';
+      logDebug(`Using properties from session:`, properties.length);
+    } else if (userProfile?.properties && userProfile.properties.length > 0) {
+      properties = userProfile.properties;
+      source = 'userProfile';
+      logDebug(`Using properties from userProfile:`, properties.length);
+    } else {
+      logDebug('No properties found in session or userProfile', {
+        sessionProperties: session?.user?.properties,
+        userProfileProperties: userProfile?.properties,
+        userProfileType: typeof userProfile,
+        userProfileKeys: userProfile ? Object.keys(userProfile) : [],
+        userProfileFull: userProfile
+      });
       
+      // If no properties found and user is not loading, try to refresh
+      if (!userLoading && userRefetch) {
+        logDebug('No properties found, attempting to refresh user profile...');
+        setTimeout(() => {
+          refreshProperties();
+        }, 1000);
+      }
+    }
+    
+    if (properties.length > 0) {
       // Normalize to ensure all properties have property_id consistently 
       const normalizedProperties = properties.map((prop: any) => {
         // Ensure property_id exists and is a string
@@ -67,13 +121,13 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
         };
       });
       
-      logDebug(`Normalized ${normalizedProperties.length} properties:`, normalizedProperties.map(p => ({ id: p.property_id, name: p.name })));
+      logDebug(`Normalized ${normalizedProperties.length} properties from ${source}:`, normalizedProperties.map((p: Property) => ({ id: p.property_id, name: p.name })));
       setUserProperties(normalizedProperties);
     } else {
-      logDebug('No properties in session');
+      logDebug('No properties to normalize, setting empty array');
       setUserProperties([]);
     }
-  }, [session?.user?.properties, logDebug]);
+  }, [session?.user?.properties, userProfile?.properties, userLoading, logDebug, refreshProperties]);
   
   // Load saved selected property from localStorage on initial render
   useEffect(() => {
@@ -83,14 +137,14 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       savedPropertyId,
       userPropertiesCount: userProperties.length,
       currentSelectedProperty: selectedProperty,
-      userPropertyIds: userProperties.map(p => p.property_id)
+      userPropertyIds: userProperties.map((p: Property) => p.property_id)
     });
     
     if (savedPropertyId) {
       logDebug(`Found saved property ID in localStorage:`, savedPropertyId);
       
       // Only set if it exists in the user's properties
-      if (userProperties.some(p => p.property_id === savedPropertyId)) {
+      if (userProperties.some((p: Property) => p.property_id === savedPropertyId)) {
         logDebug(`Setting selected property from localStorage:`, savedPropertyId);
         setSelectedPropertyState(savedPropertyId);
       } else if (userProperties.length > 0) {
@@ -126,7 +180,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     }
     
     // Validate that the property exists in user properties
-    const propertyExists = userProperties.some(p => p.property_id === propertyId);
+    const propertyExists = userProperties.some((p: Property) => p.property_id === propertyId);
     
     if (propertyExists) {
       logDebug(`Property exists, setting selected property:`, propertyId);

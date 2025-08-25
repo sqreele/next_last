@@ -120,7 +120,9 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         """Return appropriate serializer based on action"""
         if self.action == 'list':
             return PreventiveMaintenanceListSerializer
-        elif self.action in ['retrieve', 'create', 'update', 'partial_update']:
+        elif self.action in ['create', 'update', 'partial_update']:
+            return PreventiveMaintenanceCreateUpdateSerializer
+        elif self.action in ['retrieve']:
             return PreventiveMaintenanceDetailSerializer
         elif self.action == 'complete':
             return PreventiveMaintenanceCompleteSerializer
@@ -128,7 +130,13 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Add the current user as the creator when creating a record"""
-        serializer.save(created_by=self.request.user)
+        print(f"=== DEBUG: perform_create ===")
+        print(f"Serializer class: {serializer.__class__.__name__}")
+        print(f"Request data: {self.request.data}")
+        print(f"Request FILES: {self.request.FILES}")
+        instance = serializer.save(created_by=self.request.user)
+        print(f"Created instance pmtitle: {instance.pmtitle}")
+        return instance
 
     def perform_update(self, serializer):
         """Add the current user as the updater when updating a record"""

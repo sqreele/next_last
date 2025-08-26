@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Job, JobStatus } from '@/app/lib/types';
 import { fetchData } from '@/app/lib/api-client';
 import { ApiError } from '@/app/lib/api-client';
@@ -80,6 +80,11 @@ export function usePreventiveMaintenanceJobs({
   const [isPMProperty, setIsPMProperty] = useState<boolean | null>(null);
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
   
+  // Use refs to avoid dependency issues
+  const lastLoadTimeRef = useRef<Date | null>(null);
+  const retryCountRef = useRef<number>(0);
+  const isLoadingRef = useRef<boolean>(false);
+  
   // Create a cache key based on query parameters
   const cacheKey = useMemo(() => 
     `pm_jobs_${propertyId || 'all'}_${limit}_${isPM ? 'true' : 'false'}`,
@@ -133,21 +138,30 @@ export function usePreventiveMaintenanceJobs({
   }, [propertyId]);
 
   const loadJobs = useCallback(async (forceRefresh: boolean = false) => {
+    // Prevent multiple simultaneous calls
+    if (isLoadingRef.current && !forceRefresh) {
+      debug(`Load jobs already in progress, skipping`);
+      return;
+    }
+    
     // Use cached data if we loaded recently and not forcing refresh
     const now = new Date();
-    if (!forceRefresh && lastLoadTime && 
-        (now.getTime() - lastLoadTime.getTime()) < 2 * 60 * 1000) {
-      debug(`Using recently loaded data (${(now.getTime() - lastLoadTime!.getTime()) / 1000}s ago)`);
+    if (!forceRefresh && lastLoadTimeRef.current && 
+        (now.getTime() - lastLoadTimeRef.current.getTime()) < 2 * 60 * 1000) {
+      debug(`Using recently loaded data (${(now.getTime() - lastLoadTimeRef.current.getTime()) / 1000}s ago)`);
+      isLoadingRef.current = false;
       return; // Use existing data if loaded within last 2 minutes
     }
 
     if (!autoLoad && initialJobs.length > 0 && !forceRefresh) {
       debug(`Using initial jobs data (${initialJobs.length} jobs)`);
       setJobs(initialJobs);
+      isLoadingRef.current = false;
       return;
     }
 
     try {
+      isLoadingRef.current = true;
       setIsLoading(true);
       setError(null);
       debug(`Loading jobs: propertyId=${propertyId}, limit=${limit}, isPM=${isPM}`);
@@ -174,6 +188,8 @@ export function usePreventiveMaintenanceJobs({
               debug(`Using cached data from ${(now.getTime() - cacheTime.getTime()) / 1000}s ago`);
               setJobs(cachedData.data);
               setLastLoadTime(cacheTime);
+              lastLoadTimeRef.current = cacheTime;
+              isLoadingRef.current = false;
               setIsLoading(false);
               return;
             }
@@ -191,6 +207,8 @@ export function usePreventiveMaintenanceJobs({
       if (propertyId) params.property_id = propertyId;
       if (limit) params.limit = limit.toString();
 
+
+
       // Build querystring
       const toQuery = (obj: Record<string, string>) =>
         Object.entries(obj)
@@ -202,7 +220,7 @@ export function usePreventiveMaintenanceJobs({
       // 1) Try dedicated PM jobs endpoint
       let fetchedJobs: Job[] | null = null;
       try {
-        const pmUrl = `/api/v1/preventive-maintenance/jobs/${Object.keys(params).length ? `?${toQuery(params)}` : ''}`;
+        const pmUrl = `/api/v1/preventive-maintenance/jobs${Object.keys(params).length ? `?${toQuery(params)}` : ''}`;
         debug(`Fetching PM jobs via dedicated endpoint: ${pmUrl}`);
         const pmResponse = await fetchData<{ jobs: Job[]; count: number }>(pmUrl);
         if (pmResponse && Array.isArray(pmResponse.jobs)) {
@@ -218,7 +236,7 @@ export function usePreventiveMaintenanceJobs({
       // 2) Fallback to generic jobs endpoint with is_preventivemaintenance=true
       if (!fetchedJobs) {
         const fallbackParams = { ...params, is_preventivemaintenance: 'true' };
-        const fallbackUrl = `/api/v1/jobs/${Object.keys(fallbackParams).length ? `?${toQuery(fallbackParams)}` : ''}`;
+        const fallbackUrl = `/api/v1/jobs${Object.keys(fallbackParams).length ? `?${toQuery(fallbackParams)}` : ''}`;
         debug(`Falling back to jobs endpoint: ${fallbackUrl}`);
         const response = await fetchData<Job[]>(fallbackUrl);
         if (response && Array.isArray(response)) {
@@ -239,6 +257,10 @@ export function usePreventiveMaintenanceJobs({
       setLastLoadTime(now);
       setRetryCount(0);
       
+      // Also update refs
+      lastLoadTimeRef.current = now;
+      retryCountRef.current = 0;
+      
       // Cache the results
       if (cacheKey) {
         localStorage.setItem(cacheKey, JSON.stringify({
@@ -254,13 +276,16 @@ export function usePreventiveMaintenanceJobs({
 
       // Surface the error instead of silently returning empty results
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
+      
+      // Only set error if it's different from current error to prevent unnecessary re-renders
+      setError(prevError => prevError === errorMessage ? prevError : errorMessage);
       
       // Do not clear existing jobs on error
     } finally {
+      isLoadingRef.current = false;
       setIsLoading(false);
     }
-  }, [propertyId, limit, autoLoad, initialJobs, isPM, cacheKey, lastLoadTime, retryCount, checkPropertyPMStatus]);
+  }, [propertyId, limit, autoLoad, initialJobs, isPM, cacheKey, checkPropertyPMStatus]);
 
   useEffect(() => {
     if (autoLoad) {
@@ -269,10 +294,12 @@ export function usePreventiveMaintenanceJobs({
         loadJobs();
       } else {
         setJobs(initialJobs);
-        setLastLoadTime(new Date());
+        const now = new Date();
+        setLastLoadTime(now);
+        lastLoadTimeRef.current = now;
       }
     }
-  }, [loadJobs, autoLoad, initialJobs]);
+  }, [autoLoad, initialJobs]);
 
   const updateJob = useCallback((updatedJob: Job) => {
     debug(`Updating job ${updatedJob.job_id}`);
@@ -320,6 +347,7 @@ export function usePreventiveMaintenanceJobs({
     debug(`Clearing cache for ${cacheKey}`);
     localStorage.removeItem(cacheKey);
     setLastLoadTime(null);
+    lastLoadTimeRef.current = null;
   }, [cacheKey]);
 
   // Toggle debug mode

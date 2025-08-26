@@ -190,53 +190,28 @@ export default function JobActions({
       
       setIsLoadingRooms(true);
       try {
-        // Get the user's access token from the session
-        const accessToken = session?.user?.accessToken;
+        let roomsData: any[] = [];
+        let response: Response;
         
-        if (!accessToken) {
-          setRooms([]);
-          return;
-        }
-        
-        let roomsData = [];
-        let response;
+        const baseUrl = '/api/rooms';
         
         if (selectedProperty) {
-          // Fetch rooms for specific property
-          
-          // First try the property-specific endpoint
-          const propertySpecificUrl = `http://localhost:8000/api/v1/rooms/?property=${selectedProperty}`;
-          response = await fetch(propertySpecificUrl, {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            }
-          });
+          // Fetch rooms for specific property via Next.js API route
+          const propertySpecificUrl = `${baseUrl}?property=${encodeURIComponent(String(selectedProperty))}`;
+          response = await fetch(propertySpecificUrl);
           
           if (response.ok) {
             roomsData = await response.json();
           } else {
             // Fallback to general rooms endpoint
-            response = await fetch('http://localhost:8000/api/v1/rooms/', {
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-              }
-            });
-            
+            response = await fetch(baseUrl);
             if (response.ok) {
               roomsData = await response.json();
             }
           }
-                } else {
+        } else {
           // No property selected - fetch all rooms user has access to
-          response = await fetch('http://localhost:8000/api/v1/rooms/', {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          
+          response = await fetch(baseUrl);
           if (response.ok) {
             roomsData = await response.json();
           }
@@ -250,12 +225,7 @@ export default function JobActions({
           
           // Try to fetch all rooms as a fallback
           try {
-            const fallbackResponse = await fetch('http://localhost:8000/api/v1/rooms/', {
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-              }
-            });
+            const fallbackResponse = await fetch(baseUrl);
             
             if (fallbackResponse.ok) {
               const fallbackRooms = await fallbackResponse.json();
@@ -278,7 +248,7 @@ export default function JobActions({
     };
 
     fetchRooms();
-  }, [selectedProperty, session?.user?.accessToken]);
+  }, [selectedProperty]);
 
   const handleDateFilterChange = (filter: DateFilter) => {
     if (onDateFilter) {
@@ -532,20 +502,7 @@ export default function JobActions({
                 onClick={async () => {
                   console.log('🔍 DEBUG: Manual rooms API test...');
                   try {
-                    // Get the user's access token from the session
-                    const accessToken = session?.user?.accessToken;
-                    
-                    if (!accessToken) {
-                      console.log('🔍 DEBUG: No access token found in session');
-                      return;
-                    }
-                    
-                    const response = await fetch('http://localhost:8000/api/v1/rooms/', {
-                      headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                      }
-                    });
+                    const response = await fetch('/api/rooms');
                     console.log('🔍 DEBUG: Manual test response:', response.status, response.statusText);
                     if (response.ok) {
                       const rooms = await response.json();

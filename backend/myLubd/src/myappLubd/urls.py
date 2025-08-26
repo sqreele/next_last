@@ -31,7 +31,13 @@ urlpatterns = [
     # Static file serving (fallback when Django's built-in serving fails)
     path('static/<path:file_path>', views.serve_static_file, name='serve_static_file'),
     
-    # API routes under 'api/v1/'
+    # Preventive maintenance endpoints (MUST come before router to avoid conflicts)
+    path('api/v1/preventive-maintenance/jobs/', views.get_preventive_maintenance_jobs, name='preventive_maintenance_jobs'),
+    path('api/v1/preventive-maintenance/rooms/', views.get_preventive_maintenance_rooms, name='preventive_maintenance_rooms'),
+    path('api/v1/preventive-maintenance/topics/', views.get_preventive_maintenance_topics, name='preventive_maintenance_topics'),
+    path('api/v1/preventive-maintenance/<str:pm_id>/upload-images/', PreventiveMaintenanceImageUploadView.as_view(), name='upload_pm_images'),
+    
+    # API routes under 'api/v1/' (router must come after specific paths)
     path('api/v1/', include(router.urls)),
     
     # Authentication endpoints
@@ -52,12 +58,6 @@ urlpatterns = [
     
     # CSRF token endpoint
     path('api/v1/csrf-token/', views.get_csrf_token, name='get_csrf_token'),
-    
-    # Preventive maintenance endpoints
-    path('api/v1/preventive-maintenance/<str:pm_id>/upload-images/', PreventiveMaintenanceImageUploadView.as_view(), name='upload_pm_images'),
-    path('api/v1/preventive-maintenance/jobs/', views.get_preventive_maintenance_jobs, name='preventive_maintenance_jobs'),
-    path('api/v1/preventive-maintenance/rooms/', views.get_preventive_maintenance_rooms, name='preventive_maintenance_rooms'),
-    path('api/v1/preventive-maintenance/topics/', views.get_preventive_maintenance_topics, name='preventive_maintenance_topics'),
     
     # PDF Report Generation
     path('api/v1/maintenance/report/pdf/', views.generate_maintenance_pdf_report, name='maintenance_pdf_report'),

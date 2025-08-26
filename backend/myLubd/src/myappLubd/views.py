@@ -1561,7 +1561,7 @@ def get_preventive_maintenance_jobs(request):
                     {"detail": "You do not have permission to access this property"},
                     status=status.HTTP_403_FORBIDDEN
                 )
-            query = query.filter(rooms__properties=property_obj)
+            query = query.filter(rooms__properties__in=[property_obj])
         except Property.DoesNotExist:
             return Response(
                 {"detail": f"Property with ID {property_id} not found"},

@@ -185,97 +185,78 @@ export function usePreventiveMaintenanceJobs({
         }
       }
       
-      // Try the dedicated preventive maintenance jobs endpoint
-      let apiUrl = '/api/v1/jobs/';
+      // Prefer the dedicated preventive maintenance jobs endpoint that returns { jobs, count }
+      // Fallback to /api/v1/jobs/ if needed
       const params: Record<string, string> = {};
-      
-      if (propertyId) {
-        params.property_id = propertyId;
-      }
-      
-      if (limit) {
-        params.limit = limit.toString();
-      }
-      
-      // Add filter for preventive maintenance jobs
-      params.is_preventivemaintenance = 'true';
-      
-      // Add debug logging
-      debug(`API call details:`, {
-        url: apiUrl,
-        params: params,
-        propertyId: propertyId,
-        isPM: isPM
-      });
-      
+      if (propertyId) params.property_id = propertyId;
+      if (limit) params.limit = limit.toString();
+
+      // Build querystring
+      const toQuery = (obj: Record<string, string>) =>
+        Object.entries(obj)
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+          .join('&');
+
       const requestStartTime = performance.now();
-      let response;
-      
+
+      // 1) Try dedicated PM jobs endpoint
+      let fetchedJobs: Job[] | null = null;
       try {
-        response = await fetchData<Job[]>(apiUrl, { params });
-        debug(`PM endpoint response:`, response);
+        const pmUrl = `/api/v1/preventive-maintenance/jobs/${Object.keys(params).length ? `?${toQuery(params)}` : ''}`;
+        debug(`Fetching PM jobs via dedicated endpoint: ${pmUrl}`);
+        const pmResponse = await fetchData<{ jobs: Job[]; count: number }>(pmUrl);
+        if (pmResponse && Array.isArray(pmResponse.jobs)) {
+          fetchedJobs = pmResponse.jobs;
+          debug(`Received ${pmResponse.jobs.length} jobs from PM jobs endpoint`);
+        } else {
+          debug(`Unexpected PM jobs response format:`, pmResponse);
+        }
       } catch (e) {
-        debug(`PM endpoint failed:`, e);
-        
-        // If the PM endpoint fails, it means there are no PM jobs available
-        // This is not an error condition - just set empty results
-        debug(`No PM jobs found - setting empty results`);
-        setJobs([]);
-        setIsLoading(false);
-        return;
+        debug(`PM jobs endpoint failed:`, e);
       }
-      
+
+      // 2) Fallback to generic jobs endpoint with is_preventivemaintenance=true
+      if (!fetchedJobs) {
+        const fallbackParams = { ...params, is_preventivemaintenance: 'true' };
+        const fallbackUrl = `/api/v1/jobs/${Object.keys(fallbackParams).length ? `?${toQuery(fallbackParams)}` : ''}`;
+        debug(`Falling back to jobs endpoint: ${fallbackUrl}`);
+        const response = await fetchData<Job[]>(fallbackUrl);
+        if (response && Array.isArray(response)) {
+          fetchedJobs = response;
+          debug(`Received ${response.length} jobs from fallback jobs endpoint`);
+        } else {
+          debug(`Unexpected fallback jobs response format:`, response);
+          fetchedJobs = [];
+        }
+      }
+
       const requestEndTime = performance.now();
       const requestDuration = requestEndTime - requestStartTime;
       debug(`Request completed in ${requestDuration.toFixed(2)}ms`);
       
-      let fetchedJobs: Job[] = [];
-      
-      if (response && Array.isArray(response)) {
-        // Response format from jobs endpoint: Job[]
-        fetchedJobs = response;
-        debug(`Received ${fetchedJobs.length} jobs from jobs endpoint`);
-      } else {
-        debug(`Unexpected response format:`, response);
-        console.warn('[usePreventiveMaintenanceJobs] Unexpected response format:', response);
-        // Set empty results for unexpected response format
-        fetchedJobs = [];
-      }
-      
       // Update state with fetched jobs
-      setJobs(fetchedJobs);
+      setJobs(fetchedJobs || []);
       setLastLoadTime(now);
       setRetryCount(0);
       
       // Cache the results
       if (cacheKey) {
         localStorage.setItem(cacheKey, JSON.stringify({
-          data: fetchedJobs,
+          data: fetchedJobs || [],
           timestamp: now.toISOString()
         }));
       }
       
-      debug(`Successfully loaded ${fetchedJobs.length} PM jobs`);
+      debug(`Successfully loaded ${(fetchedJobs || []).length} PM jobs`);
       
     } catch (err) {
       debug(`Error loading jobs:`, err);
-      
-      // Handle the case where no PM jobs are found gracefully
-      if (err instanceof ApiError && err.message.includes('No PreventiveMaintenance matches the given query')) {
-        debug(`No PM jobs found for the current criteria - this is normal`);
-        setJobs([]);
-        setIsLoading(false);
-        setError(null); // Clear any previous errors
-        return;
-      }
-      
-      // For other errors, set the error state but don't crash
+
+      // Surface the error instead of silently returning empty results
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
-      setIsLoading(false);
       
-      // Keep existing jobs if available, don't clear them on error
-      debug(`Error occurred but keeping existing jobs:`, errorMessage);
+      // Do not clear existing jobs on error
     } finally {
       setIsLoading(false);
     }

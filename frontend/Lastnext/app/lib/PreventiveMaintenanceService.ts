@@ -401,9 +401,7 @@ class PreventiveMaintenanceService {
         console.log(`  ${key}: ${value instanceof File ? `${value.name} (${value.size} bytes)` : value}`);
       }
 
-      const createResponse = await apiClient.post<any>(`${this.baseUrl}/`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const createResponse = await apiClient.post<any>(`${this.baseUrl}/`, formData);
 
       const responseData = createResponse.data;
       console.log('Raw API response:', responseData);

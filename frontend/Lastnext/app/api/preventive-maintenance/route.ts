@@ -63,3 +63,59 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+// Handle create (multipart/form-data forwarding)
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.accessToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Read multipart form data from the incoming request
+    const formData = await request.formData();
+
+    const apiUrl = `${API_CONFIG.baseUrl}/api/v1/preventive-maintenance/`;
+
+    // Forward to backend without setting Content-Type so the boundary is preserved
+    const backendResponse = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.user.accessToken}`,
+      },
+      body: formData,
+    });
+
+    const contentType = backendResponse.headers.get('content-type') || '';
+
+    if (!backendResponse.ok) {
+      let errorPayload: any = { error: 'Failed to create preventive maintenance' };
+      try {
+        if (contentType.includes('application/json')) {
+          errorPayload = await backendResponse.json();
+        } else {
+          errorPayload.detail = await backendResponse.text();
+        }
+      } catch {}
+      return NextResponse.json(errorPayload, { status: backendResponse.status });
+    }
+
+    if (contentType.includes('application/json')) {
+      const data = await backendResponse.json();
+      return NextResponse.json(data, { status: backendResponse.status });
+    } else {
+      const text = await backendResponse.text();
+      return new NextResponse(text, {
+        status: backendResponse.status,
+        headers: { 'Content-Type': contentType },
+      });
+    }
+  } catch (error) {
+    console.error('Error creating preventive maintenance:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

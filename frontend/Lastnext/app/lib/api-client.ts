@@ -211,6 +211,15 @@ apiClient.interceptors.request.use(
       }
     }
 
+    // For FormData requests, let the browser set the Content-Type with boundary
+    try {
+      const isFormData = typeof FormData !== 'undefined' && config.data instanceof FormData;
+      if (isFormData && config.headers) {
+        // Remove any preset Content-Type to avoid losing boundary
+        delete (config.headers as any)['Content-Type'];
+      }
+    } catch {}
+
     // Add CSRF token for non-GET requests (only when CSRF is enabled)
     if (config.method && !['GET', 'HEAD', 'OPTIONS'].includes(config.method.toUpperCase())) {
       try {

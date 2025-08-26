@@ -37,7 +37,7 @@ import Pagination from "@/app/components/jobs/Pagination";
 import UpdateStatusButton from "@/app/components/jobs/UpdateStatusButton"; // Import the new component
 
 // Constants
-const ITEMS_PER_PAGE = 5;
+const ITEMS_PER_PAGE = 25;
 
 // Tailwind-based styles (Keep as they are)
 const PRIORITY_STYLES: Record<JobPriority | 'default', string> = {

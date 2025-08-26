@@ -117,9 +117,9 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 
 # Build arguments for flexible configuration
 ARG NEXT_PUBLIC_API_URL=https://pcms.live
-ARG NEXT_PRIVATE_API_URL=http://django-backend:8000
+ARG NEXT_PRIVATE_API_URL=http://backend:8000
 ARG NEXT_PUBLIC_MEDIA_URL=https://pcms.live
-ARG API_URL=http://django-backend:8000
+ARG API_URL=http://backend:8000
 ARG NEXTAUTH_URL=https://pcms.live
 ARG NEXTAUTH_SECRET
 ARG JWT_SECRET

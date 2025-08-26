@@ -1323,6 +1323,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
                              backgroundColor: '#f9f9f9'
                            }}
                            crossOrigin="anonymous"
+                           loading="lazy"
                            onLoad={(e) => {
                              console.log('PDF Debug - Before image loaded successfully for item:', item.id);
                              console.log('PDF Debug - Image source:', e.currentTarget.src);
@@ -1367,6 +1368,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
                              backgroundColor: '#f9f9f9'
                            }}
                            crossOrigin="anonymous"
+                           loading="lazy"
                            onLoad={(e) => {
                              console.log('PDF Debug - After image loaded successfully for item:', item.id);
                              e.currentTarget.style.backgroundColor = 'transparent';

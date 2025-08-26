@@ -1214,6 +1214,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       src={beforeImagePreview}
                       alt="Before Maintenance Preview"
                       className="w-full h-full object-contain"
+                      loading="lazy"
                     />
                     <button
                       type="button"
@@ -1245,6 +1246,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       src={afterImagePreview}
                       alt="After Maintenance Preview"
                       className="w-full h-full object-contain"
+                      loading="lazy"
                     />
                     <button
                       type="button"

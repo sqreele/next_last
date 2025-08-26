@@ -756,6 +756,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       src={beforeImageUrl}
                       alt="Before Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
                       <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">
@@ -793,6 +794,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       src={afterImageUrl}
                       alt="After Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
                       <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">
@@ -980,6 +982,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       src={beforeImageUrl} 
                       alt="Before maintenance" 
                       className="w-full max-h-64 object-contain rounded-lg border border-gray-300"
+                      loading="lazy"
                       onError={(e: any) => {
                         e.target.style.display = 'none';
                         if (e.target.nextSibling) {
@@ -1006,6 +1009,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       src={afterImageUrl} 
                       alt="After maintenance" 
                       className="w-full max-h-64 object-contain rounded-lg border border-gray-300"
+                      loading="lazy"
                       onError={(e: any) => {
                         e.target.style.display = 'none';
                         if (e.target.nextSibling) {
@@ -1075,6 +1079,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
               src={currentImage} 
               alt={currentImageAlt}
               className="max-w-full max-h-full object-contain"
+              loading="lazy"
               onClick={(e) => e.stopPropagation()}
             />
           </div>

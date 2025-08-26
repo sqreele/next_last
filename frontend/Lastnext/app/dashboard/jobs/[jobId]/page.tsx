@@ -226,6 +226,7 @@ export default async function JobPage({ params }: Props) {
                       src={imageUrl}
                       alt={`Job image ${index + 1}`}
                       className="w-full h-auto rounded-md shadow-sm max-h-48 object-cover"
+                      loading="lazy"
                     />
                   );
                 })}

@@ -344,10 +344,17 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
         return MachineSerializer(obj.machines.all(), many=True).data if obj.machines.exists() else []
 
     def get_property_id(self, obj):
-        if not obj.job or not obj.job.rooms.exists():
-            return []
-        properties = Property.objects.filter(rooms__job=obj.job).distinct()
-        return [prop.property_id for prop in properties]
+        # Prefer properties via job -> rooms
+        if obj.job and obj.job.rooms.exists():
+            properties = Property.objects.filter(rooms__job=obj.job).distinct()
+            return [prop.property_id for prop in properties]
+
+        # Fallback: infer from machines' property
+        if obj.machines.exists():
+            machine_props = Property.objects.filter(machines__in=obj.machines.all()).distinct()
+            return [prop.property_id for prop in machine_props]
+
+        return []
 
     def get_status(self, obj):
         if obj.completed_date:

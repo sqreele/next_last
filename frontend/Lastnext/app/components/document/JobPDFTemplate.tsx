@@ -4,14 +4,27 @@ import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/
 import { Job, TabValue, FILTER_TITLES } from '@/app/lib/types';
 import { JobPDFConfig } from '@/app/components/jobs/JobPDFConfig';
 
-// Register fonts
-Font.register({
-  family: 'Sarabun',
-  fonts: [
-    { src: '/fonts/Sarabun-Regular.ttf', fontWeight: 'normal' },
-    { src: '/fonts/Sarabun-Bold.ttf', fontWeight: 'bold' },
-  ],
-});
+// Register fonts with fallback
+try {
+  Font.register({
+    family: 'Sarabun',
+    fonts: [
+      { src: '/fonts/Sarabun-Regular.ttf', fontWeight: 'normal' },
+      { src: '/fonts/Sarabun-Bold.ttf', fontWeight: 'bold' },
+    ],
+  });
+} catch (error) {
+  console.warn('Failed to register Sarabun font, using fallback:', error);
+  // Register fallback fonts
+  try {
+    Font.register({
+      family: 'Helvetica',
+      src: '', // Use built-in Helvetica
+    });
+  } catch (fallbackError) {
+    console.error('Failed to register fallback font:', fallbackError);
+  }
+}
 
 interface JobPDFTemplateProps {
   jobs: Job[];
@@ -25,7 +38,7 @@ const createStyles = (config: JobPDFConfig) => StyleSheet.create({
   page: {
     padding: config.pageSize === 'A4' ? 20 : 25,
     backgroundColor: '#ffffff',
-    fontFamily: 'Sarabun',
+    fontFamily: 'Sarabun, Helvetica, Arial',
     fontSize: config.maxJobsPerPage <= 8 ? 10 : 9,
   },
   header: {

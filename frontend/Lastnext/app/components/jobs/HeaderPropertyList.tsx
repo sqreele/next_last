@@ -8,13 +8,12 @@ import {
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
 import { Button } from "@/app/components/ui/button";
-import { ChevronDown, Building2 } from "lucide-react";
+import { ChevronDown, Building2, Loader2 } from "lucide-react";
 import { cn } from "@/app/lib/utils";
-import { Loader2 } from "lucide-react";
-import { useUser } from '@/app/lib/user-context';
+import { useProperty } from '@/app/lib/PropertyContext';
 
 const HeaderPropertyList = () => {
-  const { userProfile, selectedProperty, setSelectedProperty, loading } = useUser();
+  const { userProperties, selectedProperty, setSelectedProperty, hasProperties } = useProperty();
   
   // Helper function to safely get the string ID from any property object format
   const getPropertyId = useCallback((property: any): string => {
@@ -36,10 +35,8 @@ const HeaderPropertyList = () => {
     return property.name || `Property ${getPropertyId(property)}`;
   }, [getPropertyId]);
 
-  // Get properties from userProfile
-  const properties = useMemo(() => {
-    return userProfile?.properties || [];
-  }, [userProfile]);
+  // Get properties from PropertyContext
+  const properties = userProperties;
 
   // Find current property by selectedProperty ID
   const currentProperty = useMemo(() => {
@@ -62,13 +59,12 @@ const HeaderPropertyList = () => {
     (property: any) => {
       const propId = getPropertyId(property);
       setSelectedProperty(propId);
-      localStorage.setItem("selectedPropertyId", propId); // Persist selection
     },
     [getPropertyId, setSelectedProperty]
   );
 
-  // Loading state if user data is not yet available
-  if (loading) {
+  // Loading state if properties are not yet available
+  if (!hasProperties) {
     return (
       <Button
         variant="outline"

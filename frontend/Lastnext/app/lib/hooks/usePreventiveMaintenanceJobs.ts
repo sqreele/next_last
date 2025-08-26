@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Job, JobStatus } from '@/app/lib/types';
 import { fetchData } from '@/app/lib/api-client';
 import { ApiError } from '@/app/lib/api-client';
+import { useJobsStore, usePropertyStore } from '@/app/lib/stores';
 
 interface UsePreventiveMaintenanceJobsOptions {
   propertyId?: string;
@@ -20,36 +21,17 @@ interface PMJobsStats {
   completionRate: number;
 }
 
+interface DebugInfo {
+  lastRequestTime: string;
+  requestDuration: number;
+  cacheHits: number;
+  cacheMisses: number;
+  retryCount: number;
+}
+
 interface CachedData {
   data: Job[];
   timestamp: string;
-}
-
-// Define the expected response type from the preventive maintenance API
-interface PreventiveMaintenanceResponse {
-  jobs: Job[];
-  count: number;
-}
-
-// New interface for the property PM status
-interface PropertyPMStatus {
-  property_id: string;
-  is_preventivemaintenance: boolean;
-}
-
-// Debug info interface
-interface DebugInfo {
-  endpoint?: string;
-  params?: Record<string, string>;
-  responseTime?: string;
-  responseType?: string;
-  responseStructure?: any;
-  timestamp?: string;
-  fallbackEndpoint?: string;
-  fallbackParams?: Record<string, string>;
-  fallbackResponseTime?: string;
-  fallbackResponseType?: string;
-  fallbackResponseStructure?: any;
 }
 
 // Debug logger function
@@ -72,10 +54,22 @@ export function usePreventiveMaintenanceJobs({
   initialJobs = [],
   isPM = true // Default to true since this is specifically for PM jobs
 }: UsePreventiveMaintenanceJobsOptions) {
-  const [jobs, setJobs] = useState<Job[]>(initialJobs);
-  const [isLoading, setIsLoading] = useState<boolean>(autoLoad && initialJobs.length === 0);
-  const [error, setError] = useState<string | null>(null);
-  const [lastLoadTime, setLastLoadTime] = useState<Date | null>(null);
+  // Zustand stores
+  const { 
+    jobs, 
+    isLoading, 
+    error, 
+    lastLoadTime,
+    setJobs, 
+    setLoading, 
+    setError, 
+    setLastLoadTime,
+    updateJob: updateStoreJob
+  } = useJobsStore();
+
+  const { selectedProperty } = usePropertyStore();
+
+  // Local state for component-specific data
   const [retryCount, setRetryCount] = useState<number>(0);
   const [isPMProperty, setIsPMProperty] = useState<boolean | null>(null);
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
@@ -162,7 +156,7 @@ export function usePreventiveMaintenanceJobs({
 
     try {
       isLoadingRef.current = true;
-      setIsLoading(true);
+      setLoading(true);
       setError(null);
       debug(`Loading jobs: propertyId=${propertyId}, limit=${limit}, isPM=${isPM}`);
       
@@ -187,10 +181,10 @@ export function usePreventiveMaintenanceJobs({
             if ((now.getTime() - cacheTime.getTime()) < 5 * 60 * 1000) {
               debug(`Using cached data from ${(now.getTime() - cacheTime.getTime()) / 1000}s ago`);
               setJobs(cachedData.data);
-              setLastLoadTime(cacheTime);
+              setLastLoadTime(cacheTime.getTime());
               lastLoadTimeRef.current = cacheTime;
               isLoadingRef.current = false;
-              setIsLoading(false);
+              setLoading(false);
               return;
             }
           } catch (e) {
@@ -206,8 +200,6 @@ export function usePreventiveMaintenanceJobs({
       const params: Record<string, string> = {};
       if (propertyId) params.property_id = propertyId;
       if (limit) params.limit = limit.toString();
-
-
 
       // Build querystring
       const toQuery = (obj: Record<string, string>) =>
@@ -254,7 +246,7 @@ export function usePreventiveMaintenanceJobs({
       
       // Update state with fetched jobs
       setJobs(fetchedJobs || []);
-      setLastLoadTime(now);
+      setLastLoadTime(now.getTime());
       setRetryCount(0);
       
       // Also update refs
@@ -277,15 +269,15 @@ export function usePreventiveMaintenanceJobs({
       // Surface the error instead of silently returning empty results
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       
-      // Only set error if it's different from current error to prevent unnecessary re-renders
-      setError(prevError => prevError === errorMessage ? prevError : errorMessage);
+      // Set the error message
+      setError(errorMessage);
       
       // Do not clear existing jobs on error
     } finally {
       isLoadingRef.current = false;
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [propertyId, limit, autoLoad, initialJobs, isPM, cacheKey, checkPropertyPMStatus]);
+  }, [propertyId, limit, autoLoad, initialJobs, isPM, cacheKey, checkPropertyPMStatus, setJobs, setLoading, setError, setLastLoadTime]);
 
   useEffect(() => {
     if (autoLoad) {
@@ -295,24 +287,22 @@ export function usePreventiveMaintenanceJobs({
       } else {
         setJobs(initialJobs);
         const now = new Date();
-        setLastLoadTime(now);
+        setLastLoadTime(now.getTime());
         lastLoadTimeRef.current = now;
       }
     }
-  }, [autoLoad, initialJobs]);
+  }, [autoLoad, initialJobs, loadJobs, setJobs, setLastLoadTime]);
 
   const updateJob = useCallback((updatedJob: Job) => {
     debug(`Updating job ${updatedJob.job_id}`);
-    setJobs(prev => prev.map(job => 
-      job.job_id === updatedJob.job_id ? updatedJob : job
-    ));
+    updateStoreJob(updatedJob);
     
     // Update the cache with the modified job list
     const cachedDataString = localStorage.getItem(cacheKey);
     if (cachedDataString) {
       try {
         const cachedData: CachedData = JSON.parse(cachedDataString);
-        const updatedJobs = cachedData.data.map(job => 
+        const updatedJobs = cachedData.data.map((job: Job) => 
           job.job_id === updatedJob.job_id ? updatedJob : job
         );
         
@@ -326,7 +316,7 @@ export function usePreventiveMaintenanceJobs({
         console.warn('Error updating job in cache:', e);
       }
     }
-  }, [cacheKey]);
+  }, [cacheKey, updateStoreJob]);
 
   const getStats = useCallback((): PMJobsStats => {
     const total = jobs.length;
@@ -348,7 +338,7 @@ export function usePreventiveMaintenanceJobs({
     localStorage.removeItem(cacheKey);
     setLastLoadTime(null);
     lastLoadTimeRef.current = null;
-  }, [cacheKey]);
+  }, [cacheKey, setLastLoadTime]);
 
   // Toggle debug mode
   const toggleDebugMode = useCallback(() => {
@@ -366,7 +356,7 @@ export function usePreventiveMaintenanceJobs({
     updateJob,
     getStats,
     retryCount,
-    lastLoadTime,
+    lastLoadTime: lastLoadTime ? new Date(lastLoadTime) : null,
     isPMProperty,
     clearCache,
     debugInfo,

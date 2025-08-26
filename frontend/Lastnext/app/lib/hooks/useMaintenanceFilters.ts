@@ -152,7 +152,7 @@ export function useMaintenanceFilters(items: PreventiveMaintenance[], filters: F
     
     filteredItems.forEach(item => {
       if (item.machines && Array.isArray(item.machines)) {
-        item.machines.forEach(machine => {
+        item.machines.forEach((machine: any) => {
           if (typeof machine === 'object' && machine !== null && machine.machine_id) {
             const existing = machineMap.get(machine.machine_id);
             if (existing) {

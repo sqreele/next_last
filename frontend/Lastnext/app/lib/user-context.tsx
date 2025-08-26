@@ -128,18 +128,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setLastFetched(Date.now());
       setError(null);
 
-      // Set selected property if not already set
-      if (normalizedProperties.length > 0) {
-        const storedPropertyId = localStorage.getItem('selectedPropertyId');
-        const defaultPropertyId = storedPropertyId && normalizedProperties.some((p: any) => 
-          getPropertyId(p) === storedPropertyId
-        ) 
-          ? storedPropertyId 
-          : getPropertyId(normalizedProperties[0]);
-          
-        console.log('Setting selected property to:', defaultPropertyId);
-        setSelectedProperty(defaultPropertyId);
-      }
+      // Don't automatically set selected property to prevent infinite loops
+      // Let the PropertyContext handle property selection
 
       return profile;
     } catch (err) {
@@ -151,7 +141,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [session?.user?.accessToken, getPropertyId]); // Removed problematic dependencies
+  }, [session?.user?.accessToken]); // Simplified dependencies
 
   useEffect(() => {
     let mounted = true;
@@ -169,7 +159,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, [fetchUserProfile, status]);
+  }, [status]); // Only depend on status, not fetchUserProfile
 
   return (
     <UserContext.Provider

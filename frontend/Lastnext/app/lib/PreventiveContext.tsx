@@ -1,62 +1,42 @@
 // app/lib/PreventiveContext.tsx
 
-'use client';
+"use client";
 
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useProperty } from '@/app/lib/PropertyContext';
-import { 
-  PreventiveMaintenance, 
-  FrequencyType, 
-  ServiceResponse,
-  itemMatchesMachine // ✅ Import the helper function
-} from '@/app/lib/preventiveMaintenanceModels';
+import { usePreventiveMaintenanceStore, useAuthStore } from '@/app/lib/stores';
 import { 
   preventiveMaintenanceService,
   CreatePreventiveMaintenanceData, 
   UpdatePreventiveMaintenanceData,
-  CompletePreventiveMaintenanceData,
-  DashboardStats
+  CompletePreventiveMaintenanceData
 } from '@/app/lib/PreventiveMaintenanceService';
+import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import TopicService from '@/app/lib/TopicService';
 import MachineService, { Machine } from '@/app/lib/MachineService';
 import { Topic } from '@/app/lib/TopicService';
+import type { SearchParams, DashboardStats } from '@/app/lib/stores';
 
-export interface SearchParams {
-  status?: string;
-  frequency?: string;
-  page?: number;
-  page_size?: number;
-  search?: string;
-  start_date?: string;
-  end_date?: string;
-  property_id?: string;
-  topic_id?: string;
-  machine_id?: string;
-}
-
-export type PreventiveMaintenanceRequest = CreatePreventiveMaintenanceData;
-export type PreventiveMaintenanceUpdateRequest = UpdatePreventiveMaintenanceData;
-export type PreventiveMaintenanceCompleteRequest = CompletePreventiveMaintenanceData;
-
-interface PreventiveMaintenanceContextState {
-  maintenanceItems: PreventiveMaintenance[];
+export interface PreventiveMaintenanceContextType {
+  maintenanceItems: any[];
   topics: Topic[];
   machines: Machine[];
   statistics: DashboardStats | null;
-  selectedMaintenance: PreventiveMaintenance | null;
+  selectedMaintenance: any | null;
   totalCount: number;
   isLoading: boolean;
   error: string | null;
   filterParams: SearchParams;
+  
+  // Actions
   fetchMaintenanceItems: (params?: SearchParams) => Promise<void>;
   fetchStatistics: () => Promise<void>;
-  fetchMaintenanceById: (pmId: string) => Promise<PreventiveMaintenance | null>;
+  fetchMaintenanceById: (pmId: string) => Promise<any | null>;
   fetchMaintenanceByMachine: (machineId: string) => Promise<void>;
-  createMaintenance: (data: PreventiveMaintenanceRequest) => Promise<PreventiveMaintenance | null>;
-  updateMaintenance: (pmId: string, data: PreventiveMaintenanceUpdateRequest) => Promise<PreventiveMaintenance | null>;
+  createMaintenance: (data: CreatePreventiveMaintenanceData) => Promise<any | null>;
+  updateMaintenance: (pmId: string, data: UpdatePreventiveMaintenanceData) => Promise<any | null>;
   deleteMaintenance: (pmId: string) => Promise<boolean>;
-  completeMaintenance: (pmId: string, data: PreventiveMaintenanceCompleteRequest) => Promise<PreventiveMaintenance | null>;
+  completeMaintenance: (pmId: string, data: CompletePreventiveMaintenanceData) => Promise<any | null>;
   fetchTopics: () => Promise<void>;
   fetchMachines: (propertyId?: string) => Promise<void>;
   setFilterParams: (params: SearchParams) => void;
@@ -65,34 +45,35 @@ interface PreventiveMaintenanceContextState {
   testMachineFiltering: () => void;
 }
 
-const PreventiveMaintenanceContext = createContext<PreventiveMaintenanceContextState | undefined>(undefined);
+const PreventiveMaintenanceContext = createContext<PreventiveMaintenanceContextType | undefined>(undefined);
 
-interface PreventiveMaintenanceProviderProps {
-  children: ReactNode;
-}
-
-export const PreventiveMaintenanceProvider: React.FC<PreventiveMaintenanceProviderProps> = ({ children }) => {
-  const [maintenanceItems, setMaintenanceItems] = useState<PreventiveMaintenance[]>([]);
-  const [totalCount, setTotalCount] = useState<number>(0);
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [machines, setMachines] = useState<Machine[]>([]);
-  const [statistics, setStatistics] = useState<DashboardStats | null>(null);
-  const [selectedMaintenance, setSelectedMaintenance] = useState<PreventiveMaintenance | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [filterParams, setFilterParams] = useState<SearchParams>({
-    status: '',
-    page: 1,
-    page_size: 10,
-  });
-  const hasInitializedRef = useRef(false);
-
-  // Selected property from context
-  const { selectedProperty } = useProperty();
-
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+export function PreventiveMaintenanceProvider({ children }: { children: ReactNode }) {
+  const { data: session } = useSession();
+  const { selectedProperty } = useAuthStore();
+  
+  // Zustand store
+  const {
+    maintenanceItems,
+    topics,
+    machines,
+    statistics,
+    selectedMaintenance,
+    totalCount,
+    isLoading,
+    error,
+    filterParams,
+    setMaintenanceItems,
+    setTopics,
+    setMachines,
+    setStatistics,
+    setSelectedMaintenance,
+    setTotalCount,
+    setLoading,
+    setError,
+    setFilterParams,
+    clearError: clearStoreError,
+    clear: clearStore
+  } = usePreventiveMaintenanceStore();
 
   // Enhanced fetchMachines function
   const fetchMachines = useCallback(async (propertyId?: string) => {
@@ -112,448 +93,246 @@ export const PreventiveMaintenanceProvider: React.FC<PreventiveMaintenanceProvid
       console.warn('⚠️ Error fetching machines (machines may not be available):', err.message);
       setMachines([]);
     }
-  }, [selectedProperty]);
+  }, [selectedProperty, setMachines]);
 
-  // ✅ COMPLETELY REWRITTEN fetchMaintenanceItems with proper machine filtering
-  const fetchMaintenanceItems = useCallback(
-    async (params?: SearchParams) => {
-      setIsLoading(true);
-      clearError();
-
-      try {
-        const fetchParams = { ...filterParams, property_id: selectedProperty || filterParams.property_id, ...params };
-        console.log('🔄 Fetching maintenance items with params:', fetchParams);
-
-        // Prepare base query parameters (excluding machine filter)
-        const queryParams: Record<string, string | number> = {};
-        if (fetchParams.status) queryParams.status = fetchParams.status;
-        if (fetchParams.frequency) queryParams.frequency = fetchParams.frequency;
-        if (fetchParams.search) queryParams.search = fetchParams.search;
-        if (fetchParams.start_date) queryParams.date_from = fetchParams.start_date;
-        if (fetchParams.end_date) queryParams.date_to = fetchParams.end_date;
-        if (fetchParams.property_id) queryParams.property_id = fetchParams.property_id;
-        if (fetchParams.topic_id) queryParams.topic_id = fetchParams.topic_id;
-
-        let finalItems: PreventiveMaintenance[] = [];
-        let finalCount = 0;
-
-        // ✅ Always get all data first, then filter client-side for machine
-        if (fetchParams.machine_id) {
-          console.log(`🎯 Machine filter detected: ${fetchParams.machine_id}`);
-          console.log('📡 Getting all data for client-side machine filtering...');
-          
-          // Get all data without machine filter (since API filter is broken)
-          const response = await preventiveMaintenanceService.getAllPreventiveMaintenance(queryParams);
-          
-          if (response.success && response.data) {
-            let allItems: PreventiveMaintenance[] = [];
-            
-            if (Array.isArray(response.data)) {
-              allItems = response.data;
-            } else if (response.data && 'results' in response.data) {
-              allItems = (response.data as any).results;
-            }
-            
-            console.log(`📡 Got ${allItems.length} total items`);
-            
-            // ✅ Apply client-side machine filtering using the helper function
-            finalItems = allItems.filter(item => {
-              const matches = itemMatchesMachine(item, fetchParams.machine_id!);
-              return matches;
-            });
-            
-            finalCount = finalItems.length;
-            
-            console.log(`✅ Client-side machine filtering result: ${allItems.length} -> ${finalItems.length} items`);
-            console.log('✅ Filtered items:', finalItems.map(i => ({ 
-              id: i.pm_id, 
-              title: i.pmtitle,
-              machines: i.machines?.map(m => `${m.name} (${m.machine_id})`)
-            })));
-          }
-        } else {
-          // No machine filter, use standard API call with pagination
-          if (fetchParams.page) queryParams.page = fetchParams.page;
-          if (fetchParams.page_size) queryParams.page_size = fetchParams.page_size;
-          
-          const response = await preventiveMaintenanceService.getAllPreventiveMaintenance(queryParams);
-
-          if (response.success && response.data) {
-            if (Array.isArray(response.data)) {
-              finalItems = response.data;
-              finalCount = finalItems.length;
-            } else if (response.data && 'results' in response.data) {
-              finalItems = (response.data as any).results;
-              finalCount = (response.data as any).count || finalItems.length;
-            }
-          } else {
-            throw new Error(response.message || 'Failed to fetch maintenance items');
-          }
-        }
-
-        setMaintenanceItems(finalItems);
-        setTotalCount(finalCount);
-        
-        console.log(`📊 Final result: ${finalItems.length} items loaded, total count: ${finalCount}`);
-        
-      } catch (err: any) {
-        console.error('❌ Error fetching maintenance items:', err);
-        setError(err.message || 'Failed to fetch maintenance items');
-        setMaintenanceItems([]);
-        setTotalCount(0);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [filterParams, clearError, selectedProperty]
-  );
-
-  // Enhanced fetchMaintenanceByMachine function
-  const fetchMaintenanceByMachine = useCallback(
-    async (machineId: string) => {
-      if (!machineId) {
-        setError('Machine ID is required');
-        return;
-      }
-      
-      console.log(`🎯 Fetching maintenance specifically for machine: ${machineId}`);
-      await fetchMaintenanceItems({ machine_id: machineId });
-    },
-    [fetchMaintenanceItems]
-  );
-
-  // ✅ Enhanced debug function for machine filtering
-  const debugMachineFilter = useCallback(async (machineId: string) => {
-    console.log(`🧪 === DEBUGGING MACHINE FILTER FOR: ${machineId} ===`);
-    
-    try {
-      // Debug using the service method
-      await preventiveMaintenanceService.debugMachineFiltering(machineId);
-      
-      // Also test current context state
-      console.log('📊 Current context state:');
-      console.log('- Available machines:', machines.length);
-      console.log('- Current maintenance items:', maintenanceItems.length);
-      console.log('- Filter params:', filterParams);
-      
-      // Test client-side filtering on current items using imported function
-      const matching = maintenanceItems.filter(item => itemMatchesMachine(item, machineId));
-      console.log(`🎯 Client-side filtering result: ${matching.length}/${maintenanceItems.length} items match`);
-      
-      if (matching.length > 0) {
-        console.log('✅ Matching items:', matching.map(i => ({ 
-          id: i.pm_id, 
-          title: i.pmtitle,
-          machines: i.machines?.map(m => `${m.name} (${m.machine_id})`)
-        })));
-      }
-      
-    } catch (error) {
-      console.error('🧪 Debug failed:', error);
-    }
-  }, [machines, maintenanceItems, filterParams]);
-
-  // ✅ NEW: Test machine filtering function
-  const testMachineFiltering = useCallback(() => {
-    console.log('=== MANUAL FILTER TEST ===');
-    const targetMachine = 'M257E5AC03B';
-    
-    console.log('All maintenance items:', maintenanceItems.length);
-    console.log('Available machines:', machines.map(m => ({ id: m.machine_id, name: m.name })));
-    
-    const matchingItems = maintenanceItems.filter(item => {
-      console.log(`Testing item ${item.pm_id}:`, {
-        machines: item.machines,
-        hasTarget: item.machines?.some(m => m.machine_id === targetMachine),
-        machineIds: item.machines?.map(m => m.machine_id)
-      });
-      
-      return item.machines?.some(m => m.machine_id === targetMachine);
-    });
-    
-    console.log('Matching items:', matchingItems.length, matchingItems.map(i => i.pm_id));
-    
-    // Also test with the helper function
-    const helperMatching = maintenanceItems.filter(item => itemMatchesMachine(item, targetMachine));
-    console.log('Helper function matching:', helperMatching.length, helperMatching.map(i => i.pm_id));
-  }, [maintenanceItems, machines]);
-
-  // Fetch statistics function
-  const fetchStatistics = useCallback(async () => {
-    setIsLoading(true);
-    clearError();
-
-    try {
-      const response = await preventiveMaintenanceService.getMaintenanceStatistics(
-        selectedProperty ? { property_id: selectedProperty } : undefined
-      );
-
-      if (response.success && response.data) {
-        setStatistics(response.data);
-      } else {
-        throw new Error(response.message || 'Failed to fetch maintenance statistics');
-      }
-    } catch (err: any) {
-      console.error('Error fetching statistics:', err);
-      setError(err.message || 'Failed to fetch maintenance statistics');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [clearError, selectedProperty]);
-
-  // Fetch topics function
+  // Fetch topics
   const fetchTopics = useCallback(async () => {
-    setIsLoading(true);
-    clearError();
-
     try {
       const topicService = new TopicService();
       const response = await topicService.getTopics();
-
       if (response.success && response.data) {
-        setTopics(response.data as Topic[]);
-      } else {
-        throw new Error(response.message || 'Failed to fetch topics');
+        setTopics(response.data);
       }
-    } catch (err: any) {
-      console.error('Error fetching topics:', err);
-      setError(err.message || 'Failed to fetch topics');
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching topics:', error);
     }
-  }, [clearError]);
+  }, [setTopics]);
 
-  // Fetch maintenance by ID function
-  const fetchMaintenanceById = useCallback(async (pmId: string) => {
-    setIsLoading(true);
-    clearError();
+  // Fetch maintenance items
+  const fetchMaintenanceItems = useCallback(async (params?: SearchParams) => {
+    setLoading(true);
+    clearStoreError();
 
     try {
-      if (!pmId) throw new Error('Maintenance ID is required');
+      const fetchParams = { ...filterParams, property_id: selectedProperty || filterParams.property_id, ...params };
+      console.log('🔄 Fetching maintenance items with params:', fetchParams);
 
+      const response = await preventiveMaintenanceService.getAllPreventiveMaintenance(fetchParams);
+      
+      if (response.success && response.data) {
+        // Handle both array and paginated responses
+        let items: PreventiveMaintenance[];
+        let total: number;
+        
+        if (Array.isArray(response.data)) {
+          items = response.data;
+          total = response.data.length;
+        } else {
+          // Paginated response
+          items = response.data.results;
+          total = response.data.count;
+        }
+        
+        setMaintenanceItems(items);
+        setTotalCount(total);
+      } else {
+        setError(response.message || 'Failed to fetch maintenance items');
+        setMaintenanceItems([]);
+      }
+    } catch (error: any) {
+      setError(error.message || 'An error occurred while fetching maintenance items');
+      setMaintenanceItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [filterParams, selectedProperty, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError]);
+
+  // Fetch statistics
+  const fetchStatistics = useCallback(async () => {
+    try {
+      const response = await preventiveMaintenanceService.getEnhancedStatistics(30);
+      if (response.success && response.data) {
+        // Convert the service response to match the store's expected format
+        const convertedStats = {
+          ...response.data,
+          frequency_distribution: response.data.frequency_distribution.reduce((acc, item) => {
+            acc[item.frequency as any] = item.count;
+            return acc;
+          }, {} as Record<string, number>)
+        };
+        setStatistics(convertedStats);
+      }
+    } catch (error: any) {
+      console.error('Error fetching statistics:', error);
+    }
+  }, [setStatistics]);
+
+  // Fetch maintenance by ID
+  const fetchMaintenanceById = useCallback(async (pmId: string) => {
+    try {
       const response = await preventiveMaintenanceService.getPreventiveMaintenanceById(pmId);
-
       if (response.success && response.data) {
         setSelectedMaintenance(response.data);
         return response.data;
-      } else {
-        throw new Error(response.message || `Failed to fetch maintenance with ID ${pmId}`);
       }
-    } catch (err: any) {
-      console.error(`Error fetching maintenance with ID ${pmId}:`, err);
-      setError(err.message || 'Failed to fetch maintenance details');
       return null;
-    } finally {
-      setIsLoading(false);
+    } catch (error: any) {
+      console.error('Error fetching maintenance by ID:', error);
+      return null;
     }
-  }, [clearError]);
+  }, [setSelectedMaintenance]);
 
-  // Create maintenance function
-  const createMaintenance = useCallback(
-    async (data: CreatePreventiveMaintenanceData) => {
-      setIsLoading(true);
-      clearError();
-
-      try {
-        console.log('Creating maintenance with data:', {
-          ...data,
-          before_image: data.before_image ? { name: data.before_image.name, size: data.before_image.size } : undefined,
-          after_image: data.after_image ? { name: data.after_image.name, size: data.after_image.size } : undefined,
-        });
-
-        const response = await preventiveMaintenanceService.createPreventiveMaintenance(data);
-
-        if (response.success && response.data) {
-          await fetchMaintenanceItems();
-          return response.data;
+  // Fetch maintenance by machine
+  const fetchMaintenanceByMachine = useCallback(async (machineId: string) => {
+    try {
+      const response = await preventiveMaintenanceService.getPreventiveMaintenanceByMachine(machineId);
+      if (response.success && response.data) {
+        // Handle both array and paginated responses
+        let items: PreventiveMaintenance[];
+        let total: number;
+        
+        if (Array.isArray(response.data)) {
+          items = response.data;
+          total = response.data.length;
         } else {
-          throw new Error(response.message || 'Failed to create maintenance record');
+          // Paginated response
+          items = response.data.results;
+          total = response.data.count;
         }
-      } catch (err: any) {
-        console.error('Error creating maintenance:', err);
-        setError(err.message || 'Failed to create maintenance record');
-        return null;
-      } finally {
-        setIsLoading(false);
+        
+        setMaintenanceItems(items);
+        setTotalCount(total);
       }
-    },
-    [fetchMaintenanceItems, clearError]
-  );
+    } catch (error: any) {
+      console.error('Error fetching maintenance by machine:', error);
+    }
+  }, [setMaintenanceItems, setTotalCount]);
 
-  // Update maintenance function
-  const updateMaintenance = useCallback(
-    async (pmId: string, data: UpdatePreventiveMaintenanceData) => {
-      setIsLoading(true);
-      clearError();
-
-      try {
-        console.log('Updating maintenance with data:', {
-          pmId,
-          ...data,
-          before_image: data.before_image ? { name: data.before_image.name, size: data.before_image.size } : undefined,
-          after_image: data.after_image ? { name: data.after_image.name, size: data.after_image.size } : undefined,
-        });
-
-        const response = await preventiveMaintenanceService.updatePreventiveMaintenance(pmId, data);
-
-        if (response.success && response.data) {
-          setSelectedMaintenance(response.data);
-          await fetchMaintenanceItems();
-          return response.data;
-        } else {
-          throw new Error(response.message || `Failed to update maintenance with ID ${pmId}`);
-        }
-      } catch (err: any) {
-        console.error(`Error updating maintenance with ID ${pmId}:`, err);
-        setError(err.message || 'Failed to update maintenance record');
-        return null;
-      } finally {
-        setIsLoading(false);
+  // Create maintenance
+  const createMaintenance = useCallback(async (data: CreatePreventiveMaintenanceData) => {
+    try {
+      const response = await preventiveMaintenanceService.createPreventiveMaintenance(data);
+      if (response.success && response.data) {
+        // Refresh the list
+        await fetchMaintenanceItems();
+        return response.data;
       }
-    },
-    [fetchMaintenanceItems, clearError]
-  );
+      return null;
+    } catch (error: any) {
+      console.error('Error creating maintenance:', error);
+      return null;
+    }
+  }, [fetchMaintenanceItems]);
 
-  // Delete maintenance function
-  const deleteMaintenance = useCallback(
-    async (pmId: string) => {
-      setIsLoading(true);
-      clearError();
-
-      try {
-        if (!pmId) throw new Error('Maintenance ID is required');
-
-        const response = await preventiveMaintenanceService.deletePreventiveMaintenance(pmId);
-
-        if (response.success) {
-          await fetchMaintenanceItems();
-          if (selectedMaintenance?.pm_id === pmId) setSelectedMaintenance(null);
-          return true;
-        } else {
-          throw new Error(response.message || `Failed to delete maintenance with ID ${pmId}`);
-        }
-      } catch (err: any) {
-        console.error(`Error deleting maintenance with ID ${pmId}:`, err);
-        setError(err.message || 'Failed to delete maintenance record');
-        return false;
-      } finally {
-        setIsLoading(false);
+  // Update maintenance
+  const updateMaintenance = useCallback(async (pmId: string, data: UpdatePreventiveMaintenanceData) => {
+    try {
+      const response = await preventiveMaintenanceService.updatePreventiveMaintenance(pmId, data);
+      if (response.success && response.data) {
+        // Refresh the list
+        await fetchMaintenanceItems();
+        return response.data;
       }
-    },
-    [fetchMaintenanceItems, selectedMaintenance, clearError]
-  );
+      return null;
+    } catch (error: any) {
+      console.error('Error updating maintenance:', error);
+      return null;
+    }
+  }, [fetchMaintenanceItems]);
 
-  // Complete maintenance function
-  const completeMaintenance = useCallback(
-    async (pmId: string, data: CompletePreventiveMaintenanceData) => {
-      setIsLoading(true);
-      clearError();
-
-      try {
-        if (!pmId) throw new Error('Maintenance ID is required');
-
-        const response = await preventiveMaintenanceService.completePreventiveMaintenance(pmId, data);
-
-        if (response.success && response.data) {
-          setSelectedMaintenance(response.data);
-          await fetchMaintenanceItems();
-          return response.data;
-        } else {
-          throw new Error(response.message || `Failed to complete maintenance with ID ${pmId}`);
-        }
-      } catch (err: any) {
-        console.error(`Error completing maintenance with ID ${pmId}:`, err);
-        setError(err.message || 'Failed to complete maintenance record');
-        return null;
-      } finally {
-        setIsLoading(false);
+  // Delete maintenance
+  const deleteMaintenance = useCallback(async (pmId: string) => {
+    try {
+      const response = await preventiveMaintenanceService.deletePreventiveMaintenance(pmId);
+      if (response.success) {
+        // Refresh the list
+        await fetchMaintenanceItems();
+        return true;
       }
-    },
-    [fetchMaintenanceItems, clearError]
-  );
+      return false;
+    } catch (error: any) {
+      console.error('Error deleting maintenance:', error);
+      return false;
+    }
+  }, [fetchMaintenanceItems]);
 
- // Initialize data on component mount
-   const { status } = useSession();
+  // Complete maintenance
+  const completeMaintenance = useCallback(async (pmId: string, data: CompletePreventiveMaintenanceData) => {
+    try {
+      const response = await preventiveMaintenanceService.completePreventiveMaintenance(pmId, data);
+      if (response.success && response.data) {
+        // Refresh the list
+        await fetchMaintenanceItems();
+        return response.data;
+      }
+      return null;
+    } catch (error: any) {
+      console.error('Error completing maintenance:', error);
+      return null;
+    }
+  }, [fetchMaintenanceItems]);
 
+  // Debug functions
+  const debugMachineFilter = useCallback(async (machineId: string) => {
+    console.log('🔍 Debug machine filter for:', machineId);
+    await fetchMaintenanceByMachine(machineId);
+  }, [fetchMaintenanceByMachine]);
+
+  const testMachineFiltering = useCallback(() => {
+    console.log('🧪 Testing machine filtering...');
+    console.log('Current machines:', machines);
+    console.log('Current filter params:', filterParams);
+  }, [machines, filterParams]);
+
+  // Initialize data
   useEffect(() => {
-    if (status !== 'authenticated') return;
+    if (session?.user?.accessToken) {
+      fetchTopics();
+      fetchMachines();
+      fetchMaintenanceItems();
+      fetchStatistics();
+    }
+  }, [session?.user?.accessToken, fetchTopics, fetchMachines, fetchMaintenanceItems, fetchStatistics]);
 
-    console.log('🚀 Initializing PreventiveMaintenanceProvider');
-    
-    const initializeData = async () => {
-      await Promise.all([
-        fetchTopics(),
-        fetchStatistics(),
-        fetchMachines(selectedProperty || undefined)
-      ]);
-      
-      // Fetch maintenance items last
-      await fetchMaintenanceItems({ property_id: selectedProperty || undefined });
-      hasInitializedRef.current = true;
-    };
+  const contextValue: PreventiveMaintenanceContextType = {
+    maintenanceItems,
+    topics,
+    machines,
+    statistics,
+    selectedMaintenance,
+    totalCount,
+    isLoading,
+    error,
+    filterParams,
+    fetchMaintenanceItems,
+    fetchStatistics,
+    fetchMaintenanceById,
+    fetchMaintenanceByMachine,
+    createMaintenance,
+    updateMaintenance,
+    deleteMaintenance,
+    completeMaintenance,
+    fetchTopics,
+    fetchMachines,
+    setFilterParams,
+    clearError: clearStoreError,
+    debugMachineFilter,
+    testMachineFiltering
+  };
 
-    initializeData();
-  }, [status, selectedProperty, fetchTopics, fetchStatistics, fetchMachines, fetchMaintenanceItems]);
+  return (
+    <PreventiveMaintenanceContext.Provider value={contextValue}>
+      {children}
+    </PreventiveMaintenanceContext.Provider>
+  );
+}
 
- // ✅ Enhanced debug effect to monitor filter changes
- useEffect(() => {
-   if (process.env.NODE_ENV === 'development') {
-     console.log('🔍 Filter params changed:', filterParams);
-     if (filterParams.machine_id) {
-       const selectedMachine = machines.find(m => m.machine_id === filterParams.machine_id);
-       console.log('📍 Selected machine:', selectedMachine);
-       console.log('📊 Current items count:', maintenanceItems.length);
-       
-       // Test filtering with current data
-       const shouldMatch = maintenanceItems.filter(item => itemMatchesMachine(item, filterParams.machine_id!));
-       console.log(`🎯 Items that should match ${filterParams.machine_id}:`, shouldMatch.length);
-     }
-   }
- }, [filterParams, machines, maintenanceItems]);
-
- // ✅ NEW: Refetch items whenever filterParams change (after initial load)
- useEffect(() => {
-   if (!hasInitializedRef.current) return;
-   fetchMaintenanceItems();
- }, [filterParams, fetchMaintenanceItems]);
-
- const contextValue: PreventiveMaintenanceContextState = {
-   maintenanceItems,
-   topics,
-   machines,
-   statistics,
-   selectedMaintenance,
-   totalCount,
-   isLoading,
-   error,
-   filterParams,
-   fetchMaintenanceItems,
-   fetchStatistics,
-   fetchMaintenanceById,
-   fetchMaintenanceByMachine,
-   createMaintenance,
-   updateMaintenance,
-   deleteMaintenance,
-   completeMaintenance,
-   fetchTopics,
-   fetchMachines,
-   setFilterParams,
-   clearError,
-   debugMachineFilter,
-   testMachineFiltering,
- };
-
- return (
-   <PreventiveMaintenanceContext.Provider value={contextValue}>
-     {children}
-   </PreventiveMaintenanceContext.Provider>
- );
-};
-
-export const usePreventiveMaintenance = () => {
- const context = useContext(PreventiveMaintenanceContext);
- if (context === undefined) {
-   throw new Error('usePreventiveMaintenance must be used within a PreventiveMaintenanceProvider');
- }
- return context;
-};
+export function usePreventiveMaintenance() {
+  const context = useContext(PreventiveMaintenanceContext);
+  
+  if (context === undefined) {
+    throw new Error("usePreventiveMaintenance must be used within a PreventiveMaintenanceProvider");
+  }
+  
+  return context;
+}

@@ -8,14 +8,54 @@ import { Job, TabValue, FILTER_TITLES } from '@/app/lib/types';
 
 
 
-// ✅ Register Thai font (Sarabun)
-Font.register({
-  family: 'Sarabun',
-  fonts: [
-    { src: '/fonts/Sarabun-Regular.ttf', fontWeight: 'normal' },
-    { src: '/fonts/Sarabun-Bold.ttf', fontWeight: 'bold' },
-  ],
-});
+// ✅ Register Thai font (Sarabun) with fallback
+const registerFonts = () => {
+  try {
+    // Try to register Sarabun font
+    Font.register({
+      family: 'Sarabun',
+      fonts: [
+        { src: '/fonts/Sarabun-Regular.ttf', fontWeight: 'normal' },
+        { src: '/fonts/Sarabun-Bold.ttf', fontWeight: 'bold' },
+      ],
+    });
+    console.log('✅ Sarabun font registered successfully');
+    return true;
+  } catch (error) {
+    console.warn('⚠️ Failed to register Sarabun font:', error);
+    
+    // Try alternative paths
+    try {
+      Font.register({
+        family: 'Sarabun',
+        fonts: [
+          { src: './fonts/Sarabun-Regular.ttf', fontWeight: 'normal' },
+          { src: './fonts/Sarabun-Bold.ttf', fontWeight: 'bold' },
+        ],
+      });
+      console.log('✅ Sarabun font registered with alternative path');
+      return true;
+    } catch (altError) {
+      console.warn('⚠️ Alternative path also failed:', altError);
+    }
+    
+    // Register fallback fonts
+    try {
+      Font.register({
+        family: 'Helvetica',
+        src: '', // Use built-in Helvetica
+      });
+      console.log('✅ Fallback Helvetica font registered successfully');
+      return false; // Indicate fallback was used
+    } catch (fallbackError) {
+      console.error('❌ Failed to register fallback font:', fallbackError);
+      return false;
+    }
+  }
+};
+
+// Register fonts on component mount
+const fontsRegistered = registerFonts();
 
 interface JobsPDFDocumentProps {
   jobs: Job[];
@@ -34,7 +74,7 @@ const styles = StyleSheet.create({
   page: {
     padding: 15,
     backgroundColor: '#ffffff',
-    fontFamily: 'Sarabun',
+    fontFamily: fontsRegistered ? 'Sarabun' : 'Helvetica, Arial',
   },
   header: {
     marginBottom: 15,
@@ -94,31 +134,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderColor: '#e5e7eb',
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 6,
     paddingLeft: '0%',
-    minHeight: 80,
-    maxHeight: 120,
-    marginBottom: 6,
+    minHeight: 90,
+    maxHeight: 130,
+    marginBottom: 8,
     break: false,
     backgroundColor: '#ffffff',
   },
   jobRowAlternate: {
     backgroundColor: '#f9fafb',
   },
+  headerRow: {
+    backgroundColor: '#f3f4f6',
+    borderBottomWidth: 2,
+    borderBottomColor: '#1e40af',
+    fontWeight: 'bold',
+  },
   imageColumn: {
-    width: '18%',
-    marginRight: 100,
+    width: '15%',
+    marginRight: 40,
     marginLeft: 0,
     order: 1,
   },
   infoColumn: {
-    width: '52%',
-    paddingRight: 12,
+    width: '60%',
+    paddingLeft: 20,
+    paddingRight: 8,
     order: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  infoLeftColumn: {
+    width: '48%',
+  },
+  infoRightColumn: {
+    width: '48%',
   },
   statusColumn: {
-    width: '30%',
+    width: '25%',
     order: 3,
   },
   jobImage: {
@@ -132,10 +187,11 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginBottom: 1,
     fontWeight: 'bold',
+    marginTop: 4,
   },
   value: {
     fontSize: 7,
-    marginBottom: 2,
+    marginBottom: 4,
     lineHeight: 1.1,
     color: '#111827',
   },
@@ -476,6 +532,8 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
           )}
 
           {/* Jobs List */}
+          
+          
           {jobGroup.map((job, jobIndex) => {
             // Debug logging for image data
             if (includeImages) {
@@ -697,47 +755,56 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
                 )}
               </View>
 
-              {/* Information Column */}
+              {/* Information Column - Two Column Layout */}
               <View style={styles.infoColumn}>
-                <Text style={styles.label}>Location:</Text>
-                <Text style={styles.value}>
-                  {job.rooms && job.rooms.length > 0 
-                    ? job.rooms.map(room => room.name).join(', ')
-                    : 'N/A'
-                  }
-                </Text>
+                {/* Left Column */}
+                <View style={styles.infoLeftColumn}>
+                  <Text style={styles.label}>Job ID:</Text>
+                  <Text style={styles.value}>#{job.job_id}</Text>
+                  
+                  <Text style={styles.label}>Topics:</Text>
+                  <Text style={styles.value}>
+                    {job.topics && job.topics.length > 0 
+                      ? job.topics.map(topic => topic.title).join(', ')
+                      : 'N/A'
+                    }
+                  </Text>
+                  
+                  <Text style={styles.label}>Description:</Text>
+                  <Text style={styles.value}>{truncateText(job.description, 120)}</Text>
+                </View>
                 
-                <Text style={styles.label}>Topics:</Text>
-                <Text style={styles.value}>
-                  {job.topics && job.topics.length > 0 
-                    ? job.topics.map(topic => topic.title).join(', ')
-                    : 'N/A'
-                  }
-                </Text>
-                
-                <Text style={styles.label}>Staff:</Text>
-                <Text style={styles.value}>{getUserDisplayName(job.user)}</Text>
-                
-                <Text style={styles.label}>Description:</Text>
-                <Text style={styles.value}>{truncateText(job.description, 120)}</Text>
-                
-                <Text style={styles.label}>Remarks:</Text>
-                <Text style={styles.value}>
-                  {job.remarks ? truncateText(job.remarks, 80) : 'N/A'}
-                </Text>
+                {/* Right Column */}
+                <View style={styles.infoRightColumn}>
+                  <Text style={styles.label}>Location:</Text>
+                  <Text style={styles.value}>
+                    {job.rooms && job.rooms.length > 0 
+                      ? job.rooms.map(room => room.name || room.room_id).join(', ')
+                      : 'N/A'
+                    }
+                  </Text>
+                  
+                  <Text style={styles.label}>Staff:</Text>
+                  <Text style={styles.value}>{getUserDisplayName(job.user)}</Text>
+                  
+                  <Text style={styles.label}>Remarks:</Text>
+                  <Text style={styles.value}>
+                    {job.remarks ? truncateText(job.remarks, 80) : 'N/A'}
+                  </Text>
+                </View>
               </View>
 
               {/* Status Column */}
               <View style={styles.statusColumn}>
                 <Text style={styles.label}>Status:</Text>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(job.status) + '20', color: getStatusColor(job.status) }]}>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(job.status) + '20', color: getStatusColor(job.status), marginBottom: 4 }]}>
                   <Text style={[styles.statusBadge, { backgroundColor: 'transparent', color: getStatusColor(job.status) }]}>
                     {job.status.replace('_', ' ')}
                   </Text>
                 </View>
                 
                 <Text style={styles.label}>Priority:</Text>
-                <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(job.priority) + '20', color: getPriorityColor(job.priority) }]}>
+                <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(job.priority) + '20', color: getPriorityColor(job.priority), marginBottom: 4 }]}>
                   <Text style={[styles.priorityBadge, { backgroundColor: 'transparent', color: getPriorityColor(job.priority) }]}>
                     {job.priority}
                   </Text>

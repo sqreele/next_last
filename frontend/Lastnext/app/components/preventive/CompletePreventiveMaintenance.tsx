@@ -601,12 +601,14 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
                         src={selectedMaintenance.before_image_url}
                         alt="Before maintenance" 
                         className="h-full w-full object-cover"
+                        loading="lazy"
                       />
                     ) : selectedMaintenance.before_image_url ? (
                       <img 
                         src={selectedMaintenance.before_image_url}
                         alt="Before maintenance" 
                         className="h-full w-full object-cover"
+                        loading="lazy"
                       />
                     ) : (
                       <div className="text-center">
@@ -653,6 +655,7 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
                         src={imagePreview || selectedMaintenance.after_image_url || ''}
                         alt="After maintenance preview" 
                         className="h-full w-full object-cover"
+                        loading="lazy"
                       />
                       <button
                         type="button"

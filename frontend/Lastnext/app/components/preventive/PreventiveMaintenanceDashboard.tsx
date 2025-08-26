@@ -456,6 +456,7 @@ export default function PreventiveMaintenanceDashboard() {
                                 src={beforeImageUrl} 
                                 alt="Before" 
                                 className="h-full w-full object-cover"
+                                loading="lazy"
                               />
                             </div>
                           )}
@@ -465,6 +466,7 @@ export default function PreventiveMaintenanceDashboard() {
                                 src={afterImageUrl} 
                                 alt="After" 
                                 className="h-full w-full object-cover"
+                                loading="lazy"
                               />
                             </div>
                           )}

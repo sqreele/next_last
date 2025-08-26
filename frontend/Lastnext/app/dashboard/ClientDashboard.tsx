@@ -29,6 +29,7 @@ export default function ClientDashboard() {
             src={session.user.profile_image} 
             alt="Profile" 
             className="w-full h-full object-cover"
+            loading="lazy"
           />
         ) : (
           <div className="flex items-center justify-center w-full h-full bg-gray-100 dark:bg-gray-700">

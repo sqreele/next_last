@@ -68,6 +68,7 @@ export default function AuthStatus({
               src={user.profile_image}
               alt={user.username}
               className="h-6 w-6 rounded-full object-cover"
+              loading="lazy"
             />
           ) : (
             <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center">

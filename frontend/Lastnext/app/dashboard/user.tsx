@@ -45,6 +45,7 @@ const User: React.FC = () => {
                   src={session.user.profile_image} 
                   alt={session.user.username} 
                   className="h-full w-full object-cover" 
+                  loading="lazy"
                 />
               ) : (
                 <span className="text-white font-semibold">{initials}</span>
@@ -77,6 +78,7 @@ const User: React.FC = () => {
                   src={session.user.profile_image} 
                   alt={session.user.username} 
                   className="h-full w-full object-cover" 
+                  loading="lazy"
                 />
               ) : (
                 <span className="text-white font-semibold">{initials}</span>

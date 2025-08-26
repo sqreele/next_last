@@ -30,6 +30,7 @@ import {
 import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { fixImageUrl } from '@/app/lib/utils/image-utils';
 
 interface InitialFilters {
   status: string;
@@ -143,41 +144,69 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
     
     console.log('PDF Debug - Processing image URL:', imageUrl);
     
-    let fullUrl: string;
+    let fullUrl: string | null = null;
+
+    // Prefer relative media path when possible
+    const tryRelative = (url: string): string => {
+      const fixed = fixImageUrl(url);
+      return fixed || url;
+    };
     
-    // If it's already a full URL, use it directly
-    if (imageUrl && imageUrl.startsWith('http')) {
-      console.log('PDF Debug - Using full URL:', imageUrl);
-      fullUrl = imageUrl;
-    } else if (imageUrl && imageUrl.startsWith('/media/')) {
-      // If it's a relative URL, construct the full URL
-      const baseUrl = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000';
+    // If it's already absolute, normalize scheme and host
+    if (imageUrl.startsWith('http')) {
+      try {
+        const parsed = new URL(imageUrl);
+        // Force https for our domain to avoid mixed-content
+        if (parsed.hostname.endsWith('pcms.live')) {
+          parsed.protocol = 'https:';
+        }
+        fullUrl = parsed.toString();
+      } catch {
+        fullUrl = imageUrl;
+      }
+    } else if (imageUrl.startsWith('/media/')) {
+      // Relative media path: prefer building absolute URL from NEXT_PUBLIC_MEDIA_URL
+      const baseUrl = process.env.NEXT_PUBLIC_MEDIA_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
       fullUrl = `${baseUrl}${imageUrl}`;
-      console.log('PDF Debug - Constructed full URL:', fullUrl);
-    } else if (imageUrl && imageUrl.startsWith('/')) {
-      // Handle other relative URLs
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    } else if (imageUrl.startsWith('/')) {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
       fullUrl = `${baseUrl}${imageUrl}`;
-      console.log('PDF Debug - Constructed full URL from relative path:', fullUrl);
     } else {
-      // Try the getImageUrl function as fallback
+      // Try to derive from helper or treat as relative
       const url = getImageUrl(imageUrl);
-      console.log('PDF Debug - getImageUrl result:', url);
-      if (!url) return undefined;
-      fullUrl = url;
+      if (url) {
+        // If helper returns relative /media path, build absolute
+        if (url.startsWith('/')) {
+          const baseUrl = process.env.NEXT_PUBLIC_MEDIA_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
+          fullUrl = `${baseUrl}${url}`;
+        } else {
+          fullUrl = url;
+        }
+      } else {
+        const fixed = tryRelative(imageUrl);
+        const baseUrl = process.env.NEXT_PUBLIC_MEDIA_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
+        fullUrl = fixed.startsWith('http') ? fixed : `${baseUrl}${fixed}`;
+      }
     }
     
-    // Test if the image URL is accessible
+    if (!fullUrl) return undefined;
+
+    // Final normalization for our domain
     try {
-      const response = await fetch(fullUrl, { method: 'HEAD' });
-      if (!response.ok) {
-        console.warn('PDF Debug - Image URL not accessible:', fullUrl, 'Status:', response.status);
-        return undefined;
+      const parsed = new URL(fullUrl);
+      if (parsed.hostname.endsWith('pcms.live')) {
+        parsed.protocol = 'https:';
+        fullUrl = parsed.toString();
       }
-      console.log('PDF Debug - Image URL accessible:', fullUrl);
+    } catch {}
+    
+    // HEAD check to ensure accessibility
+    try {
+      const response = await fetch(fullUrl, { method: 'HEAD', mode: 'no-cors' as RequestMode });
+      // With no-cors, ok may be false, but resource can still be fetched by <img>
+      console.log('PDF Debug - Image URL HEAD attempted:', fullUrl, 'ok:', (response as any)?.ok);
     } catch (error) {
-      console.warn('PDF Debug - Error checking image URL:', fullUrl, error);
-      return undefined;
+      console.warn('PDF Debug - Error checking image URL (continuing):', fullUrl, error);
     }
     
     return fullUrl;
@@ -287,8 +316,8 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
         hasBeforeImage: !!item.before_image_url,
         hasAfterImage: !!item.after_image_url,
         imageDataUrls: {
-          before: imageDataUrls[`before_${item.id}`],
-          after: imageDataUrls[`after_${item.id}`]
+          before: imageDataUrls[`before_${item.pm_id || item.id}`],
+          after: imageDataUrls[`after_${item.pm_id || item.id}`]
         }
       });
     });
@@ -375,16 +404,18 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
           if (item.before_image_url) {
             const safeUrl = await getSafeImageUrl(item.before_image_url);
             if (safeUrl) {
-              console.log('Converting before image for item:', item.id);
-              newImageDataUrls[`before_${item.id}`] = await convertImageToBase64(safeUrl);
+              const key = item.pm_id || String(item.id);
+              console.log('Converting before image for item:', key);
+              newImageDataUrls[`before_${key}`] = await convertImageToBase64(safeUrl);
             }
           }
           
           if (item.after_image_url) {
             const safeUrl = await getSafeImageUrl(item.after_image_url);
             if (safeUrl) {
-              console.log('Converting after image for item:', item.id);
-              newImageDataUrls[`after_${item.id}`] = await convertImageToBase64(safeUrl);
+              const key = item.pm_id || String(item.id);
+              console.log('Converting after image for item:', key);
+              newImageDataUrls[`after_${key}`] = await convertImageToBase64(safeUrl);
             }
           }
         }
@@ -1281,7 +1312,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
                        <p className="text-sm font-medium text-gray-700 mb-2">Before:</p>
                        <div className="relative">
                          <img 
-                           src={imageDataUrls[`before_${item.id}`] || item.before_image_url} 
+                           src={imageDataUrls[`before_${item.pm_id || item.id}`] || fixImageUrl(item.before_image_url || '') || item.before_image_url || ''} 
                            alt="Before maintenance"
                            className="w-full h-auto rounded border border-gray-300"
                            style={{ 
@@ -1325,7 +1356,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
                        <p className="text-sm font-medium text-gray-700 mb-2">After:</p>
                        <div className="relative">
                          <img 
-                           src={imageDataUrls[`after_${item.id}`] || item.after_image_url} 
+                           src={imageDataUrls[`after_${item.pm_id || item.id}`] || fixImageUrl(item.after_image_url || '') || item.after_image_url || ''} 
                            alt="After maintenance"
                            className="w-full h-auto rounded border border-gray-300"
                            style={{ 
@@ -1351,7 +1382,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
                              placeholder.innerHTML = `
                                <div class="text-center text-gray-500">
                                  <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                                  </svg>
                                  <p class="text-sm">Image not available</p>
                                </div>

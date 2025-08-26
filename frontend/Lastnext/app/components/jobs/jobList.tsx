@@ -143,42 +143,9 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
       propertyIdentifiers: Array.from(selectedPropertyIdentifiers)
     });
 
-    const matchesSelectedProperty = (value: any): boolean => {
-      if (selectedPropertyIdentifiers.size === 0) return true; // no property selected -> allow
+    // Disable property-based filtering for All Jobs page
+    const matchesProperty = true;
 
-      if (value == null) return false;
-
-      if (typeof value === 'string' || typeof value === 'number') {
-        return selectedPropertyIdentifiers.has(String(value));
-      }
-
-      if (typeof value === 'object') {
-        const byPropertyCode = 'property_id' in value ? selectedPropertyIdentifiers.has(String((value as any).property_id)) : false;
-        const byId = 'id' in value ? selectedPropertyIdentifiers.has(String((value as any).id)) : false;
-        return byPropertyCode || byId;
-      }
-
-      return false;
-    };
-
-    // More permissive property matching - if no selectedProperty, show all jobs
-    // If selectedProperty is set, try multiple ways to match
-    let matchesProperty = selectedPropertyIdentifiers.size === 0 || 
-      // Check profile_image properties
-      job.profile_image?.properties?.some(p => matchesSelectedProperty(p)) ||
-      // Check room properties
-      job.rooms?.some(r => r.properties?.some(prop => matchesSelectedProperty(prop))) ||
-      // Check direct properties
-      job.properties?.some(prop => matchesSelectedProperty(prop)) ||
-      // Check property_id field
-      (job.property_id != null && matchesSelectedProperty(job.property_id));
-    
-    // Temporary override for debugging - show all jobs if we're in development
-    if (process.env.NODE_ENV === 'development' && jobs.length > 0) {
-      console.log('🔧 Development mode: Allowing all jobs through filter');
-      matchesProperty = true;
-    }
-    
     if (!matchesProperty) {
       console.log('❌ Job', job.job_id, 'filtered out by property');
       return false;

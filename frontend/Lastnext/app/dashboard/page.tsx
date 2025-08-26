@@ -58,6 +58,17 @@ export default async function DashboardPage() {
     console.log('🔄 Fetching all jobs...');
     jobs = await fetchJobs(accessToken);
     console.log('📋 Jobs fetched:', { count: jobs?.length });
+
+    // Filter jobs to current user across all properties
+    const currentUserId = session.user.id;
+    const currentUsername = session.user.username;
+    const userJobs = Array.isArray(jobs)
+      ? jobs.filter((job: Job) => {
+          const jobUser = String((job as any).user);
+          return jobUser === String(currentUserId) || (currentUsername && jobUser === currentUsername);
+        })
+      : [];
+    console.log('👤 Jobs after user filter:', { count: userJobs.length });
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
@@ -72,7 +83,7 @@ export default async function DashboardPage() {
               </div>
             }
           >
-            <DashboardClient jobs={jobs} properties={properties} />
+            <DashboardClient jobs={userJobs} properties={properties} />
           </Suspense>
         </div>
       </div>

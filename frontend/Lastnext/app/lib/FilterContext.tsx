@@ -1,74 +1,77 @@
 // app/lib/FilterContext.tsx
 
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-
-interface FilterState {
-  status: string;
-  frequency: string;
-  search: string;
-  startDate: string;
-  endDate: string;
-  page: number;
-  pageSize: number;
-  machine: string; // Add machine filter
-}
+import React, { createContext, useContext, ReactNode } from 'react';
+import { useFilterStore } from '@/app/lib/stores';
 
 interface FilterContextType {
-  currentFilters: FilterState;
-  setCurrentFilters: (filters: FilterState) => void;
-  clearFilters: () => void;
-  updateFilter: (key: keyof FilterState, value: string | number) => void;
+  status: string;
+  priority: string;
+  timeRange: string;
+  search: string;
+  propertyId: string | null;
+  setStatus: (status: string) => void;
+  setPriority: (priority: string) => void;
+  setTimeRange: (timeRange: string) => void;
+  setSearch: (search: string) => void;
+  setPropertyId: (propertyId: string | null) => void;
+  resetFilters: () => void;
+  updateFilters: (filters: Partial<{
+    status: string;
+    priority: string;
+    timeRange: string;
+    search: string;
+    propertyId: string | null;
+  }>) => void;
 }
-
-const defaultFilters: FilterState = {
-  status: '',
-  frequency: '',
-  search: '',
-  startDate: '',
-  endDate: '',
-  page: 1,
-  pageSize: 10,
-  machine: '', // Add default machine filter
-};
 
 const FilterContext = createContext<FilterContextType | undefined>(undefined);
 
-export const FilterProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentFilters, setCurrentFilters] = useState<FilterState>(defaultFilters);
+export function FilterProvider({ children }: { children: ReactNode }) {
+  const {
+    status,
+    priority,
+    timeRange,
+    search,
+    propertyId,
+    setStatus,
+    setPriority,
+    setTimeRange,
+    setSearch,
+    setPropertyId,
+    resetFilters,
+    updateFilters
+  } = useFilterStore();
 
-  const clearFilters = () => {
-    setCurrentFilters(defaultFilters);
-  };
-
-  const updateFilter = (key: keyof FilterState, value: string | number) => {
-    setCurrentFilters(prev => ({
-      ...prev,
-      [key]: value,
-      // Reset page when filter changes (except when updating page itself)
-      ...(key !== 'page' && key !== 'pageSize' && { page: 1 })
-    }));
+  const contextValue: FilterContextType = {
+    status,
+    priority,
+    timeRange,
+    search,
+    propertyId,
+    setStatus,
+    setPriority,
+    setTimeRange,
+    setSearch,
+    setPropertyId,
+    resetFilters,
+    updateFilters
   };
 
   return (
-    <FilterContext.Provider value={{
-      currentFilters,
-      setCurrentFilters,
-      clearFilters,
-      updateFilter
-    }}>
+    <FilterContext.Provider value={contextValue}>
       {children}
     </FilterContext.Provider>
   );
-};
+}
 
-export const useFilters = () => {
+export function useFilter() {
   const context = useContext(FilterContext);
+  
   if (context === undefined) {
-    throw new Error('useFilters must be used within a FilterProvider');
+    throw new Error("useFilter must be used within a FilterProvider");
   }
+  
   return context;
-};
-
-export type { FilterState };
+}

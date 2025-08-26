@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
-import { useFilters } from '@/app/lib/FilterContext';
+import { useFilterStore } from '@/app/lib/stores';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 
 // Import types
@@ -37,7 +37,25 @@ type SortField = 'date' | 'status' | 'frequency' | 'machine';
 
 export default function PreventiveMaintenanceListPage() {
   const router = useRouter();
-  const { currentFilters, updateFilter, clearFilters } = useFilters();
+  const { 
+    status, 
+    frequency, 
+    search, 
+    start_date, 
+    end_date, 
+    machine_id, 
+    page, 
+    page_size,
+    setStatus,
+    setFrequency,
+    setSearch,
+    setStartDate,
+    setEndDate,
+    setMachineId,
+    setPage,
+    setPageSize,
+    resetFilters 
+  } = useFilterStore();
   
   const {
     maintenanceItems,
@@ -45,10 +63,8 @@ export default function PreventiveMaintenanceListPage() {
     totalCount,
     isLoading,
     error,
-    filterParams,
     fetchMaintenanceItems,
     deleteMaintenance,
-    setFilterParams,
     clearError,
     debugMachineFilter,
     testMachineFiltering
@@ -61,8 +77,14 @@ export default function PreventiveMaintenanceListPage() {
     totalCount,
     isLoading,
     error,
-    filterParams,
-    currentFilters
+    status,
+    frequency,
+    search,
+    start_date,
+    end_date,
+    machine_id,
+    page,
+    page_size
   });
 
   // Manual data fetching if no data is present
@@ -83,13 +105,15 @@ export default function PreventiveMaintenanceListPage() {
 
   // Enhanced machine options with better display
   const machineOptions = useMemo((): MachineOption[] => {
+    if (!machines || !Array.isArray(machines)) return [];
+    
     const options = machines.map(machine => ({
       id: machine.machine_id,
       label: `${machine.name} (${machine.machine_id})`,
       name: machine.name,
       machine_id: machine.machine_id,
       count: maintenanceItems.filter(item => 
-        item.machines?.some(m => m.machine_id === machine.machine_id)
+        item.machines?.some((m: any) => m.machine_id === machine.machine_id)
       ).length
     }));
     
@@ -113,24 +137,25 @@ export default function PreventiveMaintenanceListPage() {
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       const newParams = {
-        status: currentFilters.status || '',
-        frequency: currentFilters.frequency || '',
-        search: currentFilters.search || '',
-        start_date: currentFilters.startDate || '',
-        end_date: currentFilters.endDate || '',
-        machine_id: currentFilters.machine || '',
-        page: currentFilters.page || 1,
-        page_size: currentFilters.pageSize || 10
+        status: status || '',
+        frequency: frequency || '',
+        search: search || '',
+        start_date: start_date || '',
+        end_date: end_date || '',
+        machine_id: machine_id || '',
+        page: page || 1,
+        page_size: page_size || 10
       };
 
-      console.log('Filter sync - currentFilters:', currentFilters);
+      console.log('Filter sync - current values:', { status, frequency, search, start_date, end_date, machine_id, page, page_size });
       console.log('Filter sync - newParams:', newParams);
 
-      setFilterParams(newParams);
+      // Update the PM store filter params
+      // This will trigger a refresh of the maintenance items
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [currentFilters, setFilterParams]);
+  }, [status, frequency, search, start_date, end_date, machine_id, page, page_size]);
 
   // Sorted and filtered data
   const sortedItems = useMemo(() => {
@@ -172,29 +197,40 @@ export default function PreventiveMaintenanceListPage() {
   const handleFilterChangeWrapper = useCallback((key: string, value: string | number) => {
     console.log('Filter change:', key, value);
     
-    // Map string keys to FilterState keys
-    const validKeys: Record<string, keyof FilterState> = {
-      'status': 'status',
-      'frequency': 'frequency',
-      'search': 'search',
-      'startDate': 'startDate',
-      'endDate': 'endDate',
-      'page': 'page',
-      'pageSize': 'pageSize',
-      'machine': 'machine'
-    };
-
-    const filterKey = validKeys[key];
-    if (filterKey) {
-      updateFilter(filterKey, value);
+    // Map string keys to setter functions
+    switch (key) {
+      case 'status':
+        setStatus(value as string);
+        break;
+      case 'frequency':
+        setFrequency(value as string);
+        break;
+      case 'search':
+        setSearch(value as string);
+        break;
+      case 'startDate':
+        setStartDate(value as string);
+        break;
+      case 'endDate':
+        setEndDate(value as string);
+        break;
+      case 'page':
+        setPage(value as number);
+        break;
+      case 'pageSize':
+        setPageSize(value as number);
+        break;
+      case 'machine':
+        setMachineId(value as string);
+        break;
     }
-  }, [updateFilter]);
+  }, [setStatus, setFrequency, setSearch, setStartDate, setEndDate, setPage, setPageSize, setMachineId]);
 
   const clearAllFilters = useCallback(() => {
     console.log('Clearing all filters');
-    clearFilters();
+    resetFilters();
     setSelectedItems([]);
-  }, [clearFilters]);
+  }, [resetFilters]);
 
   // Enhanced sort handler with correct typing
   const handleSort = useCallback((field: SortField) => {
@@ -275,19 +311,31 @@ export default function PreventiveMaintenanceListPage() {
   }, [debugMachineFilter]);
 
   // Pagination
-  const totalPages = Math.ceil(totalCount / (currentFilters.pageSize || 10));
+  const totalPages = Math.ceil(totalCount / (page_size || 10));
 
   // Active filters count
   const activeFiltersCount = useMemo(() => {
     return [
-      currentFilters.status,
-      currentFilters.frequency,
-      currentFilters.search,
-      currentFilters.startDate,
-      currentFilters.endDate,
-      currentFilters.machine,
-    ].filter(value => value !== '').length;
-  }, [currentFilters]);
+      status,
+      frequency,
+      search,
+      start_date,
+      end_date,
+      machine_id,
+    ].filter(value => value !== '' && value !== null && value !== undefined).length;
+  }, [status, frequency, search, start_date, end_date, machine_id]);
+
+  // Create currentFilters object for components that expect it
+  const currentFilters = useMemo(() => ({
+    status: status || '',
+    frequency: frequency || '',
+    search: search || '',
+    startDate: start_date || '',
+    endDate: end_date || '',
+    machine: machine_id || '',
+    page: page || 1,
+    pageSize: page_size || 10
+  }), [status, frequency, search, start_date, end_date, machine_id, page, page_size]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -381,9 +429,9 @@ export default function PreventiveMaintenanceListPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <Pagination
-            currentPage={currentFilters.page || 1}
+            currentPage={page || 1}
             totalPages={totalPages}
-            pageSize={currentFilters.pageSize || 10}
+            pageSize={page_size || 10}
             totalCount={totalCount}
             onPageChange={(page) => handleFilterChangeWrapper('page', page)}
             onPageSizeChange={(size) => handleFilterChangeWrapper('pageSize', size)}

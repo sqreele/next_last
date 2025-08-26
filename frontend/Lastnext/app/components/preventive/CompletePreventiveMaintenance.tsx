@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { usePreventiveMaintenance, PreventiveMaintenanceCompleteRequest } from '@/app/lib/PreventiveContext';
+import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
+import { CompletePreventiveMaintenanceData } from '@/app/lib/PreventiveMaintenanceService';
 import { MaintenanceImage } from '@/app/lib/preventiveMaintenanceModels';
 import React from 'react';
 import { 
@@ -55,7 +56,7 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
   } = usePreventiveMaintenance();
 
   // Local state
-  const [completionData, setCompletionData] = useState<PreventiveMaintenanceCompleteRequest>({
+  const [completionData, setCompletionData] = useState<CompletePreventiveMaintenanceData>({
     completion_notes: '',
     after_image: undefined,
   });

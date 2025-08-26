@@ -4,7 +4,7 @@
 export interface Topic {
   id: number;
   title: string;
-  description: string;
+  description?: string;
 }
 
 // Image definition

@@ -216,7 +216,7 @@ export default function PreventiveMaintenanceDashboard() {
           </div>
           <div className="text-xs text-yellow-700 space-y-1">
             <p><strong>Total tasks:</strong> {statistics.counts.total}</p>
-            <p><strong>Frequency distribution length:</strong> {statistics.frequency_distribution?.length || 0}</p>
+            <p><strong>Frequency distribution count:</strong> {Object.keys(statistics.frequency_distribution || {}).length}</p>
             <p><strong>Upcoming tasks length:</strong> {statistics.upcoming?.length || 0}</p>
             <p><strong>Avg completion times keys:</strong> {Object.keys(statistics.avg_completion_times || {}).join(', ')}</p>
             <details className="mt-2">

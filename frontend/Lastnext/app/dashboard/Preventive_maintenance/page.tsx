@@ -11,6 +11,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import Link from 'next/link';
 import { Wrench, AlertTriangle, Building } from 'lucide-react';
+import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 
 export default function PreventiveMaintenancePage() {
   const { selectedProperty, hasProperties } = useProperty();
@@ -43,19 +44,22 @@ export default function PreventiveMaintenancePage() {
   if (!selectedProperty) {
     return (
       <div className="max-w-4xl mx-auto p-4 sm:p-6">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
           <div className="mb-4 flex justify-center">
             <Building className="h-12 w-12 text-amber-500" />
           </div>
-          <h1 className="text-xl font-semibold text-amber-800 mb-2">Select a Property</h1>
-          <p className="text-amber-700 mb-4">
+          <h1 className="text-xl font-semibold text-amber-800 mb-2 text-center">Select a Property</h1>
+          <p className="text-amber-700 mb-6 text-center">
             Please select a property to view its preventive maintenance dashboard.
           </p>
-          <Link href="/dashboard">
-            <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100">
-              Go to Dashboard
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <HeaderPropertyList />
+            <Link href="/dashboard">
+              <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100">
+                Go to Dashboard
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -93,11 +97,14 @@ export default function PreventiveMaintenancePage() {
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Preventive Maintenance</h1>
-          <div className="flex items-center mt-2">
-            <Badge variant="outline" className="text-sm font-normal flex items-center gap-1.5">
-              <Building className="h-3.5 w-3.5" />
-              {getPropertyName()}
-            </Badge>
+          <div className="flex items-center mt-2 gap-3">
+            <HeaderPropertyList />
+            {selectedProperty && (
+              <Badge variant="outline" className="text-sm font-normal flex items-center gap-1.5">
+                <Building className="h-3.5 w-3.5" />
+                {getPropertyName()}
+              </Badge>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">

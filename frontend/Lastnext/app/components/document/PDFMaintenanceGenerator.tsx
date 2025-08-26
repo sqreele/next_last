@@ -219,7 +219,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
     
     maintenanceData.forEach(item => {
       if (item.machines && Array.isArray(item.machines)) {
-        item.machines.forEach(machine => {
+        item.machines.forEach((machine: any) => {
           if (typeof machine === 'object' && machine !== null) {
             // Add machine_id option with name as label
             if (machine.machine_id && !seen.has(machine.machine_id)) {
@@ -251,7 +251,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
       if (filterMachine !== 'all' && process.env.NODE_ENV === 'development') {
         console.log(`🔍 Filtering item ${item.pm_id} with machine filter "${filterMachine}":`, {
           matches: machineMatch,
-          item_machines: item.machines?.map(m => ({ id: m.machine_id, name: m.name })),
+          item_machines: item.machines?.map((m: any) => ({ id: m.machine_id, name: m.name })),
           filter: filterMachine
         });
       }
@@ -298,7 +298,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
       const matches = maintenanceData.filter(item => itemMatchesMachine(item, filter));
       console.log(`Filter "${filter}": ${matches.length} matches`);
       matches.forEach(item => {
-        console.log(`  - ${item.pm_id}: ${item.machines?.map(m => `${m.name} (${m.machine_id})`).join(', ')}`);
+        console.log(`  - ${item.pm_id}: ${item.machines?.map((m: any) => `${m.name} (${m.machine_id})`).join(', ')}`);
       });
     });
   }, [maintenanceData]);
@@ -1090,7 +1090,7 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
                  <div className="font-medium">Items matching machine filter "{filterMachine}":</div>
                  {maintenanceData.filter(item => itemMatchesMachine(item, filterMachine)).map((item, index) => (
                    <div key={item.pm_id || `debug-item-${index}`} className="ml-4 text-xs">
-                     {item.pm_id}: {item.machines?.map(m => `${m.name} (${m.machine_id})`).join(', ')}
+                     {item.pm_id}: {item.machines?.map((m: any) => `${m.name} (${m.machine_id})`).join(', ')}
                    </div>
                  ))}
                </div>

@@ -4,6 +4,7 @@
 
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { useProperty } from '@/app/lib/PropertyContext';
 import { 
   PreventiveMaintenance, 
   FrequencyType, 
@@ -86,6 +87,9 @@ export const PreventiveMaintenanceProvider: React.FC<PreventiveMaintenanceProvid
   });
   const hasInitializedRef = useRef(false);
 
+  // Selected property from context
+  const { selectedProperty } = useProperty();
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -95,7 +99,7 @@ export const PreventiveMaintenanceProvider: React.FC<PreventiveMaintenanceProvid
     try {
       console.log('🏭 Fetching machines...');
       const machineService = new MachineService();
-      const response = await machineService.getMachines(propertyId);
+      const response = await machineService.getMachines(propertyId || selectedProperty || undefined);
 
       if (response.success && response.data) {
         console.log(`✅ Loaded ${response.data.length} machines:`, response.data);
@@ -108,7 +112,7 @@ export const PreventiveMaintenanceProvider: React.FC<PreventiveMaintenanceProvid
       console.warn('⚠️ Error fetching machines (machines may not be available):', err.message);
       setMachines([]);
     }
-  }, []);
+  }, [selectedProperty]);
 
   // ✅ COMPLETELY REWRITTEN fetchMaintenanceItems with proper machine filtering
   const fetchMaintenanceItems = useCallback(
@@ -117,7 +121,7 @@ export const PreventiveMaintenanceProvider: React.FC<PreventiveMaintenanceProvid
       clearError();
 
       try {
-        const fetchParams = { ...filterParams, ...params };
+        const fetchParams = { ...filterParams, property_id: selectedProperty || filterParams.property_id, ...params };
         console.log('🔄 Fetching maintenance items with params:', fetchParams);
 
         // Prepare base query parameters (excluding machine filter)
@@ -201,7 +205,7 @@ export const PreventiveMaintenanceProvider: React.FC<PreventiveMaintenanceProvid
         setIsLoading(false);
       }
     },
-    [filterParams, clearError]
+    [filterParams, clearError, selectedProperty]
   );
 
   // Enhanced fetchMaintenanceByMachine function
@@ -280,7 +284,9 @@ export const PreventiveMaintenanceProvider: React.FC<PreventiveMaintenanceProvid
     clearError();
 
     try {
-      const response = await preventiveMaintenanceService.getMaintenanceStatistics();
+      const response = await preventiveMaintenanceService.getMaintenanceStatistics(
+        selectedProperty ? { property_id: selectedProperty } : undefined
+      );
 
       if (response.success && response.data) {
         setStatistics(response.data);
@@ -293,7 +299,7 @@ export const PreventiveMaintenanceProvider: React.FC<PreventiveMaintenanceProvid
     } finally {
       setIsLoading(false);
     }
-  }, [clearError]);
+  }, [clearError, selectedProperty]);
 
   // Fetch topics function
   const fetchTopics = useCallback(async () => {
@@ -478,16 +484,16 @@ export const PreventiveMaintenanceProvider: React.FC<PreventiveMaintenanceProvid
       await Promise.all([
         fetchTopics(),
         fetchStatistics(),
-        fetchMachines()
+        fetchMachines(selectedProperty || undefined)
       ]);
       
       // Fetch maintenance items last
-      await fetchMaintenanceItems();
+      await fetchMaintenanceItems({ property_id: selectedProperty || undefined });
       hasInitializedRef.current = true;
     };
 
     initializeData();
-  }, [status, fetchTopics, fetchStatistics, fetchMachines, fetchMaintenanceItems]);
+  }, [status, selectedProperty, fetchTopics, fetchStatistics, fetchMachines, fetchMaintenanceItems]);
 
  // ✅ Enhanced debug effect to monitor filter changes
  useEffect(() => {

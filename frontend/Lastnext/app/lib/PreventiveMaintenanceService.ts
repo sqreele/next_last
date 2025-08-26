@@ -636,9 +636,9 @@ class PreventiveMaintenanceService {
     }
   }
 
-  async getMaintenanceStatistics(): Promise<ServiceResponse<DashboardStats>> {
+  async getMaintenanceStatistics(params?: Record<string, any>): Promise<ServiceResponse<DashboardStats>> {
     try {
-      const response = await apiClient.get<DashboardStats>(`${this.baseUrl}/stats/`);
+      const response = await apiClient.get<DashboardStats>(`${this.baseUrl}/stats/`, { params });
       console.log('=== MAINTENANCE STATISTICS DEBUG ===');
       console.log('Raw stats response:', response.data);
       console.log('Frequency distribution:', response.data.frequency_distribution);

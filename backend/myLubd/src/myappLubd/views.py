@@ -92,6 +92,29 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         topic_id = self.request.query_params.get('topic_id')
         date_from = self.request.query_params.get('date_from')
         date_to = self.request.query_params.get('date_to')
+        property_filter = self.request.query_params.get('property_id')
+        machine_filter = self.request.query_params.get('machine_id')
+
+        # Restrict by user's accessible properties unless staff/admin
+        user = self.request.user
+        if not (user.is_staff or user.is_superuser):
+            # Limit to PMs whose jobs are in rooms belonging to user's properties OR via machines' property
+            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
+            queryset = queryset.filter(
+                Q(job__rooms__properties__in=accessible_property_ids)
+                |
+                Q(machines__property__in=accessible_property_ids)
+            )
+
+        if property_filter:
+            queryset = queryset.filter(
+                Q(job__rooms__properties__property_id=property_filter)
+                |
+                Q(machines__property__property_id=property_filter)
+            )
+
+        if machine_filter:
+            queryset = queryset.filter(machines__machine_id=machine_filter)
 
         if pm_id:
             queryset = queryset.filter(pm_id__icontains=pm_id)
@@ -884,6 +907,41 @@ class JobViewSet(viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
     lookup_field = 'job_id'
+
+    def get_queryset(self):
+        """Filter jobs by user, property, and optional flags."""
+        user = self.request.user
+        queryset = Job.objects.all()
+
+        # Restrict by user's accessible properties unless staff/admin
+        if not (user.is_staff or user.is_superuser):
+            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
+            queryset = queryset.filter(rooms__properties__in=accessible_property_ids)
+
+        # Filters
+        property_filter = self.request.query_params.get('property_id')
+        status_filter = self.request.query_params.get('status')
+        is_pm_filter = self.request.query_params.get('is_preventivemaintenance')
+        search_term = self.request.query_params.get('search')
+
+        if property_filter:
+            queryset = queryset.filter(rooms__properties__property_id=property_filter)
+
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        if is_pm_filter is not None:
+            # accept 'true'/'false' strings
+            val = str(is_pm_filter).lower() in ['1', 'true', 'yes']
+            queryset = queryset.filter(is_preventivemaintenance=val)
+
+        if search_term:
+            queryset = queryset.filter(
+                Q(description__icontains=search_term) |
+                Q(job_id__icontains=search_term)
+            )
+
+        return queryset.distinct()
 
     def get_object(self):
         queryset = self.get_queryset()

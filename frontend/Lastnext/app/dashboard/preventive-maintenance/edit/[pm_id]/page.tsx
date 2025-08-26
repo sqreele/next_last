@@ -566,6 +566,7 @@ export default function EditPreventiveMaintenancePage() {
                       src={formState.before_image_preview}
                       alt="Before maintenance"
                       className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                      loading="lazy"
                     />
                     <button
                       type="button"
@@ -605,6 +606,7 @@ export default function EditPreventiveMaintenancePage() {
                       src={formState.after_image_preview}
                       alt="After maintenance"
                       className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                      loading="lazy"
                     />
                     <button
                       type="button"

@@ -6,8 +6,8 @@ services:
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://pcms.live}
-        - NEXT_PRIVATE_API_URL=${NEXT_PRIVATE_API_URL:-http://django-backend:8000}
-        - API_URL=${API_URL:-http://django-backend:8000}
+        - NEXT_PRIVATE_API_URL=${NEXT_PRIVATE_API_URL:-http://backend:8000}
+        - API_URL=${API_URL:-http://backend:8000}
         - NEXTAUTH_URL=${NEXTAUTH_URL:-https://pcms.live}
         - NEXTAUTH_SECRET=K/QdN0nOS9Sep9RDp8YCEsxDhGTmRWVW/7wR/0C8kuA=
         - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
@@ -18,9 +18,9 @@ services:
     restart: unless-stopped
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://pcms.live}
-      - NEXT_PRIVATE_API_URL=${NEXT_PRIVATE_API_URL:-http://django-backend:8000}
+      - NEXT_PRIVATE_API_URL=${NEXT_PRIVATE_API_URL:-http://backend:8000}
       - NEXT_PUBLIC_MEDIA_URL=${NEXT_PUBLIC_MEDIA_URL:-https://pcms.live}
-      - API_URL=${API_URL:-http://django-backend:8000}
+      - API_URL=${API_URL:-http://backend:8000}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-https://pcms.live}
       - NEXTAUTH_SECRET=K/QdN0nOS9Sep9RDp8YCEsxDhGTmRWVW/7wR/0C8kuA=
       - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
@@ -74,7 +74,7 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-mylubd_user}:${POSTGRES_PASSWORD:-Sqreele1234}@db:5432/${POSTGRES_DB:-mylubd_db}?schema=public
     healthcheck:
-      test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/health/'); response = conn.getresponse(); exit(0 if response.status == 200 else 1)"]
+      test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/api/v1/health/'); response = conn.getresponse(); exit(0 if response.status == 200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -44,7 +44,7 @@ export const MEDIA_CONFIG = {
 };
 
 export const AUTH_CONFIG = {
-  sessionMaxAge: 30 * 24 * 60 * 60, // 30 days
+  sessionMaxAge: 60 * 24 * 60 * 60, // 60 days
   sessionUpdateAge: 24 * 60 * 60, // 24 hours
   tokenRefreshThreshold: 5 * 60 * 1000, // 5 minutes before expiry
 };

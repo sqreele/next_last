@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/next-auth-compat';
 import { getErrorMessage } from '@/app/lib/utils/error-utils';
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🧪 Testing session retrieval...');
     
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     
     const result = {
       success: true,

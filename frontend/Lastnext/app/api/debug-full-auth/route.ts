@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/next-auth-compat';
 import { getErrorMessage } from '@/app/lib/utils/error-utils';
 
 interface DjangoTestResult {
@@ -32,10 +31,10 @@ export async function GET(request: NextRequest) {
         };
       });
     
-    console.log('🧪 NextAuth cookies:', nextAuthCookies);
+    console.log('🧪 Auth cookies (legacy next-auth names included):', nextAuthCookies);
 
     // Try to get session
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     
     console.log('🧪 Session result:', {
       hasSession: !!session,
@@ -105,9 +104,8 @@ export async function GET(request: NextRequest) {
       djangoApiTest: djangoTestResult,
       environment: {
         nodeEnv: process.env.NODE_ENV,
-        hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
-        nextAuthSecretLength: process.env.NEXTAUTH_SECRET?.length,
-        nextAuthUrl: process.env.NEXTAUTH_URL,
+        hasAuth0Secret: !!process.env.AUTH0_SECRET,
+        auth0BaseUrl: process.env.AUTH0_BASE_URL,
         apiUrl: process.env.NEXT_PUBLIC_API_URL
       }
     };

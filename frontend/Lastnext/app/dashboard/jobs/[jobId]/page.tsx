@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { fetchJob, fetchProperties } from '@/app/lib/data.server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/next-auth-compat';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { MapPin, Clock, Calendar, User, CheckCircle2, MessageSquare, StickyNote, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
@@ -19,7 +18,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   try {
     const { jobId } = await params;
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     const accessToken = session?.user?.accessToken;
     const job = await fetchJob(jobId, accessToken);
 
@@ -48,7 +47,7 @@ export async function generateMetadata(
 export default async function JobPage({ params }: Props) {
   try {
     const { jobId } = await params;
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     const accessToken = session?.user?.accessToken;
 
     // Fetch job and properties

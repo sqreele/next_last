@@ -8,7 +8,7 @@ import {
   type FrequencyType,
   type ServiceResponse,
 } from './preventiveMaintenanceModels';
-import { getSession } from "next-auth/react";
+// Removed next-auth usage; apiClient handles auth headers
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 

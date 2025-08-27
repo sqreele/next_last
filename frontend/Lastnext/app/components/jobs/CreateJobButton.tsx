@@ -249,7 +249,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
   // Handle opening the dialog (check auth first)
   const handleAuthClick = async () => {
     if (status === 'unauthenticated') {
-      await signIn(); // Prompt login if not authenticated
+      await signIn(); // Redirects to /api/auth/login via compat
       return;
     }
     // If authenticated, just open the dialog

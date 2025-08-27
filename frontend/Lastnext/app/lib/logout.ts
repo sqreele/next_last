@@ -30,7 +30,7 @@ function clearZustandStores() {
 }
 
 export async function appSignOut(options?: { callbackUrl?: string; redirect?: boolean }) {
-  const callbackUrl = options?.callbackUrl || ROUTES.signIn || "/auth/signin";
+  const callbackUrl = options?.callbackUrl || ROUTES.signIn || "/api/auth/login";
   const redirect = options?.redirect ?? true;
 
   // Clear any custom tokens and persisted UI state

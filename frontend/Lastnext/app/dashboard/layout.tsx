@@ -149,7 +149,7 @@ function DesktopNav({ collapsed, toggleCollapse }: {
             <Button 
               variant="outline" 
               className="w-full justify-start gap-2 text-sm h-10 bg-white text-red-500 border-gray-300 hover:bg-red-50 mt-4"
-              onClick={() => appSignOut({ callbackUrl: '/auth/signin' })}
+              onClick={() => appSignOut({ callbackUrl: '/api/auth/login' })}
             >
               <LogOut className="h-4 w-4" />
               Logout
@@ -160,7 +160,7 @@ function DesktopNav({ collapsed, toggleCollapse }: {
             variant="outline" 
             size="icon"
             className="w-full h-10 bg-white text-red-500 border-gray-300 hover:bg-red-50"
-            onClick={() => appSignOut({ callbackUrl: '/auth/signin' })}
+            onClick={() => appSignOut({ callbackUrl: '/api/auth/login' })}
             title="Logout"
           >
             <LogOut className="h-4 w-4" />
@@ -308,7 +308,7 @@ function MobileNav() {
             className="w-full justify-start gap-2 text-sm h-10 bg-white text-red-500 border-gray-300 hover:bg-red-50" 
             onClick={() => {
               setOpen(false);
-              appSignOut({ callbackUrl: '/auth/signin' });
+              appSignOut({ callbackUrl: '/api/auth/login' });
             }}
           >
             <LogOut className="h-4 w-4" />

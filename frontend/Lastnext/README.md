@@ -72,9 +72,9 @@ npm run dev
 
 ## Authentication Flow
 
-1. User submits credentials on `/auth/signin`
-2. System validates with external API
-3. JWT tokens are issued and stored securely
+1. User is redirected to Auth0 Universal Login via `/api/auth/login`
+2. Auth0 handles authentication and redirects back to the app
+3. JWT/session cookies are set securely
 4. Automatic token refresh handles session expiry
 5. Route protection ensures secure access
 6. Error handling provides clear feedback
@@ -84,7 +84,7 @@ npm run dev
 ```
 app/
 ├── auth/                 # Authentication pages
-│   ├── signin/          # Login page
+│   ├── signin/          # Login redirect (routes to Auth0)
 │   ├── register/        # Registration page
 │   └── error/           # Error handling page
 ├── lib/                 # Core utilities

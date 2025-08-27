@@ -27,8 +27,8 @@ export default async function DashboardPage() {
   
   // Check if session exists and has a valid token
   if (!session || !session.user || !session.user.accessToken) {
-    console.log('❌ No valid session, redirecting to signin');
-    redirect('/auth/signin');
+    console.log('❌ No valid session, redirecting to login');
+    redirect('/api/auth/login');
   }
   
   const accessToken = session.user.accessToken;
@@ -47,7 +47,7 @@ export default async function DashboardPage() {
     // Check if properties were successfully fetched (validates token)
     if (!properties || !Array.isArray(properties)) {
       console.error('❌ Invalid properties data or unauthorized access');
-      redirect('/auth/signin?error=session_expired');
+      redirect('/api/auth/login');
     }
     
     const firstPropertyId = properties[0]?.property_id;
@@ -108,8 +108,8 @@ export default async function DashboardPage() {
        error.message.includes('Forbidden'));
     
     if (isAuthError) {
-      console.log('🔐 Auth error detected, redirecting to signin');
-      redirect('/auth/signin?error=session_expired');
+      console.log('🔐 Auth error detected, redirecting to login');
+      redirect('/api/auth/login');
     }
     
     // For other errors, render an error state with more details
@@ -139,7 +139,7 @@ export default async function DashboardPage() {
               Try Again
             </a>
             <a 
-              href="/auth/signin" 
+              href="/api/auth/login" 
               className="flex-1 px-6 py-3 bg-gray-600 text-white font-medium rounded-xl hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 text-center"
             >
               Sign In Again

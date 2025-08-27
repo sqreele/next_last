@@ -15,7 +15,7 @@ export default function ClientDashboard() {
     return (
       <div className="flex flex-col items-center text-center p-4 space-y-2">
         <p className="text-sm sm:text-base text-gray-700">Please log in</p>
-        <a href="/auth/signin" className="text-indigo-600 hover:underline text-sm sm:text-base">here</a>
+        <a href="/api/auth/login" className="text-indigo-600 hover:underline text-sm sm:text-base">here</a>
       </div>
     );
   }
@@ -39,7 +39,7 @@ export default function ClientDashboard() {
         )}
       </div>
       <button
-        onClick={() => appSignOut({ callbackUrl: '/auth/signin' })}
+        onClick={() => appSignOut({ callbackUrl: '/api/auth/login' })}
         className="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm sm:text-base transition-colors"
       >
         Log Out

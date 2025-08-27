@@ -13,7 +13,7 @@ const LandingPage = () => {
           Your journey to better management starts here. Explore, engage, and manage with ease.
         </p>
         <div className="mt-8 space-x-4">
-          <Link href="/auth/signin">
+          <Link href="/api/auth/login">
             <button className="px-6 py-3 text-lg bg-white text-blue-600 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all">
               Get Started
             </button>

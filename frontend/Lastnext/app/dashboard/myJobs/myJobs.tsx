@@ -449,7 +449,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
   // Effect to handle redirection if unauthenticated
   React.useEffect(() => {
     if (sessionStatus === "unauthenticated") {
-      router.push("/auth/signin");
+      router.push("/api/auth/login");
     }
   }, [sessionStatus, router]);
 

@@ -1,5 +1,5 @@
 // app/lib/hooks/useAuth.ts
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/app/lib/next-auth-compat';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ERROR_TYPES, ROUTES } from '../config';

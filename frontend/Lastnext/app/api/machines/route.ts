@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/next-auth-compat';
 import { API_CONFIG } from '@/app/lib/config';
 
 export async function GET(request: NextRequest) {
   try {
     // Get session to verify authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     
     console.log('🔍 Machines API Debug:', {
       hasSession: !!session,

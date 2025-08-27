@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/ta
 import { Job, Property, JobStatus, STATUS_VARIANTS, Room } from '@/app/lib/types';
 import { useRouter } from 'next/navigation';
 import { useProperty } from '@/app/lib/PropertyContext';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/app/lib/next-auth-compat';
 
 export default function SearchContent() {
   const searchParams = useSearchParams();

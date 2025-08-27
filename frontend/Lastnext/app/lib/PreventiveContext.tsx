@@ -3,7 +3,7 @@
 "use client";
 
 import React, { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/app/lib/next-auth-compat';
 import { usePreventiveMaintenanceStore, useAuthStore } from '@/app/lib/stores';
 import { 
   preventiveMaintenanceService,

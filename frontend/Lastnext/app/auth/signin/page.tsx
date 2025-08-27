@@ -3,7 +3,6 @@
 
 import { useState, FormEvent, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useRedirectIfAuthenticated } from '@/app/lib/hooks/useAuth';
 import { ERROR_TYPES, ROUTES } from '@/app/lib/config';
@@ -57,41 +56,8 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    try {
-      const res = await signIn('credentials', {
-        username,
-        password,
-        redirect: false,
-      });
-
-      if (res?.error) {
-        // Handle specific error types
-        switch (res.error) {
-          case ERROR_TYPES.SESSION_EXPIRED:
-            setError('Your session has expired. Please log in again to continue.');
-            break;
-          case ERROR_TYPES.CREDENTIALS_SIGNIN:
-            setError('Invalid username or password.');
-            break;
-          case ERROR_TYPES.REFRESH_TOKEN_ERROR:
-            setError('Your session could not be renewed. Please log in again.');
-            break;
-          default:
-            setError(`Authentication error: ${res.error}`);
-            break;
-        }
-        setLoading(false);
-        return;
-      }
-
-      router.push(ROUTES.dashboard);
-      router.refresh();
-    } catch (error) {
-      console.error('Login failed:', error);
-      setError('An unexpected error occurred');
-      setLoading(false);
-    }
+    // Redirect to Auth0 Universal Login
+    window.location.assign('/api/auth/login');
   };
 
   // If checking session status, show loading

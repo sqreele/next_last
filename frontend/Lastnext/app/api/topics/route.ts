@@ -1,7 +1,6 @@
 // app/api/topics/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/next-auth-compat';
 import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
 import { getErrorMessage } from '@/app/lib/utils/error-utils';
 
@@ -13,7 +12,7 @@ export async function GET(request: NextRequest) {
       console.log('🔍 API_CONFIG.baseUrl:', API_CONFIG.baseUrl);
     }
 
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
 
     if (DEBUG_CONFIG.logSessions) {
       console.log('🔍 Topics API Session Debug:', {

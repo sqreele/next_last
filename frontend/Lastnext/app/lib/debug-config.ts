@@ -3,8 +3,8 @@ export function debugConfig() {
   const config = {
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? 'SET' : 'NOT_SET',
-    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    AUTH0_SECRET: process.env.AUTH0_SECRET ? 'SET' : 'NOT_SET',
+    AUTH0_BASE_URL: process.env.AUTH0_BASE_URL,
     DATABASE_URL: process.env.DATABASE_URL ? 'SET' : 'NOT_SET',
   };
 
@@ -13,10 +13,8 @@ export function debugConfig() {
   // Check for common issues
   const issues = [];
   
-  if (!process.env.NEXTAUTH_SECRET) {
-    issues.push('❌ NEXTAUTH_SECRET is not set');
-  } else if (process.env.NEXTAUTH_SECRET.length < 32) {
-    issues.push('❌ NEXTAUTH_SECRET is too short (minimum 32 characters)');
+  if (!process.env.AUTH0_SECRET) {
+    issues.push('❌ AUTH0_SECRET is not set');
   }
   
   if (!process.env.NEXT_PUBLIC_API_URL) {

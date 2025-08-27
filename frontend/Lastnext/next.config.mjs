@@ -38,8 +38,12 @@ const nextConfig = {
   trailingSlash: true, // Optional, depending on your backend
   
   env: {
-    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
-    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    AUTH0_SECRET: process.env.AUTH0_SECRET,
+    AUTH0_BASE_URL: process.env.AUTH0_BASE_URL,
+    AUTH0_ISSUER_BASE_URL: process.env.AUTH0_ISSUER_BASE_URL,
+    AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
+    AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
+    AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE,
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   },
   
@@ -55,7 +59,7 @@ const nextConfig = {
         source: '/api/:path*',
         headers: [
           { key: 'Access-Control-Allow-Credentials', value: 'true' },
-          { key: 'Access-Control-Allow-Origin', value: process.env.NEXTAUTH_URL || 'https://pcms.live' },
+          { key: 'Access-Control-Allow-Origin', value: process.env.AUTH0_BASE_URL || 'https://pcms.live' },
           { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT' },
           { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
         ],
@@ -110,7 +114,7 @@ const nextConfig = {
   async rewrites() {
     const privateApi = process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
     return [
-      // Do NOT proxy NextAuth endpoints; let Next.js handle them
+      // Do NOT proxy Auth0 endpoints; let Next.js handle them
       {
         source: '/api/auth/:path*',
         destination: '/api/auth/:path*',

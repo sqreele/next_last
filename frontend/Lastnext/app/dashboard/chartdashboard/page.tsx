@@ -2,12 +2,11 @@
 import { Suspense } from 'react';
 import { fetchJobs } from '@/app/lib/data.server';
 import PropertyJobsDashboard from '@/app/components/jobs/PropertyJobsDashboard';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/next-auth-compat';
 import ErrorBoundary from '@/app/components/ErrorBoundary';
 
 export default async function ChartDashboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const accessToken = session?.user?.accessToken;
 
   const jobs = await fetchJobs(accessToken);

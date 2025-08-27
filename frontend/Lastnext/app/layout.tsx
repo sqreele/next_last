@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     default: 'Maintenance & Job Management Dashboard',
     template: '%s | Maintenance & Job Management Dashboard',
   },
-  description: 'Streamline property maintenance and job management with our Next.js-powered dashboard. Track, assign, and manage tasks efficiently using TypeScript, Tailwind CSS, and NextAuth.',
+  description: 'Streamline property maintenance and job management with our Next.js-powered dashboard. Track, assign, and manage tasks efficiently using TypeScript, Tailwind CSS, and Auth0.',
   keywords: [
     'maintenance management',
     'job management',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     'nextjs',
     'typescript',
     'tailwind css',
-    'nextauth',
+    'auth0',
     'facility management',
   ],
   authors: [
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://pcms.live',
     title: 'Maintenance & Job Management Dashboard',
-    description: 'Efficiently manage maintenance tasks and jobs with our modern admin dashboard built with Next.js, Postgres, NextAuth, and Tailwind CSS. Perfect for property managers and facility teams.',
+    description: 'Efficiently manage maintenance tasks and jobs with our modern admin dashboard built with Next.js, Postgres, Auth0, and Tailwind CSS. Perfect for property managers and facility teams.',
     siteName: 'Maintenance & Job Management Dashboard',
     images: [
       {

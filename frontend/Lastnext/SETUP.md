@@ -9,22 +9,23 @@ Create a `.env.local` file in the project root with the following variables:
 
 ```bash
 # Authentication Configuration (REQUIRED)
-NEXTAUTH_SECRET=your-super-secure-secret-key-minimum-32-characters-long
-NEXTAUTH_URL=http://localhost:3000
+AUTH0_SECRET=your-random-32-characters
+AUTH0_BASE_URL=http://localhost:3000
+AUTH0_ISSUER_BASE_URL=https://your-tenant.us.auth0.com
+AUTH0_CLIENT_ID=your-client-id
+AUTH0_CLIENT_SECRET=your-client-secret
+AUTH0_AUDIENCE=https://your-api-identifier  # optional if using API access
 
 # API Configuration (REQUIRED)
 NEXT_PUBLIC_API_URL=http://localhost:8000
 
 # Database Configuration (REQUIRED)
 DATABASE_URL="postgresql://username:password@localhost:5432/database_name"
-
-# Optional: Debug mode
-NEXTAUTH_DEBUG=true
 ```
 
 ## 🔑 Generate a Secure Secret
 
-Run this command to generate a secure NEXTAUTH_SECRET:
+Run this command to generate a secure AUTH0_SECRET:
 
 ```bash
 # Generate a 32-character random string
@@ -62,9 +63,9 @@ The updated dashboard will now show detailed debug information in the console:
 
 ## 🐛 Common Issues
 
-### 1. Missing NEXTAUTH_SECRET
-**Error:** "NEXTAUTH_SECRET is not set"
-**Solution:** Add a secure secret (minimum 32 characters)
+### 1. Missing AUTH0_SECRET
+**Error:** "AUTH0_SECRET is not set"
+**Solution:** Add a secure secret (random 32+ characters)
 
 ### 2. Wrong API URL
 **Error:** "Request failed with status 404"
@@ -81,7 +82,7 @@ The updated dashboard will now show detailed debug information in the console:
 ## 📋 Verification Checklist
 
 - [ ] `.env.local` file created
-- [ ] `NEXTAUTH_SECRET` is set (32+ characters)
+- [ ] `AUTH0_SECRET` is set (random 32+ characters)
 - [ ] `NEXT_PUBLIC_API_URL` points to your API server
 - [ ] `DATABASE_URL` is correct
 - [ ] API server is running

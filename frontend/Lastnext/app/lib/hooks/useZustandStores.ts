@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/app/lib/next-auth-compat';
 import { 
   useAuthStore, 
   usePropertyStore, 

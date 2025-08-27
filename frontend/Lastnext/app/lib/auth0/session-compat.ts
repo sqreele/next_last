@@ -49,9 +49,12 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
   let accessTokenExpires: number | undefined = undefined;
 
   if (!accessToken) {
-    const cookieStore = cookies();
-    accessToken = cookieStore.get('accessToken')?.value;
-    refreshToken = cookieStore.get('refreshToken')?.value || '';
+    const cookieStoreOrPromise = cookies() as any;
+    const cookieStore = typeof cookieStoreOrPromise?.get === 'function'
+      ? cookieStoreOrPromise
+      : await cookieStoreOrPromise;
+    accessToken = cookieStore?.get?.('accessToken')?.value;
+    refreshToken = cookieStore?.get?.('refreshToken')?.value || '';
   }
 
   if (!accessToken) return { user: undefined, error: 'missing_token' };

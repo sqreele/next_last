@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { fetchJob, fetchProperties } from '@/app/lib/data.server';
-import { getServerSession } from '@/app/lib/next-auth-compat';
+import { getServerSession } from '@/app/lib/next-auth-compat.server';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { MapPin, Clock, Calendar, User, CheckCircle2, MessageSquare, StickyNote, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';

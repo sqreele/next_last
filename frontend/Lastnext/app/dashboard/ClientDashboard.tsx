@@ -11,7 +11,7 @@ export default function ClientDashboard() {
     return <div className="flex items-center justify-center p-4 text-sm sm:text-base text-gray-500">Loading user data...</div>;
   }
 
-  if (!session) {
+  if (!session || !session.user) {
     return (
       <div className="flex flex-col items-center text-center p-4 space-y-2">
         <p className="text-sm sm:text-base text-gray-700">Please log in</p>
@@ -22,10 +22,10 @@ export default function ClientDashboard() {
 
   return (
     <div className="space-y-4 p-4 sm:p-0">
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">Welcome, {session.user.username}</h1>
-      <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Positions: {session.user.positions}</p>
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">Welcome, {session.user?.username}</h1>
+      <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Positions: {session.user?.positions}</p>
       <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full mx-auto sm:mx-0 border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
-        {session.user.profile_image ? (
+        {session.user?.profile_image ? (
           <img 
             src={session.user.profile_image} 
             alt="Profile" 

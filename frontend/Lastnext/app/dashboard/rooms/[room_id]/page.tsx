@@ -2,8 +2,7 @@
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { fetchRoom, fetchProperties, fetchJobsForRoom } from '@/app/lib/data.server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/next-auth-compat.server';
 import RoomDetailContent from './RoomDetailContent';
 
 type Props = {
@@ -14,7 +13,7 @@ type Props = {
 // Server Component
 export default async function RoomDetailPage({ params }: Props) {
   const { room_id } = await params;
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   const accessToken = session?.user?.accessToken;
 
   const room = await fetchRoom(room_id, accessToken);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/app/lib/next-auth-compat';
+import { getServerSession } from '@/app/lib/next-auth-compat.server';
 import { API_CONFIG } from '@/app/lib/config';
 
 export async function GET(request: NextRequest) {
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Get session to verify authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     
     if (!session?.user?.accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

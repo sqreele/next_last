@@ -1,7 +1,6 @@
 // app/api/debug-auth-flow/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import authOptions from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/next-auth-compat';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Try to get session
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     
     console.log('🧪 Session result:', {
       hasSession: !!session,
@@ -59,9 +58,8 @@ export async function GET(request: NextRequest) {
       },
       environment: {
         nodeEnv: process.env.NODE_ENV,
-        hasNextAuthSecret: !!process.env.NEXTAUTH_SECRET,
-        nextAuthSecretLength: process.env.NEXTAUTH_SECRET?.length,
-        nextAuthUrl: process.env.NEXTAUTH_URL,
+        hasAuth0Secret: !!process.env.AUTH0_SECRET,
+        auth0BaseUrl: process.env.AUTH0_BASE_URL,
         apiUrl: process.env.NEXT_PUBLIC_API_URL
       }
     };

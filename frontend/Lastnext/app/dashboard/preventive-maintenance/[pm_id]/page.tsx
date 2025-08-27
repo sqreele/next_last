@@ -9,9 +9,8 @@ import {
   getMachineDetails
 } from '@/app/lib/preventiveMaintenanceModels'; // Ensure this path is correct
 
-// Import NextAuth.js utilities for server-side session
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/lib/auth"
+// Import server-side session from Auth0 compat
+import { getServerSession } from "@/app/lib/next-auth-compat";
 import { API_CONFIG } from '@/app/lib/config';
 
 // Function to check if topics is a Topic[]
@@ -47,7 +46,7 @@ async function getPreventiveMaintenance(pmId: string): Promise<PreventiveMainten
   console.log(`[SERVER_FETCH] Initiating fetch for PM ID: ${pmId}`);
 
   // 1. Get the server-side session
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
 
   // 2. Extract the access token
   // Make sure your NextAuth callbacks populate session.user.accessToken

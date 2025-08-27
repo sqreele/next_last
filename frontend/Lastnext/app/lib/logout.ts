@@ -1,6 +1,4 @@
 "use client";
-
-import { signOut } from "next-auth/react";
 import { ROUTES } from "@/app/lib/config";
 import { usePropertyStore } from "@/app/lib/stores/usePropertyStore";
 import { useAuthStore } from "@/app/lib/stores/useAuthStore";
@@ -48,8 +46,12 @@ export async function appSignOut(options?: { callbackUrl?: string; redirect?: bo
   clearZustandStores();
 
   try {
-    // Sign out via NextAuth which clears its cookies
-    await signOut({ redirect, callbackUrl });
+    // Redirect to Auth0 logout which clears its cookies
+    const url = callbackUrl ? `/api/auth/logout?returnTo=${encodeURIComponent(callbackUrl)}` : '/api/auth/logout';
+    if (redirect !== false) {
+      window.location.assign(url);
+      return;
+    }
   } catch (error) {
     // Swallow errors but attempt client-side redirect fallback below
     // eslint-disable-next-line no-console
@@ -57,7 +59,7 @@ export async function appSignOut(options?: { callbackUrl?: string; redirect?: bo
   } finally {
     // Ensure navigation away from protected pages if redirect is false or signOut doesn't navigate
     if (typeof window !== "undefined") {
-      // NextAuth with redirect:false does not navigate; force it here
+      // Force navigation if not already redirected
       if (redirect === false) {
         window.location.assign(callbackUrl);
       }

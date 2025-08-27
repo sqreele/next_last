@@ -3,8 +3,7 @@ import { Suspense } from 'react';
 import { Metadata } from 'next';
 import CreateJobForm from '@/app/components/jobs/CreateJobForm';
 import { redirect } from 'next/navigation';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/next-auth-compat';
 import { Plus, Wrench, Building, Calendar, Users } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +36,7 @@ export const metadata: Metadata = {
 
 export default async function CreateJobPage() {
   // Server-side session check
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   console.log('Server session:', session); // Debug log
 
   if (!session) {

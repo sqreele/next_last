@@ -1,10 +1,10 @@
 # Property Management & Maintenance System
 
-A modern admin dashboard built with Next.js, Postgres, NextAuth, and Tailwind CSS for efficient property and maintenance management.
+A modern admin dashboard built with Next.js, Postgres, Auth0, and Tailwind CSS for efficient property and maintenance management.
 
 ## Features
 
-- 🔐 **Secure Authentication** with NextAuth.js and JWT tokens
+- 🔐 **Secure Authentication** with Auth0 and JWT tokens
 - 🏢 **Property Management** with multi-property support
 - 🔧 **Maintenance Tracking** with job status management
 - 📊 **Dashboard Analytics** with real-time data
@@ -13,7 +13,7 @@ A modern admin dashboard built with Next.js, Postgres, NextAuth, and Tailwind CS
 
 ## Authentication System
 
-This application uses NextAuth.js with a custom credentials provider that integrates with an external API. The authentication system includes:
+This application uses Auth0 with universal login. The authentication system includes:
 
 - JWT-based authentication with automatic token refresh
 - Session management with error handling
@@ -27,8 +27,11 @@ Create a `.env.local` file in the root directory with the following variables:
 
 ```bash
 # Authentication Configuration
-NEXTAUTH_SECRET=your-secure-secret-here-minimum-32-characters
-NEXTAUTH_URL=http://localhost:3000
+AUTH0_SECRET=replace-with-random-32+ char string
+AUTH0_BASE_URL=http://localhost:3000
+AUTH0_ISSUER_BASE_URL=https://your-tenant.us.auth0.com
+AUTH0_CLIENT_ID=your-client-id
+AUTH0_CLIENT_SECRET=your-client-secret
 
 # API Configuration
 NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -37,12 +40,12 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 DATABASE_URL="postgresql://username:password@localhost:5432/database_name"
 
 # Optional: Debug mode (set to true for development)
-NEXTAUTH_DEBUG=true
+AUTH0_AUDIENCE=https://your-api-identifier (optional)
 ```
 
 ### Security Requirements
 
-- `NEXTAUTH_SECRET`: Must be at least 32 characters long
+- `AUTH0_SECRET`: Random string used to encrypt cookies
 - Use HTTPS in production
 - Keep environment variables secure and never commit them to version control
 
@@ -85,7 +88,7 @@ app/
 │   ├── register/        # Registration page
 │   └── error/           # Error handling page
 ├── lib/                 # Core utilities
-│   ├── auth.ts          # NextAuth configuration
+│   ├── lib/auth0        # Auth0 helpers and compat wrappers
 │   ├── config.ts        # Centralized configuration
 │   ├── auth-helpers.ts  # Token refresh utilities
 │   └── hooks/           # Custom React hooks

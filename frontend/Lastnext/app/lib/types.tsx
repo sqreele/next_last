@@ -1,44 +1,5 @@
 import { DateRange } from "react-day-picker";
-import 'next-auth';
-
-declare module 'next-auth' {
-  interface Session {
-    user: {
-      id: string;
-      username: string;
-      email: string | null;
-      profile_image: string | null;
-      positions: string;
-      properties: Property[];
-      accessToken: string;
-      refreshToken: string;
-      accessTokenExpires?: number;
-      sessionToken?: string;
-      created_at: string;
-      error?: string;
-    };
-    expires: string;
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string;
-    username: string;
-    email: string | null;
-    profile_image: string | null;
-    positions: string;
-    properties: Property[];
-    accessToken: string;
-    refreshToken: string;
-    accessTokenExpires?: number;
-    created_at?: string;
-    error?: string;
-    iat?: number;
-    exp?: number;
-    jti?: string;
-  }
-}
+// NextAuth module augmentation removed; using Auth0 compat session shape
 
 export interface User {
   id: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/app/lib/next-auth-compat';
 import { useUser } from '@/app/lib/user-context';
 import { usePropertyStore, useAuthStore } from '@/app/lib/stores';
 

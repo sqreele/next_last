@@ -2,7 +2,7 @@
 
 import { useProperty } from '@/app/lib/PropertyContext';
 import { useUser } from '@/app/lib/user-context';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/app/lib/next-auth-compat';
 
 export function PropertyDebug() {
   const { selectedProperty, userProperties, hasProperties } = useProperty();

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/app/lib/next-auth-compat';
 import { useUser } from '@/app/lib/user-context';
 import { useProperty } from '@/app/lib/PropertyContext';
 import { Property, Job } from '@/app/lib/types';

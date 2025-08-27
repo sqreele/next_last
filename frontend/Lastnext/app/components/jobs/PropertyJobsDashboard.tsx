@@ -23,9 +23,9 @@ import {
 import _ from "lodash";
 import { Job, JobStatus, STATUS_COLORS } from "@/app/lib/types";
 import { useProperty } from "@/app/lib/PropertyContext";
-import { useSession } from "next-auth/react";
+import { useSession } from "@/app/lib/next-auth-compat";
 import { appSignOut } from "@/app/lib/logout";
-import { Session } from "next-auth";
+type Session = any;
 import { fetchJobs } from "@/app/lib/data";
 import { Button } from "@/app/components/ui/button";
 import Link from "next/link";

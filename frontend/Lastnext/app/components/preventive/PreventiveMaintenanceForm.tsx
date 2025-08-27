@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/app/lib/next-auth-compat';
 import { Formik, Form, Field, FormikErrors, useFormikContext, FormikHelpers } from 'formik';
 import Link from 'next/link';
 import {

@@ -1,8 +1,8 @@
 // lib/fetch-client.ts
-import { getSession } from 'next-auth/react';
+import { getCompatClientSession } from '@/app/lib/auth0/session-compat';
 
 export async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const session = await getSession();
+  const session = await getCompatClientSession();
   
   if (!session?.user?.accessToken) {
     throw new Error('No access token');

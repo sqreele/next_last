@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const error = searchParams.get('error');
     
-    console.log('🔐 NextAuth Error Handler:', {
+    console.log('🔐 Auth Error Handler:', {
       error,
       allParams: Object.fromEntries(searchParams.entries()),
       url: request.url

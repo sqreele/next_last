@@ -49,7 +49,7 @@ import { MobileNav as BottomNav } from '@/app/components/ui/mobile-nav';
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/dashboard/myJobs', label: 'My Jobs', icon: ShoppingCart },
-  { href: '/dashboard/chartdashboad', label: 'Analytics', icon: LineChart },
+  { href: '/dashboard/chartdashboard', label: 'Analytics', icon: LineChart },
   { href: '/dashboard/jobs-report', label: 'Jobs Report', icon: FileText },
   { href: '/dashboard/profile', label: 'Profile', icon: Users2 },
   { href: '/dashboard/createJob', label: 'Create Job', icon: PlusCircle },

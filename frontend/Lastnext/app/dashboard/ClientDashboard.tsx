@@ -1,6 +1,7 @@
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import { appSignOut } from '@/app/lib/logout';
 import { User as UserIcon } from 'lucide-react'; // Explicitly import User icon
 
 export default function ClientDashboard() {
@@ -38,7 +39,7 @@ export default function ClientDashboard() {
         )}
       </div>
       <button
-        onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+        onClick={() => appSignOut({ callbackUrl: '/auth/signin' })}
         className="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm sm:text-base transition-colors"
       >
         Log Out

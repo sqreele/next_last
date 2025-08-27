@@ -1,5 +1,6 @@
 // app/lib/auth-helpers.ts (update the refresh function)
 import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
+import { jwtDecode } from 'jwt-decode';
 
 export async function refreshAccessToken(refreshToken: string) {
   if (DEBUG_CONFIG.logAuth) {
@@ -31,10 +32,21 @@ export async function refreshAccessToken(refreshToken: string) {
       console.log("🔐 Token refresh successful");
     }
     
+    // Derive expiry from token exp claim to match backend lifetime
+    let accessTokenExpires = Date.now() + 30 * 60 * 1000; // fallback 30m
+    try {
+      const decoded: { exp?: number } = jwtDecode(tokens.access);
+      if (decoded?.exp) {
+        accessTokenExpires = decoded.exp * 1000;
+      }
+    } catch (e) {
+      console.warn('🔐 Failed to decode refreshed access token exp, using fallback');
+    }
+
     return {
       accessToken: tokens.access,
       refreshToken: tokens.refresh || refreshToken,
-      accessTokenExpires: Date.now() + 60 * 60 * 1000, // 1 hour
+      accessTokenExpires,
     };
   } catch (error) {
     console.error("🔐 Token refresh error:", error);

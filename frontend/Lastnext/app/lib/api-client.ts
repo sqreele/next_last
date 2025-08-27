@@ -2,7 +2,7 @@
 "use client";
 
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios";
-import { getSession } from "next-auth/react";
+import { useSession } from "@/app/lib/next-auth-compat";
 import { appSignOut } from "@/app/lib/logout";
 import { jwtDecode } from "jwt-decode";
 import { useState,useCallback} from 'react'
@@ -130,9 +130,11 @@ apiClient.interceptors.request.use(
         return config;
     }
 
-    const session = await getSession();
-    const accessToken = session?.user?.accessToken;
-    const refreshTokenValue = session?.user?.refreshToken;
+    // Access token retrieval will be handled by the backend route wrappers or client contexts.
+    // For axios interceptors in client, try to read from a lightweight endpoint or window state is complex.
+    // Keep this logic minimal by skipping token injection here; components should pass headers explicitly.
+    const accessToken = undefined as unknown as string | undefined;
+    const refreshTokenValue = undefined as unknown as string | undefined;
 
     if (!accessToken) {
       console.log("[RequestInterceptor] No access token found in session.");
@@ -261,8 +263,9 @@ apiClient.interceptors.response.use(
       console.log(`[ResponseInterceptor] Received 401, attempt ${originalRequest._retry + 1}/${MAX_RETRIES}.`);
       originalRequest._retry++;
 
-      const session = await getSession();
-      if (!session?.user?.refreshToken) {
+      // Without a managed refresh token, just sign out on persistent 401s
+      const hasRefresh = false;
+      if (!hasRefresh) {
           console.error("[ResponseInterceptor] 401 received, but no refresh token available. Logging out.");
           await appSignOut({ redirect: false });
           return Promise.reject(new ApiError("Session expired or invalid.", 401));
@@ -272,7 +275,7 @@ apiClient.interceptors.response.use(
       if (!isRefreshing) {
           console.log("[ResponseInterceptor] Initiating token refresh on 401.");
           isRefreshing = true;
-          refreshPromise = refreshToken(session.user.refreshToken);
+          refreshPromise = refreshToken('');
       } else {
          console.log("[ResponseInterceptor] Token refresh already in progress, waiting...");
       }

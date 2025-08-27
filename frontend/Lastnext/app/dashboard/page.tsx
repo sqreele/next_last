@@ -2,8 +2,7 @@
 import { Suspense } from 'react';
 import { fetchProperties, fetchJobs } from '@/app/lib/data.server';
 import DashboardClient from '@/app/dashboard/DashboardClient';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/next-auth-compat';
 import { redirect } from 'next/navigation';
 import { debugConfig, debugApiUrl } from '@/app/lib/debug-config';
 import { Job } from '@/app/lib/types';
@@ -16,7 +15,7 @@ export default async function DashboardPage() {
   debugApiUrl();
   
   // Fetch session on the server
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession();
   
   console.log('🔍 Dashboard Session Debug:', {
     hasSession: !!session,

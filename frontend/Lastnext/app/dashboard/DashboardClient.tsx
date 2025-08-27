@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import JobsContent from './JobsContent';
 import { Job, Property } from '@/app/lib/types';
-import { useSession } from 'next-auth/react';
+import { useSession } from '@/app/lib/next-auth-compat';
 import { Building, User, Calendar } from 'lucide-react';
 import { MobileTopBar } from '@/app/components/ui/mobile-nav';
 

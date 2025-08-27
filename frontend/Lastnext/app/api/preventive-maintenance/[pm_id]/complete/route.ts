@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/lib/auth';
+import { getServerSession } from '@/app/lib/next-auth-compat';
 import { API_CONFIG } from '@/app/lib/config';
 
 export async function POST(
@@ -9,7 +8,7 @@ export async function POST(
 ) {
   try {
     // Get session to verify authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     
     const { pm_id } = await params;
     

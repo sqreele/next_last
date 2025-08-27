@@ -1,6 +1,2 @@
-// app/api/auth/[...nextauth]/route.ts
-import NextAuth from "next-auth";
-import authOptions from "@/app/lib/auth"; // Default import
-
-const handler = NextAuth(authOptions);
-export { handler as GET, handler as POST };
+// Deprecated NextAuth route. Intentionally left to avoid 404s during migration.
+export const dynamic = 'force-dynamic';

@@ -1,8 +1,9 @@
 // app/lib/hooks/useAuth.ts
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ERROR_TYPES, ROUTES } from '../config';
+import { appSignOut } from '@/app/lib/logout';
 
 export function useAuth() {
   const { data: session, status } = useSession();
@@ -14,7 +15,7 @@ export function useAuth() {
       console.error('Session error detected:', session.error);
       
       // Force sign out and redirect to error page
-      signOut({ 
+      appSignOut({ 
         redirect: true, 
         callbackUrl: `${ROUTES.error}?error=${session.error}` 
       });

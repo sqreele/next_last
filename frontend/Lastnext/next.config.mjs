@@ -68,6 +68,21 @@ const nextConfig = {
     serverActions: {},
   },
   
+  async redirects() {
+    return [
+      {
+        source: '/dashboard/chartdashboad/',
+        destination: '/dashboard/chartdashboard/',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/chartdashboad',
+        destination: '/dashboard/chartdashboard/',
+        permanent: true,
+      },
+    ];
+  },
+  
   // Ensure webpack resolves the '@' alias to the project root
   webpack: (config, { isServer }) => {
     config.resolve = config.resolve || {};

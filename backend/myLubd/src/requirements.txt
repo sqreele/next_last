@@ -28,6 +28,7 @@ pyasn1==0.6.1
 pyasn1_modules==0.4.1
 Pygments==2.18.0
 PyJWT==2.9.0
+cryptography==42.0.5
 pyparsing==3.2.3
 PySocks==1.7.1
 pytz==2025.2

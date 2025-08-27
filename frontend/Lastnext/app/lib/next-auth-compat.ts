@@ -1,4 +1,3 @@
-export { getCompatServerSession as getServerSession } from '@/app/lib/auth0/session-compat';
 export { useCompatSession as useSession } from '@/app/lib/auth-client';
 
 export async function signIn() {

@@ -1,6 +1,6 @@
 // app/api/test-nextauth-config/route.ts
 import { NextResponse } from 'next/server';
-import { getServerSession } from '@/app/lib/next-auth-compat';
+import { getServerSession } from '@/app/lib/next-auth-compat.server';
 
 export async function GET() {
   try {

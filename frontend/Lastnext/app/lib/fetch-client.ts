@@ -1,5 +1,26 @@
 // lib/fetch-client.ts
-import { getCompatClientSession } from '@/app/lib/auth0/session-compat';
+import { cache } from 'react';
+import { cookies } from 'next/headers';
+import { API_CONFIG } from '@/app/lib/config';
+
+// Server-side helper to read session-compat endpoint
+const getCompatClientSession = cache(async () => {
+  try {
+    const cookieStoreOrPromise = cookies() as any;
+    const cookieStore = typeof cookieStoreOrPromise?.get === 'function' ? cookieStoreOrPromise : await cookieStoreOrPromise;
+    // Use internal call to our session-compat API route
+    const res = await fetch(`${API_CONFIG.baseUrl}/api/auth/session-compat`, {
+      headers: {
+        Cookie: cookieStore?.toString?.() || ''
+      },
+      cache: 'no-store'
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+});
 
 export async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const session = await getCompatClientSession();

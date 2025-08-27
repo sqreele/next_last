@@ -153,10 +153,22 @@ REST_FRAMEWORK = {
 }
 
 # Auth0 configuration (set via environment variables)
-AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')
+# Support multiple env var names and sensible fallbacks
 AUTH0_AUDIENCE = os.getenv('AUTH0_AUDIENCE')
-# Optional explicit issuer; if not set we will derive from domain
-AUTH0_ISSUER = os.getenv('AUTH0_ISSUER')
+
+_auth0_domain = os.getenv('AUTH0_DOMAIN')
+_auth0_issuer = os.getenv('AUTH0_ISSUER') or os.getenv('AUTH0_ISSUER_BASE_URL')
+
+if not _auth0_domain and _auth0_issuer:
+    try:
+        from urllib.parse import urlparse
+        _parsed = urlparse(_auth0_issuer)
+        _auth0_domain = (_parsed.netloc or _auth0_issuer).replace('https://', '').replace('http://', '').strip('/')
+    except Exception:
+        _auth0_domain = (_auth0_issuer or '').replace('https://', '').replace('http://', '').strip('/') or None
+
+AUTH0_DOMAIN = _auth0_domain
+AUTH0_ISSUER = _auth0_issuer or (f"https://{AUTH0_DOMAIN}/" if AUTH0_DOMAIN else None)
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),

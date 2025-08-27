@@ -1,4 +1,4 @@
-import { getSession as getAuth0Session } from '@auth0/nextjs-auth0';
+import { getSession as getAuth0Session, getAccessToken } from '@auth0/nextjs-auth0';
 import { cookies } from 'next/headers';
 import { API_CONFIG } from '@/app/lib/config';
 
@@ -42,7 +42,16 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
   const session = await getAuth0Session();
   if (!session?.user) return null;
 
-  const auth0AccessToken = (session as any).accessToken as string | undefined;
+  // Try to obtain a valid API access token from the Auth0 session
+  let auth0AccessToken = (session as any).accessToken as string | undefined;
+  if (!auth0AccessToken) {
+    try {
+      const tokenResult = await getAccessToken();
+      auth0AccessToken = tokenResult?.accessToken;
+    } catch {
+      // ignore and fallback to cookie approach below
+    }
+  }
 
   let accessToken = auth0AccessToken;
   let refreshToken = '';

@@ -71,6 +71,9 @@ services:
       - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
       - NEXTAUTH_URL=${NEXTAUTH_URL:-https://pcms.live}
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://pcms.live}
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+      - AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
+      - AUTH0_ISSUER=${AUTH0_ISSUER}
       - DEBUG=0
       - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1] pcms.live www.pcms.live django-backend
       - DJANGO_CORS_ORIGINS=https://pcms.live

@@ -136,11 +136,7 @@ apiClient.interceptors.request.use(
     
     // Skip token injection here - let components handle it
     console.log("[RequestInterceptor] Auth0 mode - skipping token injection in interceptor");
-    return config;
-
-    // Auth0 handles token refresh automatically, so we don't need complex token logic here
-    // Components should pass the Authorization header when making API calls
-
+    
     // Add CSRF token for non-GET requests (only when CSRF is enabled)
     if (config.method && typeof config.method === 'string' && !['GET', 'HEAD', 'OPTIONS'].includes(config.method.toUpperCase())) {
       try {
@@ -153,7 +149,7 @@ apiClient.interceptors.request.use(
         console.warn("[RequestInterceptor] Failed to add CSRF headers:", csrfError);
       }
     }
-
+    
     return config;
   },
   (error) => {

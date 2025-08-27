@@ -4,8 +4,14 @@ export const API_CONFIG = {
   baseUrl: (() => {
     // Server-side: use internal docker networking to avoid SSL issues
     if (typeof window === 'undefined') {
+      // Check if we're in a build context where backend might not be available
+      if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PRIVATE_API_URL) {
+        // Production build without explicit backend URL - use external URL
+        return "https://pcms.live";
+      }
+      
       // Use NEXT_PRIVATE_API_URL for server-side requests (Docker networking)
-      // Fallback to backend:8000 for production
+      // Fallback to backend:8000 for development Docker environment
       return process.env.NEXT_PRIVATE_API_URL || "http://backend:8000";
     }
     // Client-side: use public URL

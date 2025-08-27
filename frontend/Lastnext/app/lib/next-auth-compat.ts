@@ -2,13 +2,13 @@ export { useCompatSession as useSession } from '@/app/lib/auth-client';
 
 export async function signIn() {
   if (typeof window !== 'undefined') {
-    window.location.assign('/api/auth/login');
+    window.location.assign('/auth/login');
   }
 }
 
 export async function signOut() {
   if (typeof window !== 'undefined') {
-    window.location.assign('/api/auth/logout');
+    window.location.assign('/auth/logout');
   }
 }
 

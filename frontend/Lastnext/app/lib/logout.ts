@@ -30,7 +30,7 @@ function clearZustandStores() {
 }
 
 export async function appSignOut(options?: { callbackUrl?: string; redirect?: boolean }) {
-  const callbackUrl = options?.callbackUrl || ROUTES.signIn || "/api/auth/login";
+  const callbackUrl = options?.callbackUrl || ROUTES.signIn || "/auth/login";
   const redirect = options?.redirect ?? true;
 
   // Clear any custom tokens and persisted UI state
@@ -47,7 +47,7 @@ export async function appSignOut(options?: { callbackUrl?: string; redirect?: bo
 
   try {
     // Redirect to Auth0 logout which clears its cookies
-    const url = callbackUrl ? `/api/auth/logout?returnTo=${encodeURIComponent(callbackUrl)}` : '/api/auth/logout';
+    const url = callbackUrl ? `/auth/logout?returnTo=${encodeURIComponent(callbackUrl)}` : '/auth/logout';
     if (redirect !== false) {
       window.location.assign(url);
       return;

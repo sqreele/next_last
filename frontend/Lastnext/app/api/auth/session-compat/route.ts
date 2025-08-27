@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getCompatServerSession } from '@/app/lib/auth0/session-compat';
+import { getCompatServerSession } from '@/app/lib/auth0/server-session';
 
 export async function GET() {
   try {

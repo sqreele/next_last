@@ -1,12 +1,12 @@
 // app/providers.tsx
 'use client'
 
-import { UserProvider } from '@auth0/nextjs-auth0/client'
-
 export function AuthProvider({
   children
 }: {
   children: React.ReactNode
 }) {
-  return <UserProvider>{children}</UserProvider>
+  // In Auth0 v4, authentication is handled server-side
+  // No client-side provider is needed
+  return <>{children}</>;
 }

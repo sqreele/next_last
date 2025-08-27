@@ -162,9 +162,22 @@ export async function fetchJobsForProperty(
 }
 
 export async function fetchJobs(accessToken?: string): Promise<Job[]> {
-  const jobs = await fetchWithToken<Job[]>( '/api/v1/jobs/', accessToken);
-  const sanitizedJobs = sanitizeJobsData(jobs);
-  return fixJobsImageUrls(sanitizedJobs);
+  try {
+    const jobs = await fetchWithToken<Job[]>('/api/v1/jobs/', accessToken);
+    const sanitizedJobs = sanitizeJobsData(jobs);
+    return fixJobsImageUrls(sanitizedJobs);
+  } catch (error) {
+    console.error('Error fetching jobs:', error);
+    
+    // During build time or when backend is unavailable, return empty array
+    if (process.env.NODE_ENV === 'production' || error instanceof ServerApiError) {
+      console.warn('Returning empty jobs array due to fetch error');
+      return [];
+    }
+    
+    // Re-throw the error for development to help with debugging
+    throw error;
+  }
 }
 
 export async function fetchJob(jobId: string, accessToken?: string): Promise<Job | null> {

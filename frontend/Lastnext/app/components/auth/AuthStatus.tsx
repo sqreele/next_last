@@ -2,7 +2,7 @@
 'use client';
 
 import { useAuth } from '@/app/lib/hooks/useAuth';
-import { signOut } from 'next-auth/react';
+import { appSignOut } from '@/app/lib/logout';
 import { ROUTES } from '@/app/lib/config';
 
 interface AuthStatusProps {
@@ -37,7 +37,7 @@ export default function AuthStatus({
         </div>
         <span className="text-sm text-red-600">Authentication error</span>
         <button
-          onClick={() => signOut({ callbackUrl: ROUTES.signIn })}
+          onClick={() => appSignOut({ callbackUrl: ROUTES.signIn })}
           className="text-xs text-indigo-600 hover:text-indigo-500 underline"
         >
           Sign in again
@@ -86,7 +86,7 @@ export default function AuthStatus({
       
       {showLogoutButton && (
         <button
-          onClick={() => signOut({ callbackUrl: ROUTES.signIn })}
+          onClick={() => appSignOut({ callbackUrl: ROUTES.signIn })}
           className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
         >
           Sign out

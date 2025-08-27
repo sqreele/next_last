@@ -23,7 +23,8 @@ import {
 import _ from "lodash";
 import { Job, JobStatus, STATUS_COLORS } from "@/app/lib/types";
 import { useProperty } from "@/app/lib/PropertyContext";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { appSignOut } from "@/app/lib/logout";
 import { Session } from "next-auth";
 import { fetchJobs } from "@/app/lib/data";
 import { Button } from "@/app/components/ui/button";
@@ -59,7 +60,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       return true;
     } catch (err) {
       setError("Session expired. Please log in again.");
-      signOut();
+      appSignOut({ redirect: true });
       return false;
     }
   };

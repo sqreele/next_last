@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import { appSignOut } from '@/app/lib/logout';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -115,7 +116,7 @@ const User: React.FC = () => {
 
         <DropdownMenuItem 
           className="rounded-md cursor-pointer text-red-500 hover:bg-red-50"
-          onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+          onClick={() => appSignOut({ callbackUrl: '/auth/signin' })}
         >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Logout</span>

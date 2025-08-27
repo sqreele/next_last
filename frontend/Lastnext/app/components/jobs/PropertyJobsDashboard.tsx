@@ -78,16 +78,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         throw new Error("Invalid jobs data format");
       }
 
-      const currentUserId = session.user.id;
-      const currentUsername = session.user.username;
-
-      // Filter only once using simple conditions
-      const userJobs = jobsData.filter((job) => {
-        const jobUser = String(job.user);
-        return jobUser === String(currentUserId) || (currentUsername && jobUser === currentUsername);
-      });
-
-      setAllJobs(userJobs);
+      // For analytics, include all jobs (do not restrict to current user)
+      setAllJobs(jobsData);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to fetch jobs";
       setError(errorMessage);
@@ -112,7 +104,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // Filter jobs by property with optimized logic
   useEffect(() => {
     const user = session?.user;
-    if (!user?.properties?.length || !allJobs.length || !effectiveProperty) {
+    if (!allJobs.length || !effectiveProperty) {
       setFilteredJobs([]);
       return;
     }

@@ -1,4 +1,17 @@
-import { handleAuth } from '@auth0/nextjs-auth0';
+import { handleAuth, handleLogin, handleCallback, handleLogout, handleProfile } from '@auth0/nextjs-auth0';
 
-export const GET = handleAuth();
-export const POST = handleAuth();
+const audience = process.env.AUTH0_AUDIENCE;
+const scope = 'openid profile email offline_access';
+
+export const GET = handleAuth({
+  login: handleLogin({
+    authorizationParams: audience
+      ? { audience, scope }
+      : { scope },
+  }),
+  callback: handleCallback(),
+  logout: handleLogout(),
+  profile: handleProfile(),
+});
+
+export const POST = GET;

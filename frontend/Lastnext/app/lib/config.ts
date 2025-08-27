@@ -58,8 +58,8 @@ export const ERROR_TYPES = {
 } as const;
 
 export const ROUTES = {
-  signIn: '/api/auth/login',
-  signOut: '/auth/signout',
+  signIn: '/auth/login',
+  signOut: '/auth/logout',
   error: '/auth/error',
   dashboard: '/dashboard',
   register: '/auth/register',

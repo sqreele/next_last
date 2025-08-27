@@ -36,7 +36,7 @@ export function useZustandStores() {
 
       // Fetch initial data
       Promise.all([
-        topicService.getTopics().then(response => {
+        topicService.getTopics(session.user.accessToken).then(response => {
           if (response.success && response.data) {
             pmStore.setTopics(response.data);
           }

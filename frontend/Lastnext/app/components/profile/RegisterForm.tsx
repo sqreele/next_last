@@ -54,7 +54,7 @@ export default function RegisterForm() {
       if (response.data.access) {
         localStorage.setItem('accessToken', response.data.access);
         localStorage.setItem('refreshToken', response.data.refresh);
-        router.push('/api/auth/login');
+        router.push('/auth/login');
       }
      } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -105,7 +105,7 @@ export default function RegisterForm() {
       </button>
 
       <div className="text-center mt-4">
-        <Link href="/api/auth/login" className="text-sm text-indigo-600 hover:text-indigo-500">
+        <Link href="/auth/login" className="text-sm text-indigo-600 hover:text-indigo-500">
           Already have an account? Sign in
         </Link>
       </div>

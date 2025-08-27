@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useSession } from '@/app/lib/next-auth-compat';
+import { useClientAuth0 } from '../../lib/auth0';
 import { Formik, Form, Field, FormikErrors, useFormikContext, FormikHelpers } from 'formik';
 import Link from 'next/link';
 import {
@@ -57,7 +57,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   machineId,
 }) => {
   const { toast } = useToast();
-  const { data: session } = useSession();
+  const { accessToken, user } = useClientAuth0();
   const {
     userProperties,
     selectedProperty: contextSelectedProperty,
@@ -397,7 +397,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     setLoadingTopics(true);
     try {
       const topicService = new TopicService();
-      const response = await topicService.getTopics();
+      // Get access token from Auth0 hook
+      const response = await topicService.getTopics(accessToken || undefined);
       if (response.success && response.data) {
         // Map the topics to ensure description is always a string
         const mappedTopics: Topic[] = response.data.map(topic => ({
@@ -415,7 +416,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     } finally {
       setLoadingTopics(false);
     }
-  }, []);
+  }, [accessToken]);
 
   const fetchAvailableMachines = useCallback(async (propertyId: string | null) => {
     if (!propertyId) {

@@ -130,92 +130,19 @@ apiClient.interceptors.request.use(
         return config;
     }
 
-    // Access token retrieval will be handled by the backend route wrappers or client contexts.
-    // For axios interceptors in client, try to read from a lightweight endpoint or window state is complex.
-    // Keep this logic minimal by skipping token injection here; components should pass headers explicitly.
-    const accessToken = undefined as unknown as string | undefined;
-    const refreshTokenValue = undefined as unknown as string | undefined;
+    // For Auth0, we don't need to handle token refresh in the interceptor
+    // Auth0 handles this automatically. We just need to get the current access token.
+    // The token will be injected by the components using the useUser hook.
+    
+    // Skip token injection here - let components handle it
+    console.log("[RequestInterceptor] Auth0 mode - skipping token injection in interceptor");
+    return config;
 
-    if (!accessToken) {
-      console.log("[RequestInterceptor] No access token found in session.");
-      return config; // Allow request without auth for now
-    }
-
-    try {
-      const decoded = jwtDecode<JwtToken>(accessToken);
-      const currentTime = Math.floor(Date.now() / 1000);
-
-      // Check if token is expired (add a small buffer, e.g., 60 seconds)
-      const buffer = 60;
-      if (decoded.exp && decoded.exp < currentTime + buffer) {
-        console.log("[RequestInterceptor] Access token expired or needs refresh.");
-
-        if (!refreshTokenValue) {
-            console.error("[RequestInterceptor] Access token expired, but no refresh token available. Logging out.");
-            await appSignOut({ redirect: false });
-            throw new ApiError("Session expired, no refresh token.", 401);
-        }
-
-        // If a refresh is already happening, queue this request
-        if (isRefreshing && refreshPromise) {
-          console.log("[RequestInterceptor] Token refresh in progress, queueing request.");
-          return new Promise<InternalAxiosRequestConfig>((resolve) => {
-            pendingRequests.push((newToken) => {
-              if (newToken) {
-                console.log("[RequestInterceptor] Applying refreshed token to queued request.");
-                config.headers.Authorization = `Bearer ${newToken}`;
-              } else {
-                console.warn("[RequestInterceptor] No new token after refresh for queued request.");
-                delete config.headers.Authorization;
-              }
-              resolve(config);
-            });
-          });
-        }
-
-        // Start the token refresh process
-        console.log("[RequestInterceptor] Initiating token refresh.");
-        isRefreshing = true;
-        refreshPromise = refreshToken(refreshTokenValue);
-
-        try {
-            const newToken = await refreshPromise;
-            isRefreshing = false;
-            refreshPromise = null;
-
-            processPendingRequests(newToken);
-
-            if (newToken) {
-                console.log("[RequestInterceptor] Applying newly refreshed token to current request.");
-                config.headers.Authorization = `Bearer ${newToken}`;
-            } else {
-                console.error("[RequestInterceptor] Token refresh failed, request might fail or proceed without auth.");
-                delete config.headers.Authorization;
-            }
-        } catch (refreshError) {
-            console.error("[RequestInterceptor] Catch block for refreshPromise error:", refreshError);
-            isRefreshing = false;
-            refreshPromise = null;
-            processPendingRequests(null);
-            delete config.headers.Authorization;
-            throw new ApiError("Session refresh failed.", 401);
-        }
-
-        return config;
-      }
-
-      // Token is valid, just add it
-      config.headers.Authorization = `Bearer ${accessToken}`;
-
-    } catch (e) {
-      console.error("[RequestInterceptor] Error decoding token or in interceptor logic:", e);
-      if (accessToken) {
-         config.headers.Authorization = `Bearer ${accessToken}`;
-      }
-    }
+    // Auth0 handles token refresh automatically, so we don't need complex token logic here
+    // Components should pass the Authorization header when making API calls
 
     // Add CSRF token for non-GET requests (only when CSRF is enabled)
-    if (config.method && !['GET', 'HEAD', 'OPTIONS'].includes(config.method.toUpperCase())) {
+    if (config.method && typeof config.method === 'string' && !['GET', 'HEAD', 'OPTIONS'].includes(config.method.toUpperCase())) {
       try {
         // Temporarily disable CSRF token fetching to resolve the error
         // TODO: Re-enable when CSRF is properly configured
@@ -258,58 +185,22 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     }
     
-    // Check if it's a 401 error and not exceeding retry limit
+    // Check if it's a 401 error - for Auth0, this usually means the token is expired or invalid
     if (error.response?.status === 401 && originalRequest._retry < MAX_RETRIES) {
       console.log(`[ResponseInterceptor] Received 401, attempt ${originalRequest._retry + 1}/${MAX_RETRIES}.`);
       originalRequest._retry++;
 
-      // Without a managed refresh token, just sign out on persistent 401s
-      const hasRefresh = false;
-      if (!hasRefresh) {
-          console.error("[ResponseInterceptor] 401 received, but no refresh token available. Logging out.");
-          await appSignOut({ redirect: false });
-          return Promise.reject(new ApiError("Session expired or invalid.", 401));
+      // For Auth0, we don't handle token refresh manually
+      // Instead, redirect to login to get a fresh token
+      if (originalRequest._retry >= MAX_RETRIES) {
+          console.error("[ResponseInterceptor] 401 received multiple times. Redirecting to login.");
+          // Use Auth0 logout to clear session and redirect to login
+          window.location.href = '/api/auth/logout?returnTo=' + encodeURIComponent(window.location.pathname);
+          return Promise.reject(new ApiError("Authentication required. Please log in again.", 401));
       }
 
-      // If not already refreshing, start the refresh
-      if (!isRefreshing) {
-          console.log("[ResponseInterceptor] Initiating token refresh on 401.");
-          isRefreshing = true;
-          refreshPromise = refreshToken('');
-      } else {
-         console.log("[ResponseInterceptor] Token refresh already in progress, waiting...");
-      }
-
-      try {
-          const newToken = await refreshPromise;
-          isRefreshing = false;
-          refreshPromise = null;
-          processPendingRequests(newToken);
-
-          if (!newToken) {
-              console.error("[ResponseInterceptor] Token refresh failed after 401. Cannot retry request.");
-              await appSignOut({ redirect: false });
-              return Promise.reject(new ApiError("Session refresh failed.", 401));
-          }
-
-          // Update the header of the original request config for retry
-          if (originalRequest.headers) {
-              console.log("[ResponseInterceptor] Retrying original request with new token.");
-              originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          }
-
-          // Retry the request using the modified original config
-          return apiClient(originalRequest);
-
-      } catch (refreshError) {
-          console.error("[ResponseInterceptor] Error during token refresh attempt after 401:", refreshError);
-          isRefreshing = false;
-          refreshPromise = null;
-          processPendingRequests(null);
-          // Logout if refresh fails definitively
-          await appSignOut({ redirect: false });
-          return Promise.reject(new ApiError("Session refresh failed.", 401));
-      }
+      // For now, just reject the request - Auth0 will handle the redirect
+      return Promise.reject(new ApiError("Authentication failed. Please log in again.", 401));
     }
     
     // Network errors - retry with backoff for non-401 responses
@@ -388,6 +279,71 @@ export const handleApiError = (error: unknown): ApiError => {
  */
 export async function fetchData<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
   try {
+    // Check if we're in development mode and if this is a mock token request
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const authHeader = config?.headers?.['Authorization'] || config?.headers?.['authorization'];
+    const isMockToken = authHeader === 'Bearer dev-access-token';
+    
+    if (isDevelopment && isMockToken) {
+      console.log('🔧 Development mode: Using mock data instead of API calls for:', url);
+      
+      // Return mock data based on the endpoint
+      if (url.includes('/api/v1/jobs/')) {
+        return [
+          {
+            job_id: 'job-001',
+            title: 'Sample Job',
+            description: 'This is a sample job for development',
+            status: 'pending',
+            priority: 'medium',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            user: 'developer',
+            property_id: 'prop-001'
+          }
+        ] as unknown as T;
+      }
+      
+      if (url.includes('/api/v1/properties/')) {
+        return [
+          {
+            id: 1,
+            property_id: 'prop-001',
+            name: 'Development Property',
+            address: '123 Dev St, Dev City',
+            property_type: 'residential',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ] as unknown as T;
+      }
+      
+      if (url.includes('/topics/')) {
+        return [
+          { id: 1, title: 'General Maintenance', description: 'General maintenance procedures' },
+          { id: 2, title: 'Safety Checks', description: 'Safety and security procedures' },
+          { id: 3, title: 'Equipment Inspection', description: 'Equipment inspection procedures' }
+        ] as unknown as T;
+      }
+      
+      if (url.includes('/api/v1/rooms/')) {
+        return [
+          {
+            id: 1,
+            room_id: 'room-001',
+            name: 'Living Room',
+            property_id: 'prop-001',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ] as unknown as T;
+      }
+      
+      // Default mock response for other endpoints
+      return [] as unknown as T;
+    }
+    
+    // Production mode: Make real API call
     const response = await apiClient.get<T>(url, config);
     console.log(`[fetchData] Response for ${url}: Status=${response.status}`);
     return response.data;

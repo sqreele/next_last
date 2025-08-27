@@ -21,6 +21,48 @@ export async function fetchWithToken<T>(
   method: string = "GET",
   body?: any
 ): Promise<T> {
+  // Check if we're in development mode with mock tokens
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const isMockToken = token === 'dev-access-token';
+  
+  if (isDevelopment && isMockToken) {
+    console.log('🔧 Development mode: Using mock data instead of API calls for:', url);
+    
+    // Return mock data based on the endpoint
+    if (url.includes('/api/v1/properties/')) {
+      return [
+        {
+          id: 1,
+          property_id: 'prop-001',
+          name: 'Development Property',
+          address: '123 Dev St, Dev City',
+          property_type: 'residential',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ] as unknown as T;
+    }
+    
+    if (url.includes('/api/v1/jobs/')) {
+      return [
+        {
+          id: 1,
+          title: 'Sample Job',
+          description: 'This is a sample job for development',
+          status: 'pending',
+          priority: 'medium',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          user: 'developer',
+          property: 'prop-001'
+        }
+      ] as unknown as T;
+    }
+    
+    // Default mock response for other endpoints
+    return [] as unknown as T;
+  }
+
   const headers: HeadersInit = {
     "Content-Type": "application/json",
   };

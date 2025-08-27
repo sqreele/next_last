@@ -25,7 +25,7 @@ export default function Error({
       error.message.includes('session');
       
     if (isAuthError) {
-      router.push('/api/auth/login');
+      router.push('/auth/login');
     }
   }, [error, router]);
 

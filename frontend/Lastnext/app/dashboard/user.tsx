@@ -116,7 +116,7 @@ const User: React.FC = () => {
 
         <DropdownMenuItem 
           className="rounded-md cursor-pointer text-red-500 hover:bg-red-50"
-          onClick={() => appSignOut({ callbackUrl: '/api/auth/login' })}
+                      onClick={() => appSignOut({ callbackUrl: '/auth/login' })}
         >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Logout</span>

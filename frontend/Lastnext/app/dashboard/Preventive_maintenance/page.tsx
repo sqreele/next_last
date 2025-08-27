@@ -24,7 +24,7 @@ export default function PreventiveMaintenancePage() {
     
     // If not authenticated, redirect to Auth0 login
     if (status === 'unauthenticated') {
-      redirect('/api/auth/login');
+      redirect('/auth/login');
     }
   }, [status]);
 

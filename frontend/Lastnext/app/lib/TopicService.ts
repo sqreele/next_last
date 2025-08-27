@@ -12,15 +12,24 @@ export interface Topic {
 export default class TopicService {
   private baseUrl: string = '/api/v1/topics/';
 
-  async getTopics(): Promise<ServiceResponse<Topic[]>> {
+  async getTopics(accessToken?: string): Promise<ServiceResponse<Topic[]>> {
     try {
       console.log('Fetching topics');
-      const response = await apiClient.get<Topic[]>(this.baseUrl);
+      
+      const headers: Record<string, string> = {};
+      if (accessToken) {
+        headers.Authorization = `Bearer ${accessToken}`;
+        console.log('✅ Using access token for topics request');
+      } else {
+        console.warn('⚠️ No access token provided for topics request');
+      }
+      
+      const response = await apiClient.get<Topic[]>(this.baseUrl, { headers });
       console.log('Topics received:', response.data);
       return { success: true, data: response.data };
     } catch (error: any) {
       console.error('Service error fetching topics:', error);
-      throw handleApiError(error); // Removed the second argument
+      throw handleApiError(error);
     }
   }
 }

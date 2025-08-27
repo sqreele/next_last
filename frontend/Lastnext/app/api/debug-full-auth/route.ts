@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/app/lib/next-auth-compat';
+import { getServerSession } from '@/app/lib/next-auth-compat.server';
 import { getErrorMessage } from '@/app/lib/utils/error-utils';
 
 interface DjangoTestResult {

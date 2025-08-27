@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/app/lib/next-auth-compat';
+import { getServerSession } from '@/app/lib/next-auth-compat.server';
 import { API_CONFIG } from '@/app/lib/config';
 
 export async function GET(request: NextRequest) {

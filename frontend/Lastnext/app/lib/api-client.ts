@@ -2,7 +2,8 @@
 "use client";
 
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios";
-import { getSession, signOut } from "next-auth/react";
+import { getSession } from "next-auth/react";
+import { appSignOut } from "@/app/lib/logout";
 import { jwtDecode } from "jwt-decode";
 import { useState,useCallback} from 'react'
 import { getCsrfHeaders } from './csrf';
@@ -100,7 +101,7 @@ async function refreshToken(refreshTokenValue: string): Promise<string | null> {
        // If refresh fails (e.g., 401 Unauthorized), log out user
        if (response.status === 401) {
             console.error("[Auth] Refresh token failed or expired. Logging out.");
-            await signOut({ redirect: false });
+            await appSignOut({ redirect: false });
        }
        throw new ApiError(`Token refresh failed with status: ${response.status}`, response.status);
     }
@@ -149,7 +150,7 @@ apiClient.interceptors.request.use(
 
         if (!refreshTokenValue) {
             console.error("[RequestInterceptor] Access token expired, but no refresh token available. Logging out.");
-            await signOut({ redirect: false });
+            await appSignOut({ redirect: false });
             throw new ApiError("Session expired, no refresh token.", 401);
         }
 
@@ -263,7 +264,7 @@ apiClient.interceptors.response.use(
       const session = await getSession();
       if (!session?.user?.refreshToken) {
           console.error("[ResponseInterceptor] 401 received, but no refresh token available. Logging out.");
-          await signOut({ redirect: false });
+          await appSignOut({ redirect: false });
           return Promise.reject(new ApiError("Session expired or invalid.", 401));
       }
 
@@ -284,7 +285,7 @@ apiClient.interceptors.response.use(
 
           if (!newToken) {
               console.error("[ResponseInterceptor] Token refresh failed after 401. Cannot retry request.");
-              await signOut({ redirect: false });
+              await appSignOut({ redirect: false });
               return Promise.reject(new ApiError("Session refresh failed.", 401));
           }
 
@@ -303,7 +304,7 @@ apiClient.interceptors.response.use(
           refreshPromise = null;
           processPendingRequests(null);
           // Logout if refresh fails definitively
-          await signOut({ redirect: false });
+          await appSignOut({ redirect: false });
           return Promise.reject(new ApiError("Session refresh failed.", 401));
       }
     }

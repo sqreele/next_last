@@ -23,9 +23,10 @@ interface JobCardProps {
   job: Job;
   properties?: Property[];
   viewMode?: 'grid' | 'list';
+  onJobUpdated?: (updatedJob: Job) => void;
 }
 
-export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProps) {
+export function JobCard({ job, properties = [], viewMode = 'grid', onJobUpdated }: JobCardProps) {
   const router = useRouter();
   const { selectedProperty } = useProperty();
   const [selectedImage, setSelectedImage] = useState<number>(0);
@@ -151,7 +152,7 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
   };
 
   const handleStatusUpdateComplete = useCallback(() => {
-    window.location.reload();
+    // no-op; we now rely on onJobUpdated with data from modal
   }, []);
 
   const handleCardClick = useCallback((e: MouseEvent) => {
@@ -351,6 +352,9 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
           <UpdateStatusModal 
             job={job}
             onComplete={handleStatusUpdateComplete}
+            onUpdated={(updated) => {
+              if (onJobUpdated) onJobUpdated(updated);
+            }}
           >
             <Button 
               variant="outline" 

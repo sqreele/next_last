@@ -24,10 +24,11 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 interface UpdateStatusModalProps {
   job: Job;
   onComplete?: () => void;
+  onUpdated?: (updatedJob: Job) => void;
   children?: ReactNode;
 }
 
-export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusModalProps) {
+export function UpdateStatusModal({ job, onComplete, onUpdated, children }: UpdateStatusModalProps) {
   const { data: session } = useSession();
   const [selectedStatus, setSelectedStatus] = useState<JobStatus>(job.status);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -55,7 +56,7 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
       }
 
       await delay(1000);
-      await fetchWithToken<Job>(
+      const updated = await fetchWithToken<Job>(
         `${API_BASE_URL}/api/v1/jobs/${job.job_id}/`,
         accessToken,
         'PATCH',
@@ -64,6 +65,10 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
 
       await delay(300);
       setOpen(false);
+
+      if (onUpdated && updated) {
+        onUpdated(updated);
+      }
 
       if (onComplete) {
         onComplete();

@@ -22,6 +22,7 @@ interface JobsContentProps {
   properties: Property[];
   selectedRoom?: string | null;
   onRoomFilter?: (roomId: string | null) => void;
+  onJobUpdated?: (updatedJob: Job) => void;
 }
 
 // Update the Job type or extend it here if necessary
@@ -40,7 +41,7 @@ const tabConfig = [
   { value: "preventive_maintenance", label: "Maintenance", icon: Wrench, color: "bg-purple-100 text-purple-700" },
 ] as const;
 
-export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilter }: JobsContentProps) {
+export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilter, onJobUpdated }: JobsContentProps) {
   const [currentTab, setCurrentTab] = useState<TabValue>("all");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -182,6 +183,7 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
               selectedRoom={selectedRoom}
               onRoomFilter={onRoomFilter}
               viewMode={viewMode}
+              onJobUpdated={onJobUpdated}
             />
           </TabsContent>
         ))}

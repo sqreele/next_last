@@ -22,9 +22,10 @@ interface JobListProps {
   selectedRoom?: string | null;
   onRoomFilter?: (roomId: string | null) => void;
   viewMode?: 'grid' | 'list';
+  onJobUpdated?: (updatedJob: Job) => void;
 }
 
-export default function JobList({ jobs, filter, properties, selectedRoom, onRoomFilter, viewMode = 'grid' }: JobListProps) {
+export default function JobList({ jobs, filter, properties, selectedRoom, onRoomFilter, viewMode = 'grid', onJobUpdated }: JobListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("Newest first");
@@ -336,7 +337,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
             {currentJobs.map((job) => (
               <div key={job.job_id} className={viewMode === 'list' ? "h-full w-full" : "h-full"}>
                 <div className="h-full touch-action-manipulation">
-                  <JobCard job={job} properties={properties} viewMode={viewMode} />
+                  <JobCard job={job} properties={properties} viewMode={viewMode} onJobUpdated={onJobUpdated} />
                 </div>
               </div>
             ))}

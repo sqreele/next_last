@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import JobsContent from './JobsContent';
 import { Job, Property } from '@/app/lib/types';
 import { useSession } from 'next-auth/react';
@@ -15,16 +15,24 @@ interface DashboardClientProps {
 export default function DashboardClient({ jobs, properties }: DashboardClientProps) {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const { data: session } = useSession();
+  const [localJobs, setLocalJobs] = useState<Job[]>(jobs);
 
   const handleRoomFilter = (roomId: string | null) => {
     setSelectedRoom(roomId);
   };
 
-  // Calculate job statistics
-  const totalJobs = jobs.length;
-  const pendingJobs = jobs.filter(job => job.status === 'pending').length;
-  const inProgressJobs = jobs.filter(job => job.status === 'in_progress').length;
-  const completedJobs = jobs.filter(job => job.status === 'completed').length;
+  const handleJobUpdated = useCallback((updatedJob: Job) => {
+    setLocalJobs(prev => prev.map(j => String(j.job_id) === String(updatedJob.job_id) ? updatedJob : j));
+  }, []);
+
+  // Calculate job statistics from localJobs
+  const { totalJobs, pendingJobs, inProgressJobs, completedJobs } = useMemo(() => {
+    const total = localJobs.length;
+    const pending = localJobs.filter(job => job.status === 'pending').length;
+    const inProgress = localJobs.filter(job => job.status === 'in_progress').length;
+    const completed = localJobs.filter(job => job.status === 'completed').length;
+    return { totalJobs: total, pendingJobs: pending, inProgressJobs: inProgress, completedJobs: completed };
+  }, [localJobs]);
 
   return (
     <div className="space-y-6">
@@ -108,10 +116,11 @@ export default function DashboardClient({ jobs, properties }: DashboardClientPro
       {/* Jobs Content */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <JobsContent 
-          jobs={jobs} 
+          jobs={localJobs} 
           properties={properties}
           selectedRoom={selectedRoom}
           onRoomFilter={handleRoomFilter}
+          onJobUpdated={handleJobUpdated}
         />
       </div>
       

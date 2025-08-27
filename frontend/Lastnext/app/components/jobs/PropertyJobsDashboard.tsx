@@ -37,11 +37,7 @@ interface PropertyJobsDashboardProps {
 
 const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps) => {
   const { selectedProperty, userProperties } = useProperty();
-  const { data: session, status, update } = useSession() as {
-    data: Session | null;
-    status: "authenticated" | "unauthenticated" | "loading";
-    update: () => Promise<Session | null>;
-  };
+  const { data: session, status, refresh } = useSession();
   const { jobCreationCount } = useJob();
   const [allJobs, setAllJobs] = useState<Job[]>(initialJobs);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>(initialJobs);
@@ -56,7 +52,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // Simplified session refresh
   const refreshSession = async () => {
     try {
-      await update();
+      await refresh();
       return true;
     } catch (err) {
       setError("Session expired. Please log in again.");

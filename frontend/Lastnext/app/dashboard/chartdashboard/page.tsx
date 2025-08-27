@@ -2,7 +2,7 @@
 import { Suspense } from 'react';
 import { fetchJobs } from '@/app/lib/data.server';
 import PropertyJobsDashboard from '@/app/components/jobs/PropertyJobsDashboard';
-import { getServerSession } from '@/app/lib/next-auth-compat';
+import { getServerSession } from '@/app/lib/next-auth-compat.server';
 import ErrorBoundary from '@/app/components/ErrorBoundary';
 
 export default async function ChartDashboardPage() {

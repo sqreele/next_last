@@ -138,6 +138,7 @@ DATABASES = {
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'myappLubd.auth.Auth0JWTAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
@@ -150,6 +151,12 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.MultiPartParser',
     ],
 }
+
+# Auth0 configuration (set via environment variables)
+AUTH0_DOMAIN = os.getenv('AUTH0_DOMAIN')
+AUTH0_AUDIENCE = os.getenv('AUTH0_AUDIENCE')
+# Optional explicit issuer; if not set we will derive from domain
+AUTH0_ISSUER = os.getenv('AUTH0_ISSUER')
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),

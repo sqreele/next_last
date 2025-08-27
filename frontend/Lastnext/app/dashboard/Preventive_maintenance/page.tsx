@@ -22,9 +22,9 @@ export default function PreventiveMaintenancePage() {
   useEffect(() => {
     setIsClient(true);
     
-    // If not authenticated, redirect to login
+    // If not authenticated, redirect to Auth0 login
     if (status === 'unauthenticated') {
-      redirect('/auth/signin');
+      redirect('/api/auth/login');
     }
   }, [status]);
 

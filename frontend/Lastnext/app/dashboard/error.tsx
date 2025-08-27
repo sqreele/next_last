@@ -25,7 +25,7 @@ export default function Error({
       error.message.includes('session');
       
     if (isAuthError) {
-      router.push('/auth/signin?error=session_expired');
+      router.push('/api/auth/login');
     }
   }, [error, router]);
 

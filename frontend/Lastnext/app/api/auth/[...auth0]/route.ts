@@ -17,9 +17,8 @@ export async function GET(request: NextRequest) {
 
     switch (action) {
       case 'login':
-        // Start interactive login
-        const loginUrl = await auth0.startInteractiveLogin({});
-        return NextResponse.redirect(loginUrl.toString());
+        // Start interactive login - return the response directly
+        return await auth0.startInteractiveLogin({});
       
       case 'callback':
         // Handle Auth0 callback - this would need to be implemented based on the callback flow

@@ -40,7 +40,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://mylubd_user:Sqreele1234@db:5432/mylubd_db?schema=public}
     volumes:
       - ./frontend/Lastnext/prisma:/app/prisma
     healthcheck:
@@ -76,6 +76,11 @@ services:
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1 [::1] ${DOMAIN} www.${DOMAIN} django-backend
       DJANGO_CORS_ORIGINS: https://${DOMAIN}
       SQL_ENGINE: django.db.backends.postgresql
+      SQL_DATABASE: ${SQL_DATABASE:-mylubd_db}
+      SQL_USER: ${SQL_USER:-mylubd_user}
+      SQL_PASSWORD: ${SQL_PASSWORD:-Sqreele1234}
+      SQL_HOST: ${SQL_HOST:-db}
+      SQL_PORT: ${SQL_PORT:-5432}
     healthcheck:
       test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/api/v1/health/'); response = conn.getresponse(); exit(0 if response.status == 200 else 1)"]
       interval: 30s
@@ -96,6 +101,10 @@ services:
       - postgres_data:/var/lib/postgresql/data/
     env_file:
       - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mylubd_db}
+      POSTGRES_USER: ${POSTGRES_USER:-mylubd_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Sqreele1234}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s

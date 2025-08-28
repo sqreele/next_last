@@ -191,7 +191,7 @@ apiClient.interceptors.response.use(
       if (originalRequest._retry >= MAX_RETRIES) {
           console.error("[ResponseInterceptor] 401 received multiple times. Redirecting to login.");
           // Use Auth0 logout to clear session and redirect to login
-          window.location.href = '/api/auth/logout?returnTo=' + encodeURIComponent(window.location.pathname);
+          window.location.href = '/auth/logout?returnTo=' + encodeURIComponent(window.location.pathname);
           return Promise.reject(new ApiError("Authentication required. Please log in again.", 401));
       }
 

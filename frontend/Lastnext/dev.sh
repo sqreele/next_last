@@ -7,7 +7,7 @@ echo "🚀 Setting up development environment..."
 # Auth0 local defaults - Updated for v4
 export AUTH0_SECRET=${AUTH0_SECRET:-"dev-secret-change-me"}
 export APP_BASE_URL=${APP_BASE_URL:-"http://localhost:3000"}
-export AUTH0_DOMAIN=${AUTH0_DOMAIN:-"https://pmcs.au.auth0.com"}
+export AUTH0_DOMAIN=${AUTH0_DOMAIN:-"pmcs.au.auth0.com"}
 export AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID:-"rrUSfSSyaHhy1eurtT898wMBDBpb6AI0"}
 export AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:-"iByRBGqhFv50BrbO3ePU91g1wV-EdpDezB3vOUO99UTC30ADQF7hZx4_perCE2c2"}
 export AUTH0_AUDIENCE=${AUTH0_AUDIENCE:-"http://localhost:8000"}

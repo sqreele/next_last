@@ -10,6 +10,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Safety guard: if Auth0 is not fully configured, bypass Auth0 middleware
+  const hasAuth0Config = Boolean(
+    process.env.AUTH0_DOMAIN &&
+    process.env.AUTH0_CLIENT_ID &&
+    (process.env.AUTH0_CLIENT_SECRET || process.env.AUTH0_ISSUER_BASE_URL) &&
+    process.env.AUTH0_SECRET
+  );
+
+  if (!hasAuth0Config) {
+    // Avoid crashing with missing secrets ("ikm" length) and allow app to load
+    return NextResponse.next();
+  }
+
   return await auth0.middleware(request);
 }
 

@@ -11,8 +11,8 @@ export default function ProfileRedirect() {
   useEffect(() => {
     if (status === 'authenticated' && session?.user) {
       // User is logged in, redirect to profile
-      console.log('🔍 ProfileRedirect: User authenticated, redirecting to /dashboard/profile');
-      router.push('/dashboard/profile');
+      console.log('🔍 ProfileRedirect: User authenticated, redirecting to /profile');
+      router.push('/profile');
     } else if (status === 'unauthenticated') {
       // User is not logged in, redirect to login
       console.log('🔍 ProfileRedirect: User not authenticated, redirecting to /auth/login');

@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
           // For Auth0 v4, construct the login URL manually
           const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
           const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
-          const returnTo = `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/dashboard/profile`;
+          const returnTo = `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/profile`;
           const scope = 'openid profile email';
           
           const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent('https://pcms.live/auth/callback')}&scope=${encodeURIComponent(scope)}`;
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
           // For Auth0 callback, we need to handle the authorization code
           // This is typically done by the Auth0 SDK automatically
           // For now, redirect to profile page and let the client handle the session
-          return NextResponse.redirect('https://pcms.live/dashboard/profile');
+          return NextResponse.redirect('https://pcms.live/profile');
         } catch (callbackError) {
           console.error('Auth0 callback error:', callbackError);
           return NextResponse.redirect('https://pcms.live/login?error=callback_failed');

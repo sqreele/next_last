@@ -15,7 +15,16 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
       profile_image: (session.user.picture as string | null) ?? null,
       positions: 'User',
       properties: [],
-      accessToken: (session as any).accessToken || '',
+      // Ensure access token is present; if not in session, retrieve it
+      accessToken: (session as any).accessToken || await (async () => {
+        try {
+          const token = await auth0.getAccessToken();
+          return token || '';
+        } catch (e) {
+          console.error('❌ Failed to fetch Auth0 access token:', e);
+          return '';
+        }
+      })(),
       refreshToken: (session as any).refreshToken || '',
       accessTokenExpires: (session as any).accessTokenExpiresAt ? new Date((session as any).accessTokenExpiresAt).getTime() : undefined,
       created_at: new Date().toISOString(),

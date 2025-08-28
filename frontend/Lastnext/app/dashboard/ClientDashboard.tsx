@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession } from '@/app/lib/next-auth-compat';
+import { useSession } from '@/app/lib/session.client';
 import { appSignOut } from '@/app/lib/logout';
 import { User as UserIcon } from 'lucide-react'; // Explicitly import User icon
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useSession } from '@/app/lib/next-auth-compat';
+import { useSession } from '@/app/lib/session.client';
 import { appSignOut } from '@/app/lib/logout';
 import {
   DropdownMenu,

@@ -10,7 +10,7 @@ import {
 } from '@/app/lib/preventiveMaintenanceModels'; // Ensure this path is correct
 
 // Import server-side session from Auth0 compat
-import { getServerSession } from "@/app/lib/next-auth-compat.server";
+import { getServerSession } from "@/app/lib/session.server";
 import { API_CONFIG } from '@/app/lib/config';
 
 // Function to check if topics is a Topic[]

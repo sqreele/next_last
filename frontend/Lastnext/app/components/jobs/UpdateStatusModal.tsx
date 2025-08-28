@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, ReactNode, MouseEvent } from 'react';
-import { useSession } from '@/app/lib/next-auth-compat';
+import { useSession } from '@/app/lib/session.client';
 import { Job, JobStatus } from '@/app/lib/types';
 import { fetchWithToken } from '@/app/lib/data.server'; // Correct: named import
 import {

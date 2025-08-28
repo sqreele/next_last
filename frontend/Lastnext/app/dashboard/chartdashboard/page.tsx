@@ -2,7 +2,7 @@
 import { Suspense } from 'react';
 import { fetchJobs } from '@/app/lib/data.server';
 import PropertyJobsDashboard from '@/app/components/jobs/PropertyJobsDashboard';
-import { getServerSession } from '@/app/lib/next-auth-compat.server';
+import { getServerSession } from '@/app/lib/session.server';
 import ErrorBoundary from '@/app/components/ErrorBoundary';
 
 // Force dynamic rendering to avoid static generation issues with cookies

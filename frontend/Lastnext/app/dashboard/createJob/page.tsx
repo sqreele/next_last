@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import { Metadata } from 'next';
 import CreateJobForm from '@/app/components/jobs/CreateJobForm';
 import { redirect } from 'next/navigation';
-import { getServerSession } from '@/app/lib/next-auth-compat.server';
+import { getServerSession } from '@/app/lib/session.server';
 import { Plus, Wrench, Building, Calendar, Users } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';

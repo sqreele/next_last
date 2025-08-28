@@ -2,7 +2,7 @@
 import { Suspense } from 'react';
 import { fetchProperties, fetchJobs } from '@/app/lib/data.server';
 import DashboardClient from '@/app/dashboard/DashboardClient';
-import { getServerSession } from '@/app/lib/next-auth-compat.server';
+import { getServerSession } from '@/app/lib/session.server';
 import { redirect } from 'next/navigation';
 import { debugConfig, debugApiUrl } from '@/app/lib/debug-config';
 import { Job } from '@/app/lib/types';

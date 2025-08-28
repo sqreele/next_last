@@ -7,7 +7,7 @@ import { Button } from "@/app/components/ui/button";
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import JobPDFConfig from "@/app/components/jobs/JobPDFConfig";
 import { useProperty } from "@/app/lib/PropertyContext";
-import { useSession } from "@/app/lib/next-auth-compat";
+import { useSession } from "@/app/lib/session.client";
 import { JobPDFService } from "@/app/lib/services/JobPDFService";
 import { JobPDFConfig as JobPDFConfigType } from "@/app/components/jobs/JobPDFConfig";
 import { generatePdfWithRetry, downloadPdf } from "@/app/lib/pdfUtils";

@@ -20,7 +20,7 @@ This guide will help you set up Auth0 authentication for your Next.js applicatio
 
 ### Application Settings
 1. In your Auth0 application settings, configure:
-   - **Allowed Callback URLs**: `http://localhost:3000/api/auth/callback`
+   - **Allowed Callback URLs**: `http://localhost:3000/auth/callback`
    - **Allowed Logout URLs**: `http://localhost:3000`
    - **Allowed Web Origins**: `http://localhost:3000`
 

@@ -204,7 +204,7 @@ export default function ProfileDisplay() {
   }
 
   if (!userProfile) {
-    router.push("/api/auth/login");
+    router.push("/auth/login");
     return null;
   }
 

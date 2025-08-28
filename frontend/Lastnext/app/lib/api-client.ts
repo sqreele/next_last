@@ -2,7 +2,7 @@
 "use client";
 
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios";
-import { useSession } from "@/app/lib/next-auth-compat";
+import { useSession } from "@/app/lib/session.client";
 import { appSignOut } from "@/app/lib/logout";
 import { jwtDecode } from "jwt-decode";
 import { useState,useCallback} from 'react'

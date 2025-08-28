@@ -2,7 +2,7 @@
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { fetchRoom, fetchProperties, fetchJobsForRoom } from '@/app/lib/data.server';
-import { getServerSession } from '@/app/lib/next-auth-compat.server';
+import { getServerSession } from '@/app/lib/session.server';
 import RoomDetailContent from './RoomDetailContent';
 
 type Props = {

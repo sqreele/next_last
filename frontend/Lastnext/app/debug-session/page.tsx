@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession } from '@/app/lib/next-auth-compat';
+import { useSession } from '@/app/lib/session.client';
 import { useState } from 'react';
 
 export default function DebugSession() {

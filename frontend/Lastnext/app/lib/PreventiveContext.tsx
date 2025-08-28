@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useClientAuth0 } from './auth0';
-import { useSession } from '@/app/lib/next-auth-compat';
+import { useSession } from '@/app/lib/session.client';
 import { Property } from '@/app/lib/types';
 import { usePreventiveMaintenanceStore, useAuthStore } from '@/app/lib/stores';
 import { 

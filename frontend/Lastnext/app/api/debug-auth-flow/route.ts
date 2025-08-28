@@ -1,6 +1,6 @@
 // app/api/debug-auth-flow/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/app/lib/next-auth-compat.server';
+import { getServerSession } from '@/app/lib/session.server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,12 +30,12 @@ export async function GET(request: NextRequest) {
 
     // Check for any cookies that might be related to the error
     const cookies = request.headers.get('cookie');
-    const nextAuthCookies = cookies ? 
+    const authCookies = cookies ? 
       cookies.split(';')
-        .filter(cookie => cookie.trim().startsWith('next-auth'))
+        .filter(cookie => cookie.trim().toLowerCase().includes('auth'))
         .map(cookie => cookie.trim()) : [];
 
-    console.log('🧪 NextAuth cookies found:', nextAuthCookies);
+    console.log('🧪 Auth cookies found:', authCookies);
 
     const result = {
       timestamp: new Date().toISOString(),
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         searchParams,
         hasCookies: !!cookies,
         cookieCount: cookies ? cookies.split(';').length : 0,
-        nextAuthCookies: nextAuthCookies
+        authCookies
       },
       session: {
         exists: !!session,

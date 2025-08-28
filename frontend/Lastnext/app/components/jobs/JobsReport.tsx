@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useProperty } from '@/app/lib/PropertyContext';
 import { useUser } from '@/app/lib/user-context';
-import { useSession } from '@/app/lib/next-auth-compat';
+import { useSession } from '@/app/lib/session.client';
 import { Job, TabValue, JobStatus, JobPriority } from '@/app/lib/types';
 import { fetchJobsForProperty } from '@/app/lib/data';
 import JobsPDFDocument from '@/app/components/document/JobsPDFGenerator';

@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useSession } from "@/app/lib/next-auth-compat";
+import { useSession } from "@/app/lib/session.client";
 // Import specific functions needed from the updated data.ts
 import { fetchJobs, fetchJobsForProperty } from "@/app/lib/data";
 import { useUser } from "@/app/lib/user-context";

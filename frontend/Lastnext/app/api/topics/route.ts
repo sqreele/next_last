@@ -1,6 +1,6 @@
 // app/api/topics/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/app/lib/next-auth-compat.server';
+import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
 import { getErrorMessage } from '@/app/lib/utils/error-utils';
 

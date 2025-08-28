@@ -21,11 +21,13 @@ export function useClientAuth0() {
   const [error, setError] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
 
+  // Call useUser at the top level if available
+  const auth0User = useUser ? useUser() : null;
+
   useEffect(() => {
     // If Auth0 hooks are available, try to use them
-    if (useUser && getAccessToken) {
+    if (useUser && getAccessToken && auth0User) {
       try {
-        const auth0User = useUser();
         if (auth0User.user && !auth0User.isLoading) {
           // Get the access token from Auth0
           const getToken = async () => {
@@ -73,7 +75,7 @@ export function useClientAuth0() {
       // Auth0 hooks not available, use mock system
       useMockSystem();
     }
-  }, []);
+  }, [auth0User]);
 
   // Mock system fallback
   const useMockSystem = () => {
@@ -92,7 +94,7 @@ export function useClientAuth0() {
           address: '123 Dev St, Dev City',
           property_type: 'residential',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         }
       ],
       accessToken: 'dev-access-token',

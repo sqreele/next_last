@@ -73,6 +73,23 @@ type MaintenanceApiResponse = PreventiveMaintenance[] | PaginatedMaintenanceResp
 
 class PreventiveMaintenanceService {
   private baseUrl: string = '/api/v1/preventive-maintenance';
+  private accessToken?: string;
+
+  constructor(accessToken?: string) {
+    this.accessToken = accessToken;
+  }
+
+  // Helper method to get authorization headers
+  private getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers.Authorization = `Bearer ${this.accessToken}`;
+      console.log('✅ Using access token for API request');
+    } else {
+      console.warn('⚠️ No access token provided for API request');
+    }
+    return headers;
+  }
 
   // Helper method to check if an item matches a machine
   private itemMatchesMachine(item: PreventiveMaintenance, machineId: string): boolean {
@@ -402,7 +419,10 @@ class PreventiveMaintenanceService {
       }
 
       const createResponse = await apiClient.post<any>(`${this.baseUrl}/`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          ...this.getAuthHeaders()
+        },
       });
 
       const responseData = createResponse.data;
@@ -474,7 +494,10 @@ class PreventiveMaintenanceService {
       }
 
       await apiClient.post(`${this.baseUrl}/${pmId}/upload-images/`, imageFormData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: { 
+          'Content-Type': 'multipart/form-data',
+          ...this.getAuthHeaders()
+        },
       });
 
       console.log('Images uploaded successfully');
@@ -558,7 +581,12 @@ class PreventiveMaintenanceService {
       const response = await apiClient.put<PreventiveMaintenance>(
         `${this.baseUrl}/${id}/`,
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
+        { 
+          headers: { 
+            'Content-Type': 'multipart/form-data',
+            ...this.getAuthHeaders()
+          } 
+        }
       );
 
       return { success: true, data: response.data, message: 'Maintenance updated successfully' };
@@ -599,7 +627,12 @@ class PreventiveMaintenanceService {
       const response = await apiClient.post<PreventiveMaintenance>(
         `${this.baseUrl}/${id}/complete/`,
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
+        { 
+          headers: { 
+            'Content-Type': 'multipart/form-data',
+            ...this.getAuthHeaders()
+          } 
+        }
       );
 
       return { success: true, data: response.data, message: 'Maintenance completed successfully' };
@@ -618,7 +651,9 @@ class PreventiveMaintenanceService {
     }
 
     try {
-      const response = await apiClient.get<PreventiveMaintenance>(`${this.baseUrl}/${id}/`);
+      const response = await apiClient.get<PreventiveMaintenance>(`${this.baseUrl}/${id}/`, {
+        headers: this.getAuthHeaders()
+      });
       return { success: true, data: response.data, message: 'Maintenance fetched successfully' };
     } catch (error: any) {
       console.error('Service error fetching maintenance:', error);
@@ -628,7 +663,9 @@ class PreventiveMaintenanceService {
 
   async getPreventiveMaintenances(): Promise<ServiceResponse<PreventiveMaintenance[]>> {
     try {
-      const response = await apiClient.get<PreventiveMaintenance[]>(`${this.baseUrl}/`);
+      const response = await apiClient.get<PreventiveMaintenance[]>(`${this.baseUrl}/`, {
+        headers: this.getAuthHeaders()
+      });
       return { success: true, data: response.data, message: 'Maintenances fetched successfully' };
     } catch (error: any) {
       console.error('Service error fetching maintenances:', error);
@@ -638,7 +675,10 @@ class PreventiveMaintenanceService {
 
   async getMaintenanceStatistics(params?: Record<string, any>): Promise<ServiceResponse<DashboardStats>> {
     try {
-      const response = await apiClient.get<DashboardStats>(`${this.baseUrl}/stats/`, { params });
+      const response = await apiClient.get<DashboardStats>(`${this.baseUrl}/stats/`, { 
+        params,
+        headers: this.getAuthHeaders()
+      });
       console.log('=== MAINTENANCE STATISTICS DEBUG ===');
       console.log('Raw stats response:', response.data);
       console.log('Frequency distribution:', response.data.frequency_distribution);
@@ -677,7 +717,10 @@ class PreventiveMaintenanceService {
       
       const response = await apiClient.get<PreventiveMaintenance[]>(
         `${this.baseUrl}/upcoming/`,
-        { params: { days } }
+        { 
+          params: { days },
+          headers: this.getAuthHeaders()
+        }
       );
       
       console.log(`Found ${response.data.length} upcoming maintenance tasks`);
@@ -722,15 +765,21 @@ class PreventiveMaintenanceService {
     try {
       console.log('=== DEBUG MAINTENANCE DATA ===');
       
-      const statsResponse = await apiClient.get<any>(`${this.baseUrl}/stats/`);
+      const statsResponse = await apiClient.get<any>(`${this.baseUrl}/stats/`, {
+        headers: this.getAuthHeaders()
+      });
       console.log('Stats response:', statsResponse.data);
       console.log('Stats upcoming length:', statsResponse.data.upcoming?.length || 0);
       
-      const upcomingResponse = await apiClient.get<any>(`${this.baseUrl}/upcoming/?days=30`);
+      const upcomingResponse = await apiClient.get<any>(`${this.baseUrl}/upcoming/?days=30`, {
+        headers: this.getAuthHeaders()
+      });
       console.log('Upcoming endpoint response length:', upcomingResponse.data?.length || 0);
       console.log('Upcoming endpoint response:', upcomingResponse.data);
       
-      const allResponse = await apiClient.get<any>(`${this.baseUrl}/`);
+      const allResponse = await apiClient.get<any>(`${this.baseUrl}/`, {
+        headers: this.getAuthHeaders()
+      });
       console.log('All maintenance count:', allResponse.data?.length || 0);
       
     } catch (error) {
@@ -834,4 +883,14 @@ class PreventiveMaintenanceService {
   }
 }
 
+// Export a function that creates a new service instance with the current access token
+export const createPreventiveMaintenanceService = (accessToken?: string) => new PreventiveMaintenanceService(accessToken);
+
+// Keep the old export for backward compatibility, but it won't have authentication
 export const preventiveMaintenanceService = new PreventiveMaintenanceService();
+
+// Add a method to set the access token on the singleton
+export const setPreventiveMaintenanceServiceToken = (accessToken: string) => {
+  (preventiveMaintenanceService as any).accessToken = accessToken;
+  console.log('✅ Access token set on preventiveMaintenanceService singleton');
+};

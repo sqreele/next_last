@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
           const returnTo = `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/profile`;
           const scope = 'openid profile email';
           
-          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent('https://pcms.live/auth/callback')}&scope=${encodeURIComponent(scope)}`;
+          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}`;
           
           return NextResponse.redirect(loginUrl);
         } catch (loginError) {
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
           // For Auth0 callback, we need to handle the authorization code
           // This is typically done by the Auth0 SDK automatically
           // For now, redirect to profile page and let the client handle the session
-          return NextResponse.redirect('https://pcms.live/profile');
+          return NextResponse.redirect(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/profile`);
         } catch (callbackError) {
           console.error('Auth0 callback error:', callbackError);
           return NextResponse.redirect('https://pcms.live/login?error=callback_failed');
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
           const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
           const returnTo = `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/`;
           
-          const logoutUrl = `https://${domain}/v2/logout?client_id=${clientId}&returnTo=${encodeURIComponent('https://pcms.live/')}`;
+          const logoutUrl = `https://${domain}/v2/logout?client_id=${clientId}&returnTo=${encodeURIComponent(returnTo)}`;
           
           const response = NextResponse.redirect(logoutUrl);
           // Clear any session cookies
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
         } catch (logoutError) {
           console.error('Auth0 logout error:', logoutError);
           // Fallback logout - clear cookie and redirect
-          const response = NextResponse.redirect('https://pcms.live/');
+          const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/`);
           response.cookies.delete('auth0_session');
           return response;
         }

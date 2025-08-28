@@ -20,7 +20,7 @@ export default function ProfilePage() {
         <div><strong>Email:</strong> {user.email}</div>
         <pre className="mt-2 p-3 bg-gray-100 rounded overflow-auto text-xs">{JSON.stringify(user, null, 2)}</pre>
       </div>
-      <a href="/auth/logout" className="inline-block px-4 py-2 bg-gray-200 rounded">Log out</a>
+      <a href="/api/auth/logout" className="inline-block px-4 py-2 bg-gray-200 rounded">Log out</a>
     </div>
   );
 }

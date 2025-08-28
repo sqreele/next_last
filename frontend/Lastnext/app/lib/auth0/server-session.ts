@@ -3,6 +3,18 @@ import type { CompatUser, CompatSession } from './session-compat';
 
 export async function getCompatServerSession(): Promise<CompatSession | null> {
   try {
+    // If Auth0 is not fully configured, skip and return null to avoid recursion/errors in prod
+    const hasAuth0Config = Boolean(
+      process.env.AUTH0_DOMAIN &&
+      process.env.AUTH0_CLIENT_ID &&
+      (process.env.AUTH0_CLIENT_SECRET || process.env.AUTH0_ISSUER_BASE_URL) &&
+      process.env.AUTH0_SECRET
+    );
+
+    if (!hasAuth0Config) {
+      return null;
+    }
+
     // Use real Auth0 session
     const session = await auth0.getSession();
     if (!session?.user) return null;

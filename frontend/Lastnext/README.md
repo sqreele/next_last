@@ -72,7 +72,7 @@ npm run dev
 
 ## Authentication Flow
 
-1. User is redirected to Auth0 Universal Login via `/api/auth/login`
+1. User is redirected to Auth0 Universal Login via `/auth/login`
 2. Auth0 handles authentication and redirects back to the app
 3. JWT/session cookies are set securely
 4. Automatic token refresh handles session expiry

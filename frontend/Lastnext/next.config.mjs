@@ -40,6 +40,10 @@ const nextConfig = {
   env: {
     // Only expose non-sensitive envs to the client
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+    NEXT_PUBLIC_BASE_PATH: process.env.NEXT_PUBLIC_BASE_PATH,
+    NEXT_PUBLIC_LOGIN_ROUTE: process.env.NEXT_PUBLIC_LOGIN_ROUTE,
+    NEXT_PUBLIC_PROFILE_ROUTE: process.env.NEXT_PUBLIC_PROFILE_ROUTE,
+    NEXT_PUBLIC_ACCESS_TOKEN_ROUTE: process.env.NEXT_PUBLIC_ACCESS_TOKEN_ROUTE,
   },
   
   logging: {

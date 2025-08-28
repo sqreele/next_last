@@ -23,7 +23,7 @@ import {
 import _ from "lodash";
 import { Job, JobStatus, STATUS_COLORS } from "@/app/lib/types";
 import { useProperty } from "@/app/lib/PropertyContext";
-import { useSession } from "@/app/lib/next-auth-compat";
+import { useSession } from "@/app/lib/session.client";
 import { appSignOut } from "@/app/lib/logout";
 type Session = any;
 import { fetchJobs } from "@/app/lib/data";

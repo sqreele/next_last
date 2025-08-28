@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useProperty } from '@/app/lib/PropertyContext';
 import { useUser } from '@/app/lib/user-context';
-import { useSession } from '@/app/lib/next-auth-compat';
+import { useSession } from '@/app/lib/session.client';
 import { redirect } from 'next/navigation';
 import PreventiveMaintenanceDashboard from '@/app/dashboard/Preventive_maintenance/PreventiveMaintenanceDashboard';
 import { Badge } from '@/app/components/ui/badge';

@@ -21,10 +21,7 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "next-auth/react": ["./app/lib/next-auth-compat.client"],
-      "next-auth/next": ["./app/lib/next-auth-compat.server"],
-      "next-auth": ["./app/lib/next-auth-compat.client"],
-      "next-auth/middleware": ["./app/lib/next-auth-compat.server"]
+      
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "next.config.mjs", "app/components/preventive/PreventiveMaintenanceForm.tsx"],

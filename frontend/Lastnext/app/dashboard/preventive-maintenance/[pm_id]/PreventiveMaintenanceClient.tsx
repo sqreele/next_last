@@ -5,7 +5,7 @@ import { preventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceSer
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useSession } from "@/app/lib/next-auth-compat";
+import { useSession } from "@/app/lib/session.client";
 import { 
   PreventiveMaintenance, 
   getImageUrl,

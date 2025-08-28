@@ -10,7 +10,7 @@ import { Plus, ChevronDown, ChevronUp, Loader, AlertCircle, CheckCircle, Upload,
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
-import { useSession, signIn } from '@/app/lib/next-auth-compat';
+import { useSession, signIn } from '@/app/lib/session.client';
 import { Label } from "@/app/components/ui/label";
 import RoomAutocomplete from '@/app/components/jobs/RoomAutocomplete';
 import FileUpload from '@/app/components/jobs/FileUpload';

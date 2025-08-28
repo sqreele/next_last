@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/app/lib/next-auth-compat.server';
+import { getServerSession } from '@/app/lib/session.server';
 import { getErrorMessage } from '@/app/lib/utils/error-utils';
 
 interface DjangoTestResult {
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const nextAuthCookies = cookieHeader
       .split(';')
       .map(cookie => cookie.trim())
-      .filter(cookie => cookie.includes('next-auth') || cookie.includes('__Secure-next-auth'))
+      .filter(cookie => cookie.toLowerCase().includes('auth'))
       .map(cookie => {
         const [name, ...valueParts] = cookie.split('=');
         const value = valueParts.join('=');
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         };
       });
     
-    console.log('🧪 Auth cookies (legacy next-auth names included):', nextAuthCookies);
+    console.log('🧪 Auth cookies (any auth cookies):', nextAuthCookies);
 
     // Try to get session
     const session = await getServerSession();

@@ -7,8 +7,7 @@ export default function Auth0Login() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to Auth0 login API route
-    router.push('/api/auth/login');
+    router.push('/auth/login');
   }, [router]);
 
   return (

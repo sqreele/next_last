@@ -10,10 +10,11 @@ services:
         - API_URL=${API_URL:-http://backend:8000}
         - AUTH0_BASE_URL=${AUTH0_BASE_URL:-https://pcms.live}
         - APP_BASE_URL=${APP_BASE_URL:-https://pcms.live}
-        - AUTH0_ISSUER_BASE_URL=${AUTH0_ISSUER_BASE_URL}
-        - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
-        - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
-        - AUTH0_SECRET=${AUTH0_SECRET}
+        - AUTH0_DOMAIN=${AUTH0_DOMAIN:-pmcs.au.auth0.com}
+        - AUTH0_ISSUER_BASE_URL=${AUTH0_ISSUER_BASE_URL:-https://pmcs.au.auth0.com}
+        - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID:-rrUSfSSyaHhy1eurtT898wMBDBpb6AI0}
+        - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:-iByRBGqhFv50BrbO3ePU91g1wV-EdpDezB3vOUO99UTC30ADQF7hZx4_perCE2c2}
+        - AUTH0_SECRET=${AUTH0_SECRET:-dev-secret-change-me-in-production}
         - NEXTAUTH_URL=${NEXTAUTH_URL:-https://pcms.live}
         - NEXTAUTH_SECRET=K/QdN0nOS9Sep9RDp8YCEsxDhGTmRWVW/7wR/0C8kuA=
         - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
@@ -29,10 +30,11 @@ services:
       - API_URL=${API_URL:-http://backend:8000}
       - AUTH0_BASE_URL=${AUTH0_BASE_URL:-https://pcms.live}
       - APP_BASE_URL=${APP_BASE_URL:-https://pcms.live}
-      - AUTH0_ISSUER_BASE_URL=${AUTH0_ISSUER_BASE_URL}
-      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
-      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
-      - AUTH0_SECRET=${AUTH0_SECRET}
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN:-pmcs.au.auth0.com}
+      - AUTH0_ISSUER_BASE_URL=${AUTH0_ISSUER_BASE_URL:-https://pmcs.au.auth0.com}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID:-rrUSfSSyaHhy1eurtT898wMBDBpb6AI0}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET:-iByRBGqhFv50BrbO3ePU91g1wV-EdpDezB3vOUO99UTC30ADQF7hZx4_perCE2c2}
+      - AUTH0_SECRET=${AUTH0_SECRET:-dev-secret-change-me-in-production}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-https://pcms.live}
       - NEXTAUTH_SECRET=K/QdN0nOS9Sep9RDp8YCEsxDhGTmRWVW/7wR/0C8kuA=
       - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=

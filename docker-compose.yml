@@ -106,7 +106,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-mylubd_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Sqreele1234}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      # Use shell parameter expansion with defaults to prevent empty vars causing "-d" to be parsed as a flag
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mylubd_user} -d ${POSTGRES_DB:-mylubd_db}"]
       interval: 10s
       timeout: 5s
       retries: 5

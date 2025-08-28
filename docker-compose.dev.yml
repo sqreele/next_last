@@ -17,10 +17,10 @@ services:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://mylubd_user:Sqreele1234@db:5432/mylubd_db?schema=public
       - AUTH0_BASE_URL=http://localhost:3000
-      - AUTH0_ISSUER_BASE_URL=https://pmcs.au.auth0.com
-      - AUTH0_CLIENT_ID=rrUSfSSyaHhy1eurtT898wMBDBpb6AI0
-      - AUTH0_CLIENT_SECRET=iByRBGqhFv50BrbO3ePU91g1wV-EdpDezB3vOUO99UTC30ADQF7hZx4_perCE2c2
-      - AUTH0_SECRET=dev-secret-change-me-in-production
+      - AUTH0_ISSUER_BASE_URL=https://pcms.ca.auth0.com
+      - AUTH0_CLIENT_ID=H5QKkdL5wsGPvdY6FEFGVmuBQCKKzSV7
+      - AUTH0_CLIENT_SECRET=iCMxpx4HmEMsTohty_ID6oP9iG9kJEXp8h4lEyeZlcont7hbpQddg1WIAznIhnlfH
+      - AUTH0_SECRET=vdkr2aiRWVVVdbEZgNqZbFXnR7K0kty4/gkU4G1McK9CKRbZiDEUldS5pCjdm6bZ
       - AUTH0_AUDIENCE=http://localhost:8000
     volumes:
       - ./frontend/Lastnext:/app
@@ -56,9 +56,10 @@ services:
       - SQL_HOST=db
       - SQL_PORT=5432
       - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
-      - AUTH0_DOMAIN=pmcs.au.auth0.com
+      - AUTH0_DOMAIN=pcms.ca.auth0.com
       - AUTH0_AUDIENCE=http://localhost:8000
-      - AUTH0_ISSUER=https://pmcs.au.auth0.com
+      - AUTH0_ISSUER=https://pcms.ca.auth0.com
+      - AUTH0_ISSUER_BASE_URL=https://pcms.ca.auth0.com
     ports:
       - "8000:8000"
     depends_on:

@@ -15,9 +15,41 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
       return null;
     }
 
-    // For now, return null since Auth0 is not fully implemented
-    // TODO: Implement proper Auth0 session handling when the integration is ready
-    console.log('🔧 Auth0 configured but session handling not implemented yet');
+    // Try to get session from Auth0 API
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/api/auth/[...auth0]?action=profile`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          // Convert Auth0 user to CompatUser format
+          const compatUser: CompatUser = {
+            id: data.user.sub || data.user.user_id || data.user.email || 'user',
+            username: data.user.nickname || data.user.name || data.user.email || 'user',
+            email: data.user.email,
+            profile_image: data.user.picture,
+            positions: data.user.positions || 'User',
+            properties: data.user.properties || [],
+            accessToken: data.user.accessToken || '',
+            refreshToken: data.user.refreshToken || '',
+            accessTokenExpires: data.user.accessTokenExpires || undefined,
+            created_at: data.user.created_at || new Date().toISOString(),
+          };
+
+          return { user: compatUser, expires: undefined };
+        }
+      }
+    } catch (auth0Error) {
+      console.error('❌ Error fetching Auth0 session:', auth0Error);
+    }
+
+    // If Auth0 session fetch fails, return null
+    console.log('🔧 Auth0 session not available, returning null');
     return null;
     
   } catch (error) {

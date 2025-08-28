@@ -1,12 +1,8 @@
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { auth0 } from './lib/auth0';
 
-export function middleware(request: NextRequest) {
-  // For now, allow all requests to pass through
-  // Auth0 authentication will be handled by the API routes and components
-  // We can add more sophisticated middleware logic here later
-  
-  return NextResponse.next();
+export async function middleware(request: NextRequest) {
+  return await auth0.middleware(request);
 }
 
 export const config = {
@@ -19,7 +15,7 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public folder
      */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public).*)',
   ],
 };
 

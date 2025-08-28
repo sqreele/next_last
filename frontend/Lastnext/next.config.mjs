@@ -111,8 +111,8 @@ const nextConfig = {
     return [
       // Do NOT proxy Auth0 endpoints; let Next.js handle them
       {
-        source: '/api/auth/:path*',
-        destination: '/api/auth/:path*',
+        source: '/auth/:path*',
+        destination: '/auth/:path*',
       },
       // Proxy media files to backend for image optimization
       {

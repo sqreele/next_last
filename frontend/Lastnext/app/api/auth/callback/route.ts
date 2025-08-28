@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       };
 
       // Redirect to profile page with session cookie
-      const response = NextResponse.redirect('https://pcms.live/profile');
+      const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/profile`);
       
       // Set session cookie
       response.cookies.set('auth0_session', JSON.stringify(sessionData), {

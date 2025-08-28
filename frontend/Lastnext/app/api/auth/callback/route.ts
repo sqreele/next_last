@@ -77,8 +77,8 @@ export async function GET(request: NextRequest) {
         expires: Date.now() + (tokens.expires_in * 1000),
       };
 
-      // Redirect to dashboard with session cookie
-      const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/dashboard`);
+      // Redirect to profile page with session cookie
+      const response = NextResponse.redirect('https://pcms.live/dashboard/profile');
       
       // Set session cookie
       response.cookies.set('auth0_session', JSON.stringify(sessionData), {

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     
     if (domain && clientId) {
       // Use Auth0 logout endpoint
-      const logoutUrl = `https://${domain}/v2/logout?client_id=${clientId}&returnTo=${encodeURIComponent(returnTo)}`;
+      const logoutUrl = `https://${domain}/v2/logout?client_id=${clientId}&returnTo=${encodeURIComponent('https://pcms.live/')}`;
       
       const response = NextResponse.redirect(logoutUrl);
       

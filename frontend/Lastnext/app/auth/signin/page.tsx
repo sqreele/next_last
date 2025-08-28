@@ -8,7 +8,7 @@ export default function SignIn() {
 
   useEffect(() => {
     // Redirect to the login page instead of creating a circular redirect
-    router.push('/auth/login');
+    router.push('/api/auth/login');
   }, [router]);
 
   return (

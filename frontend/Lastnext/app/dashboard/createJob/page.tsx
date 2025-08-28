@@ -40,7 +40,7 @@ export default async function CreateJobPage() {
   console.log('Server session:', session); // Debug log
 
   if (!session) {
-    redirect('/auth/login');
+    redirect('/api/auth/login');
   }
 
   return (

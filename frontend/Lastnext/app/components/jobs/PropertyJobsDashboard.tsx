@@ -244,7 +244,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         <CardContent className="text-center space-y-4">
           <p className="text-yellow-600 text-base">Please log in to view job statistics.</p>
           <Button asChild variant="outline" className="w-full h-12 text-base">
-            <Link href="/auth/login">Log In</Link>
+            <Link href="/api/auth/login">Log In</Link>
           </Button>
         </CardContent>
       </Card>

@@ -1,5 +1,3 @@
-import { NextResponse } from 'next/server';
+import { auth0 } from '@/lib/auth0';
 
-export async function GET() {
-  return NextResponse.redirect('/auth/logout');
-}
+export const GET = auth0.handlers.logout();

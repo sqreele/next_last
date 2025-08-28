@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "🚀 Setting up Next.js application with Prisma and NextAuth..."
+echo "🚀 Setting up Next.js application with Prisma..."
 
 # Function to check if database is ready
 check_database() {
@@ -36,18 +36,7 @@ setup_database() {
     echo "📋 Setting up database schema..."
     
     # Check which Prisma schema files exist
-    auth_schema="./prisma/auth.prisma"
     main_schema="./prisma/schema.prisma"
-    
-    if [ -f "$auth_schema" ]; then
-        echo "🗄️  Found auth schema, creating NextAuth tables..."
-        if npx prisma db push --schema="$auth_schema" --accept-data-loss --skip-generate; then
-            echo "✅ Auth database schema updated successfully!"
-        else
-            echo "❌ Failed to update auth database schema"
-            return 1
-        fi
-    fi
     
     if [ -f "$main_schema" ]; then
         echo "🗄️  Found main schema, updating database..."
@@ -67,7 +56,7 @@ setup_database() {
         fi
     fi
     
-    if [ ! -f "$auth_schema" ] && [ ! -f "$main_schema" ]; then
+    if [ ! -f "$main_schema" ]; then
         echo "⚠️  No Prisma schema files found, skipping database setup..."
     fi
 }
@@ -76,17 +65,8 @@ setup_database() {
 run_migrations() {
     echo "🔄 Running database migrations..."
     
-    auth_schema="./prisma/auth.prisma"
     main_schema="./prisma/schema.prisma"
     migration_success=true
-    
-    if [ -f "$auth_schema" ] && [ -d "./prisma/migrations-auth" ]; then
-        echo "🔄 Running auth migrations..."
-        if ! npx prisma migrate deploy --schema="$auth_schema"; then
-            echo "⚠️  Auth migrations failed"
-            migration_success=false
-        fi
-    fi
     
     if [ -f "$main_schema" ] && [ -d "./prisma/migrations" ]; then
         echo "🔄 Running main migrations..."

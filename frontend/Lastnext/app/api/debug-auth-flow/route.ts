@@ -30,12 +30,6 @@ export async function GET(request: NextRequest) {
 
     // Check for any cookies that might be related to the error
     const cookies = request.headers.get('cookie');
-    const nextAuthCookies = cookies ? 
-      cookies.split(';')
-        .filter(cookie => cookie.trim().startsWith('next-auth'))
-        .map(cookie => cookie.trim()) : [];
-
-    console.log('🧪 NextAuth cookies found:', nextAuthCookies);
 
     const result = {
       timestamp: new Date().toISOString(),
@@ -43,8 +37,7 @@ export async function GET(request: NextRequest) {
         url: request.url,
         searchParams,
         hasCookies: !!cookies,
-        cookieCount: cookies ? cookies.split(';').length : 0,
-        nextAuthCookies: nextAuthCookies
+        cookieCount: cookies ? cookies.split(';').length : 0
       },
       session: {
         exists: !!session,

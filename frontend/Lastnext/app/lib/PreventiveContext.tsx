@@ -9,6 +9,7 @@ import { Property } from '@/app/lib/types';
 import { usePreventiveMaintenanceStore, useAuthStore } from '@/app/lib/stores';
 import { 
   preventiveMaintenanceService,
+  setPreventiveMaintenanceServiceToken,
   CreatePreventiveMaintenanceData, 
   UpdatePreventiveMaintenanceData,
   CompletePreventiveMaintenanceData
@@ -76,6 +77,13 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
     clearError: clearStoreError,
     clear: clearStore
   } = usePreventiveMaintenanceStore();
+
+  // Set the access token on the singleton service whenever it changes
+  useEffect(() => {
+    if (accessToken) {
+      setPreventiveMaintenanceServiceToken(accessToken);
+    }
+  }, [accessToken]);
 
   // Enhanced fetchMachines function
   const fetchMachines = useCallback(async (propertyId?: string) => {

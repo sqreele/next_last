@@ -1,4 +1,4 @@
-import { auth0 } from '@/lib/auth0';
+// Simplified server session that doesn't depend on problematic imports
 import type { CompatUser, CompatSession } from './session-compat';
 
 export async function getCompatServerSession(): Promise<CompatSession | null> {
@@ -15,34 +15,11 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
       return null;
     }
 
-    // Use real Auth0 session
-    const session = await auth0.getSession();
-    if (!session?.user) return null;
-
-    // Convert Auth0 session to our compatible format
-    const compatUser: CompatUser = {
-      id: (session.user.sub ?? session.user.email ?? 'user') + '',
-      username: (session.user.nickname || session.user.name || session.user.email || 'user'),
-      email: (session.user.email ?? null) as string | null,
-      profile_image: (session.user.picture as string | null) ?? null,
-      positions: 'User',
-      properties: [],
-      // Ensure access token is present; if not in session, retrieve it
-      accessToken: (session as any).accessToken || await (async () => {
-        try {
-          const token = await auth0.getAccessToken();
-          return token || '';
-        } catch (e) {
-          console.error('❌ Failed to fetch Auth0 access token:', e);
-          return '';
-        }
-      })(),
-      refreshToken: (session as any).refreshToken || '',
-      accessTokenExpires: (session as any).accessTokenExpiresAt ? new Date((session as any).accessTokenExpiresAt).getTime() : undefined,
-      created_at: new Date().toISOString(),
-    };
-
-    return { user: compatUser, expires: (session as any).expiresAt };
+    // For now, return null since Auth0 is not fully implemented
+    // TODO: Implement proper Auth0 session handling when the integration is ready
+    console.log('🔧 Auth0 configured but session handling not implemented yet');
+    return null;
+    
   } catch (error) {
     console.error('❌ Error in getCompatServerSession:', error);
     

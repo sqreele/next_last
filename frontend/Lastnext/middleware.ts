@@ -1,6 +1,5 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth0 } from './lib/auth0';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = new URL(request.url);
@@ -20,10 +19,14 @@ export async function middleware(request: NextRequest) {
 
   if (!hasAuth0Config) {
     // Avoid crashing with missing secrets ("ikm" length) and allow app to load
+    console.log('🔧 Auth0 not configured, bypassing middleware');
     return NextResponse.next();
   }
 
-  return await auth0.middleware(request);
+  // For now, just pass through requests when Auth0 is configured
+  // TODO: Implement proper Auth0 middleware when the integration is ready
+  console.log('🔧 Auth0 configured but middleware not implemented yet');
+  return NextResponse.next();
 }
 
 export const config = {

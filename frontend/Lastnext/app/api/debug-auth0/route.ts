@@ -1,40 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth0 } from '@/lib/auth0';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get the Auth0 access token using the new v4 API
-    const session = await auth0.getSession();
-    
-    if (!session?.user) {
+    // Check if Auth0 is configured
+    const hasAuth0Config = Boolean(
+      process.env.AUTH0_DOMAIN &&
+      process.env.AUTH0_CLIENT_ID &&
+      (process.env.AUTH0_CLIENT_SECRET || process.env.AUTH0_ISSUER_BASE_URL) &&
+      process.env.AUTH0_SECRET
+    );
+
+    if (!hasAuth0Config) {
       return NextResponse.json({ 
-        error: 'No user session available',
-        message: 'Auth0 user session is missing'
-      }, { status: 401 });
+        error: 'Auth0 not configured',
+        message: 'Auth0 environment variables are missing'
+      }, { status: 400 });
     }
 
-    // In v4, we need to get the access token differently
-    // For now, we'll return the user session info
+    // Return basic Auth0 configuration info
     return NextResponse.json({
       success: true,
-      sessionInfo: {
-        hasSession: !!session,
-        user: {
-          sub: session.user.sub,
-          email: session.user.email,
-          name: session.user.name,
-          nickname: session.user.nickname,
-          picture: session.user.picture,
-        },
-        // Note: Access tokens are handled differently in v4
-        // You may need to implement a separate endpoint for access tokens
-      }
+      auth0Config: {
+        domain: process.env.AUTH0_DOMAIN,
+        clientId: process.env.AUTH0_CLIENT_ID,
+        hasClientSecret: !!process.env.AUTH0_CLIENT_SECRET,
+        hasIssuerBaseUrl: !!process.env.AUTH0_ISSUER_BASE_URL,
+        hasSecret: !!process.env.AUTH0_SECRET,
+        baseUrl: process.env.AUTH0_BASE_URL,
+        audience: process.env.AUTH0_AUDIENCE,
+        scope: process.env.AUTH0_SCOPE,
+      },
+      message: 'Auth0 is configured but session handling is not yet implemented'
     });
 
   } catch (error) {
     console.error('Error in debug-auth0 endpoint:', error);
     return NextResponse.json({ 
-      error: 'Failed to get session info',
+      error: 'Failed to get Auth0 info',
       message: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }

@@ -9,9 +9,83 @@ from rest_framework import exceptions
 
 import jwt
 from jwt import PyJWKClient
+import logging
 
-
+logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+class DevelopmentAuthentication(BaseAuthentication):
+    """
+    Development-only authentication class that handles mock tokens
+    for testing and development purposes.
+    """
+    
+    def authenticate(self, request):
+        # Only active in development mode
+        if not getattr(settings, 'DEBUG', False):
+            logger.debug("DevelopmentAuthentication: DEBUG mode is False, skipping")
+            return None
+            
+        try:
+            logger.debug("DevelopmentAuthentication: Starting authentication check")
+            auth = get_authorization_header(request).split()
+            logger.debug(f"DevelopmentAuthentication: Auth header: {auth}")
+            
+            if not auth or len(auth) != 2 or auth[0].lower() != b'bearer':
+                logger.debug("DevelopmentAuthentication: Invalid auth header format")
+                return None
+                
+            token = auth[1].decode('utf-8')
+            logger.debug(f"DevelopmentAuthentication: Token: {token}")
+            
+            # Check for development tokens
+            if token in ['dev-access-token', 'development-token']:
+                logger.debug("DevelopmentAuthentication: Valid dev token found")
+                user = self._get_or_create_dev_user()
+                if user:
+                    logger.info(f"🔧 Development authentication successful for user: {user.username}")
+                    print(f"🔧 Development authentication successful for user: {user.username}")
+                    return (user, None)
+                else:
+                    logger.error("DevelopmentAuthentication: Failed to create/get dev user")
+                    return None
+            else:
+                logger.debug(f"DevelopmentAuthentication: Token '{token}' not recognized as dev token")
+                
+            return None
+        except Exception as e:
+            logger.error(f"Error in DevelopmentAuthentication: {e}")
+            print(f"❌ Error in DevelopmentAuthentication: {e}")
+            return None
+    
+    def _get_or_create_dev_user(self):
+        """Create or get a development user for mock authentication"""
+        username = 'developer'
+        email = 'dev@example.com'
+        
+        try:
+            user = User.objects.filter(username=username).first()
+            if not user:
+                user = User.objects.create(
+                    username=username,
+                    email=email,
+                    first_name='Development',
+                    last_name='User',
+                    is_active=True,
+                )
+                logger.info(f"✅ Created development user: {username}")
+                print(f"✅ Created development user: {username}")
+            else:
+                logger.info(f"✅ Using existing development user: {username}")
+                print(f"✅ Using existing development user: {username}")
+            
+            return user
+        except Exception as e:
+            logger.error(f"Error creating development user: {e}")
+            print(f"❌ Error creating development user: {e}")
+            # Return a fallback user or None
+            return None
 
 
 class Auth0JWTAuthentication(BaseAuthentication):
@@ -28,7 +102,7 @@ class Auth0JWTAuthentication(BaseAuthentication):
 
     www_authenticate_realm = 'api'
 
-    def authenticate(self, request) -> Optional[Tuple[User, None]]:
+    def authenticate(self, request):
         # If Auth0 is not configured, skip and allow other authenticators to try
         domain = getattr(settings, 'AUTH0_DOMAIN', None)
         if not domain:
@@ -56,13 +130,13 @@ class Auth0JWTAuthentication(BaseAuthentication):
         user = self._get_or_create_user_from_claims(payload)
         return (user, None)
 
-    def authenticate_header(self, request) -> str:
+    def authenticate_header(self, request):
         return 'Bearer realm="%s"' % self.www_authenticate_realm
 
-    def _validate_auth0_token(self, token: str) -> dict:
-        domain: str = settings.AUTH0_DOMAIN  # ensured present in authenticate()
-        issuer: str = getattr(settings, 'AUTH0_ISSUER', None) or f"https://{domain}/"
-        audience: Optional[str] = getattr(settings, 'AUTH0_AUDIENCE', None)
+    def _validate_auth0_token(self, token):
+        domain = settings.AUTH0_DOMAIN  # ensured present in authenticate()
+        issuer = getattr(settings, 'AUTH0_ISSUER', None) or f"https://{domain}/"
+        audience = getattr(settings, 'AUTH0_AUDIENCE', None)
 
         jwks_url = f"https://{domain}/.well-known/jwks.json"
         jwk_client = PyJWKClient(jwks_url)
@@ -96,7 +170,7 @@ class Auth0JWTAuthentication(BaseAuthentication):
 
         return payload
 
-    def _get_or_create_user_from_claims(self, claims: dict) -> User:
+    def _get_or_create_user_from_claims(self, claims):
         # Prefer email for identity when available; fallback to sub
         email = claims.get('email')
         sub = claims.get('sub') or ''

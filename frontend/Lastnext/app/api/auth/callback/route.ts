@@ -27,7 +27,8 @@ export async function GET(request: NextRequest) {
     // Exchange authorization code for tokens
     try {
       const resolveAudience = (raw?: string | null): string => {
-        const fallback = 'https://pcms.live/api';
+        // Use environment variable as fallback, or default to localhost for development
+        const fallback = process.env.AUTH0_AUDIENCE || 'http://localhost:8000';
         if (!raw) return fallback;
         const trimmed = raw.trim().replace(/\/$/, '');
         if (

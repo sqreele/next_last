@@ -152,7 +152,28 @@ REST_FRAMEWORK = {
 
 # Auth0 configuration (set via environment variables)
 # Support multiple env var names and sensible fallbacks
-AUTH0_AUDIENCE = os.getenv('AUTH0_AUDIENCE')
+_raw_auth0_audience = os.getenv('AUTH0_AUDIENCE')
+
+def _normalize_auth0_audience(aud: str | None) -> str | None:
+    if not aud:
+        return None
+    value = aud.strip().rstrip('/')
+    # Fix common misconfiguration where base domain is used without /api
+    if value in ('https://pcms.live', 'http://pcms.live', 'https://www.pcms.live'):
+        return 'https://pcms.live/api'
+    if value.endswith('/api'):
+        return value
+    try:
+        from urllib.parse import urlparse
+        host = urlparse(value).netloc
+        path = urlparse(value).path
+        if host.endswith('pcms.live') and (path == '' or path == '/'):
+            return f"{value}/api"
+    except Exception:
+        pass
+    return value
+
+AUTH0_AUDIENCE = _normalize_auth0_audience(_raw_auth0_audience)
 
 _auth0_domain = os.getenv('AUTH0_DOMAIN')
 _auth0_issuer = os.getenv('AUTH0_ISSUER') or os.getenv('AUTH0_ISSUER_BASE_URL')

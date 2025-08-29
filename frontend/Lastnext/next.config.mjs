@@ -153,10 +153,6 @@ const nextConfig = {
         source: '/api/users/:path*',
         destination: `${privateApi}/api/v1/users/:path*`,
       },
-      {
-        source: '/api/user-profiles/:path*',
-        destination: `${privateApi}/api/v1/user-profiles/:path*`,
-      },
       // Note: /api/preventive-maintenance is now handled by Next.js API routes
       {
         source: '/internal-api/:path*',

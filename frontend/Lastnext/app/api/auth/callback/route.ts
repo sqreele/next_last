@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
           client_secret: process.env.NEXT_PUBLIC_AUTH0_CLIENT_SECRET,
           code: code,
           redirect_uri: `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/api/auth/callback`,
+          audience: process.env.AUTH0_AUDIENCE || process.env.NEXT_PUBLIC_AUTH0_AUDIENCE || 'https://pcms.live/api',
         }),
       });
 

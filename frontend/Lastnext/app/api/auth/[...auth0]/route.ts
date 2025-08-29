@@ -24,9 +24,9 @@ export async function GET(request: NextRequest) {
           const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
           const returnTo = `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/dashboard/profile`;
           const scope = 'openid profile email';
-          const audience = process.env.AUTH0_AUDIENCE || '';
+          const audience = process.env.AUTH0_AUDIENCE || process.env.NEXT_PUBLIC_AUTH0_AUDIENCE || 'https://pcms.live/api';
           
-          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}${audience ? `&audience=${encodeURIComponent(audience)}` : ''}`;
+          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}`;
           
           return NextResponse.redirect(loginUrl);
         } catch (loginError) {

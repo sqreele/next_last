@@ -33,7 +33,7 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
     }
     
     // In production, read session from auth0_session cookie
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('auth0_session');
     if (!sessionCookie?.value) {
       return null;

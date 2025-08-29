@@ -28,9 +28,14 @@ interface ApiError extends Error {
 export const fetchJobsForProperty = async (propertyId: string): Promise<Job[]> => {
   try {
     if (!propertyId) throw new Error('Property ID is required');
-    // Use the Django API endpoint directly
-    const response = await fetchData<Job[]>(`/api/v1/jobs/?property=${propertyId}`);
-    return response ?? []; // Return empty array if response is null/undefined
+    // Use Next.js API proxy for auth-injected request
+    const res = await fetch(`/api/jobs/?property_id=${encodeURIComponent(propertyId)}`, { credentials: 'include' });
+    if (!res.ok) return [];
+    const response = (await res.json()) as any;
+    // Support both paginated and array responses
+    if (Array.isArray(response)) return response as Job[];
+    if (response?.results) return response.results as Job[];
+    return [];
   } catch (error) {
     // Log the error but return empty array for graceful handling in UI
     console.error(`Error fetching jobs for property ${propertyId}:`, error);
@@ -179,7 +184,10 @@ export const fetchJob = async (jobId: string): Promise<Job | null> => {
 
 export const fetchProperties = async (): Promise<Property[]> => {
     try {
-        const response = await fetchData<Property[]>('/properties/');
+        // Use Next.js API proxy to include auth automatically
+        const res = await fetch('/api/properties/', { credentials: 'include' });
+        if (!res.ok) return [];
+        const response = (await res.json()) as Property[];
         return response ?? [];
     } catch (error) {
         console.error('Error fetching properties:', error);
@@ -202,7 +210,10 @@ export const fetchProperty = async (propertyId: string): Promise<Property | null
 
 export const fetchTopics = async (): Promise<Topic[]> => {
   try {
-    const response = await fetchData<Topic[]>('/topics/');
+    // Use Next.js API proxy to include auth automatically
+    const res = await fetch('/api/topics/', { credentials: 'include' });
+    if (!res.ok) return [];
+    const response = (await res.json()) as Topic[];
     return response ?? [];
   } catch (error) {
     console.error('Error fetching topics:', error);
@@ -213,7 +224,10 @@ export const fetchTopics = async (): Promise<Topic[]> => {
 export const fetchRooms = async (propertyId: string): Promise<Room[]> => {
   try {
     if (!propertyId) throw new Error('Property ID is required');
-    const response = await fetchData<Room[]>(`/api/v1/rooms/?property=${propertyId}`);
+    // Use Next.js API proxy for auth-injected request
+    const res = await fetch(`/api/rooms/?property=${encodeURIComponent(propertyId)}`, { credentials: 'include' });
+    if (!res.ok) return [];
+    const response = (await res.json()) as Room[];
     return response ?? [];
   } catch (error) {
     console.error(`Error fetching rooms for property ${propertyId}:`, error);
@@ -246,8 +260,12 @@ export const searchAll = async (criteria: SearchCriteria): Promise<SearchRespons
     if (criteria.page) params.append('page', String(criteria.page));
     if (criteria.pageSize) params.append('limit', String(criteria.pageSize));
 
-    const response = await fetchData<SearchResponse>(`/api/v1/search/?${params.toString()}`);
-    // Ensure response structure matches SearchResponse type
+    // Use Next.js API proxy which aggregates results and injects auth
+    const res = await fetch(`/api/search/?${params.toString()}`, { credentials: 'include' });
+    if (!res.ok) {
+      return { jobs: [], properties: [], totalCount: 0 };
+    }
+    const response = (await res.json()) as SearchResponse;
     return response ?? { jobs: [], properties: [], totalCount: 0 };
   } catch (error) {
     console.error('Error performing search:', error);

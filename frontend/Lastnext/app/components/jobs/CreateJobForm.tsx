@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/app/lib/user-context';
 import { useJob } from '@/app/lib/JobContext';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use Next.js API routes for proxying to the backend
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface FormValues {
@@ -152,11 +152,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         formData.append('images', file);
       });
 
-      const response = await axios.post(`${API_BASE_URL}/api/v1/jobs/`, formData, {
-        headers: {
-          Authorization: `Bearer ${session.user.accessToken}`,
-        },
-      });
+      const response = await axios.post(`/api/jobs/`, formData, { withCredentials: true });
 
       resetForm();
       triggerJobCreation();
@@ -180,16 +176,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     
     try {
       const [roomsResponse, topicsResponse] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/v1/rooms/`, {
-          headers: {
-            Authorization: `Bearer ${session.user.accessToken}`,
-          },
-        }),
-        axios.get(`${API_BASE_URL}/api/v1/topics/`, {
-          headers: {
-            Authorization: `Bearer ${session.user.accessToken}`,
-          },
-        })
+        axios.get(`/api/rooms/`, { withCredentials: true }),
+        axios.get(`/api/topics/`, { withCredentials: true })
       ]);
       setRooms(roomsResponse.data);
       setTopics(topicsResponse.data);

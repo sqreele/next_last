@@ -1,14 +1,5 @@
-import { Auth0Client } from '@auth0/nextjs-auth0/server';
+import { getSession } from '@auth0/nextjs-auth0';
 import { NextRequest, NextResponse } from 'next/server';
-
-// Initialize Auth0 client
-const auth0 = new Auth0Client({
-  domain: process.env.NEXT_PUBLIC_AUTH0_DOMAIN!,
-  clientId: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID!,
-  clientSecret: process.env.NEXT_PUBLIC_AUTH0_CLIENT_SECRET!,
-  appBaseUrl: process.env.NEXT_PUBLIC_AUTH0_BASE_URL!,
-  secret: process.env.NEXT_PUBLIC_AUTH0_SECRET!,
-});
 
 function resolveAudience(raw?: string | null): string {
   const fallback = 'https://pcms.live/api';
@@ -100,7 +91,7 @@ export async function GET(request: NextRequest) {
       case 'profile':
         // Get user profile from session
         try {
-          const session = await auth0.getSession(request);
+          const session = await getSession(request);
           if (session?.user) {
             return NextResponse.json({ user: session.user });
           } else {

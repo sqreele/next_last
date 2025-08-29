@@ -10,6 +10,35 @@ const auth0 = new Auth0Client({
   secret: process.env.NEXT_PUBLIC_AUTH0_SECRET!,
 });
 
+function resolveAudience(raw?: string | null): string {
+  const fallback = 'https://pcms.live/api';
+  if (!raw) {
+    return fallback;
+  }
+  const trimmed = raw.trim().replace(/\/$/, '');
+  // Explicit fixes for common misconfigurations
+  if (
+    trimmed === 'https://pcms.live' ||
+    trimmed === 'http://pcms.live' ||
+    trimmed === 'https://www.pcms.live'
+  ) {
+    return 'https://pcms.live/api';
+  }
+  if (trimmed.endsWith('/api')) {
+    return trimmed;
+  }
+  // If value is our domain without path, append /api
+  try {
+    const u = new URL(trimmed);
+    if (u.hostname.endsWith('pcms.live') && u.pathname === '') {
+      return `${trimmed}/api`;
+    }
+  } catch {
+    // ignore URL parse errors and return as-is
+  }
+  return trimmed;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -24,7 +53,7 @@ export async function GET(request: NextRequest) {
           const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
           const returnTo = `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/dashboard/profile`;
           const scope = 'openid profile email';
-          const audience = process.env.AUTH0_AUDIENCE || process.env.NEXT_PUBLIC_AUTH0_AUDIENCE || 'https://pcms.live/api';
+          const audience = resolveAudience(process.env.AUTH0_AUDIENCE || process.env.NEXT_PUBLIC_AUTH0_AUDIENCE);
           
           const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}`;
           

@@ -26,6 +26,28 @@ export async function GET(request: NextRequest) {
 
     // Exchange authorization code for tokens
     try {
+      const resolveAudience = (raw?: string | null): string => {
+        const fallback = 'https://pcms.live/api';
+        if (!raw) return fallback;
+        const trimmed = raw.trim().replace(/\/$/, '');
+        if (
+          trimmed === 'https://pcms.live' ||
+          trimmed === 'http://pcms.live' ||
+          trimmed === 'https://www.pcms.live'
+        ) {
+          return 'https://pcms.live/api';
+        }
+        if (trimmed.endsWith('/api')) return trimmed;
+        try {
+          const u = new URL(trimmed);
+          if (u.hostname.endsWith('pcms.live') && u.pathname === '') {
+            return `${trimmed}/api`;
+          }
+        } catch {}
+        return trimmed;
+      };
+
+      const audience = resolveAudience(process.env.AUTH0_AUDIENCE || process.env.NEXT_PUBLIC_AUTH0_AUDIENCE);
       const tokenResponse = await fetch(`https://${process.env.NEXT_PUBLIC_AUTH0_DOMAIN}/oauth/token`, {
         method: 'POST',
         headers: {
@@ -37,7 +59,7 @@ export async function GET(request: NextRequest) {
           client_secret: process.env.NEXT_PUBLIC_AUTH0_CLIENT_SECRET,
           code: code,
           redirect_uri: `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/api/auth/callback`,
-          audience: process.env.AUTH0_AUDIENCE || process.env.NEXT_PUBLIC_AUTH0_AUDIENCE || 'https://pcms.live/api',
+          audience,
         }),
       });
 

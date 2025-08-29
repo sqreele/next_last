@@ -74,20 +74,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await request.json();
+    // Support multipart/form-data passthrough
+    const contentType = request.headers.get('content-type') || '';
+    let fetchOptions: RequestInit = { method: 'POST', headers: { 'Authorization': `Bearer ${session.user.accessToken}` } };
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      fetchOptions.body = formData as any;
+      // Do not set Content-Type so boundary is preserved
+    } else {
+      const body = await request.json();
+      fetchOptions.headers = {
+        ...fetchOptions.headers,
+        'Content-Type': 'application/json',
+      } as any;
+      fetchOptions.body = JSON.stringify(body);
+    }
 
     // Create job in the external API
-          const response = await fetch(
-        `${API_CONFIG.baseUrl}/api/v1/jobs/`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.user.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
-    );
+    const response = await fetch(`${API_CONFIG.baseUrl}/api/v1/jobs/`, fetchOptions);
 
     if (!response.ok) {
       console.error('Failed to create job:', response.status, response.statusText);

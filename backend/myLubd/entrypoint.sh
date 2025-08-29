@@ -1,7 +1,12 @@
 #!/bin/sh
 
-# Wait for postgres
-while ! nc -z $SQL_HOST $SQL_PORT; do
+# Wait for PostgreSQL using pg_isready to avoid invalid startup packet logs
+DB_HOST="${SQL_HOST:-db}"
+DB_PORT="${SQL_PORT:-5432}"
+DB_USER="${SQL_USER:-mylubd_user}"
+DB_NAME="${SQL_DATABASE:-mylubd_db}"
+
+until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; do
     echo "Waiting for postgres..."
     sleep 1
 done
@@ -21,8 +26,8 @@ chown -R www-data:www-data /app/static
 chmod -R 755 /app/media
 chmod -R 755 /app/static
 
-# Run migrations
-python manage.py migrate
+# Run migrations (use --fake-initial to align with existing DB schemas)
+python manage.py migrate --no-input --fake-initial
 
 # Collect static files
 python manage.py collectstatic --no-input

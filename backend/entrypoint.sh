@@ -1,16 +1,21 @@
 #!/bin/bash
 set -e
 
-# Wait for postgres
+# Wait for PostgreSQL using pg_isready to avoid invalid startup packet logs
+DB_HOST="${SQL_HOST:-db}"
+DB_PORT="${SQL_PORT:-5432}"
+DB_USER="${SQL_USER:-mylubd_user}"
+DB_NAME="${SQL_DATABASE:-mylubd_db}"
+
 echo "Waiting for PostgreSQL..."
-while ! nc -z db 5432; do
+until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; do
   sleep 1
 done
 echo "PostgreSQL started"
 
 # Apply database migrations
 echo "Applying database migrations..."
-python manage.py migrate --noinput
+python manage.py migrate --noinput --fake-initial
 
 # Create superuser if necessary
 echo "Checking if superuser exists..."

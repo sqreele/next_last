@@ -24,6 +24,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Validate state against stored cookie to prevent CSRF
+    try {
+      const cookieStore = await import('next/headers').then(m => m.cookies());
+      const storedState = (await cookieStore).get('auth0_oauth_state')?.value;
+      if (!state || !storedState || state !== storedState) {
+        console.error('Auth0 callback state mismatch');
+        return NextResponse.redirect(
+          `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/login?error=state_mismatch`
+        );
+      }
+    } catch (e) {
+      console.error('Failed to validate state:', e);
+    }
+
     // Exchange authorization code for tokens
     try {
       const resolveAudience = (raw?: string | null): string => {
@@ -48,6 +62,10 @@ export async function GET(request: NextRequest) {
       };
 
       const audience = resolveAudience(process.env.AUTH0_AUDIENCE);
+      // Retrieve PKCE code_verifier from cookie
+      const cookieStore = await import('next/headers').then(m => m.cookies());
+      const codeVerifier = (await cookieStore).get('auth0_code_verifier')?.value;
+
       const tokenResponse = await fetch(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
         method: 'POST',
         headers: {
@@ -60,6 +78,8 @@ export async function GET(request: NextRequest) {
           code: code,
           redirect_uri: `${process.env.AUTH0_BASE_URL}/api/auth/callback`,
           audience,
+          // Include code_verifier for PKCE
+          code_verifier: codeVerifier,
         }),
       });
 
@@ -110,6 +130,9 @@ export async function GET(request: NextRequest) {
         sameSite: 'lax',
         maxAge: tokens.expires_in, // Use token expiry time
       });
+      // Clear temporary PKCE and state cookies
+      response.cookies.delete('auth0_code_verifier');
+      response.cookies.delete('auth0_oauth_state');
 
       return response;
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes, createHash } from 'crypto';
 
 function resolveAudience(raw?: string | null): string {
   const fallback = 'https://pcms.live/api';
@@ -44,10 +45,37 @@ export async function GET(request: NextRequest) {
           const returnTo = `${process.env.AUTH0_BASE_URL}/dashboard/profile`;
           const scope = 'openid profile email';
           const audience = resolveAudience(process.env.AUTH0_AUDIENCE);
+          // PKCE: generate code_verifier and code_challenge (S256)
+          const codeVerifier = randomBytes(32).toString('base64url');
+          const codeChallenge = createHash('sha256')
+            .update(codeVerifier)
+            .digest()
+            .toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+          // CSRF protection: generate state
+          const state = randomBytes(16).toString('base64url');
           
-          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${process.env.AUTH0_BASE_URL}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}`;
-          
-          return NextResponse.redirect(loginUrl);
+          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${process.env.AUTH0_BASE_URL}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}&code_challenge=${encodeURIComponent(codeChallenge)}&code_challenge_method=S256&state=${encodeURIComponent(state)}`;
+
+          const response = NextResponse.redirect(loginUrl);
+          // Store code_verifier and state in httpOnly cookies for callback
+          response.cookies.set('auth0_code_verifier', codeVerifier, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 10 * 60, // 10 minutes
+          });
+          response.cookies.set('auth0_oauth_state', state, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 10 * 60, // 10 minutes
+          });
+          return response;
         } catch (loginError) {
           console.error('Auth0 login error:', loginError);
           return NextResponse.redirect('https://pcms.live/login?error=login_failed');

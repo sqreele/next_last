@@ -1,4 +1,5 @@
 from typing import Optional, Tuple
+import logging
 
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
@@ -32,10 +33,13 @@ class Auth0JWTAuthentication(BaseAuthentication):
         # If Auth0 is not configured, skip and allow other authenticators to try
         domain = getattr(settings, 'AUTH0_DOMAIN', None)
         if not domain:
+            logging.warning("Auth0JWTAuthentication: AUTH0_DOMAIN not configured; skipping Auth0 auth")
             return None
 
         auth = get_authorization_header(request).split()
         if not auth or auth[0].lower() != b'bearer':
+            # No bearer token provided
+            logging.debug("Auth0JWTAuthentication: No Bearer token on path %s", getattr(request, 'path', ''))
             return None
 
         if len(auth) == 1:
@@ -47,10 +51,12 @@ class Auth0JWTAuthentication(BaseAuthentication):
 
         try:
             payload = self._validate_auth0_token(token)
-        except exceptions.AuthenticationFailed:
+        except exceptions.AuthenticationFailed as e:
             # Propagate DRF-friendly exceptions
+            logging.warning("Auth0JWTAuthentication: Authentication failed: %s", e)
             raise
-        except Exception:
+        except Exception as e:
+            logging.exception("Auth0JWTAuthentication: Unexpected error validating token")
             raise exceptions.AuthenticationFailed(_('Invalid token.'))
 
         user = self._get_or_create_user_from_claims(payload)
@@ -84,14 +90,24 @@ class Auth0JWTAuthentication(BaseAuthentication):
             options = {"verify_aud": False}
 
         try:
+            logging.debug(
+                "Auth0JWTAuthentication: Decoding JWT with issuer=%s, audience=%s (verify_aud=%s)",
+                issuer,
+                audience,
+                options.get("verify_aud")
+            )
             payload = jwt.decode(token, options=options, **decode_kwargs)
         except jwt.ExpiredSignatureError:
+            logging.warning("Auth0JWTAuthentication: Token has expired")
             raise exceptions.AuthenticationFailed(_('Token has expired.'))
         except jwt.InvalidIssuerError:
+            logging.warning("Auth0JWTAuthentication: Invalid token issuer (expected %s)", issuer)
             raise exceptions.AuthenticationFailed(_('Invalid token issuer.'))
         except jwt.InvalidAudienceError:
+            logging.warning("Auth0JWTAuthentication: Invalid token audience (expected %s)", audience)
             raise exceptions.AuthenticationFailed(_('Invalid token audience.'))
         except jwt.PyJWTError:
+            logging.warning("Auth0JWTAuthentication: Invalid token (PyJWTError)")
             raise exceptions.AuthenticationFailed(_('Invalid token.'))
 
         return payload

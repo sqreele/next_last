@@ -139,7 +139,9 @@ DATABASES = {
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'myappLubd.auth.Auth0JWTAuthentication',
+        'myappLubd.auth.DevelopmentAuthentication',  # Development mode first
+        'myappLubd.auth.Auth0JWTAuthentication',     # Then Auth0
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Fallback
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',  # Enforce authentication for all endpoints
@@ -265,11 +267,19 @@ LOGGING = {
             'format': '{levelname} {asctime} {module} {message}',
             'style': '{',
         },
+        'detailed': {
+            'format': '{levelname} {asctime} {module} {funcName} {lineno} {message}',
+            'style': '{',
+        },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
+        },
+        'detailed_console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'detailed',
         },
     },
     'root': {
@@ -279,6 +289,21 @@ LOGGING = {
     'django': {
         'handlers': ['console'],
         'level': 'DEBUG' if DEBUG else 'ERROR',
+        'propagate': False,
+    },
+    'django.request': {
+        'handlers': ['detailed_console'],
+        'level': 'DEBUG' if DEBUG else 'WARNING',
+        'propagate': False,
+    },
+    'django.security': {
+        'handlers': ['detailed_console'],
+        'level': 'DEBUG' if DEBUG else 'WARNING',
+        'propagate': False,
+    },
+    'myappLubd.auth': {
+        'handlers': ['detailed_console'],
+        'level': 'DEBUG' if DEBUG else 'INFO',
         'propagate': False,
     },
 }

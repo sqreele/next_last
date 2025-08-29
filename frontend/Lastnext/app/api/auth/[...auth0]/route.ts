@@ -1,4 +1,3 @@
-import { Auth0Client } from '@auth0/nextjs-auth0/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 function resolveAudience(raw?: string | null): string {
@@ -32,7 +31,6 @@ function resolveAudience(raw?: string | null): string {
 
 export async function GET(request: NextRequest) {
   try {
-    const auth0 = new Auth0Client();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
 
@@ -41,13 +39,13 @@ export async function GET(request: NextRequest) {
         // Start interactive login - redirect to Auth0
         try {
           // For Auth0 v4, construct the login URL manually
-          const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
-          const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
-          const returnTo = `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/dashboard/profile`;
+          const domain = process.env.AUTH0_DOMAIN;
+          const clientId = process.env.AUTH0_CLIENT_ID;
+          const returnTo = `${process.env.AUTH0_BASE_URL}/dashboard/profile`;
           const scope = 'openid profile email';
-          const audience = resolveAudience(process.env.AUTH0_AUDIENCE || process.env.NEXT_PUBLIC_AUTH0_AUDIENCE);
+          const audience = resolveAudience(process.env.AUTH0_AUDIENCE);
           
-          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}`;
+          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${process.env.AUTH0_BASE_URL}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}`;
           
           return NextResponse.redirect(loginUrl);
         } catch (loginError) {
@@ -61,7 +59,7 @@ export async function GET(request: NextRequest) {
           // For Auth0 callback, we need to handle the authorization code
           // This is typically done by the Auth0 SDK automatically
           // For now, redirect to profile page and let the client handle the session
-          return NextResponse.redirect(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/dashboard/profile`);
+          return NextResponse.redirect(`${process.env.AUTH0_BASE_URL}/dashboard/profile`);
         } catch (callbackError) {
           console.error('Auth0 callback error:', callbackError);
           return NextResponse.redirect('https://pcms.live/login?error=callback_failed');
@@ -71,9 +69,9 @@ export async function GET(request: NextRequest) {
         // Handle logout - use the correct Auth0 method
         try {
           // For Auth0 v4, we need to construct the logout URL manually
-          const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
-          const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
-          const returnTo = `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/`;
+          const domain = process.env.AUTH0_DOMAIN;
+          const clientId = process.env.AUTH0_CLIENT_ID;
+          const returnTo = `${process.env.AUTH0_BASE_URL}/`;
           
           const logoutUrl = `https://${domain}/v2/logout?client_id=${clientId}&returnTo=${encodeURIComponent(returnTo)}`;
           
@@ -84,7 +82,7 @@ export async function GET(request: NextRequest) {
         } catch (logoutError) {
           console.error('Auth0 logout error:', logoutError);
           // Fallback logout - clear cookie and redirect
-          const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/`);
+          const response = NextResponse.redirect(`${process.env.AUTH0_BASE_URL}/`);
           response.cookies.delete('auth0_session');
           return response;
         }
@@ -92,12 +90,18 @@ export async function GET(request: NextRequest) {
       case 'profile':
         // Get user profile from session
         try {
-          const session = await auth0.getSession();
-          if (session?.user) {
-            return NextResponse.json({ user: session.user });
-          } else {
-            return NextResponse.json({ user: null }, { status: 401 });
+          const cookie = request.cookies.get('auth0_session');
+          if (cookie?.value) {
+            try {
+              const parsed = JSON.parse(cookie.value);
+              if (parsed?.user) {
+                return NextResponse.json({ user: parsed.user });
+              }
+            } catch (e) {
+              console.error('Failed to parse auth0_session cookie in profile:', e);
+            }
           }
+          return NextResponse.json({ user: null }, { status: 401 });
         } catch (profileError) {
           console.error('Auth0 profile error:', profileError);
           return NextResponse.json({ user: null, error: 'profile_failed' }, { status: 500 });

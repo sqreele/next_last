@@ -75,6 +75,10 @@ services:
       DEBUG: 0
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1 [::1] ${DOMAIN} www.${DOMAIN} django-backend
       DJANGO_CORS_ORIGINS: https://${DOMAIN}
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN}
+      AUTH0_ISSUER: ${AUTH0_ISSUER}
+      AUTH0_ISSUER_BASE_URL: ${AUTH0_ISSUER_BASE_URL}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
       SQL_ENGINE: django.db.backends.postgresql
       SQL_DATABASE: ${SQL_DATABASE:-mylubd_db}
       SQL_USER: ${SQL_USER:-mylubd_user}

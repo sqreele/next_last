@@ -4,11 +4,11 @@ export async function GET(request: NextRequest) {
   try {
     // Get return URL from query params
     const { searchParams } = new URL(request.url);
-    const returnTo = searchParams.get('returnTo') || `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL || ''}/`;
+    const returnTo = searchParams.get('returnTo') || `${process.env.AUTH0_BASE_URL || ''}/`;
 
     // Construct Auth0 logout URL
-    const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
-    const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
+    const domain = process.env.AUTH0_DOMAIN;
+    const clientId = process.env.AUTH0_CLIENT_ID;
     
     if (domain && clientId) {
       // Use Auth0 logout endpoint

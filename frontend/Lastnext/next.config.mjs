@@ -84,6 +84,16 @@ const nextConfig = {
         permanent: true,
       },
       {
+        source: '/auth/profile',
+        destination: '/dashboard/profile',
+        permanent: true,
+      },
+      {
+        source: '/auth/profile/',
+        destination: '/dashboard/profile/',
+        permanent: true,
+      },
+      {
         source: '/dashboard/chartdashboad/',
         destination: '/dashboard/chartdashboard/',
         permanent: true,

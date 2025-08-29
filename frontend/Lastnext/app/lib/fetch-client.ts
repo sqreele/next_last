@@ -8,12 +8,13 @@ const getCompatClientSession = cache(async () => {
   try {
     const cookieStoreOrPromise = cookies() as any;
     const cookieStore = typeof cookieStoreOrPromise?.get === 'function' ? cookieStoreOrPromise : await cookieStoreOrPromise;
-    // Use internal call to our session-compat API route
-    const res = await fetch(`${API_CONFIG.baseUrl}/api/auth/session-compat`, {
-      headers: {
-        Cookie: cookieStore?.toString?.() || ''
-      },
-      cache: 'no-store'
+    const cookieHeader = cookieStore?.toString?.() || '';
+
+    // Always hit the Next.js API route on the same origin to read the session cookie
+    const res = await fetch(`http://localhost/api/auth/session-compat`, {
+      // Use absolute URL to ensure this does not get rewritten to the backend
+      headers: { Cookie: cookieHeader },
+      cache: 'no-store',
     });
     if (!res.ok) return null;
     return res.json();

@@ -1,5 +1,6 @@
 // Simplified server session that doesn't depend on problematic imports
 import type { CompatUser, CompatSession } from './session-compat';
+import { cookies } from 'next/headers';
 
 export async function getCompatServerSession(): Promise<CompatSession | null> {
   try {
@@ -31,8 +32,20 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
       return { user: mockUser, expires: undefined };
     }
     
-    // In production, return null for now
-    return null;
+    // In production, read session from auth0_session cookie
+    const cookieStore = cookies();
+    const sessionCookie = cookieStore.get('auth0_session');
+    if (!sessionCookie?.value) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(sessionCookie.value);
+      return parsed as CompatSession;
+    } catch (e) {
+      console.error('❌ Failed to parse auth0_session cookie:', e);
+      return null;
+    }
     
   } catch (error) {
     console.error('❌ Error in getCompatServerSession:', error);

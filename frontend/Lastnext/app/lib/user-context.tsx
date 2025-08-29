@@ -82,13 +82,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return mockProfile;
       }
       
-      // Fetch user profile from API (production mode)
-      const profileResponse = await fetch(`${API_URL}/api/v1/user-profiles/`, {
+      // Fetch user profile via Next.js API proxy (injects auth)
+      const profileResponse = await fetch(`/api/user-profiles/`, {
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.user.accessToken}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!profileResponse.ok) {
@@ -109,13 +106,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       
       console.log('Selected profile data:', profileData);
 
-      // Fetch properties
-      const propertiesResponse = await fetch(`${API_URL}/api/v1/properties/`, {
+      // Fetch properties via Next.js API proxy (injects auth)
+      const propertiesResponse = await fetch(`/api/properties/`, {
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.user.accessToken}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!propertiesResponse.ok) {

@@ -1,5 +1,7 @@
-import { getSession } from '@auth0/nextjs-auth0';
+import { Auth0Client } from '@auth0/nextjs-auth0/server';
 import { NextRequest, NextResponse } from 'next/server';
+
+const auth0 = new Auth0Client();
 
 function resolveAudience(raw?: string | null): string {
   const fallback = 'https://pcms.live/api';
@@ -91,7 +93,7 @@ export async function GET(request: NextRequest) {
       case 'profile':
         // Get user profile from session
         try {
-          const session = await getSession(request);
+          const session = await auth0.getSession();
           if (session?.user) {
             return NextResponse.json({ user: session.user });
           } else {

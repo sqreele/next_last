@@ -1,6 +1,8 @@
 import { Auth0Client } from '@auth0/nextjs-auth0/server';
 import { NextRequest, NextResponse } from 'next/server';
 
+const auth0 = new Auth0Client();
+
 function resolveAudience(raw?: string | null): string {
   const fallback = 'https://pcms.live/api';
   if (!raw) {

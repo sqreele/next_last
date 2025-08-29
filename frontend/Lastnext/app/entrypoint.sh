@@ -50,16 +50,8 @@ setup_database() {
     fi
     
     if [ -f "$main_schema" ]; then
-        echo "🗄️  Found main schema, updating database..."
-        if npx prisma db push --schema="$main_schema" --accept-data-loss --skip-generate; then
-            echo "✅ Main database schema updated successfully!"
-        else
-            echo "❌ Failed to update main database schema"
-            return 1
-        fi
-        
-        # Generate Prisma client
-        echo "🔧 Generating Prisma client..."
+        echo "🗄️  Found main schema that maps to existing Django tables. Skipping db push to avoid conflicts."
+        echo "🔧 Generating Prisma client only..."
         if npx prisma generate --schema="$main_schema"; then
             echo "✅ Prisma client generated successfully!"
         else
@@ -88,13 +80,7 @@ run_migrations() {
         fi
     fi
     
-    if [ -f "$main_schema" ] && [ -d "./prisma/migrations" ]; then
-        echo "🔄 Running main migrations..."
-        if ! npx prisma migrate deploy --schema="$main_schema"; then
-            echo "⚠️  Main migrations failed"
-            migration_success=false
-        fi
-    fi
+    # Do not run migrations for main schema since it maps to Django's tables
     
     if [ "$migration_success" = false ]; then
         echo "⚠️  Some migrations failed, falling back to db push..."

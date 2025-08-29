@@ -9,7 +9,7 @@ services:
     # Remove or comment out the user line to let container handle it
     # user: "1001:1001"  
     env_file:
-      - ./frontend/Lastnext/.env.development
+    - ./frontend/Lastnext/.env.development
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PRIVATE_API_URL=http://backend:8000
@@ -18,16 +18,12 @@ services:
       - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
       - NODE_ENV=development
       - DATABASE_URL=postgresql://mylubd_user:Sqreele1234@db:5432/mylubd_db?schema=public
-      - AUTH0_BASE_URL=http://localhost:3000
-      - NEXT_PUBLIC_AUTH0_BASE_URL=http://localhost:3000
+
       - AUTH0_ISSUER_BASE_URL=https://pcms.ca.auth0.com
       - NEXT_PUBLIC_AUTH0_DOMAIN=pcms.ca.auth0.com
-      - AUTH0_CLIENT_ID=H5QKkdL5wsGPvdY6FEFGVmuBQCKKzSV7
-      - NEXT_PUBLIC_AUTH0_CLIENT_ID=H5QKkdL5wsGPvdY6FEFGVmuBQCKKzSV7
-      - AUTH0_CLIENT_SECRET=iCMxpx4HmEMsTohty_ID6oP9iG9kJEXp8h4lEyeZlcont7hbpQddg1WIAznIhnlfH
-      - AUTH0_SECRET=vdkr2aiRWVVVdbEZgNqZbFXnR7K0kty4/gkU4G1McK9CKRbZiDEUldS5pCjdm6bZ
-      - AUTH0_AUDIENCE=http://localhost:8000
-      - NEXT_PUBLIC_AUTH0_AUDIENCE=http://localhost:8000
+
+      - AUTH0_AUDIENCE=https://pcms.live/api
+      - NEXT_PUBLIC_AUTH0_AUDIENCE=https://pcms.live/api
     volumes:
       - ./frontend/Lastnext:/app
       - frontend_node_modules:/app/node_modules  # Named volume
@@ -63,7 +59,7 @@ services:
       - SQL_PORT=5432
       - JWT_SECRET=uhZ6biZK5PkeLMeJqoVVCgfWGLRwLPkLHi9vwKPMBCU=
       - AUTH0_DOMAIN=pcms.ca.auth0.com
-      - AUTH0_AUDIENCE=http://localhost:8000
+      - AUTH0_AUDIENCE=https://pcms.live/api
       - AUTH0_ISSUER=https://pcms.ca.auth0.com
       - AUTH0_ISSUER_BASE_URL=https://pcms.ca.auth0.com
     ports:

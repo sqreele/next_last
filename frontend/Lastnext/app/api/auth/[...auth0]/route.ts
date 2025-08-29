@@ -1,4 +1,4 @@
-import { getSession } from '@auth0/nextjs-auth0';
+import { Auth0Client } from '@auth0/nextjs-auth0/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 function resolveAudience(raw?: string | null): string {
@@ -32,6 +32,7 @@ function resolveAudience(raw?: string | null): string {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth0 = new Auth0Client();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
 
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
       case 'profile':
         // Get user profile from session
         try {
-          const session = await getSession(request);
+          const session = await auth0.getSession();
           if (session?.user) {
             return NextResponse.json({ user: session.user });
           } else {

@@ -74,6 +74,16 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: '/profile',
+        destination: '/dashboard/profile',
+        permanent: true,
+      },
+      {
+        source: '/profile/',
+        destination: '/dashboard/profile/',
+        permanent: true,
+      },
+      {
         source: '/dashboard/chartdashboad/',
         destination: '/dashboard/chartdashboard/',
         permanent: true,

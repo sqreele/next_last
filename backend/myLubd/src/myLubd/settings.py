@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 import os
 from datetime import timedelta
+from typing import Optional
 
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -154,7 +155,7 @@ REST_FRAMEWORK = {
 # Support multiple env var names and sensible fallbacks
 _raw_auth0_audience = os.getenv('AUTH0_AUDIENCE')
 
-def _normalize_auth0_audience(aud: str | None) -> str | None:
+def _normalize_auth0_audience(aud: Optional[str]) -> Optional[str]:
     if not aud:
         return None
     value = aud.strip().rstrip('/')

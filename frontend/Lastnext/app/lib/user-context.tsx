@@ -14,6 +14,8 @@ export interface UserProfile {
   positions: string;
   properties: Property[];
   email?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   created_at: string;
 }
 
@@ -56,77 +58,33 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      console.log('Fetching user profile and properties...');
+      console.log('Creating user profile from session data...');
       
-      // Production mode: Always make real API calls
+      // Use session data directly instead of making API calls
+      // This avoids authorization issues with separate endpoints
       
-      // Fetch user profile via Next.js API proxy (injects auth)
-      const profileResponse = await fetch(`/api/user-profiles/`, {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (!profileResponse.ok) {
-        throw new Error(`Failed to fetch profile: ${profileResponse.status}`);
-      }
-
-      const profileDataArray = await profileResponse.json();
-      console.log('Profile data array:', profileDataArray);
-      
-      // Get the first profile or handle empty array
-      const profileData = Array.isArray(profileDataArray) && profileDataArray.length > 0 
-        ? profileDataArray[0] 
-        : profileDataArray;
-        
-      if (!profileData) {
-        throw new Error('No profile data found');
-      }
-      
-      console.log('Selected profile data:', profileData);
-
-      // Fetch properties via Next.js API proxy (injects auth)
-      const propertiesResponse = await fetch(`/api/properties/`, {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      if (!propertiesResponse.ok) {
-        throw new Error(`Failed to fetch properties: ${propertiesResponse.status}`);
-      }
-
-      const propertiesData = await propertiesResponse.json();
-      console.log('Fetched properties:', propertiesData);
-      
-      // Ensure each property has a valid property_id
-      const normalizedProperties = propertiesData.map((property: any) => {
-        return {
-          ...property,
-          property_id: property.property_id || String(property.id)
-        };
-      });
-
-      console.log('Normalized properties:', normalizedProperties);
-
-      // Create user profile with properties
+      // Create user profile from session data
       const profile: UserProfile = {
-        id: profileData.id,
-        username: profileData.username,
-        profile_image: profileData.profile_image,
-        positions: profileData.positions,
-        email: profileData.email,
-        created_at: profileData.created_at,
-        properties: normalizedProperties
+        id: session.user.id,
+        username: session.user.username,
+        profile_image: session.user.profile_image,
+        positions: session.user.positions || 'User',
+        email: session.user.email,
+        first_name: session.user.first_name,
+        last_name: session.user.last_name,
+        created_at: session.user.created_at,
+        properties: session.user.properties || []
       };
       
-      console.log('Final user profile:', profile);
+      console.log('User profile from session:', profile);
 
       setUserProfile(profile);
       setLastFetched(Date.now());
       setError(null);
 
       // Auto-select first property if none selected and user has properties
-      if (!selectedProperty && normalizedProperties.length > 0) {
-        const firstProperty = normalizedProperties[0];
+      if (!selectedProperty && profile.properties.length > 0) {
+        const firstProperty = profile.properties[0];
         const propertyId = getPropertyId(firstProperty);
         if (propertyId) {
           setSelectedProperty(propertyId);
@@ -136,15 +94,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       return profile;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch profile';
-      console.error('Error fetching user data:', message);
+      const message = err instanceof Error ? err.message : 'Failed to create profile from session';
+      console.error('Error creating user profile from session:', message);
       setError(message);
       setUserProfile(null);
       return null;
     } finally {
       setLoading(false);
     }
-  }, [session?.user?.accessToken, session?.user?.id, session?.user?.username, session?.user?.profile_image, session?.user?.positions, session?.user?.email, session?.user?.created_at, session?.user?.properties, selectedProperty, setSelectedProperty]); // Updated dependencies
+  }, [session?.user, lastFetched, userProfile, selectedProperty, setSelectedProperty, getPropertyId]);
 
   useEffect(() => {
     let mounted = true;

@@ -5,30 +5,17 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
-    const error = searchParams.get('error');
-    const errorDescription = searchParams.get('error_description');
 
-    // Handle Auth0 errors
-    if (error) {
-      console.error('Auth0 callback error:', error, errorDescription);
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/login?error=${encodeURIComponent(error)}&description=${encodeURIComponent(errorDescription || '')}`
-      );
-    }
-
-    // Check if we have the authorization code
     if (!code) {
-      console.error('Auth0 callback missing authorization code');
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/login?error=missing_code`
-      );
+      console.error('No authorization code provided');
+      return NextResponse.redirect('/login?error=no_code');
     }
 
-    // Exchange authorization code for tokens
+    // Exchange authorization code for tokens using server-side environment variables
     try {
       const resolveAudience = (raw?: string | null): string => {
-        // Use environment variable as fallback, or default to localhost for development
-        const fallback = process.env.NEXT_PUBLIC_AUTH0_AUDIENCE || 'http://localhost:8000';
+        // Use server-side environment variable as fallback
+        const fallback = process.env.AUTH0_AUDIENCE || 'https://pcms.live/api';
         if (!raw) return fallback;
         const trimmed = raw.trim().replace(/\/$/, '');
         if (
@@ -48,18 +35,30 @@ export async function GET(request: NextRequest) {
         return trimmed;
       };
 
-      const audience = resolveAudience(process.env.NEXT_PUBLIC_AUTH0_AUDIENCE);
-      const tokenResponse = await fetch(`https://${process.env.NEXT_PUBLIC_AUTH0_DOMAIN}/oauth/token`, {
+      const audience = resolveAudience(process.env.AUTH0_AUDIENCE);
+      
+      // Use server-side environment variables for sensitive data
+      const domain = process.env.AUTH0_DOMAIN;
+      const clientId = process.env.AUTH0_CLIENT_ID;
+      const clientSecret = process.env.AUTH0_CLIENT_SECRET;
+      const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+      
+      if (!domain || !clientId || !clientSecret) {
+        console.error('Missing required Auth0 environment variables');
+        return NextResponse.redirect(`${baseUrl}/login?error=config_error`);
+      }
+
+      const tokenResponse = await fetch(`https://${domain}/oauth/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           grant_type: 'authorization_code',
-          client_id: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
-          client_secret: process.env.NEXT_PUBLIC_AUTH0_CLIENT_SECRET,
+          client_id: clientId,
+          client_secret: clientSecret,
           code: code,
-          redirect_uri: `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/api/auth/callback`,
+          redirect_uri: `${baseUrl}/api/auth/callback`,
           audience,
         }),
       });
@@ -68,41 +67,131 @@ export async function GET(request: NextRequest) {
         const errorText = await tokenResponse.text();
         console.error('Token exchange failed:', tokenResponse.status, errorText);
         return NextResponse.redirect(
-          `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/login?error=token_exchange_failed`
+          `${baseUrl}/login?error=token_exchange_failed`
         );
       }
 
       const tokens = await tokenResponse.json();
       
-      // Get user info using the access token
-      const userResponse = await fetch(`https://${process.env.NEXT_PUBLIC_AUTH0_DOMAIN}/userinfo`, {
-        headers: {
-          'Authorization': `Bearer ${tokens.access_token}`,
-        },
-      });
+      // Get user info using the access token - with retry logic for rate limiting
+      let userInfo = null;
+      let userResponse = null;
+      
+      try {
+        userResponse = await fetch(`https://${domain}/userinfo`, {
+          headers: {
+            'Authorization': `Bearer ${tokens.access_token}`,
+          },
+        });
 
-      if (!userResponse.ok) {
-        console.error('User info fetch failed:', userResponse.status);
-        return NextResponse.redirect(
-          `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/login?error=user_info_failed`
-        );
+        if (userResponse.ok) {
+          userInfo = await userResponse.json();
+          console.log('🔍 Auth0 user info received:', {
+            sub: userInfo?.sub,
+            nickname: userInfo?.nickname,
+            name: userInfo?.name,
+            email: userInfo?.email,
+            picture: userInfo?.picture,
+            positions: userInfo?.positions
+          });
+          
+          // Log all available fields from Auth0
+          console.log('🔍 All Auth0 user fields:', Object.keys(userInfo));
+          console.log('🔍 Full Auth0 user data:', JSON.stringify(userInfo, null, 2));
+        } else if (userResponse.status === 429) {
+          // Rate limited - wait a bit and retry once
+          console.log('Rate limited by Auth0, waiting 2 seconds before retry...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          userResponse = await fetch(`https://${domain}/userinfo`, {
+            headers: {
+              'Authorization': `Bearer ${tokens.access_token}`,
+            },
+          });
+          
+          if (userResponse.ok) {
+            userInfo = await userResponse.json();
+            console.log('🔍 Auth0 user info received (retry):', {
+              sub: userInfo?.sub,
+              nickname: userInfo?.nickname,
+              name: userInfo?.name,
+              email: userInfo?.email
+            });
+          }
+        }
+      } catch (userInfoError) {
+        console.error('Error fetching user info:', userInfoError);
+        // Continue without user info - we'll create a minimal session
       }
 
-      const userInfo = await userResponse.json();
+      // Debug: Log what we have before creating session
+      console.log('🔍 Before creating session - available data:', {
+        hasUserInfo: !!userInfo,
+        userInfoKeys: userInfo ? Object.keys(userInfo) : [],
+        sub: userInfo?.sub,
+        nickname: userInfo?.nickname,
+        name: userInfo?.name,
+        email: userInfo?.email,
+        tokens: {
+          hasAccessToken: !!tokens.access_token,
+          accessTokenLength: tokens.access_token?.length,
+          hasRefreshToken: !!tokens.refresh_token
+        }
+      });
 
-      // Create session data
+      // Create session data with proper user structure
       const sessionData = {
         user: {
-          ...userInfo,
+          // Use a sanitized ID that's URL-friendly and consistent with backend
+          id: userInfo?.sub ? userInfo.sub.replace('|', '_') : `auth0_${Date.now()}`,
+          // More reliable username extraction - prioritize sub field
+          username: userInfo?.sub || userInfo?.nickname || userInfo?.name || userInfo?.email?.split('@')[0] || 'unknown',
+          email: userInfo?.email || 'unknown@example.com',
+          profile_image: userInfo?.picture || null,
+          positions: userInfo?.positions || 'User',
+          properties: [], // Will be populated by session-compat API
           accessToken: tokens.access_token,
           refreshToken: tokens.refresh_token,
           accessTokenExpires: Date.now() + (tokens.expires_in * 1000),
+          created_at: new Date().toISOString(),
+          // Include full Auth0 profile data for backend processing
+          auth0_profile: {
+            sub: userInfo?.sub,
+            email: userInfo?.email,
+            email_verified: userInfo?.email_verified,
+            name: userInfo?.name,
+            given_name: userInfo?.given_name,
+            family_name: userInfo?.family_name,
+            nickname: userInfo?.nickname,
+            picture: userInfo?.picture,
+            locale: userInfo?.locale,
+            updated_at: userInfo?.updated_at
+          }
         },
         expires: Date.now() + (tokens.expires_in * 1000),
       };
 
+      // Ensure we have valid user data - fallback to sub if other fields are missing
+      if (!sessionData.user.id || sessionData.user.id === `auth0_${Date.now()}`) {
+        sessionData.user.id = userInfo?.sub || 'unknown';
+      }
+      
+      if (!sessionData.user.username || sessionData.user.username === 'user') {
+        sessionData.user.username = userInfo?.sub || 'unknown';
+      }
+
+      // Debug log the session data being created
+      console.log('🔍 Creating session with user data:', {
+        id: sessionData.user.id,
+        username: sessionData.user.username,
+        email: sessionData.user.email,
+        hasAccessToken: !!sessionData.user.accessToken,
+        accessTokenLength: sessionData.user.accessToken?.length,
+        note: 'Properties will be fetched by session-compat API'
+      });
+
       // Redirect to profile page with session cookie
-              const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/dashboard/profile`);
+      const response = NextResponse.redirect(`${baseUrl}/dashboard/profile`);
       
       // Set session cookie
       response.cookies.set('auth0_session', JSON.stringify(sessionData), {
@@ -117,14 +206,14 @@ export async function GET(request: NextRequest) {
     } catch (tokenError) {
       console.error('Token exchange error:', tokenError);
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/login?error=token_exchange_error`
+        `${process.env.AUTH0_BASE_URL || 'http://localhost:3000'}/login?error=token_exchange_error`
       );
     }
 
   } catch (error) {
     console.error('Auth0 callback error:', error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/login?error=callback_error`
+      `${process.env.AUTH0_BASE_URL || 'http://localhost:3000'}/login?error=callback_error`
     );
   }
 }

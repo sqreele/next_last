@@ -38,19 +38,25 @@ export async function GET(request: NextRequest) {
       case 'login':
         // Start interactive login - redirect to Auth0
         try {
-          // For Auth0 v4, construct the login URL manually
+          // Use server-side environment variables for sensitive data
           const domain = process.env.AUTH0_DOMAIN;
           const clientId = process.env.AUTH0_CLIENT_ID;
-          const returnTo = `${process.env.AUTH0_BASE_URL}/dashboard/profile`;
+          const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
           const scope = 'openid profile email';
           const audience = resolveAudience(process.env.AUTH0_AUDIENCE);
           
-          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${process.env.AUTH0_BASE_URL}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}`;
+          if (!domain || !clientId) {
+            console.error('Missing required Auth0 environment variables');
+            return NextResponse.redirect(`${baseUrl}/login?error=config_error`);
+          }
+          
+          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${baseUrl}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}`;
           
           return NextResponse.redirect(loginUrl);
         } catch (loginError) {
           console.error('Auth0 login error:', loginError);
-          return NextResponse.redirect('https://pcms.live/login?error=login_failed');
+          const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+          return NextResponse.redirect(`${baseUrl}/login?error=login_failed`);
         }
       
       case 'callback':
@@ -59,10 +65,12 @@ export async function GET(request: NextRequest) {
           // For Auth0 callback, we need to handle the authorization code
           // This is typically done by the Auth0 SDK automatically
           // For now, redirect to profile page and let the client handle the session
-          return NextResponse.redirect(`${process.env.AUTH0_BASE_URL}/dashboard/profile`);
+          const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+          return NextResponse.redirect(`${baseUrl}/dashboard/profile`);
         } catch (callbackError) {
           console.error('Auth0 callback error:', callbackError);
-          return NextResponse.redirect('https://pcms.live/login?error=callback_failed');
+          const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+          return NextResponse.redirect(`${baseUrl}/login?error=callback_failed`);
         }
       
       case 'logout':
@@ -71,9 +79,14 @@ export async function GET(request: NextRequest) {
           // For Auth0 v4, we need to construct the logout URL manually
           const domain = process.env.AUTH0_DOMAIN;
           const clientId = process.env.AUTH0_CLIENT_ID;
-          const returnTo = `${process.env.AUTH0_BASE_URL}/`;
+          const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
           
-          const logoutUrl = `https://${domain}/v2/logout?client_id=${clientId}&returnTo=${encodeURIComponent(returnTo)}`;
+          if (!domain || !clientId) {
+            console.error('Missing required Auth0 environment variables');
+            return NextResponse.redirect(`${baseUrl}/login?error=config_error`);
+          }
+          
+          const logoutUrl = `https://${domain}/v2/logout?client_id=${clientId}&returnTo=${encodeURIComponent(baseUrl)}`;
           
           const response = NextResponse.redirect(logoutUrl);
           // Clear any session cookies
@@ -82,7 +95,8 @@ export async function GET(request: NextRequest) {
         } catch (logoutError) {
           console.error('Auth0 logout error:', logoutError);
           // Fallback logout - clear cookie and redirect
-          const response = NextResponse.redirect(`${process.env.AUTH0_BASE_URL}/`);
+          const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+          const response = NextResponse.redirect(baseUrl);
           response.cookies.delete('auth0_session');
           return response;
         }

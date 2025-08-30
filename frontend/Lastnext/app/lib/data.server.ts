@@ -29,6 +29,8 @@ export async function fetchWithToken<T>(
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+  } else {
+    console.warn('⚠️ No access token provided for request:', url);
   }
 
   const options: RequestInit = {
@@ -71,6 +73,15 @@ export async function fetchWithToken<T>(
           errorMessage = errorData.detail || errorMessage;
         } catch (parseError) {
           console.error("Failed to parse error JSON:", parseError);
+        }
+      }
+      
+      // Handle authentication errors specifically
+      if (response.status === 401) {
+        if (!token) {
+          errorMessage = "Authentication required - no access token provided";
+        } else {
+          errorMessage = "Authentication failed - invalid or expired token";
         }
       }
       
@@ -190,4 +201,42 @@ export async function fetchJobsForRoom(roomId: string, accessToken?: string): Pr
   const jobs = await fetchWithToken<Job[]>(`/api/v1/jobs/?room=${roomId}`, accessToken);
   const sanitizedJobs = sanitizeJobsData(jobs);
   return fixJobsImageUrls(sanitizedJobs);
+}
+
+export async function updateUserProfile(auth0Profile: any): Promise<boolean> {
+  try {
+    // Get the current session to extract the access token
+    const sessionResponse = await fetch('/api/auth/session-compat', {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    
+    if (!sessionResponse.ok) {
+      console.error('❌ Failed to get session for profile update');
+      return false;
+    }
+    
+    const session = await sessionResponse.json();
+    const accessToken = session?.user?.accessToken;
+    
+    if (!accessToken) {
+      console.error('❌ No access token available for profile update');
+      return false;
+    }
+    
+    const response = await fetchWithToken<{message: string, updated_fields: string[], user: any}>(
+      '/api/v1/auth/profile/update/',
+      accessToken, // Pass the actual access token
+      'POST',
+      {
+        auth0_profile: auth0Profile
+      }
+    );
+
+    console.log('✅ User profile updated successfully:', response);
+    return true;
+  } catch (error) {
+    console.error('❌ Error updating user profile:', error);
+    return false;
+  }
 }

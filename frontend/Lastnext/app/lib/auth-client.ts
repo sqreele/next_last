@@ -13,6 +13,8 @@ type SessionCompat = {
     accessToken: string;
     refreshToken: string;
     accessTokenExpires?: number;
+    first_name?: string | null;
+    last_name?: string | null;
     created_at: string;
   };
   error?: string;

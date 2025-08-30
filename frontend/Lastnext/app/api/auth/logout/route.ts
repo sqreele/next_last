@@ -5,9 +5,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const returnTo = searchParams.get('returnTo') || '/';
     
-    const baseUrl = process.env.NEXT_PUBLIC_AUTH0_BASE_URL || 'http://localhost:3000';
-    const auth0Domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
-    const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
+    console.log('🚪 Logout API called with returnTo:', returnTo);
+    
+    // Use server-side environment variables
+    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+    const auth0Domain = process.env.AUTH0_DOMAIN;
+    const clientId = process.env.AUTH0_CLIENT_ID;
+    
+    console.log('🔍 Logout configuration:', {
+      baseUrl,
+      auth0Domain,
+      clientId: clientId ? '***' : 'missing',
+      returnTo
+    });
     
     if (!auth0Domain || !clientId) {
       console.error('Missing Auth0 configuration');
@@ -24,15 +34,26 @@ export async function GET(request: NextRequest) {
     
     // Create response and clear session cookie
     const response = NextResponse.redirect(auth0LogoutUrl);
+    
+    // Clear the session cookie properly
+    response.cookies.delete('auth0_session');
+    
+    // Also set an expired cookie to ensure it's cleared
     response.cookies.set('auth0_session', '', {
       expires: new Date(0),
       path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
     });
+    
+    console.log('✅ Logout response created, cookies cleared');
     
     return response;
     
   } catch (error) {
     console.error('Error in logout route:', error);
-    return NextResponse.redirect('/error?message=Logout failed');
+    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+    return NextResponse.redirect(`${baseUrl}/error?message=Logout failed`);
   }
 }

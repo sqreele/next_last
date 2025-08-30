@@ -1951,3 +1951,81 @@ def generate_maintenance_pdf_report(request):
         return Response({
             'error': f'Failed to generate PDF report: {str(e)}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def update_user_profile(request):
+    """
+    Update user profile with Auth0 profile information.
+    This endpoint is called by the frontend after successful Auth0 authentication.
+    """
+    try:
+        user = request.user
+        auth0_profile = request.data.get('auth0_profile', {})
+        
+        if not auth0_profile:
+            return Response(
+                {'error': 'No Auth0 profile data provided'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Track what fields were updated
+        updated_fields = []
+        
+        # Update email if available and different
+        if auth0_profile.get('email') and user.email != auth0_profile['email']:
+            user.email = auth0_profile['email']
+            updated_fields.append('email')
+        
+        # Update first name if available and different
+        if auth0_profile.get('given_name') and user.first_name != auth0_profile['given_name']:
+            user.first_name = auth0_profile['given_name'][:30]
+            updated_fields.append('first_name')
+        
+        # Update last name if available and different
+        if auth0_profile.get('family_name') and user.last_name != auth0_profile['family_name']:
+            user.last_name = auth0_profile['family_name'][:150]
+            updated_fields.append('last_name')
+        
+        # If no given_name/family_name but we have name, split it
+        if (not user.first_name and not user.last_name) and auth0_profile.get('name'):
+            name_parts = auth0_profile['name'].split(' ', 1)
+            if len(name_parts) >= 2:
+                user.first_name = name_parts[0][:30]
+                user.last_name = name_parts[1][:150]
+                updated_fields.extend(['first_name', 'last_name'])
+            elif len(name_parts) == 1:
+                user.first_name = name_parts[0][:30]
+                updated_fields.append('first_name')
+        
+        # Use nickname if no first name is available
+        if not user.first_name and auth0_profile.get('nickname'):
+            user.first_name = auth0_profile['nickname'][:30]
+            updated_fields.append('first_name')
+        
+        # Save the user if any fields were updated
+        if updated_fields:
+            user.save(update_fields=updated_fields)
+            logger.info(f"Updated user {user.username} profile fields: {updated_fields}")
+        
+        # Return the updated user profile
+        return Response({
+            'message': 'Profile updated successfully',
+            'updated_fields': updated_fields,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'date_joined': user.date_joined,
+                'last_login': user.last_login
+            }
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        logger.error(f"Error updating user profile: {e}", exc_info=True)
+        return Response(
+            {'error': 'Failed to update user profile'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

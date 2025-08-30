@@ -16,17 +16,28 @@ export default class TopicService {
     try {
       console.log('Fetching topics');
       
-      const headers: Record<string, string> = {};
       if (accessToken) {
-        headers.Authorization = `Bearer ${accessToken}`;
+        // Use direct backend call with provided token
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${accessToken}`,
+        };
         console.log('✅ Using access token for topics request');
+        
+        const response = await apiClient.get<Topic[]>(this.baseUrl, { headers });
+        console.log('Topics received:', response.data);
+        return { success: true, data: response.data };
       } else {
-        console.warn('⚠️ No access token provided for topics request');
+        // Use Next.js API proxy to include auth automatically
+        console.log('🔄 Using Next.js API proxy for topics request');
+        
+        const res = await fetch('/api/topics/', { credentials: 'include' });
+        if (!res.ok) {
+          throw new Error(`Failed to fetch topics: ${res.status}`);
+        }
+        const data = await res.json();
+        console.log('Topics received via proxy:', data);
+        return { success: true, data };
       }
-      
-      const response = await apiClient.get<Topic[]>(this.baseUrl, { headers });
-      console.log('Topics received:', response.data);
-      return { success: true, data: response.data };
     } catch (error: any) {
       console.error('Service error fetching topics:', error);
       throw handleApiError(error);

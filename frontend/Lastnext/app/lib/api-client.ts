@@ -276,68 +276,7 @@ export const handleApiError = (error: unknown): ApiError => {
 export async function fetchData<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
   try {
     // Check if we're in development mode and if this is a mock token request
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const authHeader = config?.headers?.['Authorization'] || config?.headers?.['authorization'];
-    const isMockToken = authHeader === 'Bearer dev-access-token';
-    
-    if (isDevelopment && isMockToken) {
-      console.log('🔧 Development mode: Using mock data instead of API calls for:', url);
-      
-      // Return mock data based on the endpoint
-      if (url.includes('/api/v1/jobs/')) {
-        return [
-          {
-            job_id: 'job-001',
-            title: 'Sample Job',
-            description: 'This is a sample job for development',
-            status: 'pending',
-            priority: 'medium',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            user: 'developer',
-            property_id: 'prop-001'
-          }
-        ] as unknown as T;
-      }
-      
-      if (url.includes('/api/v1/properties/')) {
-        return [
-          {
-            id: 1,
-            property_id: 'prop-001',
-            name: 'Development Property',
-            address: '123 Dev St, Dev City',
-            property_type: 'residential',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        ] as unknown as T;
-      }
-      
-      if (url.includes('/topics/')) {
-        return [
-          { id: 1, title: 'General Maintenance', description: 'General maintenance procedures' },
-          { id: 2, title: 'Safety Checks', description: 'Safety and security procedures' },
-          { id: 3, title: 'Equipment Inspection', description: 'Equipment inspection procedures' }
-        ] as unknown as T;
-      }
-      
-      if (url.includes('/api/v1/rooms/')) {
-        return [
-          {
-            id: 1,
-            room_id: 'room-001',
-            name: 'Living Room',
-            property_id: 'prop-001',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        ] as unknown as T;
-      }
-      
-      // Default mock response for other endpoints
-      return [] as unknown as T;
-    }
+    // Production mode: Always make real API calls
     
     // Production mode: Make real API call
     const response = await apiClient.get<T>(url, config);
@@ -352,9 +291,9 @@ export async function fetchData<T>(url: string, config?: AxiosRequestConfig): Pr
 /**
  * Generic POST function
  */
-export async function postData<T, U>(url: string, data: U): Promise<T> {
+export async function postData<T, U>(url: string, data: U, config?: AxiosRequestConfig): Promise<T> {
   try {
-    const response = await apiClient.post<T>(url, data);
+    const response = await apiClient.post<T>(url, data, config);
     return response.data;
   } catch (error) {
     throw handleApiError(error);
@@ -364,9 +303,9 @@ export async function postData<T, U>(url: string, data: U): Promise<T> {
 /**
  * Generic PUT function
  */
-export async function updateData<T, U>(url: string, data: U): Promise<T> {
+export async function updateData<T, U>(url: string, data: U, config?: AxiosRequestConfig): Promise<T> {
   try {
-    const response = await apiClient.put<T>(url, data);
+    const response = await apiClient.put<T>(url, data, config);
     return response.data;
   } catch (error) {
     throw handleApiError(error);
@@ -376,9 +315,9 @@ export async function updateData<T, U>(url: string, data: U): Promise<T> {
 /**
  * Generic PATCH function
  */
-export async function patchData<T, U>(url: string, data: U): Promise<T> {
+export async function patchData<T, U>(url: string, data: U, config?: AxiosRequestConfig): Promise<T> {
   try {
-    const response = await apiClient.patch<T>(url, data);
+    const response = await apiClient.patch<T>(url, data, config);
     return response.data;
   } catch (error) {
     throw handleApiError(error);
@@ -388,9 +327,9 @@ export async function patchData<T, U>(url: string, data: U): Promise<T> {
 /**
  * Generic DELETE function
  */
-export async function deleteData(url: string): Promise<void> {
+export async function deleteData(url: string, config?: AxiosRequestConfig): Promise<void> {
   try {
-    await apiClient.delete(url);
+    await apiClient.delete(url, config);
   } catch (error) {
     throw handleApiError(error);
   }

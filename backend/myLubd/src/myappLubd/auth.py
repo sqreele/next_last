@@ -39,53 +39,15 @@ class DevelopmentAuthentication(BaseAuthentication):
             token = auth[1].decode('utf-8')
             logger.debug(f"DevelopmentAuthentication: Token: {token}")
             
-            # Check for development tokens
-            if token in ['dev-access-token', 'development-token']:
-                logger.debug("DevelopmentAuthentication: Valid dev token found")
-                user = self._get_or_create_dev_user()
-                if user:
-                    logger.info(f"🔧 Development authentication successful for user: {user.username}")
-                    print(f"🔧 Development authentication successful for user: {user.username}")
-                    return (user, None)
-                else:
-                    logger.error("DevelopmentAuthentication: Failed to create/get dev user")
-                    return None
-            else:
-                logger.debug(f"DevelopmentAuthentication: Token '{token}' not recognized as dev token")
-                
+            # Production mode: No development tokens allowed
+            logger.debug("DevelopmentAuthentication: Development tokens disabled in production")
             return None
         except Exception as e:
             logger.error(f"Error in DevelopmentAuthentication: {e}")
             print(f"❌ Error in DevelopmentAuthentication: {e}")
             return None
     
-    def _get_or_create_dev_user(self):
-        """Create or get a development user for mock authentication"""
-        username = 'developer'
-        email = 'dev@example.com'
-        
-        try:
-            user = User.objects.filter(username=username).first()
-            if not user:
-                user = User.objects.create(
-                    username=username,
-                    email=email,
-                    first_name='Development',
-                    last_name='User',
-                    is_active=True,
-                )
-                logger.info(f"✅ Created development user: {username}")
-                print(f"✅ Created development user: {username}")
-            else:
-                logger.info(f"✅ Using existing development user: {username}")
-                print(f"✅ Using existing development user: {username}")
-            
-            return user
-        except Exception as e:
-            logger.error(f"Error creating development user: {e}")
-            print(f"❌ Error creating development user: {e}")
-            # Return a fallback user or None
-            return None
+
 
 
 class Auth0JWTAuthentication(BaseAuthentication):

@@ -79,7 +79,7 @@ const initialValues: FormValues = {
 
 const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }) => {
   const { data: session } = useSession();
-  const { selectedProperty } = useUser();
+  const { selectedProperty, setSelectedProperty, userProfile } = useUser();
   const { triggerJobCreation } = useJob();
   const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -87,6 +87,25 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPropertyId, setCurrentPropertyId] = useState<string | null>(null);
+
+  // Check if user has properties
+  const hasProperties = userProfile?.properties && userProfile.properties.length > 0;
+
+  // Auto-select first property if none selected and user has properties
+  useEffect(() => {
+    if (!selectedProperty && hasProperties && userProfile?.properties?.[0]) {
+      const firstProperty = userProfile.properties[0];
+      const propertyId = typeof firstProperty === 'string' ? firstProperty : 
+                        typeof firstProperty === 'number' ? String(firstProperty) :
+                        firstProperty.property_id || String(firstProperty.id);
+      setSelectedProperty(propertyId);
+      setCurrentPropertyId(propertyId);
+      console.log('🔧 Auto-selected property:', propertyId);
+    } else if (selectedProperty) {
+      setCurrentPropertyId(selectedProperty);
+    }
+  }, [selectedProperty, hasProperties, userProfile, setSelectedProperty]);
 
   const validateFiles = (files: File[]) => {
     if (!files || files.length === 0) {
@@ -223,9 +242,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         onSubmit={handleSubmit}
       >
         {({ values, errors, touched, setFieldValue, isSubmitting }) => (
-          <Form className="space-y-8">
-            {/* Basic Information Section */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+                  <Form className="space-y-8">
+          {/* Basic Information Section */}
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-2xl border border-blue-100">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Plus className="h-5 w-5 text-blue-600" />

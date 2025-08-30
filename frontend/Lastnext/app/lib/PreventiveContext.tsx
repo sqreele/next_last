@@ -88,46 +88,7 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
   // Enhanced fetchMachines function
   const fetchMachines = useCallback(async (propertyId?: string) => {
     try {
-      // Check if we're in development mode with mock tokens
-      const isDevelopment = process.env.NODE_ENV === 'development';
-      const isMockToken = accessToken === 'dev-access-token';
-      
-      if (isDevelopment && isMockToken) {
-        console.log('🔧 Development mode: Using mock machines data instead of API calls');
-        
-        // Use mock machines data for development
-        const mockMachines = [
-          { 
-            machine_id: 'machine-001', 
-            name: 'HVAC System', 
-            status: 'operational',
-            property_id: propertyId || 'prop-001',
-            description: 'HVAC system for main building',
-            is_active: true
-          },
-          { 
-            machine_id: 'machine-002', 
-            name: 'Water Heater', 
-            status: 'operational',
-            property_id: propertyId || 'prop-001',
-            description: 'Water heating system',
-            is_active: true
-          },
-          { 
-            machine_id: 'machine-003', 
-            name: 'Security System', 
-            status: 'operational',
-            property_id: propertyId || 'prop-001',
-            description: 'Building security system',
-            is_active: true
-          }
-        ];
-        
-        setMachines(mockMachines);
-        return;
-      }
-      
-      // Production mode: Make real API call
+      // Production mode: Always make real API calls
       console.log('🏭 Fetching machines...');
       const machineService = new MachineService();
       const response = await machineService.getMachines(propertyId || selectedProperty || undefined);
@@ -148,27 +109,7 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
   // Fetch topics
   const fetchTopics = useCallback(async () => {
     try {
-      // Check if we're in development mode with mock tokens
-      const isDevelopment = process.env.NODE_ENV === 'development';
-      const isMockToken = accessToken === 'dev-access-token';
-      
-      if (isDevelopment && isMockToken) {
-        console.log('🔧 Development mode: Using mock topics data instead of API calls');
-        
-        // Use mock topics data for development
-        const mockTopics = [
-          { id: 1, title: 'General Maintenance', description: 'General maintenance procedures' },
-          { id: 2, title: 'Safety Checks', description: 'Safety and security procedures' },
-          { id: 3, title: 'Equipment Inspection', description: 'Equipment inspection procedures' },
-          { id: 4, title: 'Cleaning Procedures', description: 'Cleaning and sanitation procedures' },
-          { id: 5, title: 'Preventive Maintenance', description: 'Preventive maintenance procedures' }
-        ];
-        
-        setTopics(mockTopics);
-        return;
-      }
-      
-      // Production mode: Make real API call
+      // Production mode: Always make real API calls
       const topicService = new TopicService();
       const response = await topicService.getTopics(accessToken || undefined);
       if (response.success && response.data) {

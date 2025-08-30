@@ -25,7 +25,7 @@ interface ApiError extends Error {
 
 // --- Job Functions ---
 
-export const fetchJobsForProperty = async (propertyId: string): Promise<Job[]> => {
+export const fetchJobsForProperty = async (propertyId: string, token?: string): Promise<Job[]> => {
   try {
     if (!propertyId) throw new Error('Property ID is required');
     // Use Next.js API proxy for auth-injected request
@@ -45,7 +45,7 @@ export const fetchJobsForProperty = async (propertyId: string): Promise<Job[]> =
   }
 };
 
-export const createJob = async (jobData: Partial<Job>): Promise<Job> => {
+export const createJob = async (jobData: Partial<Job>, token?: string): Promise<Job> => {
   try {
     if (!jobData) throw new Error('Job data is required');
     // Pass data type and expected return type to postData
@@ -55,37 +55,52 @@ export const createJob = async (jobData: Partial<Job>): Promise<Job> => {
   }
 };
 
-export const updateJob = async (jobId: string, jobData: Partial<Job>): Promise<Job> => {
+export const updateJob = async (jobId: string, jobData: Partial<Job>, token?: string): Promise<Job> => {
   try {
     if (!jobId) throw new Error('Job ID is required');
     // Pass data type and expected return type to updateData
-    return await updateData<Job, Partial<Job>>(`/api/v1/jobs/${jobId}/`, jobData);
+    return await updateData<Job, Partial<Job>>(`/api/v1/jobs/${jobId}/`, jobData, token ? {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    } : undefined);
   } catch (error) {
     throw handleApiError(error);
   }
 };
 
-export const deleteJob = async (jobId: string): Promise<void> => {
+export const deleteJob = async (jobId: string, token?: string): Promise<void> => {
   try {
     if (!jobId) throw new Error('Job ID is required');
-    // No type parameters needed if deleteData doesn't return specific content
-    await deleteData(`/api/v1/jobs/${jobId}/`);
+    // Pass authentication token to deleteData
+    await deleteData(`/api/v1/jobs/${jobId}/`, token ? {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    } : undefined);
   } catch (error) {
     throw handleApiError(error);
   }
 };
 
-export const updateJobStatus = async (jobId: string, status: JobStatus): Promise<Job> => {
+export const updateJobStatus = async (jobId: string, status: JobStatus, token?: string): Promise<Job> => {
   try {
     if (!jobId) throw new Error('Job ID is required');
     // Pass data type and expected return type to patchData
-    return await patchData<Job, { status: JobStatus }>(`/api/v1/jobs/${jobId}/`, { status });
+    return await patchData<Job, { status: JobStatus }>(`/api/v1/jobs/${jobId}/`, { status }, token ? {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    } : undefined);
   } catch (error) {
     throw handleApiError(error);
   }
 };
 
-export const uploadJobImage = async (jobId: string, imageFile: File): Promise<{ image_url: string }> => {
+export const uploadJobImage = async (jobId: string, imageFile: File, token?: string): Promise<{ image_url: string }> => {
   if (!jobId || !imageFile) throw new Error('Job ID and image file are required');
 
   const formData = new FormData();
@@ -98,83 +113,66 @@ export const uploadJobImage = async (jobId: string, imageFile: File): Promise<{ 
       headers: {
         'Content-Type': 'multipart/form-data',
         // Auth header should be added by apiClient interceptor
-      },
+      }
     });
-    return response.data ?? { image_url: '' }; // Return empty string if no URL
+    return response.data;
   } catch (error) {
     throw handleApiError(error);
   }
 };
 
-export const searchJobs = async (
-  filters: Partial<FilterState>,
-  tab: TabValue = 'all',
-  page = 1,
-  limit = 10
-): Promise<{
-  jobs: Job[];
-  totalPages: number;
-  currentPage: number;
-  totalJobs: number;
-}> => {
+export const searchJobs = async (criteria: SearchCriteria, token?: string): Promise<SearchResponse> => {
   try {
-    // Build query parameters based on filters
-    const params: Record<string, string> = { page: String(page), limit: String(limit) };
-    if (tab !== 'all') {
-      if (tab === 'defect') params.is_defective = 'true';
-      else params.status = tab; // Assumes tab values match JobStatus enum/type
-    }
-
-    // Add other filters if they exist
-    if (filters.user) params.user = filters.user;
-if (filters.priority) params.priority = filters.priority;
-if (filters.topic) params.topic = filters.topic.toString(); // Assuming filter state has topic ID
-if (filters.room) params.room = filters.room.toString();    // Assuming filter state has room ID
-if (filters.dateRange?.from) params.date_from = filters.dateRange.from.toISOString().split('T')[0];
-if (filters.dateRange?.to) params.date_to = filters.dateRange.to.toISOString().split('T')[0];
-if (filters.search) params.search = filters.search;
-
-    const queryString = new URLSearchParams(params).toString();
-    // Define expected response structure for type safety
-    type SearchJobsResponse = {
-      results: Job[];
-      count: number;
-      // Add other potential pagination fields like 'next', 'previous' if needed
-    };
-    const response = await fetchData<SearchJobsResponse>(`/api/v1/jobs/?${queryString}`);
-
-    return {
-      jobs: response?.results ?? [],
-      totalJobs: response?.count ?? 0,
-      totalPages: Math.ceil((response?.count ?? 0) / limit),
-      currentPage: page
-    };
+    if (!criteria) throw new Error('Search criteria are required');
+    
+    const queryString = new URLSearchParams();
+    if (criteria.query) queryString.append('search', criteria.query);
+    if (criteria.status) queryString.append('status', criteria.status);
+    if (criteria.category) queryString.append('category', criteria.category);
+    if (criteria.dateRange?.start) queryString.append('date_from', criteria.dateRange.start);
+    if (criteria.dateRange?.end) queryString.append('date_to', criteria.dateRange.end);
+    if (criteria.page) queryString.append('page', criteria.page.toString());
+    if (criteria.pageSize) queryString.append('page_size', criteria.pageSize.toString());
+    
+    const response = await fetchData<SearchResponse>(`/api/v1/jobs/?${queryString}`, token ? {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    } : undefined);
+    return response;
   } catch (error) {
-    console.error('Error searching jobs:', error);
-    // Return default structure on error
-    return { jobs: [], totalJobs: 0, totalPages: 0, currentPage: 1 };
+    throw handleApiError(error);
   }
 };
 
-export const fetchJobs = async (): Promise<Job[]> => {
+export const fetchJobs = async (token?: string): Promise<Job[]> => {
   try {
-    const response = await fetchData<Job[]>("/api/v1/jobs/");
+    const response = await fetchData<Job[]>("/api/v1/jobs/", token ? {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    } : undefined);
     return response ?? [];
   } catch (error) {
-    console.error("Error fetching all jobs:", error);
-    // throw handleApiError(error); // Or re-throw
-     return [];
+    console.error('Error fetching jobs:', error);
+    return [];
   }
 };
 
-export const fetchJob = async (jobId: string): Promise<Job | null> => {
+export const fetchJob = async (jobId: string, token?: string): Promise<Job | null> => {
   try {
     if (!jobId) throw new Error('Job ID is required');
-    const response = await fetchData<Job>(`/api/v1/jobs/${jobId}/`);
+    const response = await fetchData<Job>(`/api/v1/jobs/${jobId}/`, token ? {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    } : undefined);
     return response ?? null;
   } catch (error) {
     console.error(`Error fetching job ${jobId}:`, error);
-     // throw handleApiError(error); // Or re-throw
     return null;
   }
 };
@@ -195,10 +193,15 @@ export const fetchProperties = async (): Promise<Property[]> => {
     }
 };
 
-export const fetchProperty = async (propertyId: string): Promise<Property | null> => {
+export const fetchProperty = async (propertyId: string, token?: string): Promise<Property | null> => {
     try {
         if (!propertyId) throw new Error('Property ID is required');
-        return await fetchData<Property>(`/api/v1/properties/${propertyId}/`);
+        return await fetchData<Property>(`/api/v1/properties/${propertyId}/`, token ? {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        } : undefined);
     } catch (error) {
         console.error(`Error fetching property ${propertyId}:`, error);
         return null;
@@ -235,10 +238,15 @@ export const fetchRooms = async (propertyId: string): Promise<Room[]> => {
   }
 };
 
-export const fetchRoom = async (roomId: string): Promise<Room | null> => {
+export const fetchRoom = async (roomId: string, token?: string): Promise<Room | null> => {
     try {
         if (!roomId) throw new Error('Room ID is required');
-        return await fetchData<Room>(`/api/v1/rooms/${roomId}/`);
+        return await fetchData<Room>(`/api/v1/rooms/${roomId}/`, token ? {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        } : undefined);
     } catch (error) {
         console.error(`Error fetching room ${roomId}:`, error);
         return null;
@@ -284,7 +292,7 @@ export const fetchPreventiveMaintenanceJobs = async (options?: {
   propertyId?: string;
   status?: JobStatus;
   limit?: number;
-}): Promise<Job[]> => {
+}, token?: string): Promise<Job[]> => {
   try {
     const params = new URLSearchParams();
     params.append('is_preventivemaintenance', 'true');
@@ -292,7 +300,12 @@ export const fetchPreventiveMaintenanceJobs = async (options?: {
     if (options?.status) params.append('status', options.status);
     if (options?.limit) params.append('limit', options.limit.toString());
 
-    const response = await fetchData<Job[]>(`/api/v1/jobs/?${params.toString()}`);
+    const response = await fetchData<Job[]>(`/api/v1/jobs/?${params.toString()}`, token ? {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    } : undefined);
     return response ?? [];
   } catch (error) {
     throw handleApiError(error);

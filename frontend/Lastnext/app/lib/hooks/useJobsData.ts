@@ -64,10 +64,10 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       // *** CHOOSE FETCH FUNCTION BASED ON PROPERTY ID ***
       if (activePropertyId) {
         // console.log(`useJobsData: Fetching jobs for property ${activePropertyId}`);
-        fetchedJobs = await fetchJobsForProperty(activePropertyId);
+        fetchedJobs = await fetchJobsForProperty(activePropertyId, session.user.accessToken);
       } else {
         // console.log("useJobsData: Fetching all jobs");
-        fetchedJobs = await fetchJobs(); // Fetch all if no specific property
+        fetchedJobs = await fetchJobs(session.user.accessToken); // Fetch all if no specific property
       }
 
       // *** PERFORM CLIENT-SIDE FILTERING BY USER ***

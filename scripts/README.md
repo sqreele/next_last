@@ -28,3 +28,6 @@
 
 # Reset everything
 ./scripts/dev-reset.sh
+
+# Delete development user
+./scripts/delete-developer-user.sh

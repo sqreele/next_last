@@ -4,14 +4,7 @@ import React, { createContext, useContext, ReactNode, useCallback, useEffect } f
 import { useSession } from '@/app/lib/session.client';
 import { useUser } from '@/app/lib/user-context';
 import { usePropertyStore, useAuthStore } from '@/app/lib/stores';
-
-interface Property {
-  id: string | number;
-  property_id: string;
-  name: string;
-  description?: string | null;
-  created_at?: string;
-}
+import type { Property } from '@/app/lib/stores/usePropertyStore';
 
 interface PropertyContextType {
   selectedProperty: string | null;
@@ -31,15 +24,39 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     selectedProperty, 
     setSelectedProperty: setStoreProperty,
     userProperties: storeProperties,
-    setUserProperties: setStoreProperties
+    setUserProperties: setStoreProperties,
+    hydrateFromStorage
   } = usePropertyStore();
+
+  // Hydrate from localStorage when component mounts
+  useEffect(() => {
+    hydrateFromStorage();
+  }, [hydrateFromStorage]);
 
   // Sync user properties to store (only when userProfile changes)
   useEffect(() => {
     if (userProfile?.properties) {
       setStoreProperties(userProfile.properties);
+      
+      // Auto-select first property if no property is currently selected
+      if (!selectedProperty && userProfile.properties.length > 0) {
+        const firstProperty = userProfile.properties[0];
+        const propertyId = String(firstProperty.property_id);
+        console.log('🔧 Auto-selecting first property:', propertyId);
+        setStoreProperty(propertyId);
+      }
     }
-  }, [userProfile?.properties, setStoreProperties]);
+  }, [userProfile?.properties, setStoreProperties, selectedProperty, setStoreProperty]);
+
+  // Additional effect to ensure a property is selected when properties are available
+  useEffect(() => {
+    if (storeProperties.length > 0 && !selectedProperty) {
+      const firstProperty = storeProperties[0];
+      const propertyId = String(firstProperty.property_id);
+      console.log('🔧 Ensuring property is selected:', propertyId);
+      setStoreProperty(propertyId);
+    }
+  }, [storeProperties, selectedProperty, setStoreProperty]);
 
   const hasProperties = storeProperties.length > 0;
 

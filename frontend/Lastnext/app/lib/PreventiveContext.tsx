@@ -80,8 +80,17 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
 
   // Set the access token on the singleton service whenever it changes
   useEffect(() => {
+    console.log('🔍 PreventiveContext - accessToken changed:', {
+      hasAccessToken: !!accessToken,
+      tokenLength: accessToken?.length,
+      tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none'
+    });
+    
     if (accessToken) {
+      console.log('🔧 Setting token on preventive maintenance service...');
       setPreventiveMaintenanceServiceToken(accessToken);
+    } else {
+      console.warn('⚠️ No access token available in PreventiveContext');
     }
   }, [accessToken]);
 
@@ -122,6 +131,13 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
 
   // Fetch maintenance items
   const fetchMaintenanceItems = useCallback(async (params?: SearchParams) => {
+    console.log('🔍 fetchMaintenanceItems called with:', {
+      hasAccessToken: !!accessToken,
+      tokenLength: accessToken?.length,
+      selectedProperty,
+      filterParams
+    });
+    
     setLoading(true);
     clearStoreError();
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { User2, Mail, Shield, Save, ArrowLeft, AlertCircle } from 'lucide-react';
+import { User2, Mail, Shield, Save, ArrowLeft, AlertCircle, Building2, Check } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/app/components/ui/button';
 import {
@@ -15,13 +15,14 @@ import {
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { useUser } from '@/app/lib/user-context';
+import { useProperty } from '@/app/lib/PropertyContext';
 import { updateUserProfile } from '@/app/lib/data.server';
 
 export default function EditProfilePage() {
-  const router = useRouter();
   const params = useParams();
-  const { userProfile, loading, refetch } = useUser();
-  
+  const router = useRouter();
+  const { userProfile, loading, refetch, forceRefresh } = useUser();
+  const { userProperties, selectedProperty, setSelectedProperty, hasProperties } = useProperty();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -29,16 +30,31 @@ export default function EditProfilePage() {
     last_name: '',
     positions: ''
   });
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Get the profile ID from the URL
-  const profileId = params?.id as string;
+  const profileId = params.id as string;
+
+  console.log('🔍 EditProfilePage loaded with:', {
+    profileId,
+    hasUserProfile: !!userProfile,
+    userProfileData: userProfile,
+    loading,
+    params
+  });
 
   useEffect(() => {
+    console.log('🔍 useEffect triggered with userProfile:', userProfile);
     if (userProfile) {
+      console.log('🔍 User profile data loaded:', userProfile);
       setFormData({
+        username: userProfile.username || '',
+        email: userProfile.email || '',
+        first_name: userProfile.first_name || '',
+        last_name: userProfile.last_name || '',
+        positions: userProfile.positions || ''
+      });
+      console.log('🔍 Form data initialized:', {
         username: userProfile.username || '',
         email: userProfile.email || '',
         first_name: userProfile.first_name || '',
@@ -69,21 +85,7 @@ export default function EditProfilePage() {
   }
 
   // Verify that the user is editing their own profile
-  console.log('🔍 Profile ID Debug:', {
-    userProfileId: userProfile.id,
-    profileId: profileId,
-    userProfileIdString: String(userProfile.id),
-    profileIdString: String(profileId),
-    comparison: String(userProfile.id) === profileId,
-    userProfileType: typeof userProfile.id,
-    profileIdType: typeof profileId
-  });
-
   if (String(userProfile.id) !== profileId) {
-    console.log('❌ Access denied - ID mismatch:', {
-      userProfileId: userProfile.id,
-      profileId: profileId
-    });
     return (
       <div className="w-full max-w-2xl mx-auto p-4">
         <Card>
@@ -93,9 +95,6 @@ export default function EditProfilePage() {
               <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
               <p className="text-muted-foreground mb-4">
                 You can only edit your own profile.
-              </p>
-              <p className="text-sm text-muted-foreground mb-4">
-                Debug: userProfile.id = {String(userProfile.id)}, profileId = {profileId}
               </p>
               <Link href="/dashboard/profile">
                 <Button variant="outline">Back to Profile</Button>
@@ -120,6 +119,8 @@ export default function EditProfilePage() {
     setMessage(null);
 
     try {
+      console.log('🔍 Form submission started with formData:', formData);
+      
       // Create Auth0 profile data structure
       const auth0Profile = {
         email: formData.email,
@@ -129,18 +130,46 @@ export default function EditProfilePage() {
         name: `${formData.first_name} ${formData.last_name}`.trim()
       };
 
-      // Call the backend profile update endpoint
-      const success = await updateUserProfile(auth0Profile);
+      console.log('🔍 Submitting profile update with data:', auth0Profile);
+      console.log('🔍 Current user profile for comparison:', userProfile);
+
+      // Get the current session to extract the access token
+      const sessionResponse = await fetch('/api/auth/session-compat', {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!sessionResponse.ok) {
+        throw new Error('Failed to get session for profile update');
+      }
+      
+      const session = await sessionResponse.json();
+      const accessToken = session?.user?.accessToken;
+      
+      console.log('🔍 Session data retrieved:', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        hasAccessToken: !!accessToken,
+        accessTokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none'
+      });
+      
+      if (!accessToken) {
+        throw new Error('No access token available for profile update');
+      }
+
+      // Call the backend profile update endpoint with the access token
+      const success = await updateUserProfile(auth0Profile, accessToken);
       
       if (success) {
         setMessage({
           type: 'success',
-          text: 'Profile updated successfully!'
+          text: 'Profile updated successfully! Refreshing data and redirecting...'
         });
         
-        // Refresh user profile data
-        if (refetch) {
-          refetch();
+        // Force refresh of user context data
+        if (forceRefresh) {
+          console.log('🔄 Refreshing user context data...');
+          await forceRefresh();
         }
         
         // Redirect back to profile page after a short delay
@@ -154,10 +183,10 @@ export default function EditProfilePage() {
         });
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('❌ Error updating profile:', error);
       setMessage({
         type: 'error',
-        text: 'An error occurred while updating your profile.'
+        text: `An error occurred while updating your profile: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     } finally {
       setIsSubmitting(false);
@@ -198,6 +227,23 @@ export default function EditProfilePage() {
                 </div>
               </div>
             )}
+
+            {/* Test button to verify form submission */}
+            <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800 mb-2">Debug: Test form submission</p>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  console.log('🧪 Test button clicked');
+                  console.log('🧪 Current formData:', formData);
+                  console.log('🧪 Current userProfile:', userProfile);
+                }}
+              >
+                Test Form Data
+              </Button>
+            </div>
 
             <div className="grid gap-4">
               <div className="space-y-2">
@@ -272,6 +318,67 @@ export default function EditProfilePage() {
                   disabled={isSubmitting}
                 />
               </div>
+
+              {/* Property Selection Section */}
+              <div className="space-y-3">
+                <Label>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    Default Property
+                  </div>
+                </Label>
+                <div className="text-sm text-muted-foreground mb-3">
+                  Select the property you want to manage by default
+                </div>
+                
+                {hasProperties ? (
+                  <div className="grid gap-3">
+                    {userProperties.map((property) => (
+                      <div
+                        key={property.property_id}
+                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                          selectedProperty === String(property.property_id)
+                            ? 'border-blue-400 bg-blue-50'
+                            : 'border-gray-200 hover:border-blue-200 hover:bg-blue-50'
+                        }`}
+                        onClick={() => setSelectedProperty(String(property.property_id))}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Building2 className="w-4 h-4 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">{property.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              ID: {property.property_id}
+                            </div>
+                          </div>
+                        </div>
+                        {selectedProperty === String(property.property_id) && (
+                          <Check className="w-5 h-5 text-blue-600" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                    <div className="text-center text-sm text-muted-foreground">
+                      No properties available for selection
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Current Property Information */}
+              {selectedProperty && (
+                <div className="p-4 border border-green-200 rounded-lg bg-green-50">
+                  <div className="flex items-center gap-2 text-green-800">
+                    <Check className="w-4 h-4" />
+                    <span className="font-medium">Default Property Set</span>
+                  </div>
+                  <div className="text-sm text-green-700 mt-1">
+                    You will manage: {userProperties.find(p => String(p.property_id) === selectedProperty)?.name || 'Unknown Property'}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3 pt-4">

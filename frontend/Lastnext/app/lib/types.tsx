@@ -100,8 +100,8 @@ export interface Job {
 export interface Property {
   property_id: string;
   name: string;
-  description: string | null;
-  created_at: string;
+  description?: string | null | undefined;
+  created_at?: string;
   rooms?: Room[];
   id: string;
   

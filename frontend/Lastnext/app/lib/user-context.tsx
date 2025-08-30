@@ -26,6 +26,7 @@ export interface UserContextType {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<UserProfile | null>;
+  forceRefresh: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -58,25 +59,72 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      console.log('Creating user profile from session data...');
+      console.log('🔍 Fetching complete user profile from backend...');
       
-      // Use session data directly instead of making API calls
-      // This avoids authorization issues with separate endpoints
+      // First, try to get the full user profile from the backend
+      try {
+        // Get properties from session-compat API instead of profile update endpoint
+        const sessionResponse = await fetch('/api/auth/session-compat', {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (sessionResponse.ok) {
+          const sessionData = await sessionResponse.json();
+          console.log('✅ Session data received:', sessionData);
+          
+          // Use the session data to create the profile
+          const profile: UserProfile = {
+            id: sessionData.user.id || session.user.id,
+            username: sessionData.user.username || session.user.username,
+            profile_image: sessionData.user.profile_image || session.user.profile_image,
+            positions: sessionData.user.positions || session.user.positions || 'User',
+            email: sessionData.user.email || session.user.email,
+            first_name: sessionData.user.first_name || session.user.first_name || '',
+            last_name: sessionData.user.last_name || session.user.last_name || '',
+            created_at: sessionData.user.created_at || session.user.created_at,
+            properties: sessionData.user.properties || []
+          };
+          
+          console.log('✅ Complete user profile created from session data:', profile);
+          console.log('✅ Properties count:', profile.properties.length);
+          
+          setUserProfile(profile);
+          setLastFetched(Date.now());
+          setError(null);
+
+          // Auto-select first property if none selected and user has properties
+          if (!selectedProperty && profile.properties.length > 0) {
+            const firstProperty = profile.properties[0];
+            const propertyId = getPropertyId(firstProperty);
+            if (propertyId) {
+              setSelectedProperty(propertyId);
+              console.log('🔧 Auto-selected property in UserProvider:', propertyId);
+            }
+          }
+
+          return profile;
+        }
+      } catch (backendError) {
+        console.warn('⚠️ Could not fetch from session-compat API, using session data:', backendError);
+      }
       
-      // Create user profile from session data
+      // Fallback to session data if backend fetch fails
+      console.log('🔄 Using session data as fallback...');
+      
       const profile: UserProfile = {
         id: session.user.id,
         username: session.user.username,
         profile_image: session.user.profile_image,
         positions: session.user.positions || 'User',
         email: session.user.email,
-        first_name: session.user.first_name,
-        last_name: session.user.last_name,
+        first_name: session.user.first_name || '',
+        last_name: session.user.last_name || '',
         created_at: session.user.created_at,
         properties: session.user.properties || []
       };
       
-      console.log('User profile from session:', profile);
+      console.log('🔄 User profile from session data (fallback):', profile);
 
       setUserProfile(profile);
       setLastFetched(Date.now());
@@ -103,6 +151,29 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     }
   }, [session?.user, lastFetched, userProfile, selectedProperty, setSelectedProperty, getPropertyId]);
+
+  // Force refresh session data and user profile
+  const forceRefresh = useCallback(async () => {
+    try {
+      console.log('🔄 Force refreshing session and user profile...');
+      
+      // Clear cache to force fresh fetch
+      setLastFetched(0);
+      
+      // Fetch fresh session data
+      const sessionResponse = await fetch('/api/auth/session-compat', {
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (sessionResponse.ok) {
+        console.log('✅ Session refreshed, updating user profile...');
+        await fetchUserProfile();
+      }
+    } catch (error) {
+      console.error('❌ Error force refreshing:', error);
+    }
+  }, [fetchUserProfile]);
 
   useEffect(() => {
     let mounted = true;
@@ -131,6 +202,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         loading,
         error,
         refetch: fetchUserProfile,
+        forceRefresh: forceRefresh,
       }}
     >
       {children}

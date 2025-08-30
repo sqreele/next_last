@@ -20,34 +20,24 @@ export interface Machine {
 
 export default class MachineService {
   private baseUrl: string = '/api/v1/machines';
-  private accessToken?: string;
 
-  constructor(accessToken?: string) {
-    this.accessToken = accessToken;
-  }
+  // Remove constructor and accessToken storage - use parameter-based approach
 
-  // Helper method to get authorization headers
-  private getAuthHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers.Authorization = `Bearer ${this.accessToken}`;
-      console.log('✅ Using access token for machines API request');
-    } else {
-      console.warn('⚠️ No access token provided for machines API request');
-    }
-    return headers;
-  }
-
-  async getMachines(propertyId?: string): Promise<ServiceResponse<Machine[]>> {
+  async getMachines(propertyId?: string | undefined, accessToken?: string): Promise<ServiceResponse<Machine[]>> {
     try {
       const params = propertyId ? { property_id: propertyId } : {};
       console.log('Fetching machines with params:', params);
       
-      if (this.accessToken) {
-        // Use direct backend call with stored token
+      if (accessToken) {
+        // Use direct backend call with provided token
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${accessToken}`,
+        };
+        console.log('✅ Using access token for machines API request');
+        
         const response = await apiClient.get<Machine[]>(this.baseUrl, { 
           params,
-          headers: this.getAuthHeaders()
+          headers
         });
         console.log('✅ Machines received via direct API:', response.data);
         return { success: true, data: response.data };
@@ -58,10 +48,16 @@ export default class MachineService {
         const queryString = propertyId ? `?property_id=${propertyId}` : '';
         const url = `/api/machines/${queryString}`;
         
+        console.log('🔍 Fetching from Next.js API:', url);
         const res = await fetch(url, { credentials: 'include' });
+        
         if (!res.ok) {
-          throw new Error(`Failed to fetch machines: ${res.status}`);
+          console.error('❌ Next.js API failed:', res.status, res.statusText);
+          const errorText = await res.text();
+          console.error('❌ Error details:', errorText);
+          throw new Error(`Failed to fetch machines: ${res.status} - ${errorText}`);
         }
+        
         const data = await res.json();
         console.log('✅ Machines received via proxy:', data);
         return { success: true, data };

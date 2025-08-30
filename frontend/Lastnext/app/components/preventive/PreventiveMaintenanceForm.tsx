@@ -418,7 +418,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     }
   }, [accessToken]);
 
-  const fetchAvailableMachines = useCallback(async (propertyId: string | null) => {
+  const fetchAvailableMachines = useCallback(async (propertyId: string | null | undefined) => {
     if (!propertyId) {
       setAvailableMachines([]);
       setLoadingMachines(false);
@@ -427,15 +427,26 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     setLoadingMachines(true);
     try {
       const machineService = new MachineService();
-      const response = await machineService.getMachines(propertyId);
+      const response = await machineService.getMachines(propertyId, accessToken);
       if (response.success && response.data) {
         setAvailableMachines(response.data);
       } else {
         throw new Error(response.message || 'Failed to fetch machines');
       }
     } catch (err: any) {
-      console.error('Error fetching available machines:', err);
-      setError('Failed to load machines for the selected property. Please try again.');
+      console.error('❌ Error fetching available machines:', err);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to load machines for the selected property.';
+      if (err.message?.includes('401') || err.message?.includes('Unauthorized')) {
+        errorMessage = 'Authentication failed. Please refresh the page and try again.';
+      } else if (err.message?.includes('404')) {
+        errorMessage = 'No machines found for this property.';
+      } else if (err.message?.includes('500')) {
+        errorMessage = 'Server error. Please try again later.';
+      }
+      
+      setError(errorMessage);
       setAvailableMachines([]);
     } finally {
       setLoadingMachines(false);
@@ -445,7 +456,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   // Handle property ID changes and fetch machines
   useEffect(() => {
     if (contextSelectedProperty) {
-      fetchAvailableMachines(contextSelectedProperty);
+      fetchAvailableMachines(contextSelectedProperty ?? undefined);
     } else {
       setAvailableMachines([]); // Clear machines if no property is selected
     }
@@ -1084,7 +1095,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                     {values.property_id && !error && (
                       <button
                         type="button"
-                        onClick={() => fetchAvailableMachines(values.property_id)}
+                        onClick={() => fetchAvailableMachines(values.property_id ?? undefined)}
                         className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                       >
                         Refresh Machines

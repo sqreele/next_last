@@ -2,13 +2,8 @@
 
 import { create } from "zustand";
 
-export interface Property {
-  id: string | number;
-  property_id: string;
-  name: string;
-  description?: string | null;
-  created_at?: string;
-}
+// Import the consolidated Property interface from types
+import { Property } from '../types';
 
 interface PropertyState {
   selectedProperty: string | null;

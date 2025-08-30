@@ -8,8 +8,7 @@ services:
     container_name: nextjs-frontend-dev
     # Remove or comment out the user line to let container handle it
     # user: "1001:1001"  
-    env_file:
-    - ./frontend/Lastnext/.env.development
+
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PRIVATE_API_URL=http://backend:8000
@@ -21,6 +20,7 @@ services:
 
       - AUTH0_ISSUER_BASE_URL=https://pcms.ca.auth0.com
       - NEXT_PUBLIC_AUTH0_DOMAIN=pcms.ca.auth0.com
+      - AUTH0_SECRET=bcb8c0fd4ae04281ad0a767b42cbc162af750a1454bfef6e57575abdeeb75e4b
 
       - AUTH0_AUDIENCE=https://pcms.live/api
       - NEXT_PUBLIC_AUTH0_AUDIENCE=https://pcms.live/api

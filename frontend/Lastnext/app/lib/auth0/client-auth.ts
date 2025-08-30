@@ -77,32 +77,10 @@ export function useClientAuth0() {
     }
   }, [auth0User]);
 
-  // Mock system fallback
+  // Production mode: No mock system fallback
   const useMockSystem = () => {
-    console.log('🔧 Using mock authentication system');
-    setUser({
-      id: 'dev-user-123',
-      username: 'developer',
-      email: 'dev@example.com',
-      profile_image: null,
-      positions: 'Developer',
-      properties: [
-        {
-          id: 1,
-          property_id: 'prop-001',
-          name: 'Development Property',
-          address: '123 Dev St, Dev City',
-          property_type: 'residential',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-      ],
-      accessToken: 'dev-access-token',
-      refreshToken: 'dev-refresh-token',
-      accessTokenExpires: Date.now() + (24 * 60 * 60 * 1000),
-      created_at: new Date().toISOString(),
-    });
-    setAccessToken('dev-access-token');
+    console.log('🚫 Mock authentication system disabled in production');
+    setError(new Error('Authentication system not available'));
     setIsLoading(false);
   };
 

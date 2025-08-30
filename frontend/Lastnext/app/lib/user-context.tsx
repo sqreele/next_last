@@ -58,29 +58,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('Fetching user profile and properties...');
       
-      // Check if we're in development mode with mock tokens
-      const isDevelopment = process.env.NODE_ENV === 'development';
-      const isMockToken = session.user.accessToken === 'dev-access-token';
-      
-      if (isDevelopment && isMockToken) {
-        console.log('🔧 Development mode: Using mock user data instead of API calls');
-        
-        // Use the session data directly instead of making API calls
-        const mockProfile: UserProfile = {
-          id: session.user.id,
-          username: session.user.username,
-          profile_image: session.user.profile_image,
-          positions: session.user.positions,
-          email: session.user.email,
-          created_at: session.user.created_at,
-          properties: session.user.properties || []
-        };
-        
-        setUserProfile(mockProfile);
-        setLastFetched(Date.now());
-        setError(null);
-        return mockProfile;
-      }
+      // Production mode: Always make real API calls
       
       // Fetch user profile via Next.js API proxy (injects auth)
       const profileResponse = await fetch(`/api/user-profiles/`, {
@@ -146,8 +124,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setLastFetched(Date.now());
       setError(null);
 
-      // Don't automatically set selected property to prevent infinite loops
-      // Let the PropertyContext handle property selection
+      // Auto-select first property if none selected and user has properties
+      if (!selectedProperty && normalizedProperties.length > 0) {
+        const firstProperty = normalizedProperties[0];
+        const propertyId = getPropertyId(firstProperty);
+        if (propertyId) {
+          setSelectedProperty(propertyId);
+          console.log('🔧 Auto-selected property in UserProvider:', propertyId);
+        }
+      }
 
       return profile;
     } catch (err) {
@@ -159,7 +144,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [session?.user?.accessToken, session?.user?.id, session?.user?.username, session?.user?.profile_image, session?.user?.positions, session?.user?.email, session?.user?.created_at, session?.user?.properties]); // Updated dependencies
+  }, [session?.user?.accessToken, session?.user?.id, session?.user?.username, session?.user?.profile_image, session?.user?.positions, session?.user?.email, session?.user?.created_at, session?.user?.properties, selectedProperty, setSelectedProperty]); // Updated dependencies
 
   useEffect(() => {
     let mounted = true;

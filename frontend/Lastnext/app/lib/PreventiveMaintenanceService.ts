@@ -166,7 +166,10 @@ class PreventiveMaintenanceService {
         console.log(`🔍 Filtering by machine_id: ${cleanParams.machine_id}`);
       }
 
-      const response = await apiClient.get<MaintenanceApiResponse>(`${this.baseUrl}/`, { params: cleanParams });
+      const response = await apiClient.get<MaintenanceApiResponse>(`${this.baseUrl}/`, { 
+        params: cleanParams,
+        headers: this.getAuthHeaders()
+      });
       
       console.log('Raw API response:', response.data);
       console.log('Response type:', typeof response.data);
@@ -797,7 +800,9 @@ class PreventiveMaintenanceService {
       console.log(`=== DELETE PREVENTIVE MAINTENANCE ===`);
       console.log(`Attempting to delete preventive maintenance with ID: ${id}`);
       
-      const response = await apiClient.delete(`${this.baseUrl}/${id}/`);
+      const response = await apiClient.delete(`${this.baseUrl}/${id}/`, {
+        headers: this.getAuthHeaders()
+      });
       
       console.log(`Successfully deleted preventive maintenance with ID: ${id}`);
       return { success: true, data: null, message: 'Maintenance deleted successfully' };
@@ -844,7 +849,10 @@ class PreventiveMaintenanceService {
         console.log(`\n🧪 Testing params:`, params);
         
         try {
-          const response = await apiClient.get<any>(`${this.baseUrl}/`, { params });
+          const response = await apiClient.get<any>(`${this.baseUrl}/`, { 
+            params,
+            headers: this.getAuthHeaders()
+          });
           const { items } = this.extractItemsFromResponse(response.data);
           
           console.log(`📊 Returned ${items.length} items`);

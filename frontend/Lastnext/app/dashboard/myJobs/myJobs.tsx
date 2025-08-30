@@ -499,7 +499,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
       };
 
       // Call API function with the data formatted for the API
-      const updatedJobResult = await apiUpdateJob(String(selectedJob.job_id), apiRequestData);
+      const updatedJobResult = await apiUpdateJob(String(selectedJob.job_id), apiRequestData, session?.user?.accessToken);
 
       // Update local state using the hook's function
       updateJob(updatedJobResult);
@@ -524,7 +524,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
 
     setIsSubmitting(true);
     try {
-      await apiDeleteJob(String(selectedJob.job_id));
+      await apiDeleteJob(String(selectedJob.job_id), session?.user?.accessToken);
       removeJob(selectedJob.job_id);
 
       toast({ title: "Success", description: "Job deleted successfully." });

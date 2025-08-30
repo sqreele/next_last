@@ -138,7 +138,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
       hasProfileImage: !!job.profile_image,
       profileImageProperties: job.profile_image?.properties,
       hasRooms: !!job.rooms,
-      roomProperties: job.rooms?.map(r => r.properties),
+      roomProperties: job.rooms?.map((r, index) => ({ ...r.properties, key: `room-${index}` })),
       directProperties: job.properties,
       propertyIdentifiers: Array.from(selectedPropertyIdentifiers)
     });
@@ -333,8 +333,8 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
             ? "gap-3 space-y-3" 
             : "gap-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
           }>
-            {currentJobs.map((job) => (
-              <div key={job.job_id} className={viewMode === 'list' ? "h-full w-full" : "h-full"}>
+            {currentJobs.map((job, index) => (
+              <div key={job.job_id || `job-${index}`} className={viewMode === 'list' ? "h-full w-full" : "h-full"}>
                 <div className="h-full touch-action-manipulation">
                   <JobCard job={job} properties={properties} viewMode={viewMode} />
                 </div>

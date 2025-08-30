@@ -5,6 +5,7 @@ import { Job, JobStatus } from '@/app/lib/types';
 import { fetchData } from '@/app/lib/api-client';
 import { ApiError } from '@/app/lib/api-client';
 import { useJobsStore, usePropertyStore } from '@/app/lib/stores';
+import { useSession } from '@/app/lib/session.client';
 
 interface UsePreventiveMaintenanceJobsOptions {
   propertyId?: string;
@@ -54,6 +55,9 @@ export function usePreventiveMaintenanceJobs({
   initialJobs = [],
   isPM = true // Default to true since this is specifically for PM jobs
 }: UsePreventiveMaintenanceJobsOptions) {
+  // Get session for authentication
+  const { data: session } = useSession();
+  
   // Zustand stores
   const { 
     jobs, 
@@ -84,6 +88,21 @@ export function usePreventiveMaintenanceJobs({
     `pm_jobs_${propertyId || 'all'}_${limit}_${isPM ? 'true' : 'false'}`,
     [propertyId, limit, isPM]
   );
+
+  // Helper function to create authenticated config
+  const createAuthConfig = useCallback(() => {
+    if (!session?.user?.accessToken) {
+      debug('No access token available');
+      return {};
+    }
+    
+    return {
+      headers: {
+        'Authorization': `Bearer ${session.user.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    };
+  }, [session?.user?.accessToken]);
 
   // Modified function to safely check if property has preventive maintenance
   const checkPropertyPMStatus = useCallback(async (): Promise<boolean> => {
@@ -214,7 +233,7 @@ export function usePreventiveMaintenanceJobs({
       try {
         const pmUrl = `/api/v1/preventive-maintenance/jobs${Object.keys(params).length ? `?${toQuery(params)}` : ''}`;
         debug(`Fetching PM jobs via dedicated endpoint: ${pmUrl}`);
-        const pmResponse = await fetchData<{ jobs: Job[]; count: number }>(pmUrl);
+        const pmResponse = await fetchData<{ jobs: Job[]; count: number }>(pmUrl, createAuthConfig());
         if (pmResponse && Array.isArray(pmResponse.jobs)) {
           fetchedJobs = pmResponse.jobs;
           debug(`Received ${pmResponse.jobs.length} jobs from PM jobs endpoint`);
@@ -230,7 +249,7 @@ export function usePreventiveMaintenanceJobs({
         const fallbackParams = { ...params, is_preventivemaintenance: 'true' };
         const fallbackUrl = `/api/v1/jobs${Object.keys(fallbackParams).length ? `?${toQuery(fallbackParams)}` : ''}`;
         debug(`Falling back to jobs endpoint: ${fallbackUrl}`);
-        const response = await fetchData<Job[]>(fallbackUrl);
+        const response = await fetchData<Job[]>(fallbackUrl, createAuthConfig());
         if (response && Array.isArray(response)) {
           fetchedJobs = response;
           debug(`Received ${response.length} jobs from fallback jobs endpoint`);
@@ -277,7 +296,7 @@ export function usePreventiveMaintenanceJobs({
       isLoadingRef.current = false;
       setLoading(false);
     }
-  }, [propertyId, limit, autoLoad, initialJobs, isPM, cacheKey, checkPropertyPMStatus, setJobs, setLoading, setError, setLastLoadTime]);
+  }, [propertyId, limit, autoLoad, initialJobs, isPM, cacheKey, checkPropertyPMStatus, setJobs, setLoading, setError, setLastLoadTime, createAuthConfig]);
 
   useEffect(() => {
     if (autoLoad) {

@@ -191,6 +191,10 @@ if not _auth0_domain and _auth0_issuer:
 AUTH0_DOMAIN = _auth0_domain
 AUTH0_ISSUER = _auth0_issuer or (f"https://{AUTH0_DOMAIN}/" if AUTH0_DOMAIN else None)
 
+# Auth0 Management API credentials for fetching user details
+AUTH0_CLIENT_ID = os.getenv('AUTH0_CLIENT_ID')
+AUTH0_CLIENT_SECRET = os.getenv('AUTH0_CLIENT_SECRET')
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),

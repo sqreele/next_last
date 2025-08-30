@@ -11,7 +11,21 @@ export interface CompatUser {
   accessToken: string;
   refreshToken: string;
   accessTokenExpires?: number;
+  first_name?: string | null;
+  last_name?: string | null;
   created_at: string;
+  auth0_profile?: {
+    sub?: string;
+    email?: string;
+    email_verified?: boolean;
+    name?: string;
+    given_name?: string;
+    family_name?: string;
+    nickname?: string;
+    picture?: string;
+    locale?: string;
+    updated_at?: string;
+  };
 }
 
 export interface CompatSession {

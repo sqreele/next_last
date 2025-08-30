@@ -28,6 +28,11 @@ const nextConfig = {
       // Allow all localhost variations
       { protocol: 'http', hostname: 'localhost', port: '', pathname: '/media/**' },
       { protocol: 'http', hostname: '127.0.0.1', port: '', pathname: '/media/**' },
+      // Google OAuth profile images
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com', port: '', pathname: '/**' },
+      { protocol: 'https', hostname: 'lh4.googleusercontent.com', port: '', pathname: '/**' },
+      { protocol: 'https', hostname: 'lh5.googleusercontent.com', port: '', pathname: '/**' },
+      { protocol: 'https', hostname: 'lh6.googleusercontent.com', port: '', pathname: '/**' },
     ],
   },
   

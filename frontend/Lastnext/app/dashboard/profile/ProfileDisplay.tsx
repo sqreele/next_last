@@ -218,7 +218,7 @@ export default function ProfileDisplay() {
             <CardTitle className="text-xl sm:text-2xl font-bold">Profile</CardTitle>
             <CardDescription>Manage your personal information and preferences</CardDescription>
           </div>
-          <Link href="/dashboard/profile/edit" className="mt-2 sm:mt-0">
+          <Link href={`/dashboard/profile/edit/${userProfile.id}`} className="mt-2 sm:mt-0">
             <Button variant="outline" size="sm" className="w-full sm:w-auto h-10 flex items-center gap-2">
               <Pencil className="w-4 h-4" />
               Edit Profile

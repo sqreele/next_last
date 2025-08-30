@@ -52,6 +52,7 @@ urlpatterns = [
     path('api/v1/auth/providers/', views.auth_providers, name='auth_providers'),
     path('api/v1/auth/password/forgot/', views.forgot_password, name='forgot_password'),
     path('api/v1/auth/password/reset/', views.reset_password, name='reset_password'),
+    path('api/v1/auth/profile/update/', views.update_user_profile, name='update_user_profile'),
     
     # Health check
     path('api/v1/health/', views.health_check, name='health_check'),

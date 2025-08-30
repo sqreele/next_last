@@ -26,19 +26,11 @@ export async function GET() {
     }
 
     // Update user profile with Auth0 data if available
+    // Note: Profile updates should be done explicitly, not automatically
+    // This prevents issues with session cookie access and unnecessary updates
     if (session.user.auth0_profile) {
-      try {
-        console.log('🔍 Updating user profile with Auth0 data for user:', session.user.username);
-        const profileUpdated = await updateUserProfile(session.user.auth0_profile);
-        if (profileUpdated) {
-          console.log('✅ User profile updated successfully');
-        } else {
-          console.log('⚠️ User profile update failed or no changes needed');
-        }
-      } catch (error) {
-        console.error('❌ Error updating user profile:', error);
-        // Continue even if profile update fails
-      }
+      console.log('ℹ️ Auth0 profile data available for user:', session.user.username);
+      console.log('ℹ️ Profile updates should be done explicitly via edit profile page');
     }
 
     // Update the session with properties data

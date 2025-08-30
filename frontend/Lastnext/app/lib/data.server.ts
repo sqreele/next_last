@@ -203,30 +203,43 @@ export async function fetchJobsForRoom(roomId: string, accessToken?: string): Pr
   return fixJobsImageUrls(sanitizedJobs);
 }
 
-export async function updateUserProfile(auth0Profile: any): Promise<boolean> {
+export async function updateUserProfile(auth0Profile: any, accessToken?: string): Promise<boolean> {
   try {
-    // Get the current session to extract the access token
-    const sessionResponse = await fetch('/api/auth/session-compat', {
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-    });
+    let token = accessToken;
     
-    if (!sessionResponse.ok) {
-      console.error('❌ Failed to get session for profile update');
-      return false;
+    // If no token provided, try to get it from the session
+    if (!token) {
+      try {
+        // For server-side calls, we need to use the full URL
+        const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+        const sessionResponse = await fetch(`${baseUrl}/api/auth/session-compat`, {
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        
+        if (!sessionResponse.ok) {
+          console.error('❌ Failed to get session for profile update');
+          return false;
+        }
+        
+        const session = await sessionResponse.json();
+        token = session?.user?.accessToken;
+      } catch (sessionError) {
+        console.error('❌ Error getting session for profile update:', sessionError);
+        return false;
+      }
     }
     
-    const session = await sessionResponse.json();
-    const accessToken = session?.user?.accessToken;
-    
-    if (!accessToken) {
+    if (!token) {
       console.error('❌ No access token available for profile update');
       return false;
     }
     
+    console.log('🔍 Updating user profile with token:', token.substring(0, 20) + '...');
+    
     const response = await fetchWithToken<{message: string, updated_fields: string[], user: any}>(
       '/api/v1/auth/profile/update/',
-      accessToken, // Pass the actual access token
+      token,
       'POST',
       {
         auth0_profile: auth0Profile

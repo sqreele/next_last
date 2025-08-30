@@ -148,13 +148,22 @@ export const searchJobs = async (criteria: SearchCriteria, token?: string): Prom
 
 export const fetchJobs = async (token?: string): Promise<Job[]> => {
   try {
-    const response = await fetchData<Job[]>("/api/v1/jobs/", token ? {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    } : undefined);
-    return response ?? [];
+    if (token) {
+      // Use direct backend call with provided token
+      const response = await fetchData<Job[]>("/api/v1/jobs/", {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response ?? [];
+    } else {
+      // Use Next.js API proxy to include auth automatically
+      const res = await fetch('/api/jobs/', { credentials: 'include' });
+      if (!res.ok) return [];
+      const response = (await res.json()) as Job[];
+      return response ?? [];
+    }
   } catch (error) {
     console.error('Error fetching jobs:', error);
     return [];
@@ -164,13 +173,22 @@ export const fetchJobs = async (token?: string): Promise<Job[]> => {
 export const fetchJob = async (jobId: string, token?: string): Promise<Job | null> => {
   try {
     if (!jobId) throw new Error('Job ID is required');
-    const response = await fetchData<Job>(`/api/v1/jobs/${jobId}/`, token ? {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    } : undefined);
-    return response ?? null;
+    if (token) {
+      // Use direct backend call with provided token
+      const response = await fetchData<Job>(`/api/v1/jobs/${jobId}/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response ?? null;
+    } else {
+      // Use Next.js API proxy to include auth automatically
+      const res = await fetch(`/api/jobs/${jobId}`, { credentials: 'include' });
+      if (!res.ok) return null;
+      const response = (await res.json()) as Job;
+      return response ?? null;
+    }
   } catch (error) {
     console.error(`Error fetching job ${jobId}:`, error);
     return null;

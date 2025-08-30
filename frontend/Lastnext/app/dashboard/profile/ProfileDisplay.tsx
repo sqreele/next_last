@@ -2,7 +2,7 @@
 
 import React, { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { User2, Mail, Calendar, Shield, Pencil, Building2, Plus, AlertCircle } from "lucide-react";
+import { User2, Mail, Calendar, Shield, Pencil, Building2, Plus, AlertCircle, User } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/app/components/ui/button";
 import {
@@ -16,7 +16,9 @@ import {
 import { Badge } from "@/app/components/ui/badge";
 import { ProfileImage } from "@/app/components/profile/ProfileImage";
 import { useUser } from "@/app/lib/user-context";
-import { Property, UserProfile } from "@/app/lib/types";
+import { useProperty } from "@/app/lib/PropertyContext";
+import { UserProfile } from "@/app/lib/types";
+import { Property } from "@/app/lib/stores/usePropertyStore";
 import { cn } from "@/app/lib/utils";
 
 // Define PropertyCardProps
@@ -72,7 +74,7 @@ function ProfileField({ icon: Icon, label, value }: ProfileFieldProps) {
 }
 
 function PropertyCard({ property }: PropertyCardProps) {
-  const { selectedProperty, setSelectedProperty } = useUser();
+  const { selectedProperty, setSelectedProperty } = useProperty();
 
   const isSelected = selectedProperty === String(property.property_id);
 
@@ -112,16 +114,7 @@ function PropertyCard({ property }: PropertyCardProps) {
           </Button>
         </div>
       </div>
-      <p className="text-sm text-muted-foreground">{property.description}</p>
-      <div className="space-y-2">
-        {property.rooms?.map((room) => (
-          <div key={room.room_id} className="flex items-center gap-2 text-sm text-muted-foreground py-1">
-            <span>
-              {room.name} - {room.room_type}
-            </span>
-          </div>
-        ))}
-      </div>
+      <p className="text-sm text-muted-foreground">{property.description || "No description"}</p>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
         <span className="text-muted-foreground">
           {property.created_at ? new Date(property.created_at).toLocaleDateString() : "N/A"}
@@ -198,17 +191,27 @@ function LoadingSkeleton() {
 export default function ProfileDisplay() {
   const router = useRouter();
   const { userProfile, loading } = useUser();
+  const { userProperties, hasProperties } = useProperty();
+
+  console.log('🔍 ProfileDisplay component loaded with:', {
+    userProfile,
+    loading,
+    hasUserProfile: !!userProfile,
+    userProfileId: userProfile?.id,
+    editLinkUrl: userProfile ? `/dashboard/profile/edit/${userProfile.id}` : 'none'
+  });
 
   if (loading) {
     return <LoadingSkeleton />;
   }
 
   if (!userProfile) {
+    console.log('❌ No userProfile, redirecting to login');
     router.push("/auth/login");
     return null;
   }
 
-  const hasProperties = userProfile.properties && userProfile.properties.length > 0;
+  // Use PropertyContext for properties instead of userProfile.properties
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4 space-y-6">
@@ -224,6 +227,22 @@ export default function ProfileDisplay() {
               Edit Profile
             </Button>
           </Link>
+          
+          {/* Debug button to test navigation */}
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            className="mt-2 sm:mt-0"
+            onClick={() => {
+              console.log('🧪 Debug button clicked');
+              console.log('🧪 userProfile.id:', userProfile.id);
+              console.log('🧪 Edit URL:', `/dashboard/profile/edit/${userProfile.id}`);
+              console.log('🧪 Attempting navigation...');
+              router.push(`/dashboard/profile/edit/${userProfile.id}`);
+            }}
+          >
+            Debug: Go to Edit
+          </Button>
         </CardHeader>
         <CardContent className="space-y-6 sm:space-y-8">
           <div className="flex flex-col items-center justify-center space-y-4">
@@ -255,6 +274,13 @@ export default function ProfileDisplay() {
                 }
               />
             ))}
+            
+            {/* Display Auth0 ID separately */}
+            <ProfileField
+              icon={User}
+              label="Auth0 ID"
+              value={String(userProfile.id)}
+            />
           </div>
         </CardContent>
       </Card>
@@ -266,7 +292,7 @@ export default function ProfileDisplay() {
             <CardDescription>Properties under your supervision</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {userProfile.properties.map((property) => (
+            {userProperties.map((property) => (
               <PropertyCard key={property.property_id} property={property} />
             ))}
           </CardContent>

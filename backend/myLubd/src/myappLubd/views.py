@@ -1963,7 +1963,11 @@ def update_user_profile(request):
         user = request.user
         auth0_profile = request.data.get('auth0_profile', {})
         
+        logger.info(f"🔍 Profile update requested for user: {user.username}")
+        logger.info(f"📝 Auth0 profile data received: {auth0_profile}")
+        
         if not auth0_profile:
+            logger.warning(f"❌ No Auth0 profile data provided for user: {user.username}")
             return Response(
                 {'error': 'No Auth0 profile data provided'}, 
                 status=status.HTTP_400_BAD_REQUEST
@@ -1974,18 +1978,24 @@ def update_user_profile(request):
         
         # Update email if available and different
         if auth0_profile.get('email') and user.email != auth0_profile['email']:
+            old_email = user.email
             user.email = auth0_profile['email']
             updated_fields.append('email')
+            logger.info(f"📧 Updated email for {user.username}: {old_email} -> {user.email}")
         
         # Update first name if available and different
         if auth0_profile.get('given_name') and user.first_name != auth0_profile['given_name']:
+            old_first_name = user.first_name
             user.first_name = auth0_profile['given_name'][:30]
             updated_fields.append('first_name')
+            logger.info(f"👤 Updated first_name for {user.username}: {old_first_name} -> {user.first_name}")
         
         # Update last name if available and different
         if auth0_profile.get('family_name') and user.last_name != auth0_profile['family_name']:
+            old_last_name = user.last_name
             user.last_name = auth0_profile['family_name'][:150]
             updated_fields.append('last_name')
+            logger.info(f"👤 Updated last_name for {user.username}: {old_last_name} -> {user.last_name}")
         
         # If no given_name/family_name but we have name, split it
         if (not user.first_name and not user.last_name) and auth0_profile.get('name'):
@@ -1994,22 +2004,27 @@ def update_user_profile(request):
                 user.first_name = name_parts[0][:30]
                 user.last_name = name_parts[1][:150]
                 updated_fields.extend(['first_name', 'last_name'])
+                logger.info(f"👤 Split name for {user.username}: {auth0_profile['name']} -> first: {user.first_name}, last: {user.last_name}")
             elif len(name_parts) == 1:
                 user.first_name = name_parts[0][:30]
                 updated_fields.append('first_name')
+                logger.info(f"👤 Single name for {user.username}: {auth0_profile['name']} -> first: {user.first_name}")
         
         # Use nickname if no first name is available
         if not user.first_name and auth0_profile.get('nickname'):
             user.first_name = auth0_profile['nickname'][:30]
             updated_fields.append('first_name')
+            logger.info(f"👤 Used nickname for {user.username}: {auth0_profile['nickname']} -> first: {user.first_name}")
         
         # Save the user if any fields were updated
         if updated_fields:
             user.save(update_fields=updated_fields)
-            logger.info(f"Updated user {user.username} profile fields: {updated_fields}")
+            logger.info(f"✅ Updated user {user.username} profile fields: {updated_fields}")
+        else:
+            logger.info(f"ℹ️ No profile updates needed for user {user.username}")
         
         # Return the updated user profile
-        return Response({
+        response_data = {
             'message': 'Profile updated successfully',
             'updated_fields': updated_fields,
             'user': {
@@ -2021,10 +2036,13 @@ def update_user_profile(request):
                 'date_joined': user.date_joined,
                 'last_login': user.last_login
             }
-        }, status=status.HTTP_200_OK)
+        }
+        
+        logger.info(f"📤 Returning profile update response for {user.username}: {response_data}")
+        return Response(response_data, status=status.HTTP_200_OK)
         
     except Exception as e:
-        logger.error(f"Error updating user profile: {e}", exc_info=True)
+        logger.error(f"❌ Error updating user profile for {request.user.username if request.user else 'unknown'}: {e}", exc_info=True)
         return Response(
             {'error': 'Failed to update user profile'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

@@ -144,8 +144,8 @@ export async function GET(request: NextRequest) {
         user: {
           // Use a sanitized ID that's URL-friendly and consistent with backend
           id: userInfo?.sub ? userInfo.sub.replace('|', '_') : `auth0_${Date.now()}`,
-          // More reliable username extraction - prioritize sub field
-          username: userInfo?.sub || userInfo?.nickname || userInfo?.name || userInfo?.email?.split('@')[0] || 'unknown',
+          // More reliable username extraction - prioritize human-readable names
+          username: userInfo?.given_name || userInfo?.name || userInfo?.nickname || userInfo?.email?.split('@')[0] || 'User',
           email: userInfo?.email || 'unknown@example.com',
           profile_image: userInfo?.picture || null,
           positions: userInfo?.positions || 'User',
@@ -176,8 +176,8 @@ export async function GET(request: NextRequest) {
         sessionData.user.id = userInfo?.sub || 'unknown';
       }
       
-      if (!sessionData.user.username || sessionData.user.username === 'user') {
-        sessionData.user.username = userInfo?.sub || 'unknown';
+      if (!sessionData.user.username || sessionData.user.username === 'User') {
+        sessionData.user.username = userInfo?.given_name || userInfo?.name || userInfo?.nickname || userInfo?.email?.split('@')[0] || 'User';
       }
 
       // Debug log the session data being created

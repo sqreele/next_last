@@ -23,6 +23,7 @@ import { Label } from "@/app/components/ui/label";
 import { Job, JobStatus } from "@/app/lib/types";
 import { updateJob as apiUpdateJob } from "@/app/lib/data";
 import { useToast } from "@/app/components/ui/use-toast";
+import { useSession } from "@/app/lib/session.client";
 
 // Define status constants
 const JOB_STATUS = {
@@ -56,6 +57,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<JobStatus>(job.status as JobStatus);
   const { toast } = useToast();
+  const { data: session, status } = useSession();
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -67,6 +69,35 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Debug logging
+    console.log('🔍 UpdateStatusButton - Session Debug:', {
+      status,
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      hasAccessToken: !!session?.user?.accessToken,
+      sessionKeys: session ? Object.keys(session) : 'no session',
+      userKeys: session?.user ? Object.keys(session.user) : 'no user'
+    });
+    
+    // Check session status first
+    if (status === 'loading') {
+      toast({
+        title: "Loading",
+        description: "Please wait while we load your session...",
+        variant: "default",
+      });
+      return;
+    }
+    
+    if (status === 'unauthenticated') {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to update job status",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (selectedStatus === job.status) {
       setIsOpen(false);
@@ -93,8 +124,13 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
         is_preventivemaintenance: job.is_preventivemaintenance || false,
       };
 
-      // Call API
-      const updatedJob = await apiUpdateJob(String(job.job_id), updateData);
+      // Call API with access token
+      const accessToken = session?.user?.accessToken;
+      if (!accessToken) {
+        throw new Error('No access token available. Please log in again.');
+      }
+      
+      const updatedJob = await apiUpdateJob(String(job.job_id), updateData, accessToken);
       
       // Update local state
       onStatusUpdated(updatedJob);
@@ -134,9 +170,11 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
         variant={variant}
         size={size}
         className={className}
+        disabled={status === 'loading' || status === 'unauthenticated'}
       >
         <ClipboardEdit className="h-4 w-4 mr-2" />
         {buttonText}
+        {status === 'loading' && <Loader className="ml-2 h-4 w-4 animate-spin" />}
       </Button>
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>

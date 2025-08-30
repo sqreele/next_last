@@ -84,11 +84,24 @@ class PreventiveMaintenanceService {
     const headers: Record<string, string> = {};
     if (this.accessToken) {
       headers.Authorization = `Bearer ${this.accessToken}`;
-      console.log('✅ Using access token for API request');
+      console.log('✅ Using access token for API request:', this.accessToken.substring(0, 20) + '...');
     } else {
       console.warn('⚠️ No access token provided for API request');
+      console.warn('⚠️ Service instance:', this);
+      console.warn('⚠️ accessToken value:', this.accessToken);
     }
     return headers;
+  }
+
+  // Public method to set the access token
+  public setAccessToken(accessToken: string): void {
+    console.log('🔧 Setting access token on PreventiveMaintenanceService instance:', {
+      oldToken: this.accessToken ? this.accessToken.substring(0, 20) + '...' : 'none',
+      newToken: accessToken.substring(0, 20) + '...',
+      tokenLength: accessToken.length
+    });
+    this.accessToken = accessToken;
+    console.log('✅ Access token set on PreventiveMaintenanceService instance');
   }
 
   // Helper method to check if an item matches a machine
@@ -899,6 +912,6 @@ export const preventiveMaintenanceService = new PreventiveMaintenanceService();
 
 // Add a method to set the access token on the singleton
 export const setPreventiveMaintenanceServiceToken = (accessToken: string) => {
-  (preventiveMaintenanceService as any).accessToken = accessToken;
+  preventiveMaintenanceService.setAccessToken(accessToken);
   console.log('✅ Access token set on preventiveMaintenanceService singleton');
 };

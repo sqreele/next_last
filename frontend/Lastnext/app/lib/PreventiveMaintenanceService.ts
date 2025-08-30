@@ -179,10 +179,30 @@ class PreventiveMaintenanceService {
         console.log(`🔍 Filtering by machine_id: ${cleanParams.machine_id}`);
       }
 
-      const response = await apiClient.get<MaintenanceApiResponse>(`${this.baseUrl}/`, { 
-        params: cleanParams,
-        headers: this.getAuthHeaders()
-      });
+            let response: any;
+      
+      if (this.accessToken) {
+        // Use direct backend call with stored token
+        response = await apiClient.get<MaintenanceApiResponse>(`${this.baseUrl}/`, { 
+          params: cleanParams,
+          headers: this.getAuthHeaders()
+        });
+      } else {
+        // Use Next.js API proxy to include auth automatically
+        console.log('🔄 Using Next.js API proxy for preventive maintenance request');
+        
+        const queryString = new URLSearchParams(cleanParams).toString();
+        const url = `/api/preventive-maintenance/${queryString ? `?${queryString}` : ''}`;
+        
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) {
+          throw new Error(`Failed to fetch preventive maintenance: ${res.status}`);
+        }
+        const data = await res.json();
+        
+        // Return in the same format as apiClient
+        response = { data };
+      }
       
       console.log('Raw API response:', response.data);
       console.log('Response type:', typeof response.data);
@@ -196,7 +216,7 @@ class PreventiveMaintenanceService {
       } else {
         console.log(`✅ Got ${items.length} items (paginated format, total: ${count})`);
       }
-
+      
       // Log machine filtering results
       if (cleanParams.machine_id && items.length > 0) {
         console.log('=== MACHINE FILTERING DEBUG ===');
@@ -213,7 +233,7 @@ class PreventiveMaintenanceService {
           });
         });
       }
-
+      
       return { 
         success: true, 
         data: response.data,

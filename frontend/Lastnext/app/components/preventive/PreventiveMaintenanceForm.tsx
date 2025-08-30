@@ -451,39 +451,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     }
   }, [contextSelectedProperty, fetchAvailableMachines]);
 
-  // Now check for early return conditions after all hooks are defined
-  if (!hasProperties) {
-    return (
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <h2 className="font-semibold mb-2">No Properties Available</h2>
-          <p>You need to have at least one property assigned to create preventive maintenance records.</p>
-          <p className="mt-2 text-sm">Please contact your administrator to assign properties to your account.</p>
-        </div>
-        <div className="mt-4">
-          <Link 
-            href="/dashboard/preventive-maintenance" 
-            className="bg-gray-100 py-2 px-4 rounded-md text-gray-700 hover:bg-gray-200"
-          >
-            Back to List
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if properties are still loading
-  if (userProperties.length === 0) {
-    return (
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-          <h2 className="font-semibold mb-2">Loading Properties...</h2>
-          <p>Please wait while we load your property information.</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Move all hooks to the top, before any conditional returns
   useEffect(() => {
     let mounted = true;
     const loadData = async () => {
@@ -540,9 +508,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           setFetchedInitialData(null);
         })
         .finally(() => {
-          if (mounted) {
-            setIsLoading(false);
-          }
+          if (!mounted) return;
+          setIsLoading(false);
         });
     } else if (initialDataProp) {
       console.log('[PreventiveMaintenanceForm] Using initialDataProp:', initialDataProp);
@@ -561,6 +528,39 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       mounted = false;
     };
   }, [pmId, initialDataProp]);
+
+  // Now check for early return conditions after all hooks are defined
+  if (!hasProperties) {
+    return (
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <h2 className="font-semibold mb-2">No Properties Available</h2>
+          <p>You need to have at least one property assigned to create preventive maintenance records.</p>
+          <p className="mt-2 text-sm">Please contact your administrator to assign properties to your account.</p>
+        </div>
+        <div className="mt-4">
+          <Link 
+            href="/dashboard/preventive-maintenance" 
+            className="bg-gray-100 py-2 px-4 rounded-md text-gray-700 hover:bg-gray-200"
+          >
+            Back to List
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if properties are still loading
+  if (userProperties.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+          <h2 className="font-semibold mb-2">Loading Properties...</h2>
+          <p>Please wait while we load your property information.</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleFileSelection = (
     files: File[],

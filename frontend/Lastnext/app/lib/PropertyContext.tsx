@@ -4,7 +4,7 @@ import React, { createContext, useContext, ReactNode, useCallback, useEffect } f
 import { useSession } from '@/app/lib/session.client';
 import { useUser } from '@/app/lib/user-context';
 import { usePropertyStore, useAuthStore } from '@/app/lib/stores';
-import type { Property } from '@/app/lib/stores/usePropertyStore';
+import type { Property } from '@/app/lib/types';
 
 interface PropertyContextType {
   selectedProperty: string | null;

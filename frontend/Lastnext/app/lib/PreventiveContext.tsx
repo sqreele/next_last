@@ -100,7 +100,7 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
       // Production mode: Always make real API calls
       console.log('🏭 Fetching machines...');
       const machineService = new MachineService();
-      const response = await machineService.getMachines(propertyId || selectedProperty || undefined);
+      const response = await machineService.getMachines(propertyId || selectedProperty || undefined, accessToken || undefined);
 
       if (response.success && response.data) {
         console.log(`✅ Loaded ${response.data.length} machines:`, response.data);

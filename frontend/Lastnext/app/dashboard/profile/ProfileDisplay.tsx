@@ -17,8 +17,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { ProfileImage } from "@/app/components/profile/ProfileImage";
 import { useUser } from "@/app/lib/user-context";
 import { useProperty } from "@/app/lib/PropertyContext";
-import { UserProfile } from "@/app/lib/types";
-import { Property } from "@/app/lib/stores/usePropertyStore";
+import { UserProfile, Property } from "@/app/lib/types";
 import { cn } from "@/app/lib/utils";
 
 // Define PropertyCardProps

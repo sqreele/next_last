@@ -6,20 +6,20 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
   try {
     // Production mode: Always use real session data
     
-    // In production, read session from auth0_session cookie
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('auth0_session');
-    if (!sessionCookie?.value) {
-      return null;
-    }
+          // Read session from auth0_session cookie
+      const cookieStore = await cookies();
+      const sessionCookie = cookieStore.get('auth0_session');
+      if (!sessionCookie?.value) {
+        return null;
+      }
 
-    try {
-      const parsed = JSON.parse(sessionCookie.value);
-      return parsed as CompatSession;
-    } catch (e) {
-      console.error('❌ Failed to parse auth0_session cookie:', e);
-      return null;
-    }
+      try {
+        const parsed = JSON.parse(sessionCookie.value);
+        return parsed as CompatSession;
+      } catch (e) {
+        console.error('❌ Failed to parse auth0_session cookie:', e);
+        return null;
+      }
     
   } catch (error) {
     console.error('❌ Error in getCompatServerSession:', error);

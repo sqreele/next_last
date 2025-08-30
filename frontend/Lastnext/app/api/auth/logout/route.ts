@@ -2,35 +2,37 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get return URL from query params
     const { searchParams } = new URL(request.url);
-    const returnTo = searchParams.get('returnTo') || `${process.env.AUTH0_BASE_URL || ''}/`;
-
-    // Construct Auth0 logout URL
-    const domain = process.env.AUTH0_DOMAIN;
-    const clientId = process.env.AUTH0_CLIENT_ID;
+    const returnTo = searchParams.get('returnTo') || '/';
     
-    if (domain && clientId) {
-      // Use Auth0 logout endpoint
-      const logoutUrl = `https://${domain}/v2/logout?client_id=${clientId}&returnTo=${encodeURIComponent(returnTo)}`;
-      
-      const response = NextResponse.redirect(logoutUrl);
-      
-      // Clear session cookies
-      response.cookies.delete('auth0_session');
-      
-      return response;
-    } else {
-      // Fallback logout - just clear cookies and redirect
-      const response = NextResponse.redirect(returnTo);
-      response.cookies.delete('auth0_session');
-      return response;
+    const baseUrl = process.env.NEXT_PUBLIC_AUTH0_BASE_URL || 'http://localhost:3000';
+    const auth0Domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
+    const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
+    
+    if (!auth0Domain || !clientId) {
+      console.error('Missing Auth0 configuration');
+      return NextResponse.redirect(`${baseUrl}/error?message=Auth0 not configured`);
     }
-  } catch (error) {
-    console.error('Logout error:', error);
-    // Fallback redirect
-    const response = NextResponse.redirect(new URL('/', request.url));
-    response.cookies.delete('auth0_session');
+    
+    // Build Auth0 logout URL
+    const auth0LogoutUrl = `https://${auth0Domain}/v2/logout?` + new URLSearchParams({
+      client_id: clientId,
+      returnTo: `${baseUrl}${returnTo}`,
+    });
+    
+    console.log('🚪 Redirecting to Auth0 logout:', auth0LogoutUrl);
+    
+    // Create response and clear session cookie
+    const response = NextResponse.redirect(auth0LogoutUrl);
+    response.cookies.set('auth0_session', '', {
+      expires: new Date(0),
+      path: '/',
+    });
+    
     return response;
+    
+  } catch (error) {
+    console.error('Error in logout route:', error);
+    return NextResponse.redirect('/error?message=Logout failed');
   }
 }

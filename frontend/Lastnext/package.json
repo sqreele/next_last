@@ -8,7 +8,7 @@
     "start": "next start",
     "shadcn": "shadcn-ui"
   },
-  "dependencies": {
+    "dependencies": {
     "@auth0/nextjs-auth0": "^4.9.0",
     "@prisma/client": "^6.13.0",
     "@radix-ui/react-alert-dialog": "^1.1.4",

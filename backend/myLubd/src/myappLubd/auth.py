@@ -15,39 +15,6 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-class DevelopmentAuthentication(BaseAuthentication):
-    """
-    Development-only authentication class that handles mock tokens
-    for testing and development purposes.
-    """
-    
-    def authenticate(self, request):
-        # Only active in development mode
-        if not getattr(settings, 'DEBUG', False):
-            logger.debug("DevelopmentAuthentication: DEBUG mode is False, skipping")
-            return None
-            
-        try:
-            logger.debug("DevelopmentAuthentication: Starting authentication check")
-            auth = get_authorization_header(request).split()
-            logger.debug(f"DevelopmentAuthentication: Auth header: {auth}")
-            
-            if not auth or len(auth) != 2 or auth[0].lower() != b'bearer':
-                logger.debug("DevelopmentAuthentication: Invalid auth header format")
-                return None
-                
-            token = auth[1].decode('utf-8')
-            logger.debug(f"DevelopmentAuthentication: Token: {token}")
-            
-            # Production mode: No development tokens allowed
-            logger.debug("DevelopmentAuthentication: Development tokens disabled in production")
-            return None
-        except Exception as e:
-            logger.error(f"Error in DevelopmentAuthentication: {e}")
-            print(f"❌ Error in DevelopmentAuthentication: {e}")
-            return None
-    
-
 
 
 class Auth0JWTAuthentication(BaseAuthentication):

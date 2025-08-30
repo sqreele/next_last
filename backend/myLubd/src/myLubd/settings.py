@@ -139,8 +139,7 @@ DATABASES = {
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'myappLubd.auth.DevelopmentAuthentication',  # Development mode first
-        'myappLubd.auth.Auth0JWTAuthentication',     # Then Auth0
+        'myappLubd.auth.Auth0JWTAuthentication',     # Auth0 only
         'rest_framework_simplejwt.authentication.JWTAuthentication',  # Fallback
     ],
     'DEFAULT_PERMISSION_CLASSES': [

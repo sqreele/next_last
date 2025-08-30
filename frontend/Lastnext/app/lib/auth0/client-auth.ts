@@ -77,10 +77,10 @@ export function useClientAuth0() {
     }
   }, [auth0User]);
 
-  // Production mode: No mock system fallback
+  // No fallback system - Auth0 only
   const useMockSystem = () => {
-    console.log('🚫 Mock authentication system disabled in production');
-    setError(new Error('Authentication system not available'));
+    console.log('🚫 No authentication fallback - Auth0 only');
+    setError(new Error('Auth0 authentication required'));
     setIsLoading(false);
   };
 

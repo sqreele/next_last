@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     try {
       const resolveAudience = (raw?: string | null): string => {
         // Use environment variable as fallback, or default to localhost for development
-        const fallback = process.env.AUTH0_AUDIENCE || 'http://localhost:8000';
+        const fallback = process.env.NEXT_PUBLIC_AUTH0_AUDIENCE || 'http://localhost:8000';
         if (!raw) return fallback;
         const trimmed = raw.trim().replace(/\/$/, '');
         if (
@@ -48,18 +48,18 @@ export async function GET(request: NextRequest) {
         return trimmed;
       };
 
-      const audience = resolveAudience(process.env.AUTH0_AUDIENCE);
-      const tokenResponse = await fetch(`https://${process.env.AUTH0_DOMAIN}/oauth/token`, {
+      const audience = resolveAudience(process.env.NEXT_PUBLIC_AUTH0_AUDIENCE);
+      const tokenResponse = await fetch(`https://${process.env.NEXT_PUBLIC_AUTH0_DOMAIN}/oauth/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           grant_type: 'authorization_code',
-          client_id: process.env.AUTH0_CLIENT_ID,
-          client_secret: process.env.AUTH0_CLIENT_SECRET,
+          client_id: process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID,
+          client_secret: process.env.NEXT_PUBLIC_AUTH0_CLIENT_SECRET,
           code: code,
-          redirect_uri: `${process.env.AUTH0_BASE_URL}/api/auth/callback`,
+          redirect_uri: `${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/api/auth/callback`,
           audience,
         }),
       });
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       const tokens = await tokenResponse.json();
       
       // Get user info using the access token
-      const userResponse = await fetch(`https://${process.env.AUTH0_DOMAIN}/userinfo`, {
+      const userResponse = await fetch(`https://${process.env.NEXT_PUBLIC_AUTH0_DOMAIN}/userinfo`, {
         headers: {
           'Authorization': `Bearer ${tokens.access_token}`,
         },
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       };
 
       // Redirect to profile page with session cookie
-      const response = NextResponse.redirect(`${process.env.AUTH0_BASE_URL}/dashboard/profile`);
+              const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_AUTH0_BASE_URL}/dashboard/profile`);
       
       // Set session cookie
       response.cookies.set('auth0_session', JSON.stringify(sessionData), {

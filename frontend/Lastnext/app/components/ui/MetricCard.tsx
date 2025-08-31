@@ -2,7 +2,7 @@ import React from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './card';
 import { Badge } from './badge';
-import { cn } from '@/app/lib/utils';
+import { cn } from '@/app/lib/utils/cn';
 
 export interface MetricData {
   title: string;

@@ -9,8 +9,11 @@ try {
   Font.register({
     family: 'Sarabun',
     fonts: [
-      { src: '/fonts/Sarabun-Regular.ttf', fontWeight: 'normal' },
-      { src: '/fonts/Sarabun-Bold.ttf', fontWeight: 'bold' },
+      { src: '/fonts/Sarabun-Regular.ttf', fontWeight: 'normal', fontStyle: 'normal' },
+      { src: '/fonts/Sarabun-Bold.ttf', fontWeight: 'bold', fontStyle: 'normal' },
+      // Note: Sarabun-Italic.ttf is not available, so we'll use Regular for italic
+      { src: '/fonts/Sarabun-Regular.ttf', fontWeight: 'normal', fontStyle: 'italic' },
+      { src: '/fonts/Sarabun-Bold.ttf', fontWeight: 'bold', fontStyle: 'italic' },
     ],
   });
 } catch (error) {

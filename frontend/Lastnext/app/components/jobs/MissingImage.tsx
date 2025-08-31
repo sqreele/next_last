@@ -2,7 +2,7 @@
 
 import React from "react";
 import { ImageIcon } from "lucide-react";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/app/lib/utils/cn";
 
 interface MissingImageProps {
   label?: string;

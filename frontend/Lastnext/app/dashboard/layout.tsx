@@ -36,7 +36,7 @@ import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 import User from '@/app/dashboard/user';
 import { Sheet, SheetContent, SheetTrigger } from '@/app/components/ui/sheet';
 import { Input } from '@/app/components/ui/input';
-import { cn } from '@/app/lib/utils';
+import { cn } from '@/app/lib/utils/cn';
 import { PropertyDebug } from '@/app/components/debug/PropertyDebug';
 import {
   DropdownMenu,

@@ -15,10 +15,9 @@ import {
 } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
 import { ProfileImage } from "@/app/components/profile/ProfileImage";
-import { useUser } from "@/app/lib/user-context";
-import { useProperty } from "@/app/lib/PropertyContext";
+import { useUser, useProperties } from "@/app/lib/stores/mainStore";
 import { UserProfile, Property } from "@/app/lib/types";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/app/lib/utils/cn";
 
 // Define PropertyCardProps
 interface PropertyCardProps {
@@ -73,14 +72,14 @@ function ProfileField({ icon: Icon, label, value }: ProfileFieldProps) {
 }
 
 function PropertyCard({ property }: PropertyCardProps) {
-  const { selectedProperty, setSelectedProperty } = useProperty();
+  const { selectedPropertyId, setSelectedPropertyId } = useUser();
 
-  const isSelected = selectedProperty === String(property.property_id);
+  const isSelected = selectedPropertyId === String(property.property_id);
 
   const handleSelectProperty = useCallback(() => {
     const propId = String(property.property_id);
-    setSelectedProperty(propId);
-  }, [property.property_id, setSelectedProperty]);
+    setSelectedPropertyId(propId);
+  }, [property.property_id, setSelectedPropertyId]);
 
   return (
     <div
@@ -189,8 +188,11 @@ function LoadingSkeleton() {
 
 export default function ProfileDisplay() {
   const router = useRouter();
-  const { userProfile, loading } = useUser();
-  const { userProperties, hasProperties } = useProperty();
+  const { userProfile } = useUser();
+  const { properties: userProperties, propertyLoading: loading } = useProperties();
+  
+  // Check if user has properties
+  const hasProperties = userProperties && userProperties.length > 0;
 
   console.log('🔍 ProfileDisplay component loaded with:', {
     userProfile,
@@ -291,7 +293,7 @@ export default function ProfileDisplay() {
             <CardDescription>Properties under your supervision</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {userProperties.map((property) => (
+            {userProperties.map((property: Property) => (
               <PropertyCard key={property.property_id} property={property} />
             ))}
           </CardContent>

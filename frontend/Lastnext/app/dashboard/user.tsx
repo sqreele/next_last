@@ -12,7 +12,7 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { Button } from '@/app/components/ui/button';
 import { User2, LogOut, Settings, ChevronDown } from 'lucide-react';
-import { cn } from '@/app/lib/utils';
+import { cn } from '@/app/lib/utils/cn';
 import Link from 'next/link';
 
 const User: React.FC = () => {

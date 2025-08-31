@@ -6,7 +6,7 @@ import { Plus, FileDown, Filter, SortAsc, SortDesc, Building, Calendar, DoorOpen
 import { Button } from "@/app/components/ui/button";
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import JobPDFConfig from "@/app/components/jobs/JobPDFConfig";
-import { useProperty } from "@/app/lib/PropertyContext";
+import { useUser } from "@/app/lib/stores/mainStore";
 import { useSession } from "@/app/lib/session.client";
 import { JobPDFService } from "@/app/lib/services/JobPDFService";
 import { JobPDFConfig as JobPDFConfigType } from "@/app/components/jobs/JobPDFConfig";
@@ -27,11 +27,6 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Calendar as CalendarComponent } from "@/app/components/ui/calendar";
 
 type DateFilter = "all" | "today" | "yesterday" | "thisWeek" | "thisMonth" | "custom";
-
-interface PropertyContextType {
-  selectedProperty: string | null;
-  setSelectedProperty: (propertyId: string | null) => void;
-}
 
 interface JobActionsProps {
   onSort?: (order: SortOrder) => void;
@@ -63,7 +58,7 @@ export default function JobActions({
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomSearch, setRoomSearch] = useState<string>("");
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
-  const { selectedProperty, setSelectedProperty } = useProperty() as PropertyContextType;
+  const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setSelectedProperty } = useUser();
   const { data: session } = useSession();
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
   const [isPDFConfigOpen, setIsPDFConfigOpen] = useState(false);
@@ -316,6 +311,14 @@ export default function JobActions({
   };
 
   const handleGeneratePDF = async () => {
+    console.log('PDF Generation Debug:', {
+      jobsCount: jobs.length,
+      jobs: jobs.map(j => ({ id: j.job_id, property_id: j.property_id, status: j.status })),
+      selectedProperty,
+      currentTab,
+      properties: properties.map(p => ({ id: p.property_id, name: p.name }))
+    });
+
     if (!jobs.length) {
       alert("No jobs available to generate a PDF.");
       return;

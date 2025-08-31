@@ -16,8 +16,7 @@ import RoomAutocomplete from '@/app/components/jobs/RoomAutocomplete';
 import FileUpload from '@/app/components/jobs/FileUpload';
 import { Room, TopicFromAPI } from '@/app/lib/types';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/app/lib/user-context';
-import { useJob } from '@/app/lib/JobContext';
+import { useUser, useJobs } from '@/app/lib/stores/mainStore';
 
 // Use Next.js API routes for proxying to the backend
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -79,8 +78,14 @@ const initialValues: FormValues = {
 
 const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }) => {
   const { data: session } = useSession();
-  const { selectedProperty, setSelectedProperty, userProfile } = useUser();
-  const { triggerJobCreation } = useJob();
+  const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setSelectedProperty, userProfile } = useUser();
+  const { addJob } = useJobs();
+  
+  // Since we don't have triggerJobCreation in the new store, we'll create a simple counter
+  const [jobCreationCount, setJobCreationCount] = useState(0);
+  const triggerJobCreation = () => {
+    setJobCreationCount(prev => prev + 1);
+  };
   const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);

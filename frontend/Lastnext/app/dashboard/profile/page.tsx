@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
+import { fixImageUrl } from '@/app/lib/utils/image-utils';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -15,6 +16,9 @@ export default function ProfilePage() {
   const [userProperties, setUserProperties] = useState<any[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(true);
   const [propertiesError, setPropertiesError] = useState<string | null>(null);
+
+  // Process profile image URL
+  const profileImageUrl = user?.profile_image ? fixImageUrl(user.profile_image) : null;
 
   // Fetch user properties when component mounts
   useEffect(() => {
@@ -145,10 +149,10 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center space-x-4">
-                  {user.profile_image ? (
+                  {profileImageUrl ? (
                     <div className="relative">
                       <img 
-                        src={user.profile_image} 
+                        src={profileImageUrl} 
                         alt={`${user.username || 'User'}'s profile`}
                         className="w-20 h-20 rounded-full object-cover border-2 border-blue-200"
                         onError={(e) => {
@@ -176,69 +180,47 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Debug Section - Remove this after fixing */}
-                <div className="p-4 bg-gray-50 rounded-lg border">
-                  <h4 className="text-sm font-semibold text-gray-700 mb-2">🔍 Debug Info (Remove after fixing)</h4>
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <div>Profile Image: {user.profile_image ? `✅ ${user.profile_image}` : '❌ Not set'}</div>
-                    <div>Username: {user.username || '❌ Not set'}</div>
-                    <div>Email: {user.email || '❌ Not set'}</div>
-                    <div>User ID: {user.id || '❌ Not set'}</div>
-                    <div>Properties Count: {userProperties.length}</div>
-                    <div>Properties Loading: {loadingProperties ? 'Yes' : 'No'}</div>
-                    <div>Properties Error: {propertiesError || 'None'}</div>
-                    <div>Session Properties Count: {user?.properties?.length || 0}</div>
-                    <div>All User Fields: {Object.keys(user).join(', ')}</div>
-                    {user.auth0_profile && (
-                      <div>Auth0 Profile Fields: {Object.keys(user.auth0_profile).join(', ')}</div>
-                    )}
-                    <div className="mt-2 pt-2 border-t">
-                      <div>Access Token: {user.accessToken ? `✅ ${user.accessToken.substring(0, 20)}...` : '❌ Not set'}</div>
-                      <div>Token Expires: {user.accessTokenExpires ? new Date(user.accessTokenExpires).toLocaleString() : '❌ Not set'}</div>
+                {/* Profile Details */}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-3">
+                      <Mail className="w-5 h-5 text-gray-500" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Email</p>
+                        <p className="text-sm text-gray-600">{user.email || 'Not provided'}</p>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                      <Mail className="w-5 h-5 text-gray-600" />
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                        <Shield className="w-5 h-5 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Position</p>
+                        <p className="text-sm text-gray-600">{user.positions || 'N/A'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Email</p>
-                      <p className="text-sm text-gray-600">{user.email || 'N/A'}</p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                      <Shield className="w-5 h-5 text-gray-600" />
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Member Since</p>
+                        <p className="text-sm text-gray-600">
+                          {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Position</p>
-                      <p className="text-sm text-gray-600">{user.positions || 'N/A'}</p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-gray-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Member Since</p>
-                      <p className="text-sm text-gray-600">
-                        {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                      <User2 className="w-5 h-5 text-gray-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">User ID</p>
-                      <p className="text-sm text-gray-600 font-mono">{user.id || 'N/A'}</p>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                        <User2 className="w-5 h-5 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">User ID</p>
+                        <p className="text-sm text-gray-600 font-mono">{user.id || 'N/A'}</p>
+                      </div>
                     </div>
                   </div>
                 </div>

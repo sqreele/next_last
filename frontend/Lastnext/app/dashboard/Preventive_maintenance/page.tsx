@@ -2,8 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useProperty } from '@/app/lib/PropertyContext';
-import { useUser } from '@/app/lib/user-context';
+import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
 import { redirect } from 'next/navigation';
 import PreventiveMaintenanceDashboard from '@/app/dashboard/Preventive_maintenance/PreventiveMaintenanceDashboard';
@@ -14,10 +13,16 @@ import { Wrench, AlertTriangle, Building } from 'lucide-react';
 import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 
 export default function PreventiveMaintenancePage() {
-  const { selectedProperty, hasProperties } = useProperty();
-  const { userProfile, loading: userLoading } = useUser();
+  const { selectedPropertyId: selectedProperty, userProfile } = useUser();
+  const { properties: userProperties } = useProperties();
   const { status } = useSession();
   const [isClient, setIsClient] = useState(false);
+  
+  // Calculate hasProperties from the properties array
+  const hasProperties = userProperties && userProperties.length > 0;
+  
+  // Mock loading state for now - this will need to be implemented in the store
+  const userLoading = false;
 
   useEffect(() => {
     setIsClient(true);

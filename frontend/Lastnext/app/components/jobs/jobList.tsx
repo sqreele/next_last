@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useProperty } from '@/app/lib/PropertyContext';
+import { useUser } from '@/app/lib/stores/mainStore';
 import { JobCard } from '@/app/components/jobs/JobCard';
 import Pagination from '@/app/components/jobs/Pagination';
 import JobActions from '@/app/components/jobs/JobActions';
@@ -30,7 +30,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   const [sortOrder, setSortOrder] = useState<SortOrder>("Newest first");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [customDateRange, setCustomDateRange] = useState<{ start?: Date, end?: Date }>({});
-  const { selectedProperty } = useProperty();
+  const { selectedPropertyId: selectedProperty } = useUser();
 
   // Build a set of identifiers that represent the currently selected property
   // This ensures we match both the human-readable property code and the numeric PK

@@ -6,7 +6,7 @@ import { Upload, X, AlertCircle } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Progress } from "@/app/components/ui/progress";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/app/lib/utils/cn";
 
 export interface FileUploadProps {
   onFileSelect: (files: File[]) => void;

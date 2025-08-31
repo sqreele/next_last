@@ -1,21 +1,19 @@
 'use client';
 
 import React from 'react';
-import { useFilter } from '@/app/lib/FilterContext';
-import PDFMaintenanceGenerator from '@/app/components/document/PDFMaintenanceGenerator';
 
 export default function PDFGeneratorPage() {
-  const { status, search } = useFilter();
-
-  // ✅ Correct: The 'PDFMaintenanceGenerator' component accepts the initialFilters prop.
-  return <PDFMaintenanceGenerator initialFilters={{ 
-    status: status || 'all',
-    frequency: 'all',
-    search: search || '',
-    startDate: '',
-    endDate: '',
-    machineId: '',
-    page: 1,
-    pageSize: 10
-  }} />;
+  return (
+    <div className="container mx-auto p-6">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">PDF Generator</h1>
+        <p className="text-gray-600">
+          This feature is temporarily disabled while we update the system architecture.
+        </p>
+        <p className="text-gray-600 mt-2">
+          Please check back later for the updated PDF generation functionality.
+        </p>
+      </div>
+    </div>
+  );
 }

@@ -4,7 +4,7 @@ import { getServerSession } from '@/app/lib/session.server';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { MapPin, Clock, Calendar, User, CheckCircle2, MessageSquare, StickyNote, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
-import { cn } from '@/app/lib/utils';
+import { cn } from '@/app/lib/utils/cn';
 import { Job, Property, JobStatus, JobPriority } from '@/app/lib/types';
 
 type Props = {

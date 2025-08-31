@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useProperty } from "@/app/lib/PropertyContext";
+import { useUser } from "@/app/lib/stores/mainStore";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import JobList from "@/app/components/jobs/jobList";
 import { Job, Property, TabValue } from "@/app/lib/types";
@@ -15,7 +15,7 @@ import {
   DropdownMenuItem, DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
 import { Button } from "@/app/components/ui/button";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/app/lib/utils/cn";
 
 interface JobsContentProps {
   jobs: Job[];
@@ -44,7 +44,7 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
   const [currentTab, setCurrentTab] = useState<TabValue>("all");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const { selectedProperty } = useProperty();
+  const { selectedPropertyId: selectedProperty } = useUser();
 
   const filteredJobs = useMemo(() => {
     if (!Array.isArray(jobs)) return [];

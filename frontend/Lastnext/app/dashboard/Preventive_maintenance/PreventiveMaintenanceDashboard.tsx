@@ -21,7 +21,7 @@ import {
   ChevronDown,
   Bell
 } from 'lucide-react';
-import { cn } from '@/app/lib/utils';
+import { cn } from '@/app/lib/utils/cn';
 import Link from 'next/link';
 import {
   DropdownMenu,

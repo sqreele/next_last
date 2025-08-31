@@ -14,20 +14,24 @@ import {
 } from '@/app/components/ui/card';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
-import { useUser } from '@/app/lib/user-context';
-import { useProperty } from '@/app/lib/PropertyContext';
+import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { updateUserProfile } from '@/app/lib/data.server';
 
 export default function EditProfilePage() {
   const params = useParams();
   const router = useRouter();
-  const { userProfile, loading, refetch, forceRefresh } = useUser();
-  const { userProperties, selectedProperty, setSelectedProperty, hasProperties } = useProperty();
+  const { userProfile, selectedPropertyId: selectedProperty, setSelectedPropertyId: setSelectedProperty } = useUser();
+  const { properties: userProperties, propertyLoading: loading } = useProperties();
+  
+  // Since we don't have refetch and forceRefresh in the new store, we'll handle it differently
+  const refetch = () => Promise.resolve(userProfile);
+  const forceRefresh = () => Promise.resolve(userProfile);
+  
+  // Check if user has properties
+  const hasProperties = userProperties && userProperties.length > 0;
   const [formData, setFormData] = useState({
     username: '',
     email: '',
-    first_name: '',
-    last_name: '',
     positions: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,15 +54,11 @@ export default function EditProfilePage() {
       setFormData({
         username: userProfile.username || '',
         email: userProfile.email || '',
-        first_name: userProfile.first_name || '',
-        last_name: userProfile.last_name || '',
         positions: userProfile.positions || ''
       });
       console.log('🔍 Form data initialized:', {
         username: userProfile.username || '',
         email: userProfile.email || '',
-        first_name: userProfile.first_name || '',
-        last_name: userProfile.last_name || '',
         positions: userProfile.positions || ''
       });
     }
@@ -124,10 +124,8 @@ export default function EditProfilePage() {
       // Create Auth0 profile data structure
       const auth0Profile = {
         email: formData.email,
-        given_name: formData.first_name,
-        family_name: formData.last_name,
         nickname: formData.username,
-        name: `${formData.first_name} ${formData.last_name}`.trim()
+        name: formData.username
       };
 
       console.log('🔍 Submitting profile update with data:', auth0Profile);
@@ -279,29 +277,7 @@ export default function EditProfilePage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">First Name</Label>
-                  <Input
-                    id="first_name"
-                    value={formData.first_name}
-                    onChange={(e) => handleInputChange('first_name', e.target.value)}
-                    placeholder="Enter your first name"
-                    disabled={isSubmitting}
-                  />
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">Last Name</Label>
-                  <Input
-                    id="last_name"
-                    value={formData.last_name}
-                    onChange={(e) => handleInputChange('last_name', e.target.value)}
-                    placeholder="Enter your last name"
-                    disabled={isSubmitting}
-                  />
-                </div>
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="positions">

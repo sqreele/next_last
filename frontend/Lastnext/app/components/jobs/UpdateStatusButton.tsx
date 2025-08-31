@@ -21,7 +21,7 @@ import {
 } from "@/app/components/ui/select";
 import { Label } from "@/app/components/ui/label";
 import { Job, JobStatus } from "@/app/lib/types";
-import { updateJob as apiUpdateJob } from "@/app/lib/data";
+import { updateJob as apiUpdateJob } from "@/app/lib/data.server";
 import { useToast } from "@/app/components/ui/use-toast";
 import { useSession } from "@/app/lib/session.client";
 

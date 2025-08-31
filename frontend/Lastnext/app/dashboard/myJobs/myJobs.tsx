@@ -26,8 +26,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { useToast } from "@/app/components/ui/use-toast";
 // --- Lib/Hook Imports ---
-import { useUser } from "@/app/lib/user-context";
-import { updateJob as apiUpdateJob, deleteJob as apiDeleteJob } from "@/app/lib/data";
+import { useUser, useJobs } from "@/app/lib/stores/mainStore";
 import { useJobsData } from "@/app/lib/hooks/useJobsData";
 import { Job, JobStatus, JobPriority } from "@/app/lib/types";
 // --- Component Imports ---
@@ -394,7 +393,11 @@ DeleteDialog.displayName = 'DeleteDialog';
 const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) => {
   const { toast } = useToast();
   const { data: session, status: sessionStatus } = useSession();
-  const { userProfile, loading: userLoading, selectedProperty } = useUser();
+  const { userProfile, selectedPropertyId: selectedProperty } = useUser();
+  const { updateJob: storeUpdateJob, deleteJob: storeDeleteJob } = useJobs();
+  
+  // Since we don't have loading state in the new store, we'll handle it differently
+  const userLoading = false; // TODO: Add loading state to store if needed
   const router = useRouter();
 
   // Use the hook for data fetching
@@ -499,7 +502,9 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
       };
 
       // Call API function with the data formatted for the API
-      const updatedJobResult = await apiUpdateJob(String(selectedJob.job_id), apiRequestData, session?.user?.accessToken);
+              // Update job in store
+        storeUpdateJob(selectedJob.id, apiRequestData);
+        const updatedJobResult = { ...selectedJob, ...apiRequestData };
 
       // Update local state using the hook's function
       updateJob(updatedJobResult);
@@ -524,7 +529,8 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
 
     setIsSubmitting(true);
     try {
-      await apiDeleteJob(String(selectedJob.job_id), session?.user?.accessToken);
+              // Delete job from store
+        storeDeleteJob(selectedJob.id);
       removeJob(selectedJob.job_id);
 
       toast({ title: "Success", description: "Job deleted successfully." });

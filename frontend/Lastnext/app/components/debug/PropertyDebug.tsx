@@ -1,13 +1,17 @@
 'use client';
 
-import { useProperty } from '@/app/lib/PropertyContext';
-import { useUser } from '@/app/lib/user-context';
+import { useMainStore } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
 
 export function PropertyDebug() {
-  const { selectedProperty, userProperties, hasProperties } = useProperty();
-  const { userProfile } = useUser();
+  // Use more specific selectors to prevent unnecessary re-renders
+  const selectedProperty = useMainStore(state => state.selectedPropertyId);
+  const userProfile = useMainStore(state => state.userProfile);
+  const userProperties = useMainStore(state => state.properties);
   const { data: session } = useSession();
+  
+  // Calculate hasProperties from the properties array
+  const hasProperties = userProperties && userProperties.length > 0;
 
   if (process.env.NODE_ENV !== 'development') {
     return null;

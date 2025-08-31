@@ -57,8 +57,11 @@ const ensurePdfFontsRegistered = () => {
     Font.register({
       family: 'Sarabun',
       fonts: [
-        { src: regular, fontWeight: 'normal' },
-        { src: bold, fontWeight: 'bold' },
+        { src: regular, fontWeight: 'normal', fontStyle: 'normal' },
+        { src: bold, fontWeight: 'bold', fontStyle: 'normal' },
+        // Note: Sarabun-Italic.ttf is not available, so we'll use Regular for italic
+        { src: regular, fontWeight: 'normal', fontStyle: 'italic' },
+        { src: bold, fontWeight: 'bold', fontStyle: 'italic' },
       ],
     });
     

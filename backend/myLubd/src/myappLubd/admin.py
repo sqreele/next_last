@@ -1,6 +1,8 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
 from .models import (
     Property,
     Room,
@@ -16,6 +18,35 @@ from .models import (
     MaintenanceHistory,
     MaintenanceSchedule
 )
+
+# Custom User Admin to show Google OAuth information
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    verbose_name_plural = 'Profile'
+    fields = ['positions', 'profile_image', 'google_id', 'email_verified', 'login_provider']
+
+class UserAdmin(BaseUserAdmin):
+    inlines = (UserProfileInline,)
+    list_display = ['username', 'email', 'first_name', 'last_name', 'get_google_info', 'is_staff', 'is_active', 'date_joined']
+    list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined']
+    search_fields = ['username', 'first_name', 'last_name', 'email']
+    
+    def get_google_info(self, obj):
+        try:
+            profile = obj.userprofile
+            if profile.google_id:
+                return f"Google OAuth ({profile.login_provider or 'Google'})"
+            return "Local User"
+        except UserProfile.DoesNotExist:
+            return "No Profile"
+    get_google_info.short_description = 'Auth Type'
+    get_google_info.admin_order_field = 'userprofile__google_id'
+
+# Re-register User admin
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
+
 # Add this new admin class for Machine
 @admin.register(Machine)
 class MachineAdmin(admin.ModelAdmin):
@@ -91,7 +122,7 @@ class JobImageInline(admin.TabularInline):
 # ModelAdmins
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
-    list_display = ['job_id', 'get_topics_display', 'status', 'priority', 'user', 'updated_by', 'created_at', 'updated_at', 'is_preventivemaintenance']
+    list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_user_display', 'get_properties_display', 'created_at', 'is_preventivemaintenance']
     list_filter = ['status', 'priority', 'is_defective', 'created_at', 'updated_at', 'is_preventivemaintenance']
     search_fields = ['job_id', 'description', 'user__username', 'updated_by__username', 'topics__title']
     readonly_fields = ['job_id', 'created_at', 'updated_at', 'completed_at', 'updated_by']
@@ -116,12 +147,66 @@ class JobAdmin(admin.ModelAdmin):
         return ", ".join([topic.title for topic in obj.topics.all()])
     get_topics_display.short_description = 'Topics'
 
+    def get_user_display(self, obj):
+        if obj.user:
+            return f"{obj.user.username} ({obj.user.first_name} {obj.user.last_name})".strip()
+        return "No User"
+    get_user_display.short_description = 'User'
+    get_user_display.admin_order_field = 'user__username'
+
+    def get_updated_by_display(self, obj):
+        if obj.updated_by:
+            return f"{obj.updated_by.username} ({obj.updated_by.first_name} {obj.updated_by.last_name})".strip()
+        return "No User"
+    get_updated_by_display.short_description = 'Updated By'
+    get_updated_by_display.admin_order_field = 'updated_by__username'
+
+    def get_properties_display(self, obj):
+        properties = []
+        if obj.rooms.exists():
+            for room in obj.rooms.all():
+                for prop in room.properties.all():
+                    if prop.name not in properties:
+                        properties.append(prop.name)
+        return ", ".join(properties) if properties else "No Properties"
+    get_properties_display.short_description = 'Properties'
+
+    def get_description_display(self, obj):
+        if obj.description:
+            return obj.description[:50] + "..." if len(obj.description) > 50 else obj.description
+        return "No Description"
+    get_description_display.short_description = 'Description'
+
+    def get_status_display_colored(self, obj):
+        status_colors = {
+            'pending': 'orange',
+            'in_progress': 'blue',
+            'waiting_sparepart': 'purple',
+            'completed': 'green',
+            'cancelled': 'red'
+        }
+        color = status_colors.get(obj.status, 'black')
+        return format_html('<span style="color: {};">{}</span>', color, obj.get_status_display())
+    get_status_display_colored.short_description = 'Status'
+    get_status_display_colored.admin_order_field = 'status'
+
     def save_model(self, request, obj, form, change):
         if not obj.pk and not obj.user_id:
             obj.user = request.user
         if obj.pk:
             obj.updated_by = request.user
         super().save_model(request, obj, form, change)
+
+    def get_priority_display_colored(self, obj):
+        priority_colors = {
+            'low': 'green',
+            'medium': 'orange',
+            'high': 'red'
+        }
+        color = priority_colors.get(obj.priority, 'black')
+        return format_html('<span style="color: {}; font-weight: bold;">{}</span>', color, obj.get_priority_display().title())
+    get_priority_display_colored.short_description = 'Priority'
+    get_priority_display_colored.admin_order_field = 'priority'
 
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)

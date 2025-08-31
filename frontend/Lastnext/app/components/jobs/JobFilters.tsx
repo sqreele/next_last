@@ -16,7 +16,7 @@ import {
 } from "@/app/components/ui/popover";
 import { Badge } from "@/app/components/ui/badge";
 import { JobStatus, JobPriority } from "@/app/lib/types";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/app/lib/utils/cn";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/app/components/ui/calendar";
 

@@ -418,7 +418,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     }
   }, [accessToken]);
 
-  const fetchAvailableMachines = useCallback(async (propertyId: string | undefined) => {
+  const fetchAvailableMachines = useCallback(async (propertyId: string | null) => {
     if (!propertyId) {
       setAvailableMachines([]);
       setLoadingMachines(false);
@@ -427,7 +427,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     setLoadingMachines(true);
     try {
       const machineService = new MachineService();
-      const response = await machineService.getMachines(propertyId as string | undefined, accessToken);
+      const response = await machineService.getMachines(propertyId || undefined, accessToken);
       if (response.success && response.data) {
         setAvailableMachines(response.data);
       } else {

@@ -5,12 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Badge } from '@/app/components/ui/badge';
 import { Building2, Info, FileText, Download } from 'lucide-react';
 import JobsReport from '@/app/components/jobs/JobsReport';
-import { useProperty } from '@/app/lib/PropertyContext';
-import { useUser } from '@/app/lib/user-context';
+import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 
 export default function JobsReportPage() {
-  const { selectedProperty, userProperties } = useProperty();
-  const { userProfile } = useUser();
+  const { selectedPropertyId: selectedProperty, userProfile } = useUser();
+  const { properties: userProperties } = useProperties();
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">

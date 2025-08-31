@@ -6,8 +6,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover";
 import { Button } from "@/app/components/ui/button";
 import { Check, ChevronsUpDown, Building } from "lucide-react";
-import { cn } from "@/app/lib/utils";
-import { useProperty } from "@/app/lib/PropertyContext";
+import { cn } from "@/app/lib/utils/cn";
+import { useUser, useProperties } from "@/app/lib/stores/mainStore";
 import { Room } from "@/app/lib/types";
 
 interface RoomAutocompleteProps {
@@ -27,7 +27,8 @@ const RoomAutocomplete = ({
 }: RoomAutocompleteProps) => {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const { selectedProperty, userProperties = [] } = useProperty();
+  const { selectedPropertyId: selectedProperty } = useUser();
+  const { properties: userProperties = [] } = useProperties();
   const [fallbackMode, setFallbackMode] = useState(false);
 
   // Safer debug logging

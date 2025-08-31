@@ -11,7 +11,7 @@ import { Button } from '@/app/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Job, Property, JobStatus, STATUS_VARIANTS, Room } from '@/app/lib/types';
 import { useRouter } from 'next/navigation';
-import { useProperty } from '@/app/lib/PropertyContext';
+import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
 
 export default function SearchContent() {
@@ -28,7 +28,8 @@ export default function SearchContent() {
   const { data: session } = useSession();
   const accessToken = session?.user?.accessToken;
   // Get currently selected property (fallback to first user property if available)
-  const { selectedProperty, userProperties } = useProperty();
+  const { selectedPropertyId: selectedProperty } = useUser();
+  const { properties: userProperties } = useProperties();
 
   useEffect(() => {
     const fetchSearchResults = async () => {
@@ -343,7 +344,7 @@ export default function SearchContent() {
 // Updated JobCard with safer property access
 function JobCard({ job, query, highlightMatch, properties }: JobCardProps) {
   const router = useRouter();
-  const { selectedProperty } = useProperty();
+  const { selectedPropertyId: selectedProperty } = useUser();
   const statusVariant = (job?.status && STATUS_VARIANTS[job.status as JobStatus]) || STATUS_VARIANTS.default;
   const displayId = typeof job?.job_id === 'number' ? `#${job.job_id}` : job?.job_id;
 
@@ -437,7 +438,7 @@ function JobCard({ job, query, highlightMatch, properties }: JobCardProps) {
 // Room-Only JobCard with safer property access
 function RoomOnlyJobCard({ job, properties }: RoomOnlyJobCardProps) {
   const router = useRouter();
-  const { selectedProperty } = useProperty();
+  const { selectedPropertyId: selectedProperty } = useUser();
   const room = job?.rooms?.[0] as Room | undefined;
 
   const getPropertyName = () => {

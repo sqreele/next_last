@@ -117,7 +117,12 @@ class JobSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
-    user = serializers.StringRelatedField(read_only=True)
+    # Change from StringRelatedField to show user details
+    user = serializers.SerializerMethodField()
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    user_first_name = serializers.CharField(source='user.first_name', read_only=True)
+    user_last_name = serializers.CharField(source='user.last_name', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
     images = JobImageSerializer(source='job_images', many=True, read_only=True)
     topics = TopicSerializer(many=True, read_only=True)
     profile_image = UserProfileSerializer(source='user.userprofile', read_only=True)
@@ -131,12 +136,26 @@ class JobSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
         fields = [
-            'id', 'job_id', 'user', 'updated_by', 'description', 'status', 'priority',
+            'id', 'job_id', 'user', 'user_username', 'user_first_name', 'user_last_name', 'user_email',
+            'updated_by', 'description', 'status', 'priority',
             'remarks', 'created_at', 'updated_at', 'completed_at', 'is_defective',
             'rooms', 'topics', 'images', 'profile_image', 'room_type', 'name',
             'topic_data', 'room_id', 'image_urls', 'is_preventivemaintenance'
         ]
-        read_only_fields = ['id', 'job_id', 'user', 'created_at', 'updated_at', 'completed_at', 'images', 'topics']
+        read_only_fields = ['id', 'job_id', 'user', 'user_username', 'user_first_name', 'user_last_name', 'user_email', 'created_at', 'updated_at', 'completed_at', 'images', 'topics']
+
+    def get_user(self, obj):
+        """Return user information in a structured format"""
+        if obj.user:
+            return {
+                'id': obj.user.id,
+                'username': obj.user.username,
+                'first_name': obj.user.first_name,
+                'last_name': obj.user.last_name,
+                'email': obj.user.email,
+                'full_name': f"{obj.user.first_name} {obj.user.last_name}".strip() if obj.user.first_name or obj.user.last_name else obj.user.username
+            }
+        return None
 
     def get_image_urls(self, obj):
         """Return a list of full URLs for all images associated with the job."""

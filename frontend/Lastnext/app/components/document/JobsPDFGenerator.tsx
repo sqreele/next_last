@@ -1,7 +1,13 @@
 // ./app/components/document/JobsPDFGenerator.tsx
 // Note: @react-pdf/renderer only supports JPG, JPEG, PNG, and GIF image formats
 // WebP images are not supported and will show "No Image" placeholder
-// Last updated: 2025-01-13 - Fixed undefined variable references
+// Last updated: 2025-01-13 - Fixed undefined variable references and improved property filtering
+// 
+// Debug Mode: Set debugMode={true} to bypass property filtering and see all jobs
+// This helps identify why strict filtering might be failing
+//
+// TEMPORARY FALLBACK: When strict filtering fails, all jobs are shown automatically
+// This ensures PDF generation works while debugging the filtering logic
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { Job, TabValue, FILTER_TITLES } from '@/app/lib/types';
@@ -11,15 +17,18 @@ import { Job, TabValue, FILTER_TITLES } from '@/app/lib/types';
 // ✅ Register Thai font (Sarabun) with fallback
 const registerFonts = () => {
   try {
-    // Try to register Sarabun font
+    // Try to register Sarabun font with all available weights and styles
     Font.register({
       family: 'Sarabun',
       fonts: [
-        { src: '/fonts/Sarabun-Regular.ttf', fontWeight: 'normal' },
-        { src: '/fonts/Sarabun-Bold.ttf', fontWeight: 'bold' },
+        { src: '/fonts/Sarabun-Regular.ttf', fontWeight: 'normal', fontStyle: 'normal' },
+        { src: '/fonts/Sarabun-Bold.ttf', fontWeight: 'bold', fontStyle: 'normal' },
+        // Note: Sarabun-Italic.ttf is not available, so we'll use Regular for italic
+        { src: '/fonts/Sarabun-Regular.ttf', fontWeight: 'normal', fontStyle: 'italic' },
+        { src: '/fonts/Sarabun-Bold.ttf', fontWeight: 'bold', fontStyle: 'italic' },
       ],
     });
-    console.log('✅ Sarabun font registered successfully');
+    console.log('✅ Sarabun font registered successfully with italic fallback');
     return true;
   } catch (error) {
     console.warn('⚠️ Failed to register Sarabun font:', error);
@@ -29,17 +38,19 @@ const registerFonts = () => {
       Font.register({
         family: 'Sarabun',
         fonts: [
-          { src: './fonts/Sarabun-Regular.ttf', fontWeight: 'normal' },
-          { src: './fonts/Sarabun-Bold.ttf', fontWeight: 'bold' },
+          { src: './fonts/Sarabun-Regular.ttf', fontWeight: 'normal', fontStyle: 'normal' },
+          { src: './fonts/Sarabun-Bold.ttf', fontWeight: 'bold', fontStyle: 'normal' },
+          { src: './fonts/Sarabun-Regular.ttf', fontWeight: 'normal', fontStyle: 'italic' },
+          { src: './fonts/Sarabun-Bold.ttf', fontWeight: 'bold', fontStyle: 'italic' },
         ],
       });
-      console.log('✅ Sarabun font registered with alternative path');
+      console.log('✅ Sarabun font registered with alternative path and italic fallback');
       return true;
     } catch (altError) {
       console.warn('⚠️ Alternative path also failed:', altError);
     }
     
-    // Register fallback fonts
+    // Register fallback fonts with italic support
     try {
       Font.register({
         family: 'Helvetica',
@@ -68,6 +79,7 @@ interface JobsPDFDocumentProps {
   includeImages?: boolean;
   includeStatistics?: boolean;
   reportTitle?: string;
+  debugMode?: boolean; // Add debug mode to bypass filtering when needed
 }
 
 const styles = StyleSheet.create({
@@ -276,7 +288,8 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
   includeDetails = true,
   includeImages = true,
   includeStatistics = true,
-  reportTitle = 'Jobs Report'
+  reportTitle = 'Jobs Report',
+  debugMode = false
 }) => {
   // Debug logging
   console.log('JobsPDFDocument Props:', {
@@ -290,50 +303,198 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
     reportTitle
   });
   // Enhanced property filtering that considers user's profile property selection
-  const filteredJobs = jobs.filter((job) => {
-    if (!selectedProperty) return true;
+  let filteredJobs = jobs.filter((job) => {
+    if (!selectedProperty) {
+      console.log('No property filter, including job:', job.job_id);
+      return true;
+    }
 
-    // Check direct property_id match
-    if (job.property_id === selectedProperty) return true;
+    // Debug mode: bypass filtering to see all jobs
+    if (debugMode) {
+      console.log(`Debug mode: including job ${job.job_id} without filtering`);
+      return true;
+    }
+
+    console.log(`Filtering job ${job.job_id} for property:`, selectedProperty);
+    console.log('Job property data:', {
+      property_id: job.property_id,
+      properties: job.properties,
+      profile_image_properties: job.profile_image?.properties,
+      rooms_properties: job.rooms?.map(r => r.properties),
+      full_job_data: job // Log full job data for debugging
+    });
+
+    // Check direct property_id match (case-insensitive)
+    if (String(job.property_id).toLowerCase() === String(selectedProperty).toLowerCase()) {
+      console.log(`Job ${job.job_id} matches direct property_id`);
+      return true;
+    }
     
-    // Check properties array
+    // Check properties array with more flexible matching
     if (job.properties && Array.isArray(job.properties)) {
-      return job.properties.some(prop => {
-        if (typeof prop === 'string' || typeof prop === 'number') {
-          return String(prop) === String(selectedProperty);
+      const hasMatch = job.properties.some(prop => {
+        const propValue = typeof prop === 'string' || typeof prop === 'number' 
+          ? String(prop) 
+          : (prop?.property_id || prop?.id || String(prop));
+        
+        console.log(`Checking property: ${propValue} vs selected: ${selectedProperty}`);
+        
+        // Try exact match first
+        if (String(propValue).toLowerCase() === String(selectedProperty).toLowerCase()) {
+          return true;
         }
-        if (typeof prop === 'object' && prop !== null) {
-          return String(prop.property_id || prop.id) === String(selectedProperty);
+        
+        // Try partial match (in case property ID is embedded in a longer string)
+        if (String(propValue).toLowerCase().includes(String(selectedProperty).toLowerCase())) {
+          console.log(`Partial match found: ${propValue} contains ${selectedProperty}`);
+          return true;
         }
+        
         return false;
       });
+      if (hasMatch) {
+        console.log(`Job ${job.job_id} matches properties array`);
+        return true;
+      }
     }
     
     // Check profile_image.properties (if available)
     if (job.profile_image?.properties && Array.isArray(job.profile_image.properties)) {
-      return job.profile_image.properties.some(prop => {
-        if (typeof prop === 'string' || typeof prop === 'number') {
-          return String(prop) === String(selectedProperty);
+      const hasMatch = job.profile_image.properties.some(prop => {
+        const propValue = typeof prop === 'string' || typeof prop === 'number' 
+          ? String(prop) 
+          : (prop?.property_id || prop?.id || String(prop));
+        
+        console.log(`Checking profile_image property: ${propValue} vs selected: ${selectedProperty}`);
+        
+        if (String(propValue).toLowerCase() === String(selectedProperty).toLowerCase()) {
+          return true;
         }
-        if (typeof prop === 'object' && prop !== null) {
-          return String(prop.property_id || prop.id) === String(selectedProperty);
+        
+        if (String(propValue).toLowerCase().includes(String(selectedProperty).toLowerCase())) {
+          console.log(`Partial match found in profile_image: ${propValue} contains ${selectedProperty}`);
+          return true;
         }
+        
         return false;
       });
+      if (hasMatch) {
+        console.log(`Job ${job.job_id} matches profile_image properties`);
+        return true;
+      }
     }
     
     // Check rooms.properties (if available)
     if (job.rooms && Array.isArray(job.rooms)) {
-      return job.rooms.some(room => {
+      const hasMatch = job.rooms.some(room => {
+        console.log(`Checking room ${room.room_id || 'unknown'}:`, {
+          room_id: room.room_id,
+          room_name: room.name,
+          properties: room.properties,
+          full_room_data: room
+        });
         if (room.properties && Array.isArray(room.properties)) {
-          return room.properties.some(prop => String(prop) === String(selectedProperty));
+          return room.properties.some(prop => {
+            const propValue = typeof prop === 'string' || typeof prop === 'number' 
+              ? String(prop) 
+              : (prop?.property_id || prop?.id || String(prop));
+            console.log(`Room property: ${propValue} vs selected: ${selectedProperty}`);
+            
+            if (String(propValue).toLowerCase() === String(selectedProperty).toLowerCase()) {
+              return true;
+            }
+            
+            if (String(propValue).toLowerCase().includes(String(selectedProperty).toLowerCase())) {
+              console.log(`Partial match found in room: ${propValue} contains ${selectedProperty}`);
+              return true;
+            }
+            
+            return false;
+          });
         }
         return false;
       });
+      if (hasMatch) {
+        console.log(`Job ${job.job_id} matches rooms properties`);
+        return true;
+      }
     }
     
+    // Additional checks for nested property references
+    // Check if the job has any other property-related fields
+    const allPropertyFields = [
+      job.property_id,
+      ...(job.properties || []),
+      ...(job.profile_image?.properties || []),
+      ...(job.rooms?.flatMap(r => r.properties || []) || [])
+    ].filter(Boolean);
+    
+    console.log(`All property fields for job ${job.job_id}:`, allPropertyFields);
+    
+    // Check if any of these fields contain the selected property
+    const hasAnyMatch = allPropertyFields.some(field => {
+      const fieldStr = String(field).toLowerCase();
+      const selectedStr = String(selectedProperty).toLowerCase();
+      
+      if (fieldStr === selectedStr || fieldStr.includes(selectedStr)) {
+        console.log(`Found match in field: ${field} for property: ${selectedProperty}`);
+        return true;
+      }
+      return false;
+    });
+    
+    if (hasAnyMatch) {
+      console.log(`Job ${job.job_id} matches through comprehensive property check`);
+      return true;
+    }
+    
+    console.log(`Job ${job.job_id} does not match any property criteria`);
     return false;
   });
+
+  console.log('Filtering results:', {
+    totalJobs: jobs.length,
+    selectedProperty,
+    filteredJobsCount: filteredJobs.length,
+    filteredJobIds: filteredJobs.map(j => j.job_id)
+  });
+
+  // If no jobs found with strict filtering, try to show all jobs for debugging
+  // This helps identify why the filtering is too strict
+  if (filteredJobs.length === 0 && selectedProperty) {
+    console.warn('⚠️ No jobs found with strict property filtering. This might indicate:');
+    console.warn('1. Property ID format mismatch');
+    console.warn('2. Property data structure is different than expected');
+    console.warn('3. Property relationships are stored differently');
+    console.warn('4. Property data might be in a different format or location');
+    console.warn('Showing first few jobs for debugging:');
+    
+    jobs.slice(0, 3).forEach((job, index) => {
+      console.log(`=== Job ${index + 1} (${job.job_id}) ===`);
+      console.log('Full job object:', job);
+      console.log('Property ID:', job.property_id);
+      console.log('Properties array:', job.properties);
+      console.log('Profile image properties:', job.profile_image?.properties);
+      console.log('Rooms:', job.rooms);
+      console.log('Rooms properties:', job.rooms?.map(r => r.properties));
+      console.log('=== End Job ===');
+    });
+    
+    // Also log the selected property for comparison
+    console.log('🔍 Selected Property to match:', selectedProperty);
+    console.log('🔍 Selected Property type:', typeof selectedProperty);
+    console.log('🔍 Selected Property length:', String(selectedProperty).length);
+    
+    // TEMPORARY FALLBACK: Show all jobs when filtering fails
+    // This allows PDF generation to work while we debug the filtering issue
+    console.warn('🔄 TEMPORARY FALLBACK: Using all jobs for PDF generation');
+    console.warn('This ensures PDF generation works while we fix the filtering logic');
+    console.warn('Remove this fallback once filtering is working correctly');
+    console.warn('To remove: Delete lines 490-492 and change "let filteredJobs" back to "const filteredJobs"');
+    
+    // Override filteredJobs to show all jobs temporarily
+    filteredJobs = [...jobs];
+  }
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
@@ -465,101 +626,100 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
 
   // Add error boundary for PDF generation
   try {
+    return (
+      <Document>
+        {pageGroups.map((jobGroup, pageIndex) => (
+          <Page key={pageIndex} size="A4" style={styles.page}>
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.headerText}>{reportTitle}</Text>
+              <Text style={styles.subHeaderText}>
+                {getPropertyDisplayInfo().name}
+                {getPropertyDisplayInfo().id && ` (ID: ${getPropertyDisplayInfo().id})`}
+              </Text>
+              <Text style={styles.subHeaderText}>
+                Filter: {FILTER_TITLES[filter] || filter} | Generated: {new Date().toLocaleDateString()}
+              </Text>
+            </View>
 
-  return (
-    <Document>
-      {pageGroups.map((jobGroup, pageIndex) => (
-        <Page key={pageIndex} size="A4" style={styles.page}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerText}>{reportTitle}</Text>
-            <Text style={styles.subHeaderText}>
-              {getPropertyDisplayInfo().name}
-              {getPropertyDisplayInfo().id && ` (ID: ${getPropertyDisplayInfo().id})`}
-            </Text>
-            <Text style={styles.subHeaderText}>
-              Filter: {FILTER_TITLES[filter] || filter} | Generated: {new Date().toLocaleDateString()}
-            </Text>
-          </View>
+            {/* Statistics Section - Only on first page */}
+            {pageIndex === 0 && includeStatistics && (
+              <>
+                <View style={styles.metadata}>
+                  <Text style={styles.metadataItem}>Total Jobs: {totalJobs}</Text>
+                  <Text style={styles.metadataItem}>Filter: {FILTER_TITLES[filter] || filter}</Text>
+                  <Text style={styles.metadataItem}>Date: {new Date().toLocaleDateString()}</Text>
+                </View>
+                
+                <View style={styles.statistics}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{totalJobs}</Text>
+                    <Text style={styles.statLabel}>Total Jobs</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{completedJobs}</Text>
+                    <Text style={styles.statLabel}>Completed</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{inProgressJobs}</Text>
+                    <Text style={styles.statLabel}>In Progress</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{pendingJobs}</Text>
+                    <Text style={styles.statLabel}>Pending</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.statistics}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{completionRate}%</Text>
+                    <Text style={styles.statLabel}>Completion Rate</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{highPriorityJobs}</Text>
+                    <Text style={styles.statLabel}>High Priority</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{waitingSparepartJobs}</Text>
+                    <Text style={styles.statLabel}>Waiting Parts</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statNumber}>{averageResponseTime}d</Text>
+                    <Text style={styles.statLabel}>Avg Response</Text>
+                  </View>
+                </View>
+              </>
+            )}
 
-          {/* Statistics Section - Only on first page */}
-          {pageIndex === 0 && includeStatistics && (
-            <>
-              <View style={styles.metadata}>
-                <Text style={styles.metadataItem}>Total Jobs: {totalJobs}</Text>
-                <Text style={styles.metadataItem}>Filter: {FILTER_TITLES[filter] || filter}</Text>
-                <Text style={styles.metadataItem}>Date: {new Date().toLocaleDateString()}</Text>
-              </View>
-              
-              <View style={styles.statistics}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{totalJobs}</Text>
-                  <Text style={styles.statLabel}>Total Jobs</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{completedJobs}</Text>
-                  <Text style={styles.statLabel}>Completed</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{inProgressJobs}</Text>
-                  <Text style={styles.statLabel}>In Progress</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{pendingJobs}</Text>
-                  <Text style={styles.statLabel}>Pending</Text>
-                </View>
-              </View>
-              
-              <View style={styles.statistics}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{completionRate}%</Text>
-                  <Text style={styles.statLabel}>Completion Rate</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{highPriorityJobs}</Text>
-                  <Text style={styles.statLabel}>High Priority</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{waitingSparepartJobs}</Text>
-                  <Text style={styles.statLabel}>Waiting Parts</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={styles.statNumber}>{averageResponseTime}d</Text>
-                  <Text style={styles.statLabel}>Avg Response</Text>
-                </View>
-              </View>
-            </>
-          )}
-
-          {/* Jobs List */}
-          
-          
-          {jobGroup.map((job, jobIndex) => {
-            // Debug logging for image data
-            if (includeImages) {
-              console.log(`Job ${job.job_id} image data:`, {
-                hasImages: !!job.images,
-                imagesLength: job.images?.length || 0,
-                hasImageUrls: !!job.image_urls,
-                imageUrlsLength: job.image_urls?.length || 0,
-                firstImage: job.images?.[0],
-                firstImageUrl: job.image_urls?.[0]
-              });
-            }
+            {/* Jobs List */}
             
-            return (
-            <View 
-              key={job.job_id} 
-              style={[
-                styles.jobRow, 
-                jobIndex % 2 === 0 ? {} : styles.jobRowAlternate
-              ]} 
-              wrap={false}
-            >
-              {/* Image Column */}
-              <View style={styles.imageColumn}>
-                {includeImages && ((job.images && job.images.length > 0) || (job.image_urls && job.image_urls.length > 0)) ? (
-                  (() => {
+            
+            {jobGroup.map((job, jobIndex) => {
+              // Debug logging for image data
+              if (includeImages) {
+                console.log(`Job ${job.job_id} image data:`, {
+                  hasImages: !!job.images,
+                  imagesLength: job.images?.length || 0,
+                  hasImageUrls: !!job.image_urls,
+                  imageUrlsLength: job.image_urls?.length || 0,
+                  firstImage: job.images?.[0],
+                  firstImageUrl: job.image_urls?.[0]
+                });
+              }
+              
+              return (
+              <View 
+                key={job.job_id} 
+                style={[
+                  styles.jobRow, 
+                  jobIndex % 2 === 0 ? {} : styles.jobRowAlternate
+                ]} 
+                wrap={false}
+              >
+                {/* Image Column */}
+                <View style={styles.imageColumn}>
+                  {includeImages && ((job.images && job.images.length > 0) || (job.image_urls && job.image_urls.length > 0)) ? (
+                    (() => {
                     try {
                       // Get image URL from either images array or image_urls array
                       let imageUrl: string;

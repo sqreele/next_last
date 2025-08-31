@@ -236,8 +236,8 @@ export const useMainStore = create<MainStore>()(
   )
 );
 
-// Selector hooks for better performance
-export const useUser = () => useMainStore((state) => ({
+// Selector functions - defined outside to prevent recreation
+const userSelector = (state: MainStore) => ({
   userProfile: state.userProfile,
   selectedPropertyId: state.selectedPropertyId,
   isAuthenticated: state.isAuthenticated,
@@ -245,9 +245,9 @@ export const useUser = () => useMainStore((state) => ({
   setSelectedPropertyId: state.setSelectedPropertyId,
   setAuthTokens: state.setAuthTokens,
   logout: state.logout,
-}));
+});
 
-export const useProperties = () => useMainStore((state) => ({
+const propertiesSelector = (state: MainStore) => ({
   properties: state.properties,
   selectedPropertyData: state.selectedPropertyData,
   propertyLoading: state.propertyLoading,
@@ -256,9 +256,9 @@ export const useProperties = () => useMainStore((state) => ({
   setSelectedPropertyData: state.setSelectedPropertyData,
   setPropertyLoading: state.setPropertyLoading,
   setPropertyError: state.setPropertyError,
-}));
+});
 
-export const useJobs = () => useMainStore((state) => ({
+const jobsSelector = (state: MainStore) => ({
   jobs: state.jobs,
   filteredJobs: state.filteredJobs,
   selectedJob: state.selectedJob,
@@ -273,9 +273,9 @@ export const useJobs = () => useMainStore((state) => ({
   getFilteredJobs: state.getFilteredJobs,
   getJobsByStatus: state.getJobsByStatus,
   getJobsByProperty: state.getJobsByProperty,
-}));
+});
 
-export const useFilters = () => useMainStore((state) => ({
+const filtersSelector = (state: MainStore) => ({
   status: state.status,
   priority: state.priority,
   propertyId: state.propertyId,
@@ -287,13 +287,139 @@ export const useFilters = () => useMainStore((state) => ({
   setDateRangeFilter: state.setDateRangeFilter,
   setSearchQuery: state.setSearchQuery,
   clearFilters: state.clearFilters,
-}));
+});
 
-export const usePreventiveMaintenance = () => useMainStore((state) => ({
+const preventiveMaintenanceSelector = (state: MainStore) => ({
   maintenanceItems: state.maintenanceItems,
   maintenanceLoading: state.maintenanceLoading,
   maintenanceError: state.maintenanceError,
   setMaintenanceItems: state.setMaintenanceItems,
   setMaintenanceLoading: state.setMaintenanceLoading,
   setMaintenanceError: state.setMaintenanceError,
-}));
+});
+
+// Export selector functions for components to use with useMainStore
+export { userSelector, propertiesSelector, jobsSelector, filtersSelector, preventiveMaintenanceSelector };
+
+// Optimized selector hooks that prevent infinite loops by using individual selectors
+export const useUser = () => {
+  const userProfile = useMainStore(state => state.userProfile);
+  const selectedPropertyId = useMainStore(state => state.selectedPropertyId);
+  const isAuthenticated = useMainStore(state => state.isAuthenticated);
+  const setUserProfile = useMainStore(state => state.setUserProfile);
+  const setSelectedPropertyId = useMainStore(state => state.setSelectedPropertyId);
+  const setAuthTokens = useMainStore(state => state.setAuthTokens);
+  const logout = useMainStore(state => state.logout);
+  
+  return {
+    userProfile,
+    selectedPropertyId,
+    isAuthenticated,
+    setUserProfile,
+    setSelectedPropertyId,
+    setAuthTokens,
+    logout,
+  };
+};
+
+export const useProperties = () => {
+  const properties = useMainStore(state => state.properties);
+  const selectedPropertyData = useMainStore(state => state.selectedPropertyData);
+  const propertyLoading = useMainStore(state => state.propertyLoading);
+  const propertyError = useMainStore(state => state.propertyError);
+  const setProperties = useMainStore(state => state.setProperties);
+  const setSelectedPropertyData = useMainStore(state => state.setSelectedPropertyData);
+  const setPropertyLoading = useMainStore(state => state.setPropertyLoading);
+  const setPropertyError = useMainStore(state => state.setPropertyError);
+  
+  return {
+    properties,
+    selectedPropertyData,
+    propertyLoading,
+    propertyError,
+    setProperties,
+    setSelectedPropertyData,
+    setPropertyLoading,
+    setPropertyError,
+  };
+};
+
+export const useJobs = () => {
+  const jobs = useMainStore(state => state.jobs);
+  const filteredJobs = useMainStore(state => state.filteredJobs);
+  const selectedJob = useMainStore(state => state.selectedJob);
+  const jobLoading = useMainStore(state => state.jobLoading);
+  const jobError = useMainStore(state => state.jobError);
+  const setJobs = useMainStore(state => state.setJobs);
+  const addJob = useMainStore(state => state.addJob);
+  const updateJob = useMainStore(state => state.updateJob);
+  const deleteJob = useMainStore(state => state.deleteJob);
+  const setJobLoading = useMainStore(state => state.setJobLoading);
+  const setJobError = useMainStore(state => state.setJobError);
+  const getFilteredJobs = useMainStore(state => state.getFilteredJobs);
+  const getJobsByStatus = useMainStore(state => state.getJobsByStatus);
+  const getJobsByProperty = useMainStore(state => state.getJobsByProperty);
+  
+  return {
+    jobs,
+    filteredJobs,
+    selectedJob,
+    jobLoading,
+    jobError,
+    setJobs,
+    addJob,
+    updateJob,
+    deleteJob,
+    setJobLoading,
+    setJobError,
+    getFilteredJobs,
+    getJobsByStatus,
+    getJobsByProperty,
+  };
+};
+
+export const useFilters = () => {
+  const status = useMainStore(state => state.status);
+  const priority = useMainStore(state => state.priority);
+  const propertyId = useMainStore(state => state.propertyId);
+  const dateRange = useMainStore(state => state.dateRange);
+  const searchQuery = useMainStore(state => state.searchQuery);
+  const setStatusFilter = useMainStore(state => state.setStatusFilter);
+  const setPriorityFilter = useMainStore(state => state.setPriorityFilter);
+  const setPropertyFilter = useMainStore(state => state.setPropertyFilter);
+  const setDateRangeFilter = useMainStore(state => state.setDateRangeFilter);
+  const setSearchQuery = useMainStore(state => state.setSearchQuery);
+  const clearFilters = useMainStore(state => state.clearFilters);
+  
+  return {
+    status,
+    priority,
+    propertyId,
+    dateRange,
+    searchQuery,
+    setStatusFilter,
+    setPriorityFilter,
+    setPropertyFilter,
+    setDateRangeFilter,
+    setSearchQuery,
+    clearFilters,
+  };
+};
+
+export const usePreventiveMaintenance = () => {
+  const maintenanceItems = useMainStore(state => state.maintenanceItems);
+  const maintenanceLoading = useMainStore(state => state.maintenanceLoading);
+  const maintenanceError = useMainStore(state => state.maintenanceError);
+  const setMaintenanceItems = useMainStore(state => state.setMaintenanceItems);
+  const setMaintenanceLoading = useMainStore(state => state.setMaintenanceLoading);
+  const setMaintenanceError = useMainStore(state => state.setMaintenanceError);
+  
+  return {
+    maintenanceItems,
+    maintenanceLoading,
+    maintenanceError,
+    setMaintenanceItems,
+    setMaintenanceLoading,
+    setMaintenanceError,
+  };
+};

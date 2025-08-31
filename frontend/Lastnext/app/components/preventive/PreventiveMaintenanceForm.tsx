@@ -17,7 +17,7 @@ import {
 import apiClient from '@/app/lib/api-client';
 import FileUpload from '@/app/components/jobs/FileUpload';
 import { useToast } from '@/app/lib/hooks/use-toast';
-import { useProperty } from '@/app/lib/PropertyContext';
+import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { preventiveMaintenanceService, 
   type CreatePreventiveMaintenanceData,
   type UpdatePreventiveMaintenanceData,
@@ -59,11 +59,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const { toast } = useToast();
   const { accessToken, user } = useClientAuth0();
   const {
-    userProperties,
-    selectedProperty: contextSelectedProperty,
-    setSelectedProperty: setContextSelectedProperty,
-    hasProperties,
-  } = useProperty();
+    properties: userProperties,
+  } = useProperties();
+  const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setContextSelectedProperty } = useUser();
+  const hasProperties = userProperties && userProperties.length > 0;
 
   const [fetchedInitialData, setFetchedInitialData] = useState<PreventiveMaintenance | null>(null);
   const actualInitialData = initialDataProp || fetchedInitialData;
@@ -336,7 +335,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         : machineIdsFromData;
 
       const propertyDetails = getPropertyDetails(currentData.property_id);
-      const propertyId = propertyDetails.id || contextSelectedProperty || '';
+      const propertyId = propertyDetails.id || selectedProperty || '';
 
       const customDays = currentData.custom_days === null || currentData.custom_days === undefined ? '' : currentData.custom_days;
       const selectedTopics = topicIds || [];
@@ -383,10 +382,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       after_image_file: null,
       selected_topics: [],
       selected_machine_ids: machineId ? [machineId] : [],
-      property_id: contextSelectedProperty || '',
+      property_id: selectedProperty,
       procedure: '',
     };
-  }, [actualInitialData, contextSelectedProperty, machineId, formatDateForInput, defaultScheduledDate, getPropertyDetails]);
+  }, [actualInitialData, selectedProperty, machineId, formatDateForInput, defaultScheduledDate, getPropertyDetails]);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -458,12 +457,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   // Handle property ID changes and fetch machines
   useEffect(() => {
-    if (contextSelectedProperty) {
-      fetchAvailableMachines(contextSelectedProperty);
+    if (selectedProperty) {
+      fetchAvailableMachines(selectedProperty);
     } else {
       setAvailableMachines([]); // Clear machines if no property is selected
     }
-  }, [contextSelectedProperty, fetchAvailableMachines]);
+  }, [selectedProperty, fetchAvailableMachines]);
 
   // Move all hooks to the top, before any conditional returns
   useEffect(() => {

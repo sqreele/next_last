@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,11 +9,31 @@ import {
 } from "@/app/components/ui/dropdown-menu";
 import { Button } from "@/app/components/ui/button";
 import { ChevronDown, Building2, Loader2 } from "lucide-react";
-import { cn } from "@/app/lib/utils";
-import { useProperty } from '@/app/lib/PropertyContext';
+import { cn } from "@/app/lib/utils/cn";
+import { useMainStore } from '@/app/lib/stores/mainStore';
 
-const HeaderPropertyList = () => {
-  const { userProperties, selectedProperty, setSelectedProperty, hasProperties } = useProperty();
+const HeaderPropertyList = React.memo(() => {
+  // Use more specific selectors to prevent unnecessary re-renders
+  const selectedProperty = useMainStore(state => state.selectedPropertyId);
+  const setSelectedProperty = useMainStore(state => state.setSelectedPropertyId);
+  const userProperties = useMainStore(state => state.properties);
+  const propertyLoading = useMainStore(state => state.propertyLoading);
+  
+  // Debug logging to help identify infinite loops
+  useEffect(() => {
+    console.log('HeaderPropertyList render:', {
+      selectedProperty,
+      propertiesCount: userProperties?.length || 0,
+      propertyLoading,
+      timestamp: Date.now()
+    });
+  });
+  
+  // Check if user has properties - memoized to prevent unnecessary recalculations
+  const hasProperties = useMemo(() => 
+    userProperties && userProperties.length > 0, 
+    [userProperties]
+  );
   
   // Helper function to safely get the string ID from any property object format
   const getPropertyId = useCallback((property: any): string => {
@@ -35,15 +55,12 @@ const HeaderPropertyList = () => {
     return property.name || `Property ${getPropertyId(property)}`;
   }, [getPropertyId]);
 
-  // Get properties from PropertyContext
-  const properties = userProperties;
-
-  // Find current property by selectedProperty ID
+  // Find current property by selectedProperty ID - memoized with stable dependencies
   const currentProperty = useMemo(() => {
-    if (!properties.length) return null;
+    if (!userProperties || !userProperties.length) return null;
     
     if (selectedProperty) {
-      for (const prop of properties) {
+      for (const prop of userProperties) {
         const propId = getPropertyId(prop);
         if (propId === selectedProperty) {
           return prop;
@@ -51,20 +68,29 @@ const HeaderPropertyList = () => {
       }
     }
     
-    return properties[0];
-  }, [properties, selectedProperty, getPropertyId]);
+    return userProperties[0];
+  }, [userProperties, selectedProperty, getPropertyId]);
 
-  // Handle property selection
+  // Handle property selection - memoized with stable dependencies
   const handlePropertySelect = useCallback(
     (property: any) => {
       const propId = getPropertyId(property);
-      setSelectedProperty(propId);
+      if (propId && propId !== selectedProperty) {
+        console.log('Setting selected property:', propId);
+        setSelectedProperty(propId);
+      }
     },
-    [getPropertyId, setSelectedProperty]
+    [getPropertyId, setSelectedProperty, selectedProperty]
+  );
+
+  // Memoize the properties array to prevent unnecessary re-renders
+  const safeProperties = useMemo(() => 
+    Array.isArray(userProperties) ? userProperties : [], 
+    [userProperties]
   );
 
   // Loading state if properties are not yet available
-  if (!hasProperties) {
+  if (propertyLoading || !hasProperties) {
     return (
       <Button
         variant="outline"
@@ -78,7 +104,7 @@ const HeaderPropertyList = () => {
   }
 
   // If no properties available, show disabled button
-  if (properties.length === 0) {
+  if (!safeProperties || safeProperties.length === 0) {
     return (
       <Button
         variant="outline"
@@ -112,7 +138,7 @@ const HeaderPropertyList = () => {
           className="w-full min-w-[200px] max-w-[90vw] bg-white border-gray-200 shadow-md rounded-md mt-1"
           align="start"
         >
-          {properties.map((property, index) => (
+          {safeProperties.map((property: any, index: number) => (
             <DropdownMenuItem
               key={getPropertyId(property) || `property-${index}`}
               onClick={() => handlePropertySelect(property)}
@@ -131,6 +157,8 @@ const HeaderPropertyList = () => {
       </DropdownMenu>
     </div>
   );
-};
+});
+
+HeaderPropertyList.displayName = 'HeaderPropertyList';
 
 export default HeaderPropertyList;

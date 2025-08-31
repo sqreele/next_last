@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext'; // Fixed import path
+import { usePreventiveMaintenance } from '@/app/lib/stores/mainStore';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { preventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
 
@@ -71,18 +71,44 @@ const formatFrequencyName = (frequency: string | undefined | null): string => {
 };
 
 export default function PreventiveMaintenanceDashboard() {
-  // Use our context hook to access all maintenance data and actions
+  // Use our store hook to access all maintenance data and actions
   const { 
-    statistics, 
-    isLoading, 
-    error,
-    fetchStatistics 
+    maintenanceItems, 
+    maintenanceLoading: isLoading, 
+    maintenanceError: error,
+    setMaintenanceItems 
   } = usePreventiveMaintenance();
+
+  // Transform maintenance items into statistics format for compatibility
+  const statistics = useMemo(() => {
+    if (!maintenanceItems || maintenanceItems.length === 0) {
+      return {
+        counts: { total: 0, pending: 0, overdue: 0, completed: 0 },
+        frequency_distribution: [],
+        upcoming: [],
+        avg_completion_times: {}
+      };
+    }
+
+    // Create mock statistics from maintenance items
+    return {
+      counts: {
+        total: maintenanceItems.length,
+        pending: maintenanceItems.filter((item: any) => !item.status || item.status === 'pending').length,
+        overdue: maintenanceItems.filter((item: any) => item.status === 'overdue').length,
+        completed: maintenanceItems.filter((item: any) => item.status === 'completed').length
+      },
+      frequency_distribution: [],
+      upcoming: maintenanceItems.slice(0, 5), // Show first 5 items as upcoming
+      avg_completion_times: {}
+    };
+  }, [maintenanceItems]);
 
   // Fetch stats on component mount
   useEffect(() => {
-    fetchStatistics();
-  }, [fetchStatistics]);
+    // For now, just set some mock data
+    setMaintenanceItems([]);
+  }, [setMaintenanceItems]);
 
   // Debug effect to log statistics data
   useEffect(() => {

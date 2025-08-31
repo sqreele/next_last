@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo, MouseEvent } from 'react';
+import React, { useState, useCallback, useMemo, MouseEvent, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { UpdateStatusModal } from "./UpdateStatusModal";
 import { Job, JobStatus, Property } from "@/app/lib/types";
@@ -10,14 +10,15 @@ import {
   AlertCircle, ClipboardList, StickyNote, AlertTriangle, 
   ChevronDown, ChevronUp 
 } from "lucide-react";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/app/lib/utils/cn";
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { useRouter } from "next/navigation";
-import { useProperty } from "@/app/lib/PropertyContext";
+import { useUser } from "@/app/lib/stores/mainStore";
 import { MissingImage } from "@/app/components/jobs/MissingImage";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
 import { formatDate, formatDateTime } from "@/app/lib/utils/date-utils";
+import { useSession } from "@/app/lib/session.client";
 
 interface JobCardProps {
   job: Job;
@@ -26,8 +27,22 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProps) {
+  // This component handles tracking prevention issues with Google profile images
+  // When browsers block Google profile images, it gracefully falls back to a user icon
+  
+  // Safety check for job object
+  if (!job) {
+    console.error('JobCard: job prop is undefined or null');
+    return (
+      <div className="w-full p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p className="text-red-600">Error: Job data is missing</p>
+      </div>
+    );
+  }
+  
   const router = useRouter();
-  const { selectedProperty } = useProperty();
+  const { selectedPropertyId: selectedProperty } = useUser();
+  const { data: session } = useSession();
   const [selectedImage, setSelectedImage] = useState<number>(0);
   const [failedImageIndexes, setFailedImageIndexes] = useState<Set<number>>(new Set());
   const [expandedSections, setExpandedSections] = useState({
@@ -60,11 +75,28 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
 
   const toggleSection = useCallback((section: keyof typeof expandedSections, e: MouseEvent) => {
     e.stopPropagation();
-    setExpandedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  }, []);
+    console.log('🔍 Toggling section:', section, 'for job:', job.job_id);
+    
+    try {
+      setExpandedSections(prev => ({
+        ...prev,
+        [section]: !prev[section]
+      }));
+      
+      // Additional logging for staff details section
+      if (section === 'details') {
+        console.log('🔍 Staff details section toggled. Job user data:', {
+          jobUserId: job.user,
+          jobUserIdType: typeof job.user,
+          sessionUserId: session?.user?.id,
+          sessionUsername: session?.user?.username,
+          sessionPositions: session?.user?.positions
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling section:', section, error);
+    }
+  }, [job.job_id, job.user, session]);
 
   const getPropertyName = useCallback((): string => {
     const jobProperties = [
@@ -143,6 +175,146 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
       return next;
     });
   }, [imageUrls]);
+
+  // Helper functions to get user display information
+  const getUserDisplayName = useCallback((user: Job['user'] | undefined) => {
+    if (!user) return 'Unassigned';
+    if (typeof user === 'object' && user && 'username' in user) {
+      return user.username;
+    }
+    
+    // Use session data passed from component level
+    if (!session?.user) return `User ${String(user)}`;
+    
+    // Normalize user IDs for comparison (handle different formats)
+    const jobUserId = String(user).trim();
+    const sessionUserId = String(session.user.id || '').trim();
+    
+    console.log('🔍 JobCard getUserDisplayName debug:', {
+      jobUserId,
+      sessionUserId,
+      sessionUsername: session.user.username,
+      jobUserIdType: typeof user,
+      sessionUserIdType: typeof session.user.id,
+      isExactMatch: jobUserId === sessionUserId,
+      jobUserIdLower: jobUserId.toLowerCase(),
+      sessionUserIdLower: sessionUserId.toLowerCase(),
+      isLowerMatch: jobUserId.toLowerCase() === sessionUserId.toLowerCase()
+    });
+    
+    // Try multiple comparison methods
+    // Exact match
+    if (jobUserId === sessionUserId) {
+      console.log('✅ Exact ID match found');
+      return session.user.username || 'You';
+    }
+    
+    // Case-insensitive match
+    if (jobUserId.toLowerCase() === sessionUserId.toLowerCase()) {
+      console.log('✅ Case-insensitive ID match found');
+      return session.user.username || 'You';
+    }
+    
+    // Check if both are Google OAuth IDs (might have different formats)
+    if (jobUserId.includes('google-oauth2_') && sessionUserId.includes('google-oauth2_')) {
+      // Extract the numeric part and compare
+      const jobNumeric = jobUserId.replace('google-oauth2_', '');
+      const sessionNumeric = sessionUserId.replace('google-oauth2_', '');
+      if (jobNumeric === sessionNumeric) {
+        console.log('✅ Google OAuth numeric match found');
+        return session.user.username || 'You';
+      }
+    }
+    
+    // If user is just an ID, try to get username from session or return a formatted ID
+    if (typeof user === 'string' && user.includes('google-oauth2_')) {
+      return 'Google User'; // Generic name for Google OAuth users
+    }
+    return `User ${String(user)}`;
+  }, [session]);
+
+  const getUserDisplayPosition = useCallback((user: Job['user'] | undefined) => {
+    if (!user) return 'Staff';
+    if (typeof user === 'object' && user && 'positions' in user) {
+      return user.positions;
+    }
+    
+    // Use session data passed from component level
+    if (!session?.user) return 'Staff';
+    
+    // Use the same comparison logic as getUserDisplayName
+    const jobUserId = String(user).trim();
+    const sessionUserId = String(session.user.id || '').trim();
+    
+    // Try multiple comparison methods
+    if (jobUserId === sessionUserId || 
+        jobUserId.toLowerCase() === sessionUserId.toLowerCase()) {
+      return session.user.positions || 'Staff';
+    }
+    
+    // Check Google OAuth numeric match
+    if (jobUserId.includes('google-oauth2_') && sessionUserId.includes('google-oauth2_')) {
+      const jobNumeric = jobUserId.replace('google-oauth2_', '');
+      const sessionNumeric = sessionUserId.replace('google-oauth2_', '');
+      if (jobNumeric === sessionNumeric) {
+        return session.user.positions || 'Staff';
+      }
+    }
+    
+    return 'Staff';
+  }, [session]);
+
+  // Enhanced image handling with tracking prevention protection
+  const [profileImageError, setProfileImageError] = useState(false);
+
+  const handleProfileImageError = useCallback((error: any) => {
+    console.warn('Profile image failed to load (possibly blocked by tracking prevention):', error);
+    console.log('🔍 JobCard profile image error details:', {
+      jobId: job.job_id,
+      userId: job.user,
+      profileImageUrl: job.profile_image?.profile_image,
+      error: error?.message || error
+    });
+    console.log('💡 This is likely due to browser tracking prevention blocking Google profile images');
+    setProfileImageError(true);
+  }, [job.job_id, job.user, job.profile_image?.profile_image]);
+
+  // Reset profile image error when job changes
+  useEffect(() => {
+    setProfileImageError(false);
+    
+    // Debug logging for profile images
+    if (job.profile_image?.profile_image) {
+      console.log('🔍 JobCard profile image debug:', {
+        jobId: job.job_id,
+        profileImageUrl: job.profile_image.profile_image,
+        isGoogleImage: job.profile_image.profile_image.includes('googleusercontent.com'),
+        mayBeBlocked: job.profile_image.profile_image.includes('lh3.googleusercontent.com')
+      });
+    }
+  }, [job.job_id, job.profile_image?.profile_image]);
+
+  // Safe profile image URL creation with fallback
+  const getSafeProfileImageUrl = useCallback((imageUrl: string | null | undefined): string | null => {
+    if (!imageUrl) return null;
+    
+    try {
+      // Check if it's a Google profile image that might be blocked
+      if (imageUrl.includes('lh3.googleusercontent.com') || imageUrl.includes('googleusercontent.com')) {
+        console.log('⚠️ Google profile image detected - may be blocked by tracking prevention');
+        console.log('🔍 Profile image URL:', imageUrl);
+        console.log('💡 This image may be blocked by browser tracking prevention');
+        // Return the URL but be prepared for it to fail
+        return imageUrl;
+      }
+      
+      // For other images, use the normal creation method
+      return createImageUrl(imageUrl);
+    } catch (error) {
+      console.error('Error creating profile image URL:', error);
+      return null;
+    }
+  }, []);
 
   const handleThumbnailClick = (index: number, e: MouseEvent) => {
     e.stopPropagation();
@@ -285,24 +457,59 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
           {expandedSections.details && (
             <div className="flex items-center gap-3 p-3 mt-2 bg-gray-50 rounded-lg">
               <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-100 flex-shrink-0 bg-white">
-                {job.profile_image && job.profile_image.profile_image ? (
+                {job.profile_image && job.profile_image.profile_image && !profileImageError ? (
                   <LazyImage
-                    src={createImageUrl(job.profile_image.profile_image) || ''}
-                    alt={typeof job.user === 'object' && job.user ? job.user.username : String(job.user ?? 'Staff')}
+                    src={getSafeProfileImageUrl(job.profile_image.profile_image) || ''}
+                    alt={getUserDisplayName(job.user)}
                     className="w-full h-full object-cover rounded-full"
+                    onError={() => handleProfileImageError(new Error('Image load failed'))}
                   />
                 ) : (
-                  <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                  <div 
+                    className="w-full h-full bg-gray-100 flex items-center justify-center relative" 
+                    title={profileImageError ? "Profile image blocked by tracking prevention" : "Profile image not available"}
+                  >
                     <User className="w-5 h-5 text-gray-400" />
+                    {profileImageError && (
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full border border-white" title="Image blocked by tracking prevention">
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 bg-yellow-600 rounded-full"></div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-gray-700">
-                  {typeof job.user === 'object' && job.user ? job.user.username : job.user || 'Unassigned'}
+                  {(() => {
+                    try {
+                      // Additional safety check for job.user
+                      if (!job.user) {
+                        console.warn('JobCard: job.user is undefined or null');
+                        return 'Unassigned';
+                      }
+                      return getUserDisplayName(job.user);
+                    } catch (error) {
+                      console.error('Error getting user display name:', error);
+                      return 'Unknown User';
+                    }
+                  })()}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {typeof job.user === 'object' && job.user ? job.user.positions : 'Staff'}
+                  {(() => {
+                    try {
+                      // Additional safety check for job.user
+                      if (!job.user) {
+                        console.warn('JobCard: job.user is undefined or null');
+                        return 'Unassigned';
+                      }
+                      return getUserDisplayPosition(job.user);
+                    } catch (error) {
+                      console.error('Error getting user display position:', error);
+                      return 'Staff';
+                    }
+                  })()}
                 </p>
               </div>
             </div>

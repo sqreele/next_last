@@ -3,12 +3,8 @@ import { Inter } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from '@/app/providers';
 import { Toaster } from '@/app/components/ui/toaster';
-import { UserProvider } from '@/app/lib/user-context';
-import { PropertyProvider } from './lib/PropertyContext';
+import { StoreProvider } from '@/app/lib/providers/StoreProvider';
 import './globals.css';
-import { JobProvider } from '@/app/lib/JobContext';
-import { PreventiveMaintenanceProvider } from '@/app/lib/PreventiveContext';
-import { FilterProvider } from '@/app/lib/FilterContext';
 // Initialize Inter font
 const inter = Inter({
   subsets: ['latin'],
@@ -86,20 +82,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans min-h-screen bg-background`}>
         <AuthProvider>
-          <UserProvider>
-            <PropertyProvider>
-              <JobProvider>
-              <PreventiveMaintenanceProvider>
-              <FilterProvider>
-              <main className="flex min-h-screen w-full flex-col">
-                {children}
-              </main>
-              </FilterProvider>
-              </PreventiveMaintenanceProvider>
-              <Toaster />
-              </JobProvider>
-            </PropertyProvider>
-          </UserProvider>
+          <StoreProvider>
+            <main className="flex min-h-screen w-full flex-col">
+              {children}
+            </main>
+            <Toaster />
+          </StoreProvider>
         </AuthProvider>
         <Analytics />
       </body>

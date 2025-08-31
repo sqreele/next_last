@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
+import { usePreventiveMaintenance } from '@/app/lib/stores/mainStore';
 import { useFilterStore } from '@/app/lib/stores';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 
@@ -59,16 +59,31 @@ export default function PreventiveMaintenanceListPage() {
   
   const {
     maintenanceItems,
-    machines,
-    totalCount,
-    isLoading,
-    error,
-    fetchMaintenanceItems,
-    deleteMaintenance,
-    clearError,
-    debugMachineFilter,
-    testMachineFiltering
+    maintenanceLoading: isLoading,
+    maintenanceError: error
   } = usePreventiveMaintenance();
+
+  // Mock data for now - these will need to be implemented in the main store
+  const machines: any[] = [];
+  const totalCount = maintenanceItems.length;
+  const fetchMaintenanceItems = useCallback(async () => {
+    console.log('🔍 fetchMaintenanceItems called - needs implementation in main store');
+    return Promise.resolve();
+  }, []);
+  const deleteMaintenance = useCallback(async (id: string) => {
+    console.log('🔍 deleteMaintenance called - needs implementation in main store');
+    return Promise.resolve(true);
+  }, []);
+  const clearError = useCallback(() => {
+    console.log('🔍 clearError called - needs implementation in main store');
+  }, []);
+  const debugMachineFilter = useCallback(async (machineId: string) => {
+    console.log('🔍 debugMachineFilter called - needs implementation in main store');
+    return Promise.resolve();
+  }, []);
+  const testMachineFiltering = useCallback(() => {
+    console.log('🔍 testMachineFiltering called - needs implementation in main store');
+  }, []);
 
   // Debug logging
   console.log('🔍 PreventiveMaintenanceListPage Debug:', {

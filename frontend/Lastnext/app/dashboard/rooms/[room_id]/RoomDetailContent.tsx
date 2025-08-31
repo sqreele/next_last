@@ -5,7 +5,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { CalendarClock, Home, MapPin } from 'lucide-react';
 import { Room, Property, Job } from '@/app/lib/types';
-import { cn } from '@/app/lib/utils';
+import { cn } from '@/app/lib/utils/cn';
 import Link from 'next/link';
 
 type RoomDetailContentProps = {

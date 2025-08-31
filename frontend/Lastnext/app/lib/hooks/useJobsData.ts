@@ -3,9 +3,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "@/app/lib/session.client";
-// Import specific functions needed from the updated data.ts
-import { fetchJobs, fetchJobsForProperty } from "@/app/lib/data";
-import { useUser } from "@/app/lib/user-context";
+// Import specific functions needed from the updated data.server.ts
+import { fetchJobs, fetchJobsForProperty } from "@/app/lib/data.server";
+import { useUser } from "@/app/lib/stores/mainStore";
 import { Job } from "@/app/lib/types";
 
 interface UseJobsDataOptions {

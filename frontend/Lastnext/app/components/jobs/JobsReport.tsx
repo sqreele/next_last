@@ -16,11 +16,10 @@ import {
   Users,
   Settings
 } from 'lucide-react';
-import { useProperty } from '@/app/lib/PropertyContext';
-import { useUser } from '@/app/lib/user-context';
+import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
 import { Job, TabValue, JobStatus, JobPriority } from '@/app/lib/types';
-import { fetchJobsForProperty } from '@/app/lib/data';
+import { fetchJobsForProperty } from '@/app/lib/data.server';
 import JobsPDFDocument from '@/app/components/document/JobsPDFGenerator';
 import { generatePdfWithRetry, downloadPdf } from '@/app/lib/pdfUtils';
 import { generatePdfBlob } from '@/app/lib/pdfRenderer';
@@ -65,7 +64,8 @@ const PRIORITY_COLORS: Record<JobPriority, string> = {
 export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: JobsReportProps) {
   const { data: session } = useSession();
   const { userProfile } = useUser();
-  const { selectedProperty, userProperties } = useProperty();
+  const { selectedPropertyId: selectedProperty } = useUser();
+  const { properties: userProperties } = useProperties();
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportJobs, setReportJobs] = useState<Job[]>([]);

@@ -1,16 +1,72 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { useMainStore } from '../stores/mainStore';
+import { useSession } from '../session.client';
 
 interface StoreProviderProps {
   children: ReactNode;
 }
 
-export function StoreProvider({ children }: StoreProviderProps) {
-  // Initialize the store - Zustand handles the rest automatically
-  // No need to wrap children in multiple providers
-  
+export function StoreProvider({ children }: { children: ReactNode }) {
+  const { data: session, status } = useSession();
+  const setUserProfile = useMainStore(state => state.setUserProfile);
+  const setProperties = useMainStore(state => state.setProperties);
+  const setSelectedPropertyId = useMainStore(state => state.setSelectedPropertyId);
+  const setAuthTokens = useMainStore(state => state.setAuthTokens);
+
+  // Sync session data to Zustand store
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      console.log('🔄 Syncing session data to Zustand store...');
+      
+      // Set auth tokens
+      if (session.user.accessToken) {
+        setAuthTokens(session.user.accessToken, session.user.refreshToken || '');
+      }
+
+      // Create user profile from session data
+      if (session.user) {
+        const userProfile = {
+          id: session.user.id,
+          username: session.user.username || '',
+          profile_image: session.user.profile_image || null,
+          positions: session.user.positions || 'User',
+          properties: session.user.properties || [],
+          email: session.user.email || null,
+          first_name: session.user.first_name || null,
+          last_name: session.user.last_name || null,
+          created_at: session.user.created_at || new Date().toISOString(),
+        };
+
+        console.log('✅ Setting user profile in store:', userProfile);
+        setUserProfile(userProfile);
+
+        // Set properties in store
+        if (session.user.properties && session.user.properties.length > 0) {
+          console.log('✅ Setting properties in store:', session.user.properties.length);
+          setProperties(session.user.properties);
+
+          // Auto-select first property if none selected
+          const currentSelectedProperty = useMainStore.getState().selectedPropertyId;
+          if (!currentSelectedProperty) {
+            const firstProperty = session.user.properties[0];
+            const propertyId = String(firstProperty.property_id || firstProperty.id);
+            console.log('✅ Auto-selecting first property:', propertyId);
+            setSelectedPropertyId(propertyId);
+          }
+        }
+      }
+    } else if (status === 'unauthenticated') {
+      // Clear store data when unauthenticated
+      console.log('🔄 Clearing store data (unauthenticated)');
+      setUserProfile(null);
+      setProperties([]);
+      setSelectedPropertyId(null);
+      setAuthTokens('', '');
+    }
+  }, [session, status, setUserProfile, setProperties, setSelectedPropertyId, setAuthTokens]);
+
   return <>{children}</>;
 }
 

@@ -22,23 +22,24 @@ import {
 } from "recharts";
 import _ from "lodash";
 import { Job, JobStatus, STATUS_COLORS } from "@/app/lib/types";
-import { useProperty } from "@/app/lib/PropertyContext";
+import { useUser, useProperties, useJobs } from "@/app/lib/stores/mainStore";
 import { useSession } from "@/app/lib/session.client";
 import { appSignOut } from "@/app/lib/logout";
 type Session = any;
-import { fetchJobs } from "@/app/lib/data";
 import { Button } from "@/app/components/ui/button";
 import Link from "next/link";
-import { useJob } from "@/app/lib/JobContext";
 
 interface PropertyJobsDashboardProps {
   initialJobs?: Job[];
 }
 
 const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps) => {
-  const { selectedProperty, userProperties } = useProperty();
+  const { selectedPropertyId: selectedProperty } = useUser();
+  const { properties: userProperties } = useProperties();
   const { data: session, status, refresh } = useSession();
-  const { jobCreationCount } = useJob();
+  const { jobs, setJobs } = useJobs();
+  // Since we don't have jobCreationCount in the new store, we'll use jobs length as a proxy
+  const jobCreationCount = jobs.length;
   const [allJobs, setAllJobs] = useState<Job[]>(initialJobs);
   const [filteredJobs, setFilteredJobs] = useState<Job[]>(initialJobs);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,37 +62,38 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     }
   };
 
-  // Load jobs with optimized error handling
-  const loadJobs = async () => {
+  // Load jobs from store instead of API call
+  const loadJobs = () => {
     if (status !== "authenticated" || !session?.user) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const jobsData = await fetchJobs();
-      
-      if (!Array.isArray(jobsData)) {
-        throw new Error("Invalid jobs data format");
+      // Use jobs already available in the store
+      if (Array.isArray(jobs)) {
+        setAllJobs(jobs);
+      } else {
+        setAllJobs([]);
       }
-
-      // For analytics, include all jobs (do not restrict to current user)
-      setAllJobs(jobsData);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to fetch jobs";
+      const errorMessage = err instanceof Error ? err.message : "Failed to load jobs";
       setError(errorMessage);
       setAllJobs([]);
-
-      if (errorMessage.includes("401") || errorMessage.includes("Unauthorized")) {
-        const refreshed = await refreshSession();
-        if (refreshed) {
-          await loadJobs();
-        }
-      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Populate store with initial jobs when component mounts
+  useEffect(() => {
+    if (initialJobs && initialJobs.length > 0 && (!jobs || jobs.length === 0)) {
+      console.log('🔍 Populating store with initial jobs:', initialJobs.length);
+      setJobs(initialJobs);
+      setAllJobs(initialJobs);
+      setFilteredJobs(initialJobs);
+    }
+  }, [initialJobs, jobs, setJobs]);
 
   // Load jobs when necessary
   useEffect(() => {

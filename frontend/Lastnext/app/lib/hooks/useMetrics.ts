@@ -1,14 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { 
-  getThisWeekRange, 
-  getLastWeekRange, 
-  getThisMonthRange, 
-  getLastMonthRange,
-  getTodayRange,
-  getYesterdayRange,
-  formatDateRange,
-  CalendarUtils
-} from '../utils/calendarUtils';
+import { CalendarUtils } from '../utils/calendarUtils';
 
 export interface MetricValue {
   current: number;
@@ -48,22 +39,22 @@ export function useMetrics(period: TimePeriod = 'week') {
     switch (period) {
       case 'today':
         return {
-          current: getTodayRange(),
-          previous: getYesterdayRange(),
+          current: CalendarUtils.getTodayRange(),
+          previous: CalendarUtils.getYesterdayRange(),
           currentLabel: 'Today',
           previousLabel: 'Yesterday'
         };
       case 'week':
         return {
-          current: getThisWeekRange(),
-          previous: getLastWeekRange(),
+          current: CalendarUtils.getThisWeekRange(),
+          previous: CalendarUtils.getLastWeekRange(),
           currentLabel: 'This Week',
           previousLabel: 'Last Week'
         };
       case 'month':
         return {
-          current: getThisMonthRange(),
-          previous: getLastMonthRange(),
+          current: CalendarUtils.getThisMonthRange(),
+          previous: CalendarUtils.getLastMonthRange(),
           currentLabel: 'This Month',
           previousLabel: 'Last Month'
         };
@@ -83,8 +74,8 @@ export function useMetrics(period: TimePeriod = 'week') {
         };
       default:
         return {
-          current: getThisWeekRange(),
-          previous: getLastWeekRange(),
+          current: CalendarUtils.getThisWeekRange(),
+          previous: CalendarUtils.getLastWeekRange(),
           currentLabel: 'This Week',
           previousLabel: 'Last Week'
         };
@@ -203,8 +194,8 @@ export function useMetrics(period: TimePeriod = 'week') {
     if (!timeRange) return null;
 
     return {
-      current: formatDateRange(timeRange.current, 'short'),
-      previous: formatDateRange(timeRange.previous, 'short'),
+              current: CalendarUtils.formatDateRange(timeRange.current.start, timeRange.current.end, 'short'),
+        previous: CalendarUtils.formatDateRange(timeRange.previous.start, timeRange.previous.end, 'short'),
       currentLabel: timeRange.currentLabel,
       previousLabel: timeRange.previousLabel
     };

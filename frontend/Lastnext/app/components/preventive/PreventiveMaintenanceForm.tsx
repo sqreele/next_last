@@ -427,7 +427,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     setLoadingMachines(true);
     try {
       const machineService = new MachineService();
-      const response = await machineService.getMachines(propertyId || undefined, accessToken);
+      const response = await machineService.getMachines(propertyId ?? undefined, accessToken);
       if (response.success && response.data) {
         setAvailableMachines(response.data);
       } else {

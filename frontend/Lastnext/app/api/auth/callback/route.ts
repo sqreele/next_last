@@ -78,11 +78,18 @@ export async function GET(request: NextRequest) {
       let userResponse = null;
       
       try {
+        console.log('🔍 Attempting to fetch user info from Auth0...');
+        console.log('🔍 Domain:', domain);
+        console.log('🔍 Access token length:', tokens.access_token?.length);
+        
         userResponse = await fetch(`https://${domain}/userinfo`, {
           headers: {
             'Authorization': `Bearer ${tokens.access_token}`,
           },
         });
+
+        console.log('🔍 Userinfo response status:', userResponse.status);
+        console.log('🔍 Userinfo response headers:', Object.fromEntries(userResponse.headers.entries()));
 
         if (userResponse.ok) {
           userInfo = await userResponse.json();
@@ -117,11 +124,47 @@ export async function GET(request: NextRequest) {
               name: userInfo?.name,
               email: userInfo?.email
             });
+          } else {
+            console.error('🔍 Retry failed with status:', userResponse.status);
+            const errorText = await userResponse.text();
+            console.error('🔍 Retry error response:', errorText);
           }
+        } else {
+          console.error('🔍 Userinfo request failed with status:', userResponse.status);
+          const errorText = await userResponse.text();
+          console.error('🔍 Error response:', errorText);
         }
       } catch (userInfoError) {
-        console.error('Error fetching user info:', userInfoError);
+        console.error('🔍 Error fetching user info:', userInfoError);
         // Continue without user info - we'll create a minimal session
+      }
+
+      // If userinfo failed, try to extract basic info from the ID token
+      if (!userInfo && tokens.id_token) {
+        try {
+          console.log('🔍 Attempting to decode ID token for user info...');
+          // Simple base64 decode of JWT payload (this is safe for public claims)
+          const payload = tokens.id_token.split('.')[1];
+          if (payload) {
+            const decoded = JSON.parse(Buffer.from(payload, 'base64').toString());
+            console.log('🔍 ID token payload:', decoded);
+            
+            // Use ID token data as fallback
+            userInfo = {
+              sub: decoded.sub,
+              email: decoded.email,
+              name: decoded.name,
+              given_name: decoded.given_name,
+              family_name: decoded.family_name,
+              nickname: decoded.nickname,
+              picture: decoded.picture,
+              email_verified: decoded.email_verified
+            };
+            console.log('🔍 Using ID token data as fallback:', userInfo);
+          }
+        } catch (decodeError) {
+          console.error('🔍 Failed to decode ID token:', decodeError);
+        }
       }
 
       // Debug: Log what we have before creating session
@@ -132,10 +175,13 @@ export async function GET(request: NextRequest) {
         nickname: userInfo?.nickname,
         name: userInfo?.name,
         email: userInfo?.email,
+        picture: userInfo?.picture,
+        profile_image_mapping: userInfo?.picture || 'No picture field',
         tokens: {
           hasAccessToken: !!tokens.access_token,
           accessTokenLength: tokens.access_token?.length,
-          hasRefreshToken: !!tokens.refresh_token
+          hasRefreshToken: !!tokens.refresh_token,
+          hasIdToken: !!tokens.id_token
         }
       });
 
@@ -185,13 +231,15 @@ export async function GET(request: NextRequest) {
         id: sessionData.user.id,
         username: sessionData.user.username,
         email: sessionData.user.email,
+        profile_image: sessionData.user.profile_image,
+        hasProfileImage: !!sessionData.user.profile_image,
         hasAccessToken: !!sessionData.user.accessToken,
         accessTokenLength: sessionData.user.accessToken?.length,
         note: 'Properties will be fetched by session-compat API'
       });
 
-      // Redirect to profile page with session cookie
-      const response = NextResponse.redirect(`${baseUrl}/dashboard/profile`);
+      // Redirect to dashboard with session cookie
+      const response = NextResponse.redirect(`${baseUrl}/dashboard`);
       
       // Set session cookie
       response.cookies.set('auth0_session', JSON.stringify(sessionData), {

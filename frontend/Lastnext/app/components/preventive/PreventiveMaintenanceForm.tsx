@@ -418,7 +418,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     }
   }, [accessToken]);
 
-  const fetchAvailableMachines = useCallback(async (propertyId: string | null | undefined) => {
+  const fetchAvailableMachines = useCallback(async (propertyId: string | undefined) => {
     if (!propertyId) {
       setAvailableMachines([]);
       setLoadingMachines(false);
@@ -427,7 +427,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     setLoadingMachines(true);
     try {
       const machineService = new MachineService();
-      const response = await machineService.getMachines(propertyId, accessToken);
+      const response = await machineService.getMachines(propertyId as string | undefined, accessToken);
       if (response.success && response.data) {
         setAvailableMachines(response.data);
       } else {
@@ -456,7 +456,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   // Handle property ID changes and fetch machines
   useEffect(() => {
     if (contextSelectedProperty) {
-      fetchAvailableMachines(contextSelectedProperty ?? undefined);
+      fetchAvailableMachines(contextSelectedProperty);
     } else {
       setAvailableMachines([]); // Clear machines if no property is selected
     }

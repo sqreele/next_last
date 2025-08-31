@@ -28,6 +28,35 @@ export class CalendarUtils {
   }
 
   /**
+   * Get today's date range
+   */
+  static getTodayRange(): { start: Date; end: Date } {
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    
+    return { start, end };
+  }
+
+  /**
+   * Get yesterday's date range
+   */
+  static getYesterdayRange(): { start: Date; end: Date } {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - 1);
+    start.setHours(0, 0, 0, 0);
+    
+    const end = new Date(start);
+    end.setHours(23, 59, 59, 999);
+    
+    return { start, end };
+  }
+
+  /**
    * Get this week's date range
    */
   static getThisWeekRange(): { start: Date; end: Date } {
@@ -171,5 +200,19 @@ export class CalendarUtils {
       default:
         return date.toISOString().split('T')[0];
     }
+  }
+
+  /**
+   * Format a date range for display
+   */
+  static formatDateRange(start: Date, end: Date, format: 'short' | 'long' | 'iso' = 'short'): string {
+    const startFormatted = this.formatDate(start, format);
+    const endFormatted = this.formatDate(end, format);
+    
+    if (startFormatted === endFormatted) {
+      return startFormatted;
+    }
+    
+    return `${startFormatted} - ${endFormatted}`;
   }
 }

@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     console.log('🚪 Logout API called with returnTo:', returnTo);
     
     // Use server-side environment variables
-    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
     const auth0Domain = process.env.AUTH0_DOMAIN;
     const clientId = process.env.AUTH0_CLIENT_ID;
     
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     
   } catch (error) {
     console.error('Error in logout route:', error);
-    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
     return NextResponse.redirect(`${baseUrl}/error?message=Logout failed`);
   }
 }

@@ -6,7 +6,7 @@ export async function GET() {
     const auth0Domain = process.env.AUTH0_DOMAIN;
     const clientId = process.env.AUTH0_CLIENT_ID;
     const clientSecret = process.env.AUTH0_CLIENT_SECRET;
-    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
     
     const configStatus = {
       domain: auth0Domain ? '✅ Set' : '❌ Missing',
@@ -27,7 +27,7 @@ export async function GET() {
           'AUTH0_DOMAIN=your-domain.auth0.com',
           'AUTH0_CLIENT_ID=your-client-id',
           'AUTH0_CLIENT_SECRET=your-client-secret',
-          'AUTH0_BASE_URL=http://localhost:3000 (or your production URL)'
+          'AUTH0_BASE_URL=https://pcms.live (or your environment base URL)'
         ]
       }, { status: 400 });
     }

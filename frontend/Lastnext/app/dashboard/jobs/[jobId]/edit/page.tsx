@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Job } from "@/app/lib/types";
+import FileUpload from "@/app/components/jobs/FileUpload";
 
 export default function EditJobPage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function EditJobPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // Simple job loading without complex hooks
   useEffect(() => {
@@ -52,6 +54,8 @@ export default function EditJobPage() {
     if (!jobId) return;
 
     const formData = new FormData(event.currentTarget);
+    const hasFiles = selectedFiles.length > 0;
+
     const payload: Partial<Job> = {
       description: String(formData.get("description") || ""),
       status: String(formData.get("status") || "pending") as Job["status"],
@@ -65,13 +69,33 @@ export default function EditJobPage() {
     setError(null);
     
     try {
-      const res = await fetch(`/api/jobs/${jobId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      let res: Response;
+      if (hasFiles) {
+        const submitForm = new FormData();
+        submitForm.append("description", payload.description || "");
+        submitForm.append("status", payload.status || "pending");
+        submitForm.append("priority", payload.priority || "low");
+        if (payload.remarks) submitForm.append("remarks", payload.remarks);
+        submitForm.append("is_defective", payload.is_defective ? "true" : "false");
+        submitForm.append(
+          "is_preventivemaintenance",
+          payload.is_preventivemaintenance ? "true" : "false"
+        );
+        selectedFiles.forEach((file) => submitForm.append("images", file));
+
+        res = await fetch(`/api/jobs/${jobId}`, {
+          method: "PATCH",
+          body: submitForm,
+        });
+      } else {
+        res = await fetch(`/api/jobs/${jobId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+      }
       
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -143,6 +167,42 @@ export default function EditJobPage() {
               defaultValue={job.description}
               className="w-full p-3 border border-gray-300 rounded-md min-h-[100px]"
               required
+              disabled={isSubmitting}
+            />
+          </div>
+
+          {/* Images - existing */}
+          {job.image_urls && job.image_urls.length > 0 && (
+            <div>
+              <h2 className="text-sm font-medium text-gray-700 mb-2">Existing Images</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {job.image_urls.map((url, index) => {
+                  const imageUrl = (() => {
+                    if (typeof url === "string" && url.startsWith("http")) return url;
+                    if (typeof url === "string" && url.startsWith("/media/")) return url;
+                    if (typeof url === "string") return `/media/${url}`;
+                    return String(url);
+                  })();
+                  return (
+                    <img
+                      key={index}
+                      src={imageUrl}
+                      alt={`Existing job image ${index + 1}`}
+                      className="w-full h-28 object-cover rounded-md border"
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Images - upload new */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Add Images</label>
+            <FileUpload
+              onFileSelect={(files) => setSelectedFiles(files)}
+              maxFiles={5}
+              maxSize={5}
               disabled={isSubmitting}
             />
           </div>

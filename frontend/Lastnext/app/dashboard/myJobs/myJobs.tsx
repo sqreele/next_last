@@ -400,16 +400,6 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
   const userLoading = false; // TODO: Add loading state to store if needed
   const router = useRouter();
 
-  // Use the hook for data fetching
-  const {
-    jobs,
-    isLoading,
-    error,
-    refreshJobs,
-    updateJob, // Hook's function to update local state
-    removeJob, // Hook's function to remove from local state
-  } = useJobsData({ propertyId: activePropertyId ?? selectedProperty });
-
   // Local state for UI
   const [filters, setFilters] = React.useState<FilterState>({
     search: "", status: "all", priority: "all"
@@ -419,6 +409,19 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Use the hook for data fetching - always fetch user's jobs, not property-specific jobs
+  const {
+    jobs,
+    isLoading,
+    error,
+    refreshJobs,
+    updateJob, // Hook's function to update local state
+    removeJob, // Hook's function to remove from local state
+  } = useJobsData({ 
+    propertyId: null, // Force null to always use fetchMyJobs
+    filters: filters // Pass current filters for backend filtering
+  });
 
   // Filter jobs based on local state
   const filteredJobs = React.useMemo(() => {
@@ -456,6 +459,13 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     }
   }, [sessionStatus, router]);
 
+  // Effect to refresh jobs when filters change
+  React.useEffect(() => {
+    if (sessionStatus === "authenticated") {
+      refreshJobs();
+    }
+  }, [filters, sessionStatus, refreshJobs]);
+
   // --- Event Handlers ---
   const handleFilterChange = (newFilters: FilterState) => setFilters(newFilters);
   const handleClearFilters = () => setFilters({ search: "", status: "all", priority: "all" });
@@ -489,6 +499,11 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
         remarks: (formData.get("remarks") as string) || undefined,
         is_defective: formData.get("is_defective") === "on",
         is_preventivemaintenance: formData.get("is_preventivemaintenance") === "on",
+        
+        // Handle timestamp fields
+        created_at: formData.get("created_at") as string || selectedJob.created_at,
+        updated_at: formData.get("updated_at") as string || selectedJob.updated_at,
+        completed_at: formData.get("completed_at") as string || selectedJob.completed_at,
         
         // Preserve original topics
         topics: selectedJob.topics || [],

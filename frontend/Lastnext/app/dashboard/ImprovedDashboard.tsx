@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useJobsDashboard } from '@/app/lib/hooks/useJobsDashboard';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
 import { Building, User, Calendar, RefreshCw, Download, Settings, Search, Filter } from 'lucide-react';
@@ -225,6 +225,10 @@ const DashboardHeader: React.FC<{
 export default function ImprovedDashboard() {
   const { user, isAuthenticated, isLoading } = useSessionGuard();
   const { toast } = useToast();
+  
+  // Add room filtering state
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  
   const {
     // State
     jobs,
@@ -259,6 +263,9 @@ export default function ImprovedDashboard() {
     // Cache and export
     clearCache,
     exportJobs,
+    
+    // Trends
+    trends,
   } = useJobsDashboard();
 
   // Enable real-time updates on mount
@@ -284,6 +291,11 @@ export default function ImprovedDashboard() {
     } else {
       disableRealTime();
     }
+  };
+
+  // Handle room filter changes
+  const handleRoomFilter = (roomId: string | null) => {
+    setSelectedRoom(roomId);
   };
 
   // Tab configuration
@@ -342,28 +354,28 @@ export default function ImprovedDashboard() {
             value={stats.total}
             icon={<Building className="w-6 h-6 text-blue-600" />}
             color="bg-blue-100"
-            trend={{ value: 12, isPositive: true }}
+            trend={trends.total}
           />
           <StatCard
             title="Pending"
             value={stats.pending}
             icon={<div className="w-6 h-6 bg-yellow-500 rounded-full animate-pulse" />}
             color="bg-yellow-100"
-            trend={{ value: -5, isPositive: false }}
+            trend={trends.pending}
           />
           <StatCard
             title="In Progress"
             value={stats.inProgress}
             icon={<div className="w-6 h-6 bg-orange-500 rounded-full" />}
             color="bg-orange-100"
-            trend={{ value: 8, isPositive: true }}
+            trend={trends.inProgress}
           />
           <StatCard
             title="Completed"
             value={stats.completed}
             icon={<div className="w-6 h-6 bg-green-500 rounded-full" />}
             color="bg-green-100"
-            trend={{ value: 15, isPositive: true }}
+            trend={trends.completed}
           />
         </div>
 
@@ -449,6 +461,8 @@ export default function ImprovedDashboard() {
                     filter={value as any}
                     properties={properties}
                     viewMode={viewMode}
+                    selectedRoom={selectedRoom}
+                    onRoomFilter={handleRoomFilter}
                   />
                   
                   {/* Load More Button */}

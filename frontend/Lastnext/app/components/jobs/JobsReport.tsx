@@ -63,8 +63,7 @@ const PRIORITY_COLORS: Record<JobPriority, string> = {
 
 export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: JobsReportProps) {
   const { data: session } = useSession();
-  const { userProfile } = useUser();
-  const { selectedPropertyId: selectedProperty } = useUser();
+  const { userProfile, selectedPropertyId: selectedProperty } = useUser();
   const { properties: userProperties } = useProperties();
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -192,7 +191,16 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       const loadPropertyJobs = async () => {
         setLoading(true);
         try {
-          const propertyJobs = await fetchJobsForProperty(selectedProperty);
+          console.log('🔍 JobsReport: Loading property jobs for:', selectedProperty);
+          console.log('🔍 JobsReport: Session available:', !!session);
+          console.log('🔍 JobsReport: Access token available:', !!session?.user?.accessToken);
+          
+          if (!session?.user?.accessToken) {
+            console.error('❌ JobsReport: No access token available');
+            throw new Error('No access token available');
+          }
+          
+          const propertyJobs = await fetchJobsForProperty(selectedProperty, session.user.accessToken);
           setReportJobs(propertyJobs);
         } catch (error) {
           console.error('Error loading property jobs:', error);
@@ -205,7 +213,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
     } else if (jobs.length > 0) {
       setReportJobs(jobs);
     }
-  }, [selectedProperty, jobs.length]);
+  }, [selectedProperty, jobs.length, session?.user?.accessToken]);
 
   // Generate PDF report
   const handleGeneratePDF = async () => {
@@ -244,6 +252,47 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       setIsGenerating(false);
     }
   };
+
+  // Check if session is still loading
+  if (!session) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Loading Session...
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-gray-500">Loading your session...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Check if user is authenticated
+  if (!session?.user?.accessToken) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Authentication Required
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-gray-500">
+            <Building2 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p>Please log in to view the jobs report.</p>
+            <p className="text-sm mt-2">You need to be authenticated to access this feature.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!selectedProperty) {
     return (

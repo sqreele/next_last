@@ -61,6 +61,14 @@ interface UseJobsDashboardReturn extends JobsDashboardState {
   
   // Export
   exportJobs: (format: 'csv' | 'excel' | 'pdf') => Promise<void>;
+
+  // Trends
+  trends: {
+    total: { value: number; isPositive: boolean };
+    pending: { value: number; isPositive: boolean };
+    inProgress: { value: number; isPositive: boolean };
+    completed: { value: number; isPositive: boolean };
+  };
 }
 
 const initialState: JobsDashboardState = {
@@ -389,8 +397,87 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     };
   }, [disableRealTime]);
 
+  // Calculate stats based on filtered jobs
+  const stats = useMemo(() => {
+    const total = filteredJobs.length;
+    const pending = filteredJobs.filter(job => job.status === 'pending').length;
+    const inProgress = filteredJobs.filter(job => job.status === 'in_progress').length;
+    const completed = filteredJobs.filter(job => job.status === 'completed').length;
+    const cancelled = filteredJobs.filter(job => job.status === 'cancelled').length;
+    const waitingSparepart = filteredJobs.filter(job => job.status === 'waiting_sparepart').length;
+    const defect = filteredJobs.filter(job => job.is_defective).length;
+    const preventiveMaintenance = filteredJobs.filter(job => job.is_preventivemaintenance).length;
+
+    return {
+      total,
+      pending,
+      inProgress,
+      completed,
+      cancelled,
+      waitingSparepart,
+      defect,
+      preventiveMaintenance,
+    };
+  }, [filteredJobs]);
+
+  // Calculate trends by comparing current week vs last week
+  const trends = useMemo(() => {
+    const now = new Date();
+    const currentWeekStart = new Date(now);
+    currentWeekStart.setDate(now.getDate() - now.getDay()); // Start of current week (Sunday)
+    currentWeekStart.setHours(0, 0, 0, 0);
+    
+    const lastWeekStart = new Date(currentWeekStart);
+    lastWeekStart.setDate(currentWeekStart.getDate() - 7);
+    
+    const currentWeekJobs = state.jobs.filter(job => {
+      const jobDate = new Date(job.created_at);
+      return jobDate >= currentWeekStart && jobDate <= now;
+    });
+    
+    const lastWeekJobs = state.jobs.filter(job => {
+      const jobDate = new Date(job.created_at);
+      return jobDate >= lastWeekStart && jobDate < currentWeekStart;
+    });
+
+    const calculateTrend = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? { value: 100, isPositive: true } : { value: 0, isPositive: true };
+      const change = ((current - previous) / previous) * 100;
+      return { value: Math.abs(Math.round(change)), isPositive: change >= 0 };
+    };
+
+    const totalTrend = calculateTrend(
+      currentWeekJobs.length,
+      lastWeekJobs.length
+    );
+    
+    const pendingTrend = calculateTrend(
+      currentWeekJobs.filter(job => job.status === 'pending').length,
+      lastWeekJobs.filter(job => job.status === 'pending').length
+    );
+    
+    const inProgressTrend = calculateTrend(
+      currentWeekJobs.filter(job => job.status === 'in_progress').length,
+      lastWeekJobs.filter(job => job.status === 'in_progress').length
+    );
+    
+    const completedTrend = calculateTrend(
+      currentWeekJobs.filter(job => job.status === 'completed').length,
+      lastWeekJobs.filter(job => job.status === 'completed').length
+    );
+
+    return {
+      total: totalTrend,
+      pending: pendingTrend,
+      inProgress: inProgressTrend,
+      completed: completedTrend,
+    };
+  }, [state.jobs]);
+
   return {
     ...state,
+    stats, // Use calculated stats instead of state.stats
+    trends, // Add calculated trends
     filteredJobs,
     isLoadingMore,
     hasMoreJobs,

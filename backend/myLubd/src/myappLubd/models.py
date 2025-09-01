@@ -664,8 +664,8 @@ class Job(models.Model):
         choices=PRIORITY_CHOICES, 
         default='medium'
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
     completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -682,8 +682,20 @@ class Job(models.Model):
         if not self.job_id:
             self.job_id = self.generate_job_id()
         
+        # Set created_at only for new objects
+        if not self.pk:
+            if not self.created_at:
+                self.created_at = timezone.now()
+        
+        # Always update the updated_at timestamp unless explicitly specified in update_fields
+        update_fields = kwargs.get('update_fields', None)
+        if not update_fields or 'updated_at' not in update_fields:
+            self.updated_at = timezone.now()
+        
+        # Only auto-set completed_at if status is completed and completed_at is not already set
         if self.status == 'completed' and not self.completed_at:
             self.completed_at = timezone.now()
+        
         super().save(*args, **kwargs)
 
     @classmethod

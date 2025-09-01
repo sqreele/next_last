@@ -4,12 +4,19 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "@/app/lib/session.client";
 // Import specific functions needed from the updated data.server.ts
-import { fetchJobs, fetchJobsForProperty } from "@/app/lib/data.server";
+import { fetchJobs, fetchJobsForProperty, fetchMyJobs } from "@/app/lib/data.server";
 import { useUser } from "@/app/lib/stores/mainStore";
 import { Job } from "@/app/lib/types";
 
 interface UseJobsDataOptions {
   propertyId?: string | null;
+  filters?: {
+    room_id?: string | null;
+    room_name?: string | null;
+    status?: string;
+    is_preventivemaintenance?: boolean | null;
+    search?: string;
+  };
 }
 
 interface UseJobsDataReturn {
@@ -63,27 +70,32 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       let fetchedJobs: Job[] = [];
       // *** CHOOSE FETCH FUNCTION BASED ON PROPERTY ID ***
       if (activePropertyId) {
-        // console.log(`useJobsData: Fetching jobs for property ${activePropertyId}`);
+        console.log(`useJobsData: Fetching jobs for property ${activePropertyId}`);
         fetchedJobs = await fetchJobsForProperty(activePropertyId, session.user.accessToken);
       } else {
-        // console.log("useJobsData: Fetching all jobs");
-        fetchedJobs = await fetchJobs(session.user.accessToken); // Fetch all if no specific property
+        console.log("useJobsData: Fetching my jobs (user-specific)");
+        // Build query parameters for room filtering
+        const queryParams = new URLSearchParams();
+        const filters = options?.filters;
+        if (filters) {
+          if (filters.room_id) queryParams.append('room_id', filters.room_id);
+          if (filters.room_name) queryParams.append('room_name', filters.room_name);
+          if (filters.status && filters.status !== 'all') queryParams.append('status', filters.status);
+          if (filters.is_preventivemaintenance !== null && filters.is_preventivemaintenance !== undefined) queryParams.append('is_preventivemaintenance', filters.is_preventivemaintenance.toString());
+          if (filters.search) queryParams.append('search', filters.search);
+        }
+        
+        const queryString = queryParams.toString();
+        const url = queryString ? `/api/v1/jobs/my_jobs/?${queryString}` : '/api/v1/jobs/my_jobs/';
+        fetchedJobs = await fetchMyJobs(session.user.accessToken);
       }
 
-      // *** PERFORM CLIENT-SIDE FILTERING BY USER ***
-      // (Remove property filtering as API handles it when propertyId is passed)
-      const userId = session.user.id;
-      const username = session.user.username;
+      console.log(`useJobsData: Fetched ${fetchedJobs.length} jobs`);
+      console.log(`useJobsData: Jobs data:`, fetchedJobs);
 
-      const userFilteredJobs = fetchedJobs.filter((job: Job) => {
-        // Ensure job.user exists before comparing
-        const matchesUser = job.user && userId && username ?
-            (String(job.user) === String(userId) || String(job.user) === username)
-            : false;
-        return matchesUser;
-      });
-
-      setJobs(userFilteredJobs);
+      // *** NO NEED FOR CLIENT-SIDE USER FILTERING WHEN USING fetchMyJobs ***
+      // The backend now handles user filtering automatically
+      setJobs(fetchedJobs);
       setLastRefreshed(new Date());
       return true; // Success
     } catch (err) {

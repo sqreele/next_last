@@ -183,9 +183,46 @@ export async function updateJobStatus(
 }
 
 export async function fetchMyJobs(accessToken?: string): Promise<Job[]> {
-  const jobs = await fetchWithToken<Job[]>(`/api/v1/jobs/my-jobs/`, accessToken);
-  const sanitizedJobs = sanitizeJobsData(jobs);
-  return fixJobsImageUrls(sanitizedJobs);
+  console.log("fetchMyJobs: Starting to fetch my jobs...");
+  try {
+    const response = await fetchWithToken<any>(`/api/v1/jobs/my_jobs/`, accessToken);
+    console.log(`fetchMyJobs: Raw API response:`, response);
+    console.log(`fetchMyJobs: Response type:`, typeof response);
+    
+    // The backend returns a structured response with 'results' field containing the jobs
+    let jobs: Job[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        // Direct array response (fallback)
+        jobs = response;
+      } else if (response.results && Array.isArray(response.results)) {
+        // Structured response with results field
+        jobs = response.results;
+        console.log(`fetchMyJobs: Extracted ${jobs.length} jobs from results field`);
+      } else {
+        console.error('fetchMyJobs: Unexpected response format:', response);
+        return [];
+      }
+    }
+    
+    console.log(`fetchMyJobs: Successfully extracted ${jobs.length} jobs from API`);
+    
+    if (!jobs || !Array.isArray(jobs)) {
+      console.error('fetchMyJobs: No valid jobs array found:', jobs);
+      return [];
+    }
+    
+    const sanitizedJobs = sanitizeJobsData(jobs);
+    console.log(`fetchMyJobs: After sanitization:`, sanitizedJobs);
+    
+    const fixedJobs = fixJobsImageUrls(sanitizedJobs);
+    console.log(`fetchMyJobs: After image URL fixing:`, fixedJobs);
+    console.log(`fetchMyJobs: Returning ${fixedJobs.length} processed jobs`);
+    return fixedJobs;
+  } catch (error) {
+    console.error('fetchMyJobs: Error fetching my jobs:', error);
+    throw error;
+  }
 }
 
 export async function fetchRoom(roomId: string, accessToken?: string): Promise<Room | null> {

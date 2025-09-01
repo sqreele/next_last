@@ -28,6 +28,10 @@ import { appSignOut } from "@/app/lib/logout";
 type Session = any;
 import { Button } from "@/app/components/ui/button";
 import Link from "next/link";
+import { Download } from "lucide-react";
+import { generatePdfWithRetry, downloadPdf } from "@/app/lib/pdfUtils";
+import { generatePdfBlob } from "@/app/lib/pdfRenderer";
+import ChartDashboardPDF from "@/app/components/document/ChartDashboardPDF";
 
 interface PropertyJobsDashboardProps {
   initialJobs?: Job[];
@@ -44,6 +48,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   const [filteredJobs, setFilteredJobs] = useState<Job[]>(initialJobs);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   // Memoize the current property ID to reduce unnecessary re-renders
   const effectiveProperty = useMemo(() => {
@@ -94,6 +99,49 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       setFilteredJobs(initialJobs);
     }
   }, [initialJobs, jobs, setJobs]);
+
+  // PDF Export function
+  const handleExportPDF = async () => {
+    if (!filteredJobs.length) {
+      alert('No data available to export.');
+      return;
+    }
+
+    try {
+      setIsGeneratingPDF(true);
+      
+      // Get current property name
+      const currentProperty = userProperties.find(p => p.property_id === effectiveProperty);
+      const propertyName = currentProperty?.name || `Property ${effectiveProperty}`;
+      
+      // Create PDF document
+      const pdfDocument = (
+        <ChartDashboardPDF
+          jobs={filteredJobs}
+          selectedProperty={effectiveProperty}
+          propertyName={propertyName}
+          jobStats={jobStats}
+          jobsByMonth={jobsByMonth}
+        />
+      );
+      
+      // Generate PDF blob
+      const blob = await generatePdfWithRetry(async () => {
+        return await generatePdfBlob(pdfDocument);
+      });
+      
+      // Download PDF
+      const date = new Date().toISOString().split('T')[0];
+      const filename = `${propertyName.replace(/\s+/g, '-')}-chart-dashboard-${date}.pdf`;
+      await downloadPdf(blob, filename);
+      
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      alert(`Failed to generate PDF: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
 
   // Load jobs when necessary
   useEffect(() => {
@@ -288,6 +336,34 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // Main dashboard view with optimized render performance
   return (
     <div className="space-y-4 px-2">
+      {/* PDF Export Button */}
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Chart Dashboard</h2>
+          <p className="text-gray-600">
+            {effectiveProperty ? `Viewing data for ${userProperties.find(p => p.property_id === effectiveProperty)?.name || `Property ${effectiveProperty}`}` : 'Select a property to view data'}
+          </p>
+        </div>
+        <Button
+          onClick={handleExportPDF}
+          disabled={isGeneratingPDF || filteredJobs.length === 0}
+          className="flex items-center gap-2"
+          variant="outline"
+        >
+          {isGeneratingPDF ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              Generating...
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Export PDF
+            </>
+          )}
+        </Button>
+      </div>
+
       <div className="space-y-4">
         {/* Jobs by Status Chart */}
         <Card className="w-full">

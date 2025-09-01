@@ -29,6 +29,8 @@ export interface FilterState {
     to?: Date;
   };
   is_preventivemaintenance?: boolean | null;
+  room_id?: string | null;
+  room_name?: string | null;
 }
 
 interface JobFiltersProps {
@@ -52,7 +54,9 @@ const JobFilters: React.FC<JobFiltersProps> = ({
     filters.status !== "all" ? 1 : 0,
     filters.priority !== "all" ? 1 : 0,
     filters.dateRange?.from || filters.dateRange?.to ? 1 : 0,
-    filters.is_preventivemaintenance !== null ? 1 : 0
+    filters.is_preventivemaintenance !== null ? 1 : 0,
+    filters.room_id ? 1 : 0,
+    filters.room_name ? 1 : 0
   ].reduce((a, b) => a + b, 0);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,6 +98,19 @@ const JobFilters: React.FC<JobFiltersProps> = ({
       ...filters,
       is_preventivemaintenance: boolValue
     });
+  };
+
+  const handleClearFilters = () => {
+    onFilterChange({
+      search: "",
+      status: "all",
+      priority: "all",
+      dateRange: undefined,
+      is_preventivemaintenance: null,
+      room_id: null,
+      room_name: null
+    });
+    setSearchTerm("");
   };
 
   // Format date range for display
@@ -182,6 +199,28 @@ const JobFilters: React.FC<JobFiltersProps> = ({
             </SelectContent>
           </Select>
           
+          {/* Room ID filter */}
+          <Input
+            placeholder="Room ID"
+            value={filters.room_id || ""}
+            onChange={(e) => onFilterChange({
+              ...filters,
+              room_id: e.target.value || null
+            })}
+            className="w-full md:w-32 h-10 bg-gray-50 border-gray-200"
+          />
+          
+          {/* Room Name filter */}
+          <Input
+            placeholder="Room Name"
+            value={filters.room_name || ""}
+            onChange={(e) => onFilterChange({
+              ...filters,
+              room_name: e.target.value || null
+            })}
+            className="w-full md:w-40 h-10 bg-gray-50 border-gray-200"
+          />
+          
           {/* Preventive Maintenance filter */}
           <Select
             value={getPreventiveMaintenanceValue()}
@@ -250,7 +289,7 @@ const JobFilters: React.FC<JobFiltersProps> = ({
               variant="ghost" 
               size="icon" 
               className="h-10 w-10"
-              onClick={onClearFilters}
+              onClick={handleClearFilters}
               title="Clear all filters"
             >
               <X className="h-4 w-4" />
@@ -301,6 +340,32 @@ const JobFilters: React.FC<JobFiltersProps> = ({
             </Badge>
           )}
           
+          {filters.room_id && (
+            <Badge 
+              variant="secondary" 
+              className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+            >
+              Room ID: {filters.room_id}
+              <X 
+                className="h-3 w-3 cursor-pointer" 
+                onClick={() => onFilterChange({...filters, room_id: null})}
+              />
+            </Badge>
+          )}
+
+          {filters.room_name && (
+            <Badge 
+              variant="secondary" 
+              className="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+            >
+              Room Name: {filters.room_name}
+              <X 
+                className="h-3 w-3 cursor-pointer" 
+                onClick={() => onFilterChange({...filters, room_name: null})}
+              />
+            </Badge>
+          )}
+          
           {filters.is_preventivemaintenance !== null && (
             <Badge 
               variant="secondary" 
@@ -332,7 +397,7 @@ const JobFilters: React.FC<JobFiltersProps> = ({
             variant="ghost" 
             size="sm" 
             className="text-xs ml-auto"
-            onClick={onClearFilters}
+            onClick={handleClearFilters}
           >
             Clear all filters
           </Button>

@@ -23,6 +23,7 @@ import {
 } from "@/app/components/ui/select"; // Adjusted path
 import { Textarea } from "@/app/components/ui/textarea"; // Adjusted path
 import { Label } from "@/app/components/ui/label"; // Import Label for better accessibility
+import { Input } from "@/app/components/ui/input"; // Import Input for timestamp fields
 
 // Define priority constants to use as values
 const JOB_PRIORITY = {
@@ -55,11 +56,29 @@ const EditJobDialog: FC<EditDialogProps> = ({
   onSubmit,
   isSubmitting,
 }) => {
+  // Helper function to format timestamp for datetime-local input
+  const formatTimestampForInput = (timestamp: string | null): string => {
+    if (!timestamp) return '';
+    try {
+      const date = new Date(timestamp);
+      // Format as YYYY-MM-DDTHH:MM for datetime-local input
+      return date.toISOString().slice(0, 16);
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return '';
+    }
+  };
+
   // For debugging
   useEffect(() => {
     if (job) {
       console.log('Edit dialog job:', job);
       console.log('Job status:', job.status);
+      console.log('Job timestamps:', {
+        created_at: job.created_at,
+        updated_at: job.updated_at,
+        completed_at: job.completed_at
+      });
     }
   }, [job]);
 
@@ -188,6 +207,59 @@ const EditJobDialog: FC<EditDialogProps> = ({
             >
               Preventive maintenance
             </Label>
+          </div>
+
+          {/* Timestamp Fields */}
+          <div className="space-y-4 pt-4 border-t border-gray-200">
+            <h4 className="text-sm font-medium text-gray-700">Timestamps</h4>
+            
+            {/* Created At */}
+            <div className="space-y-2">
+              <Label htmlFor="created_at" className="text-sm font-medium">
+                Created Date & Time
+              </Label>
+              <Input
+                id="created_at"
+                name="created_at"
+                type="datetime-local"
+                defaultValue={formatTimestampForInput(job.created_at)}
+                className="text-sm"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            {/* Updated At */}
+            <div className="space-y-2">
+              <Label htmlFor="updated_at" className="text-sm font-medium">
+                Last Updated Date & Time
+              </Label>
+              <Input
+                id="updated_at"
+                name="updated_at"
+                type="datetime-local"
+                defaultValue={formatTimestampForInput(job.updated_at)}
+                className="text-sm"
+                disabled={isSubmitting}
+              />
+            </div>
+
+            {/* Completed At */}
+            <div className="space-y-2">
+              <Label htmlFor="completed_at" className="text-sm font-medium">
+                Completed Date & Time (Optional)
+              </Label>
+              <Input
+                id="completed_at"
+                name="completed_at"
+                type="datetime-local"
+                defaultValue={formatTimestampForInput(job.completed_at)}
+                className="text-sm"
+                disabled={isSubmitting}
+              />
+              <p className="text-xs text-gray-500">
+                Leave empty if job is not completed
+              </p>
+            </div>
           </div>
 
           {/* Form Actions */}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { User2, Mail, Calendar, Shield, Pencil, Building2, Plus, AlertCircle, User } from "lucide-react";
 import Link from "next/link";
@@ -206,9 +206,14 @@ export default function ProfileDisplay() {
     return <LoadingSkeleton />;
   }
 
+  useEffect(() => {
+    if (!loading && !userProfile) {
+      console.log('❌ No userProfile, redirecting to login');
+      router.replace("/auth/login");
+    }
+  }, [loading, userProfile, router]);
+
   if (!userProfile) {
-    console.log('❌ No userProfile, redirecting to login');
-    router.push("/auth/login");
     return null;
   }
 

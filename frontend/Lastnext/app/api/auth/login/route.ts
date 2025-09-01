@@ -9,7 +9,10 @@ export async function GET(request: NextRequest) {
     const auth0Domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
     const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
     const audience = process.env.NEXT_PUBLIC_AUTH0_AUDIENCE || 'https://pcms.live/api';
-    const baseUrl = process.env.NEXT_PUBLIC_AUTH0_BASE_URL || 'http://localhost:3000';
+    const forwardedProto = request.headers.get('x-forwarded-proto') || request.headers.get('x-forwarded-protocol') || 'https';
+    const forwardedHost = request.headers.get('x-forwarded-host') || request.headers.get('host');
+    const derivedBase = forwardedHost ? `${forwardedProto}://${forwardedHost}` : undefined;
+    const baseUrl = process.env.NEXT_PUBLIC_AUTH0_BASE_URL || derivedBase || 'https://pcms.live';
     
     if (!auth0Domain || !clientId) {
       console.error('Missing Auth0 configuration');

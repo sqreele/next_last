@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       const domain = process.env.AUTH0_DOMAIN;
       const clientId = process.env.AUTH0_CLIENT_ID;
       const clientSecret = process.env.AUTH0_CLIENT_SECRET;
-      const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+      const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
       
       if (!domain || !clientId || !clientSecret) {
         console.error('Missing required Auth0 environment variables');
@@ -254,14 +254,14 @@ export async function GET(request: NextRequest) {
     } catch (tokenError) {
       console.error('Token exchange error:', tokenError);
       return NextResponse.redirect(
-        `${process.env.AUTH0_BASE_URL || 'http://localhost:3000'}/login?error=token_exchange_error`
+        `${process.env.AUTH0_BASE_URL || 'https://pcms.live'}/login?error=token_exchange_error`
       );
     }
 
   } catch (error) {
     console.error('Auth0 callback error:', error);
     return NextResponse.redirect(
-      `${process.env.AUTH0_BASE_URL || 'http://localhost:3000'}/login?error=callback_error`
+      `${process.env.AUTH0_BASE_URL || 'https://pcms.live'}/login?error=callback_error`
     );
   }
 }

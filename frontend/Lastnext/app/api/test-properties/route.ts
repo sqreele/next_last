@@ -25,7 +25,7 @@ export async function GET() {
 
       // Try to fetch properties using the session-compat API
       try {
-        const sessionResponse = await fetch(`${process.env.AUTH0_BASE_URL || 'http://localhost:3000'}/api/auth/session-compat`, {
+        const sessionResponse = await fetch(`${process.env.AUTH0_BASE_URL || 'https://pcms.live'}/api/auth/session-compat`, {
           headers: {
             'Cookie': `auth0_session=${auth0SessionCookie.value}`
           }

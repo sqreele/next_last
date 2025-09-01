@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Font, Svg, Rect, Circle } from '@react-pdf/renderer';
 import { Job, JobStatus, STATUS_COLORS } from '@/app/lib/types';
 
 // Define styles for the PDF
@@ -125,6 +125,42 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: '#9ca3af',
   },
+  chartContainer: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  pieChart: {
+    width: 200,
+    height: 200,
+    marginBottom: 15,
+  },
+  barChart: {
+    width: 400,
+    height: 200,
+    marginBottom: 15,
+  },
+  chartLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 10,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 15,
+    marginBottom: 5,
+  },
+  legendColor: {
+    width: 12,
+    height: 12,
+    marginRight: 5,
+  },
+  legendText: {
+    fontSize: 8,
+    color: '#374151',
+  },
 });
 
 interface ChartDashboardPDFProps {
@@ -209,6 +245,141 @@ const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{cancelledJobs}</Text>
               <Text style={styles.statLabel}>Cancelled</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Pie Chart - Jobs by Status */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Jobs by Status Chart</Text>
+          <View style={styles.chartContainer}>
+            <Svg style={styles.pieChart} viewBox="0 0 200 200">
+              {/* Create a simple pie chart representation */}
+              {(() => {
+                const centerX = 100;
+                const centerY = 100;
+                const radius = 80;
+                let currentAngle = 0;
+                
+                return jobStats.map((stat, index) => {
+                  const percentage = parseFloat(stat.percentage);
+                  const angle = (percentage / 100) * 360;
+                  const endAngle = currentAngle + angle;
+                  
+                  // Calculate arc coordinates
+                  const startX = centerX + radius * Math.cos((currentAngle * Math.PI) / 180);
+                  const startY = centerY + radius * Math.sin((currentAngle * Math.PI) / 180);
+                  const endX = centerX + radius * Math.cos((endAngle * Math.PI) / 180);
+                  const endY = centerY + radius * Math.sin((endAngle * Math.PI) / 180);
+                  
+                  // Create arc path
+                  const largeArcFlag = angle > 180 ? 1 : 0;
+                  const path = [
+                    `M ${centerX} ${centerY}`,
+                    `L ${startX} ${startY}`,
+                    `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`,
+                    'Z'
+                  ].join(' ');
+                  
+                  currentAngle = endAngle;
+                  
+                  return (
+                    <View key={index}>
+                      <Svg width="200" height="200">
+                        <path
+                          d={path}
+                          fill={stat.color}
+                          stroke="#ffffff"
+                          strokeWidth="2"
+                        />
+                      </Svg>
+                    </View>
+                  );
+                });
+              })()}
+            </Svg>
+            
+            {/* Chart Legend */}
+            <View style={styles.chartLegend}>
+              {jobStats.map((stat, index) => (
+                <View key={index} style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: stat.color }]} />
+                  <Text style={styles.legendText}>
+                    {stat.name}: {stat.value} ({stat.percentage}%)
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* Bar Chart - Jobs by Month */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Jobs by Month Chart</Text>
+          <View style={styles.chartContainer}>
+            <Svg style={styles.barChart} viewBox="0 0 400 200">
+              {/* Y-axis */}
+              <line x1="50" y1="20" x2="50" y2="180" stroke="#e5e7eb" strokeWidth="1" />
+              {/* X-axis */}
+              <line x1="50" y1="180" x2="380" y2="180" stroke="#e5e7eb" strokeWidth="1" />
+              
+              {/* Y-axis labels */}
+              <Text x="30" y="25" style={{ fontSize: 8, fill: "#6b7280" }}>100</Text>
+              <Text x="30" y="65" style={{ fontSize: 8, fill: "#6b7280" }}>75</Text>
+              <Text x="30" y="105" style={{ fontSize: 8, fill: "#6b7280" }}>50</Text>
+              <Text x="30" y="145" style={{ fontSize: 8, fill: "#6b7280" }}>25</Text>
+              <Text x="30" y="185" style={{ fontSize: 8, fill: "#6b7280" }}>0</Text>
+              
+              {/* Bars for last 6 months */}
+              {jobsByMonth.slice(-6).map((monthData, index) => {
+                const barWidth = 40;
+                const barSpacing = 10;
+                const x = 60 + index * (barWidth + barSpacing);
+                const maxValue = Math.max(...jobsByMonth.map(m => m.total));
+                const barHeight = monthData.total > 0 ? (monthData.total / maxValue) * 140 : 0;
+                const y = 180 - barHeight;
+                
+                return (
+                  <View key={index}>
+                    {/* Bar */}
+                    <Rect
+                      x={x}
+                      y={y}
+                      width={barWidth}
+                      height={barHeight}
+                      fill="#8884d8"
+                      stroke="#ffffff"
+                      strokeWidth="1"
+                    />
+                    
+                    {/* Bar label */}
+                    <Text
+                      x={x + barWidth / 2}
+                      y="195"
+                      style={{ fontSize: 6, fill: "#374151" }}
+                    >
+                      {monthData.month.split(' ')[0]}
+                    </Text>
+                    
+                    {/* Value label */}
+                    <Text
+                      x={x + barWidth / 2}
+                      y={y - 5}
+                      style={{ fontSize: 8, fill: "#374151" }}
+                    >
+                      {monthData.total}
+                    </Text>
+                  </View>
+                );
+              })}
+            </Svg>
+            
+            {/* Chart Legend */}
+            <View style={styles.chartLegend}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendColor, { backgroundColor: '#8884d8' }]} />
+                <Text style={styles.legendText}>Total Jobs per Month</Text>
+              </View>
             </View>
           </View>
         </View>

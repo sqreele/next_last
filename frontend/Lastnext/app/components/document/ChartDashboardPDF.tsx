@@ -161,6 +161,25 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: '#374151',
   },
+  simpleChart: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 10,
+  },
+  chartBar: {
+    width: '45%',
+    padding: 10,
+    margin: 5,
+    borderRadius: 5,
+    textAlign: 'center',
+  },
+  chartBarText: {
+    fontSize: 8,
+    color: '#ffffff',
+    fontWeight: 'bold',
+  },
 });
 
 interface ChartDashboardPDFProps {
@@ -252,63 +271,50 @@ const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
         {/* Pie Chart - Jobs by Status */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Jobs by Status Chart</Text>
+          
+          {/* Debug: Display color information as text */}
+          <View style={styles.section}>
+            <Text style={styles.chartTitle}>Debug: Colors Used</Text>
+            {jobStats.map((stat, index) => (
+              <Text key={index} style={styles.chartDescription}>
+                {stat.name}: {stat.value} ({stat.percentage}%) - Color: {stat.color || 'undefined'}
+              </Text>
+            ))}
+          </View>
+          
           <View style={styles.chartContainer}>
-            <Svg style={styles.pieChart} viewBox="0 0 200 200">
-              {/* Create a simple pie chart representation */}
-              {(() => {
-                const centerX = 100;
-                const centerY = 100;
-                const radius = 80;
-                let currentAngle = 0;
+            {/* Simple colored rectangles instead of complex SVG */}
+            <View style={styles.simpleChart}>
+              {jobStats.map((stat, index) => {
+                const fallbackColors = ['#FFA500', '#87CEEB', '#008000', '#FF0000', '#9B59B6'];
+                const color = stat.color || fallbackColors[index % fallbackColors.length];
                 
-                return jobStats.map((stat, index) => {
-                  const percentage = parseFloat(stat.percentage);
-                  const angle = (percentage / 100) * 360;
-                  const endAngle = currentAngle + angle;
-                  
-                  // Calculate arc coordinates
-                  const startX = centerX + radius * Math.cos((currentAngle * Math.PI) / 180);
-                  const startY = centerY + radius * Math.sin((currentAngle * Math.PI) / 180);
-                  const endX = centerX + radius * Math.cos((endAngle * Math.PI) / 180);
-                  const endY = centerY + radius * Math.sin((endAngle * Math.PI) / 180);
-                  
-                  // Create arc path
-                  const largeArcFlag = angle > 180 ? 1 : 0;
-                  const path = [
-                    `M ${centerX} ${centerY}`,
-                    `L ${startX} ${startY}`,
-                    `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`,
-                    'Z'
-                  ].join(' ');
-                  
-                  currentAngle = endAngle;
-                  
-                  return (
-                    <View key={index}>
-                      <Svg width="200" height="200">
-                        <path
-                          d={path}
-                          fill={stat.color}
-                          stroke="#ffffff"
-                          strokeWidth="2"
-                        />
-                      </Svg>
-                    </View>
-                  );
-                });
-              })()}
-            </Svg>
+                return (
+                  <View key={index} style={[styles.chartBar, { backgroundColor: color }]}>
+                    <Text style={styles.chartBarText}>
+                      {stat.name}: {stat.value} ({stat.percentage}%)
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
             
             {/* Chart Legend */}
             <View style={styles.chartLegend}>
-              {jobStats.map((stat, index) => (
-                <View key={index} style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: stat.color }]} />
-                  <Text style={styles.legendText}>
-                    {stat.name}: {stat.value} ({stat.percentage}%)
-                  </Text>
-                </View>
-              ))}
+              {jobStats.map((stat, index) => {
+                // Use stat.color if available, otherwise use fallback
+                const fallbackColors = ['#FFA500', '#87CEEB', '#008000', '#FF0000', '#9B59B6', '#FF6B6B', '#4ECDC4', '#45B7D1'];
+                const legendColor = stat.color || fallbackColors[index % fallbackColors.length];
+                
+                return (
+                  <View key={index} style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: legendColor }]} />
+                    <Text style={styles.legendText}>
+                      {stat.name}: {stat.value} ({stat.percentage}%)
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           </View>
         </View>

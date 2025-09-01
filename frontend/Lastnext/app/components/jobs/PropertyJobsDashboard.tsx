@@ -125,6 +125,10 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         />
       );
       
+      // Debug: Log the jobStats data being passed to PDF
+      console.log('PDF jobStats data:', jobStats);
+      console.log('STATUS_COLORS:', STATUS_COLORS);
+      
       // Generate PDF blob
       const blob = await generatePdfWithRetry(async () => {
         return await generatePdfBlob(pdfDocument);
@@ -217,7 +221,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       statusCounts[job.status] = (statusCounts[job.status] || 0) + 1;
     }
 
-    return (["pending", "in_progress", "completed", "waiting_sparepart", "cancelled"] as JobStatus[]).map(
+    const result = (["pending", "in_progress", "completed", "waiting_sparepart", "cancelled"] as JobStatus[]).map(
       (status) => ({
         name: status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " "),
         value: statusCounts[status] || 0,
@@ -225,6 +229,12 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         percentage: total > 0 ? ((statusCounts[status] || 0) / total * 100).toFixed(1) : "0",
       })
     );
+    
+    // Debug: Log the generated jobStats
+    console.log('Generated jobStats:', result);
+    console.log('STATUS_COLORS used:', STATUS_COLORS);
+    
+    return result;
   }, [filteredJobs]);
 
   // Memoized job monthly data with optimization for large datasets

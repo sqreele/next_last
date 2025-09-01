@@ -79,8 +79,13 @@ export default function EditProfilePage() {
     );
   }
 
+  useEffect(() => {
+    if (!loading && !userProfile) {
+      router.replace("/auth/login");
+    }
+  }, [loading, userProfile, router]);
+
   if (!userProfile) {
-    router.push("/auth/login");
     return null;
   }
 

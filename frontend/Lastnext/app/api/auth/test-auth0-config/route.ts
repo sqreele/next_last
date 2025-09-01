@@ -7,7 +7,7 @@ export async function GET() {
     const clientId = process.env.AUTH0_CLIENT_ID;
     const clientSecret = process.env.AUTH0_CLIENT_SECRET;
     const audience = process.env.AUTH0_AUDIENCE || 'https://pcms.live/api';
-    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
     
     if (!domain || !clientId || !clientSecret) {
       return NextResponse.json({

@@ -15,7 +15,7 @@ export async function GET() {
     ];
 
     const results = testErrors.map(error => {
-      const url = new URL('/auth/error', 'http://localhost:3000');
+      const url = new URL('/auth/error', process.env.AUTH0_BASE_URL || 'https://pcms.live');
       if (error) {
         url.searchParams.set('error', error);
       }

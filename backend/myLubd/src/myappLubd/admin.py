@@ -3,6 +3,8 @@ from django.utils.html import format_html
 from django.utils import timezone
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
+from django import forms
+from django.core.exceptions import ValidationError
 from .models import (
     Property,
     Room,
@@ -106,6 +108,36 @@ class MachineAdmin(admin.ModelAdmin):
         # For simplicity, we'll just show a message here
         self.message_user(request, f"Selected {queryset.count()} machines for maintenance scheduling. Please use the preventive maintenance section to create schedules.")
     schedule_maintenance.short_description = "Schedule maintenance for selected machines"
+# Custom form for Job admin with timestamp validation
+class JobAdminForm(forms.ModelForm):
+    class Meta:
+        model = Job
+        fields = '__all__'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        created_at = cleaned_data.get('created_at')
+        updated_at = cleaned_data.get('updated_at')
+        completed_at = cleaned_data.get('completed_at')
+        
+        # Validate that created_at is not in the future
+        if created_at and created_at > timezone.now():
+            raise ValidationError("Created date cannot be in the future")
+        
+        # Validate that completed_at is not before created_at
+        if completed_at and created_at and completed_at < created_at:
+            raise ValidationError("Completed date cannot be before created date")
+        
+        # Validate that updated_at is not before created_at
+        if updated_at and created_at and updated_at < created_at:
+            raise ValidationError("Updated date cannot be before created date")
+        
+        # Validate that completed_at is not in the future (unless job is completed)
+        if completed_at and completed_at > timezone.now():
+            raise ValidationError("Completed date cannot be in the future")
+        
+        return cleaned_data
+
 # Inlines
 class JobImageInline(admin.TabularInline):
     model = JobImage
@@ -122,10 +154,11 @@ class JobImageInline(admin.TabularInline):
 # ModelAdmins
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
-    list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_user_display', 'get_properties_display', 'created_at', 'is_preventivemaintenance']
+    form = JobAdminForm
+    list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_user_display', 'get_properties_display', 'get_timestamps_display', 'is_preventivemaintenance']
     list_filter = ['status', 'priority', 'is_defective', 'created_at', 'updated_at', 'is_preventivemaintenance']
     search_fields = ['job_id', 'description', 'user__username', 'updated_by__username', 'topics__title']
-    readonly_fields = ['job_id', 'created_at', 'updated_at', 'completed_at', 'updated_by']
+    readonly_fields = ['job_id', 'updated_by']
     filter_horizontal = ['rooms', 'topics']
     inlines = [JobImageInline]
     fieldsets = (
@@ -138,8 +171,9 @@ class JobAdmin(admin.ModelAdmin):
         ('Related Items', {
             'fields': ('rooms', 'topics')
         }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at', 'completed_at')
+        ('Timestamps (Editable)', {
+            'fields': ('created_at', 'updated_at', 'completed_at'),
+            'description': 'You can edit these timestamps. Created date should be the original job creation time, updated date should be the last modification time, and completed date should be when the job was finished.'
         }),
     )
 
@@ -193,8 +227,25 @@ class JobAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         if not obj.pk and not obj.user_id:
             obj.user = request.user
+        
         if obj.pk:
             obj.updated_by = request.user
+            
+            # Handle timestamp updates with proper validation
+            if 'created_at' in form.changed_data or 'updated_at' in form.changed_data or 'completed_at' in form.changed_data:
+                # Use update_fields to bypass auto_now behavior for manual timestamp updates
+                update_fields = ['updated_by']
+                if 'created_at' in form.changed_data:
+                    update_fields.append('created_at')
+                if 'updated_at' in form.changed_data:
+                    update_fields.append('updated_at')
+                if 'completed_at' in form.changed_data:
+                    update_fields.append('completed_at')
+                
+                # Save with specific update fields
+                obj.save(update_fields=update_fields)
+                return
+        
         super().save_model(request, obj, form, change)
 
     def get_priority_display_colored(self, obj):
@@ -208,6 +259,23 @@ class JobAdmin(admin.ModelAdmin):
     get_priority_display_colored.short_description = 'Priority'
     get_priority_display_colored.admin_order_field = 'priority'
 
+    def get_timestamps_display(self, obj):
+        """Display timestamps in a compact, informative way"""
+        created = obj.created_at.strftime('%Y-%m-%d %H:%M') if obj.created_at else 'N/A'
+        updated = obj.updated_at.strftime('%Y-%m-%d %H:%M') if obj.updated_at else 'N/A'
+        completed = obj.completed_at.strftime('%Y-%m-%d %H:%M') if obj.completed_at else 'N/A'
+        
+        return format_html(
+            '<div style="font-size: 11px; line-height: 1.2;">'
+            '<div><strong>Created:</strong> {}</div>'
+            '<div><strong>Updated:</strong> {}</div>'
+            '<div><strong>Completed:</strong> {}</div>'
+            '</div>',
+            created, updated, completed
+        )
+    get_timestamps_display.short_description = 'Timestamps'
+    get_timestamps_display.admin_order_field = 'created_at'
+
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
         for instance in instances:
@@ -215,6 +283,37 @@ class JobAdmin(admin.ModelAdmin):
                 instance.uploaded_by = request.user
             instance.save()
         formset.save_m2m()
+
+    # Admin actions for timestamp management
+    actions = ['update_timestamps_to_now', 'reset_completed_timestamps']
+
+    def update_timestamps_to_now(self, request, queryset):
+        """Update selected jobs' timestamps to current time"""
+        now = timezone.now()
+        updated_count = 0
+        
+        for job in queryset:
+            job.updated_at = now
+            if job.status == 'completed' and not job.completed_at:
+                job.completed_at = now
+            job.save(update_fields=['updated_at', 'completed_at'])
+            updated_count += 1
+        
+        self.message_user(request, f"Updated timestamps for {updated_count} jobs to current time.")
+    update_timestamps_to_now.short_description = "Update timestamps to current time"
+
+    def reset_completed_timestamps(self, request, queryset):
+        """Reset completed timestamps for selected jobs"""
+        updated_count = 0
+        
+        for job in queryset:
+            if job.status == 'completed':
+                job.completed_at = None
+                job.save(update_fields=['completed_at'])
+                updated_count += 1
+        
+        self.message_user(request, f"Reset completed timestamps for {updated_count} completed jobs.")
+    reset_completed_timestamps.short_description = "Reset completed timestamps"
 
 @admin.register(JobImage)
 class JobImageAdmin(admin.ModelAdmin):

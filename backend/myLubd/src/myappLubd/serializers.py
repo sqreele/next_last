@@ -142,7 +142,29 @@ class JobSerializer(serializers.ModelSerializer):
             'rooms', 'topics', 'images', 'profile_image', 'room_type', 'name',
             'topic_data', 'room_id', 'image_urls', 'is_preventivemaintenance'
         ]
-        read_only_fields = ['id', 'job_id', 'user', 'user_username', 'user_first_name', 'user_last_name', 'user_email', 'created_at', 'updated_at', 'completed_at', 'images', 'topics']
+        read_only_fields = ['id', 'job_id', 'user', 'user_username', 'user_first_name', 'user_last_name', 'user_email', 'images', 'topics']
+
+    def validate(self, data):
+        """Validate timestamp fields to ensure logical order"""
+        from django.utils import timezone
+        
+        created_at = data.get('created_at')
+        updated_at = data.get('updated_at')
+        completed_at = data.get('completed_at')
+        
+        # If created_at is provided, ensure it's not in the future
+        if created_at and created_at > timezone.now():
+            raise serializers.ValidationError("Created date cannot be in the future")
+        
+        # If completed_at is provided, ensure it's not before created_at
+        if completed_at and created_at and completed_at < created_at:
+            raise serializers.ValidationError("Completed date cannot be before created date")
+        
+        # If updated_at is provided, ensure it's not before created_at
+        if updated_at and created_at and updated_at < created_at:
+            raise serializers.ValidationError("Updated date cannot be before created date")
+        
+        return data
 
     def get_user(self, obj):
         """Return user information in a structured format"""

@@ -923,6 +923,8 @@ class JobViewSet(viewsets.ModelViewSet):
         status_filter = self.request.query_params.get('status')
         is_pm_filter = self.request.query_params.get('is_preventivemaintenance')
         search_term = self.request.query_params.get('search')
+        room_filter = self.request.query_params.get('room_id')
+        room_name_filter = self.request.query_params.get('room_name')
 
         if property_filter:
             queryset = queryset.filter(rooms__properties__property_id=property_filter)
@@ -940,6 +942,12 @@ class JobViewSet(viewsets.ModelViewSet):
                 Q(description__icontains=search_term) |
                 Q(job_id__icontains=search_term)
             )
+
+        if room_filter:
+            queryset = queryset.filter(rooms__id=room_filter)
+
+        if room_name_filter:
+            queryset = queryset.filter(rooms__name__icontains=room_name_filter)
 
         return queryset.distinct()
 
@@ -967,6 +975,59 @@ class JobViewSet(viewsets.ModelViewSet):
         job.save()
         serializer = self.get_serializer(job)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def my_jobs(self, request):
+        """Get jobs for the currently authenticated user"""
+        user = request.user
+        
+        # Get all jobs where the user is the owner/creator
+        jobs = Job.objects.filter(user=user).select_related(
+            'user', 'updated_by'
+        ).prefetch_related(
+            'rooms', 'topics', 'job_images', 'job_images__uploaded_by'
+        ).order_by('-created_at')
+        
+        # Apply additional filters if provided
+        property_filter = request.query_params.get('property_id')
+        status_filter = request.query_params.get('status')
+        is_pm_filter = request.query_params.get('is_preventivemaintenance')
+        search_term = request.query_params.get('search')
+        room_filter = request.query_params.get('room_id')
+        room_name_filter = request.query_params.get('room_name')
+        
+        if property_filter:
+            jobs = jobs.filter(rooms__properties__property_id=property_filter)
+        
+        if status_filter:
+            jobs = jobs.filter(status=status_filter)
+        
+        if is_pm_filter is not None:
+            val = str(is_pm_filter).lower() in ['1', 'true', 'yes']
+            jobs = jobs.filter(is_preventivemaintenance=val)
+        
+        if room_filter:
+            jobs = jobs.filter(rooms__id=room_filter)
+        
+        if room_name_filter:
+            jobs = jobs.filter(rooms__name__icontains=room_name_filter)
+        
+        if search_term:
+            jobs = jobs.filter(
+                Q(description__icontains=search_term) |
+                Q(job_id__icontains=search_term)
+            )
+        
+        # Serialize the jobs
+        serializer = self.get_serializer(jobs, many=True)
+        
+        return Response({
+            'count': len(serializer.data),
+            'results': serializer.data,
+            'user_id': user.id,
+            'username': user.username,
+            'message': f'Found {len(serializer.data)} jobs for user {user.username}'
+        }, status=status.HTTP_200_OK)
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:

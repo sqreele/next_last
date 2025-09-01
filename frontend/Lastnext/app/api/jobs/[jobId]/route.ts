@@ -60,19 +60,28 @@ export async function PUT(
     }
 
     const { jobId } = await params;
-    const body = await request.json();
+    const contentType = request.headers.get('content-type') || '';
+    let fetchOptions: RequestInit = {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${session.user.accessToken}` } as any,
+    };
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      fetchOptions.body = formData as any;
+    } else {
+      const body = await request.json();
+      fetchOptions.headers = {
+        ...(fetchOptions.headers as any),
+        'Content-Type': 'application/json',
+      } as any;
+      fetchOptions.body = JSON.stringify(body);
+    }
 
     // Update job in the external API
     const response = await fetch(
       `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`,
-      {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${session.user.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
+      fetchOptions
     );
 
     if (!response.ok) {
@@ -108,19 +117,28 @@ export async function PATCH(
     }
 
     const { jobId } = await params;
-    const body = await request.json();
+    const contentType = request.headers.get('content-type') || '';
+    let fetchOptions: RequestInit = {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${session.user.accessToken}` } as any,
+    };
+
+    if (contentType.includes('multipart/form-data')) {
+      const formData = await request.formData();
+      fetchOptions.body = formData as any;
+    } else {
+      const body = await request.json();
+      fetchOptions.headers = {
+        ...(fetchOptions.headers as any),
+        'Content-Type': 'application/json',
+      } as any;
+      fetchOptions.body = JSON.stringify(body);
+    }
 
     // Update job in the external API
     const response = await fetch(
       `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${session.user.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
+      fetchOptions
     );
 
     if (!response.ok) {

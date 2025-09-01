@@ -7,8 +7,11 @@ export async function GET(request: NextRequest) {
     
     console.log('🚪 Logout API called with returnTo:', returnTo);
     
-    // Use server-side environment variables
-    const baseUrl = process.env.AUTH0_BASE_URL || 'http://localhost:3000';
+    // Use server-side environment variables, derive from headers when missing
+    const proto = request.headers.get('x-forwarded-proto') || request.headers.get('x-forwarded-protocol') || 'https';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+    const derived = host ? `${proto}://${host}` : undefined;
+    const baseUrl = process.env.AUTH0_BASE_URL || derived || 'https://pcms.live';
     const auth0Domain = process.env.AUTH0_DOMAIN;
     const clientId = process.env.AUTH0_CLIENT_ID;
     

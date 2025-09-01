@@ -332,43 +332,65 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
 
   return (
     <Card 
-      className={`w-full flex flex-col transition-all duration-200 bg-white shadow hover:shadow-md cursor-pointer ${
+      className={`w-full flex flex-col transition-all duration-200 bg-white shadow hover:shadow-md cursor-pointer mobile-card ${
         viewMode === 'list' 
           ? "max-w-none" 
-          : "max-w-md mx-auto"
+          : "max-w-none sm:max-w-md mx-auto"
       }`}
       onClick={handleCardClick}
     >
-      <CardHeader className="flex-shrink-0 p-4 pb-3 border-b border-gray-100">
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-          <div className="space-y-1 flex-grow min-w-0">
-            <CardTitle className="text-base font-semibold text-gray-900 truncate">
-              {job.topics?.[0]?.title || 'No Topic'}
-            </CardTitle>
-            <div className="flex items-center gap-1 text-xs text-gray-600">
-              <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
-              <span className="truncate max-w-full">
-                {job.rooms?.[0]?.name || 'N/A'} - {getPropertyName()}
-              </span>
+      <CardHeader className="flex-shrink-0 p-3 sm:p-4 pb-2 sm:pb-3 border-b border-gray-100">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="space-y-1 flex-grow min-w-0">
+              <CardTitle className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 leading-tight">
+                {job.topics?.[0]?.title || 'No Topic'}
+              </CardTitle>
+              <div className="flex items-center gap-1 text-xs text-gray-600">
+                <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                <span className="truncate max-w-full">
+                  {job.rooms?.[0]?.name || 'N/A'} - {getPropertyName()}
+                </span>
+              </div>
             </div>
+            <Badge 
+              variant="secondary"
+              className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium flex-shrink-0 ${statusConfig.color} whitespace-nowrap`}
+            >
+              {statusConfig.icon}
+              <span className="hidden xs:inline">{statusConfig.label}</span>
+            </Badge>
           </div>
-          <Badge 
-            variant="secondary"
-            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium flex-shrink-0 ${statusConfig.color}`}
-          >
-            {statusConfig.icon}
-            <span>{statusConfig.label}</span>
-          </Badge>
+          
+          {/* Mobile-friendly priority and status indicators */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <Badge 
+              variant="outline" 
+              className="px-2 py-0.5 text-xs font-medium"
+            >
+              {job.priority?.charAt(0).toUpperCase() + job.priority?.slice(1) || 'Medium'}
+            </Badge>
+            {job.is_defective && (
+              <Badge variant="destructive" className="px-2 py-0.5 text-xs">
+                Defective
+              </Badge>
+            )}
+            {job.is_preventivemaintenance && (
+              <Badge variant="secondary" className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700">
+                PM
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="flex-grow p-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <CardContent className="flex-grow p-3 sm:p-4 space-y-3 sm:space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className={`space-y-2 ${
-          viewMode === 'list' ? "flex gap-4" : ""
+          viewMode === 'list' ? "flex flex-col sm:flex-row gap-3 sm:gap-4" : ""
         }`}>
           <div className={`relative overflow-hidden rounded-md bg-gray-100 ${
             viewMode === 'list' 
-              ? "w-32 h-24 flex-shrink-0" 
+              ? "w-full sm:w-32 h-32 sm:h-24 flex-shrink-0" 
               : "w-full aspect-video"
           }`}>
             {imageUrls.length > 0 && imageUrls[selectedImage] && !failedImageIndexes.has(selectedImage) ? (
@@ -389,7 +411,7 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
                   key={index}
                   type="button"
                   onClick={(e) => handleThumbnailClick(index, e)}
-                  className={`w-14 h-14 flex-shrink-0 rounded-md overflow-hidden border transition-all ${
+                  className={`w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0 rounded-md overflow-hidden border transition-all touch-target ${
                     selectedImage === index ? "border-blue-500 ring-2 ring-blue-100" : "border-gray-200 hover:border-gray-300"
                   } ${
                     (!url || failedImageIndexes.has(index)) ? "opacity-60 cursor-not-allowed" : ""
@@ -412,51 +434,53 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
           )}
         </div>
 
-        <div className={`flex items-start gap-2 bg-gray-50 p-3 rounded-lg ${
+        <div className={`flex items-start gap-2 bg-gray-50 p-2 sm:p-3 rounded-lg ${
           viewMode === 'list' ? "flex-1" : ""
         }`}>
-          <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-gray-700 leading-relaxed line-clamp-2">
+          <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5 flex-shrink-0" />
+          <p className="text-xs sm:text-sm text-gray-700 leading-relaxed line-clamp-3 sm:line-clamp-2">
             {job.description || 'No description provided'}
           </p>
         </div>
 
         {job.remarks && (
-          <div className="border-t border-gray-100 pt-3">
+          <div className="border-t border-gray-100 pt-2 sm:pt-3">
             <Button
               variant="ghost"
-              className="w-full flex justify-between items-center p-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
+              className="w-full flex justify-between items-center p-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-50 rounded-md touch-target"
               onClick={(e) => toggleSection('remarks', e)}
             >
               <span className="font-medium flex items-center gap-2">
                 <StickyNote className="w-4 h-4 text-gray-400" />
-                Remarks
+                <span className="hidden xs:inline">Remarks</span>
+                <span className="xs:hidden">Notes</span>
               </span>
               {expandedSections.remarks ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </Button>
             {expandedSections.remarks && (
-              <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600 leading-relaxed">{job.remarks}</p>
+              <div className="mt-2 p-2 sm:p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{job.remarks}</p>
               </div>
             )}
           </div>
         )}
 
-        <div className="border-t border-gray-100 pt-3">
+        <div className="border-t border-gray-100 pt-2 sm:pt-3">
           <Button
             variant="ghost"
-            className="w-full flex justify-between items-center p-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
+            className="w-full flex justify-between items-center p-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-50 rounded-md touch-target"
             onClick={(e) => toggleSection('details', e)}
           >
             <span className="font-medium flex items-center gap-2">
               <User className="w-4 h-4 text-gray-400" />
-              Staff Details
+              <span className="hidden xs:inline">Staff Details</span>
+              <span className="xs:hidden">Staff</span>
             </span>
             {expandedSections.details ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
           {expandedSections.details && (
-            <div className="flex items-center gap-3 p-3 mt-2 bg-gray-50 rounded-lg">
-              <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-100 flex-shrink-0 bg-white">
+            <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 mt-2 bg-gray-50 rounded-lg">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border border-gray-100 flex-shrink-0 bg-white">
                 {job.profile_image && job.profile_image.profile_image && !profileImageError ? (
                   <LazyImage
                     src={getSafeProfileImageUrl(job.profile_image.profile_image) || ''}
@@ -516,45 +540,46 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
           )}
         </div>
 
-        <div className="border-t border-gray-100 pt-3">
+        <div className="border-t border-gray-100 pt-2 sm:pt-3">
           <Button
             variant="ghost"
-            className="w-full flex justify-between items-center p-2 text-sm text-gray-700 hover:bg-gray-50 rounded-md"
+            className="w-full flex justify-between items-center p-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-50 rounded-md touch-target"
             onClick={(e) => toggleSection('timestamps', e)}
           >
             <span className="font-medium flex items-center gap-2">
               <Clock className="w-4 h-4 text-gray-400" />
-              Timestamps
+              <span className="hidden xs:inline">Timestamps</span>
+              <span className="xs:hidden">Time</span>
             </span>
             {expandedSections.timestamps ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
           {expandedSections.timestamps && (
-            <div className="space-y-2 mt-2 p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Calendar className="w-4 h-4 text-gray-400" />
-                <span><span className="font-medium">Created:</span> {formatDate(job.created_at)}</span>
+            <div className="space-y-2 mt-2 p-2 sm:p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <span className="truncate"><span className="font-medium">Created:</span> {formatDate(job.created_at)}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Clock className="w-4 h-4 text-gray-400" />
-                <span><span className="font-medium">Updated:</span> {formatDate(job.updated_at)}</span>
+              <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <span className="truncate"><span className="font-medium">Updated:</span> {formatDate(job.updated_at)}</span>
               </div>
               {job.completed_at && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <CheckCircle2 className="w-4 h-4 text-green-500" />
-                  <span><span className="font-medium">Completed:</span> {formatDate(job.completed_at)}</span>
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                  <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  <span className="truncate"><span className="font-medium">Completed:</span> {formatDate(job.completed_at)}</span>
                 </div>
               )}
               {job.status === "in_progress" && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
                   <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0"></span>
-                  <span>In progress since {formatDate(job.updated_at)}</span>
+                  <span className="truncate">In progress since {formatDate(job.updated_at)}</span>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <div className="pt-3 border-t border-gray-100">
+        <div className="pt-2 sm:pt-3 border-t border-gray-100">
           <UpdateStatusModal 
             job={job}
             onComplete={handleStatusUpdateComplete}
@@ -562,9 +587,10 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
             <Button 
               variant="outline" 
               size="sm"
-              className="w-full text-sm h-9 font-medium hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+              className="w-full text-xs sm:text-sm h-8 sm:h-9 font-medium hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors touch-target"
             >
-              Update Status
+              <span className="hidden xs:inline">Update Status</span>
+              <span className="xs:hidden">Update</span>
             </Button>
           </UpdateStatusModal>
         </div>

@@ -79,6 +79,55 @@ body {
   }
 }
 
+/* Extra small breakpoint for mobile-first design */
+@media (min-width: 475px) {
+  .xs\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  
+  .xs\:inline {
+    display: inline;
+  }
+  
+  .xs\:hidden {
+    display: none;
+  }
+}
+
+/* Mobile-first responsive improvements */
+@media (max-width: 640px) {
+  .mobile-card {
+    margin: 0.5rem;
+    border-radius: 0.75rem;
+  }
+  
+  .mobile-text {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  .mobile-padding {
+    padding: 0.75rem;
+  }
+  
+  .mobile-gap {
+    gap: 0.5rem;
+  }
+}
+
+/* Improved touch targets for mobile */
+@media (max-width: 640px) {
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 /* Responsive transitions */
 .sidebar-transition {
   transition: width 0.3s ease;

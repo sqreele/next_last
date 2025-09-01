@@ -1,10 +1,10 @@
 // app/dashboard/Preventive_maintenance/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import PreventiveMaintenanceDashboard from '@/app/dashboard/Preventive_maintenance/PreventiveMaintenanceDashboard';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -17,6 +17,8 @@ export default function PreventiveMaintenancePage() {
   const { properties: userProperties } = useProperties();
   const { status } = useSession();
   const [isClient, setIsClient] = useState(false);
+  const router = useRouter();
+  const hasRedirectedRef = useRef(false);
   
   // Calculate hasProperties from the properties array
   const hasProperties = userProperties && userProperties.length > 0;
@@ -24,14 +26,18 @@ export default function PreventiveMaintenancePage() {
   // Mock loading state for now - this will need to be implemented in the store
   const userLoading = false;
 
+  // Set client flag once on mount
   useEffect(() => {
     setIsClient(true);
-    
-    // If not authenticated, redirect to Auth0 login
-    if (status === 'unauthenticated') {
-      redirect('/auth/login');
+  }, []);
+
+  // If not authenticated, navigate to login (client-side) once
+  useEffect(() => {
+    if (status === 'unauthenticated' && !hasRedirectedRef.current) {
+      hasRedirectedRef.current = true;
+      router.replace('/auth/login');
     }
-  }, [status]);
+  }, [status, router]);
 
   // Handle loading state
   if (status === 'loading' || userLoading || !isClient) {

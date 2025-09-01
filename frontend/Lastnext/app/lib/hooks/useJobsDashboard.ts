@@ -90,7 +90,7 @@ const initialState: JobsDashboardState = {
   selectedTab: 'all',
   pagination: {
     page: 1,
-    pageSize: 20,
+    pageSize: 25,
     total: 0,
   },
 };

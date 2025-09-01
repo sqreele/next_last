@@ -59,23 +59,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     propertiesCount: properties?.length || 0
   });
 
-  const [itemsPerPage, setItemsPerPage] = useState(getInitialItemsPerPage());
-
-  function getInitialItemsPerPage() {
-    if (typeof window === 'undefined') return 10;
-    const width = window.innerWidth;
-    if (width < 640) return 6;
-    if (width < 1024) return 8;
-    return 15;
-  }
-
-  useEffect(() => {
-    const handleResize = () => {
-      setItemsPerPage(getInitialItemsPerPage());
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   useEffect(() => {
     setCurrentPage(1);

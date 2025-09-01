@@ -218,7 +218,7 @@ export interface ErrorState {
   field?: string;
 }
 
-export const ITEMS_PER_PAGE = 10;
+export const ITEMS_PER_PAGE = 25;
 export const MAX_VISIBLE_PAGES = 5;
 
 export interface SearchCriteria {

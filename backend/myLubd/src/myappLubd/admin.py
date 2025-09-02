@@ -5,6 +5,8 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Count, Q
+from datetime import timedelta
 from .models import (
     Property,
     Room,
@@ -30,7 +32,7 @@ class UserProfileInline(admin.StackedInline):
 
 class UserAdmin(BaseUserAdmin):
     inlines = (UserProfileInline,)
-    list_display = ['username', 'email', 'first_name', 'last_name', 'get_google_info', 'is_staff', 'is_active', 'date_joined']
+    list_display = ['username', 'email', 'first_name', 'last_name', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
     list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined']
     search_fields = ['username', 'first_name', 'last_name', 'email']
     
@@ -44,6 +46,27 @@ class UserAdmin(BaseUserAdmin):
             return "No Profile"
     get_google_info.short_description = 'Auth Type'
     get_google_info.admin_order_field = 'userprofile__google_id'
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        # Current month date range
+        start_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # Add enough days to guarantee moving to next month, then reset to day 1
+        start_of_next_month = (start_of_month + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return queryset.annotate(
+            jobs_this_month_count=Count(
+                'maintenance_jobs',
+                filter=Q(
+                    maintenance_jobs__created_at__gte=start_of_month,
+                    maintenance_jobs__created_at__lt=start_of_next_month
+                )
+            )
+        )
+
+    def jobs_this_month(self, obj):
+        return getattr(obj, 'jobs_this_month_count', 0)
+    jobs_this_month.short_description = 'Jobs (this month)'
+    jobs_this_month.admin_order_field = 'jobs_this_month_count'
 
 # Re-register User admin
 admin.site.unregister(User)

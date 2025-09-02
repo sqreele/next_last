@@ -7,10 +7,6 @@ import {
   ShoppingCart, 
   LineChart, 
   FileText, 
-  Users2,
-  PlusCircle,
-  Package,
-  Activity,
   Search,
   Bell
 } from 'lucide-react';
@@ -25,12 +21,7 @@ const navigationItems = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'My Jobs', href: '/dashboard/myJobs', icon: ShoppingCart },
   { name: 'Analytics', href: '/dashboard/chartdashboard', icon: LineChart },
-  { name: 'Jobs Report', href: '/dashboard/jobs-report', icon: FileText },
-  { name: 'Profile', href: '/dashboard/profile', icon: Users2 },
-  { name: 'Create Job', href: '/dashboard/createJob', icon: PlusCircle },
-  { name: 'PM', href: '/dashboard/Preventive_maintenance', icon: PlusCircle },
-  { name: 'PM Dashboard', href: '/dashboard/preventive-maintenance/dashboard', icon: Package },
-  { name: 'PM List', href: '/dashboard/preventive-maintenance', icon: Activity },
+  { name: 'orthe', href: '/dashboard/jobs-report', icon: FileText },
 ];
 
 export function MobileNav({ className }: MobileNavProps) {

@@ -5,6 +5,11 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db.models import Count, Q
+from datetime import timedelta
+from django.http import HttpResponse
+import csv
+from io import BytesIO
 from .models import (
     Property,
     Room,
@@ -30,9 +35,10 @@ class UserProfileInline(admin.StackedInline):
 
 class UserAdmin(BaseUserAdmin):
     inlines = (UserProfileInline,)
-    list_display = ['username', 'email', 'first_name', 'last_name', 'get_google_info', 'is_staff', 'is_active', 'date_joined']
+    list_display = ['username', 'email', 'first_name', 'last_name', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
     list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined']
     search_fields = ['username', 'first_name', 'last_name', 'email']
+    actions = ['export_users_csv', 'export_users_pdf']
     
     def get_google_info(self, obj):
         try:
@@ -44,6 +50,141 @@ class UserAdmin(BaseUserAdmin):
             return "No Profile"
     get_google_info.short_description = 'Auth Type'
     get_google_info.admin_order_field = 'userprofile__google_id'
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        # Current month date range
+        start_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # Add enough days to guarantee moving to next month, then reset to day 1
+        start_of_next_month = (start_of_month + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return queryset.annotate(
+            jobs_this_month_count=Count(
+                'maintenance_jobs',
+                filter=Q(
+                    maintenance_jobs__created_at__gte=start_of_month,
+                    maintenance_jobs__created_at__lt=start_of_next_month
+                )
+            )
+        )
+
+    def jobs_this_month(self, obj):
+        return getattr(obj, 'jobs_this_month_count', 0)
+    jobs_this_month.short_description = 'Jobs (this month)'
+    jobs_this_month.admin_order_field = 'jobs_this_month_count'
+
+    def export_users_csv(self, request, queryset):
+        # Prepare date range for current month
+        start_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_of_next_month = (start_of_month + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        annotated_qs = queryset.annotate(
+            jobs_this_month_count=Count(
+                'maintenance_jobs',
+                filter=Q(
+                    maintenance_jobs__created_at__gte=start_of_month,
+                    maintenance_jobs__created_at__lt=start_of_next_month
+                )
+            )
+        ).order_by('username')
+
+        year_month = start_of_month.strftime('%Y_%m')
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="users_jobs_{year_month}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(['Username', 'Email', 'First name', 'Last name', 'Jobs (this month)'])
+        for user in annotated_qs:
+            writer.writerow([
+                user.username,
+                user.email,
+                user.first_name,
+                user.last_name,
+                getattr(user, 'jobs_this_month_count', 0)
+            ])
+        return response
+    export_users_csv.short_description = 'Export selected users to CSV (with jobs this month)'
+
+    def export_users_pdf(self, request, queryset):
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.pdfgen import canvas
+            from reportlab.lib.units import inch
+        except Exception:
+            self.message_user(request, 'ReportLab is required for PDF export. Install with: pip install reportlab', level='error')
+            return None
+
+        start_of_month = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        start_of_next_month = (start_of_month + timedelta(days=32)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        annotated_qs = queryset.annotate(
+            jobs_this_month_count=Count(
+                'maintenance_jobs',
+                filter=Q(
+                    maintenance_jobs__created_at__gte=start_of_month,
+                    maintenance_jobs__created_at__lt=start_of_next_month
+                )
+            )
+        ).order_by('username')
+
+        buffer = BytesIO()
+        p = canvas.Canvas(buffer, pagesize=A4)
+        width, height = A4
+
+        title_text = f"Users - Jobs This Month ({start_of_month.strftime('%Y-%m')})"
+        p.setFont('Helvetica-Bold', 14)
+        p.drawString(72, height - 72, title_text)
+
+        y = height - 100
+        line_height = 16
+
+        p.setFont('Helvetica', 10)
+        header = ['Username', 'Email', 'First name', 'Last name', 'Jobs (this month)']
+        p.drawString(72, y, ' | '.join(header))
+        y -= line_height
+        p.line(72, y + 4, width - 72, y + 4)
+        y -= line_height
+
+        for user in annotated_qs:
+            row = [
+                user.username,
+                user.email or '',
+                user.first_name or '',
+                user.last_name or '',
+                str(getattr(user, 'jobs_this_month_count', 0))
+            ]
+            row_text = ' | '.join(row)
+
+            # wrap simple long lines if needed
+            if len(row_text) > 110:
+                # naive wrapping at 110 chars
+                while len(row_text) > 110:
+                    p.drawString(72, y, row_text[:110])
+                    row_text = row_text[110:]
+                    y -= line_height
+                    if y < 72:
+                        p.showPage()
+                        p.setFont('Helvetica', 10)
+                        y = height - 72
+                if row_text:
+                    p.drawString(72, y, row_text)
+            else:
+                p.drawString(72, y, row_text)
+
+            y -= line_height
+            if y < 72:
+                p.showPage()
+                p.setFont('Helvetica', 10)
+                y = height - 72
+
+        p.showPage()
+        p.save()
+
+        buffer.seek(0)
+        year_month = start_of_month.strftime('%Y_%m')
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="users_jobs_{year_month}.pdf"'
+        return response
+    export_users_pdf.short_description = 'Export selected users to PDF (with jobs this month)'
 
 # Re-register User admin
 admin.site.unregister(User)

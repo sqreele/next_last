@@ -699,7 +699,14 @@ export default function JobActions({
               mode="range"
               numberOfMonths={1}
               selected={customRange}
-              onSelect={(range) => setCustomRange(range || {})}
+              onSelect={(range) => {
+                const next = range || {};
+                setCustomRange(next);
+                if (next.from && next.to) {
+                  onDateFilter?.("custom", next.from, next.to);
+                  setIsCustomDateOpen(false);
+                }
+              }}
             />
           </div>
           <DialogFooter>

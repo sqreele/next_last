@@ -60,6 +60,7 @@ function Calendar(props: CalendarProps) {
   >(selected);
 
   const calendarRef = React.useRef<HTMLDivElement>(null);
+  const previousMonthRef = React.useRef<string>('');
 
   // Synchronize external and internal selected state
   React.useEffect(() => {
@@ -68,7 +69,14 @@ function Calendar(props: CalendarProps) {
 
   // Update current month when external month prop changes
   React.useEffect(() => {
-    setCurrentMonth(new Date(month));
+    const newMonth = new Date(month);
+    const monthKey = `${newMonth.getFullYear()}-${newMonth.getMonth()}`;
+    
+    // Only update if the month/year actually changed to prevent infinite re-renders
+    if (monthKey !== previousMonthRef.current) {
+      setCurrentMonth(newMonth);
+      previousMonthRef.current = monthKey;
+    }
   }, [month]);
 
   // Initial focus handling

@@ -283,21 +283,60 @@ const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
           </View>
           
           <View style={styles.chartContainer}>
-            {/* Simple colored rectangles instead of complex SVG */}
-            <View style={styles.simpleChart}>
-              {jobStats.map((stat, index) => {
-                const fallbackColors = ['#FFA500', '#87CEEB', '#008000', '#FF0000', '#9B59B6'];
-                const color = stat.color || fallbackColors[index % fallbackColors.length];
+            {/* Pie Chart - Jobs by Status */}
+            <Svg style={styles.pieChart} viewBox="0 0 200 200">
+              {/* Create pie chart segments */}
+              {(() => {
+                const centerX = 100;
+                const centerY = 100;
+                const radius = 80;
+                let currentAngle = 0;
                 
-                return (
-                  <View key={index} style={[styles.chartBar, { backgroundColor: color }]}>
-                    <Text style={styles.chartBarText}>
-                      {stat.name}: {stat.value} ({stat.percentage}%)
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
+                // Define fallback colors if stat.color is undefined
+                const fallbackColors = ['#FFA500', '#87CEEB', '#008000', '#FF0000', '#9B59B6', '#FF6B6B', '#4ECDC4', '#45B7D1'];
+                
+                return jobStats.map((stat, index) => {
+                  const percentage = parseFloat(stat.percentage);
+                  if (percentage === 0) return null; // Skip segments with 0 value
+                  
+                  const angle = (percentage / 100) * 360;
+                  const endAngle = currentAngle + angle;
+                  
+                  // Use stat.color if available, otherwise use fallback
+                  const fillColor = stat.color || fallbackColors[index % fallbackColors.length];
+                  
+                  // Calculate arc coordinates for the pie segment
+                  const startAngleRad = (currentAngle * Math.PI) / 180;
+                  const endAngleRad = (endAngle * Math.PI) / 180;
+                  
+                  const startX = centerX + radius * Math.cos(startAngleRad);
+                  const startY = centerY + radius * Math.sin(startAngleRad);
+                  const endX = centerX + radius * Math.cos(endAngleRad);
+                  const endY = centerY + radius * Math.sin(endAngleRad);
+                  
+                  // Create arc path
+                  const largeArcFlag = angle > 180 ? 1 : 0;
+                  const path = [
+                    `M ${centerX} ${centerY}`,
+                    `L ${startX} ${startY}`,
+                    `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`,
+                    'Z'
+                  ].join(' ');
+                  
+                  currentAngle = endAngle;
+                  
+                  return (
+                    <path
+                      key={index}
+                      d={path}
+                      fill={fillColor}
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                  );
+                });
+              })()}
+            </Svg>
             
             {/* Chart Legend */}
             <View style={styles.chartLegend}>

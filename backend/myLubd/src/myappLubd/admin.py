@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from datetime import timedelta
 from django.http import HttpResponse
+from django.core.management import call_command
 import csv
 from io import BytesIO
 from .models import (
@@ -38,7 +39,7 @@ class UserAdmin(BaseUserAdmin):
     list_display = ['username', 'email', 'first_name', 'last_name', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
     list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined']
     search_fields = ['username', 'first_name', 'last_name', 'email']
-    actions = ['export_users_csv', 'export_users_pdf']
+    actions = ['export_users_csv', 'export_users_pdf', 'run_database_backup']
     
     def get_google_info(self, obj):
         try:
@@ -185,6 +186,15 @@ class UserAdmin(BaseUserAdmin):
         response['Content-Disposition'] = f'attachment; filename="users_jobs_{year_month}.pdf"'
         return response
     export_users_pdf.short_description = 'Export selected users to PDF (with jobs this month)'
+
+    def run_database_backup(self, request, queryset):
+        try:
+            # Execute django-dbbackup command
+            call_command('dbbackup')
+            self.message_user(request, 'Database backup completed successfully.')
+        except Exception as exc:
+            self.message_user(request, f'Database backup failed: {exc}', level='error')
+    run_database_backup.short_description = 'Run database backup now'
 
 # Re-register User admin
 admin.site.unregister(User)

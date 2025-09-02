@@ -505,14 +505,14 @@ function RoomOnlyJobCard({ job, properties }: RoomOnlyJobCardProps) {
     <Card className="flex flex-col h-full transition-all duration-200 bg-white shadow-sm hover:shadow-md">
       <CardHeader className="flex-shrink-0 pb-2 pt-3 px-3">
         <CardTitle className="text-sm font-semibold text-gray-800 line-clamp-1">
-          Room {room?.name || 'N/A'}
+          Room {room?.name || 'N/A'}{room?.room_type ? ` (${room.room_type})` : ''}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 pb-3 px-3">
         <div className="flex items-center gap-1.5 text-xs text-gray-600">
           <MapPin className="w-3 h-3 flex-shrink-0 text-gray-400" />
           <span className="font-medium line-clamp-1">
-            {`${getPropertyName()} - Room ${room?.name || 'N/A'}`}
+            {`${getPropertyName()} - Room ${room?.name || 'N/A'}${room?.room_type ? ` (${room.room_type})` : ''}`}
           </span>
         </div>
         <div className="pt-2 border-t">

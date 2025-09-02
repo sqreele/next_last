@@ -42,6 +42,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   const { properties: userProperties } = useProperties();
   const { data: session, status, refresh } = useSession();
   const { jobs, setJobs } = useJobs();
+
   // Since we don't have jobCreationCount in the new store, we'll use jobs length as a proxy
   const jobCreationCount = jobs.length;
   const [allJobs, setAllJobs] = useState<Job[]>(initialJobs);
@@ -122,6 +123,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           propertyName={propertyName}
           jobStats={jobStats}
           jobsByMonth={jobsByMonth}
+          jobsByUser={jobsByUser}
         />
       );
       
@@ -286,6 +288,205 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     });
   }, [filteredJobs]);
 
+  // Helper function to extract user display name
+  const getUserDisplayName = (user: any): string => {
+    console.log('🔍 getUserDisplayName called with:', user, 'type:', typeof user);
+    
+    if (!user) {
+      console.log('❌ No user provided');
+      return 'Unknown User';
+    }
+    
+    // If it's an object with username field
+    if (typeof user === 'object' && user && 'username' in user) {
+      console.log('✅ Found username in object:', user.username);
+      return user.username;
+    }
+    
+    // If it's a string or number, try to match with session user
+    if (typeof user === 'string' || typeof user === 'number') {
+      const userStr = String(user);
+      console.log('🔢 Processing string/number user:', userStr);
+      
+      // Try to match with session data
+      if (session?.user) {
+        const sessionUserId = String(session.user.id || '').trim();
+        const sessionUsername = session.user.username || 'You';
+        console.log('🔍 Comparing with session user ID:', sessionUserId, 'username:', sessionUsername);
+        
+        // Exact match
+        if (userStr === sessionUserId) {
+          console.log('✅ Exact match found, returning:', sessionUsername);
+          return sessionUsername;
+        }
+        
+        // Case-insensitive match
+        if (userStr.toLowerCase() === sessionUserId.toLowerCase()) {
+          console.log('✅ Case-insensitive match found, returning:', sessionUsername);
+          return sessionUsername;
+        }
+        
+        // Google OAuth ID matching
+        if (userStr.includes('google-oauth2_') && sessionUserId.includes('google-oauth2_')) {
+          const userNumeric = userStr.replace('google-oauth2_', '');
+          const sessionNumeric = sessionUserId.replace('google-oauth2_', '');
+          if (userNumeric === sessionNumeric) {
+            console.log('✅ Google OAuth match found, returning:', sessionUsername);
+            return sessionUsername;
+          }
+        }
+        
+        // Try to match numeric IDs (common case where job user is numeric ID)
+        const userNumeric = parseInt(userStr);
+        const sessionNumeric = parseInt(sessionUserId);
+        if (!isNaN(userNumeric) && !isNaN(sessionNumeric) && userNumeric === sessionNumeric) {
+          console.log('✅ Numeric ID match found, returning:', sessionUsername);
+          return sessionUsername;
+        }
+        
+        // Try to match with first_name and last_name if available
+        if (session.user.first_name || session.user.last_name) {
+          const fullName = `${session.user.first_name || ''} ${session.user.last_name || ''}`.trim();
+          if (fullName) {
+            console.log('✅ Using full name from session:', fullName);
+            return fullName;
+          }
+        }
+        
+        console.log('❌ No match found with session user');
+        
+        // If we have session data but no match, try to use session username as fallback
+        // This handles cases where the job user ID doesn't match session ID format
+        if (session.user.username) {
+          console.log('🔄 Using session username as fallback:', session.user.username);
+          return session.user.username;
+        }
+      } else {
+        console.log('❌ No session user available');
+      }
+      
+      // If it's a numeric ID, try to show it as "User #123" instead of "User 123"
+      if (!isNaN(Number(userStr))) {
+        console.log('🔄 Returning numeric fallback:', `User #${userStr}`);
+        return `User #${userStr}`;
+      }
+      
+      console.log('🔄 Returning fallback:', `User ${userStr}`);
+      return `User ${userStr}`;
+    }
+    
+    if (typeof user === 'object') {
+      console.log('📦 Processing object user:', user);
+      // Try different possible fields for username
+      const username = user.username || user.name || user.email || user.id;
+      if (username) {
+        console.log('✅ Found username field:', username);
+        return String(username);
+      }
+      
+      // If it's an object but no recognizable field, try to stringify it safely
+      try {
+        // Check if it has any enumerable properties
+        const keys = Object.keys(user);
+        console.log('🔑 Object keys:', keys);
+        if (keys.length > 0) {
+          // Try to get the first string value
+          for (const key of keys) {
+            const value = user[key];
+            if (typeof value === 'string' && value.trim()) {
+              console.log('✅ Found string value:', value, 'for key:', key);
+              return value;
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Error processing user object:', error);
+      }
+      
+      console.log('❌ No usable field found in object');
+      return 'Unknown User';
+    }
+    
+    console.log('❌ Unhandled user type:', typeof user);
+    return 'Unknown User';
+  };
+
+  // Memoized jobs by user data
+  const jobsByUser = useMemo(() => {
+    if (filteredJobs.length === 0) return [];
+
+    // Debug: Log user data structure
+    if (filteredJobs.length > 0) {
+      console.log('=== USER DATA DEBUG ===');
+      console.log('Sample job user data:', filteredJobs[0].user);
+      console.log('User type:', typeof filteredJobs[0].user);
+      console.log('User keys:', typeof filteredJobs[0].user === 'object' ? Object.keys(filteredJobs[0].user) : 'N/A');
+      console.log('User values:', typeof filteredJobs[0].user === 'object' ? Object.values(filteredJobs[0].user) : 'N/A');
+      console.log('User JSON:', JSON.stringify(filteredJobs[0].user, null, 2));
+      console.log('Extracted username:', getUserDisplayName(filteredJobs[0].user));
+      
+      // Show session data for comparison
+      if (session?.user) {
+        console.log('Session user data:', session.user);
+        console.log('Session user ID:', session.user.id);
+        console.log('Session username:', session.user.username);
+      }
+      console.log('=== END USER DATA DEBUG ===');
+    }
+
+    // Group jobs by user
+    const grouped = _.groupBy(filteredJobs, (job) => {
+      console.log('🔄 Processing job:', job.id, 'user:', job.user);
+      const displayName = getUserDisplayName(job.user);
+      console.log('📝 Generated display name:', displayName);
+      
+      // Additional check for "[object Object]" string
+      if (displayName === '[object Object]' || displayName === 'User [object Object]') {
+        console.warn('⚠️ Detected [object Object] in user name, job user:', job.user);
+        return 'Unknown User';
+      }
+      return displayName;
+    });
+
+    // Process grouped data
+    const result = Object.entries(grouped).map(([username, userJobs]) => {
+      // Count statuses in a single pass
+      const counts = {
+        completed: 0,
+        pending: 0,
+        waiting_sparepart: 0,
+        in_progress: 0,
+        cancelled: 0
+      };
+      
+      for (const job of userJobs) {
+        if (counts.hasOwnProperty(job.status)) {
+          counts[job.status as keyof typeof counts]++;
+        }
+      }
+
+      const total = userJobs.length;
+      const completionRate = total > 0 ? ((counts.completed / total) * 100).toFixed(1) : '0.0';
+
+      return {
+        username,
+        total,
+        ...counts,
+        completionRate
+      };
+    });
+
+    // Sort by total jobs (descending)
+    const sortedResult = result.sort((a, b) => b.total - a.total);
+    
+    // Debug: Log the final result
+    console.log('📊 Final jobs by user result:', sortedResult);
+    console.log('📊 Grouped data keys:', Object.keys(grouped));
+    console.log('📊 Grouped data:', grouped);
+    
+    return sortedResult;
+  }, [filteredJobs]);
+
   // Loading state
   if (status === "loading" || isLoading) {
     return (
@@ -433,6 +634,99 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
             </div>
           </CardContent>
         </Card>
+
+        {/* Jobs per User Chart */}
+        {jobsByUser && jobsByUser.length > 0 && (
+          <Card className="w-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Jobs per User</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[220px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={jobsByUser.slice(0, 10)}> {/* Limit to top 10 users */}
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="username" 
+                      tick={{ fontSize: 12 }} 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      formatter={(value: number, name: string) => [
+                        value,
+                        name === 'total' ? 'Total Jobs' : 
+                        name === 'completed' ? 'Completed' :
+                        name === 'pending' ? 'Pending' :
+                        name === 'in_progress' ? 'In Progress' :
+                        name === 'waiting_sparepart' ? 'Waiting Parts' :
+                        name === 'cancelled' ? 'Cancelled' : name
+                      ]}
+                    />
+                    <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={12} />
+                    <Bar dataKey="total" fill="#8884d8" name="Total Jobs" />
+                    <Bar dataKey="completed" stackId="a" fill={STATUS_COLORS.completed} />
+                    <Bar dataKey="pending" stackId="a" fill={STATUS_COLORS.pending} />
+                    <Bar dataKey="waiting_sparepart" stackId="a" fill={STATUS_COLORS.waiting_sparepart} name="Waiting" />
+                    <Bar dataKey="in_progress" stackId="a" fill={STATUS_COLORS.in_progress} />
+                    <Bar dataKey="cancelled" stackId="a" fill={STATUS_COLORS.cancelled} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Jobs per User Table */}
+        {jobsByUser && jobsByUser.length > 0 && (
+          <Card className="w-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Jobs per User - Detailed View</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 px-3 font-medium text-gray-700">User</th>
+                      <th className="text-center py-2 px-3 font-medium text-gray-700">Total</th>
+                      <th className="text-center py-2 px-3 font-medium text-gray-700">Completed</th>
+                      <th className="text-center py-2 px-3 font-medium text-gray-700">Pending</th>
+                      <th className="text-center py-2 px-3 font-medium text-gray-700">In Progress</th>
+                      <th className="text-center py-2 px-3 font-medium text-gray-700">Waiting Parts</th>
+                      <th className="text-center py-2 px-3 font-medium text-gray-700">Cancelled</th>
+                      <th className="text-center py-2 px-3 font-medium text-gray-700">Completion Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jobsByUser.map((userData, index) => (
+                      <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="py-2 px-3 font-medium text-gray-900">{userData.username}</td>
+                        <td className="py-2 px-3 text-center text-gray-700">{userData.total}</td>
+                        <td className="py-2 px-3 text-center text-green-600">{userData.completed}</td>
+                        <td className="py-2 px-3 text-center text-yellow-600">{userData.pending}</td>
+                        <td className="py-2 px-3 text-center text-blue-600">{userData.in_progress}</td>
+                        <td className="py-2 px-3 text-center text-purple-600">{userData.waiting_sparepart}</td>
+                        <td className="py-2 px-3 text-center text-red-600">{userData.cancelled}</td>
+                        <td className="py-2 px-3 text-center">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            parseFloat(userData.completionRate) >= 80 ? 'bg-green-100 text-green-800' :
+                            parseFloat(userData.completionRate) >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {userData.completionRate}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Summary Statistics - Memoized and optimized */}
         <Card className="w-full">

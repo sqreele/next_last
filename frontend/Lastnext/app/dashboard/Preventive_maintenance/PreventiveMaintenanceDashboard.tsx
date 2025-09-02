@@ -596,7 +596,7 @@ function JobCard({ job }: { job: Job }) {
 
   // Format room names if available
   const roomNames = job.rooms && job.rooms.length > 0
-    ? job.rooms.map(room => room.name).join(', ')
+    ? job.rooms.map(room => `${room.name}${room.room_type ? ` (${room.room_type})` : ''}`).join(', ')
     : 'No room specified';
 
   return (

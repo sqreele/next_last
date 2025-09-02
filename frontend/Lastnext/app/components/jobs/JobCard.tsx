@@ -349,7 +349,7 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
               <div className="flex items-center gap-1 text-xs text-gray-600">
                 <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
                 <span className="truncate max-w-full">
-                  {job.rooms?.[0]?.name || 'N/A'} - {getPropertyName()}
+                  {job.rooms?.[0]?.name || 'N/A'}{job.rooms?.[0]?.room_type ? ` (${job.rooms[0].room_type})` : ''} - {getPropertyName()}
                 </span>
               </div>
             </div>

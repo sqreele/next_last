@@ -97,7 +97,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   tableCol: {
-    width: '25%',
+    width: '16.67%', // 100% / 6 columns for jobs by user table
+    borderStyle: 'solid',
+    borderWidth: 1,
+    borderLeftWidth: 0,
+    borderTopWidth: 0,
+    borderColor: '#e5e7eb',
+  },
+  tableColQuarter: {
+    width: '25%', // For 4-column tables like jobs by month
     borderStyle: 'solid',
     borderWidth: 1,
     borderLeftWidth: 0,
@@ -201,6 +209,16 @@ interface ChartDashboardPDFProps {
     in_progress: number;
     cancelled: number;
   }>;
+  jobsByUser?: Array<{
+    username: string;
+    total: number;
+    completed: number;
+    pending: number;
+    in_progress: number;
+    waiting_sparepart: number;
+    cancelled: number;
+    completionRate: string;
+  }>;
 }
 
 const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
@@ -209,6 +227,7 @@ const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
   propertyName,
   jobStats,
   jobsByMonth,
+  jobsByUser = [],
 }) => {
   const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -434,31 +453,31 @@ const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
           <Text style={styles.sectionTitle}>Jobs by Status</Text>
           <View style={styles.table}>
             <View style={styles.tableRow}>
-              <View style={[styles.tableCol, styles.tableHeader]}>
+              <View style={[styles.tableColQuarter, styles.tableHeader]}>
                 <Text style={styles.tableCell}>Status</Text>
               </View>
-              <View style={[styles.tableCol, styles.tableHeader]}>
+              <View style={[styles.tableColQuarter, styles.tableHeader]}>
                 <Text style={styles.tableCell}>Count</Text>
               </View>
-              <View style={[styles.tableCol, styles.tableHeader]}>
+              <View style={[styles.tableColQuarter, styles.tableHeader]}>
                 <Text style={styles.tableCell}>Percentage</Text>
               </View>
-              <View style={[styles.tableCol, styles.tableHeader]}>
+              <View style={[styles.tableColQuarter, styles.tableHeader]}>
                 <Text style={styles.tableCell}>Color</Text>
               </View>
             </View>
             {jobStats.map((stat, index) => (
               <View key={index} style={styles.tableRow}>
-                <View style={styles.tableCol}>
+                <View style={styles.tableColQuarter}>
                   <Text style={styles.tableCell}>{stat.name}</Text>
                 </View>
-                <View style={styles.tableCol}>
+                <View style={styles.tableColQuarter}>
                   <Text style={styles.tableCell}>{stat.value}</Text>
                 </View>
-                <View style={styles.tableCol}>
+                <View style={styles.tableColQuarter}>
                   <Text style={styles.tableCell}>{stat.percentage}%</Text>
                 </View>
-                <View style={styles.tableCol}>
+                <View style={styles.tableColQuarter}>
                   <Text style={styles.tableCell}>■</Text>
                 </View>
               </View>
@@ -471,37 +490,88 @@ const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
           <Text style={styles.sectionTitle}>Jobs by Month (Last 12 Months)</Text>
           <View style={styles.table}>
             <View style={styles.tableRow}>
-              <View style={[styles.tableCol, styles.tableHeader]}>
+              <View style={[styles.tableColQuarter, styles.tableHeader]}>
                 <Text style={styles.tableCell}>Month</Text>
               </View>
-              <View style={[styles.tableCol, styles.tableHeader]}>
+              <View style={[styles.tableColQuarter, styles.tableHeader]}>
                 <Text style={styles.tableCell}>Total</Text>
               </View>
-              <View style={[styles.tableCol, styles.tableHeader]}>
+              <View style={[styles.tableColQuarter, styles.tableHeader]}>
                 <Text style={styles.tableCell}>Completed</Text>
               </View>
-              <View style={[styles.tableCol, styles.tableHeader]}>
+              <View style={[styles.tableColQuarter, styles.tableHeader]}>
                 <Text style={styles.tableCell}>Pending</Text>
               </View>
             </View>
             {jobsByMonth.slice(-12).map((monthData, index) => (
               <View key={index} style={styles.tableRow}>
-                <View style={styles.tableCol}>
+                <View style={styles.tableColQuarter}>
                   <Text style={styles.tableCell}>{monthData.month}</Text>
                 </View>
-                <View style={styles.tableCol}>
+                <View style={styles.tableColQuarter}>
                   <Text style={styles.tableCell}>{monthData.total}</Text>
                 </View>
-                <View style={styles.tableCol}>
+                <View style={styles.tableColQuarter}>
                   <Text style={styles.tableCell}>{monthData.completed}</Text>
                 </View>
-                <View style={styles.tableCol}>
+                <View style={styles.tableColQuarter}>
                   <Text style={styles.tableCell}>{monthData.pending}</Text>
                 </View>
               </View>
             ))}
           </View>
         </View>
+
+        {/* Jobs by User */}
+        {jobsByUser && jobsByUser.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Jobs by User</Text>
+            <View style={styles.table}>
+              <View style={styles.tableRow}>
+                <View style={[styles.tableCol, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>User</Text>
+                </View>
+                <View style={[styles.tableCol, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Total</Text>
+                </View>
+                <View style={[styles.tableCol, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Completed</Text>
+                </View>
+                <View style={[styles.tableCol, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Pending</Text>
+                </View>
+                <View style={[styles.tableCol, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>In Progress</Text>
+                </View>
+                <View style={[styles.tableCol, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Completion Rate</Text>
+                </View>
+              </View>
+              {jobsByUser.map((userData, index) => (
+                <View key={index} style={styles.tableRow}>
+                  <View style={styles.tableCol}>
+                    <Text style={styles.tableCell}>{userData.username}</Text>
+                  </View>
+                  <View style={styles.tableCol}>
+                    <Text style={styles.tableCell}>{userData.total}</Text>
+                  </View>
+                  <View style={styles.tableCol}>
+                    <Text style={styles.tableCell}>{userData.completed}</Text>
+                  </View>
+                  <View style={styles.tableCol}>
+                    <Text style={styles.tableCell}>{userData.pending}</Text>
+                  </View>
+                  <View style={styles.tableCol}>
+                    <Text style={styles.tableCell}>{userData.in_progress}</Text>
+                  </View>
+                  <View style={styles.tableCol}>
+                    <Text style={styles.tableCell}>{userData.completionRate}%</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Additional Information */}
         <View style={styles.section}>

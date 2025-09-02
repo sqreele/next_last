@@ -119,6 +119,7 @@ class JobAdminForm(forms.ModelForm):
         created_at = cleaned_data.get('created_at')
         updated_at = cleaned_data.get('updated_at')
         completed_at = cleaned_data.get('completed_at')
+        status = cleaned_data.get('status')
         
         # Validate that created_at is not in the future
         if created_at and created_at > timezone.now():
@@ -132,8 +133,8 @@ class JobAdminForm(forms.ModelForm):
         if updated_at and created_at and updated_at < created_at:
             raise ValidationError("Updated date cannot be before created date")
         
-        # Validate that completed_at is not in the future (unless job is completed)
-        if completed_at and completed_at > timezone.now():
+        # Validate that completed_at is not in the future when job is completed
+        if status == 'completed' and completed_at and completed_at > timezone.now():
             raise ValidationError("Completed date cannot be in the future")
         
         return cleaned_data

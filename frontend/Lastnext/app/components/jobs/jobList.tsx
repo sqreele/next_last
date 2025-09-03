@@ -22,9 +22,10 @@ interface JobListProps {
   selectedRoom?: string | null;
   onRoomFilter?: (roomId: string | null) => void;
   viewMode?: 'grid' | 'list';
+  onRefresh?: () => Promise<void> | void;
 }
 
-export default function JobList({ jobs, filter, properties, selectedRoom, onRoomFilter, viewMode = 'grid' }: JobListProps) {
+export default function JobList({ jobs, filter, properties, selectedRoom, onRoomFilter, viewMode = 'grid', onRefresh }: JobListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("Newest first");
@@ -240,9 +241,15 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     setTimeout(() => setIsLoading(false), 300);
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsLoading(true);
-    setTimeout(() => setIsLoading(false), 300);
+    try {
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } finally {
+      setTimeout(() => setIsLoading(false), 300);
+    }
   };
 
   if (sortedJobs.length === 0 && !isLoading) {

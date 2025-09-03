@@ -32,6 +32,7 @@ import { Download } from "lucide-react";
 import { generatePdfWithRetry, downloadPdf } from "@/app/lib/pdfUtils";
 import { generatePdfBlob } from "@/app/lib/pdfRenderer";
 import ChartDashboardPDF from "@/app/components/document/ChartDashboardPDF";
+import html2canvas from "html2canvas";
 
 interface PropertyJobsDashboardProps {
   initialJobs?: Job[];
@@ -50,6 +51,10 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [chartImages, setChartImages] = useState<{
+    pieChart?: string;
+    barChart?: string;
+  }>({});
 
   // Memoize the current property ID to reduce unnecessary re-renders
   const effectiveProperty = useMemo(() => {
@@ -101,6 +106,55 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     }
   }, [initialJobs, jobs, setJobs]);
 
+  // Function to capture chart as image
+  const captureChartAsImage = async (chartId: string): Promise<string | null> => {
+    try {
+      const chartElement = document.getElementById(chartId);
+      if (!chartElement) {
+        console.warn(`Chart element with id "${chartId}" not found`);
+        return null;
+      }
+
+      console.log(`Capturing chart: ${chartId}`, {
+        element: chartElement,
+        width: chartElement.offsetWidth,
+        height: chartElement.offsetHeight,
+        hasContent: chartElement.innerHTML.length > 0
+      });
+
+      // Wait longer for the chart to fully render
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const canvas = await html2canvas(chartElement, {
+        scale: 2, // Reduced scale for better compatibility
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false, // Disable logging to reduce noise
+        width: chartElement.offsetWidth,
+        height: chartElement.offsetHeight,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: chartElement.offsetWidth,
+        windowHeight: chartElement.offsetHeight,
+        foreignObjectRendering: false,
+        removeContainer: true,
+        imageTimeout: 10000,
+      });
+
+      console.log(`Chart captured: ${chartId}`, {
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height,
+        hasContent: canvas.width > 0 && canvas.height > 0
+      });
+
+      return canvas.toDataURL('image/png', 0.9); // Slightly reduced quality for better compatibility
+    } catch (error) {
+      console.error(`Error capturing chart ${chartId}:`, error);
+      return null;
+    }
+  };
+
   // PDF Export function
   const handleExportPDF = async () => {
     if (!filteredJobs.length) {
@@ -111,11 +165,37 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     try {
       setIsGeneratingPDF(true);
       
+      // Capture charts as images
+      console.log('Capturing charts as images...');
+      const [pieChartImage, barChartImage, topicChartImage, roomChartImage] = await Promise.all([
+        captureChartAsImage('pie-chart-container'),
+        captureChartAsImage('bar-chart-container'),
+        captureChartAsImage('topic-chart-container'),
+        captureChartAsImage('room-chart-container')
+      ]);
+
+      console.log('Chart images captured:', { 
+        pieChartImage: !!pieChartImage, 
+        barChartImage: !!barChartImage,
+        topicChartImage: !!topicChartImage,
+        roomChartImage: !!roomChartImage,
+        pieChartLength: pieChartImage?.length || 0,
+        barChartLength: barChartImage?.length || 0,
+        topicChartLength: topicChartImage?.length || 0,
+        roomChartLength: roomChartImage?.length || 0
+      });
+
+      // If chart images are too small or empty, don't use them
+      const usePieChartImage = pieChartImage && pieChartImage.length > 1000;
+      const useBarChartImage = barChartImage && barChartImage.length > 1000;
+      const useTopicChartImage = topicChartImage && topicChartImage.length > 1000;
+      const useRoomChartImage = roomChartImage && roomChartImage.length > 1000;
+      
       // Get current property name
       const currentProperty = userProperties.find(p => p.property_id === effectiveProperty);
       const propertyName = currentProperty?.name || `Property ${effectiveProperty}`;
       
-      // Create PDF document
+      // Create PDF document with chart images
       const pdfDocument = (
         <ChartDashboardPDF
           jobs={filteredJobs}
@@ -124,12 +204,30 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           jobStats={jobStats}
           jobsByMonth={jobsByMonth}
           jobsByUser={jobsByUser}
+          chartImages={{
+            pieChart: usePieChartImage ? pieChartImage : null,
+            barChart: useBarChartImage ? barChartImage : null,
+            topicChart: useTopicChartImage ? topicChartImage : null,
+            roomChart: useRoomChartImage ? roomChartImage : null
+          }}
+          jobsByTopic={jobsByTopic}
+          jobsByRoom={jobsByRoom}
         />
       );
       
       // Debug: Log the jobStats data being passed to PDF
       console.log('PDF jobStats data:', jobStats);
       console.log('STATUS_COLORS:', STATUS_COLORS);
+      console.log('Filtered jobs count:', filteredJobs.length);
+      console.log('Jobs by month data:', jobsByMonth);
+      console.log('Jobs by user data:', jobsByUser);
+      
+      // Debug: Check if we have valid chart data
+      const validJobStats = jobStats.filter(stat => {
+        const percentage = parseFloat(stat.percentage);
+        return percentage > 0 && stat.value > 0;
+      });
+      console.log('Valid job stats for charts:', validJobStats);
       
       // Generate PDF blob
       const blob = await generatePdfWithRetry(async () => {
@@ -214,7 +312,10 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // Memoized job statistics
   const jobStats = useMemo(() => {
     const total = filteredJobs.length;
-    if (total === 0) return [];
+    if (total === 0) {
+      console.log('No filtered jobs available for chart');
+      return [];
+    }
     
     // Use a simple accumulator approach for performance
     const statusCounts = {} as Record<JobStatus, number>;
@@ -235,8 +336,14 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     // Debug: Log the generated jobStats
     console.log('Generated jobStats:', result);
     console.log('STATUS_COLORS used:', STATUS_COLORS);
+    console.log('Total jobs:', total);
+    console.log('Status counts:', statusCounts);
     
-    return result;
+    // Filter out zero values for chart display
+    const validStats = result.filter(stat => stat.value > 0);
+    console.log('Valid stats for chart:', validStats);
+    
+    return validStats;
   }, [filteredJobs]);
 
   // Memoized job monthly data with optimization for large datasets
@@ -487,6 +594,103 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     return sortedResult;
   }, [filteredJobs]);
 
+  // Memoized jobs by topic data
+  const jobsByTopic = useMemo(() => {
+    if (filteredJobs.length === 0) return [];
+
+    console.log('🔍 DEBUG: Processing jobs for topic chart...');
+    console.log('🔍 Total filtered jobs:', filteredJobs.length);
+    
+    // Debug: Check first few jobs for topic structure
+    if (filteredJobs.length > 0) {
+      console.log('🔍 Sample job topics:', filteredJobs.slice(0, 3).map(job => ({
+        id: job.id,
+        topics: job.topics,
+        topicsType: typeof job.topics,
+        topicsLength: job.topics?.length
+      })));
+    }
+
+    // Collect all topics from jobs
+    const topicCounts: Record<string, number> = {};
+    
+    for (const job of filteredJobs) {
+      if (job.topics && job.topics.length > 0) {
+        for (const topic of job.topics) {
+          const topicTitle = topic.title || 'Unknown Topic';
+          topicCounts[topicTitle] = (topicCounts[topicTitle] || 0) + 1;
+        }
+      } else {
+        // Jobs without topics
+        topicCounts['No Topic'] = (topicCounts['No Topic'] || 0) + 1;
+      }
+    }
+
+    console.log('🔍 Topic counts:', topicCounts);
+
+    // Convert to array and sort by count
+    const result = Object.entries(topicCounts)
+      .map(([topic, count]) => ({
+        topic,
+        count,
+        percentage: filteredJobs.length > 0 ? ((count / filteredJobs.length) * 100).toFixed(1) : '0'
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    console.log('📊 Jobs by topic result:', result);
+    console.log('📊 Jobs by topic result length:', result.length);
+    return result;
+  }, [filteredJobs]);
+
+  // Memoized jobs by room data
+  const jobsByRoom = useMemo(() => {
+    if (filteredJobs.length === 0) return [];
+
+    console.log('🔍 DEBUG: Processing jobs for room chart...');
+    console.log('🔍 Total filtered jobs:', filteredJobs.length);
+    
+    // Debug: Check first few jobs for room structure
+    if (filteredJobs.length > 0) {
+      console.log('🔍 Sample job rooms:', filteredJobs.slice(0, 3).map(job => ({
+        id: job.id,
+        rooms: job.rooms,
+        roomsType: typeof job.rooms,
+        roomsLength: job.rooms?.length
+      })));
+    }
+
+    // Collect all rooms from jobs
+    const roomCounts: Record<string, number> = {};
+    
+    for (const job of filteredJobs) {
+      if (job.rooms && job.rooms.length > 0) {
+        for (const room of job.rooms) {
+          const roomName = room.name || `Room ${room.room_id}` || 'Unknown Room';
+          roomCounts[roomName] = (roomCounts[roomName] || 0) + 1;
+        }
+      } else {
+        // Jobs without rooms
+        roomCounts['No Room'] = (roomCounts['No Room'] || 0) + 1;
+      }
+    }
+
+    console.log('🔍 Room counts:', roomCounts);
+
+    // Convert to array and sort by count, take top 10
+    const result = Object.entries(roomCounts)
+      .map(([room, count]) => ({
+        room,
+        count,
+        percentage: filteredJobs.length > 0 ? ((count / filteredJobs.length) * 100).toFixed(1) : '0'
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10 rooms
+
+    console.log('📊 Jobs by room result:', result);
+    console.log('📊 Jobs by room result length:', result.length);
+    return result;
+  }, [filteredJobs]);
+
   // Loading state
   if (status === "loading" || isLoading) {
     return (
@@ -582,29 +786,39 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
             <CardTitle className="text-base sm:text-lg">Jobs by Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[260px] sm:h-[240px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={jobStats}
-                    innerRadius={50}
-                    outerRadius={90}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {jobStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value: number, name: string, props: any) => [
-                      `${value} (${props.payload.percentage}%)`,
-                      name,
-                    ]}
-                  />
-                  <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={12} wrapperStyle={{ fontSize: 12 }} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div id="pie-chart-container" className="h-[400px] w-full flex flex-col items-center justify-center">
+              <div className="w-[350px] h-[350px] flex-shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={jobStats}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={80}
+                      outerRadius={140}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {jobStats.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number, name: string, props: any) => [
+                        `${value} (${props.payload.percentage}%)`,
+                        name,
+                      ]}
+                    />
+                    <Legend 
+                      layout="horizontal" 
+                      align="center" 
+                      verticalAlign="bottom" 
+                      iconSize={16} 
+                      wrapperStyle={{ fontSize: 14, paddingTop: 15 }} 
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -615,7 +829,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
             <CardTitle className="text-base sm:text-lg">Jobs by Month</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[280px] sm:h-[240px]">
+            <div id="bar-chart-container" className="h-[350px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={jobsByMonth.slice(-12)}> {/* Limit to last 12 months */}
                   <CartesianGrid strokeDasharray="3 3" />
@@ -632,6 +846,143 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                 </BarChart>
               </ResponsiveContainer>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Jobs by Topic Chart */}
+        {(() => {
+          console.log('🔍 Chart render check - jobsByTopic:', jobsByTopic);
+          console.log('🔍 Chart render check - jobsByTopic length:', jobsByTopic?.length);
+          console.log('🔍 Chart render check - condition result:', jobsByTopic && jobsByTopic.length > 0);
+          return null;
+        })()}
+        {jobsByTopic && jobsByTopic.length > 0 && (
+          <Card className="w-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base sm:text-lg">Jobs by Topic</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div id="topic-chart-container" className="h-[350px] w-full flex flex-col items-center justify-center">
+                <div className="w-[350px] h-[350px] flex-shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={jobsByTopic.slice(0, 10)} layout="horizontal">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" tick={{ fontSize: 10 }} />
+                      <YAxis 
+                        dataKey="topic" 
+                        type="category" 
+                        tick={{ fontSize: 10 }} 
+                        width={120}
+                      />
+                      <Tooltip 
+                        formatter={(value: number, name: string, props: any) => [
+                          `${value} jobs (${props.payload.percentage}%)`,
+                          'Count'
+                        ]}
+                      />
+                      <Legend />
+                      <Bar dataKey="count" fill="#8884d8" name="Job Count" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Debug: Always show topic chart for debugging */}
+        <Card className="w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Jobs by Topic (Debug)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 p-4 bg-gray-100 rounded">
+              <p className="text-sm text-gray-600">Debug Info:</p>
+              <ul className="text-sm text-gray-600 mt-2 list-disc list-inside">
+                <li>jobsByTopic exists: {jobsByTopic ? 'Yes' : 'No'}</li>
+                <li>jobsByTopic length: {jobsByTopic?.length || 0}</li>
+                <li>Total filtered jobs: {filteredJobs.length}</li>
+                <li>Should show chart: {jobsByTopic && jobsByTopic.length > 0 ? 'Yes' : 'No'}</li>
+              </ul>
+            </div>
+            {jobsByTopic && jobsByTopic.length > 0 ? (
+              <div id="topic-chart-container" className="h-[350px] w-full flex flex-col items-center justify-center">
+                <div className="w-[350px] h-[350px] flex-shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={jobsByTopic.slice(0, 10)} layout="horizontal">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" tick={{ fontSize: 10 }} />
+                      <YAxis 
+                        dataKey="topic" 
+                        type="category" 
+                        tick={{ fontSize: 10 }} 
+                        width={120}
+                      />
+                      <Tooltip 
+                        formatter={(value: number, name: string, props: any) => [
+                          `${value} jobs (${props.payload.percentage}%)`,
+                          'Count'
+                        ]}
+                      />
+                      <Legend />
+                      <Bar dataKey="count" fill="#8884d8" name="Job Count" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 bg-yellow-100 rounded">
+                <p className="text-sm text-yellow-800">No topic data available to display chart</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Jobs by Room Chart */}
+        <Card className="w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Top 10 Rooms by Job Count</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 p-4 bg-gray-100 rounded">
+              <p className="text-sm text-gray-600">Debug Info:</p>
+              <ul className="text-sm text-gray-600 mt-2 list-disc list-inside">
+                <li>jobsByRoom exists: {jobsByRoom ? 'Yes' : 'No'}</li>
+                <li>jobsByRoom length: {jobsByRoom?.length || 0}</li>
+                <li>Total filtered jobs: {filteredJobs.length}</li>
+                <li>Should show chart: {jobsByRoom && jobsByRoom.length > 0 ? 'Yes' : 'No'}</li>
+              </ul>
+            </div>
+            {jobsByRoom && jobsByRoom.length > 0 ? (
+              <div id="room-chart-container" className="h-[350px] w-full flex flex-col items-center justify-center">
+                <div className="w-[350px] h-[350px] flex-shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={jobsByRoom} layout="horizontal">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" tick={{ fontSize: 10 }} />
+                      <YAxis 
+                        dataKey="room" 
+                        type="category" 
+                        tick={{ fontSize: 10 }} 
+                        width={120}
+                      />
+                      <Tooltip 
+                        formatter={(value: number, name: string, props: any) => [
+                          `${value} jobs (${props.payload.percentage}%)`,
+                          'Count'
+                        ]}
+                      />
+                      <Legend />
+                      <Bar dataKey="count" fill="#82ca9d" name="Job Count" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 bg-yellow-100 rounded">
+                <p className="text-sm text-yellow-800">No room data available to display chart</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

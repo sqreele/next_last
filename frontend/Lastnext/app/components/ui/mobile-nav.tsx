@@ -21,7 +21,7 @@ const navigationItems = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'My Jobs', href: '/dashboard/myJobs', icon: ShoppingCart },
   { name: 'Analytics', href: '/dashboard/chartdashboard', icon: LineChart },
-  { name: 'orthe', href: '/dashboard/jobs-report', icon: FileText },
+  { name: 'Jobs Report', href: '/dashboard/jobs-report', icon: FileText },
 ];
 
 export function MobileNav({ className }: MobileNavProps) {

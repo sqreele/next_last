@@ -2108,3 +2108,40 @@ def update_user_profile(request):
             {'error': 'Failed to update user profile'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+class NotifieView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Send a simple notification email.
+
+        Expected JSON body:
+        - to/email: recipient email (required)
+        - subject: email subject (optional, defaults to "Notification")
+        - message/body: email body (required)
+        - from: optional from email (defaults to settings.DEFAULT_FROM_EMAIL)
+        """
+        data = request.data or {}
+        to_email = data.get('to') or data.get('email')
+        subject = data.get('subject') or 'Notification'
+        message = data.get('message') or data.get('body')
+        from_email = data.get('from') or getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@pcms.live')
+
+        if not to_email or not message:
+            return Response(
+                {'detail': 'to/email and message/body are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            from .email_utils import send_email as send_via_gmail
+            sent = send_via_gmail(to_email, subject, message, from_email)
+            if sent:
+                logger.info(f"Notification email sent to {to_email}")
+                return Response({'success': True}, status=status.HTTP_200_OK)
+            logger.error(f"Failed to send notification email to {to_email}")
+            return Response({'success': False}, status=status.HTTP_502_BAD_GATEWAY)
+        except Exception as exc:
+            logger.exception(f"Error while sending notification email to {to_email}: {exc}")
+            return Response({'success': False, 'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

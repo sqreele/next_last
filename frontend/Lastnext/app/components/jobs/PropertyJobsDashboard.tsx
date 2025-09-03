@@ -546,9 +546,9 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
 
   // Main dashboard view with optimized render performance
   return (
-    <div className="space-y-4 px-2">
+    <div className="space-y-4 px-2 sm:px-3 md:px-0">
       {/* PDF Export Button */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Chart Dashboard</h2>
           <p className="text-gray-600">
@@ -558,7 +558,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         <Button
           onClick={handleExportPDF}
           disabled={isGeneratingPDF || filteredJobs.length === 0}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
           variant="outline"
         >
           {isGeneratingPDF ? (
@@ -579,16 +579,16 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {/* Jobs by Status Chart */}
         <Card className="w-full">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Jobs by Status</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Jobs by Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[220px]">
+            <div className="h-[260px] sm:h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={jobStats}
-                    innerRadius={40}
-                    outerRadius={70}
+                    innerRadius={50}
+                    outerRadius={90}
                     paddingAngle={5}
                     dataKey="value"
                   >
@@ -602,7 +602,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                       name,
                     ]}
                   />
-                  <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={12} />
+                  <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={12} wrapperStyle={{ fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -612,17 +612,17 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {/* Jobs by Month Chart - with limit to prevent rendering too many bars */}
         <Card className="w-full">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Jobs by Month</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Jobs by Month</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[220px]">
+            <div className="h-[280px] sm:h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={jobsByMonth.slice(-12)}> {/* Limit to last 12 months */}
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} interval={0} angle={-30} textAnchor="end" height={60} />
+                  <YAxis tick={{ fontSize: 10 }} width={30} />
                   <Tooltip />
-                  <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={12} />
+                  <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={12} wrapperStyle={{ fontSize: 12 }} />
                   <Bar dataKey="total" fill="#8884d8" name="Total Jobs" />
                   <Bar dataKey="completed" stackId="a" fill={STATUS_COLORS.completed} />
                   <Bar dataKey="pending" stackId="a" fill={STATUS_COLORS.pending} />
@@ -639,21 +639,21 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {jobsByUser && jobsByUser.length > 0 && (
           <Card className="w-full">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Jobs per User</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Jobs per User</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[220px]">
+              <div className="h-[300px] sm:h-[240px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={jobsByUser.slice(0, 10)}> {/* Limit to top 10 users */}
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="username" 
-                      tick={{ fontSize: 12 }} 
+                      tick={{ fontSize: 10 }} 
                       angle={-45}
                       textAnchor="end"
-                      height={80}
+                      height={90}
                     />
-                    <YAxis tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 10 }} width={30} />
                     <Tooltip 
                       formatter={(value: number, name: string) => [
                         value,
@@ -665,7 +665,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                         name === 'cancelled' ? 'Cancelled' : name
                       ]}
                     />
-                    <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={12} />
+                    <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={12} wrapperStyle={{ fontSize: 12 }} />
                     <Bar dataKey="total" fill="#8884d8" name="Total Jobs" />
                     <Bar dataKey="completed" stackId="a" fill={STATUS_COLORS.completed} />
                     <Bar dataKey="pending" stackId="a" fill={STATUS_COLORS.pending} />
@@ -683,34 +683,34 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {jobsByUser && jobsByUser.length > 0 && (
           <Card className="w-full">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Jobs per User - Detailed View</CardTitle>
+              <CardTitle className="text-base sm:text-lg">Jobs per User - Detailed View</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="overflow-x-auto -mx-2 sm:mx-0">
+                <table className="w-full text-xs sm:text-sm">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 px-3 font-medium text-gray-700">User</th>
-                      <th className="text-center py-2 px-3 font-medium text-gray-700">Total</th>
-                      <th className="text-center py-2 px-3 font-medium text-gray-700">Completed</th>
-                      <th className="text-center py-2 px-3 font-medium text-gray-700">Pending</th>
-                      <th className="text-center py-2 px-3 font-medium text-gray-700">In Progress</th>
-                      <th className="text-center py-2 px-3 font-medium text-gray-700">Waiting Parts</th>
-                      <th className="text-center py-2 px-3 font-medium text-gray-700">Cancelled</th>
-                      <th className="text-center py-2 px-3 font-medium text-gray-700">Completion Rate</th>
+                      <th className="text-left py-2 px-2 sm:px-3 font-medium text-gray-700">User</th>
+                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Total</th>
+                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Completed</th>
+                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Pending</th>
+                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">In Progress</th>
+                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Waiting Parts</th>
+                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Cancelled</th>
+                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Completion Rate</th>
                     </tr>
                   </thead>
                   <tbody>
                     {jobsByUser.map((userData, index) => (
                       <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-2 px-3 font-medium text-gray-900">{userData.username}</td>
-                        <td className="py-2 px-3 text-center text-gray-700">{userData.total}</td>
-                        <td className="py-2 px-3 text-center text-green-600">{userData.completed}</td>
-                        <td className="py-2 px-3 text-center text-yellow-600">{userData.pending}</td>
-                        <td className="py-2 px-3 text-center text-blue-600">{userData.in_progress}</td>
-                        <td className="py-2 px-3 text-center text-purple-600">{userData.waiting_sparepart}</td>
-                        <td className="py-2 px-3 text-center text-red-600">{userData.cancelled}</td>
-                        <td className="py-2 px-3 text-center">
+                        <td className="py-2 px-2 sm:px-3 font-medium text-gray-900">{userData.username}</td>
+                        <td className="py-2 px-2 sm:px-3 text-center text-gray-700">{userData.total}</td>
+                        <td className="py-2 px-2 sm:px-3 text-center text-green-600">{userData.completed}</td>
+                        <td className="py-2 px-2 sm:px-3 text-center text-yellow-600">{userData.pending}</td>
+                        <td className="py-2 px-2 sm:px-3 text-center text-blue-600">{userData.in_progress}</td>
+                        <td className="py-2 px-2 sm:px-3 text-center text-purple-600">{userData.waiting_sparepart}</td>
+                        <td className="py-2 px-2 sm:px-3 text-center text-red-600">{userData.cancelled}</td>
+                        <td className="py-2 px-2 sm:px-3 text-center">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             parseFloat(userData.completionRate) >= 80 ? 'bg-green-100 text-green-800' :
                             parseFloat(userData.completionRate) >= 60 ? 'bg-yellow-100 text-yellow-800' :
@@ -731,10 +731,10 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {/* Summary Statistics - Memoized and optimized */}
         <Card className="w-full">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Summary Statistics</CardTitle>
+            <CardTitle className="text-base sm:text-lg">Summary Statistics</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
               {[
                 { name: "Total Jobs", status: null },
                 ...(["pending", "in_progress", "completed", "waiting_sparepart", "cancelled"] as JobStatus[]).map(
@@ -753,13 +753,13 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                   : "100.0";
 
                 return (
-                  <div key={`stat-${index}`} className="p-4 rounded-lg bg-gray-50 w-full flex flex-col">
-                    <p className="text-sm text-gray-500 mb-1">{item.name}</p>
+                  <div key={`stat-${index}`} className="p-3 sm:p-4 rounded-lg bg-gray-50 w-full flex flex-col">
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1">{item.name}</p>
                     <div className="flex items-baseline">
-                      <p className="text-2xl font-semibold" style={{ color }}>
+                      <p className="text-xl sm:text-2xl font-semibold" style={{ color }}>
                         {statValue}
                       </p>
-                      <p className="text-sm ml-2 text-gray-500">{item.status && `(${percentage}%)`}</p>
+                      <p className="text-xs sm:text-sm ml-2 text-gray-500">{item.status && `(${percentage}%)`}</p>
                     </div>
                   </div>
                 );

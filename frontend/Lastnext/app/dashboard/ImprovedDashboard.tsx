@@ -340,7 +340,7 @@ export default function ImprovedDashboard() {
         {/* Enhanced Dashboard Header */}
         <DashboardHeader
           username={user?.username || 'User'}
-          onRefresh={refreshJobs}
+          onRefresh={() => refreshJobs()}
           onExport={exportJobs}
           onClearCache={clearCache}
           onToggleRealTime={handleRealTimeToggle}
@@ -463,6 +463,7 @@ export default function ImprovedDashboard() {
                     viewMode={viewMode}
                     selectedRoom={selectedRoom}
                     onRoomFilter={handleRoomFilter}
+                    onRefresh={refreshJobs}
                   />
                   
                   {/* Load More Button */}

@@ -1,6 +1,15 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Font, Svg, Rect, Circle } from '@react-pdf/renderer';
-import { Job, JobStatus, STATUS_COLORS } from '@/app/lib/types';
+import { Document, Page, Text, View, StyleSheet, Font, Svg, Rect, Circle, Image } from '@react-pdf/renderer';
+import { Job, JobStatus } from '@/app/lib/types';
+
+// Define consistent STATUS_COLORS for PDF generation
+const STATUS_COLORS: Record<JobStatus, string> = {
+  pending: '#FFA500',
+  waiting_sparepart: '#87CEEB',
+  completed: '#008000',
+  cancelled: '#FF0000',
+  in_progress: '#9B59B6',
+};
 
 // Define styles for the PDF
 const styles = StyleSheet.create({
@@ -219,6 +228,22 @@ interface ChartDashboardPDFProps {
     cancelled: number;
     completionRate: string;
   }>;
+  jobsByTopic?: Array<{
+    topic: string;
+    count: number;
+    percentage: string;
+  }>;
+  jobsByRoom?: Array<{
+    room: string;
+    count: number;
+    percentage: string;
+  }>;
+  chartImages?: {
+    pieChart?: string | null;
+    barChart?: string | null;
+    topicChart?: string | null;
+    roomChart?: string | null;
+  };
 }
 
 const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
@@ -228,6 +253,9 @@ const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
   jobStats,
   jobsByMonth,
   jobsByUser = [],
+  jobsByTopic = [],
+  jobsByRoom = [],
+  chartImages = {},
 }) => {
   const currentDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
@@ -291,81 +319,117 @@ const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Jobs by Status Chart</Text>
           
-          {/* Debug: Display color information as text */}
-          <View style={styles.section}>
-            <Text style={styles.chartTitle}>Debug: Colors Used</Text>
+          {/* Data Summary */}
+          <View style={{ marginBottom: 15, padding: 10, backgroundColor: '#f9fafb', borderRadius: 4 }}>
+            <Text style={{ fontSize: 10, color: '#374151', marginBottom: 5, fontWeight: 'bold' }}>
+              Chart Data Summary:
+            </Text>
             {jobStats.map((stat, index) => (
-              <Text key={index} style={styles.chartDescription}>
-                {stat.name}: {stat.value} ({stat.percentage}%) - Color: {stat.color || 'undefined'}
+              <Text key={index} style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>
+                {stat.name}: {stat.value} jobs ({stat.percentage}%) - Color: {stat.color}
               </Text>
             ))}
           </View>
           
           <View style={styles.chartContainer}>
-            {/* Pie Chart - Jobs by Status */}
-            <Svg style={styles.pieChart} viewBox="0 0 200 200">
-              {/* Create pie chart segments */}
-              {(() => {
-                const centerX = 100;
-                const centerY = 100;
-                const radius = 80;
-                let currentAngle = 0;
-                
-                // Define fallback colors if stat.color is undefined
-                const fallbackColors = ['#FFA500', '#87CEEB', '#008000', '#FF0000', '#9B59B6', '#FF6B6B', '#4ECDC4', '#45B7D1'];
-                
-                return jobStats.map((stat, index) => {
-                  const percentage = parseFloat(stat.percentage);
-                  if (percentage === 0) return null; // Skip segments with 0 value
-                  
-                  const angle = (percentage / 100) * 360;
-                  const endAngle = currentAngle + angle;
-                  
-                  // Use stat.color if available, otherwise use fallback
-                  const fillColor = stat.color || fallbackColors[index % fallbackColors.length];
-                  
-                  // Calculate arc coordinates for the pie segment
-                  const startAngleRad = (currentAngle * Math.PI) / 180;
-                  const endAngleRad = (endAngle * Math.PI) / 180;
-                  
-                  const startX = centerX + radius * Math.cos(startAngleRad);
-                  const startY = centerY + radius * Math.sin(startAngleRad);
-                  const endX = centerX + radius * Math.cos(endAngleRad);
-                  const endY = centerY + radius * Math.sin(endAngleRad);
-                  
-                  // Create arc path
-                  const largeArcFlag = angle > 180 ? 1 : 0;
-                  const path = [
-                    `M ${centerX} ${centerY}`,
-                    `L ${startX} ${startY}`,
-                    `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`,
-                    'Z'
-                  ].join(' ');
-                  
-                  currentAngle = endAngle;
-                  
-                  return (
-                    <path
-                      key={index}
-                      d={path}
-                      fill={fillColor}
-                      stroke="#ffffff"
-                      strokeWidth="2"
-                    />
-                  );
-                });
-              })()}
-            </Svg>
+            {/* Use captured pie chart image if available, otherwise show fallback SVG */}
+            {chartImages.pieChart ? (
+              <View style={{ alignItems: 'center', marginBottom: 15 }}>
+                <Image 
+                  src={chartImages.pieChart} 
+                  style={{
+                    width: 400,
+                    height: 400,
+                    objectFit: 'contain'
+                  }}
+                />
+              </View>
+            ) : (
+              <View style={{ alignItems: 'center', marginBottom: 15 }}>
+                {/* Fallback SVG pie chart */}
+                <Svg style={{ width: 350, height: 350 }} viewBox="0 0 350 350">
+                  {(() => {
+                    const centerX = 175;
+                    const centerY = 175;
+                    const radius = 140;
+                    let currentAngle = 0;
+                    
+                    const validStats = jobStats.filter(stat => {
+                      const percentage = parseFloat(stat.percentage);
+                      return percentage > 0 && stat.value > 0;
+                    });
+                    
+                    console.log('Fallback SVG - Valid stats:', validStats);
+                    
+                    if (validStats.length === 0) {
+                      return (
+                        <Text x={centerX} y={centerY} style={{ fontSize: 12, fill: '#6b7280', textAnchor: 'middle' }}>
+                          No data available
+                        </Text>
+                      );
+                    }
+                    
+                    return validStats.map((stat, index) => {
+                      const percentage = parseFloat(stat.percentage);
+                      const angle = (percentage / 100) * 360;
+                      const endAngle = currentAngle + angle;
+                      
+                      const statusKey = stat.name.toLowerCase().replace(/\s+/g, '_') as JobStatus;
+                      const fillColor = STATUS_COLORS[statusKey] || '#8884d8';
+                      
+                      console.log(`Fallback SVG - Segment ${index}:`, {
+                        name: stat.name,
+                        percentage,
+                        angle,
+                        fillColor,
+                        statusKey
+                      });
+                      
+                      const startAngleRad = (currentAngle * Math.PI) / 180;
+                      const endAngleRad = (endAngle * Math.PI) / 180;
+                      
+                      const startX = centerX + radius * Math.cos(startAngleRad);
+                      const startY = centerY + radius * Math.sin(startAngleRad);
+                      const endX = centerX + radius * Math.cos(endAngleRad);
+                      const endY = centerY + radius * Math.sin(endAngleRad);
+                      
+                      const largeArcFlag = angle > 180 ? 1 : 0;
+                      const path = [
+                        `M ${centerX} ${centerY}`,
+                        `L ${startX} ${startY}`,
+                        `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}`,
+                        'Z'
+                      ].join(' ');
+                      
+                      currentAngle = endAngle;
+                      
+                      return (
+                        <path
+                          key={`fallback-pie-${index}`}
+                          d={path}
+                          fill={fillColor}
+                          stroke="#ffffff"
+                          strokeWidth="2"
+                        />
+                      );
+                    });
+                  })()}
+                </Svg>
+              </View>
+            )}
             
             {/* Chart Legend */}
             <View style={styles.chartLegend}>
-              {jobStats.map((stat, index) => {
-                // Use stat.color if available, otherwise use fallback
-                const fallbackColors = ['#FFA500', '#87CEEB', '#008000', '#FF0000', '#9B59B6', '#FF6B6B', '#4ECDC4', '#45B7D1'];
-                const legendColor = stat.color || fallbackColors[index % fallbackColors.length];
+              {jobStats.filter(stat => {
+                const percentage = parseFloat(stat.percentage);
+                return percentage > 0 && stat.value > 0;
+              }).map((stat, index) => {
+                // Use the consistent STATUS_COLORS mapping
+                const statusKey = stat.name.toLowerCase().replace(/\s+/g, '_') as JobStatus;
+                const legendColor = STATUS_COLORS[statusKey] || '#8884d8';
                 
                 return (
-                  <View key={index} style={styles.legendItem}>
+                  <View key={`legend-${index}`} style={styles.legendItem}>
                     <View style={[styles.legendColor, { backgroundColor: legendColor }]} />
                     <Text style={styles.legendText}>
                       {stat.name}: {stat.value} ({stat.percentage}%)
@@ -381,62 +445,24 @@ const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Jobs by Month Chart</Text>
           <View style={styles.chartContainer}>
-            <Svg style={styles.barChart} viewBox="0 0 400 200">
-              {/* Y-axis */}
-              <line x1="50" y1="20" x2="50" y2="180" stroke="#e5e7eb" strokeWidth="1" />
-              {/* X-axis */}
-              <line x1="50" y1="180" x2="380" y2="180" stroke="#e5e7eb" strokeWidth="1" />
-              
-              {/* Y-axis labels */}
-              <Text x="30" y="25" style={{ fontSize: 8, fill: "#6b7280" }}>100</Text>
-              <Text x="30" y="65" style={{ fontSize: 8, fill: "#6b7280" }}>75</Text>
-              <Text x="30" y="105" style={{ fontSize: 8, fill: "#6b7280" }}>50</Text>
-              <Text x="30" y="145" style={{ fontSize: 8, fill: "#6b7280" }}>25</Text>
-              <Text x="30" y="185" style={{ fontSize: 8, fill: "#6b7280" }}>0</Text>
-              
-              {/* Bars for last 6 months */}
-              {jobsByMonth.slice(-6).map((monthData, index) => {
-                const barWidth = 40;
-                const barSpacing = 10;
-                const x = 60 + index * (barWidth + barSpacing);
-                const maxValue = Math.max(...jobsByMonth.map(m => m.total));
-                const barHeight = monthData.total > 0 ? (monthData.total / maxValue) * 140 : 0;
-                const y = 180 - barHeight;
-                
-                return (
-                  <View key={index}>
-                    {/* Bar */}
-                    <Rect
-                      x={x}
-                      y={y}
-                      width={barWidth}
-                      height={barHeight}
-                      fill="#8884d8"
-                      stroke="#ffffff"
-                      strokeWidth="1"
-                    />
-                    
-                    {/* Bar label */}
-                    <Text
-                      x={x + barWidth / 2}
-                      y="195"
-                      style={{ fontSize: 6, fill: "#374151" }}
-                    >
-                      {monthData.month.split(' ')[0]}
-                    </Text>
-                    
-                    {/* Value label */}
-                    <Text
-                      x={x + barWidth / 2}
-                      y={y - 5}
-                      style={{ fontSize: 8, fill: "#374151" }}
-                    >
-                      {monthData.total}
-                    </Text>
-                  </View>
-                );
-              })}
-            </Svg>
+            {/* Use captured bar chart image if available, otherwise show fallback */}
+            {chartImages.barChart ? (
+              <Image 
+                src={chartImages.barChart} 
+                style={{
+                  width: 500,
+                  height: 300,
+                  marginBottom: 15,
+                  alignSelf: 'center'
+                }}
+              />
+            ) : (
+              <View style={{ alignItems: 'center', marginBottom: 15 }}>
+                <Text style={{ fontSize: 12, color: '#6b7280' }}>
+                  Chart image not available
+                </Text>
+              </View>
+            )}
             
             {/* Chart Legend */}
             <View style={styles.chartLegend}>
@@ -447,6 +473,78 @@ const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
             </View>
           </View>
         </View>
+
+        {/* Jobs by Topic Chart */}
+        {jobsByTopic && jobsByTopic.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Jobs by Topic Chart</Text>
+            <View style={styles.chartContainer}>
+              {/* Use captured topic chart image if available, otherwise show fallback */}
+              {chartImages.topicChart ? (
+                <View style={{ alignItems: 'center', marginBottom: 15 }}>
+                  <Image 
+                    src={chartImages.topicChart} 
+                    style={{
+                      width: 500,
+                      height: 300,
+                      objectFit: 'contain'
+                    }}
+                  />
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center', marginBottom: 15 }}>
+                  <Text style={{ fontSize: 12, color: '#6b7280' }}>
+                    Topic chart image not available
+                  </Text>
+                </View>
+              )}
+              
+              {/* Chart Legend */}
+              <View style={styles.chartLegend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: '#8884d8' }]} />
+                  <Text style={styles.legendText}>Job Count by Topic</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Jobs by Room Chart */}
+        {jobsByRoom && jobsByRoom.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Top 10 Rooms by Job Count</Text>
+            <View style={styles.chartContainer}>
+              {/* Use captured room chart image if available, otherwise show fallback */}
+              {chartImages.roomChart ? (
+                <View style={{ alignItems: 'center', marginBottom: 15 }}>
+                  <Image 
+                    src={chartImages.roomChart} 
+                    style={{
+                      width: 500,
+                      height: 300,
+                      objectFit: 'contain'
+                    }}
+                  />
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center', marginBottom: 15 }}>
+                  <Text style={{ fontSize: 12, color: '#6b7280' }}>
+                    Room chart image not available
+                  </Text>
+                </View>
+              )}
+              
+              {/* Chart Legend */}
+              <View style={styles.chartLegend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: '#82ca9d' }]} />
+                  <Text style={styles.legendText}>Job Count by Room</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Jobs by Status */}
         <View style={styles.section}>
@@ -521,6 +619,84 @@ const ChartDashboardPDF: React.FC<ChartDashboardPDFProps> = ({
             ))}
           </View>
         </View>
+
+        {/* Jobs by Topic Table */}
+        {jobsByTopic && jobsByTopic.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Jobs by Topic</Text>
+            <View style={styles.table}>
+              <View style={styles.tableRow}>
+                <View style={[styles.tableColQuarter, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Topic</Text>
+                </View>
+                <View style={[styles.tableColQuarter, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Count</Text>
+                </View>
+                <View style={[styles.tableColQuarter, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Percentage</Text>
+                </View>
+                <View style={[styles.tableColQuarter, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Visual</Text>
+                </View>
+              </View>
+              {jobsByTopic.map((topicData, index) => (
+                <View key={index} style={styles.tableRow}>
+                  <View style={styles.tableColQuarter}>
+                    <Text style={styles.tableCell}>{topicData.topic}</Text>
+                  </View>
+                  <View style={styles.tableColQuarter}>
+                    <Text style={styles.tableCell}>{topicData.count}</Text>
+                  </View>
+                  <View style={styles.tableColQuarter}>
+                    <Text style={styles.tableCell}>{topicData.percentage}%</Text>
+                  </View>
+                  <View style={styles.tableColQuarter}>
+                    <Text style={styles.tableCell}>■</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Jobs by Room Table */}
+        {jobsByRoom && jobsByRoom.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Top 10 Rooms by Job Count</Text>
+            <View style={styles.table}>
+              <View style={styles.tableRow}>
+                <View style={[styles.tableColQuarter, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Room</Text>
+                </View>
+                <View style={[styles.tableColQuarter, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Count</Text>
+                </View>
+                <View style={[styles.tableColQuarter, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Percentage</Text>
+                </View>
+                <View style={[styles.tableColQuarter, styles.tableHeader]}>
+                  <Text style={styles.tableCell}>Visual</Text>
+                </View>
+              </View>
+              {jobsByRoom.map((roomData, index) => (
+                <View key={index} style={styles.tableRow}>
+                  <View style={styles.tableColQuarter}>
+                    <Text style={styles.tableCell}>{roomData.room}</Text>
+                  </View>
+                  <View style={styles.tableColQuarter}>
+                    <Text style={styles.tableCell}>{roomData.count}</Text>
+                  </View>
+                  <View style={styles.tableColQuarter}>
+                    <Text style={styles.tableCell}>{roomData.percentage}%</Text>
+                  </View>
+                  <View style={styles.tableColQuarter}>
+                    <Text style={styles.tableCell}>■</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Jobs by User */}
         {jobsByUser && jobsByUser.length > 0 && (

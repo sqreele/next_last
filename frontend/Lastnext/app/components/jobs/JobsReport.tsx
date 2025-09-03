@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
-import { Job, TabValue, JobStatus, JobPriority } from '@/app/lib/types';
+import { Job, TabValue, JobStatus, JobPriority, STATUS_COLORS } from '@/app/lib/types';
 import { fetchJobsForProperty } from '@/app/lib/data.server';
 import JobsPDFDocument from '@/app/components/document/JobsPDFGenerator';
 import { generatePdfWithRetry, downloadPdf } from '@/app/lib/pdfUtils';
@@ -46,14 +46,6 @@ interface ReportStatistics {
   jobsByMonth: Array<{ month: string; count: number }>;
   jobsByStatus: Array<{ status: string; count: number; color: string }>;
 }
-
-const STATUS_COLORS: Record<JobStatus, string> = {
-  completed: '#16a34a',
-  in_progress: '#2563eb',
-  pending: '#ea580c',
-  cancelled: '#dc2626',
-  waiting_sparepart: '#7c3aed'
-};
 
 const PRIORITY_COLORS: Record<JobPriority, string> = {
   high: '#dc2626',

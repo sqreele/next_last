@@ -115,6 +115,10 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
       
+      // Invalidate any cached jobs/properties before refresh so we always fetch fresh
+      jobsApi.invalidateCache('jobs');
+      jobsApi.invalidateCache('properties');
+
       const [jobs, properties] = await Promise.all([
         jobsApi.getJobs(accessToken, state.filters),
         jobsApi.getProperties(accessToken)

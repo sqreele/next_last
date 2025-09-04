@@ -137,7 +137,28 @@ export default async function JobPage({ params }: Props) {
               <User className="w-4 h-4 text-gray-500" />
               <span>
                 <span className="font-semibold">Assigned to:</span>{' '}
-                {typeof job.user === 'object' && job.user ? job.user.username : job.user || 'Unassigned'}
+                {(() => {
+                  if (!job.user) return 'Unassigned';
+                  
+                  // Handle user as an object with various possible properties
+                  if (typeof job.user === 'object' && job.user) {
+                    if ('username' in job.user && job.user.username) {
+                      return job.user.username;
+                    }
+                    if ('name' in job.user && job.user.name) {
+                      return job.user.name;
+                    }
+                    if ('email' in job.user && job.user.email) {
+                      return job.user.email.split('@')[0];
+                    }
+                    if ('id' in job.user && job.user.id) {
+                      return `User ${job.user.id}`;
+                    }
+                    return 'Unknown User';
+                  }
+                  
+                  return typeof job.user === 'string' ? `User ${job.user}` : 'Unknown User';
+                })()}
               </span>
             </div>
           )}
@@ -151,7 +172,27 @@ export default async function JobPage({ params }: Props) {
               </div>
               <ul className="ml-6 list-disc text-sm">
                 {job.rooms.map(room => (
-                  <li key={room.room_id}>{room.name || 'Unnamed Room'}</li>
+                  <li key={room.room_id || room.id}>
+                    {(() => {
+                      const roomParts = [];
+                      
+                      // Add room ID if available
+                      if (room.room_id || room.id) {
+                        roomParts.push(`Room ID: #${room.room_id || room.id}`);
+                      }
+                      
+                      // Add room type if available
+                      if (room.room_type) {
+                        roomParts.push(`Type: ${room.room_type}`);
+                      }
+                      
+                      // Add room name or number
+                      const roomName = room.name || room.room_number || 'Unknown Room';
+                      roomParts.push(roomName);
+                      
+                      return roomParts.join(' | ');
+                    })()}
+                  </li>
                 ))}
               </ul>
             </div>

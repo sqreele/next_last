@@ -99,6 +99,10 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // Populate store with initial jobs when component mounts
   useEffect(() => {
     if (initialJobs && initialJobs.length > 0 && (!jobs || jobs.length === 0)) {
+      console.log('Initial jobs:', initialJobs);
+      console.log('Sample job data:', initialJobs[0]);
+      console.log('Job topics:', initialJobs[0]?.topics);
+      console.log('Job rooms:', initialJobs[0]?.rooms);
       setJobs(initialJobs);
       setAllJobs(initialJobs);
       setFilteredJobs(initialJobs);
@@ -504,6 +508,9 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   const jobsByTopic = useMemo(() => {
     if (filteredJobs.length === 0) return [];
  
+    console.log('Processing jobs by topic, total jobs:', filteredJobs.length);
+    console.log('First 3 jobs with topics:', filteredJobs.slice(0, 3).map(j => ({ id: j.id, topics: j.topics })));
+    
     // Collect all topics from jobs
     const topicCounts: Record<string, number> = {};
     
@@ -519,6 +526,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       }
     }
  
+    console.log('Topic counts:', topicCounts);
+    
     // Convert to array and sort by count
     const result = Object.entries(topicCounts)
       .map(([topic, count]) => ({
@@ -527,6 +536,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         percentage: filteredJobs.length > 0 ? ((count / filteredJobs.length) * 100).toFixed(1) : '0'
       }))
       .sort((a, b) => b.count - a.count);
+    
+    console.log('Jobs by topic result:', result);
     return result;
   }, [filteredJobs]);
 
@@ -534,6 +545,9 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   const jobsByRoom = useMemo(() => {
     if (filteredJobs.length === 0) return [];
  
+    console.log('Processing jobs by room, total jobs:', filteredJobs.length);
+    console.log('First 3 jobs with rooms:', filteredJobs.slice(0, 3).map(j => ({ id: j.id, rooms: j.rooms })));
+    
     // Collect all rooms from jobs
     const roomCounts: Record<string, number> = {};
     
@@ -549,6 +563,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       }
     }
  
+    console.log('Room counts:', roomCounts);
+    
     // Convert to array and sort by count, take top 10
     const result = Object.entries(roomCounts)
       .map(([room, count]) => ({
@@ -558,6 +574,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10 rooms
+    
+    console.log('Jobs by room result:', result);
     return result;
   }, [filteredJobs]);
 
@@ -715,6 +733,41 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                   <Bar dataKey="cancelled" stackId="a" fill={STATUS_COLORS.cancelled} />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Temporary Debug Info */}
+        <Card className="w-full bg-yellow-50 border-yellow-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg text-yellow-800">Data Analysis (Temporary)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm space-y-2">
+              <div>Total filtered jobs: <strong>{filteredJobs.length}</strong></div>
+              <div>Jobs with topics: <strong>{jobsByTopic.filter(t => t.topic !== 'No Topic').reduce((sum, t) => sum + t.count, 0)}</strong></div>
+              <div>Jobs without topics: <strong>{jobsByTopic.find(t => t.topic === 'No Topic')?.count || 0}</strong></div>
+              <div>Jobs with rooms: <strong>{jobsByRoom.filter(r => r.room !== 'No Room').reduce((sum, r) => sum + r.count, 0)}</strong></div>
+              <div>Jobs without rooms: <strong>{jobsByRoom.find(r => r.room === 'No Room')?.count || 0}</strong></div>
+              
+              {filteredJobs.length > 0 && (
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-yellow-700 hover:text-yellow-900">
+                    Click to see sample job data
+                  </summary>
+                  <pre className="bg-white p-2 rounded overflow-x-auto mt-2 text-xs">
+                    {JSON.stringify({
+                      job1: {
+                        id: filteredJobs[0]?.id,
+                        topics: filteredJobs[0]?.topics,
+                        rooms: filteredJobs[0]?.rooms
+                      },
+                      jobsByTopicSample: jobsByTopic.slice(0, 3),
+                      jobsByRoomSample: jobsByRoom.slice(0, 3)
+                    }, null, 2)}
+                  </pre>
+                </details>
+              )}
             </div>
           </CardContent>
         </Card>

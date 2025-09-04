@@ -179,12 +179,31 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
   // Helper functions to get user display information
   const getUserDisplayName = useCallback((user: Job['user'] | undefined) => {
     if (!user) return 'Unassigned';
-    if (typeof user === 'object' && user && 'username' in user) {
-      return user.username;
+    
+    // Handle user as an object with various possible properties
+    if (typeof user === 'object' && user) {
+      // Check for username property
+      if ('username' in user && user.username) {
+        return user.username;
+      }
+      // Check for name property
+      if ('name' in user && user.name) {
+        return user.name;
+      }
+      // Check for email property
+      if ('email' in user && user.email) {
+        return user.email.split('@')[0]; // Return part before @ as display name
+      }
+      // Check for id property
+      if ('id' in user && user.id) {
+        user = user.id; // Continue with ID-based logic below
+      } else {
+        return 'Unknown User'; // Can't extract meaningful info from object
+      }
     }
     
     // Use session data passed from component level
-    if (!session?.user) return `User ${String(user)}`;
+    if (!session?.user) return typeof user === 'string' ? `User ${user}` : 'Unknown User';
     
     // Normalize user IDs for comparison (handle different formats)
     const jobUserId = String(user).trim();
@@ -349,7 +368,30 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
               <div className="flex items-center gap-1 text-xs text-gray-600">
                 <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
                 <span className="truncate max-w-full">
-                  {job.rooms?.[0]?.name || 'N/A'}{job.rooms?.[0]?.room_type ? ` (${job.rooms[0].room_type})` : ''} - {getPropertyName()}
+                  {(() => {
+                    if (!job.rooms || job.rooms.length === 0) {
+                      return `N/A - ${getPropertyName()}`;
+                    }
+                    const room = job.rooms[0];
+                    const roomParts = [];
+                    
+                    // Add room ID if available
+                    if (room.room_id || room.id) {
+                      roomParts.push(`Room ID: #${room.room_id || room.id}`);
+                    }
+                    
+                    // Add room type if available
+                    if (room.room_type) {
+                      roomParts.push(`Type: ${room.room_type}`);
+                    }
+                    
+                    // Add room name or number
+                    const roomName = room.name || room.room_number || 'Unknown';
+                    roomParts.push(roomName);
+                    
+                    // Join parts with " | " and add property name
+                    return `${roomParts.join(' | ')} - ${getPropertyName()}`;
+                  })()}
                 </span>
               </div>
             </div>

@@ -41,6 +41,21 @@ const RoomAutocomplete = ({
   // Safer room array handling
   const safeRooms = useMemo(() => (Array.isArray(rooms) ? rooms : []), [rooms]);
 
+  // Derive numeric property id for matching when rooms return numeric property PKs
+  const selectedPropertyNumericId = useMemo(() => {
+    if (!selectedProperty) return null;
+    const numericFromSelected = Number(selectedProperty);
+    if (!Number.isNaN(numericFromSelected)) return numericFromSelected;
+
+    if (Array.isArray(userProperties)) {
+      const match = userProperties.find((p: any) => p && p.property_id === selectedProperty);
+      const idCandidate = match?.id;
+      const numericFromUserProps = Number(idCandidate);
+      if (!Number.isNaN(numericFromUserProps)) return numericFromUserProps;
+    }
+    return null;
+  }, [selectedProperty, userProperties]);
+
   // Determine if rooms have any property association data at all
   const anyRoomHasPropertyAssociation = useMemo(() => {
     return safeRooms.some(r => r && (r.property_id !== undefined && r.property_id !== null || (Array.isArray(r.properties) && r.properties.length > 0)));
@@ -64,8 +79,11 @@ const RoomAutocomplete = ({
     if (!propertyId) return true; // Show all if no property selected
     if (!room) return false;
 
-    // Handle numeric property ID
-    const numericPropId = !isNaN(Number(propertyId)) ? Number(propertyId) : null;
+    // Handle numeric property ID (fallback to mapped numeric id from user properties)
+    let numericPropId = !isNaN(Number(propertyId)) ? Number(propertyId) : null;
+    if (numericPropId === null && selectedPropertyNumericId !== null) {
+      numericPropId = selectedPropertyNumericId;
+    }
     const propIdStr = String(propertyId);
 
     debugLog(`Checking if room ${room.name} (ID: ${room.room_id}) belongs to property ${propertyId}`);
@@ -123,7 +141,7 @@ const RoomAutocomplete = ({
 
     // No match found
     return false;
-  }, [debugLog]);
+  }, [debugLog, selectedPropertyNumericId]);
 
   // Reset selected room when property changes if it doesn't belong
   useEffect(() => {

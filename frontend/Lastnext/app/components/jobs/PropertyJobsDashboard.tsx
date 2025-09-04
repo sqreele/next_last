@@ -255,8 +255,14 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // Filter jobs by property with optimized logic
   useEffect(() => {
     const user = session?.user;
-    if (!allJobs.length || !effectiveProperty) {
+    if (!allJobs.length) {
       setFilteredJobs([]);
+      return;
+    }
+
+    // If no property is selected, fall back to using all jobs so charts still render
+    if (!effectiveProperty) {
+      setFilteredJobs(allJobs);
       return;
     }
 

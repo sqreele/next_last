@@ -720,13 +720,12 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         </Card>
 
         {/* Jobs by Topic Chart */}
-        
-        {jobsByTopic && jobsByTopic.length > 0 && (
-          <Card className="w-full">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg">Jobs by Topic</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <Card className="w-full">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base sm:text-lg">Jobs by Topic</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {jobsByTopic && jobsByTopic.length > 0 ? (
               <div id="topic-chart-container" className="h-[350px] w-full flex flex-col items-center justify-center">
                 <div className="w-[350px] h-[350px] flex-shrink-0">
                   <ResponsiveContainer width="100%" height="100%">
@@ -751,9 +750,13 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                   </ResponsiveContainer>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="p-4 bg-yellow-100 rounded">
+                <p className="text-sm text-yellow-800">No topic data available to display chart</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         
         {/* Jobs by Room Chart */}

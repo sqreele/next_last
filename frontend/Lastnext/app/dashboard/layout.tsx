@@ -346,7 +346,7 @@ function SearchInput() {
       <Input
         name="q"
         type="search"
-        placeholder="Search jobs, properties..."
+        placeholder="Search jobs, properties, rooms..."
         className="w-full pl-9 h-10 text-sm rounded-full bg-gray-100 border-none focus:ring-2 focus:ring-blue-500"
       />
       {isPending && (
@@ -410,7 +410,7 @@ function MobileSearch() {
             <Input
               name="q"
               type="search"
-              placeholder="Search jobs, properties..."
+              placeholder="Search jobs, properties, rooms..."
               autoFocus
               className="w-full pl-9 h-10 text-sm rounded-full bg-gray-100 border-none focus:ring-2 focus:ring-blue-500"
             />

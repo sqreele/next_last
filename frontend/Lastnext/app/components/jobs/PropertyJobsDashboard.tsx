@@ -99,7 +99,6 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // Populate store with initial jobs when component mounts
   useEffect(() => {
     if (initialJobs && initialJobs.length > 0 && (!jobs || jobs.length === 0)) {
-      console.log('🔍 Populating store with initial jobs:', initialJobs.length);
       setJobs(initialJobs);
       setAllJobs(initialJobs);
       setFilteredJobs(initialJobs);
@@ -111,26 +110,15 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     try {
       const chartElement = document.getElementById(chartId);
       if (!chartElement) {
-        console.warn(`Chart element with id "${chartId}" not found`);
         return null;
       }
-
-      console.log(`Capturing chart: ${chartId}`, {
-        element: chartElement,
-        width: chartElement.offsetWidth,
-        height: chartElement.offsetHeight,
-        hasContent: chartElement.innerHTML.length > 0
-      });
-
-      // Wait longer for the chart to fully render
       await new Promise(resolve => setTimeout(resolve, 1000));
-
       const canvas = await html2canvas(chartElement, {
-        scale: 2, // Reduced scale for better compatibility
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
-        logging: false, // Disable logging to reduce noise
+        logging: false,
         width: chartElement.offsetWidth,
         height: chartElement.offsetHeight,
         scrollX: 0,
@@ -141,16 +129,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         removeContainer: true,
         imageTimeout: 10000,
       });
-
-      console.log(`Chart captured: ${chartId}`, {
-        canvasWidth: canvas.width,
-        canvasHeight: canvas.height,
-        hasContent: canvas.width > 0 && canvas.height > 0
-      });
-
-      return canvas.toDataURL('image/png', 0.9); // Slightly reduced quality for better compatibility
+      return canvas.toDataURL('image/png', 0.9);
     } catch (error) {
-      console.error(`Error capturing chart ${chartId}:`, error);
       return null;
     }
   };
@@ -166,24 +146,12 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       setIsGeneratingPDF(true);
       
       // Capture charts as images
-      console.log('Capturing charts as images...');
       const [pieChartImage, barChartImage, topicChartImage, roomChartImage] = await Promise.all([
         captureChartAsImage('pie-chart-container'),
         captureChartAsImage('bar-chart-container'),
         captureChartAsImage('topic-chart-container'),
         captureChartAsImage('room-chart-container')
       ]);
-
-      console.log('Chart images captured:', { 
-        pieChartImage: !!pieChartImage, 
-        barChartImage: !!barChartImage,
-        topicChartImage: !!topicChartImage,
-        roomChartImage: !!roomChartImage,
-        pieChartLength: pieChartImage?.length || 0,
-        barChartLength: barChartImage?.length || 0,
-        topicChartLength: topicChartImage?.length || 0,
-        roomChartLength: roomChartImage?.length || 0
-      });
 
       // If chart images are too small or empty, don't use them
       const usePieChartImage = pieChartImage && pieChartImage.length > 1000;
@@ -215,19 +183,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         />
       );
       
-      // Debug: Log the jobStats data being passed to PDF
-      console.log('PDF jobStats data:', jobStats);
-      console.log('STATUS_COLORS:', STATUS_COLORS);
-      console.log('Filtered jobs count:', filteredJobs.length);
-      console.log('Jobs by month data:', jobsByMonth);
-      console.log('Jobs by user data:', jobsByUser);
-      
-      // Debug: Check if we have valid chart data
+      // Check if we have valid chart data
       const validJobStats = jobStats.filter(stat => {
         const percentage = parseFloat(stat.percentage);
         return percentage > 0 && stat.value > 0;
       });
-      console.log('Valid job stats for charts:', validJobStats);
       
       // Generate PDF blob
       const blob = await generatePdfWithRetry(async () => {
@@ -240,8 +200,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       await downloadPdf(blob, filename);
       
     } catch (error: any) {
-      console.error('Error generating PDF:', error);
-      alert(`Failed to generate PDF: ${error.message || 'Unknown error'}`);
+      alert(`Failed to generate PDF: ${error?.message || 'Unknown error'}`);
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -319,7 +278,6 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   const jobStats = useMemo(() => {
     const total = filteredJobs.length;
     if (total === 0) {
-      console.log('No filtered jobs available for chart');
       return [];
     }
     
@@ -339,15 +297,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       })
     );
     
-    // Debug: Log the generated jobStats
-    console.log('Generated jobStats:', result);
-    console.log('STATUS_COLORS used:', STATUS_COLORS);
-    console.log('Total jobs:', total);
-    console.log('Status counts:', statusCounts);
-    
     // Filter out zero values for chart display
     const validStats = result.filter(stat => stat.value > 0);
-    console.log('Valid stats for chart:', validStats);
     
     return validStats;
   }, [filteredJobs]);
@@ -403,39 +354,32 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
 
   // Helper function to extract user display name
   const getUserDisplayName = (user: any): string => {
-    console.log('🔍 getUserDisplayName called with:', user, 'type:', typeof user);
     
     if (!user) {
-      console.log('❌ No user provided');
       return 'Unknown User';
     }
     
     // If it's an object with username field
     if (typeof user === 'object' && user && 'username' in user) {
-      console.log('✅ Found username in object:', user.username);
       return user.username;
     }
     
     // If it's a string or number, try to match with session user
     if (typeof user === 'string' || typeof user === 'number') {
       const userStr = String(user);
-      console.log('🔢 Processing string/number user:', userStr);
       
       // Try to match with session data
       if (session?.user) {
         const sessionUserId = String(session.user.id || '').trim();
         const sessionUsername = session.user.username || 'You';
-        console.log('🔍 Comparing with session user ID:', sessionUserId, 'username:', sessionUsername);
         
         // Exact match
         if (userStr === sessionUserId) {
-          console.log('✅ Exact match found, returning:', sessionUsername);
           return sessionUsername;
         }
         
         // Case-insensitive match
         if (userStr.toLowerCase() === sessionUserId.toLowerCase()) {
-          console.log('✅ Case-insensitive match found, returning:', sessionUsername);
           return sessionUsername;
         }
         
@@ -444,7 +388,6 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           const userNumeric = userStr.replace('google-oauth2_', '');
           const sessionNumeric = sessionUserId.replace('google-oauth2_', '');
           if (userNumeric === sessionNumeric) {
-            console.log('✅ Google OAuth match found, returning:', sessionUsername);
             return sessionUsername;
           }
         }
@@ -453,7 +396,6 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         const userNumeric = parseInt(userStr);
         const sessionNumeric = parseInt(sessionUserId);
         if (!isNaN(userNumeric) && !isNaN(sessionNumeric) && userNumeric === sessionNumeric) {
-          console.log('✅ Numeric ID match found, returning:', sessionUsername);
           return sessionUsername;
         }
         
@@ -461,39 +403,29 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         if (session.user.first_name || session.user.last_name) {
           const fullName = `${session.user.first_name || ''} ${session.user.last_name || ''}`.trim();
           if (fullName) {
-            console.log('✅ Using full name from session:', fullName);
             return fullName;
           }
         }
         
-        console.log('❌ No match found with session user');
-        
         // If we have session data but no match, try to use session username as fallback
         // This handles cases where the job user ID doesn't match session ID format
         if (session.user.username) {
-          console.log('🔄 Using session username as fallback:', session.user.username);
           return session.user.username;
         }
-      } else {
-        console.log('❌ No session user available');
       }
       
       // If it's a numeric ID, try to show it as "User #123" instead of "User 123"
       if (!isNaN(Number(userStr))) {
-        console.log('🔄 Returning numeric fallback:', `User #${userStr}`);
         return `User #${userStr}`;
       }
       
-      console.log('🔄 Returning fallback:', `User ${userStr}`);
       return `User ${userStr}`;
     }
     
     if (typeof user === 'object') {
-      console.log('📦 Processing object user:', user);
       // Try different possible fields for username
       const username = user.username || user.name || user.email || user.id;
       if (username) {
-        console.log('✅ Found username field:', username);
         return String(username);
       }
       
@@ -501,26 +433,21 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       try {
         // Check if it has any enumerable properties
         const keys = Object.keys(user);
-        console.log('🔑 Object keys:', keys);
         if (keys.length > 0) {
           // Try to get the first string value
           for (const key of keys) {
             const value = user[key];
             if (typeof value === 'string' && value.trim()) {
-              console.log('✅ Found string value:', value, 'for key:', key);
               return value;
             }
           }
         }
       } catch (error) {
-        console.warn('Error processing user object:', error);
       }
       
-      console.log('❌ No usable field found in object');
       return 'Unknown User';
     }
     
-    console.log('❌ Unhandled user type:', typeof user);
     return 'Unknown User';
   };
 
@@ -528,34 +455,12 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   const jobsByUser = useMemo(() => {
     if (filteredJobs.length === 0) return [];
 
-    // Debug: Log user data structure
-    if (filteredJobs.length > 0) {
-      console.log('=== USER DATA DEBUG ===');
-      console.log('Sample job user data:', filteredJobs[0].user);
-      console.log('User type:', typeof filteredJobs[0].user);
-      console.log('User keys:', typeof filteredJobs[0].user === 'object' ? Object.keys(filteredJobs[0].user) : 'N/A');
-      console.log('User values:', typeof filteredJobs[0].user === 'object' ? Object.values(filteredJobs[0].user) : 'N/A');
-      console.log('User JSON:', JSON.stringify(filteredJobs[0].user, null, 2));
-      console.log('Extracted username:', getUserDisplayName(filteredJobs[0].user));
-      
-      // Show session data for comparison
-      if (session?.user) {
-        console.log('Session user data:', session.user);
-        console.log('Session user ID:', session.user.id);
-        console.log('Session username:', session.user.username);
-      }
-      console.log('=== END USER DATA DEBUG ===');
-    }
-
     // Group jobs by user
     const grouped = _.groupBy(filteredJobs, (job) => {
-      console.log('🔄 Processing job:', job.id, 'user:', job.user);
       const displayName = getUserDisplayName(job.user);
-      console.log('📝 Generated display name:', displayName);
       
       // Additional check for "[object Object]" string
       if (displayName === '[object Object]' || displayName === 'User [object Object]') {
-        console.warn('⚠️ Detected [object Object] in user name, job user:', job.user);
         return 'Unknown User';
       }
       return displayName;
@@ -592,31 +497,13 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     // Sort by total jobs (descending)
     const sortedResult = result.sort((a, b) => b.total - a.total);
     
-    // Debug: Log the final result
-    console.log('📊 Final jobs by user result:', sortedResult);
-    console.log('📊 Grouped data keys:', Object.keys(grouped));
-    console.log('📊 Grouped data:', grouped);
-    
     return sortedResult;
   }, [filteredJobs]);
 
   // Memoized jobs by topic data
   const jobsByTopic = useMemo(() => {
     if (filteredJobs.length === 0) return [];
-
-    console.log('🔍 DEBUG: Processing jobs for topic chart...');
-    console.log('🔍 Total filtered jobs:', filteredJobs.length);
-    
-    // Debug: Check first few jobs for topic structure
-    if (filteredJobs.length > 0) {
-      console.log('🔍 Sample job topics:', filteredJobs.slice(0, 3).map(job => ({
-        id: job.id,
-        topics: job.topics,
-        topicsType: typeof job.topics,
-        topicsLength: job.topics?.length
-      })));
-    }
-
+ 
     // Collect all topics from jobs
     const topicCounts: Record<string, number> = {};
     
@@ -631,9 +518,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         topicCounts['No Topic'] = (topicCounts['No Topic'] || 0) + 1;
       }
     }
-
-    console.log('🔍 Topic counts:', topicCounts);
-
+ 
     // Convert to array and sort by count
     const result = Object.entries(topicCounts)
       .map(([topic, count]) => ({
@@ -642,29 +527,13 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         percentage: filteredJobs.length > 0 ? ((count / filteredJobs.length) * 100).toFixed(1) : '0'
       }))
       .sort((a, b) => b.count - a.count);
-
-    console.log('📊 Jobs by topic result:', result);
-    console.log('📊 Jobs by topic result length:', result.length);
     return result;
   }, [filteredJobs]);
 
   // Memoized jobs by room data
   const jobsByRoom = useMemo(() => {
     if (filteredJobs.length === 0) return [];
-
-    console.log('🔍 DEBUG: Processing jobs for room chart...');
-    console.log('🔍 Total filtered jobs:', filteredJobs.length);
-    
-    // Debug: Check first few jobs for room structure
-    if (filteredJobs.length > 0) {
-      console.log('🔍 Sample job rooms:', filteredJobs.slice(0, 3).map(job => ({
-        id: job.id,
-        rooms: job.rooms,
-        roomsType: typeof job.rooms,
-        roomsLength: job.rooms?.length
-      })));
-    }
-
+ 
     // Collect all rooms from jobs
     const roomCounts: Record<string, number> = {};
     
@@ -679,9 +548,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         roomCounts['No Room'] = (roomCounts['No Room'] || 0) + 1;
       }
     }
-
-    console.log('🔍 Room counts:', roomCounts);
-
+ 
     // Convert to array and sort by count, take top 10
     const result = Object.entries(roomCounts)
       .map(([room, count]) => ({
@@ -691,9 +558,6 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10 rooms
-
-    console.log('📊 Jobs by room result:', result);
-    console.log('📊 Jobs by room result length:', result.length);
     return result;
   }, [filteredJobs]);
 
@@ -856,12 +720,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         </Card>
 
         {/* Jobs by Topic Chart */}
-        {(() => {
-          console.log('🔍 Chart render check - jobsByTopic:', jobsByTopic);
-          console.log('🔍 Chart render check - jobsByTopic length:', jobsByTopic?.length);
-          console.log('🔍 Chart render check - condition result:', jobsByTopic && jobsByTopic.length > 0);
-          return null;
-        })()}
+        
         {jobsByTopic && jobsByTopic.length > 0 && (
           <Card className="w-full">
             <CardHeader className="pb-2">
@@ -896,69 +755,13 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           </Card>
         )}
 
-        {/* Debug: Always show topic chart for debugging */}
-        <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg">Jobs by Topic (Debug)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 p-4 bg-gray-100 rounded">
-              <p className="text-sm text-gray-600">Debug Info:</p>
-              <ul className="text-sm text-gray-600 mt-2 list-disc list-inside">
-                <li>jobsByTopic exists: {jobsByTopic ? 'Yes' : 'No'}</li>
-                <li>jobsByTopic length: {jobsByTopic?.length || 0}</li>
-                <li>Total filtered jobs: {filteredJobs.length}</li>
-                <li>Should show chart: {jobsByTopic && jobsByTopic.length > 0 ? 'Yes' : 'No'}</li>
-              </ul>
-            </div>
-            {jobsByTopic && jobsByTopic.length > 0 ? (
-              <div id="topic-chart-container" className="h-[350px] w-full flex flex-col items-center justify-center">
-                <div className="w-[350px] h-[350px] flex-shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={jobsByTopic.slice(0, 10)} layout="horizontal">
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" tick={{ fontSize: 10 }} />
-                      <YAxis 
-                        dataKey="topic" 
-                        type="category" 
-                        tick={{ fontSize: 10 }} 
-                        width={120}
-                      />
-                      <Tooltip 
-                        formatter={(value: number, name: string, props: any) => [
-                          `${value} jobs (${props.payload.percentage}%)`,
-                          'Count'
-                        ]}
-                      />
-                      <Legend />
-                      <Bar dataKey="count" fill="#8884d8" name="Job Count" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 bg-yellow-100 rounded">
-                <p className="text-sm text-yellow-800">No topic data available to display chart</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
+        
         {/* Jobs by Room Chart */}
         <Card className="w-full">
           <CardHeader className="pb-2">
             <CardTitle className="text-base sm:text-lg">Top 10 Rooms by Job Count</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 p-4 bg-gray-100 rounded">
-              <p className="text-sm text-gray-600">Debug Info:</p>
-              <ul className="text-sm text-gray-600 mt-2 list-disc list-inside">
-                <li>jobsByRoom exists: {jobsByRoom ? 'Yes' : 'No'}</li>
-                <li>jobsByRoom length: {jobsByRoom?.length || 0}</li>
-                <li>Total filtered jobs: {filteredJobs.length}</li>
-                <li>Should show chart: {jobsByRoom && jobsByRoom.length > 0 ? 'Yes' : 'No'}</li>
-              </ul>
-            </div>
             {jobsByRoom && jobsByRoom.length > 0 ? (
               <div id="room-chart-container" className="h-[350px] w-full flex flex-col items-center justify-center">
                 <div className="w-[350px] h-[350px] flex-shrink-0">

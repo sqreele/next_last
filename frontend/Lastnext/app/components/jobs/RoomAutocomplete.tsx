@@ -41,6 +41,11 @@ const RoomAutocomplete = ({
   // Safer room array handling
   const safeRooms = useMemo(() => (Array.isArray(rooms) ? rooms : []), [rooms]);
 
+  // Determine if rooms have any property association data at all
+  const anyRoomHasPropertyAssociation = useMemo(() => {
+    return safeRooms.some(r => r && (r.property_id !== undefined && r.property_id !== null || (Array.isArray(r.properties) && r.properties.length > 0)));
+  }, [safeRooms]);
+
   // Log data for debugging on component mount and when key props change
   useEffect(() => {
     if (debug) {
@@ -144,9 +149,8 @@ const RoomAutocomplete = ({
       }
 
       // Filter by selected property
-      if (!roomBelongsToProperty(room, selectedProperty)) {
-        return false;
-      }
+      const passesPropertyFilter = !selectedProperty || !anyRoomHasPropertyAssociation || roomBelongsToProperty(room, selectedProperty);
+      if (!passesPropertyFilter) return false;
 
       // Then filter by search query
       if (searchQuery) {
@@ -166,7 +170,7 @@ const RoomAutocomplete = ({
     return results.sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
     );
-  }, [safeRooms, searchQuery, selectedProperty, roomBelongsToProperty, debugLog]);
+  }, [safeRooms, searchQuery, selectedProperty, roomBelongsToProperty, anyRoomHasPropertyAssociation, debugLog]);
 
   // Get property name with better error handling
   const getPropertyName = useCallback((): string => {

@@ -199,8 +199,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     setError(null);
     
     try {
+      const propertyParam = selectedProperty || currentPropertyId || undefined;
       const [roomsResponse, topicsResponse] = await Promise.all([
-        axios.get(`/api/rooms/`, { withCredentials: true }),
+        axios.get(`/api/rooms/`, { withCredentials: true, params: propertyParam ? { property: propertyParam } : undefined }),
         axios.get(`/api/topics/`, { withCredentials: true })
       ]);
       setRooms(roomsResponse.data);
@@ -211,13 +212,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     } finally {
       setIsLoading(false);
     }
-  }, [session?.user?.accessToken]);
+  }, [session?.user?.accessToken, selectedProperty, currentPropertyId]);
 
   useEffect(() => {
     if (session?.user?.accessToken) {
       fetchData();
     }
-  }, [fetchData, session?.user?.accessToken]);
+  }, [fetchData, session?.user?.accessToken, selectedProperty]);
 
   return (
     <div className="space-y-8">

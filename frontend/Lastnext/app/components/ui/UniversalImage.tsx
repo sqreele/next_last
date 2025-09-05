@@ -15,6 +15,7 @@ export interface UniversalImageProps {
   fill?: boolean;
   sizes?: string;
   placeholder?: 'blur' | 'empty';
+  blurDataURL?: string;
   objectFit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
   objectPosition?: string;
   onLoad?: () => void;

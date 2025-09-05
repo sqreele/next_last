@@ -3,6 +3,7 @@
 import { useSession } from '@/app/lib/session.client';
 import { appSignOut } from '@/app/lib/logout';
 import { User as UserIcon } from 'lucide-react'; // Explicitly import User icon
+import Image from 'next/image';
 
 export default function ClientDashboard() {
   const { data: session, status } = useSession();
@@ -26,11 +27,14 @@ export default function ClientDashboard() {
       <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Positions: {session.user?.positions}</p>
       <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full mx-auto sm:mx-0 border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
         {session.user?.profile_image ? (
-          <img 
+          <Image 
             src={session.user.profile_image} 
             alt="Profile" 
+            width={128}
+            height={128}
             className="w-full h-full object-cover"
-            loading="lazy"
+            quality={75}
+            unoptimized={session.user.profile_image.startsWith('http')}
           />
         ) : (
           <div className="flex items-center justify-center w-full h-full bg-gray-100 dark:bg-gray-700">

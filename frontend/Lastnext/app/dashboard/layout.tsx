@@ -35,7 +35,7 @@ import {
 import { Button } from '@/app/components/ui/button';
 import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 import User from '@/app/dashboard/user';
-import { Sheet, SheetContent, SheetTrigger } from '@/app/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/app/components/ui/sheet';
 import { Input } from '@/app/components/ui/input';
 import { cn } from '@/app/lib/utils/cn';
 import { PropertyDebug } from '@/app/components/debug/PropertyDebug';
@@ -267,6 +267,7 @@ function MobileNav() {
         side="left" 
         className="w-[280px] p-0 border-r flex flex-col bg-white"
       >
+        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
         <div className="p-4 border-b border-gray-200">
           <Link href="/dashboard" className="flex items-center gap-2" onClick={() => setOpen(false)}>
             <Package2 className="h-5 w-5 text-blue-600" />

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePreventiveMaintenance } from '@/app/lib/stores/mainStore';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { preventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
+import Image from 'next/image';
 
 // Updated interface to match Django API response
 interface FrequencyDistributionItem {
@@ -478,21 +479,27 @@ export default function PreventiveMaintenanceDashboard() {
                         <div className="flex space-x-2">
                           {beforeImageUrl && (
                             <div className="h-10 w-10 rounded overflow-hidden border">
-                              <img 
+                              <Image 
                                 src={beforeImageUrl} 
                                 alt="Before" 
+                                width={40}
+                                height={40}
                                 className="h-full w-full object-cover"
-                                loading="lazy"
+                                quality={60}
+                                unoptimized={beforeImageUrl.startsWith('http')}
                               />
                             </div>
                           )}
                           {afterImageUrl && (
                             <div className="h-10 w-10 rounded overflow-hidden border">
-                              <img 
+                              <Image 
                                 src={afterImageUrl} 
                                 alt="After" 
+                                width={40}
+                                height={40}
                                 className="h-full w-full object-cover"
-                                loading="lazy"
+                                quality={60}
+                                unoptimized={afterImageUrl.startsWith('http')}
                               />
                             </div>
                           )}

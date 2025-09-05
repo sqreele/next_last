@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Job } from "@/app/lib/types";
 import FileUpload from "@/app/components/jobs/FileUpload";
+import Image from "next/image";
 
 export default function EditJobPage() {
   const router = useRouter();
@@ -184,12 +185,16 @@ export default function EditJobPage() {
                     return String(url);
                   })();
                   return (
-                    <img
-                      key={index}
-                      src={imageUrl}
-                      alt={`Existing job image ${index + 1}`}
-                      className="w-full h-28 object-cover rounded-md border"
-                    />
+                    <div key={index} className="relative w-full h-28 rounded-md border overflow-hidden">
+                      <Image
+                        src={imageUrl}
+                        alt={`Existing job image ${index + 1}`}
+                        fill
+                        className="object-cover"
+                        quality={75}
+                        unoptimized={imageUrl.startsWith('http')}
+                      />
+                    </div>
                   );
                 })}
               </div>

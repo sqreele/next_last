@@ -27,20 +27,27 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
     return imageUrl;
   }
   
-  // If it's a full external URL, convert to relative URL for consistency
+  // If it's a full external URL, handle it properly
   if (imageUrl.startsWith('http')) {
-    // Extract the path from external URLs
-    try {
-      const url = new URL(imageUrl);
-      if (url.pathname.startsWith('/media/')) {
-        return url.pathname;
-      }
-      // If it's not a media URL, return the original
-      return imageUrl;
-    } catch {
-      // If URL parsing fails, return the original
-      return imageUrl;
+    // Handle Docker internal URLs that need to be converted to external URLs
+    if (imageUrl.includes('backend:8000') || imageUrl.includes('django-backend:8000')) {
+      // Convert Docker internal URLs to localhost URLs for browser access
+      const externalUrl = imageUrl
+        .replace('http://backend:8000', 'http://localhost:8000')
+        .replace('http://django-backend:8000', 'http://localhost:8000');
+      return externalUrl;
     }
+    
+    // Handle localhost:8000 URLs - check if backend is accessible
+    if (imageUrl.includes('localhost:8000')) {
+      // For now, try to use the relative path instead
+      const relativePath = imageUrl.replace('http://localhost:8000', '');
+      return relativePath;
+    }
+    
+    // For other external URLs, return them as-is for Next.js Image component
+    // The unoptimized prop will be used to bypass Next.js optimization
+    return imageUrl;
   }
   
   // If it's a relative path without /media/, prepend /media/

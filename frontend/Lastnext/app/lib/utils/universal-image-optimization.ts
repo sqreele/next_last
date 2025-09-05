@@ -178,7 +178,6 @@ export function getOptimizedImageProps(
     placeholder: config.placeholder,
     blurDataURL: config.blurDataURL,
     sizes: config.sizes,
-    unoptimized: config.unoptimized || isExternal,
     rootMargin: config.rootMargin,
     threshold: config.threshold,
     preset: options.type,

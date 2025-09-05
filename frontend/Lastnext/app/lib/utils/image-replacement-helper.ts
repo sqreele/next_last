@@ -8,7 +8,8 @@ import { getOptimizedImageProps, IMAGE_PRESETS } from './universal-image-optimiz
 
 export interface ImageReplacementConfig {
   // Default settings
-  defaultPreset: 'hero' | 'card' | 'thumbnail' | 'profile' | 'gallery' | 'preview' | 'maintenance';
+  defaultPreset?: 'hero' | 'card' | 'thumbnail' | 'profile' | 'gallery' | 'preview' | 'maintenance';
+  preset?: 'hero' | 'card' | 'thumbnail' | 'profile' | 'gallery' | 'preview' | 'maintenance';
   // Quality overrides
   quality?: number;
   // Lazy loading
@@ -55,7 +56,7 @@ export function convertImgToUniversalImage(
   const optimizedProps = getOptimizedImageProps(
     imgProps.src,
     imgProps.alt,
-    IMAGE_PRESETS[preset.toUpperCase() as keyof typeof IMAGE_PRESETS] || IMAGE_PRESETS.CARD,
+    IMAGE_PRESETS[preset.toUpperCase() as keyof typeof IMAGE_PRESETS] || IMAGE_PRESETS.JOB_CARD,
     {
       className: imgProps.className,
       width: imgProps.width,
@@ -66,8 +67,7 @@ export function convertImgToUniversalImage(
       fallbackSrc,
       showFallback,
       showLoadingSpinner,
-      loadingText,
-      style: imgProps.style
+      loadingText
     }
   );
 

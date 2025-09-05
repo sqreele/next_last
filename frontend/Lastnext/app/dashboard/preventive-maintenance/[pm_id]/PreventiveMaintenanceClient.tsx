@@ -29,6 +29,7 @@ import {
   Clock
 } from 'lucide-react';
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
+import { MaintenanceImage } from '@/app/components/ui/UniversalImage';
 
 interface PreventiveMaintenanceClientProps {
   maintenanceData: PreventiveMaintenance;
@@ -752,11 +753,11 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                     className="relative w-full h-56 bg-gray-100 rounded-xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-xl transition-all duration-300"
                     onClick={() => openImageModal(beforeImageUrl, 'Before Maintenance')}
                   >
-                    <img
+                    <MaintenanceImage
                       src={beforeImageUrl}
                       alt="Before Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
+                      fill
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
                       <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">
@@ -790,11 +791,11 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                     className="relative w-full h-56 bg-gray-100 rounded-xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-xl transition-all duration-300"
                     onClick={() => openImageModal(afterImageUrl, 'After Maintenance')}
                   >
-                    <img
+                    <MaintenanceImage
                       src={afterImageUrl}
                       alt="After Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
+                      fill
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
                       <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">
@@ -978,24 +979,14 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                 {beforeImageUrl && (
                   <div>
                     <span className="text-sm font-medium text-gray-600 block mb-2">Before:</span>
-                    <img 
+                    <MaintenanceImage 
                       src={beforeImageUrl} 
                       alt="Before maintenance" 
                       className="w-full max-h-64 object-contain rounded-lg border border-gray-300"
-                      loading="lazy"
-                      onError={(e: any) => {
-                        e.target.style.display = 'none';
-                        if (e.target.nextSibling) {
-                          e.target.nextSibling.style.display = 'block';
-                        }
-                      }}
-                      onLoad={(e: any) => {
-                        // Ensure image is visible when it loads successfully
-                        e.target.style.display = 'block';
-                        if (e.target.nextSibling) {
-                          e.target.nextSibling.style.display = 'none';
-                        }
-                      }}
+                      width={400}
+                      height={256}
+                      fallbackSrc="/placeholder-maintenance.jpg"
+                      showFallback={true}
                     />
                     <div className="hidden w-full h-48 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
                       <span className="text-gray-500 text-sm">Before image unavailable</span>
@@ -1005,24 +996,14 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                 {afterImageUrl && (
                   <div>
                     <span className="text-sm font-medium text-gray-600 block mb-2">After:</span>
-                    <img 
+                    <MaintenanceImage 
                       src={afterImageUrl} 
                       alt="After maintenance" 
                       className="w-full max-h-64 object-contain rounded-lg border border-gray-300"
-                      loading="lazy"
-                      onError={(e: any) => {
-                        e.target.style.display = 'none';
-                        if (e.target.nextSibling) {
-                          e.target.nextSibling.style.display = 'block';
-                        }
-                      }}
-                      onLoad={(e: any) => {
-                        // Ensure image is visible when it loads successfully
-                        e.target.style.display = 'block';
-                        if (e.target.nextSibling) {
-                          e.target.nextSibling.style.display = 'none';
-                        }
-                      }}
+                      width={400}
+                      height={256}
+                      fallbackSrc="/placeholder-maintenance.jpg"
+                      showFallback={true}
                     />
                     <div className="hidden w-full h-48 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
                       <span className="text-gray-500 text-sm">After image unavailable</span>
@@ -1075,13 +1056,15 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             >
               <X className="h-5 w-5" />
             </button>
-            <img 
-              src={currentImage} 
-              alt={currentImageAlt}
-              className="max-w-full max-h-full object-contain"
-              loading="lazy"
-              onClick={(e) => e.stopPropagation()}
-            />
+            <div onClick={(e) => e.stopPropagation()}>
+              <MaintenanceImage 
+                src={currentImage} 
+                alt={currentImageAlt}
+                className="max-w-full max-h-full object-contain"
+                width={800}
+                height={600}
+              />
+            </div>
           </div>
         </div>
       )}

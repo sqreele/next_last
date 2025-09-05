@@ -1,6 +1,7 @@
 'use client';
 
 import { useUser } from '@auth0/nextjs-auth0';
+import { ProfileImage } from '@/app/components/ui/UniversalImage';
 
 export default function ProfilePage() {
   const { user, error, isLoading } = useUser();
@@ -13,7 +14,13 @@ export default function ProfilePage() {
     <div className="p-6 space-y-4">
       <h1 className="text-xl font-semibold">Profile</h1>
       {user.picture && (
-        <img src={user.picture} alt={user.name || 'user'} width={72} height={72} />
+        <ProfileImage 
+          src={user.picture} 
+          alt={user.name || 'user'} 
+          width={72} 
+          height={72}
+          className="rounded-full"
+        />
       )}
       <div className="text-sm">
         <div><strong>Name:</strong> {user.name}</div>

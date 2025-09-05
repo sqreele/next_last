@@ -18,6 +18,7 @@ import apiClient from '@/app/lib/api-client';
 import FileUpload from '@/app/components/jobs/FileUpload';
 import { useToast } from '@/app/lib/hooks/use-toast';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
+import { PreviewImage } from '@/app/components/ui/UniversalImage';
 import { preventiveMaintenanceService, 
   type CreatePreventiveMaintenanceData,
   type UpdatePreventiveMaintenanceData,
@@ -1224,11 +1225,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 />
                 {beforeImagePreview && (
                   <div className="mt-3 relative w-full h-40 bg-gray-100 rounded-md overflow-hidden">
-                    <img
+                    <PreviewImage
                       src={beforeImagePreview}
                       alt="Before Maintenance Preview"
                       className="w-full h-full object-contain"
-                      loading="lazy"
+                      width={400}
+                      height={160}
                     />
                     <button
                       type="button"
@@ -1256,11 +1258,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 />
                 {afterImagePreview && (
                   <div className="mt-3 relative w-full h-40 bg-gray-100 rounded-md overflow-hidden">
-                    <img
+                    <PreviewImage
                       src={afterImagePreview}
                       alt="After Maintenance Preview"
                       className="w-full h-full object-contain"
-                      loading="lazy"
+                      width={400}
+                      height={160}
                     />
                     <button
                       type="button"

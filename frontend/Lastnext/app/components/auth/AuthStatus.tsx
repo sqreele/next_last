@@ -4,6 +4,7 @@
 import { useAuth } from '@/app/lib/hooks/useAuth';
 import { appSignOut } from '@/app/lib/logout';
 import { ROUTES } from '@/app/lib/config';
+import { ProfileImage } from '@/app/components/ui/UniversalImage';
 
 interface AuthStatusProps {
   showUserInfo?: boolean;
@@ -64,11 +65,12 @@ export default function AuthStatus({
       {showUserInfo && user && (
         <div className="flex items-center space-x-2">
           {user.profile_image ? (
-            <img
+            <ProfileImage
               src={user.profile_image}
               alt={user.username}
               className="h-6 w-6 rounded-full object-cover"
-              loading="lazy"
+              width={24}
+              height={24}
             />
           ) : (
             <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center">

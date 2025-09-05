@@ -7,6 +7,7 @@ import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
 import { CompletePreventiveMaintenanceData } from '@/app/lib/PreventiveMaintenanceService';
 import { MaintenanceImage } from '@/app/lib/preventiveMaintenanceModels';
 import React from 'react';
+import { MaintenanceImage as OptimizedMaintenanceImage } from '@/app/components/ui/UniversalImage';
 import { 
   ArrowLeft, 
   CheckCircle, 
@@ -598,18 +599,11 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
                   </label>
                   <div className="aspect-square md:aspect-[4/3] border border-gray-300 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
                     {selectedMaintenance.before_image_url ? (
-                      <img 
+                      <OptimizedMaintenanceImage 
                         src={selectedMaintenance.before_image_url}
                         alt="Before maintenance" 
                         className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : selectedMaintenance.before_image_url ? (
-                      <img 
-                        src={selectedMaintenance.before_image_url}
-                        alt="Before maintenance" 
-                        className="h-full w-full object-cover"
-                        loading="lazy"
+                        fill
                       />
                     ) : (
                       <div className="text-center">
@@ -652,11 +646,11 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
                   {/* Image preview */}
                   {(imagePreview || selectedMaintenance.after_image_url) && (
                     <div className="relative aspect-square md:aspect-[4/3] border border-gray-300 rounded-lg overflow-hidden bg-gray-100">
-                      <img 
+                      <OptimizedMaintenanceImage 
                         src={imagePreview || selectedMaintenance.after_image_url || ''}
                         alt="After maintenance preview" 
                         className="h-full w-full object-cover"
-                        loading="lazy"
+                        fill
                       />
                       <button
                         type="button"

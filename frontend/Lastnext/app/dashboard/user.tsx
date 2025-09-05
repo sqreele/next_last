@@ -15,6 +15,7 @@ import { User2, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
 import Link from 'next/link';
 import Image from 'next/image';
+import { ProfileImage } from '@/app/components/ui/UniversalImage';
 
 const User: React.FC = () => {
   const { data: session } = useSession();
@@ -79,11 +80,13 @@ const User: React.FC = () => {
               !session.user.profile_image && "bg-gradient-to-br from-blue-500 to-blue-700"
             )}>
               {session.user.profile_image && session.user.profile_image !== '' ? (
-                <img 
+                <ProfileImage 
                   src={session.user.profile_image} 
                   alt={session.user.username} 
                   className="h-full w-full object-cover" 
-                  loading="lazy"
+                  width={40}
+                  height={40}
+                  fill
                 />
               ) : (
                 <span className="text-white font-semibold">{initials}</span>

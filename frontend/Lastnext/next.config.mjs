@@ -13,13 +13,15 @@ const nextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384, 512, 768],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384, 512, 768, 1024, 1200],
     qualities: [25, 50, 60, 70, 75, 80, 85, 90, 95, 100], // All quality values we use
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     // Enhanced optimization settings
     loader: 'default', // Use Next.js default loader
+    // Enable modern image formats with fallbacks
+    unoptimized: false,
     remotePatterns: [
       // Development - local machine
       { protocol: 'http', hostname: '127.0.0.1', port: '8000', pathname: '/media/**' },
@@ -144,6 +146,7 @@ const nextConfig = {
   
   async rewrites() {
     const privateApi = process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
+    const mediaApi = process.env.NEXT_MEDIA_API_URL || 'http://localhost:8000';
     return [
       // Do NOT proxy Auth0 endpoints; let Next.js handle them
       {
@@ -153,7 +156,7 @@ const nextConfig = {
       // Proxy media files to backend for image optimization
       {
         source: '/media/:path*',
-        destination: `${privateApi}/media/:path*`,
+        destination: `${mediaApi}/media/:path*`,
       },
       // Pass-through for already versioned API calls
       {

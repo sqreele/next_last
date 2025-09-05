@@ -52,13 +52,6 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   })();
 
   // Debug logging
-  console.log('🔍 JobList Debug:', {
-    jobsCount: jobs?.length || 0,
-    selectedProperty,
-    filter,
-    firstJob: jobs?.[0],
-    propertiesCount: properties?.length || 0
-  });
 
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
@@ -115,18 +108,6 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   };
 
   const filteredJobs = jobs.filter(job => {
-    // Debug individual job filtering
-    console.log('🔍 Filtering job:', {
-      jobId: job.job_id,
-      selectedProperty,
-      selectedRoom,
-      hasProfileImage: !!job.profile_image,
-      profileImageProperties: job.profile_image?.properties,
-      hasRooms: !!job.rooms,
-      roomProperties: job.rooms?.map((r, index) => ({ ...r.properties, key: `room-${index}` })),
-      directProperties: job.properties,
-      propertyIdentifiers: Array.from(selectedPropertyIdentifiers)
-    });
 
     // Disable property-based filtering for All Jobs page
     const matchesProperty = true;
@@ -191,32 +172,16 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
         break;
     }
     
-    console.log('🔍 Job status match result:', { 
-      jobId: job.job_id, 
-      jobStatus: job.status, 
-      filter, 
-      matchesStatus,
-      isDefective: job.is_defective,
-      isPreventiveMaintenance: job.is_preventivemaintenance
-    });
     
     // Status filtering enabled
     
     if (!matchesStatus) return false;
 
     const dateFilterResult = applyDateFilter(job);
-    console.log('🔍 Job date filter result:', { jobId: job.job_id, dateFilterResult });
     
     return dateFilterResult;
   });
 
-  console.log('🔍 Filtering summary:', {
-    totalJobs: jobs.length,
-    filteredJobs: filteredJobs.length,
-    selectedProperty,
-    filter,
-    dateFilter
-  });
 
   const sortedJobs = [...filteredJobs].sort((a, b) => {
     const dateA = new Date(a.created_at || '').getTime();

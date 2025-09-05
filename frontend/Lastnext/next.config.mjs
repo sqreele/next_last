@@ -17,7 +17,7 @@ const nextConfig = {
     qualities: [25, 50, 60, 70, 75, 80, 85, 90, 95, 100], // All quality values we use
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
     dangerouslyAllowSVG: false,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox; img-src 'self' data: blob: https: http://localhost:8000 http://127.0.0.1:8000;",
     // Enhanced optimization settings
     loader: 'default', // Use Next.js default loader
     // Enable modern image formats with fallbacks

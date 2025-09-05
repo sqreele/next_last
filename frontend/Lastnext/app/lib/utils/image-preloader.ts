@@ -5,6 +5,8 @@
 
 "use client";
 
+import { useState, useCallback } from 'react';
+
 export interface PreloadConfig {
   // Priority levels
   priority: 'high' | 'medium' | 'low';
@@ -23,6 +25,7 @@ export interface PreloadResult {
   url: string;
   error?: string;
   loadTime?: number;
+  cached?: boolean;
 }
 
 /**
@@ -265,8 +268,8 @@ export function useImagePreloader() {
   const [preloadedImages, setPreloadedImages] = useState<Set<string>>(new Set());
   const [isPreloading, setIsPreloading] = useState(false);
   
-  const preloadImage = useCallback(async (url: string, config?: PreloadConfig) => {
-    if (preloadedImages.has(url)) return;
+  const preloadImageHook = useCallback(async (url: string, config?: PreloadConfig): Promise<PreloadResult> => {
+    if (preloadedImages.has(url)) return { success: true, url, cached: true };
     
     setIsPreloading(true);
     const result = await preloadImage(url, config);
@@ -279,7 +282,7 @@ export function useImagePreloader() {
     return result;
   }, [preloadedImages]);
   
-  const preloadImages = useCallback(async (urls: string[], config?: PreloadConfig) => {
+  const preloadImagesHook = useCallback(async (urls: string[], config?: PreloadConfig): Promise<PreloadResult[]> => {
     setIsPreloading(true);
     const results = await preloadImages(urls, config);
     
@@ -296,10 +299,8 @@ export function useImagePreloader() {
   return {
     preloadedImages,
     isPreloading,
-    preloadImage,
-    preloadImages
+    preloadImage: preloadImageHook,
+    preloadImages: preloadImagesHook
   };
 }
 
-// Import React hooks
-import { useState, useCallback } from 'react';

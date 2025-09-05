@@ -9,6 +9,7 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
+import Image from 'next/image';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -150,11 +151,14 @@ export default function ProfilePage() {
               <CardContent className="space-y-6">
                 <div className="flex items-center space-x-4">
                   {profileImageUrl ? (
-                    <div className="relative">
-                      <img 
+                    <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-blue-200">
+                      <Image 
                         src={profileImageUrl} 
                         alt={`${user.username || 'User'}'s profile`}
-                        className="w-20 h-20 rounded-full object-cover border-2 border-blue-200"
+                        fill
+                        className="object-cover"
+                        quality={75}
+                        unoptimized={profileImageUrl.startsWith('http')}
                         onError={(e) => {
                           // If image fails to load, hide it and show fallback
                           e.currentTarget.style.display = 'none';

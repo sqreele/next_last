@@ -6,6 +6,7 @@ import { UpdateStatusModal } from "./UpdateStatusModal";
 import { Job, JobStatus, Property } from "@/app/lib/types";
 import { LazyImage } from "@/app/components/jobs/LazyImage";
 import { OptimizedImage, OptimizedThumbnail } from "@/app/components/ui/OptimizedImage";
+import { JobCardImage, ThumbnailImage, ProfileImage } from "@/app/components/ui/OptimizedImageEnhanced";
 import Image from 'next/image';
 import { 
   Clock, Calendar, User, MapPin, MessageSquare, CheckCircle2, 
@@ -56,6 +57,16 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
   const imageUrls = useMemo(() => {
     const urls: string[] = [];
     
+    console.log('🔍 JobCard image processing debug:', {
+      jobId: job.job_id,
+      hasImages: !!job.images,
+      imagesLength: job.images?.length || 0,
+      hasImageUrls: !!job.image_urls,
+      imageUrlsLength: job.image_urls?.length || 0,
+      images: job.images,
+      imageUrls: job.image_urls
+    });
+    
     if (Array.isArray(job.images)) {
       for (const img of job.images) {
         if (img?.image_url) {
@@ -78,7 +89,6 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
         }
       }
     }
-    console.log('🔍 JobCard final image URLs:', urls);
     return urls;
   }, [job.images, job.image_urls]);
 
@@ -462,17 +472,14 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
               : "w-full aspect-video"
           }`}>
             {imageUrls.length > 0 && imageUrls[selectedImage] && !failedImageIndexes.has(selectedImage) ? (
-              <div className="w-full h-full relative">
-                <Image
-                  src={imageUrls[selectedImage]}
-                  alt={`Job Image ${selectedImage + 1}`}
-                  fill
-                  className="object-cover rounded-md"
-                  quality={75}
-                  unoptimized={imageUrls[selectedImage].startsWith('/media/')}
-                  onError={() => handleImageError(selectedImage)}
-                />
-              </div>
+              <Image
+                src={imageUrls[selectedImage]}
+                alt={`Job Image ${selectedImage + 1}`}
+                fill
+                className="object-cover rounded-md"
+                unoptimized={true}
+                onError={() => handleImageError(selectedImage)}
+              />
             ) : (
               <MissingImage className="w-full h-full" />
             )}
@@ -494,17 +501,14 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
                   {(!url || failedImageIndexes.has(index)) ? (
                     <MissingImage className="w-full h-full" iconClassName="w-5 h-5" />
                   ) : (
-                    <div className="w-full h-full relative">
-                      <Image
-                        src={url}
-                        alt={`Thumbnail ${index + 1}`}
-                        fill
-                        className="object-cover"
-                        quality={60}
-                        unoptimized={url.startsWith('/media/')}
-                        onError={() => handleImageError(index)}
-                      />
-                    </div>
+                    <ThumbnailImage
+                      src={url}
+                      alt={`Thumbnail ${index + 1}`}
+                      fill
+                      className="object-cover"
+                      onError={() => handleImageError(index)}
+                      fallback={<MissingImage className="w-full h-full" iconClassName="w-5 h-5" />}
+                    />
                   )}
                 </button>
               ))}
@@ -560,15 +564,28 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
             <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 mt-2 bg-gray-50 rounded-lg">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border border-gray-100 flex-shrink-0 bg-white">
                 {job.profile_image && job.profile_image.profile_image && !profileImageError ? (
-                  <Image
+                  <ProfileImage
                     src={getSafeProfileImageUrl(job.profile_image.profile_image) || ''}
                     alt={String(getUserDisplayName(job.user) || 'User')}
                     width={40}
                     height={40}
                     className="w-full h-full object-cover rounded-full"
-                    quality={60}
-                    unoptimized={true}
                     onError={() => handleProfileImageError(new Error('Image load failed'))}
+                    fallback={
+                      <div 
+                        className="w-full h-full bg-gray-100 flex items-center justify-center relative" 
+                        title={profileImageError ? "Profile image blocked by tracking prevention" : "Profile image not available"}
+                      >
+                        <User className="w-5 h-5 text-gray-400" />
+                        {profileImageError && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full border border-white" title="Image blocked by tracking prevention">
+                            <div className="w-full h-full flex items-center justify-center">
+                              <div className="w-1.5 h-1.5 bg-yellow-600 rounded-full"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    }
                   />
                 ) : (
                   <div 

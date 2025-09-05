@@ -14,6 +14,7 @@ import { Button } from '@/app/components/ui/button';
 import { User2, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const User: React.FC = () => {
   const { data: session } = useSession();
@@ -42,11 +43,14 @@ const User: React.FC = () => {
               !session.user.profile_image && "bg-gradient-to-br from-blue-500 to-blue-700"
             )}>
               {session.user.profile_image && session.user.profile_image !== '' ? (
-                <img 
+                <Image 
                   src={session.user.profile_image} 
                   alt={session.user.username} 
+                  width={40}
+                  height={40}
                   className="h-full w-full object-cover" 
-                  loading="lazy"
+                  quality={60}
+                  unoptimized={session.user.profile_image.startsWith('http')}
                 />
               ) : (
                 <span className="text-white font-semibold">{initials}</span>

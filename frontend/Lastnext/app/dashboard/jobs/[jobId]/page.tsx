@@ -7,6 +7,8 @@ import { Badge } from '@/app/components/ui/badge';
 import { cn } from '@/app/lib/utils/cn';
 import { Job, Property, JobStatus, JobPriority } from '@/app/lib/types';
 import Image from 'next/image';
+import { fixImageUrl } from '@/app/lib/utils/image-utils';
+import { JobHeroImage, GalleryImage } from '@/app/components/ui/OptimizedImageEnhanced';
 
 type Props = {
   params: Promise<{ jobId: string }>;
@@ -58,6 +60,19 @@ export default async function JobPage({ params }: Props) {
     if (!job) {
       notFound();
     }
+
+    // Debug logging for job data
+    console.log('🔍 Job Detail Debug:', {
+      jobId,
+      hasImageUrls: !!job.image_urls,
+      imageUrlsLength: job.image_urls?.length || 0,
+      imageUrls: job.image_urls,
+      hasImages: !!job.images,
+      imagesLength: job.images?.length || 0,
+      images: job.images,
+      // Test fixImageUrl function
+      testImageUrl: job.image_urls?.[0] ? fixImageUrl(job.image_urls[0]) : 'No first image'
+    });
 
     const formatDate = (dateString: string) => {
       return new Date(dateString).toLocaleString('en-US', {
@@ -281,35 +296,42 @@ export default async function JobPage({ params }: Props) {
               <h2 className="text-lg font-semibold text-gray-800">Images</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {job.image_urls.map((url, index) => {
-                  // Use relative URLs that work with Next.js image optimization
-                  const imageUrl = (() => {
-                    // If it's already a full URL, return as is
-                    if (url.startsWith('http')) {
-                      return url;
-                    }
-                    // If the URL already starts with /media/, use as is
-                    if (url.startsWith('/media/')) {
-                      return url;
-                    }
-                    // If it's a relative path, construct relative URL
-                    if (url.startsWith('maintenance_job_images/') || url.startsWith('profile_images/')) {
-                      return `/media/${url}`;
-                    }
-                    // For any other path, construct relative URL
-                    return `/media/${url}`;
-                  })();
+                  // Use the fixImageUrl utility to properly handle different URL formats
+                  const imageUrl = fixImageUrl(url);
+                  
+                  // Debug logging for image URLs
+                  console.log('🔍 Job Detail Image Debug:', {
+                    originalUrl: url,
+                    fixedUrl: imageUrl,
+                    isExternal: imageUrl?.startsWith('http'),
+                    index,
+                    urlType: typeof url,
+                    urlLength: url?.length
+                  });
+                  
+                  // Use original URL if fixImageUrl returns null
+                  const finalImageUrl = imageUrl || url;
+                  
+                  if (!finalImageUrl) {
+                    return (
+                      <div key={index} className="relative w-full h-48 overflow-hidden rounded-md shadow-sm bg-gray-100 flex items-center justify-center">
+                        <span className="text-gray-500">No Image</span>
+                      </div>
+                    );
+                  }
                   
                   return (
                     <div key={index} className="relative w-full h-48 overflow-hidden rounded-md shadow-sm">
                       <Image
-                        src={imageUrl}
+                        src={finalImageUrl}
                         alt={`Job image ${index + 1}`}
                         fill
                         className="object-cover"
-                        quality={75}
+                        quality={85}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        unoptimized={finalImageUrl.startsWith('http')}
                         placeholder="blur"
                         blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       />
                     </div>
                   );

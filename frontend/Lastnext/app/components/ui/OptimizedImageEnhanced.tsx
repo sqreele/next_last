@@ -11,15 +11,15 @@ import { cn } from '@/app/lib/utils/cn';
 import { 
   getOptimizedImageProps, 
   IMAGE_PRESETS, 
-  ImageOptimizationOptions,
+  ImagePresetOptions,
   isExternalImage 
-} from '@/app/lib/utils/image-optimization-enhanced';
+} from '@/app/lib/utils/universal-image-optimization';
 
 interface OptimizedImageEnhancedProps extends Omit<ImageProps, 'src' | 'alt'> {
   src: string;
   alt: string;
   preset?: keyof typeof IMAGE_PRESETS;
-  options?: ImageOptimizationOptions;
+  options?: ImagePresetOptions;
   fallback?: React.ReactNode;
   className?: string;
   containerClassName?: string;
@@ -45,7 +45,17 @@ export function OptimizedImageEnhanced({
   const [hasError, setHasError] = useState(false);
 
   const imageOptions = options || IMAGE_PRESETS[preset];
-  const optimizedProps = getOptimizedImageProps(src, alt, imageOptions, props);
+  const { width, height, quality, priority, ...restProps } = props;
+  
+  // Check if this is an external image that should be unoptimized
+  const isExternalImage = src.startsWith('http') || src.startsWith('/media/') || src.includes('/media/');
+  
+  const optimizedProps = getOptimizedImageProps(src, alt, imageOptions, {
+    width: typeof width === 'string' ? parseInt(width) : width,
+    height: typeof height === 'string' ? parseInt(height) : height,
+    quality: typeof quality === 'string' ? parseInt(quality) : quality,
+    priority,
+  });
   
 
   const handleLoad = useCallback(() => {
@@ -97,17 +107,34 @@ export function OptimizedImageEnhanced({
         </div>
       )}
       
-      <Image
-        {...optimizedProps}
-        {...props}
-        className={cn(
-          "transition-opacity duration-300",
-          isLoading ? "opacity-0" : "opacity-100",
-          className
-        )}
-        onLoad={handleLoad}
-        onError={handleError}
-      />
+      {isExternalImage ? (
+        <img
+          src={src}
+          alt={alt}
+          width={optimizedProps.width}
+          height={optimizedProps.height}
+          className={cn(
+            "transition-opacity duration-300",
+            isLoading ? "opacity-0" : "opacity-100",
+            className
+          )}
+          onLoad={handleLoad}
+          onError={handleError}
+          {...props}
+        />
+      ) : (
+        <Image
+          {...optimizedProps}
+          {...props}
+          className={cn(
+            "transition-opacity duration-300",
+            isLoading ? "opacity-0" : "opacity-100",
+            className
+          )}
+          onLoad={handleLoad}
+          onError={handleError}
+        />
+      )}
     </div>
   );
 }

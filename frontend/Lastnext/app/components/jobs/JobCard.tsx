@@ -57,15 +57,6 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
   const imageUrls = useMemo(() => {
     const urls: string[] = [];
     
-    console.log('🔍 JobCard image processing debug:', {
-      jobId: job.job_id,
-      hasImages: !!job.images,
-      imagesLength: job.images?.length || 0,
-      hasImageUrls: !!job.image_urls,
-      imageUrlsLength: job.image_urls?.length || 0,
-      images: job.images,
-      imageUrls: job.image_urls
-    });
     
     if (Array.isArray(job.images)) {
       for (const img of job.images) {
@@ -73,7 +64,6 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
           const fixedUrl = createImageUrl(img.image_url);
           if (fixedUrl) {
             urls.push(fixedUrl);
-            console.log('🔍 JobCard image URL created:', { original: img.image_url, fixed: fixedUrl });
           }
         }
       }
@@ -84,7 +74,6 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
           const fixedUrl = createImageUrl(url);
           if (fixedUrl && !urls.includes(fixedUrl)) {
             urls.push(fixedUrl);
-            console.log('🔍 JobCard image URL created:', { original: url, fixed: fixedUrl });
           }
         }
       }
@@ -94,7 +83,6 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
 
   const toggleSection = useCallback((section: keyof typeof expandedSections, e: MouseEvent) => {
     e.stopPropagation();
-    console.log('🔍 Toggling section:', section, 'for job:', job.job_id);
     
     try {
       setExpandedSections(prev => ({
@@ -102,16 +90,6 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
         [section]: !prev[section]
       }));
       
-      // Additional logging for staff details section
-      if (section === 'details') {
-        console.log('🔍 Staff details section toggled. Job user data:', {
-          jobUserId: job.user,
-          jobUserIdType: typeof job.user,
-          sessionUserId: session?.user?.id,
-          sessionUsername: session?.user?.username,
-          sessionPositions: session?.user?.positions
-        });
-      }
     } catch (error) {
       console.error('Error toggling section:', section, error);
     }
@@ -245,28 +223,15 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
     const jobUserId = String(user).trim();
     const sessionUserId = String(session.user.id || '').trim();
     
-    console.log('🔍 JobCard getUserDisplayName debug:', {
-      jobUserId,
-      sessionUserId,
-      sessionUsername: session.user.username,
-      jobUserIdType: typeof user,
-      sessionUserIdType: typeof session.user.id,
-      isExactMatch: jobUserId === sessionUserId,
-      jobUserIdLower: jobUserId.toLowerCase(),
-      sessionUserIdLower: sessionUserId.toLowerCase(),
-      isLowerMatch: jobUserId.toLowerCase() === sessionUserId.toLowerCase()
-    });
     
     // Try multiple comparison methods
     // Exact match
     if (jobUserId === sessionUserId) {
-      console.log('✅ Exact ID match found');
       return session.user.username || 'You';
     }
     
     // Case-insensitive match
     if (jobUserId.toLowerCase() === sessionUserId.toLowerCase()) {
-      console.log('✅ Case-insensitive ID match found');
       return session.user.username || 'You';
     }
     
@@ -324,13 +289,6 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
 
   const handleProfileImageError = useCallback((error: any) => {
     console.warn('Profile image failed to load (possibly blocked by tracking prevention):', error);
-    console.log('🔍 JobCard profile image error details:', {
-      jobId: job.job_id,
-      userId: job.user,
-      profileImageUrl: job.profile_image?.profile_image,
-      error: error?.message || error
-    });
-    console.log('💡 This is likely due to browser tracking prevention blocking Google profile images');
     setProfileImageError(true);
   }, [job.job_id, job.user, job.profile_image?.profile_image]);
 
@@ -338,15 +296,6 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
   useEffect(() => {
     setProfileImageError(false);
     
-    // Debug logging for profile images
-    if (job.profile_image?.profile_image) {
-      console.log('🔍 JobCard profile image debug:', {
-        jobId: job.job_id,
-        profileImageUrl: job.profile_image.profile_image,
-        isGoogleImage: job.profile_image.profile_image.includes('googleusercontent.com'),
-        mayBeBlocked: job.profile_image.profile_image.includes('lh3.googleusercontent.com')
-      });
-    }
   }, [job.job_id, job.profile_image?.profile_image]);
 
   // Safe profile image URL creation with fallback
@@ -356,9 +305,6 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
     try {
       // Check if it's a Google profile image that might be blocked
       if (imageUrl.includes('lh3.googleusercontent.com') || imageUrl.includes('googleusercontent.com')) {
-        console.log('⚠️ Google profile image detected - may be blocked by tracking prevention');
-        console.log('🔍 Profile image URL:', imageUrl);
-        console.log('💡 This image may be blocked by browser tracking prevention');
         // Return the URL but be prepared for it to fail
         return imageUrl;
       }

@@ -38,9 +38,13 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
       return externalUrl;
     }
     
-    // Handle localhost:8000 URLs - check if backend is accessible
+    // Handle localhost:8000 URLs - preserve external URLs for media files
     if (imageUrl.includes('localhost:8000')) {
-      // For now, try to use the relative path instead
+      // For media files, keep the external URL to avoid Next.js image optimization issues
+      if (imageUrl.includes('/media/')) {
+        return imageUrl;
+      }
+      // For non-media files, use relative path
       const relativePath = imageUrl.replace('http://localhost:8000', '');
       return relativePath;
     }

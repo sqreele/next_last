@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
 import { PreventiveMaintenance, FrequencyType } from '@/app/lib/preventiveMaintenanceModels';
 import { UpdatePreventiveMaintenanceData } from '@/app/lib/PreventiveMaintenanceService';
+import { PreviewImage } from '@/app/components/ui/UniversalImage';
 import { 
   Calendar, 
   Save, 
@@ -562,11 +563,12 @@ export default function EditPreventiveMaintenancePage() {
                 
                 {formState.before_image_preview ? (
                   <div className="relative">
-                    <img
+                    <PreviewImage
                       src={formState.before_image_preview}
                       alt="Before maintenance"
                       className="w-full h-48 object-cover rounded-lg border border-gray-300"
-                      loading="lazy"
+                      width={400}
+                      height={192}
                     />
                     <button
                       type="button"
@@ -602,11 +604,12 @@ export default function EditPreventiveMaintenancePage() {
                 
                 {formState.after_image_preview ? (
                   <div className="relative">
-                    <img
+                    <PreviewImage
                       src={formState.after_image_preview}
                       alt="After maintenance"
                       className="w-full h-48 object-cover rounded-lg border border-gray-300"
-                      loading="lazy"
+                      width={400}
+                      height={192}
                     />
                     <button
                       type="button"

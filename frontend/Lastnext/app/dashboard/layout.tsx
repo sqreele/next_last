@@ -21,7 +21,8 @@ import {
   Bell,
   ChevronDown,
   Activity,
-  FileText
+  FileText,
+  Filter
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -51,6 +52,7 @@ const navItems = [
   { href: '/dashboard/myJobs', label: 'My Jobs', icon: ShoppingCart },
   { href: '/dashboard/chartdashboard', label: 'Analytics', icon: LineChart },
   { href: '/dashboard/jobs-report', label: 'Jobs Report', icon: FileText },
+  { href: '/dashboard/rooms/by-topics', label: 'Room-Topic Filter', icon: Filter },
   { href: '/dashboard/profile', label: 'Profile', icon: Users2 },
   { href: '/dashboard/createJob', label: 'Create Job', icon: PlusCircle },
   { href: '/dashboard/Preventive_maintenance', label: 'PM', icon: PlusCircle },

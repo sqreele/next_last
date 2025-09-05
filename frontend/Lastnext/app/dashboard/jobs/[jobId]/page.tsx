@@ -6,6 +6,7 @@ import { MapPin, Clock, Calendar, User, CheckCircle2, MessageSquare, StickyNote,
 import { Badge } from '@/app/components/ui/badge';
 import { cn } from '@/app/lib/utils/cn';
 import { Job, Property, JobStatus, JobPriority } from '@/app/lib/types';
+import Image from 'next/image';
 
 type Props = {
   params: Promise<{ jobId: string }>;
@@ -66,6 +67,65 @@ export default async function JobPage({ params }: Props) {
         hour: '2-digit',
         minute: '2-digit',
       });
+    };
+
+    const getUserDisplayName = (user: any): string => {
+      if (!user) return 'Unassigned';
+      
+      // Handle case where user is stringified object "[object Object]"
+      if (typeof user === 'string' && user === '[object Object]') {
+        return 'Unknown User';
+      }
+      
+      // Handle user as an object with various possible properties
+      if (typeof user === 'object' && user) {
+        // Priority 1: Check for full_name property (most important for display)
+        if ('full_name' in user && user.full_name && user.full_name.trim()) {
+          return user.full_name.trim();
+        }
+        // Priority 2: Check for first_name and last_name combination
+        if ('first_name' in user && 'last_name' in user) {
+          const firstName = user.first_name || '';
+          const lastName = user.last_name || '';
+          if (firstName || lastName) {
+            return `${firstName} ${lastName}`.trim();
+          }
+        }
+        // Priority 3: Check for name property
+        if ('name' in user && user.name) {
+          return user.name;
+        }
+        // Priority 4: Check for username property (clean Auth0 usernames)
+        if ('username' in user && user.username) {
+          let cleanUsername = user.username;
+          // Clean up Auth0 usernames for better display
+          if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
+            cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
+          }
+          return cleanUsername;
+        }
+        // Priority 5: Check for email property
+        if ('email' in user && user.email) {
+          return user.email.split('@')[0]; // Return part before @ as display name
+        }
+        // Priority 6: Check for id property (last resort)
+        if ('id' in user && user.id) {
+          return `User ${user.id}`;
+        }
+        return 'Unknown User';
+      }
+      
+      // Handle user as string or number - if it's a string, it might be a username
+      if (typeof user === 'string') {
+        // If it's a string that looks like an ID (numeric), show as User ID
+        if (/^\d+$/.test(user)) {
+          return `User ${user}`;
+        }
+        // Otherwise, treat it as a username
+        return user;
+      }
+      
+      return 'Unknown User';
     };
 
     return (
@@ -137,28 +197,7 @@ export default async function JobPage({ params }: Props) {
               <User className="w-4 h-4 text-gray-500" />
               <span>
                 <span className="font-semibold">Assigned to:</span>{' '}
-                {(() => {
-                  if (!job.user) return 'Unassigned';
-                  
-                  // Handle user as an object with various possible properties
-                  if (typeof job.user === 'object' && job.user) {
-                    if ('username' in job.user && job.user.username) {
-                      return job.user.username;
-                    }
-                    if ('name' in job.user && job.user.name) {
-                      return job.user.name;
-                    }
-                    if ('email' in job.user && job.user.email) {
-                      return job.user.email.split('@')[0];
-                    }
-                    if ('id' in job.user && job.user.id) {
-                      return `User ${job.user.id}`;
-                    }
-                    return 'Unknown User';
-                  }
-                  
-                  return typeof job.user === 'string' ? `User ${job.user}` : 'Unknown User';
-                })()}
+                {getUserDisplayName(job.user)}
               </span>
             </div>
           )}
@@ -172,13 +211,13 @@ export default async function JobPage({ params }: Props) {
               </div>
               <ul className="ml-6 list-disc text-sm">
                 {job.rooms.map(room => (
-                  <li key={room.room_id || room.id}>
+                  <li key={room.room_id}>
                     {(() => {
                       const roomParts = [];
                       
                       // Add room ID if available
-                      if (room.room_id || room.id) {
-                        roomParts.push(`Room ID: #${room.room_id || room.id}`);
+                      if (room.room_id) {
+                        roomParts.push(`Room ID: #${room.room_id}`);
                       }
                       
                       // Add room type if available
@@ -186,8 +225,8 @@ export default async function JobPage({ params }: Props) {
                         roomParts.push(`Type: ${room.room_type}`);
                       }
                       
-                      // Add room name or number
-                      const roomName = room.name || room.room_number || 'Unknown Room';
+                      // Add room name
+                      const roomName = room.name || 'Unknown Room';
                       roomParts.push(roomName);
                       
                       return roomParts.join(' | ');
@@ -261,13 +300,18 @@ export default async function JobPage({ params }: Props) {
                   })();
                   
                   return (
-                    <img
-                      key={index}
-                      src={imageUrl}
-                      alt={`Job image ${index + 1}`}
-                      className="w-full h-auto rounded-md shadow-sm max-h-48 object-cover"
-                      loading="lazy"
-                    />
+                    <div key={index} className="relative w-full h-48 overflow-hidden rounded-md shadow-sm">
+                      <Image
+                        src={imageUrl}
+                        alt={`Job image ${index + 1}`}
+                        fill
+                        className="object-cover"
+                        quality={75}
+                        placeholder="blur"
+                        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      />
+                    </div>
                   );
                 })}
               </div>

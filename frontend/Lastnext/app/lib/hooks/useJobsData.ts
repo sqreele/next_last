@@ -16,6 +16,7 @@ interface UseJobsDataOptions {
     status?: string;
     is_preventivemaintenance?: boolean | null;
     search?: string;
+    user_id?: string | null;
   };
 }
 
@@ -71,7 +72,20 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       // *** CHOOSE FETCH FUNCTION BASED ON PROPERTY ID ***
       if (activePropertyId) {
         console.log(`useJobsData: Fetching jobs for property ${activePropertyId}`);
-        fetchedJobs = await fetchJobsForProperty(activePropertyId, session.user.accessToken);
+        // Build query parameters for additional filtering
+        const queryParams = new URLSearchParams();
+        const filters = options?.filters;
+        if (filters) {
+          if (filters.room_id) queryParams.append('room_id', filters.room_id);
+          if (filters.room_name) queryParams.append('room_name', filters.room_name);
+          if (filters.status && filters.status !== 'all') queryParams.append('status', filters.status);
+          if (filters.is_preventivemaintenance !== null && filters.is_preventivemaintenance !== undefined) queryParams.append('is_preventivemaintenance', filters.is_preventivemaintenance.toString());
+          if (filters.search) queryParams.append('search', filters.search);
+          if (filters.user_id && filters.user_id !== 'all') queryParams.append('user_id', filters.user_id);
+        }
+        
+        const queryString = queryParams.toString();
+        fetchedJobs = await fetchJobsForProperty(activePropertyId, session.user.accessToken, queryString);
       } else {
         console.log("useJobsData: Fetching my jobs (user-specific)");
         // Build query parameters for room filtering
@@ -83,11 +97,11 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
           if (filters.status && filters.status !== 'all') queryParams.append('status', filters.status);
           if (filters.is_preventivemaintenance !== null && filters.is_preventivemaintenance !== undefined) queryParams.append('is_preventivemaintenance', filters.is_preventivemaintenance.toString());
           if (filters.search) queryParams.append('search', filters.search);
+          if (filters.user_id && filters.user_id !== 'all') queryParams.append('user_id', filters.user_id);
         }
         
         const queryString = queryParams.toString();
-        const url = queryString ? `/api/v1/jobs/my_jobs/?${queryString}` : '/api/v1/jobs/my_jobs/';
-        fetchedJobs = await fetchMyJobs(session.user.accessToken);
+        fetchedJobs = await fetchMyJobs(session.user.accessToken, queryString);
       }
 
       console.log(`useJobsData: Fetched ${fetchedJobs.length} jobs`);

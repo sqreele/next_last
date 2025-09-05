@@ -5,6 +5,8 @@ export interface User {
   id: string;
   username: string;
   email: string | null;
+  first_name?: string;
+  last_name?: string;
   profile_image: string | null;
   positions: string;
   properties: Property[];

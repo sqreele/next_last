@@ -1,4 +1,4 @@
-import { Job, Property, JobStatus, Room } from "./types";
+import { Job, Property, JobStatus, Room, User, Topic } from "./types";
 import { API_CONFIG } from "./config";
 import { fixJobsImageUrls, fixJobImageUrls, sanitizeJobsData, sanitizeJobData } from "./utils/image-utils";
 
@@ -119,10 +119,13 @@ export async function fetchProperties(accessToken?: string): Promise<Property[]>
 
 export async function fetchJobsForProperty(
   propertyId: string,
-  accessToken?: string
+  accessToken?: string,
+  additionalParams?: string
 ): Promise<Job[]> {
   try {
-    const jobs = await fetchWithToken<Job[]>(`/api/v1/jobs/?property=${propertyId}`, accessToken);
+    const baseUrl = `/api/v1/jobs/?property=${propertyId}`;
+    const url = additionalParams ? `${baseUrl}&${additionalParams}` : baseUrl;
+    const jobs = await fetchWithToken<Job[]>(url, accessToken);
     console.log(`📋 Jobs fetched: { count: ${jobs.length} }`);
     const sanitizedJobs = sanitizeJobsData(jobs);
     return fixJobsImageUrls(sanitizedJobs);
@@ -182,10 +185,11 @@ export async function updateJobStatus(
   return fetchWithToken<Job>(`/api/v1/jobs/${jobId}/`, accessToken, "PATCH", { status });
 }
 
-export async function fetchMyJobs(accessToken?: string): Promise<Job[]> {
+export async function fetchMyJobs(accessToken?: string, queryParams?: string): Promise<Job[]> {
   console.log("fetchMyJobs: Starting to fetch my jobs...");
   try {
-    const response = await fetchWithToken<any>(`/api/v1/jobs/my_jobs/`, accessToken);
+    const url = queryParams ? `/api/v1/jobs/my_jobs/?${queryParams}` : `/api/v1/jobs/my_jobs/`;
+    const response = await fetchWithToken<any>(url, accessToken);
     console.log(`fetchMyJobs: Raw API response:`, response);
     console.log(`fetchMyJobs: Response type:`, typeof response);
     
@@ -288,5 +292,163 @@ export async function updateUserProfile(auth0Profile: any, accessToken?: string)
   } catch (error) {
     console.error('❌ Error updating user profile:', error);
     return false;
+  }
+}
+
+export async function fetchUsers(accessToken?: string): Promise<User[]> {
+  console.log("fetchUsers: Starting to fetch users...");
+  try {
+    const response = await fetchWithToken<any>(`/api/v1/users/`, accessToken);
+    console.log(`fetchUsers: Raw API response:`, response);
+    
+    // The backend returns a structured response with 'results' field containing the users
+    let users: User[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        // Direct array response (fallback)
+        users = response;
+      } else if (response.results && Array.isArray(response.results)) {
+        // Structured response with results field
+        users = response.results;
+        console.log(`fetchUsers: Extracted ${users.length} users from results field`);
+      } else {
+        console.error('fetchUsers: Unexpected response format:', response);
+        return [];
+      }
+    } else {
+      console.error('fetchUsers: Invalid response type:', typeof response);
+      return [];
+    }
+
+    console.log(`fetchUsers: Successfully fetched ${users.length} users`);
+    return users;
+  } catch (error) {
+    console.error('fetchUsers: Error fetching users:', error);
+    throw new ServerApiError('Failed to fetch users', 500, error);
+  }
+}
+
+export async function fetchUsersByProperty(propertyId: string, accessToken?: string): Promise<User[]> {
+  console.log(`fetchUsersByProperty: Starting to fetch users for property ${propertyId}...`);
+  try {
+    // Use the user-profiles endpoint which includes property information
+    const response = await fetchWithToken<any>(`/api/v1/user-profiles/`, accessToken);
+    console.log(`fetchUsersByProperty: Raw API response:`, response);
+    
+    // The backend returns a structured response with 'results' field containing the user profiles
+    let userProfiles: any[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        // Direct array response (fallback)
+        userProfiles = response;
+      } else if (response.results && Array.isArray(response.results)) {
+        // Structured response with results field
+        userProfiles = response.results;
+        console.log(`fetchUsersByProperty: Extracted ${userProfiles.length} user profiles from results field`);
+      } else {
+        console.error('fetchUsersByProperty: Unexpected response format:', response);
+        return [];
+      }
+    } else {
+      console.error('fetchUsersByProperty: Invalid response type:', typeof response);
+      return [];
+    }
+
+    // Filter users by property
+    const usersWithProperty = userProfiles.filter(profile => {
+      if (!profile.properties || !Array.isArray(profile.properties)) {
+        return false;
+      }
+      return profile.properties.some((prop: any) => 
+        prop.property_id === propertyId || prop.id === propertyId
+      );
+    });
+
+    // Transform to User format
+    const users: User[] = usersWithProperty.map(profile => ({
+      id: profile.id,
+      username: profile.username,
+      email: profile.email,
+      first_name: profile.first_name || '',
+      last_name: profile.last_name || '',
+      positions: profile.positions || '',
+      profile_image: profile.profile_image,
+      properties: profile.properties || [],
+      accessToken: '', // Not needed for this context
+      refreshToken: '', // Not needed for this context
+      created_at: profile.created_at
+    }));
+
+    console.log(`fetchUsersByProperty: Successfully fetched ${users.length} users for property ${propertyId}`);
+    return users;
+  } catch (error) {
+    console.error('fetchUsersByProperty: Error fetching users by property:', error);
+    throw new ServerApiError('Failed to fetch users by property', 500, error);
+  }
+}
+
+export async function fetchTopics(accessToken?: string): Promise<Topic[]> {
+  console.log("fetchTopics: Starting to fetch topics...");
+  try {
+    const response = await fetchWithToken<any>(`/api/v1/topics/`, accessToken);
+    console.log(`fetchTopics: Raw API response:`, response);
+    
+    // The backend returns a structured response with 'results' field containing the topics
+    let topics: Topic[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        // Direct array response (fallback)
+        topics = response;
+      } else if (response.results && Array.isArray(response.results)) {
+        // Structured response with results field
+        topics = response.results;
+        console.log(`fetchTopics: Extracted ${topics.length} topics from results field`);
+      } else {
+        console.error('fetchTopics: Unexpected response format:', response);
+        return [];
+      }
+    } else {
+      console.error('fetchTopics: Invalid response type:', typeof response);
+      return [];
+    }
+
+    console.log(`fetchTopics: Successfully fetched ${topics.length} topics`);
+    return topics;
+  } catch (error) {
+    console.error('fetchTopics: Error fetching topics:', error);
+    throw new ServerApiError('Failed to fetch topics', 500, error);
+  }
+}
+
+export async function fetchRooms(accessToken?: string): Promise<Room[]> {
+  console.log("fetchRooms: Starting to fetch rooms...");
+  try {
+    const response = await fetchWithToken<any>(`/api/v1/rooms/`, accessToken);
+    console.log(`fetchRooms: Raw API response:`, response);
+    
+    // The backend returns a structured response with 'results' field containing the rooms
+    let rooms: Room[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        // Direct array response (fallback)
+        rooms = response;
+      } else if (response.results && Array.isArray(response.results)) {
+        // Structured response with results field
+        rooms = response.results;
+        console.log(`fetchRooms: Extracted ${rooms.length} rooms from results field`);
+      } else {
+        console.error('fetchRooms: Unexpected response format:', response);
+        return [];
+      }
+    } else {
+      console.error('fetchRooms: Invalid response type:', typeof response);
+      return [];
+    }
+
+    console.log(`fetchRooms: Successfully fetched ${rooms.length} rooms`);
+    return rooms;
+  } catch (error) {
+    console.error('fetchRooms: Error fetching rooms:', error);
+    throw new ServerApiError('Failed to fetch rooms', 500, error);
   }
 }

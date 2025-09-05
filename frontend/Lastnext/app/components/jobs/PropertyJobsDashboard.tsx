@@ -25,6 +25,7 @@ import { Job, JobStatus, STATUS_COLORS } from "@/app/lib/types";
 import { useUser, useProperties, useJobs } from "@/app/lib/stores/mainStore";
 import { useSession } from "@/app/lib/session.client";
 import { appSignOut } from "@/app/lib/logout";
+import { useDetailedUsers, DetailedUser } from "@/app/lib/hooks/useDetailedUsers";
 type Session = any;
 import { Button } from "@/app/components/ui/button";
 import Link from "next/link";
@@ -43,6 +44,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   const { properties: userProperties } = useProperties();
   const { data: session, status, refresh } = useSession();
   const { jobs, setJobs } = useJobs();
+  const { users: detailedUsers, loading: usersLoading } = useDetailedUsers();
 
   // Since we don't have jobCreationCount in the new store, we'll use jobs length as a proxy
   const jobCreationCount = jobs.length;
@@ -150,18 +152,14 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       setIsGeneratingPDF(true);
       
       // Capture charts as images
-      const [pieChartImage, barChartImage, topicChartImage, roomChartImage] = await Promise.all([
+      const [pieChartImage, barChartImage] = await Promise.all([
         captureChartAsImage('pie-chart-container'),
-        captureChartAsImage('bar-chart-container'),
-        captureChartAsImage('topic-chart-container'),
-        captureChartAsImage('room-chart-container')
+        captureChartAsImage('bar-chart-container')
       ]);
 
       // If chart images are too small or empty, don't use them
       const usePieChartImage = pieChartImage && pieChartImage.length > 1000;
       const useBarChartImage = barChartImage && barChartImage.length > 1000;
-      const useTopicChartImage = topicChartImage && topicChartImage.length > 1000;
-      const useRoomChartImage = roomChartImage && roomChartImage.length > 1000;
       
       // Get current property name
       const currentProperty = userProperties.find(p => p.property_id === effectiveProperty);
@@ -179,11 +177,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           chartImages={{
             pieChart: usePieChartImage ? pieChartImage : null,
             barChart: useBarChartImage ? barChartImage : null,
-            topicChart: useTopicChartImage ? topicChartImage : null,
-            roomChart: useRoomChartImage ? roomChartImage : null
+            topicChart: null,
+            roomChart: null
           }}
-          jobsByTopic={jobsByTopic}
-          jobsByRoom={jobsByRoom}
+          jobsByTopic={[]}
+          jobsByRoom={[]}
         />
       );
       
@@ -356,23 +354,61 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     });
   }, [filteredJobs]);
 
-  // Helper function to extract user display name
+  // Helper function to extract user display name with detailed user data
   const getUserDisplayName = (user: any): string => {
-    
     if (!user) {
       return 'Unknown User';
     }
     
-    // If it's an object with username field
+    // If it's an object with username field, try to find detailed user info
     if (typeof user === 'object' && user && 'username' in user) {
-      return user.username;
+      // Try to find in detailed users first
+      const detailedUser = detailedUsers.find(u => u.username === user.username);
+      if (detailedUser) {
+        // Use full name if available, otherwise clean up the username
+        if (detailedUser.full_name && detailedUser.full_name.trim()) {
+          return detailedUser.full_name;
+        }
+        // Clean up Auth0 usernames for better display
+        let cleanUsername = detailedUser.username;
+        if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
+          cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
+        }
+        return cleanUsername;
+      }
+      // Clean up Auth0 usernames for better display
+      let cleanUsername = user.username;
+      if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
+        cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
+      }
+      return cleanUsername;
     }
     
-    // If it's a string or number, try to match with session user
+    // If it's a string or number, try to match with detailed users
     if (typeof user === 'string' || typeof user === 'number') {
       const userStr = String(user);
       
-      // Try to match with session data
+      // Try to match with detailed users by ID
+      const detailedUser = detailedUsers.find(u => 
+        u.id.toString() === userStr || 
+        u.username === userStr ||
+        u.email === userStr
+      );
+      
+      if (detailedUser) {
+        // Use full name if available, otherwise clean up the username
+        if (detailedUser.full_name && detailedUser.full_name.trim()) {
+          return detailedUser.full_name;
+        }
+        // Clean up Auth0 usernames for better display
+        let cleanUsername = detailedUser.username;
+        if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
+          cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
+        }
+        return cleanUsername;
+      }
+      
+      // Try to match with session data as fallback
       if (session?.user) {
         const sessionUserId = String(session.user.id || '').trim();
         const sessionUsername = session.user.username || 'You';
@@ -412,7 +448,6 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         }
         
         // If we have session data but no match, try to use session username as fallback
-        // This handles cases where the job user ID doesn't match session ID format
         if (session.user.username) {
           return session.user.username;
         }
@@ -430,6 +465,24 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       // Try different possible fields for username
       const username = user.username || user.name || user.email || user.id;
       if (username) {
+        // Try to find in detailed users
+        const detailedUser = detailedUsers.find(u => 
+          u.username === username || 
+          u.email === username ||
+          u.id.toString() === username
+        );
+        if (detailedUser) {
+          // Use full name if available, otherwise clean up the username
+          if (detailedUser.full_name && detailedUser.full_name.trim()) {
+            return detailedUser.full_name;
+          }
+          // Clean up Auth0 usernames for better display
+          let cleanUsername = detailedUser.username;
+          if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
+            cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
+          }
+          return cleanUsername;
+        }
         return String(username);
       }
       
@@ -502,82 +555,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     const sortedResult = result.sort((a, b) => b.total - a.total);
     
     return sortedResult;
-  }, [filteredJobs]);
+  }, [filteredJobs, detailedUsers, session?.user]);
 
-  // Memoized jobs by topic data
-  const jobsByTopic = useMemo(() => {
-    if (filteredJobs.length === 0) return [];
- 
-    console.log('Processing jobs by topic, total jobs:', filteredJobs.length);
-    console.log('First 3 jobs with topics:', filteredJobs.slice(0, 3).map(j => ({ id: j.id, topics: j.topics })));
-    
-    // Collect all topics from jobs
-    const topicCounts: Record<string, number> = {};
-    
-    for (const job of filteredJobs) {
-      if (job.topics && job.topics.length > 0) {
-        for (const topic of job.topics) {
-          const topicTitle = topic.title || 'Unknown Topic';
-          topicCounts[topicTitle] = (topicCounts[topicTitle] || 0) + 1;
-        }
-      } else {
-        // Jobs without topics
-        topicCounts['No Topic'] = (topicCounts['No Topic'] || 0) + 1;
-      }
-    }
- 
-    console.log('Topic counts:', topicCounts);
-    
-    // Convert to array and sort by count
-    const result = Object.entries(topicCounts)
-      .map(([topic, count]) => ({
-        topic,
-        count,
-        percentage: filteredJobs.length > 0 ? ((count / filteredJobs.length) * 100).toFixed(1) : '0'
-      }))
-      .sort((a, b) => b.count - a.count);
-    
-    console.log('Jobs by topic result:', result);
-    return result;
-  }, [filteredJobs]);
-
-  // Memoized jobs by room data
-  const jobsByRoom = useMemo(() => {
-    if (filteredJobs.length === 0) return [];
- 
-    console.log('Processing jobs by room, total jobs:', filteredJobs.length);
-    console.log('First 3 jobs with rooms:', filteredJobs.slice(0, 3).map(j => ({ id: j.id, rooms: j.rooms })));
-    
-    // Collect all rooms from jobs
-    const roomCounts: Record<string, number> = {};
-    
-    for (const job of filteredJobs) {
-      if (job.rooms && job.rooms.length > 0) {
-        for (const room of job.rooms) {
-          const roomName = room.name || `Room ${room.room_id}` || 'Unknown Room';
-          roomCounts[roomName] = (roomCounts[roomName] || 0) + 1;
-        }
-      } else {
-        // Jobs without rooms
-        roomCounts['No Room'] = (roomCounts['No Room'] || 0) + 1;
-      }
-    }
- 
-    console.log('Room counts:', roomCounts);
-    
-    // Convert to array and sort by count, take top 10
-    const result = Object.entries(roomCounts)
-      .map(([room, count]) => ({
-        room,
-        count,
-        percentage: filteredJobs.length > 0 ? ((count / filteredJobs.length) * 100).toFixed(1) : '0'
-      }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10); // Top 10 rooms
-    
-    console.log('Jobs by room result:', result);
-    return result;
-  }, [filteredJobs]);
 
   // Loading state
   if (status === "loading" || isLoading) {
@@ -676,36 +655,42 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           <CardContent>
             <div id="pie-chart-container" className="h-[400px] w-full flex flex-col items-center justify-center">
               <div className="w-[350px] h-[350px] flex-shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={jobStats}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={80}
-                      outerRadius={140}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {jobStats.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value: number, name: string, props: any) => [
-                        `${value} (${props.payload.percentage}%)`,
-                        name,
-                      ]}
-                    />
-                    <Legend 
-                      layout="horizontal" 
-                      align="center" 
-                      verticalAlign="bottom" 
-                      iconSize={16} 
-                      wrapperStyle={{ fontSize: 14, paddingTop: 15 }} 
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                {jobStats.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={jobStats}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={80}
+                        outerRadius={140}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {jobStats.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, name: string, props: any) => [
+                          `${value} (${props.payload.percentage}%)`,
+                          name,
+                        ]}
+                      />
+                      <Legend 
+                        layout="horizontal" 
+                        align="center" 
+                        verticalAlign="bottom" 
+                        iconSize={16} 
+                        wrapperStyle={{ fontSize: 14, paddingTop: 15 }} 
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-gray-500">
+                    <p>No data available for chart</p>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -745,10 +730,9 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           <CardContent>
             <div className="text-sm space-y-2">
               <div>Total filtered jobs: <strong>{filteredJobs.length}</strong></div>
-              <div>Jobs with topics: <strong>{jobsByTopic.filter(t => t.topic !== 'No Topic').reduce((sum, t) => sum + t.count, 0)}</strong></div>
-              <div>Jobs without topics: <strong>{jobsByTopic.find(t => t.topic === 'No Topic')?.count || 0}</strong></div>
-              <div>Jobs with rooms: <strong>{jobsByRoom.filter(r => r.room !== 'No Room').reduce((sum, r) => sum + r.count, 0)}</strong></div>
-              <div>Jobs without rooms: <strong>{jobsByRoom.find(r => r.room === 'No Room')?.count || 0}</strong></div>
+              <div>Jobs by status: <strong>{jobStats.length} categories</strong></div>
+              <div>Jobs by month: <strong>{jobsByMonth.length} months</strong></div>
+              <div>Jobs by user: <strong>{jobsByUser.length} users</strong></div>
               
               {filteredJobs.length > 0 && (
                 <details className="mt-4">
@@ -759,11 +743,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                     {JSON.stringify({
                       job1: {
                         id: filteredJobs[0]?.id,
-                        topics: filteredJobs[0]?.topics,
-                        rooms: filteredJobs[0]?.rooms
+                        status: filteredJobs[0]?.status,
+                        created_at: filteredJobs[0]?.created_at
                       },
-                      jobsByTopicSample: jobsByTopic.slice(0, 3),
-                      jobsByRoomSample: jobsByRoom.slice(0, 3)
+                      jobStatsSample: jobStats.slice(0, 3),
+                      jobsByMonthSample: jobsByMonth.slice(0, 3)
                     }, null, 2)}
                   </pre>
                 </details>
@@ -772,84 +756,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           </CardContent>
         </Card>
 
-        {/* Jobs by Topic Chart */}
-        <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg">Jobs by Topic</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {jobsByTopic && jobsByTopic.length > 0 ? (
-              <div id="topic-chart-container" className="h-[350px] w-full flex flex-col items-center justify-center">
-                <div className="w-[350px] h-[350px] flex-shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={jobsByTopic.slice(0, 10)} layout="horizontal">
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" tick={{ fontSize: 10 }} />
-                      <YAxis 
-                        dataKey="topic" 
-                        type="category" 
-                        tick={{ fontSize: 10 }} 
-                        width={120}
-                      />
-                      <Tooltip 
-                        formatter={(value: number, name: string, props: any) => [
-                          `${value} jobs (${props.payload.percentage}%)`,
-                          'Count'
-                        ]}
-                      />
-                      <Legend />
-                      <Bar dataKey="count" fill="#8884d8" name="Job Count" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 bg-yellow-100 rounded">
-                <p className="text-sm text-yellow-800">No topic data available to display chart</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
-        
-        {/* Jobs by Room Chart */}
-        <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg">Top 10 Rooms by Job Count</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {jobsByRoom && jobsByRoom.length > 0 ? (
-              <div id="room-chart-container" className="h-[350px] w-full flex flex-col items-center justify-center">
-                <div className="w-[350px] h-[350px] flex-shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={jobsByRoom} layout="horizontal">
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" tick={{ fontSize: 10 }} />
-                      <YAxis 
-                        dataKey="room" 
-                        type="category" 
-                        tick={{ fontSize: 10 }} 
-                        width={120}
-                      />
-                      <Tooltip 
-                        formatter={(value: number, name: string, props: any) => [
-                          `${value} jobs (${props.payload.percentage}%)`,
-                          'Count'
-                        ]}
-                      />
-                      <Legend />
-                      <Bar dataKey="count" fill="#82ca9d" name="Job Count" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 bg-yellow-100 rounded">
-                <p className="text-sm text-yellow-800">No room data available to display chart</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Jobs per User Chart */}
         {jobsByUser && jobsByUser.length > 0 && (

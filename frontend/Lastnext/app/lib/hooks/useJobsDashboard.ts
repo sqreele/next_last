@@ -3,6 +3,7 @@ import { useSession } from '../session.client';
 import { jobsApi, JobsApiError } from '../api/jobsApi';
 import { Job, JobStatus, Property } from '../types';
 import { useToast } from './use-toast';
+import { exportFilteredJobsToCSV } from '../utils/csv-export';
 
 interface JobsDashboardState {
   jobs: Job[];
@@ -211,7 +212,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         toast.error('Failed to delete job');
       }
     }
-  }, [isAuthenticated, accessToken, toast]);
+  }, [isAuthenticated, accessToken, state.jobs, state.properties, state.filters, toast]);
 
   // Update filters
   const updateFilters = useCallback((newFilters: Partial<JobsDashboardState['filters']>) => {
@@ -311,15 +312,52 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     if (!isAuthenticated || !accessToken) return;
 
     try {
-      // Temporarily disabled since exportJobs method doesn't exist in new API
-      // const blob = await jobsApi.exportJobs(format, accessToken, state.filters);
-      
-      // For now, just show a message that export is not implemented
-      toast({
-        title: "Info",
-        description: 'Export functionality is not yet implemented'
-      });
-      return;
+      if (format === 'csv') {
+        // Export as CSV
+        exportFilteredJobsToCSV(
+          state.jobs,
+          state.properties,
+          state.filters,
+          {
+            includeImages: false,
+            includeUserDetails: true,
+            includeRoomDetails: true,
+            includePropertyDetails: true,
+            dateFormat: 'readable'
+          }
+        );
+        
+        toast({
+          title: "Export Successful",
+          description: `Exported ${state.jobs.length} jobs as CSV`
+        });
+      } else if (format === 'excel') {
+        // For now, export as CSV with Excel extension
+        exportFilteredJobsToCSV(
+          state.jobs,
+          state.properties,
+          state.filters,
+          {
+            filename: `jobs-export-${new Date().toISOString().split('T')[0]}.xlsx`,
+            includeImages: false,
+            includeUserDetails: true,
+            includeRoomDetails: true,
+            includePropertyDetails: true,
+            dateFormat: 'readable'
+          }
+        );
+        
+        toast({
+          title: "Export Successful",
+          description: `Exported ${state.jobs.length} jobs as Excel (CSV format)`
+        });
+      } else if (format === 'pdf') {
+        // PDF export - show message that it's not implemented yet
+        toast({
+          title: "Info",
+          description: 'PDF export is not yet implemented. Use CSV export for now.'
+        });
+      }
       
       // Create download link
       // const url = window.URL.createObjectURL(blob);
@@ -334,15 +372,13 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
       // toast.success(`Jobs exported as ${format.toUpperCase()}`);
       
     } catch (error) {
-      console.error('Error exporting jobs:', error);
-      
-      if (error instanceof JobsApiError) {
-        toast.error(error.message);
-      } else {
-        toast.error('Failed to export jobs');
-      }
+      console.error('Export error:', error);
+      toast({
+        title: "Export Error",
+        description: 'Failed to export jobs'
+      });
     }
-  }, [isAuthenticated, accessToken, toast]);
+  }, [isAuthenticated, accessToken, state.jobs, state.properties, state.filters, toast]);
 
   // Computed values
   const filteredJobs = useMemo(() => {

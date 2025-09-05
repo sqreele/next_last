@@ -8,7 +8,8 @@ import {
   LineChart, 
   FileText, 
   Search,
-  Bell
+  Bell,
+  Filter
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -22,6 +23,7 @@ const navigationItems = [
   { name: 'My Jobs', href: '/dashboard/myJobs', icon: ShoppingCart },
   { name: 'Analytics', href: '/dashboard/chartdashboard', icon: LineChart },
   { name: 'Jobs Report', href: '/dashboard/jobs-report', icon: FileText },
+  { name: 'Room Filter', href: '/dashboard/rooms/by-topics', icon: Filter },
 ];
 
 export function MobileNav({ className }: MobileNavProps) {

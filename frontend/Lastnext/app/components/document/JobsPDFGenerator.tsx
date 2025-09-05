@@ -530,11 +530,61 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
 
   const getUserDisplayName = (user: any): string => {
     if (!user) return 'Unassigned';
-    if (typeof user === 'string') return user;
-    if (typeof user === 'object') {
-      return user.name || user.username || user.displayName || user.email || String(user.id) || 'User';
+    
+    // Handle case where user is stringified object "[object Object]"
+    if (typeof user === 'string' && user === '[object Object]') {
+      return 'Unknown User';
     }
-    return 'User';
+    
+    // Handle user as an object with various possible properties
+    if (typeof user === 'object' && user) {
+      // Priority 1: Check for full_name property (most important for display)
+      if ('full_name' in user && user.full_name && user.full_name.trim()) {
+        return user.full_name.trim();
+      }
+      // Priority 2: Check for first_name and last_name combination
+      if ('first_name' in user && 'last_name' in user) {
+        const firstName = user.first_name || '';
+        const lastName = user.last_name || '';
+        if (firstName || lastName) {
+          return `${firstName} ${lastName}`.trim();
+        }
+      }
+      // Priority 3: Check for name property
+      if ('name' in user && user.name) {
+        return user.name;
+      }
+      // Priority 4: Check for username property (clean Auth0 usernames)
+      if ('username' in user && user.username) {
+        let cleanUsername = user.username;
+        // Clean up Auth0 usernames for better display
+        if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
+          cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
+        }
+        return cleanUsername;
+      }
+      // Priority 5: Check for email property
+      if ('email' in user && user.email) {
+        return user.email.split('@')[0]; // Return part before @ as display name
+      }
+      // Priority 6: Check for id property (last resort)
+      if ('id' in user && user.id) {
+        return `User ${user.id}`;
+      }
+      return 'Unknown User';
+    }
+    
+    // Handle user as string or number - if it's a string, it might be a username
+    if (typeof user === 'string') {
+      // If it's a string that looks like an ID (numeric), show as User ID
+      if (/^\d+$/.test(user)) {
+        return `User ${user}`;
+      }
+      // Otherwise, treat it as a username
+      return user;
+    }
+    
+    return 'Unknown User';
   };
 
   // Helper function to get property information for display

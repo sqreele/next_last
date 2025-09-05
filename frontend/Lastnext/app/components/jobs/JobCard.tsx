@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { UpdateStatusModal } from "./UpdateStatusModal";
 import { Job, JobStatus, Property } from "@/app/lib/types";
 import { LazyImage } from "@/app/components/jobs/LazyImage";
+import { OptimizedImage, OptimizedThumbnail } from "@/app/components/ui/OptimizedImage";
+import Image from 'next/image';
 import { 
   Clock, Calendar, User, MapPin, MessageSquare, CheckCircle2, 
   AlertCircle, ClipboardList, StickyNote, AlertTriangle, 
@@ -58,7 +60,10 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
       for (const img of job.images) {
         if (img?.image_url) {
           const fixedUrl = createImageUrl(img.image_url);
-          if (fixedUrl) urls.push(fixedUrl);
+          if (fixedUrl) {
+            urls.push(fixedUrl);
+            console.log('🔍 JobCard image URL created:', { original: img.image_url, fixed: fixedUrl });
+          }
         }
       }
     }
@@ -66,10 +71,14 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
       for (const url of job.image_urls) {
         if (url) {
           const fixedUrl = createImageUrl(url);
-          if (fixedUrl && !urls.includes(fixedUrl)) urls.push(fixedUrl);
+          if (fixedUrl && !urls.includes(fixedUrl)) {
+            urls.push(fixedUrl);
+            console.log('🔍 JobCard image URL created:', { original: url, fixed: fixedUrl });
+          }
         }
       }
     }
+    console.log('🔍 JobCard final image URLs:', urls);
     return urls;
   }, [job.images, job.image_urls]);
 
@@ -182,19 +191,36 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
     
     // Handle user as an object with various possible properties
     if (typeof user === 'object' && user) {
-      // Check for username property
-      if ('username' in user && user.username) {
-        return user.username;
+      // Priority 1: Check for full_name property (most important for display)
+      if ('full_name' in user && user.full_name && typeof user.full_name === 'string' && user.full_name.trim()) {
+        return user.full_name.trim();
       }
-      // Check for name property
+      // Priority 2: Check for first_name and last_name combination
+      if ('first_name' in user && 'last_name' in user) {
+        const firstName = user.first_name || '';
+        const lastName = user.last_name || '';
+        if (firstName || lastName) {
+          return `${firstName} ${lastName}`.trim();
+        }
+      }
+      // Priority 3: Check for name property
       if ('name' in user && user.name) {
         return user.name;
       }
-      // Check for email property
+      // Priority 4: Check for username property (clean Auth0 usernames)
+      if ('username' in user && user.username) {
+        let cleanUsername = user.username;
+        // Clean up Auth0 usernames for better display
+        if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
+          cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
+        }
+        return cleanUsername;
+      }
+      // Priority 5: Check for email property
       if ('email' in user && user.email) {
         return user.email.split('@')[0]; // Return part before @ as display name
       }
-      // Check for id property
+      // Priority 6: Check for id property (continue with ID-based logic below)
       if ('id' in user && user.id) {
         user = user.id; // Continue with ID-based logic below
       } else {
@@ -376,8 +402,8 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
                     const roomParts = [];
                     
                     // Add room ID if available
-                    if (room.room_id || room.id) {
-                      roomParts.push(`Room ID: #${room.room_id || room.id}`);
+                    if (room.room_id) {
+                      roomParts.push(`Room ID: #${room.room_id}`);
                     }
                     
                     // Add room type if available
@@ -385,8 +411,8 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
                       roomParts.push(`Type: ${room.room_type}`);
                     }
                     
-                    // Add room name or number
-                    const roomName = room.name || room.room_number || 'Unknown';
+                    // Add room name
+                    const roomName = room.name || 'Unknown';
                     roomParts.push(roomName);
                     
                     // Join parts with " | " and add property name
@@ -436,12 +462,17 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
               : "w-full aspect-video"
           }`}>
             {imageUrls.length > 0 && imageUrls[selectedImage] && !failedImageIndexes.has(selectedImage) ? (
-              <LazyImage
-                src={imageUrls[selectedImage]}
-                alt={`Job Image ${selectedImage + 1}`}
-                className="w-full h-full object-cover rounded-md"
-                onError={() => handleImageError(selectedImage)}
-              />
+              <div className="w-full h-full relative">
+                <Image
+                  src={imageUrls[selectedImage]}
+                  alt={`Job Image ${selectedImage + 1}`}
+                  fill
+                  className="object-cover rounded-md"
+                  quality={75}
+                  unoptimized={imageUrls[selectedImage].startsWith('/media/')}
+                  onError={() => handleImageError(selectedImage)}
+                />
+              </div>
             ) : (
               <MissingImage className="w-full h-full" />
             )}
@@ -463,12 +494,17 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
                   {(!url || failedImageIndexes.has(index)) ? (
                     <MissingImage className="w-full h-full" iconClassName="w-5 h-5" />
                   ) : (
-                    <LazyImage
-                      src={url}
-                      alt={`Thumbnail ${index + 1}`}
-                      className="w-full h-full object-cover"
-                      onError={() => handleImageError(index)}
-                    />
+                    <div className="w-full h-full relative">
+                      <Image
+                        src={url}
+                        alt={`Thumbnail ${index + 1}`}
+                        fill
+                        className="object-cover"
+                        quality={60}
+                        unoptimized={url.startsWith('/media/')}
+                        onError={() => handleImageError(index)}
+                      />
+                    </div>
                   )}
                 </button>
               ))}
@@ -524,10 +560,14 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
             <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 mt-2 bg-gray-50 rounded-lg">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border border-gray-100 flex-shrink-0 bg-white">
                 {job.profile_image && job.profile_image.profile_image && !profileImageError ? (
-                  <LazyImage
+                  <Image
                     src={getSafeProfileImageUrl(job.profile_image.profile_image) || ''}
-                    alt={getUserDisplayName(job.user)}
+                    alt={String(getUserDisplayName(job.user) || 'User')}
+                    width={40}
+                    height={40}
                     className="w-full h-full object-cover rounded-full"
+                    quality={60}
+                    unoptimized={true}
                     onError={() => handleProfileImageError(new Error('Image load failed'))}
                   />
                 ) : (
@@ -555,7 +595,8 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
                         console.warn('JobCard: job.user is undefined or null');
                         return 'Unassigned';
                       }
-                      return getUserDisplayName(job.user);
+                      const displayName = getUserDisplayName(job.user);
+                      return typeof displayName === 'string' ? displayName : 'Unknown User';
                     } catch (error) {
                       console.error('Error getting user display name:', error);
                       return 'Unknown User';

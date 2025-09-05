@@ -141,10 +141,10 @@ export function sanitizeJobData(job: any): any {
   
   const sanitized = { ...job };
   
-  // Ensure all string fields are actually strings
+  // Ensure all string fields are actually strings (excluding user and updated_by which can be objects)
   const stringFields = [
     'description', 'status', 'priority', 'remarks', 'job_id',
-    'user', 'updated_by', 'created_at', 'updated_at', 'completed_at'
+    'created_at', 'updated_at', 'completed_at'
   ];
   
   stringFields.forEach(field => {
@@ -153,12 +153,26 @@ export function sanitizeJobData(job: any): any {
     }
   });
   
-  // Ensure user and updated_by are strings
+  // Handle user field - preserve object structure if it's an object, convert to string if it's a primitive
   if (sanitized.user !== null && sanitized.user !== undefined) {
-    sanitized.user = String(sanitized.user);
+    if (typeof sanitized.user === 'object') {
+      // Keep the user object as is
+      sanitized.user = sanitized.user;
+    } else {
+      // Convert primitive values to string
+      sanitized.user = String(sanitized.user);
+    }
   }
+  
+  // Handle updated_by field - preserve object structure if it's an object, convert to string if it's a primitive
   if (sanitized.updated_by !== null && sanitized.updated_by !== undefined) {
-    sanitized.updated_by = String(sanitized.updated_by);
+    if (typeof sanitized.updated_by === 'object') {
+      // Keep the updated_by object as is
+      sanitized.updated_by = sanitized.updated_by;
+    } else {
+      // Convert primitive values to string
+      sanitized.updated_by = String(sanitized.updated_by);
+    }
   }
   
   return sanitized;

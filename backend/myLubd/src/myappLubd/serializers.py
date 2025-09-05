@@ -74,6 +74,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
     properties = PropertySerializer(many=True, read_only=True)
     username = serializers.CharField(source='user.username', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
     created_at = serializers.DateTimeField(source='user.date_joined', read_only=True)
 
     class Meta:
@@ -82,12 +84,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'id',
             'username',
             'email',
+            'first_name',
+            'last_name',
             'profile_image',
             'positions',
             'properties',
             'created_at',
         ]
-        read_only_fields = ['id', 'username', 'email', 'created_at']
+        read_only_fields = ['id', 'username', 'email', 'first_name', 'last_name', 'created_at']
 
 # Job image serializer
 class JobImageSerializer(serializers.ModelSerializer):

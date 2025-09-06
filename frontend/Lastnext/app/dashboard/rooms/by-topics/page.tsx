@@ -90,11 +90,26 @@ const RoomTopicFilterPage = () => {
         setIsLoading(true);
         console.log('Starting data fetch with selectedProperty:', selectedProperty);
         
-        // Fetch topics and rooms first
-        const [topics, rooms] = await Promise.all([
-          fetchTopics(session.user.accessToken),
-          fetchRooms(session.user.accessToken)
-        ]);
+        // Fetch topics and rooms (rooms filtered by property when selected)
+        const topics = await fetchTopics(session.user.accessToken);
+        let rooms: Room[] = [];
+        if (selectedProperty && selectedProperty !== 'all') {
+          try {
+            const res = await fetch(`/api/rooms/?property=${encodeURIComponent(selectedProperty)}`, { method: 'GET' });
+            if (res.ok) {
+              const data = await res.json();
+              rooms = Array.isArray(data) ? data : (data?.results ?? []);
+            } else {
+              console.warn('Rooms API returned non-OK status for property filter, falling back to all rooms:', res.status);
+              rooms = await fetchRooms(session.user.accessToken);
+            }
+          } catch (e) {
+            console.warn('Rooms API request failed, falling back to all rooms:', e);
+            rooms = await fetchRooms(session.user.accessToken);
+          }
+        } else {
+          rooms = await fetchRooms(session.user.accessToken);
+        }
 
         setAllTopics(topics);
         setAllRooms(rooms);
@@ -130,9 +145,12 @@ const RoomTopicFilterPage = () => {
           } else {
             // Filter users who have the selected property
             users = allUsers.filter(user => 
-              user.properties && user.properties.some((prop: any) => 
-                prop.id.toString() === selectedProperty || prop.property_id === selectedProperty
-              )
+              user.properties && user.properties.some((prop: any) => {
+                const pid = (prop && typeof prop === 'object')
+                  ? (prop.property_id ?? prop.id)
+                  : prop;
+                return String(pid) === String(selectedProperty);
+              })
             );
             console.log(`Filtered to ${users.length} users for property ${selectedProperty}`);
           }
@@ -498,7 +516,7 @@ const RoomTopicFilterPage = () => {
                 <SelectItem value="all">All Properties</SelectItem>
                 {allProperties.length > 0 ? (
                   allProperties.map((property, index) => (
-                    <SelectItem key={`property-${property.id}-${index}`} value={property.id.toString()}>
+                    <SelectItem key={`property-${property.property_id}-${index}`} value={String(property.property_id)}>
                       {property.name}
                     </SelectItem>
                   ))
@@ -561,7 +579,7 @@ const RoomTopicFilterPage = () => {
               <div className="text-xs text-gray-500 mt-1">
                 {selectedProperty === 'all' 
                   ? 'All users across all properties' 
-                  : `Filtered by ${allProperties.find(p => p.id.toString() === selectedProperty)?.name || 'Unknown Property'}`
+                  : `Filtered by ${allProperties.find(p => String(p.property_id) === String(selectedProperty))?.name || 'Unknown Property'}`
                 }
               </div>
             </div>
@@ -586,12 +604,15 @@ const RoomTopicFilterPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {allProperties.map(property => {
                   const usersInProperty = detailedUsers.filter((user: any) => 
-                    user.properties && user.properties.some((prop: any) => 
-                      prop.id.toString() === property.id.toString() || prop.property_id === property.id.toString()
-                    )
+                    user.properties && user.properties.some((prop: any) => {
+                      const pid = (prop && typeof prop === 'object')
+                        ? (prop.property_id ?? prop.id)
+                        : prop;
+                      return String(pid) === String(property.property_id);
+                    })
                   );
                   return (
-                    <div key={property.id} className="p-3 bg-gray-50 rounded-lg">
+                    <div key={String(property.property_id)} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex justify-between items-center">
                         <span className="font-medium text-sm">{property.name}</span>
                         <span className="text-lg font-bold text-blue-600">{usersInProperty.length}</span>
@@ -610,7 +631,7 @@ const RoomTopicFilterPage = () => {
           <div className="mt-4 p-3 bg-gray-100 rounded-lg">
             <h4 className="font-medium text-sm text-gray-700 mb-2">Debug Information:</h4>
             <div className="text-xs text-gray-600 space-y-1">
-              <div>Selected Property: {selectedProperty === 'all' ? 'All Properties' : allProperties.find(p => p.id.toString() === selectedProperty)?.name || 'Unknown'}</div>
+              <div>Selected Property: {selectedProperty === 'all' ? 'All Properties' : allProperties.find(p => String(p.property_id) === String(selectedProperty))?.name || 'Unknown'}</div>
               <div>Users Shown: {allUsers.length}</div>
               <div>Total Users Available: {detailedUsers?.length || 0}</div>
               <div>Properties Available: {allProperties.length}</div>
@@ -629,7 +650,7 @@ const RoomTopicFilterPage = () => {
               <h4 className="font-medium text-sm text-gray-700 mb-3">
                 {selectedProperty === 'all' 
                   ? 'All Users (All Properties):' 
-                  : `Users in ${allProperties.find(p => p.id.toString() === selectedProperty)?.name || 'Selected Property'}:`
+                  : `Users in ${allProperties.find(p => String(p.property_id) === String(selectedProperty))?.name || 'Selected Property'}:`
                 }
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -834,7 +855,7 @@ const RoomTopicFilterPage = () => {
                       <SelectContent>
                         <SelectItem value="all">All Properties</SelectItem>
                         {allProperties.map((property, index) => (
-                          <SelectItem key={`filter-property-${property.id}-${index}`} value={property.id.toString()}>
+                          <SelectItem key={`filter-property-${property.property_id}-${index}`} value={String(property.property_id)}>
                             {property.name}
                           </SelectItem>
                         ))}

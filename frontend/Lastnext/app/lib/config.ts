@@ -40,8 +40,11 @@ export const API_CONFIG = {
 // Media URLs should use the external domain for browser access
 export const MEDIA_CONFIG = {
   baseUrl: (() => {
-    // Client-side: always use localhost:8000 for development to avoid Docker hostname issues
+    // Client-side: use production domain in production, localhost in development
     if (typeof window !== 'undefined') {
+      if (process.env.NODE_ENV === 'production') {
+        return "https://pcms.live";
+      }
       return "http://localhost:8000";
     }
     // Server-side: use NEXT_PUBLIC_MEDIA_URL or fallback to pcms.live

@@ -146,8 +146,35 @@ const nextConfig = {
   
   async rewrites() {
     const privateApi = process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
-    // Default media to backend in containers; allow override via env
-    const mediaApi = process.env.NEXT_MEDIA_API_URL || 'http://backend:8000';
+    const mediaApi = process.env.NEXT_MEDIA_API_URL || 'http://localhost:8000';
+    
+    // In production, don't proxy media files - let nginx handle them directly
+    if (process.env.NODE_ENV === 'production') {
+      return [
+        // Do NOT proxy Auth0 endpoints; let Next.js handle them
+        {
+          source: '/auth/:path*',
+          destination: '/auth/:path*',
+        },
+        // Pass-through for already versioned API calls
+        {
+          source: '/api/v1/:path*',
+          destination: `${privateApi}/api/v1/:path*`,
+        },
+        // Proxy specific backend API endpoints (only rewrite what we need)
+        {
+          source: '/api/users/:path*',
+          destination: `${privateApi}/api/v1/users/:path*`,
+        },
+        // Note: /api/preventive-maintenance is now handled by Next.js API routes
+        {
+          source: '/internal-api/:path*',
+          destination: 'http://backend:8000/:path*',
+        },
+      ];
+    }
+    
+    // Development rewrites
     return [
       // Do NOT proxy Auth0 endpoints; let Next.js handle them
       {

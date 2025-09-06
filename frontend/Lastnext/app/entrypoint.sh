@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "🚀 Setting up Next.js application with Prisma and NextAuth..."
+echo "🚀 Setting up Next.js application..."
 
 # Function to check if database is ready
 check_database() {
@@ -33,61 +33,12 @@ check_database() {
 
 # Function to setup database schema
 setup_database() {
-    echo "📋 Setting up database schema..."
-    
-    # Check which Prisma schema files exist
-    auth_schema="./prisma/auth.prisma"
-    main_schema="./prisma/schema.prisma"
-    
-    if [ -f "$auth_schema" ]; then
-        echo "🗄️  Found auth schema, creating NextAuth tables..."
-        if npx prisma db push --schema="$auth_schema" --accept-data-loss --skip-generate; then
-            echo "✅ Auth database schema updated successfully!"
-        else
-            echo "❌ Failed to update auth database schema"
-            return 1
-        fi
-    fi
-    
-    if [ -f "$main_schema" ]; then
-        echo "🗄️  Found main schema that maps to existing Django tables. Skipping db push to avoid conflicts."
-        echo "🔧 Generating Prisma client only..."
-        if npx prisma generate --schema="$main_schema"; then
-            echo "✅ Prisma client generated successfully!"
-        else
-            echo "⚠️  Failed to generate Prisma client, but continuing..."
-        fi
-    fi
-    
-    if [ ! -f "$auth_schema" ] && [ ! -f "$main_schema" ]; then
-        echo "⚠️  No Prisma schema files found, skipping database setup..."
-    fi
+    echo "📋 Database setup not needed (using direct database connection)..."
 }
 
 # Function to run database migrations (alternative to db push)
 run_migrations() {
-    echo "🔄 Running database migrations..."
-    
-    auth_schema="./prisma/auth.prisma"
-    main_schema="./prisma/schema.prisma"
-    migration_success=true
-    
-    if [ -f "$auth_schema" ] && [ -d "./prisma/migrations-auth" ]; then
-        echo "🔄 Running auth migrations..."
-        if ! npx prisma migrate deploy --schema="$auth_schema"; then
-            echo "⚠️  Auth migrations failed"
-            migration_success=false
-        fi
-    fi
-    
-    # Do not run migrations for main schema since it maps to Django's tables
-    
-    if [ "$migration_success" = false ]; then
-        echo "⚠️  Some migrations failed, falling back to db push..."
-        setup_database
-    else
-        echo "✅ All migrations completed successfully!"
-    fi
+    echo "🔄 Database migrations not needed (using direct database connection)..."
 }
 
 # Function to create health check endpoint
@@ -130,12 +81,8 @@ main() {
     else
         # Wait for database to be ready
         if check_database; then
-            # Choose migration strategy based on environment
-            if [ "$NODE_ENV" = "production" ] && [ -d "./prisma/migrations" ]; then
-                run_migrations
-            else
-                setup_database
-            fi
+            # Setup database
+            setup_database
         else
             echo "⚠️  Database not ready, but continuing with application startup..."
         fi

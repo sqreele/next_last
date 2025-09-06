@@ -24,7 +24,7 @@
 - ✅ `app/lib/hooks/useZustandStores.ts` - No imports found
 
 ### Deleted Unused Model Files
-- ✅ `app/lib/prisma-user-property.ts` - No imports found
+- ✅ `app/lib/prisma-user-property.ts` - Removed (Prisma cleanup)
 
 ## ⚠️ **PENDING: Files That Need Migration Before Removal**
 

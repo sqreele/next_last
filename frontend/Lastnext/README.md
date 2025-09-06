@@ -58,10 +58,7 @@ npm install
 
 2. **Set up environment variables** (see above)
 
-3. **Run database migrations:**
-```bash
-npx prisma migrate dev
-```
+3. **Database is already set up (using direct connection)**
 
 4. **Start the development server:**
 ```bash

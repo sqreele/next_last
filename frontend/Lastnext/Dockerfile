@@ -131,25 +131,6 @@ RUN echo "📁 Verifying source code..." && \
         echo "⚠️  Source code structure may be incomplete"; \
     fi
 
-# Generate Prisma client for development with retries
-RUN if [ -f prisma/schema.prisma ]; then \
-        echo "🔧 Generating Prisma client..." && \
-        for i in 1 2 3; do \
-            if npx prisma generate; then \
-                echo "✅ Prisma client generated successfully on attempt $i"; \
-                break; \
-            else \
-                echo "⚠️  Prisma client generation failed on attempt $i, retrying..."; \
-                if [ $i -eq 3 ]; then \
-                    echo "❌ Prisma client generation failed after 3 attempts"; \
-                    exit 1; \
-                fi; \
-                sleep 2; \
-            fi; \
-        done; \
-    else \
-        echo "No Prisma schema found, skipping generation..."; \
-    fi
 
 # Create necessary directories
 RUN echo "📁 Creating necessary directories..." && \
@@ -339,24 +320,6 @@ RUN for i in 1 2 3; do \
         fi; \
     done
 
-# Generate Prisma client (safe without database connection) with retries
-RUN if [ -f prisma/schema.prisma ]; then \
-        for i in 1 2 3; do \
-            if npx prisma generate; then \
-                echo "✅ Prisma client generated successfully on attempt $i"; \
-                break; \
-            else \
-                echo "⚠️  Prisma client generation failed on attempt $i, retrying..."; \
-                if [ $i -eq 3 ]; then \
-                    echo "❌ Prisma client generation failed after 3 attempts"; \
-                    exit 1; \
-                fi; \
-                sleep 2; \
-            fi; \
-        done; \
-    else \
-        echo "No Prisma schema found, skipping generation..."; \
-    fi
 
 # Build the Next.js application with retries
 RUN for i in 1 2 3; do \
@@ -386,7 +349,7 @@ RUN echo "=== BUILD OUTPUT DEBUG ===" && \
     fi && \
     echo "=== END DEBUG ==="
 
-# Clean up dev dependencies without reinstalling to keep generated Prisma client
+# Clean up dev dependencies
 RUN echo "🧹 Cleaning up development dependencies..." && \
     npm prune --production || echo "⚠️  Some cleanup warnings (this is usually normal)" && \
     npm cache clean --force && \
@@ -422,7 +385,6 @@ RUN echo "📁 Verifying copied files..." && \
 # Create necessary directories with proper permissions
 RUN echo "📁 Creating necessary directories..." && \
     mkdir -p /app/.next/cache && \
-    mkdir -p ./prisma && \
     chown -R nextjs:nodejs /app && \
     echo "✅ Directories created successfully"
 
@@ -454,5 +416,5 @@ EXPOSE 3000
 # Verify port configuration
 RUN echo "🌐 Port 3000 exposed for Next.js application"
 
-# Use entrypoint that ensures Prisma client is generated and DB is ready
+# Use entrypoint that ensures DB is ready
 ENTRYPOINT ["/entrypoint.sh"]

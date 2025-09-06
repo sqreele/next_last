@@ -3,10 +3,14 @@ import { API_CONFIG } from '@/app/lib/config';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('API Route: /api/users/detailed/ called');
+    
     // Get authorization header from request
     const authHeader = request.headers.get('authorization');
+    console.log('API Route: Auth header present:', !!authHeader);
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('API Route: Invalid auth header');
       return NextResponse.json({ error: 'Unauthorized - No valid authorization header' }, { status: 401 });
     }
     
@@ -16,11 +20,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const queryString = searchParams.toString();
 
-    // Use the user-profiles endpoint which includes more detailed information
-    const apiUrl = `${API_CONFIG.baseUrl}/api/v1/user-profiles/${queryString ? `?${queryString}` : ''}`;
+    // Use the user-profiles detailed endpoint which includes all users with properties
+    const apiUrl = `${API_CONFIG.baseUrl}/api/v1/user-profiles/detailed/${queryString ? `?${queryString}` : ''}`;
     console.log('API Route: Fetching from URL:', apiUrl);
+    console.log('API Route: API_CONFIG.baseUrl:', API_CONFIG.baseUrl);
     
     // Fetch detailed user profiles from the external API
+    console.log('API Route: Making fetch request to backend...');
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -29,16 +35,20 @@ export async function GET(request: NextRequest) {
     });
     
     console.log('API Route: Backend response status:', response.status);
+    console.log('API Route: Backend response ok:', response.ok);
 
     if (!response.ok) {
-      console.error('Failed to fetch detailed users:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('API Route: Backend error response:', errorText);
       return NextResponse.json(
-        { error: 'Failed to fetch detailed users' }, 
+        { error: `Backend error: ${response.status} ${response.statusText}` }, 
         { status: response.status }
       );
     }
 
     const userProfiles = await response.json();
+    console.log('API Route: Received user profiles from backend:', userProfiles.length);
+    console.log('API Route: Sample user profile:', JSON.stringify(userProfiles[0], null, 2));
     
     // Transform the data to include first_name, last_name, and properties from the user model
     const detailedUsers = userProfiles.map((profile: any) => ({

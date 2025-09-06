@@ -30,6 +30,9 @@ export function useDetailedUsers() {
     setError(null);
 
     try {
+      console.log('Fetching detailed users from /api/users/detailed/');
+      console.log('Access token available:', !!session.user.accessToken);
+      
       const response = await fetch('/api/users/detailed/', {
         headers: {
           'Authorization': `Bearer ${session.user.accessToken}`,
@@ -37,11 +40,18 @@ export function useDetailedUsers() {
         },
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch users: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('Received users data:', data.length, 'users');
+      console.log('Sample user data:', JSON.stringify(data[0], null, 2));
       setUsers(data);
     } catch (err) {
       console.error('Error fetching detailed users:', err);

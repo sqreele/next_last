@@ -32,9 +32,10 @@ export function getOptimizedImageUrl(
     return src;
   }
 
-  // For external URLs, use Next.js image optimization
-  if (src.startsWith('http')) {
-    return `/_next/image?url=${encodeURIComponent(src)}&w=${width}&q=${quality}`;
+  // For external URLs, DO NOT force Next.js optimization. Return original URL
+  // Next/Image will attempt optimization unless 'unoptimized' is set by caller
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    return src;
   }
 
   // For local media files, construct optimized path
@@ -131,6 +132,7 @@ export function getOptimizedImageProps(
 ) {
   const presetOptions = IMAGE_PRESETS[preset];
   const options = { ...presetOptions, ...customOptions };
+  const isExternal = src.startsWith('http://') || src.startsWith('https://');
 
   return {
     src: getOptimizedImageUrl(src, options),
@@ -141,6 +143,8 @@ export function getOptimizedImageProps(
     blurDataURL: generateBlurDataURL(10, 10),
     sizes: getResponsiveSizes(),
     loading: 'lazy' as const,
+    // Ensure external URLs bypass Next Image optimization domain checks
+    unoptimized: isExternal,
     ...customOptions
   };
 }

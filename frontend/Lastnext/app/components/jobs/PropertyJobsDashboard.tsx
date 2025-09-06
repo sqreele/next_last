@@ -46,6 +46,15 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   const { jobs, setJobs } = useJobs();
   const { users: detailedUsers, loading: usersLoading } = useDetailedUsers();
 
+  // Basic mobile breakpoint detection for responsive chart tuning
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const updateIsMobile = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
+    updateIsMobile();
+    window.addEventListener('resize', updateIsMobile);
+    return () => window.removeEventListener('resize', updateIsMobile);
+  }, []);
+
   // Since we don't have jobCreationCount in the new store, we'll use jobs length as a proxy
   const jobCreationCount = jobs.length;
   const [allJobs, setAllJobs] = useState<Job[]>(initialJobs);
@@ -653,8 +662,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
             <CardTitle className="text-base sm:text-lg">Jobs by Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div id="pie-chart-container" className="h-[400px] w-full flex flex-col items-center justify-center">
-              <div className="w-[350px] h-[350px] flex-shrink-0">
+            <div id="pie-chart-container" className="w-full h-[300px] sm:h-[360px] flex items-center justify-center">
+              <div className="w-full h-full">
                 {jobStats.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -662,8 +671,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                         data={jobStats}
                         cx="50%"
                         cy="50%"
-                        innerRadius={80}
-                        outerRadius={140}
+                        innerRadius={isMobile ? 60 : 80}
+                        outerRadius={isMobile ? 100 : 140}
                         paddingAngle={2}
                         dataKey="value"
                       >
@@ -677,12 +686,12 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                           name,
                         ]}
                       />
-                      <Legend 
-                        layout="horizontal" 
-                        align="center" 
-                        verticalAlign="bottom" 
-                        iconSize={16} 
-                        wrapperStyle={{ fontSize: 14, paddingTop: 15 }} 
+                      <Legend
+                        layout="horizontal"
+                        align="center"
+                        verticalAlign="bottom"
+                        iconSize={isMobile ? 12 : 16}
+                        wrapperStyle={{ fontSize: isMobile ? 12 : 14, paddingTop: 8 }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -702,14 +711,14 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
             <CardTitle className="text-base sm:text-lg">Jobs by Month</CardTitle>
           </CardHeader>
           <CardContent>
-            <div id="bar-chart-container" className="h-[350px] sm:h-[300px]">
+            <div id="bar-chart-container" className="h-[260px] sm:h-[320px] md:h-[360px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={jobsByMonth.slice(-12)}> {/* Limit to last 12 months */}
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: 10 }} interval={0} angle={-30} textAnchor="end" height={60} />
-                  <YAxis tick={{ fontSize: 10 }} width={30} />
+                  <XAxis dataKey="month" tick={{ fontSize: isMobile ? 9 : 10 }} interval={isMobile ? 'preserveStartEnd' : 0} angle={isMobile ? -45 : -30} textAnchor="end" height={isMobile ? 80 : 60} />
+                  <YAxis tick={{ fontSize: isMobile ? 9 : 10 }} width={32} />
                   <Tooltip />
-                  <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={12} wrapperStyle={{ fontSize: 12 }} />
+                  <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={isMobile ? 10 : 12} wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />
                   <Bar dataKey="total" fill="#8884d8" name="Total Jobs" />
                   <Bar dataKey="completed" stackId="a" fill={STATUS_COLORS.completed} />
                   <Bar dataKey="pending" stackId="a" fill={STATUS_COLORS.pending} />
@@ -765,18 +774,18 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
               <CardTitle className="text-base sm:text-lg">Jobs per User</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px] sm:h-[240px]">
+              <div className="h-[240px] sm:h-[300px] md:h-[340px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={jobsByUser.slice(0, 10)}> {/* Limit to top 10 users */}
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="username" 
-                      tick={{ fontSize: 10 }} 
-                      angle={-45}
+                      tick={{ fontSize: isMobile ? 9 : 10 }} 
+                      angle={isMobile ? -60 : -45}
                       textAnchor="end"
-                      height={90}
+                      height={isMobile ? 100 : 90}
                     />
-                    <YAxis tick={{ fontSize: 10 }} width={30} />
+                    <YAxis tick={{ fontSize: isMobile ? 9 : 10 }} width={32} />
                     <Tooltip 
                       formatter={(value: number, name: string) => [
                         value,
@@ -788,7 +797,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                         name === 'cancelled' ? 'Cancelled' : name
                       ]}
                     />
-                    <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={12} wrapperStyle={{ fontSize: 12 }} />
+                    <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={isMobile ? 10 : 12} wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />
                     <Bar dataKey="total" fill="#8884d8" name="Total Jobs" />
                     <Bar dataKey="completed" stackId="a" fill={STATUS_COLORS.completed} />
                     <Bar dataKey="pending" stackId="a" fill={STATUS_COLORS.pending} />

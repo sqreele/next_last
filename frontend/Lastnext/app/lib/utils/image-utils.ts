@@ -21,7 +21,6 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
   
   // Always use relative URLs for consistency between server and client
   // This prevents hydration mismatches and works with Next.js image optimization
-  
   // If it's already a relative URL starting with /media/, return as is
   if (imageUrl.startsWith('/media/')) {
     return imageUrl;
@@ -29,28 +28,29 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
   
   // If it's a full external URL, handle it properly
   if (imageUrl.startsWith('http')) {
-    // Handle Docker internal URLs that need to be converted to external URLs
-    if (imageUrl.includes('backend:8000') || imageUrl.includes('django-backend:8000')) {
-      // Convert Docker internal URLs to localhost URLs for browser access
-      const externalUrl = imageUrl
-        .replace('http://backend:8000', 'http://localhost:8000')
-        .replace('http://django-backend:8000', 'http://localhost:8000');
-      return externalUrl;
-    }
-    
-    // Handle localhost:8000 URLs - preserve external URLs for media files
-    if (imageUrl.includes('localhost:8000')) {
-      // For media files, keep the external URL to avoid Next.js image optimization issues
-      if (imageUrl.includes('/media/')) {
-        return imageUrl;
+    // Normalize any absolute media URLs to relative /media path so Nginx can serve them
+    try {
+      const url = new URL(imageUrl);
+      // If path contains /media/, use that path only
+      if (url.pathname.startsWith('/media/')) {
+        return url.pathname;
       }
-      // For non-media files, use relative path
-      const relativePath = imageUrl.replace('http://localhost:8000', '');
-      return relativePath;
+      // Some backends might return absolute paths like http://host/media/maintenance_job_images/..
+      const mediaIndex = url.pathname.indexOf('/media/');
+      if (mediaIndex !== -1) {
+        return url.pathname.substring(mediaIndex);
+      }
+    } catch {
+      // fall through if invalid URL
     }
-    
-    // For other external URLs, return them as-is for Next.js Image component
-    // The unoptimized prop will be used to bypass Next.js optimization
+    // Handle Docker internal hostnames explicitly even if not a valid URL object
+    if (imageUrl.includes('backend:8000') || imageUrl.includes('django-backend:8000')) {
+      const pathStart = imageUrl.indexOf('/media/');
+      if (pathStart !== -1) {
+        return imageUrl.substring(pathStart);
+      }
+    }
+    // For non-media http(s) URLs (e.g., Google profile images), keep as-is
     return imageUrl;
   }
   

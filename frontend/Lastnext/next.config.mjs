@@ -146,7 +146,8 @@ const nextConfig = {
   
   async rewrites() {
     const privateApi = process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
-    const mediaApi = process.env.NEXT_MEDIA_API_URL || 'http://localhost:8000';
+    // Default media to backend in containers; allow override via env
+    const mediaApi = process.env.NEXT_MEDIA_API_URL || 'http://backend:8000';
     return [
       // Do NOT proxy Auth0 endpoints; let Next.js handle them
       {

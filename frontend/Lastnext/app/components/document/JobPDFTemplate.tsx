@@ -672,24 +672,42 @@ function getStatusColor(status: string): string {
 
 function resolveImageUrl(imageUrl: string): string {
   if (!imageUrl) return '';
-  
-  // If it's already a full URL, return as is
+
+  const getMediaBaseUrl = () => {
+    // Use internal backend URL during server-side rendering to avoid TLS/edge issues
+    if (typeof window === 'undefined') {
+      return process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
+    }
+    // Client-side should use the public URL
+    return process.env.NEXT_PUBLIC_MEDIA_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
+  };
+
+  // If it's already a full URL, normalize media host when rendering server-side
   if (imageUrl.startsWith('http')) {
-    return imageUrl;
+    try {
+      const url = new URL(imageUrl);
+      if (url.pathname.startsWith('/media/')) {
+        const base = getMediaBaseUrl();
+        return `${base}${url.pathname}`;
+      }
+      return imageUrl;
+    } catch {
+      return imageUrl;
+    }
   }
-  
-  // If it's already a relative URL starting with /media/, return as is
+
+  // If it's already a relative URL starting with /media/, build absolute
   if (imageUrl.startsWith('/media/')) {
-    return `${process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000'}${imageUrl}`;
+    return `${getMediaBaseUrl()}${imageUrl}`;
   }
-  
+
   // If it's a relative path without /media/, prepend /media/
   if (imageUrl.startsWith('maintenance_job_images/') || imageUrl.startsWith('profile_images/')) {
-    return `${process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000'}/media/${imageUrl}`;
+    return `${getMediaBaseUrl()}/media/${imageUrl}`;
   }
-  
+
   // For any other relative path, prepend /media/
-  return `${process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000'}/media/${imageUrl}`;
+  return `${getMediaBaseUrl()}/media/${imageUrl}`;
 }
 
 export default JobPDFTemplate;

@@ -112,6 +112,11 @@ export function OptimizedImage({
         blurDataURL={imageProps.blurDataURL}
         sizes={imageProps.sizes}
         priority={imageProps.priority}
+        // Avoid Next.js optimizer for media and external URLs to prevent server-side fetch
+        unoptimized={Boolean(
+          (typeof imageProps.src === 'string' && imageProps.src.includes('/media/')) ||
+          (typeof src === 'string' && (src.startsWith('http') || src.includes('/media/')))
+        )}
         style={{
           objectFit,
           transition: 'opacity 0.3s ease-in-out',

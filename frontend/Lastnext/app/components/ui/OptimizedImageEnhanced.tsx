@@ -120,7 +120,11 @@ export function OptimizedImageEnhanced({
           )}
           onLoad={handleLoad}
           onError={handleError}
-          {...props}
+          {...(() => {
+            // Filter out Next.js Image specific props that shouldn't be passed to HTML img
+            const { fill, sizes, priority, quality, placeholder, blurDataURL, ...htmlProps } = props;
+            return htmlProps;
+          })()}
         />
       ) : (
         <Image

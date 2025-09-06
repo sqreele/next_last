@@ -379,8 +379,8 @@ const RoomTopicFilterPage = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h1 className="text-3xl font-bold">Room-Topic Filter</h1>
           <p className="text-gray-600 mt-2">
@@ -390,7 +390,7 @@ const RoomTopicFilterPage = () => {
         <Button 
           onClick={handleExportPDF} 
           disabled={isGeneratingPDF}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
         >
           {isGeneratingPDF ? (
             <RefreshCw className="h-4 w-4 animate-spin" />
@@ -410,18 +410,18 @@ const RoomTopicFilterPage = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search rooms or topics..."
                 value={searchTerm}
                 onChange={(e: any) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 w-full"
               />
             </div>
             <Select value={selectedTopic} onValueChange={setSelectedTopic}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Filter by topic" />
               </SelectTrigger>
               <SelectContent>
@@ -434,7 +434,7 @@ const RoomTopicFilterPage = () => {
               </SelectContent>
             </Select>
             <Select value={selectedRoom} onValueChange={setSelectedRoom}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Filter by room" />
               </SelectTrigger>
               <SelectContent>
@@ -447,7 +447,7 @@ const RoomTopicFilterPage = () => {
               </SelectContent>
             </Select>
             <Select value={selectedUser} onValueChange={setSelectedUser}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Filter by user" />
               </SelectTrigger>
               <SelectContent>
@@ -491,7 +491,7 @@ const RoomTopicFilterPage = () => {
               </SelectContent>
             </Select>
             <Select value={selectedProperty} onValueChange={setSelectedProperty}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Filter by property" />
               </SelectTrigger>
               <SelectContent>
@@ -514,7 +514,7 @@ const RoomTopicFilterPage = () => {
       </Card>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold">{allJobs.length}</div>
@@ -552,7 +552,7 @@ const RoomTopicFilterPage = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
               <div className="text-3xl font-bold text-blue-600">{allUsers.length}</div>
               <div className="text-sm text-gray-600">
@@ -583,7 +583,7 @@ const RoomTopicFilterPage = () => {
           {selectedProperty === 'all' && detailedUsers && detailedUsers.length > 0 && (
             <div className="mt-6">
               <h4 className="font-medium text-sm text-gray-700 mb-3">Users by Property:</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {allProperties.map(property => {
                   const usersInProperty = detailedUsers.filter((user: any) => 
                     user.properties && user.properties.some((prop: any) => 
@@ -632,7 +632,7 @@ const RoomTopicFilterPage = () => {
                   : `Users in ${allProperties.find(p => p.id.toString() === selectedProperty)?.name || 'Selected Property'}:`
                 }
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {allUsers.map((user, index) => {
                   const displayName = user.first_name && user.last_name 
                     ? `${user.first_name} ${user.last_name}` 
@@ -664,7 +664,7 @@ const RoomTopicFilterPage = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="rooms-by-topics" className="space-y-4">
-        <TabsList>
+        <TabsList className="w-full overflow-x-auto">
           <TabsTrigger value="rooms-by-topics">Rooms by Topics</TabsTrigger>
           <TabsTrigger value="topics-by-rooms">Topics by Rooms</TabsTrigger>
           <TabsTrigger value="topic-room-filter">Topic-Room Filter</TabsTrigger>
@@ -678,7 +678,7 @@ const RoomTopicFilterPage = () => {
               <CardTitle>Top Rooms by Job Count</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[400px]">
+              <div className="h-[260px] sm:h-[360px] md:h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={roomTopicChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -739,7 +739,7 @@ const RoomTopicFilterPage = () => {
               <CardTitle>Top Topics by Job Count</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[400px]">
+              <div className="h-[260px] sm:h-[360px] md:h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={topicRoomChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -849,7 +849,7 @@ const RoomTopicFilterPage = () => {
                     <h3 className="text-lg font-semibold mb-4">
                       Rooms with Topic: {allTopics.find(t => t.id.toString() === selectedTopic)?.title}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {filteredRoomTopicData.map((roomData) => {
                         const topicData = roomData.topics.find(t => t.topic.id.toString() === selectedTopic);
                         if (!topicData) return null;
@@ -906,7 +906,7 @@ const RoomTopicFilterPage = () => {
                     <h3 className="text-lg font-semibold mb-4">
                       Topics in Room: {allRooms.find(r => r.room_id.toString() === selectedRoom)?.name}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {filteredTopicRoomData.map((topicData) => {
                         const roomData = topicData.rooms.find(r => r.room.room_id.toString() === selectedRoom);
                         if (!roomData) return null;

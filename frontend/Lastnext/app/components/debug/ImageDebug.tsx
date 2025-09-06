@@ -41,7 +41,7 @@ export function ImageDebug({ src, alt, className }: ImageDebugProps) {
         className="w-full h-auto"
         onLoad={handleLoad}
         onError={handleError}
-        unoptimized={src.startsWith('/media/')}
+        unoptimized={src.startsWith('/media/') || src.startsWith('http://') || src.startsWith('https://')}
       />
     </div>
   );

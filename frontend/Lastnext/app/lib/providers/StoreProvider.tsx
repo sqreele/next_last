@@ -21,7 +21,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       console.log('🔄 Syncing session data to Zustand store...');
       
       // Set auth tokens
-      if (session.user.accessToken) {
+      if (session.user?.accessToken) {
         setAuthTokens(session.user.accessToken, session.user.refreshToken || '');
       }
 
@@ -52,13 +52,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
 
         // Set properties in store (only if they've changed)
-        if (session.user.properties && session.user.properties.length > 0) {
+        if (session.user?.properties && session.user.properties.length > 0) {
           const currentProperties = useMainStore.getState().properties;
           const propertiesChanged = !currentProperties || 
             currentProperties.length !== session.user.properties.length ||
             !currentProperties.every((prop, index) => 
-              prop.property_id === session.user.properties[index]?.property_id ||
-              prop.id === session.user.properties[index]?.id
+              prop.property_id === session.user?.properties[index]?.property_id ||
+              prop.id === session.user?.properties[index]?.id
             );
           
           if (propertiesChanged) {
@@ -69,10 +69,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           // Auto-select first property if none selected
           const currentSelectedProperty = useMainStore.getState().selectedPropertyId;
           if (!currentSelectedProperty) {
-            const firstProperty = session.user.properties[0];
-            const propertyId = String(firstProperty.property_id || firstProperty.id);
-            console.log('✅ Auto-selecting first property:', propertyId);
-            setSelectedPropertyId(propertyId);
+            const firstProperty = session.user?.properties[0];
+            if (firstProperty) {
+              const propertyId = String(firstProperty.property_id || firstProperty.id);
+              console.log('✅ Auto-selecting first property:', propertyId);
+              setSelectedPropertyId(propertyId);
+            }
           }
         }
       }

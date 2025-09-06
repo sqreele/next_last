@@ -6,7 +6,7 @@ from .views import (
     RoomViewSet, TopicViewSet, JobViewSet, PropertyViewSet,
     UserProfileViewSet, UserViewSet, MachineViewSet,
     PreventiveMaintenanceImageUploadView, PreventiveMaintenanceViewSet,
-    MaintenanceProcedureViewSet
+    MaintenanceProcedureViewSet, NotifieView
 )
 
 # Set the app name
@@ -59,6 +59,9 @@ urlpatterns = [
     
     # CSRF token endpoint
     path('api/v1/csrf-token/', views.get_csrf_token, name='get_csrf_token'),
+    
+    # Notifie endpoint
+    path('api/v1/notifie/', NotifieView.as_view(), name='notifie'),
     
     # PDF Report Generation
     path('api/v1/maintenance/report/pdf/', views.generate_maintenance_pdf_report, name='maintenance_pdf_report'),

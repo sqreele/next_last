@@ -39,13 +39,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           created_at: session.user.created_at || new Date().toISOString(),
         };
 
-        console.log('✅ Setting user profile in store:', userProfile);
-        setUserProfile(userProfile);
+        // Only update user profile if it has changed
+        const currentProfile = useMainStore.getState().userProfile;
+        const profileChanged = !currentProfile || 
+          currentProfile.id !== userProfile.id ||
+          currentProfile.username !== userProfile.username ||
+          currentProfile.email !== userProfile.email;
+        
+        if (profileChanged) {
+          console.log('✅ Setting user profile in store:', userProfile);
+          setUserProfile(userProfile);
+        }
 
-        // Set properties in store
+        // Set properties in store (only if they've changed)
         if (session.user.properties && session.user.properties.length > 0) {
-          console.log('✅ Setting properties in store:', session.user.properties.length);
-          setProperties(session.user.properties);
+          const currentProperties = useMainStore.getState().properties;
+          const propertiesChanged = !currentProperties || 
+            currentProperties.length !== session.user.properties.length ||
+            !currentProperties.every((prop, index) => 
+              prop.property_id === session.user.properties[index]?.property_id ||
+              prop.id === session.user.properties[index]?.id
+            );
+          
+          if (propertiesChanged) {
+            console.log('✅ Setting properties in store:', session.user.properties.length);
+            setProperties(session.user.properties);
+          }
 
           // Auto-select first property if none selected
           const currentSelectedProperty = useMainStore.getState().selectedPropertyId;

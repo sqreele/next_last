@@ -103,6 +103,7 @@ const RoomTopicFilterPage = () => {
         let users: User[] = [];
         if (detailedUsers && detailedUsers.length > 0) {
           console.log('Using detailed users from hook, count:', detailedUsers.length);
+          console.log('Sample user data:', detailedUsers[0]);
           
           // Transform detailed users to User format and filter by property
           const allUsers = detailedUsers.map((user: any) => ({
@@ -119,20 +120,21 @@ const RoomTopicFilterPage = () => {
             created_at: user.created_at
           }));
           
-          // Filter by property if specific property is selected
-          if (selectedProperty !== 'all') {
-            users = allUsers.filter((user: User) => {
-              if (!user.properties || !Array.isArray(user.properties)) {
-                return false;
-              }
-              return user.properties.some((prop: any) => 
-                prop.property_id === selectedProperty || prop.id === selectedProperty
-              );
-            });
-            console.log(`Filtered ${users.length} users for property ${selectedProperty}`);
-          } else {
+          console.log('Transformed users sample:', allUsers[0]);
+          console.log('Selected property:', selectedProperty);
+          
+          // Filter users by selected property
+          if (selectedProperty === 'all') {
             users = allUsers;
-            console.log(`Using all ${users.length} users`);
+            console.log(`Using all ${users.length} users (no property filter)`);
+          } else {
+            // Filter users who have the selected property
+            users = allUsers.filter(user => 
+              user.properties && user.properties.some((prop: any) => 
+                prop.id.toString() === selectedProperty || prop.property_id === selectedProperty
+              )
+            );
+            console.log(`Filtered to ${users.length} users for property ${selectedProperty}`);
           }
         } else {
           console.log('No detailed users available, using fallback fetch');
@@ -278,7 +280,11 @@ const RoomTopicFilterPage = () => {
     if (searchTerm) {
       filtered = filtered.filter(roomData =>
         roomData.room.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        roomData.room.room_type.toLowerCase().includes(searchTerm.toLowerCase())
+        roomData.room.room_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        roomData.topics.some(topicData => 
+          topicData.topic.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          topicData.topic.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
       );
     }
 
@@ -537,11 +543,131 @@ const RoomTopicFilterPage = () => {
         </Card>
       </div>
 
+      {/* Property-based User Statistics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            User Statistics by Property
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <div className="text-3xl font-bold text-blue-600">{allUsers.length}</div>
+              <div className="text-sm text-gray-600">
+                {selectedProperty === 'all' ? 'Total Users' : `Users in Selected Property`}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {selectedProperty === 'all' 
+                  ? 'All users across all properties' 
+                  : `Filtered by ${allProperties.find(p => p.id.toString() === selectedProperty)?.name || 'Unknown Property'}`
+                }
+              </div>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <div className="text-3xl font-bold text-green-600">
+                {allUsers.filter(user => user.first_name && user.last_name).length}
+              </div>
+              <div className="text-sm text-gray-600">Users with Full Names</div>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <div className="text-3xl font-bold text-purple-600">
+                {allUsers.filter(user => user.positions && user.positions.trim() !== '').length}
+              </div>
+              <div className="text-sm text-gray-600">Users with Assigned Positions</div>
+            </div>
+          </div>
+          
+          {/* Property Breakdown */}
+          {selectedProperty === 'all' && detailedUsers && detailedUsers.length > 0 && (
+            <div className="mt-6">
+              <h4 className="font-medium text-sm text-gray-700 mb-3">Users by Property:</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {allProperties.map(property => {
+                  const usersInProperty = detailedUsers.filter((user: any) => 
+                    user.properties && user.properties.some((prop: any) => 
+                      prop.id.toString() === property.id.toString() || prop.property_id === property.id.toString()
+                    )
+                  );
+                  return (
+                    <div key={property.id} className="p-3 bg-gray-50 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-sm">{property.name}</span>
+                        <span className="text-lg font-bold text-blue-600">{usersInProperty.length}</span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {usersInProperty.map((user: any) => user.username).join(', ')}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
+          {/* Debug Information */}
+          <div className="mt-4 p-3 bg-gray-100 rounded-lg">
+            <h4 className="font-medium text-sm text-gray-700 mb-2">Debug Information:</h4>
+            <div className="text-xs text-gray-600 space-y-1">
+              <div>Selected Property: {selectedProperty === 'all' ? 'All Properties' : allProperties.find(p => p.id.toString() === selectedProperty)?.name || 'Unknown'}</div>
+              <div>Users Shown: {allUsers.length}</div>
+              <div>Total Users Available: {detailedUsers?.length || 0}</div>
+              <div>Properties Available: {allProperties.length}</div>
+              <div className="text-blue-600 font-medium">
+                {selectedProperty === 'all' 
+                  ? 'Showing all users across all properties' 
+                  : `Showing users assigned to selected property only`
+                }
+              </div>
+            </div>
+          </div>
+          
+          {/* User List */}
+          {allUsers.length > 0 && (
+            <div className="mt-6">
+              <h4 className="font-medium text-sm text-gray-700 mb-3">
+                {selectedProperty === 'all' 
+                  ? 'All Users (All Properties):' 
+                  : `Users in ${allProperties.find(p => p.id.toString() === selectedProperty)?.name || 'Selected Property'}:`
+                }
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                {allUsers.map((user, index) => {
+                  const displayName = user.first_name && user.last_name 
+                    ? `${user.first_name} ${user.last_name}` 
+                    : user.username;
+                  const roleInfo = user.positions || user.email || 'No role';
+                  
+                  return (
+                    <div key={`${user.id}-${index}`} className="p-3 bg-gray-50 rounded-lg border">
+                      <div className="font-medium text-sm">{displayName}</div>
+                      <div className="text-xs text-gray-500">{roleInfo}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Properties: {user.properties?.length || 0}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
+          {allUsers.length === 0 && (
+            <div className="mt-6 text-center py-8 text-gray-500">
+              <p>No users found.</p>
+              <p className="text-sm">Try selecting "All Properties" or check the console for debugging information.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Main Content Tabs */}
       <Tabs defaultValue="rooms-by-topics" className="space-y-4">
         <TabsList>
           <TabsTrigger value="rooms-by-topics">Rooms by Topics</TabsTrigger>
           <TabsTrigger value="topics-by-rooms">Topics by Rooms</TabsTrigger>
+          <TabsTrigger value="topic-room-filter">Topic-Room Filter</TabsTrigger>
         </TabsList>
 
         {/* Rooms by Topics Tab */}
@@ -664,6 +790,173 @@ const RoomTopicFilterPage = () => {
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        {/* Topic-Room Filter Tab */}
+        <TabsContent value="topic-room-filter" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Advanced Topic-Room Filtering</CardTitle>
+              <p className="text-sm text-gray-600">
+                Filter rooms by specific topics and see detailed statistics
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Topic Selection for Room Filtering */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
+                      Select Topic to Filter Rooms
+                    </label>
+                    <Select value={selectedTopic} onValueChange={setSelectedTopic}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a topic to filter rooms" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Topics</SelectItem>
+                        {allTopics.map((topic, index) => (
+                          <SelectItem key={`filter-topic-${topic.id}-${index}`} value={topic.id.toString()}>
+                            {topic.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 mb-2 block">
+                      Property Filter
+                    </label>
+                    <Select value={selectedProperty} onValueChange={setSelectedProperty}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose property" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Properties</SelectItem>
+                        {allProperties.map((property, index) => (
+                          <SelectItem key={`filter-property-${property.id}-${index}`} value={property.id.toString()}>
+                            {property.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Filter Results */}
+                {selectedTopic !== 'all' && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-4">
+                      Rooms with Topic: {allTopics.find(t => t.id.toString() === selectedTopic)?.title}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {filteredRoomTopicData.map((roomData) => {
+                        const topicData = roomData.topics.find(t => t.topic.id.toString() === selectedTopic);
+                        if (!topicData) return null;
+
+                        return (
+                          <Card key={`filter-${roomData.room.room_id}`} className="border-l-4 border-l-blue-500">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-base flex items-center justify-between">
+                                {roomData.room.name}
+                                <Badge variant="secondary">{roomData.room.room_type}</Badge>
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Topic Jobs:</span>
+                                  <span className="font-medium">{topicData.count}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Total Jobs:</span>
+                                  <span className="font-medium">{roomData.totalJobs}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Percentage:</span>
+                                  <span className="font-medium">{topicData.percentage}%</span>
+                                </div>
+                                <div className="mt-2">
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className="bg-blue-500 h-2 rounded-full" 
+                                      style={{ width: `${topicData.percentage}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                    
+                    {filteredRoomTopicData.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No rooms found with the selected topic.</p>
+                        <p className="text-sm">Try selecting a different topic or property.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Room Selection for Topic Filtering */}
+                {selectedRoom !== 'all' && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold mb-4">
+                      Topics in Room: {allRooms.find(r => r.room_id.toString() === selectedRoom)?.name}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {filteredTopicRoomData.map((topicData) => {
+                        const roomData = topicData.rooms.find(r => r.room.room_id.toString() === selectedRoom);
+                        if (!roomData) return null;
+
+                        return (
+                          <Card key={`filter-topic-${topicData.topic.id}`} className="border-l-4 border-l-green-500">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-base">{topicData.topic.title}</CardTitle>
+                              <p className="text-sm text-gray-600">{topicData.topic.description || 'No description'}</p>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Room Jobs:</span>
+                                  <span className="font-medium">{roomData.count}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Total Jobs:</span>
+                                  <span className="font-medium">{topicData.totalJobs}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Percentage:</span>
+                                  <span className="font-medium">{roomData.percentage}%</span>
+                                </div>
+                                <div className="mt-2">
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className="bg-green-500 h-2 rounded-full" 
+                                      style={{ width: `${roomData.percentage}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                    
+                    {filteredTopicRoomData.length === 0 && (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No topics found in the selected room.</p>
+                        <p className="text-sm">Try selecting a different room or property.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

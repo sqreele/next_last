@@ -27,7 +27,7 @@ const HeaderPropertyList = React.memo(() => {
       propertyLoading,
       timestamp: Date.now()
     });
-  });
+  }, [selectedProperty, userProperties?.length, propertyLoading]);
   
   // Check if user has properties - memoized to prevent unnecessary recalculations
   const hasProperties = useMemo(() => 

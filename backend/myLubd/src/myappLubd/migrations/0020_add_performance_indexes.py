@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('myappLubd', '0002_alter_job_job_id_alter_preventivemaintenance_pm_id'),
+        ('myappLubd', '0019_maintenanceprocedure_difficulty_level_and_more'),
     ]
 
     operations = [

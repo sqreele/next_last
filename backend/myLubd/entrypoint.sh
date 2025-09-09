@@ -33,6 +33,22 @@ python manage.py migrate --no-input --fake-initial
 python manage.py collectstatic --no-input
 
 # Start server
-python manage.py runserver 0.0.0.0:8000
+CRON_ENV="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\nPYTHONPATH=/app\nDJANGO_SETTINGS_MODULE=myLubd.settings\nTZ=${TZ:-Asia/Bangkok}"
+echo -e "$CRON_ENV" > /etc/cron.d/env
+
+# Register cron job: run daily at 23:00 Asia/Bangkok
+echo "0 23 * * * cd /app/src && /usr/local/bin/python manage.py send_daily_summary >> /var/log/cron.log 2>&1" > /etc/cron.d/daily_summary
+chmod 0644 /etc/cron.d/daily_summary
+
+# Apply cron files
+crontab /etc/cron.d/daily_summary
+
+# Start cron in background
+touch /var/log/cron.log
+service cron start
+
+python manage.py runserver 0.0.0.0:8000 &
+
+tail -F /var/log/cron.log &
 
 exec "$@"

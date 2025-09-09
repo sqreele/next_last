@@ -7,10 +7,11 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV DJANGO_SETTINGS_MODULE=myLubd.settings
 ENV PYTHONPATH=/app
+ENV TZ=Asia/Bangkok
 
 WORKDIR /app
 
-# Install system dependencies (include image libs for Pillow WebP/JPEG)
+# Install system dependencies (include image libs for Pillow WebP/JPEG) and cron
 RUN apt-get update && apt-get install -y \
     postgresql-client \
     netcat-traditional \
@@ -18,7 +19,12 @@ RUN apt-get update && apt-get install -y \
     zlib1g-dev \
     libwebp-dev \
     libpng-dev \
+    cron \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure timezone
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Install Python dependencies
 COPY requirements.txt .

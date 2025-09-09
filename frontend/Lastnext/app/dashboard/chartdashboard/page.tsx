@@ -11,16 +11,9 @@ export const dynamic = 'force-dynamic';
 export default async function ChartDashboardPage() {
   try {
     const session = await getServerSession();
-    console.log('Chart Dashboard - Session status:', session ? 'authenticated' : 'unauthenticated');
-    console.log('Chart Dashboard - User:', session?.user?.username || 'no user');
-    
     const accessToken = session?.user?.accessToken;
-    if (!accessToken) {
-      console.warn('Chart Dashboard - No access token available');
-    }
 
     const jobs = await fetchJobs(accessToken);
-    console.log(`Chart Dashboard - Fetched ${jobs?.length || 0} jobs from API`);
 
     return (
       <div className="space-y-4">
@@ -32,7 +25,6 @@ export default async function ChartDashboardPage() {
       </div>
     );
   } catch (error) {
-    console.error('Error loading chart dashboard:', error);
     
     // Fallback UI when data can't be loaded
     return (

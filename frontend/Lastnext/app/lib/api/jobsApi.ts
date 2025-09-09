@@ -187,7 +187,7 @@ export class JobsApiService {
     retries: number = 3
   ): Promise<T> {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
     try {
       const response = await fetch(url, {
@@ -236,17 +236,49 @@ export class JobsApiService {
     }
   }
 
-  // Jobs CRUD operations
-  async getJobs(token: string, filters?: any): Promise<any[]> {
-    const cacheKey = `jobs:${JSON.stringify(filters || {})}`;
+  // Jobs CRUD operations with pagination support
+  async getJobs(token: string, filters?: any, page: number = 1, pageSize: number = 25): Promise<any> {
+    const params = new URLSearchParams();
+    
+    // Add pagination params
+    params.append('page', page.toString());
+    params.append('page_size', pageSize.toString());
+    
+    // Add filters
+    if (filters) {
+      Object.keys(filters).forEach(key => {
+        if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+          params.append(key, filters[key].toString());
+        }
+      });
+    }
+    
+    const cacheKey = `jobs:${params.toString()}`;
     const cached = this.cache.get(cacheKey);
     if (cached) return cached;
 
-    const url = `${API_CONFIG.baseUrl}/api/v1/jobs/`;
-    const jobs = await this.fetchWithRetry<any[]>(url, token);
+    const url = `${API_CONFIG.baseUrl}/api/v1/jobs/?${params.toString()}`;
+    const response = await this.fetchWithRetry<any>(url, token);
     
-    this.cache.set(cacheKey, jobs);
-    return jobs;
+    this.cache.set(cacheKey, response);
+    return response;
+  }
+
+  // Get job statistics without loading all jobs
+  async getJobStats(token: string, filters?: any): Promise<any> {
+    const params = new URLSearchParams();
+    
+    if (filters) {
+      Object.keys(filters).forEach(key => {
+        if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+          params.append(key, filters[key].toString());
+        }
+      });
+    }
+    
+    const url = `${API_CONFIG.baseUrl}/api/v1/jobs/stats/?${params.toString()}`;
+    const stats = await this.fetchWithRetry<any>(url, token);
+    return stats;
   }
 
   async getJob(token: string, jobId: string): Promise<any> {

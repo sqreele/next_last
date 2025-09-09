@@ -42,7 +42,7 @@ interface TopicRoomData {
 const RoomTopicFilterPage = () => {
   const { userProfile, isAuthenticated } = useUser();
   const { properties: allProperties } = useProperties();
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { users: detailedUsers, loading: detailedUsersLoading } = useDetailedUsers();
   const [selectedUser, setSelectedUser] = useState<string>('all');
   const [allTopics, setAllTopics] = useState<Topic[]>([]);
@@ -53,6 +53,7 @@ const RoomTopicFilterPage = () => {
   const [selectedTopic, setSelectedTopic] = useState<string>('all');
   const [selectedRoom, setSelectedRoom] = useState<string>('all');
   const [selectedProperty, setSelectedProperty] = useState<string>('all');
+  const [authError, setAuthError] = useState<string | null>(null);
   
   // Debug property selection
   useEffect(() => {
@@ -80,8 +81,15 @@ const RoomTopicFilterPage = () => {
     console.log('useEffect triggered with session:', !!session, 'accessToken:', !!session?.user?.accessToken);
     
     const fetchRealData = async () => {
-      if (!session?.user?.accessToken) {
-        console.log('No access token available, skipping data fetch');
+      // Check authentication status
+      if (sessionStatus === 'loading') {
+        // Still loading, wait
+        return;
+      }
+      
+      if (sessionStatus === 'unauthenticated' || !session?.user?.accessToken) {
+        console.log('No access token available, user not authenticated');
+        setAuthError('Please sign in to view this page');
         setIsLoading(false);
         return;
       }
@@ -184,7 +192,7 @@ const RoomTopicFilterPage = () => {
     };
 
     fetchRealData();
-  }, [session?.user?.accessToken, selectedProperty, detailedUsers]);
+  }, [session?.user?.accessToken, sessionStatus, selectedProperty, detailedUsers]);
 
   // Process room-topic data
   const roomTopicData = useMemo(() => {
@@ -385,6 +393,26 @@ const RoomTopicFilterPage = () => {
     }
   };
 
+  // Show authentication error if not authenticated
+  if (authError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+            <h2 className="text-xl font-semibold text-red-800 mb-2">Authentication Required</h2>
+            <p className="text-red-600 mb-4">{authError}</p>
+            <Button 
+              onClick={() => window.location.href = '/auth/login'}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Sign In
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (jobsLoading || isLoading || detailedUsersLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -530,6 +558,19 @@ const RoomTopicFilterPage = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Check if there's no data */}
+      {allJobs.length === 0 && !jobsLoading && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="text-gray-500">
+              <p className="text-lg font-medium mb-2">No jobs data available</p>
+              <p className="text-sm">There are no jobs to display for the selected filters.</p>
+              <p className="text-sm mt-2">Try selecting different filters or check back later.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

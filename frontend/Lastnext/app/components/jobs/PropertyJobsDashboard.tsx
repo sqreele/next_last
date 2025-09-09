@@ -86,16 +86,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
 
   // Load jobs from store instead of API call
   const loadJobs = () => {
-    console.log('loadJobs called:', {
-      status,
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      storeJobsLength: jobs?.length || 0,
-      initialJobsLength: initialJobs?.length || 0
-    });
-    
     if (status !== "authenticated" || !session?.user) {
-      console.log('loadJobs: Not authenticated or no user, using initialJobs');
       // Use initialJobs if available even when not authenticated
       if (initialJobs && initialJobs.length > 0) {
         setAllJobs(initialJobs);
@@ -110,13 +101,10 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     try {
       // Use jobs already available in the store or fall back to initialJobs
       if (Array.isArray(jobs) && jobs.length > 0) {
-        console.log(`loadJobs: Using ${jobs.length} jobs from store`);
         setAllJobs(jobs);
       } else if (Array.isArray(initialJobs) && initialJobs.length > 0) {
-        console.log(`loadJobs: Using ${initialJobs.length} initialJobs`);
         setAllJobs(initialJobs);
       } else {
-        console.log('loadJobs: No jobs available from store or initialJobs');
         setAllJobs([]);
       }
     } catch (err) {
@@ -131,19 +119,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
 
   // Populate store with initial jobs when component mounts
   useEffect(() => {
-    console.log('PropertyJobsDashboard - Mount effect:', {
-      initialJobsLength: initialJobs?.length || 0,
-      storeJobsLength: jobs?.length || 0,
-      sessionStatus: status,
-      selectedProperty: effectiveProperty,
-      userProperties: userProperties.map(p => ({ id: p.property_id, name: p.name }))
-    });
-    
     if (initialJobs && initialJobs.length > 0 && (!jobs || jobs.length === 0)) {
-      console.log('Initial jobs:', initialJobs);
-      console.log('Sample job data:', initialJobs[0]);
-      console.log('Job topics:', initialJobs[0]?.topics);
-      console.log('Job rooms:', initialJobs[0]?.rooms);
       setJobs(initialJobs);
       setAllJobs(initialJobs);
       setFilteredJobs(initialJobs);
@@ -256,25 +232,12 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   useEffect(() => {
     const user = session?.user;
     if (!allJobs.length) {
-      console.log('No jobs to filter - allJobs is empty');
       setFilteredJobs([]);
       return;
     }
 
     // If no property is selected, fall back to using all jobs so charts still render
     if (!effectiveProperty) {
-      console.log('No property selected - using all jobs');
-      setFilteredJobs(allJobs);
-      return;
-    }
-
-    console.log(`Filtering ${allJobs.length} jobs for property: ${effectiveProperty}`);
-    
-    // Temporarily show all jobs to debug
-    const debugMode = true; // Set to false to enable filtering
-    
-    if (debugMode) {
-      console.log('DEBUG MODE: Showing all jobs without filtering');
       setFilteredJobs(allJobs);
       return;
     }
@@ -325,7 +288,6 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       return false;
     });
 
-    console.log(`Filtered to ${filtered.length} jobs`);
     setFilteredJobs(filtered);
   }, [allJobs, effectiveProperty, session?.user?.properties]);
 
@@ -774,61 +736,6 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
             </div>
           </CardContent>
         </Card>
-
-        {/* Temporary Debug Info */}
-        <Card className="w-full bg-yellow-50 border-yellow-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg text-yellow-800">Data Analysis (Debug Mode Enabled)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm space-y-2">
-              <div className="p-2 bg-orange-100 rounded mb-3 text-orange-800">
-                <strong>⚠️ Debug Mode Active:</strong> Showing all jobs without property filtering to diagnose the issue.
-              </div>
-              <div>Session Status: <strong>{status}</strong></div>
-              <div>Selected Property: <strong>{effectiveProperty || 'None'}</strong></div>
-              <div>User Properties: <strong>{userProperties.length}</strong> - {userProperties.map(p => p.name).join(', ')}</div>
-              <div>Initial Jobs Passed: <strong>{initialJobs.length}</strong></div>
-              <div>All Jobs in State: <strong>{allJobs.length}</strong></div>
-              <div>Total filtered jobs: <strong>{filteredJobs.length}</strong></div>
-              <div>Jobs by status: <strong>{jobStats.length} categories</strong></div>
-              <div>Jobs by month: <strong>{jobsByMonth.length} months</strong></div>
-              <div>Jobs by user: <strong>{jobsByUser.length} users</strong></div>
-              
-              <details className="mt-4">
-                <summary className="cursor-pointer text-yellow-700 hover:text-yellow-900">
-                  Click to see detailed debug info
-                </summary>
-                <pre className="bg-white p-2 rounded overflow-x-auto mt-2 text-xs">
-                  {JSON.stringify({
-                    sessionUser: session?.user ? {
-                      username: session.user.username,
-                      hasAccessToken: !!session.user.accessToken,
-                      properties: session.user.properties?.length || 0
-                    } : null,
-                    firstJob: allJobs.length > 0 ? {
-                      id: allJobs[0]?.id,
-                      property_id: allJobs[0]?.property_id,
-                      properties: allJobs[0]?.properties,
-                      rooms: allJobs[0]?.rooms?.length || 0,
-                      status: allJobs[0]?.status,
-                      created_at: allJobs[0]?.created_at
-                    } : null,
-                    filteringResult: {
-                      totalJobs: allJobs.length,
-                      afterFilter: filteredJobs.length,
-                      selectedProperty: effectiveProperty
-                    },
-                    jobStatsSample: jobStats.slice(0, 3),
-                    jobsByMonthSample: jobsByMonth.slice(0, 3)
-                  }, null, 2)}
-                </pre>
-              </details>
-            </div>
-          </CardContent>
-        </Card>
-
-
 
         {/* Jobs per User Chart */}
         {jobsByUser && jobsByUser.length > 0 && (

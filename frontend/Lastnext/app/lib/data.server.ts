@@ -49,7 +49,10 @@ export async function fetchWithToken<T>(
     absoluteUrl = `${API_CONFIG.baseUrl}${url}`;
   }
 
-  console.log(`${method} ${absoluteUrl}`, options);
+  console.log(`${method} ${absoluteUrl}`, {
+    hasAuth: !!headers["Authorization"],
+    method
+  });
 
   try {
     const response = await fetch(absoluteUrl, options);
@@ -58,6 +61,8 @@ export async function fetchWithToken<T>(
     console.log(
       "Response Status:",
       response.status,
+      "Content-Length:",
+      responseText.length,
       "Preview:",
       responseText.length > 200 ? responseText.substring(0, 200) + "..." : responseText
     );
@@ -137,11 +142,54 @@ export async function fetchJobsForProperty(
 
 export async function fetchJobs(accessToken?: string): Promise<Job[]> {
   try {
-    const jobs = await fetchWithToken<Job[]>('/api/v1/jobs/', accessToken);
+    console.log('fetchJobs: Starting to fetch all jobs...');
+    console.log('fetchJobs: Access token available:', !!accessToken);
+    
+    const response = await fetchWithToken<any>('/api/v1/jobs/', accessToken);
+    console.log('fetchJobs: Raw response type:', typeof response);
+    console.log('fetchJobs: Response structure:', response ? Object.keys(response) : 'null');
+    
+    // Handle paginated response format
+    let jobs: Job[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        // Direct array response
+        jobs = response;
+        console.log(`fetchJobs: Direct array response - ${jobs.length} jobs`);
+      } else if (response.results && Array.isArray(response.results)) {
+        // Paginated response with results field
+        jobs = response.results;
+        console.log(`fetchJobs: Paginated response - ${jobs.length} jobs from results field`);
+        if (response.count !== undefined) {
+          console.log(`fetchJobs: Total count from pagination: ${response.count}`);
+        }
+      } else {
+        console.error('fetchJobs: Unexpected response format:', response);
+        return [];
+      }
+    } else {
+      console.error('fetchJobs: Invalid response:', response);
+      return [];
+    }
+    
     const sanitizedJobs = sanitizeJobsData(jobs);
-    return fixJobsImageUrls(sanitizedJobs);
+    console.log(`fetchJobs: After sanitization - ${sanitizedJobs.length} jobs`);
+    
+    const fixedJobs = fixJobsImageUrls(sanitizedJobs);
+    console.log(`fetchJobs: After image URL fixing - ${fixedJobs.length} jobs`);
+    
+    return fixedJobs;
   } catch (error) {
     console.error('Error fetching jobs:', error);
+    
+    // Log more details about the error
+    if (error instanceof ServerApiError) {
+      console.error('ServerApiError details:', {
+        status: error.status,
+        message: error.message,
+        errorData: error.errorData
+      });
+    }
     
     // During build time or when backend is unavailable, return empty array
     if (process.env.NODE_ENV === 'production' || error instanceof ServerApiError) {

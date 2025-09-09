@@ -55,6 +55,11 @@ def send_email(to_email: str, subject: str, body: str, from_email: Optional[str]
     # Try Gmail API first
     service = _build_gmail_service()
     from_addr = from_email or getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@pcms.live')
+    # If a placeholder default is in use but SMTP user is configured, prefer that as from address
+    if from_addr == 'no-reply@pcms.live':
+        _smtp_user = getattr(settings, 'EMAIL_HOST_USER', '')
+        if _smtp_user:
+            from_addr = _smtp_user
 
     if service is not None:
         try:
@@ -72,6 +77,15 @@ def send_email(to_email: str, subject: str, body: str, from_email: Optional[str]
             # Continue to try SMTP fallback
 
     # SMTP fallback using Django's send_mail
+    # Enforce SMTP auth when required to avoid 530 Authentication errors (e.g., Gmail)
+    email_host = getattr(settings, 'EMAIL_HOST', '')
+    email_user = getattr(settings, 'EMAIL_HOST_USER', '')
+    email_password = getattr(settings, 'EMAIL_HOST_PASSWORD', '')
+    require_auth = os.getenv('EMAIL_REQUIRE_AUTH', 'True').lower() in ('true', '1', 'yes')
+
+    if require_auth and (not email_user or not email_password):
+        logger.error("SMTP auth not configured (set EMAIL_HOST_USER and EMAIL_HOST_PASSWORD).")
+        return False
     try:
         from django.core.mail import send_mail
         sent = send_mail(subject, body, from_addr, [to_email], fail_silently=False)

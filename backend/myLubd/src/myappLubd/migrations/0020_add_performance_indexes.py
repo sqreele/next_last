@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
         # Add indexes for PreventiveMaintenance model
         migrations.AddIndex(
             model_name='preventivemaintenance',
-            index=models.Index(fields=['scheduled_date', 'completion_date'], name='pm_schedule_complete_idx'),
+            index=models.Index(fields=['scheduled_date', 'completed_date'], name='pm_schedule_complete_idx'),
         ),
         migrations.AddIndex(
             model_name='preventivemaintenance',

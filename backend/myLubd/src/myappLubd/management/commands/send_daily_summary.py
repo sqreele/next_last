@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.conf import settings
+from django.template.loader import render_to_string
 
 from django.contrib.auth import get_user_model
 from myappLubd.models import Job
@@ -55,6 +56,7 @@ class Command(BaseCommand):
             # Compose email
             subject = f"Daily Maintenance Summary - {now.strftime('%Y-%m-%d')}"
 
+            # Plain-text fallback body
             lines = [
                 f"Date: {now.strftime('%Y-%m-%d')} (Asia/Bangkok)",
                 "",
@@ -63,11 +65,28 @@ class Command(BaseCommand):
                 "",
                 "Breakdown by status (created today):",
             ]
-
             for key, label in Job.STATUS_CHOICES:
                 lines.append(f"- {label}: {status_counts.get(key, 0)}")
-
             body = "\n".join(lines)
+
+            # HTML body using template
+            status_list = [
+                {
+                    "label": label,
+                    "count": status_counts.get(key, 0),
+                }
+                for key, label in Job.STATUS_CHOICES
+            ]
+            context = {
+                "date_str": now.strftime('%Y-%m-%d'),
+                "timezone_label": "Asia/Bangkok",
+                "total_created": total_created,
+                "completed_today": completed_today,
+                "status_list": status_list,
+                "brand_name": "PCMS",
+                "base_url": getattr(settings, "FRONTEND_BASE_URL", "https://pcms.live"),
+            }
+            html_body = render_to_string("emails/daily_summary.html", context)
 
             # Determine recipients
             explicit_to = options.get("to_email")
@@ -99,7 +118,7 @@ class Command(BaseCommand):
 
             sent_count = 0
             for to_email in recipients:
-                success = send_email(to_email=to_email, subject=subject, body=body)
+                success = send_email(to_email=to_email, subject=subject, body=body, html_body=html_body)
                 if success:
                     sent_count += 1
                     logger.info("Daily summary email sent to %s", to_email)

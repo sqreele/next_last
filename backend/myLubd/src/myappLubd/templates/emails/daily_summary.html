@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Daily Maintenance Summary</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f5f7fb;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f5f7fb;">
+      <tr>
+        <td align="center" style="padding:24px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e6e8ee;">
+            <tr>
+              <td style="padding:24px 24px 16px 24px;background:linear-gradient(135deg,#2b5876,#4e4376);color:#ffffff;">
+                <h1 style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:20px;line-height:28px;font-weight:700;">{{ brand_name }} Daily Maintenance Summary</h1>
+                <p style="margin:8px 0 0 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:13px;opacity:0.9;">{{ date_str }} &middot; {{ timezone_label }}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:Inter,Segoe UI,Arial,sans-serif;color:#1f2532;">
+                  <tr>
+                    <td style="padding:0 0 12px 0;font-size:0;" colspan="2">
+                      <div style="display:inline-block;width:100%;max-width:50%;vertical-align:top;">
+                        <div style="background:#f0f4ff;border:1px solid #dbe4ff;border-radius:10px;padding:16px;margin-right:6px;">
+                          <div style="font-size:12px;color:#5b6b8b;text-transform:uppercase;letter-spacing:0.4px;">Created Today</div>
+                          <div style="font-size:28px;line-height:34px;font-weight:700;color:#2a3a5e;">{{ total_created }}</div>
+                        </div>
+                      </div>
+                      <div style="display:inline-block;width:100%;max-width:50%;vertical-align:top;">
+                        <div style="background:#eefaf3;border:1px solid #c7efd8;border-radius:10px;padding:16px;margin-left:6px;">
+                          <div style="font-size:12px;color:#4a6b56;text-transform:uppercase;letter-spacing:0.4px;">Completed Today</div>
+                          <div style="font-size:28px;line-height:34px;font-weight:700;color:#245438;">{{ completed_today }}</div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" style="padding-top:4px;padding-bottom:10px;">
+                      <h2 style="margin:0;font-size:14px;line-height:20px;font-weight:700;color:#2a3a5e;">Breakdown by status</h2>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;width:100%;">
+                        <tr>
+                          <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:10px 12px;font-size:12px;color:#5b6b8b;font-weight:600;">Status</th>
+                          <th align="right" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:10px 12px;font-size:12px;color:#5b6b8b;font-weight:600;">Count</th>
+                        </tr>
+                        {% for item in status_list %}
+                        <tr>
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:12px 12px;font-size:13px;color:#1f2532;">{{ item.label }}</td>
+                          <td align="right" style="border:1px solid #e6e8ee;border-top:0;padding:12px 12px;font-size:13px;color:#1f2532;font-weight:600;">{{ item.count }}</td>
+                        </tr>
+                        {% endfor %}
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px;background:#fafbff;border-top:1px solid #eef0f6;">
+                <p style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;color:#6b7280;">You are receiving this email because you are an active user on {{ brand_name }}. Visit <a href="{{ base_url }}" style="color:#4f46e5;text-decoration:none;">your dashboard</a> for details.</p>
+              </td>
+            </tr>
+          </table>
+          <div style="padding:12px 0 0 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:11px;color:#98a2b3;">&copy; {{ date_str|slice:":4" }} {{ brand_name }}. All rights reserved.</div>
+        </td>
+      </tr>
+    </table>
+  </body>
+  </html>
+

@@ -2,6 +2,7 @@ import base64
 import logging
 import os
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from typing import Optional
 
 from django.conf import settings
@@ -47,7 +48,7 @@ def _build_gmail_service():
         return None
 
 
-def send_email(to_email: str, subject: str, body: str, from_email: Optional[str] = None) -> bool:
+def send_email(to_email: str, subject: str, body: str, from_email: Optional[str] = None, html_body: Optional[str] = None) -> bool:
     """Send an email either via Gmail API (preferred) or SMTP fallback.
 
     Returns True on success, False otherwise.
@@ -63,12 +64,23 @@ def send_email(to_email: str, subject: str, body: str, from_email: Optional[str]
 
     if service is not None:
         try:
-            message = MIMEText(body)
-            message['to'] = to_email
-            message['from'] = from_addr
-            message['subject'] = subject
+            if html_body:
+                container = MIMEMultipart('alternative')
+                container['to'] = to_email
+                container['from'] = from_addr
+                container['subject'] = subject
+                # Plain text part first for clients that prefer it
+                container.attach(MIMEText(body or '', 'plain', 'utf-8'))
+                # HTML part
+                container.attach(MIMEText(html_body, 'html', 'utf-8'))
+                raw = base64.urlsafe_b64encode(container.as_bytes()).decode()
+            else:
+                message = MIMEText(body or '', 'plain', 'utf-8')
+                message['to'] = to_email
+                message['from'] = from_addr
+                message['subject'] = subject
+                raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
-            raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
             service.users().messages().send(userId='me', body={'raw': raw}).execute()
             logger.info(f"Email sent via Gmail API to {to_email}")
             return True
@@ -88,7 +100,7 @@ def send_email(to_email: str, subject: str, body: str, from_email: Optional[str]
         return False
     try:
         from django.core.mail import send_mail
-        sent = send_mail(subject, body, from_addr, [to_email], fail_silently=False)
+        sent = send_mail(subject, body or '', from_addr, [to_email], fail_silently=False, html_message=html_body)
         if sent:
             logger.info(f"Email sent via SMTP to {to_email}")
             return True

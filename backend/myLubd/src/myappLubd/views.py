@@ -920,7 +920,7 @@ class JobViewSet(viewsets.ModelViewSet):
         user = self.request.user
         # Optimize query with select_related and prefetch_related
         queryset = Job.objects.select_related(
-            'created_by', 
+            'user',
             'updated_by'
         ).prefetch_related(
             'rooms__properties',

@@ -31,6 +31,7 @@ from io import BytesIO
 from django.core.files.base import ContentFile
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
+from .pagination import StandardResultsSetPagination, LargeResultsSetPagination, SmallResultsSetPagination
 from django.shortcuts import get_object_or_404
 import logging
 import json
@@ -42,6 +43,7 @@ from django.http import HttpResponse, Http404
 from django.conf import settings
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_http_methods
+from .cache import cache_result, CacheManager
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -907,11 +909,24 @@ class JobViewSet(viewsets.ModelViewSet):
     queryset = Job.objects.all()
     serializer_class = JobSerializer
     lookup_field = 'job_id'
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['description', 'job_id', 'rooms__name']
+    ordering_fields = ['created_at', 'updated_at', 'status', 'priority']
+    ordering = ['-created_at']
 
     def get_queryset(self):
         """Filter jobs by user, property, and optional flags."""
         user = self.request.user
-        queryset = Job.objects.all()
+        # Optimize query with select_related and prefetch_related
+        queryset = Job.objects.select_related(
+            'created_by', 
+            'updated_by'
+        ).prefetch_related(
+            'rooms__properties',
+            'topics',
+            'images'
+        )
 
         # Restrict by user's accessible properties unless staff/admin
         if not (user.is_staff or user.is_superuser):
@@ -950,6 +965,51 @@ class JobViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(rooms__name__icontains=room_name_filter)
 
         return queryset.distinct()
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Get job statistics without loading all jobs."""
+        user = request.user
+        
+        # Create cache key based on user and filters
+        cache_key = f"job_stats:user:{user.id}:property:{request.query_params.get('property_id', 'all')}"
+        
+        # Try to get from cache
+        cached_stats = CacheManager.get_or_set(
+            cache_key,
+            lambda: self._calculate_stats(user, request.query_params),
+            timeout=300  # Cache for 5 minutes
+        )
+        
+        return Response(cached_stats)
+    
+    def _calculate_stats(self, user, query_params):
+        """Calculate job statistics (separated for caching)"""
+        base_queryset = Job.objects.all()
+        
+        # Apply same filtering logic as get_queryset
+        if not (user.is_staff or user.is_superuser):
+            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
+            base_queryset = base_queryset.filter(rooms__properties__in=accessible_property_ids)
+        
+        # Apply filters
+        property_filter = query_params.get('property_id')
+        if property_filter:
+            base_queryset = base_queryset.filter(rooms__properties__property_id=property_filter)
+            
+        # Calculate stats using aggregation
+        stats = base_queryset.aggregate(
+            total=Count('id', distinct=True),
+            pending=Count(Case(When(status='pending', then=1))),
+            in_progress=Count(Case(When(status='in_progress', then=1))),
+            completed=Count(Case(When(status='completed', then=1))),
+            cancelled=Count(Case(When(status='cancelled', then=1))),
+            waiting_sparepart=Count(Case(When(status='waiting_sparepart', then=1))),
+            defect=Count(Case(When(is_defective=True, then=1))),
+            preventive_maintenance=Count(Case(When(is_preventivemaintenance=True, then=1)))
+        )
+        
+        return stats
 
     def get_object(self):
         queryset = self.get_queryset()
@@ -1034,6 +1094,9 @@ class JobViewSet(viewsets.ModelViewSet):
             serializer.save(user=self.request.user, updated_by=self.request.user)
         else:
             serializer.save()
+        
+        # Invalidate cache after creating job
+        CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
 
     def perform_update(self, serializer):
         if self.request.user.is_authenticated:
@@ -1045,6 +1108,14 @@ class JobViewSet(viewsets.ModelViewSet):
                 serializer.save(updated_by=self.request.user)
         else:
             serializer.save()
+        
+        # Invalidate cache after updating job
+        CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
+    
+    def perform_destroy(self, instance):
+        super().perform_destroy(instance)
+        # Invalidate cache after deleting job
+        CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]

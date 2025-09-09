@@ -109,26 +109,42 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   // Check if user is authenticated
   const isAuthenticated = useMemo(() => !!accessToken, [accessToken]);
 
-  // Refresh jobs data
-  const refreshJobs = useCallback(async () => {
+  // Refresh jobs data with pagination
+  const refreshJobs = useCallback(async (loadMore: boolean = false) => {
     if (!isAuthenticated || !accessToken) return;
 
     try {
-      setState(prev => ({ ...prev, loading: true, error: null }));
+      setState(prev => ({ 
+        ...prev, 
+        loading: !loadMore, 
+        error: null 
+      }));
       
-      // Invalidate any cached jobs/properties before refresh so we always fetch fresh
-      jobsApi.invalidateCache('jobs');
-      jobsApi.invalidateCache('properties');
+      // Calculate the page to load
+      const pageToLoad = loadMore ? state.pagination.page + 1 : 1;
+      
+      // Invalidate cache if not loading more
+      if (!loadMore) {
+        jobsApi.invalidateCache('jobs');
+        jobsApi.invalidateCache('properties');
+      }
 
-      const [jobs, properties] = await Promise.all([
-        jobsApi.getJobs(accessToken, state.filters),
-        jobsApi.getProperties(accessToken)
+      const [jobsResponse, properties, stats] = await Promise.all([
+        jobsApi.getJobs(accessToken, state.filters, pageToLoad, state.pagination.pageSize),
+        jobsApi.getProperties(accessToken),
+        jobsApi.getJobStats(accessToken, state.filters)
       ]);
 
       setState(prev => ({
         ...prev,
-        jobs,
+        jobs: loadMore ? [...prev.jobs, ...jobsResponse.results] : jobsResponse.results,
         properties,
+        stats,
+        pagination: {
+          ...prev.pagination,
+          page: pageToLoad,
+          total: jobsResponse.count
+        },
         loading: false,
         error: null
       }));
@@ -150,7 +166,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         }));
       }
     }
-  }, [isAuthenticated, accessToken, state.filters]);
+  }, [isAuthenticated, accessToken, state.filters, state.pagination.page, state.pagination.pageSize]);
 
   // Update job status
   const updateJobStatus = useCallback(async (jobId: string, status: string) => {
@@ -233,10 +249,15 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     setState(prev => ({ ...prev, selectedTab: tab }));
   }, []);
 
-  // Set page
+  // Set page and load more
   const setPage = useCallback((page: number) => {
-    setState(prev => ({ ...prev, pagination: { ...prev.pagination, page } }));
-  }, []);
+    if (page > state.pagination.page) {
+      // Load more data
+      refreshJobs(true);
+    } else {
+      setState(prev => ({ ...prev, pagination: { ...prev.pagination, page } }));
+    }
+  }, [state.pagination.page, refreshJobs]);
 
   // Set page size
   const setPageSize = useCallback((pageSize: number) => {
@@ -414,15 +435,15 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   // Effects
   useEffect(() => {
     if (isAuthenticated) {
-      refreshJobs();
+      refreshJobs(false);
     }
-  }, [isAuthenticated, refreshJobs]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated) {
-      refreshJobs();
+      refreshJobs(false);
     }
-  }, [state.filters, refreshJobs]);
+  }, [isAuthenticated, state.filters]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -437,28 +458,6 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     };
   }, [disableRealTime]);
 
-  // Calculate stats based on filtered jobs
-  const stats = useMemo(() => {
-    const total = filteredJobs.length;
-    const pending = filteredJobs.filter(job => job.status === 'pending').length;
-    const inProgress = filteredJobs.filter(job => job.status === 'in_progress').length;
-    const completed = filteredJobs.filter(job => job.status === 'completed').length;
-    const cancelled = filteredJobs.filter(job => job.status === 'cancelled').length;
-    const waitingSparepart = filteredJobs.filter(job => job.status === 'waiting_sparepart').length;
-    const defect = filteredJobs.filter(job => job.is_defective).length;
-    const preventiveMaintenance = filteredJobs.filter(job => job.is_preventivemaintenance).length;
-
-    return {
-      total,
-      pending,
-      inProgress,
-      completed,
-      cancelled,
-      waitingSparepart,
-      defect,
-      preventiveMaintenance,
-    };
-  }, [filteredJobs]);
 
   // Calculate trends by comparing current week vs last week
   const trends = useMemo(() => {
@@ -516,12 +515,11 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
 
   return {
     ...state,
-    stats, // Use calculated stats instead of state.stats
     trends, // Add calculated trends
     filteredJobs,
     isLoadingMore,
     hasMoreJobs,
-    refreshJobs,
+    refreshJobs: () => refreshJobs(false), // Wrap to provide default parameter
     updateJobStatus,
     deleteJob,
     updateFilters,

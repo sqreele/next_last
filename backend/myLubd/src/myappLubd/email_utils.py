@@ -52,8 +52,28 @@ def send_email(to_email: str, subject: str, body: str, from_email: Optional[str]
 
     Returns True on success, False otherwise.
     """
-    # Try Gmail API first
-    service = _build_gmail_service()
+    # Determine which transport to use: 'smtp', 'gmail', or 'auto' (default)
+    transport = os.getenv('EMAIL_TRANSPORT', 'auto').lower()
+
+    gmail_client_id = os.getenv('GMAIL_CLIENT_ID')
+    gmail_client_secret = os.getenv('GMAIL_CLIENT_SECRET')
+    gmail_refresh_token = os.getenv('GMAIL_REFRESH_TOKEN')
+    gmail_configured = bool(
+        _GOOGLE_LIBS_AVAILABLE and gmail_client_id and gmail_client_secret and gmail_refresh_token
+    )
+
+    use_gmail = False
+    if transport == 'gmail':
+        if not gmail_configured:
+            logger.warning("EMAIL_TRANSPORT=gmail set but Gmail API not configured; falling back to SMTP")
+        else:
+            use_gmail = True
+    elif transport == 'auto':
+        # Auto mode: only use Gmail if everything is configured; otherwise, silently prefer SMTP
+        use_gmail = gmail_configured
+    # For 'smtp' or any unknown value, default to SMTP without attempting Gmail
+
+    service = _build_gmail_service() if use_gmail else None
     from_addr = from_email or getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@pcms.live')
     # If a placeholder default is in use but SMTP user is configured, prefer that as from address
     if from_addr == 'no-reply@pcms.live':

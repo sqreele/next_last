@@ -10,6 +10,7 @@ until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" >/dev/n
     echo "Waiting for postgres..."
     sleep 1
 done
+
 echo "PostgreSQL started"
 
 cd src
@@ -32,7 +33,7 @@ python manage.py migrate --no-input --fake-initial
 # Collect static files
 python manage.py collectstatic --no-input
 
-# Start server
+# Configure cron environment
 CRON_ENV="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\nPYTHONPATH=/app\nDJANGO_SETTINGS_MODULE=myLubd.settings\nTZ=${TZ:-Asia/Bangkok}"
 echo -e "$CRON_ENV" > /etc/cron.d/env
 
@@ -43,12 +44,12 @@ chmod 0644 /etc/cron.d/daily_summary
 # Apply cron files
 crontab /etc/cron.d/daily_summary
 
-# Start cron in background
-touch /var/log/cron.log
+# Start cron service
 service cron start
 
-python manage.py runserver 0.0.0.0:8000 &
+# Tail cron log in background for visibility
+touch /var/log/cron.log
+( tail -F /var/log/cron.log & )
 
-tail -F /var/log/cron.log &
-
-exec "$@"
+# Start Gunicorn in the foreground as PID 1
+exec gunicorn myLubd.wsgi:application --bind 0.0.0.0:8000 --workers 3

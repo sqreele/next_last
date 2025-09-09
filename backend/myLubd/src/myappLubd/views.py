@@ -1123,12 +1123,24 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
 
     def get_queryset(self):
-        return UserProfile.objects.filter(user=self.request.user).prefetch_related('properties')
+        # For the 'detailed' action, return all user profiles for all authenticated users
+        if self.action == 'detailed':
+            return UserProfile.objects.all().prefetch_related('properties')
+        else:
+            # For other actions, return only the current user's profile
+            return UserProfile.objects.filter(user=self.request.user).prefetch_related('properties')
 
     @action(detail=False, methods=['get'])
     def me(self, request):
         profile = get_object_or_404(UserProfile, user=request.user)
         serializer = self.get_serializer(profile)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def detailed(self, request):
+        """Get all user profiles with properties for admin users"""
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])

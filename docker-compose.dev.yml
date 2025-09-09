@@ -40,6 +40,8 @@ services:
       context: ./backend/myLubd
       dockerfile: Dockerfile
     container_name: django-backend-dev
+    env_file:
+      - .env
     volumes:
       - ./backend/myLubd/src:/app/src
       - media_volume_dev:/app/media

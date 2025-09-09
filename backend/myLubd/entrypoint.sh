@@ -33,15 +33,32 @@ python manage.py migrate --no-input --fake-initial
 # Collect static files
 python manage.py collectstatic --no-input
 
-# Configure cron environment
-CRON_ENV="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\nPYTHONPATH=/app\nDJANGO_SETTINGS_MODULE=myLubd.settings\nTZ=${TZ:-Asia/Bangkok}"
-echo -e "$CRON_ENV" > /etc/cron.d/env
-
-# Register cron job: run daily at 23:00 Asia/Bangkok
-echo "0 23 * * * cd /app/src && /usr/local/bin/python manage.py send_daily_summary >> /var/log/cron.log 2>&1" > /etc/cron.d/daily_summary
+# Register cron job with required environment variables so Gmail API/SMTP work under cron
+{
+    echo "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    echo "PYTHONPATH=/app"
+    echo "DJANGO_SETTINGS_MODULE=myLubd.settings"
+    echo "TZ=${TZ:-Asia/Bangkok}"
+    # Email/SMTP settings
+    echo "EMAIL_HOST=${EMAIL_HOST}"
+    echo "EMAIL_PORT=${EMAIL_PORT}"
+    echo "EMAIL_USE_TLS=${EMAIL_USE_TLS}"
+    echo "EMAIL_USE_SSL=${EMAIL_USE_SSL}"
+    echo "EMAIL_HOST_USER=${EMAIL_HOST_USER}"
+    echo "EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}"
+    echo "DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL}"
+    echo "SERVER_EMAIL=${SERVER_EMAIL}"
+    echo "EMAIL_REQUIRE_AUTH=${EMAIL_REQUIRE_AUTH}"
+    # Gmail API OAuth2 credentials (optional)
+    echo "GMAIL_CLIENT_ID=${GMAIL_CLIENT_ID}"
+    echo "GMAIL_CLIENT_SECRET=${GMAIL_CLIENT_SECRET}"
+    echo "GMAIL_REFRESH_TOKEN=${GMAIL_REFRESH_TOKEN}"
+    # Schedule: run daily at 23:00 Asia/Bangkok
+    echo "0 23 * * * cd /app/src && /usr/local/bin/python manage.py send_daily_summary >> /var/log/cron.log 2>&1"
+} > /etc/cron.d/daily_summary
 chmod 0644 /etc/cron.d/daily_summary
 
-# Apply cron files
+# Install cron file for root
 crontab /etc/cron.d/daily_summary
 
 # Start cron service

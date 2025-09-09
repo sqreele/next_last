@@ -17,9 +17,12 @@ from typing import Optional
 
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-
-
+# Load environment variables from a .env file for local development
+try:
+    from dotenv import load_dotenv, find_dotenv
+    load_dotenv(find_dotenv(), override=False)
+except Exception:
+    pass
 
 # Security
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-default-secret-key')
@@ -27,18 +30,20 @@ DEBUG = os.getenv('DEBUG', 'True') in ('True', '1', 'true', 'yes')
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Hosts and Security Settings
-ALLOWED_HOSTS = [
+_default_allowed_hosts = [
     'localhost',
     '127.0.0.1',
-    
     '[::1]',
     'pcms.live',
     'www.pcms.live',
     'django-backend',
-    
-     'backend',
-       # Temporarily add this for debugging
+    'backend',
 ]
+_env_allowed_hosts = os.getenv('DJANGO_ALLOWED_HOSTS')
+if _env_allowed_hosts:
+    ALLOWED_HOSTS = [h.strip() for h in _env_allowed_hosts.replace(',', ' ').split() if h.strip()]
+else:
+    ALLOWED_HOSTS = _default_allowed_hosts
 # Google OAuth Settings
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
@@ -124,15 +129,15 @@ TEMPLATES = [
     },
 ]
 
-# Database
+# Database (read from environment; falls back to sane defaults)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mylubd_db',
-        'USER': 'mylubd_user',
-        'PASSWORD': 'Sqreele1234',
-        'HOST': 'db',
-        'PORT': '5432',
+        'ENGINE': os.getenv('SQL_ENGINE', 'django.db.backends.postgresql'),
+        'NAME': os.getenv('SQL_DATABASE', os.getenv('POSTGRES_DB', 'mylubd_db')),
+        'USER': os.getenv('SQL_USER', os.getenv('POSTGRES_USER', 'mylubd_user')),
+        'PASSWORD': os.getenv('SQL_PASSWORD', os.getenv('POSTGRES_PASSWORD', '')),
+        'HOST': os.getenv('SQL_HOST', os.getenv('POSTGRES_HOST', 'db')),
+        'PORT': os.getenv('SQL_PORT', os.getenv('POSTGRES_PORT', '5432')),
     }
 }
 
@@ -352,13 +357,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 FILE_UPLOAD_PERMISSIONS = 0o644
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-     "https://pcms.live",
-    "https://www.pcms.live",
-   "http://nextjs-frontend:3000",
-    
-]
+_env_cors_origins = os.getenv('DJANGO_CORS_ORIGINS')
+if _env_cors_origins:
+    CORS_ALLOWED_ORIGINS = [o.strip() for o in _env_cors_origins.replace(',', ' ').split() if o.strip()]
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "https://pcms.live",
+        "https://www.pcms.live",
+        "http://nextjs-frontend:3000",
+    ]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
       "https://pcms.live",

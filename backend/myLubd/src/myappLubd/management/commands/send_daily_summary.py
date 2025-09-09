@@ -5,6 +5,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.conf import settings
 
+from django.contrib.auth import get_user_model
 from myappLubd.models import Job
 from myappLubd.email_utils import send_email
 
@@ -21,6 +22,12 @@ class Command(BaseCommand):
             dest="to_email",
             default=None,
             help="Recipient email address. Defaults to SERVER_EMAIL or DEFAULT_FROM_EMAIL.",
+        )
+        parser.add_argument(
+            "--all-users",
+            action="store_true",
+            dest="all_users",
+            help="Send to all active users with an email (default sends to active staff only)",
         )
 
     def handle(self, *args, **options):
@@ -62,21 +69,47 @@ class Command(BaseCommand):
 
             body = "\n".join(lines)
 
-            # Determine recipient
-            to_email = options.get("to_email") or getattr(settings, "SERVER_EMAIL", None) or getattr(
-                settings, "DEFAULT_FROM_EMAIL", None
-            )
+            # Determine recipients
+            explicit_to = options.get("to_email")
+            recipients = []
 
-            if not to_email:
-                logger.error("No recipient email configured. Set SERVER_EMAIL or DEFAULT_FROM_EMAIL or pass --to.")
-                self.stdout.write(self.style.ERROR("No recipient email configured"))
+            if explicit_to:
+                recipients = [explicit_to]
+            else:
+                User = get_user_model()
+                if options.get("all_users"):
+                    users_qs = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
+                else:
+                    users_qs = (
+                        User.objects.filter(is_active=True, is_staff=True)
+                        .exclude(email__isnull=True)
+                        .exclude(email__exact="")
+                    )
+                recipients = list(users_qs.values_list("email", flat=True))
+
+                if not recipients:
+                    fallback = getattr(settings, "SERVER_EMAIL", None) or getattr(settings, "DEFAULT_FROM_EMAIL", None)
+                    if fallback:
+                        recipients = [fallback]
+
+            if not recipients:
+                logger.error("No recipient email addresses found.")
+                self.stdout.write(self.style.ERROR("No recipient email addresses found"))
                 return
 
-            success = send_email(to_email=to_email, subject=subject, body=body)
-            if success:
-                self.stdout.write(self.style.SUCCESS(f"Daily summary email sent to {to_email}"))
+            sent_count = 0
+            for to_email in recipients:
+                success = send_email(to_email=to_email, subject=subject, body=body)
+                if success:
+                    sent_count += 1
+                    logger.info("Daily summary email sent to %s", to_email)
+                else:
+                    logger.error("Failed to send daily summary email to %s", to_email)
+
+            if sent_count:
+                self.stdout.write(self.style.SUCCESS(f"Daily summary email sent to {sent_count}/{len(recipients)} recipients"))
             else:
-                self.stdout.write(self.style.ERROR("Failed to send daily summary email"))
+                self.stdout.write(self.style.ERROR("Failed to send daily summary email to all recipients"))
         except Exception as exc:
             logger.exception("Error while sending daily summary email: %s", exc)
             self.stdout.write(self.style.ERROR(f"Error: {exc}"))

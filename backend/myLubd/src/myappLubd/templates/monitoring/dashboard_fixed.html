@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCMS Backend Monitoring - FIXED</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .metric-value {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        
+        .status.healthy {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.unhealthy {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            transition: width 0.3s ease;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            transition: background 0.3s ease;
+        }
+        
+        .refresh-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .timestamp {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 PCMS Backend Monitoring - FIXED</h1>
+            <p>Real-time system performance and health monitoring</p>
+        </div>
+        
+        <button class="refresh-btn" onclick="refreshData()">🔄 Refresh Data</button>
+        
+        <div class="dashboard" id="dashboard">
+            <div class="loading">Loading monitoring data...</div>
+        </div>
+        
+        <div class="timestamp" id="timestamp"></div>
+    </div>
+
+    <script>
+        let refreshInterval;
+        
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+        
+        function formatPercentage(value, total) {
+            if (total === 0) return '0.0%';
+            return ((value / total) * 100).toFixed(1) + '%';
+        }
+        
+        function createStatusBadge(status) {
+            const statusClass = status === 'healthy' ? 'healthy' : 'unhealthy';
+            return `<span class="status ${statusClass}">${status.toUpperCase()}</span>`;
+        }
+        
+        function createProgressBar(value, max = 100) {
+            const percentage = Math.min((value / max) * 100, 100);
+            return `
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${percentage}%"></div>
+                </div>
+            `;
+        }
+        
+        function createMetric(label, value, unit = '') {
+            return `
+                <div class="metric">
+                    <span class="metric-label">${label}</span>
+                    <span class="metric-value">${value}${unit}</span>
+                </div>
+            `;
+        }
+        
+        async function fetchMonitoringData() {
+            try {
+                console.log('Fetching monitoring data from: /api/v1/monitoring/api/dashboard/');
+                const response = await fetch('/api/v1/monitoring/api/dashboard/');
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
+                }
+                
+                const data = await response.json();
+                console.log('Successfully fetched monitoring data:', data);
+                return data;
+            } catch (error) {
+                console.error('Error fetching monitoring data:', error);
+                return { error: error.message };
+            }
+        }
+        
+        function renderDashboard(data) {
+            const dashboard = document.getElementById('dashboard');
+            
+            if (data.error) {
+                dashboard.innerHTML = `<div class="error">Error loading monitoring data: ${data.error}</div>`;
+                return;
+            }
+            
+            const metrics = data.data;
+            
+            dashboard.innerHTML = `
+                <!-- Performance Metrics -->
+                <div class="card">
+                    <h3>📊 Performance Metrics</h3>
+                    ${createMetric('Total Requests', metrics.performance.request_count)}
+                    ${createMetric('Avg Response Time', metrics.performance.average_response_time.toFixed(3), 's')}
+                    ${createMetric('Cache Hit Rate', (metrics.performance.cache_hit_rate * 100).toFixed(1), '%')}
+                    ${createMetric('Database Queries', metrics.performance.database_queries)}
+                    ${createMetric('Slow Queries', metrics.performance.slow_queries)}
+                </div>
+                
+                <!-- System Resources -->
+                <div class="card">
+                    <h3>💻 System Resources</h3>
+                    ${createMetric('CPU Usage', metrics.system.cpu.toFixed(1), '%')}
+                    ${createMetric('Memory Usage', metrics.system.memory.percent.toFixed(1), '%')}
+                    ${createMetric('Memory Used', formatBytes(metrics.system.memory.rss))}
+                    ${createMetric('Memory Available', formatBytes(metrics.system.memory.available))}
+                    ${createMetric('Disk Usage', metrics.system.disk.percent.toFixed(1), '%')}
+                    <div style="margin-top: 10px;">
+                        <div class="metric-label">Memory Usage</div>
+                        ${createProgressBar(metrics.system.memory.percent)}
+                    </div>
+                </div>
+                
+                <!-- Health Status -->
+                <div class="card">
+                    <h3>🏥 Health Status</h3>
+                    <div class="metric">
+                        <span class="metric-label">Database</span>
+                        ${createStatusBadge(metrics.health.database.status)}
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Cache</span>
+                        ${createStatusBadge(metrics.health.cache.status)}
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Overall</span>
+                        ${createStatusBadge(metrics.health.database.status === 'healthy' && metrics.health.cache.status === 'healthy' ? 'healthy' : 'unhealthy')}
+                    </div>
+                </div>
+                
+                <!-- Database Performance -->
+                <div class="card">
+                    <h3>🗄️ Database Performance</h3>
+                    ${createMetric('Total Queries', metrics.database.total_queries)}
+                    ${createMetric('Slow Queries', metrics.database.slow_queries_count)}
+                    ${createMetric('Avg Query Time', metrics.database.average_query_time.toFixed(3), 's')}
+                </div>
+                
+                <!-- Cache Performance -->
+                <div class="card">
+                    <h3>⚡ Cache Performance</h3>
+                    <div class="metric">
+                        <span class="metric-label">Status</span>
+                        ${createStatusBadge(metrics.cache.status)}
+                    </div>
+                    ${createMetric('Set Time', (metrics.cache.set_time * 1000).toFixed(2), 'ms')}
+                    ${createMetric('Get Time', (metrics.cache.get_time * 1000).toFixed(2), 'ms')}
+                    ${createMetric('Hit Rate', (metrics.cache.hit_rate * 100).toFixed(1), '%')}
+                </div>
+                
+                <!-- Request Metrics -->
+                <div class="card">
+                    <h3>📈 Request Metrics</h3>
+                    ${createMetric('Total Requests', metrics.requests.total_requests)}
+                    ${createMetric('Avg Response Time', metrics.requests.average_response_time.toFixed(3), 's')}
+                    <div style="margin-top: 10px;">
+                        <div class="metric-label">Recent Requests</div>
+                        <div style="font-size: 0.9rem; color: #666;">
+                            ${metrics.requests.recent_requests.length > 0 ? 
+                                metrics.requests.recent_requests.map(req => 
+                                    `${req.method} ${req.path} -> ${req.status_code}`
+                                ).join('<br>') : 
+                                'No recent requests'
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        async function refreshData() {
+            const data = await fetchMonitoringData();
+            renderDashboard(data);
+            document.getElementById('timestamp').textContent = `Last updated: ${new Date().toLocaleString()}`;
+        }
+        
+        function startAutoRefresh() {
+            refreshInterval = setInterval(refreshData, 5000); // Refresh every 5 seconds
+        }
+        
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshData();
+            startAutoRefresh();
+        });
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', stopAutoRefresh);
+    </script>
+</body>
+</html>

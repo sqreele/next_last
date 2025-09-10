@@ -1,49 +1,247 @@
-"""Custom middleware for debugging and handling HTTP_HOST issues."""
+"""
+Custom middleware for performance monitoring and security
+"""
+import time
 import logging
+from django.utils.deprecation import MiddlewareMixin
+from django.http import JsonResponse
+from django.core.cache import cache
 from django.conf import settings
-from django.http import HttpResponse
+from django.utils import timezone
+from django.db import connection
+
+from .monitoring import performance_monitor, RequestLogger
+from .security import RateLimiter, LoginSecurity, SecurityHeaders, AuditLogger
 
 logger = logging.getLogger(__name__)
 
 
-class DebugHostMiddleware:
-    """Middleware to debug HTTP_HOST header issues."""
+class PerformanceMiddleware(MiddlewareMixin):
+    """
+    Middleware for performance monitoring
+    """
     
-    def __init__(self, get_response):
-        self.get_response = get_response
+    def process_request(self, request):
+        """Record request start time"""
+        request._start_time = time.time()
+        request._start_queries = len(connection.queries)
     
-    def __call__(self, request):
-        # Log the incoming HTTP_HOST header
-        http_host = request.META.get('HTTP_HOST', 'No HTTP_HOST header')
-        logger.debug(f"Incoming request - HTTP_HOST: {http_host}")
-        logger.debug(f"Request path: {request.path}")
-        logger.debug(f"Request method: {request.method}")
+    def process_response(self, request, response):
+        """Record request performance metrics"""
+        if hasattr(request, '_start_time'):
+            response_time = time.time() - request._start_time
+            query_count = len(connection.queries) - getattr(request, '_start_queries', 0)
+            
+            # Record metrics
+            performance_monitor.record_request(response_time, query_count)
+            
+            # Log request
+            RequestLogger.log_request(request, response, response_time)
+            
+            # Add performance headers
+            response['X-Response-Time'] = f"{response_time:.3f}s"
+            response['X-Query-Count'] = str(query_count)
         
-        # If in DEBUG mode and getting host validation errors, log more info
-        if settings.DEBUG and http_host not in settings.ALLOWED_HOSTS:
-            logger.warning(f"HTTP_HOST '{http_host}' not in ALLOWED_HOSTS: {settings.ALLOWED_HOSTS}")
+        return response
+    
+    def process_exception(self, request, exception):
+        """Log exceptions with performance data"""
+        if hasattr(request, '_start_time'):
+            response_time = time.time() - request._start_time
+            RequestLogger.log_error(request, exception, response_time)
         
-        response = self.get_response(request)
+        return None
+
+
+class SecurityMiddleware(MiddlewareMixin):
+    """
+    Middleware for security enhancements
+    """
+    
+    def process_request(self, request):
+        """Process security checks"""
+        # Rate limiting
+        if getattr(settings, 'RATE_LIMIT_ENABLED', True):
+            if RateLimiter.is_rate_limited(request):
+                return JsonResponse({
+                    'error': 'Rate limit exceeded',
+                    'message': 'Too many requests. Please try again later.'
+                }, status=429)
+        
+        # Add security headers
+        return None
+    
+    def process_response(self, request, response):
+        """Add security headers to response"""
+        # Add security headers
+        SecurityHeaders.add_security_headers(response)
+        
+        # Add rate limiting headers
+        if getattr(settings, 'RATE_LIMIT_ENABLED', True):
+            remaining = RateLimiter.get_remaining_requests(request)
+            response['X-RateLimit-Remaining'] = str(remaining)
+            response['X-RateLimit-Limit'] = str(getattr(settings, 'RATE_LIMIT_REQUESTS', 100))
+        
         return response
 
 
-class HealthCheckMiddleware:
-    """Middleware to handle health check requests without host validation."""
+class DatabaseQueryMiddleware(MiddlewareMixin):
+    """
+    Middleware for database query monitoring
+    """
     
-    def __init__(self, get_response):
-        self.get_response = get_response
-        self.health_check_paths = ['/health/', '/api/health/', '/healthz/']
+    def process_request(self, request):
+        """Reset query count"""
+        request._query_count = len(connection.queries)
     
-    def __call__(self, request):
-        # Allow health checks from any host
-        if request.path in self.health_check_paths:
-            # For health checks, bypass host validation by setting a valid host
-            if 'HTTP_HOST' in request.META:
-                original_host = request.META['HTTP_HOST']
-                # Use the first allowed host for health checks
-                if settings.ALLOWED_HOSTS:
-                    request.META['HTTP_HOST'] = settings.ALLOWED_HOSTS[0]
-                    logger.debug(f"Health check from {original_host}, using {request.META['HTTP_HOST']}")
+    def process_response(self, request, response):
+        """Log database query performance"""
+        if hasattr(request, '_query_count'):
+            query_count = len(connection.queries) - request._query_count
+            
+            if query_count > 20:  # High query count threshold
+                logger.warning(f"High query count: {query_count} queries for {request.path}")
+            
+            # Add query count header
+            response['X-Query-Count'] = str(query_count)
         
-        response = self.get_response(request)
+        return response
+
+
+class CacheMiddleware(MiddlewareMixin):
+    """
+    Middleware for cache management
+    """
+    
+    def process_request(self, request):
+        """Handle cache-related request processing"""
+        # Check for cache bypass headers
+        if request.META.get('HTTP_CACHE_BYPASS'):
+            # Disable caching for this request
+            request._cache_bypass = True
+        
+        return None
+    
+    def process_response(self, request, response):
+        """Add cache headers"""
+        if not getattr(request, '_cache_bypass', False):
+            # Add cache control headers for appropriate responses
+            if request.method == 'GET' and response.status_code == 200:
+                # Cache for 5 minutes by default
+                response['Cache-Control'] = 'public, max-age=300'
+                response['Vary'] = 'Accept-Encoding'
+        
+        return response
+
+
+class LoggingMiddleware(MiddlewareMixin):
+    """
+    Enhanced logging middleware
+    """
+    
+    def process_request(self, request):
+        """Log request details"""
+        if settings.DEBUG:
+            logger.debug(f"Request: {request.method} {request.path} from {request.META.get('REMOTE_ADDR')}")
+    
+    def process_response(self, request, response):
+        """Log response details"""
+        if settings.DEBUG:
+            logger.debug(f"Response: {response.status_code} for {request.method} {request.path}")
+        
+        return response
+
+
+class ErrorHandlingMiddleware(MiddlewareMixin):
+    """
+    Enhanced error handling middleware
+    """
+    
+    def process_exception(self, request, exception):
+        """Handle exceptions with proper logging and response"""
+        # Log the exception
+        logger.error(f"Exception in {request.path}: {str(exception)}", exc_info=True)
+        
+        # Audit log for security events
+        if hasattr(exception, 'status_code') and exception.status_code == 403:
+            AuditLogger.log_security_event(
+                'access_denied',
+                getattr(request, 'user', None),
+                {'path': request.path, 'exception': str(exception)}
+            )
+        
+        # Return appropriate error response
+        if request.path.startswith('/api/'):
+            return JsonResponse({
+                'error': 'Internal server error',
+                'message': 'An unexpected error occurred. Please try again later.'
+            }, status=500)
+        
+        return None
+
+
+class AuthenticationMiddleware(MiddlewareMixin):
+    """
+    Enhanced authentication middleware
+    """
+    
+    def process_request(self, request):
+        """Process authentication-related security"""
+        # Check for suspicious authentication patterns
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            # Log successful authentication
+            if not hasattr(request, '_auth_logged'):
+                logger.info(f"Authenticated user {request.user.username} accessing {request.path}")
+                request._auth_logged = True
+        
+        return None
+
+
+class HealthCheckMiddleware(MiddlewareMixin):
+    """
+    Health check middleware
+    """
+    
+    def process_request(self, request):
+        """Handle health check requests"""
+        if request.path == '/health/':
+            from .monitoring import HealthChecker
+            health_data = HealthChecker.get_overall_health()
+            
+            # Determine overall health status
+            overall_status = 'healthy'
+            if (health_data['database']['status'] != 'healthy' or 
+                health_data['cache']['status'] != 'healthy'):
+                overall_status = 'unhealthy'
+            
+            return JsonResponse({
+                'status': overall_status,
+                'timestamp': timezone.now().isoformat(),
+                'services': health_data
+            })
+        
+        return None
+
+
+class MetricsMiddleware(MiddlewareMixin):
+    """
+    Metrics collection middleware
+    """
+    
+    def process_response(self, request, response):
+        """Collect metrics for monitoring"""
+        if request.path.startswith('/api/'):
+            # Collect API metrics
+            metrics = {
+                'endpoint': request.path,
+                'method': request.method,
+                'status_code': response.status_code,
+                'response_time': getattr(response, 'X-Response-Time', '0s'),
+                'query_count': getattr(response, 'X-Query-Count', '0'),
+                'timestamp': timezone.now().isoformat()
+            }
+            
+            # Log metrics
+            logger.info(f"API_METRICS: {metrics}")
+        
         return response

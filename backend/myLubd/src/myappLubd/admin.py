@@ -26,6 +26,8 @@ from .models import (
     MaintenanceSchedule
 )
 
+# Monitoring admin removed to avoid recursion issues
+
 # Custom User Admin to show Google OAuth information
 class UserProfileInline(admin.StackedInline):
     model = UserProfile

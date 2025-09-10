@@ -103,7 +103,9 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
 
         # First, decode without verification to see the actual issuer
         try:
-            unverified_payload = jwt.decode(token, options={"verify_signature": False})
+            # python-jose requires a key argument when calling decode();
+            # use get_unverified_headers + jwt.get_unverified_claims for unverified payload
+            unverified_payload = jwt.get_unverified_claims(token)
             actual_issuer = unverified_payload.get('iss')
             logger.debug(f"Token issuer: {actual_issuer}, Expected issuer: {issuer}")
         except Exception as e:

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('myappLubd', '0022_add_performance_indexes'),
+        ('myappLubd', '0022_remove_job_job_status_created_idx_and_more'),
     ]
 
     operations = [

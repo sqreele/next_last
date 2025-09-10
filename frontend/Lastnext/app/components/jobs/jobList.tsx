@@ -109,8 +109,48 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
   const filteredJobs = jobs.filter(job => {
 
-    // Disable property-based filtering for All Jobs page
-    const matchesProperty = true;
+    // Apply property-based filtering
+    let matchesProperty = true;
+    
+    if (selectedProperty) {
+      matchesProperty = false;
+      
+      // Direct property_id match
+      if (job.property_id && String(job.property_id) === String(selectedProperty)) {
+        matchesProperty = true;
+      }
+      
+      // Check if job has properties array
+      if (!matchesProperty && job.properties && Array.isArray(job.properties)) {
+        matchesProperty = job.properties.some(prop => {
+          if (typeof prop === 'string' || typeof prop === 'number') {
+            return String(prop) === String(selectedProperty);
+          }
+          if (prop && typeof prop === 'object' && 'property_id' in prop) {
+            return String(prop.property_id) === String(selectedProperty);
+          }
+          return false;
+        });
+      }
+      
+      // Check rooms for property match
+      if (!matchesProperty && job.rooms && Array.isArray(job.rooms)) {
+        matchesProperty = job.rooms.some((room: any) => {
+          if (room && room.properties && Array.isArray(room.properties)) {
+            return room.properties.some((prop: any) => {
+              if (typeof prop === 'string' || typeof prop === 'number') {
+                return String(prop) === String(selectedProperty);
+              }
+              if (prop && typeof prop === 'object' && 'property_id' in prop) {
+                return String(prop.property_id) === String(selectedProperty);
+              }
+              return false;
+            });
+          }
+          return false;
+        });
+      }
+    }
 
     if (!matchesProperty) {
       console.log('❌ Job', job.job_id, 'filtered out by property');

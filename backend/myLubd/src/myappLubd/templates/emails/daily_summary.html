@@ -1,3 +1,4 @@
+{% load string_filters %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -189,7 +190,7 @@
                             <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 6px;font-size:10px;color:#1f2532;">
                               {% for status_key, count in day.status_counts.items %}
                                 {% if count > 0 %}
-                                  <span style="display:inline-block;margin:1px 2px;padding:2px 4px;background:#f0f0f0;border-radius:3px;font-size:9px;">{{ status_key|title|replace:"_"," " }}: {{ count }}</span>
+                                  <span style="display:inline-block;margin:1px 2px;padding:2px 4px;background:#f0f0f0;border-radius:3px;font-size:9px;">{{ status_key|underscore_to_space|title }}: {{ count }}</span>
                                 {% endif %}
                               {% endfor %}
                             </td>

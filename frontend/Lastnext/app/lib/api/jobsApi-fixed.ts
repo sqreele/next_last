@@ -242,7 +242,19 @@ export class JobsApiService {
     const cached = this.cache.get(cacheKey);
     if (cached) return cached;
 
-    const url = `${API_CONFIG.baseUrl}/api/v1/jobs/`;
+    // Build params supporting property_id mapping
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.keys(filters).forEach(key => {
+        const value = (filters as any)[key];
+        if (value !== undefined && value !== null && value !== '') {
+          const mappedKey = key === 'property' ? 'property_id' : key;
+          params.append(mappedKey, String(value));
+        }
+      });
+    }
+
+    const url = `${API_CONFIG.baseUrl}/api/v1/jobs/${params.toString() ? `?${params.toString()}` : ''}`;
     const jobs = await this.fetchWithRetry<any[]>(url, token);
     
     this.cache.set(cacheKey, jobs);

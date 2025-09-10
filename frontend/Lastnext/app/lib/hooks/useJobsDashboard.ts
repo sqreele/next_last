@@ -133,11 +133,11 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         jobsApi.invalidateCache('properties');
       }
 
-      // Include selected property in filters
+      // Include selected property in filters (use correct backend key: property_id)
       const filtersWithProperty = {
         ...state.filters,
-        property: selectedPropertyId || state.filters.property
-      };
+        property_id: selectedPropertyId || (state.filters as any).property_id
+      } as typeof state.filters & { property_id?: string | null };
 
       const [jobsResponse, properties, stats] = await Promise.all([
         jobsApi.getJobs(accessToken, filtersWithProperty, pageToLoad, state.pagination.pageSize),

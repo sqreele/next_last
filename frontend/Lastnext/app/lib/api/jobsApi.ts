@@ -248,7 +248,9 @@ export class JobsApiService {
     if (filters) {
       Object.keys(filters).forEach(key => {
         if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
-          params.append(key, filters[key].toString());
+          // Map legacy client key "property" to backend expected key "property_id"
+          const mappedKey = key === 'property' ? 'property_id' : key;
+          params.append(mappedKey, filters[key].toString());
         }
       });
     }

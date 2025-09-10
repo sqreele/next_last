@@ -128,7 +128,8 @@ export async function fetchJobsForProperty(
   additionalParams?: string
 ): Promise<Job[]> {
   try {
-    const baseUrl = `/api/v1/jobs/?property=${propertyId}`;
+    // Backend expects property_id
+    const baseUrl = `/api/v1/jobs/?property_id=${propertyId}`;
     const url = additionalParams ? `${baseUrl}&${additionalParams}` : baseUrl;
     const jobs = await fetchWithToken<Job[]>(url, accessToken);
     console.log(`📋 Jobs fetched: { count: ${jobs.length} }`);

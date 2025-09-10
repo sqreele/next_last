@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@/app/lib/stores/mainStore';
+import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { JobCard } from '@/app/components/jobs/JobCard';
 import Pagination from '@/app/components/jobs/Pagination';
 import JobActions from '@/app/components/jobs/JobActions';
@@ -32,6 +32,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [customDateRange, setCustomDateRange] = useState<{ start?: Date, end?: Date }>({});
   const { selectedPropertyId: selectedProperty } = useUser();
+  const { properties: globalProperties } = useProperties();
 
   // Build a set of identifiers that represent the currently selected property
   // This ensures we match both the human-readable property code and the numeric PK
@@ -39,7 +40,10 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     const identifiers = new Set<string>();
     if (selectedProperty) identifiers.add(String(selectedProperty));
 
-    const matched = properties?.find(
+    // Use provided properties list or fall back to global store properties
+    const propertyList = Array.isArray(properties) && properties.length > 0 ? properties : (Array.isArray(globalProperties) ? globalProperties : []);
+
+    const matched = propertyList?.find(
       (p) => String(p.property_id) === String(selectedProperty) || String(p.id) === String(selectedProperty)
     );
 

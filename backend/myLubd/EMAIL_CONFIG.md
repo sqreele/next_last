@@ -10,38 +10,39 @@ Use one of the following methods.
 Prereqs:
 - Your mailbox is a Google or Google Workspace Gmail account (e.g., no-reply@yourdomain.com)
 
-Steps:
+#### Quick Setup:
+
+**Option A: Using the setup script (Recommended)**
+```bash
+cd /workspace/backend/myLubd
+python setup_gmail_api.py
+```
+
+**Option B: Using Django management command**
+```bash
+cd /workspace/backend/myLubd/src
+python manage.py setup_gmail_api --test-email your@email.com
+```
+
+Both options will:
+1. Guide you through the OAuth flow
+2. Help you obtain credentials from Google Cloud Console
+3. Generate the refresh token
+4. Show you the environment variables to set
+
+#### Manual Setup:
 1. In Google Cloud Console, enable the Gmail API for your project.
 2. Create OAuth 2.0 Client Credentials (Desktop App).
-3. Use the OAuth flow to obtain a Refresh Token for the mailbox.
-   - One-time Python snippet to print a refresh token:
-     ```python
-     # Run locally where you can open a browser
-     from google_auth_oauthlib.flow import InstalledAppFlow
-     from google.oauth2.credentials import Credentials
-
-     SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
-     flow = InstalledAppFlow.from_client_config(
-         {
-             "installed": {
-                 "client_id": "<GMAIL_CLIENT_ID>",
-                 "client_secret": "<GMAIL_CLIENT_SECRET>",
-                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                 "token_uri": "https://oauth2.googleapis.com/token",
-                 "redirect_uris": ["http://localhost"]
-             }
-         },
-         SCOPES,
-     )
-     creds = flow.run_local_server(port=0)
-     print("REFRESH_TOKEN:", creds.refresh_token)
-     ```
-4. Set these env vars (see `.env.example`):
+3. Download the credentials JSON file.
+4. Run the setup script or management command (see above).
+5. Set these env vars (see `.env.example`):
    - `GMAIL_CLIENT_ID`
    - `GMAIL_CLIENT_SECRET`
    - `GMAIL_REFRESH_TOKEN`
-5. Optionally set `DEFAULT_FROM_EMAIL`/`SERVER_EMAIL` to the mailbox address.
-6. Redeploy/restart. The app will use Gmail API automatically.
+6. Optionally set `DEFAULT_FROM_EMAIL`/`SERVER_EMAIL` to the mailbox address.
+7. Redeploy/restart. The app will use Gmail API automatically.
+
+**For detailed instructions, see: [GMAIL_API_SETUP_GUIDE.md](GMAIL_API_SETUP_GUIDE.md)
 
 ### 2) Gmail SMTP with App Password
 

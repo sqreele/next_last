@@ -5,3 +5,7 @@ nginx/ssl/*
 # Environment files
 .env
 .env.*
+
+# Gmail API credentials
+gmail_credentials.json
+**/gmail_credentials.json

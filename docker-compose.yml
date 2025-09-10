@@ -57,6 +57,24 @@ services:
     networks:
       - app-network
 
+  # ✅ PERFORMANCE OPTIMIZATION: Redis cache service for improved performance
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-network
+
   backend:
     build: 
       context: ./backend/myLubd
@@ -73,7 +91,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: myLubd.settings
       PYTHONPATH: /app
-      DEBUG: 0
+      DEBUG: 1
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1 [::1] ${DOMAIN} www.${DOMAIN} django-backend backend
       DJANGO_CORS_ORIGINS: https://${DOMAIN}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN}
@@ -109,6 +127,8 @@ services:
       GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID}
       GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET}
       GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN}
+      # ✅ PERFORMANCE OPTIMIZATION: Redis cache configuration
+      REDIS_URL: redis://redis:6379/1
     healthcheck:
       test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/api/v1/health/'); response = conn.getresponse(); exit(0 if response.status == 200 else 1)"]
       interval: 30s
@@ -118,6 +138,7 @@ services:
       - "8000"
     depends_on:
       - db
+      - redis  # ✅ Add Redis dependency for caching
     networks:
       - app-network
 
@@ -196,6 +217,10 @@ volumes:
   postgres_data:
     driver: local
     name: pcms_postgres_data
+  # ✅ PERFORMANCE OPTIMIZATION: Redis data volume for caching
+  redis_data:
+    driver: local
+    name: pcms_redis_data
   static_volume:
     driver: local
     name: pcms_static_volume

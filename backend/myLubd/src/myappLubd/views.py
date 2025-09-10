@@ -918,15 +918,18 @@ class JobViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filter jobs by user, property, and optional flags."""
         user = self.request.user
-        # Optimize query with select_related and prefetch_related
+        # ✅ PERFORMANCE OPTIMIZATION: Comprehensive query optimization
+        # Use select_related for foreign keys to avoid N+1 queries
+        # Use prefetch_related for many-to-many and reverse foreign keys
         queryset = Job.objects.select_related(
-            'user',
-            'updated_by'
+            'user',           # Foreign key to User
+            'updated_by'      # Foreign key to User
         ).prefetch_related(
-            'rooms__properties',
-            'topics',
-            'images'
-        )
+            'rooms__properties',  # Many-to-many through rooms
+            'topics',            # Many-to-many relationship
+            'images',            # Many-to-many relationship
+            'preventivemaintenance_set'  # Reverse foreign key
+        ).distinct()  # Remove duplicates from joins
 
         # Restrict by user's accessible properties unless staff/admin
         if not (user.is_staff or user.is_superuser):

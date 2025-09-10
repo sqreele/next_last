@@ -5,7 +5,7 @@ import React from "react";
 import { useSession } from "@/app/lib/session.client";
 import { useRouter } from "next/navigation";
 import {
-  AlertCircle, Home, Pencil, Trash2, Loader, RefreshCcw,
+  AlertCircle, Home, Pencil, Trash2, Loader, RefreshCcw, X,
 } from "lucide-react";
 // --- UI Imports ---
 import {
@@ -28,7 +28,8 @@ import { useToast } from "@/app/components/ui/use-toast";
 // --- Lib/Hook Imports ---
 import { useUser, useJobs } from "@/app/lib/stores/mainStore";
 import { useJobsData } from "@/app/lib/hooks/useJobsData";
-import { Job, JobStatus, JobPriority } from "@/app/lib/types";
+import { Job, JobStatus, JobPriority, Topic } from "@/app/lib/types";
+import { fetchTopics } from "@/app/lib/data.server";
 // --- Component Imports ---
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import JobFilters, { FilterState } from "@/app/components/jobs/JobFilters";
@@ -68,6 +69,9 @@ interface EditDialogProps {
   job: Job | null;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   isSubmitting: boolean;
+  availableTopics: Topic[];
+  selectedTopics: Topic[];
+  onTopicsChange: (topics: Topic[]) => void;
 }
 
 interface DeleteDialogProps {
@@ -277,94 +281,193 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
 JobTableRow.displayName = 'JobTableRow';
 JobMobileCard.displayName = 'JobMobileCard';
 
-// EditDialog component (Keep as is)
-const EditDialog: React.FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, isSubmitting }) => (
-  <Dialog open={isOpen} onOpenChange={onClose}>
-    <DialogContent className="sm:max-w-[425px]">
-      <form onSubmit={onSubmit}>
-        <DialogHeader>
-          <DialogTitle>Edit Job #{job?.job_id}</DialogTitle>
-          <DialogDescription>
-            Update the details for this maintenance job. Click save when you're done.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="description" className="text-right col-span-1 text-sm font-medium">
-              Description
-            </label>
-            <Textarea
-              id="description"
-              name="description"
-              defaultValue={job?.description}
-              className="col-span-3"
-              rows={3}
-              required
-            />
+// EditDialog component with topic editing
+const EditDialog: React.FC<EditDialogProps> = ({ 
+  isOpen, 
+  onClose, 
+  job, 
+  onSubmit, 
+  isSubmitting, 
+  availableTopics, 
+  selectedTopics, 
+  onTopicsChange 
+}) => {
+  const [newTopicId, setNewTopicId] = React.useState<string>("");
+
+  const handleAddTopic = () => {
+    if (!newTopicId) return;
+    
+    const topicToAdd = availableTopics.find(topic => topic.id.toString() === newTopicId);
+    if (topicToAdd && !selectedTopics.find(topic => topic.id === topicToAdd.id)) {
+      onTopicsChange([...selectedTopics, topicToAdd]);
+      setNewTopicId("");
+    }
+  };
+
+  const handleRemoveTopic = (topicId: number) => {
+    onTopicsChange(selectedTopics.filter(topic => topic.id !== topicId));
+  };
+
+  const availableTopicsForSelection = availableTopics.filter(
+    topic => !selectedTopics.find(selected => selected.id === topic.id)
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <form onSubmit={onSubmit}>
+          <DialogHeader>
+            <DialogTitle>Edit Job #{job?.job_id}</DialogTitle>
+            <DialogDescription>
+              Update the details for this maintenance job. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="description" className="text-right col-span-1 text-sm font-medium">
+                Description
+              </label>
+              <Textarea
+                id="description"
+                name="description"
+                defaultValue={job?.description}
+                className="col-span-3"
+                rows={3}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="priority" className="text-right col-span-1 text-sm font-medium">
+                Priority
+              </label>
+              <Select name="priority" defaultValue={job?.priority}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Topics Section */}
+            <div className="grid grid-cols-4 items-start gap-4">
+              <label className="text-right col-span-1 text-sm font-medium pt-2">
+                Topics
+              </label>
+              <div className="col-span-3 space-y-3">
+                {/* Selected Topics */}
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-600">Selected Topics:</div>
+                  {selectedTopics.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTopics.map((topic) => (
+                        <Badge
+                          key={topic.id}
+                          variant="secondary"
+                          className="flex items-center gap-1 pr-1"
+                        >
+                          {topic.title}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-4 w-4 p-0 hover:bg-gray-300"
+                            onClick={() => handleRemoveTopic(topic.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 italic">No topics selected</div>
+                  )}
+                </div>
+                
+                {/* Add Topic */}
+                {availableTopicsForSelection.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-xs text-gray-600">Add Topic:</div>
+                    <div className="flex gap-2">
+                      <Select value={newTopicId} onValueChange={setNewTopicId}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select a topic to add" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableTopicsForSelection.map((topic) => (
+                            <SelectItem key={topic.id} value={topic.id.toString()}>
+                              {topic.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddTopic}
+                        disabled={!newTopicId}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="remarks" className="text-right col-span-1 text-sm font-medium">
+                Remarks
+              </label>
+              <Textarea
+                id="remarks"
+                name="remarks"
+                defaultValue={job?.remarks || ''}
+                className="col-span-3"
+                rows={2}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="is_defective" className="text-right col-span-1 text-sm font-medium">
+                Defective?
+              </label>
+              <Checkbox
+                id="is_defective"
+                name="is_defective"
+                defaultChecked={job?.is_defective}
+                className="col-span-3 justify-self-start"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="is_preventivemaintenance" className="text-right col-span-1 text-sm font-medium">
+                Preventive?
+              </label>
+              <Checkbox
+                id="is_preventivemaintenance"
+                name="is_preventivemaintenance"
+                defaultChecked={job?.is_preventivemaintenance}
+                className="col-span-3 justify-self-start"
+              />
+            </div>
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="priority" className="text-right col-span-1 text-sm font-medium">
-              Priority
-            </label>
-            <Select name="priority" defaultValue={job?.priority}>
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="remarks" className="text-right col-span-1 text-sm font-medium">
-              Remarks
-            </label>
-            <Textarea
-              id="remarks"
-              name="remarks"
-              defaultValue={job?.remarks || ''}
-              className="col-span-3"
-              rows={2}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="is_defective" className="text-right col-span-1 text-sm font-medium">
-              Defective?
-            </label>
-            <Checkbox
-              id="is_defective"
-              name="is_defective"
-              defaultChecked={job?.is_defective}
-              className="col-span-3 justify-self-start"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="is_preventivemaintenance" className="text-right col-span-1 text-sm font-medium">
-              Preventive?
-            </label>
-            <Checkbox
-              id="is_preventivemaintenance"
-              name="is_preventivemaintenance"
-              defaultChecked={job?.is_preventivemaintenance}
-              className="col-span-3 justify-self-start"
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
-          </Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>
-);
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
 EditDialog.displayName = 'EditDialog';
 
 // DeleteDialog component (Keep as is)
@@ -409,6 +512,11 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  
+  // Topic-related state
+  const [availableTopics, setAvailableTopics] = React.useState<Topic[]>([]);
+  const [selectedTopics, setSelectedTopics] = React.useState<Topic[]>([]);
+  const [topicsLoading, setTopicsLoading] = React.useState(false);
 
   // Use the hook for data fetching - always fetch user's jobs, not property-specific jobs
   const {
@@ -466,6 +574,33 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     }
   }, [filters, sessionStatus, refreshJobs]);
 
+  // Function to fetch available topics
+  const fetchAvailableTopics = async () => {
+    if (!session?.user?.accessToken) return;
+    
+    setTopicsLoading(true);
+    try {
+      const topics = await fetchTopics(session.user.accessToken);
+      setAvailableTopics(topics);
+    } catch (error) {
+      console.error('Failed to fetch topics:', error);
+      toast({
+        title: "Warning",
+        description: "Failed to load available topics",
+        variant: "destructive",
+      });
+    } finally {
+      setTopicsLoading(false);
+    }
+  };
+
+  // Fetch topics when dialog opens
+  React.useEffect(() => {
+    if (isEditDialogOpen && session?.user?.accessToken) {
+      fetchAvailableTopics();
+    }
+  }, [isEditDialogOpen, session?.user?.accessToken]);
+
   // --- Event Handlers ---
   const handleFilterChange = (newFilters: FilterState) => setFilters(newFilters);
   const handleClearFilters = () => setFilters({ search: "", status: "all", priority: "all" });
@@ -475,12 +610,21 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
       window.scrollTo(0, 0);
     }
   };
-  const handleEdit = (job: Job) => { setSelectedJob(job); setIsEditDialogOpen(true); };
+  const handleEdit = (job: Job) => { 
+    setSelectedJob(job); 
+    setSelectedTopics(job.topics || []); // Initialize with current job topics
+    setIsEditDialogOpen(true); 
+  };
   const handleDelete = (job: Job) => { setSelectedJob(job); setIsDeleteDialogOpen(true); };
 
   // New handler for status updates
   const handleStatusUpdated = (updatedJob: Job) => {
     updateJob(updatedJob);
+  };
+
+  // Handler for topic changes
+  const handleTopicsChange = (topics: Topic[]) => {
+    setSelectedTopics(topics);
   };
 
   // Submit handler for edit dialog
@@ -505,14 +649,14 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
         updated_at: formData.get("updated_at") as string || selectedJob.updated_at,
         completed_at: formData.get("completed_at") as string || selectedJob.completed_at,
         
-        // Preserve original topics
-        topics: selectedJob.topics || [],
+        // Use updated topics from the dialog
+        topics: selectedTopics,
       };
       
       // For the API request
       const apiRequestData = {
         ...updatedJobData,
-        topic_data: selectedJob.topics || [],
+        topic_data: selectedTopics, // Use updated topics
         room_id: selectedJob.rooms?.[0]?.room_id,
       };
 
@@ -743,7 +887,10 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
         onClose={() => setIsEditDialogOpen(false)} 
         job={selectedJob} 
         onSubmit={handleEditSubmit} 
-        isSubmitting={isSubmitting} 
+        isSubmitting={isSubmitting}
+        availableTopics={availableTopics}
+        selectedTopics={selectedTopics}
+        onTopicsChange={handleTopicsChange}
       />
       <DeleteDialog 
         isOpen={isDeleteDialogOpen} 

@@ -45,7 +45,7 @@
                       <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;width:100%;">
                         <tr>
                           <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:10px 12px;font-size:12px;color:#5b6b8b;font-weight:600;">Status</th>
-                          <th align="right" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:10px 12px;font-size:12px;color:#5b6b8b;font-weight:600;">Count</th>
+                          <th align="right" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:10px 12px;font-size:12px;color:#5b6b8b;font-weight:600;">Today</th>
                         </tr>
                         {% for item in status_list %}
                         <tr>
@@ -54,6 +54,149 @@
                         </tr>
                         {% endfor %}
                       </table>
+                    </td>
+                  </tr>
+                  
+                  <!-- Monthly Summary Section -->
+                  <tr>
+                    <td colspan="2" style="padding-top:20px;padding-bottom:10px;">
+                      <h2 style="margin:0;font-size:14px;line-height:20px;font-weight:700;color:#2a3a5e;">{{ month_name }} Summary</h2>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 0 12px 0;font-size:0;" colspan="2">
+                      <div style="display:inline-block;width:100%;max-width:50%;vertical-align:top;">
+                        <div style="background:#f0f4ff;border:1px solid #dbe4ff;border-radius:10px;padding:16px;margin-right:6px;">
+                          <div style="font-size:12px;color:#5b6b8b;text-transform:uppercase;letter-spacing:0.4px;">Created This Month</div>
+                          <div style="font-size:28px;line-height:34px;font-weight:700;color:#2a3a5e;">{{ total_created_this_month }}</div>
+                        </div>
+                      </div>
+                      <div style="display:inline-block;width:100%;max-width:50%;vertical-align:top;">
+                        <div style="background:#eefaf3;border:1px solid #c7efd8;border-radius:10px;padding:16px;margin-left:6px;">
+                          <div style="font-size:12px;color:#4a6b56;text-transform:uppercase;letter-spacing:0.4px;">Completed This Month</div>
+                          <div style="font-size:28px;line-height:34px;font-weight:700;color:#245438;">{{ total_completed_this_month }}</div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;width:100%;">
+                        <tr>
+                          <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:10px 12px;font-size:12px;color:#5b6b8b;font-weight:600;">Status</th>
+                          <th align="right" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:10px 12px;font-size:12px;color:#5b6b8b;font-weight:600;">Month Total</th>
+                        </tr>
+                        {% for item in monthly_status_list %}
+                        <tr>
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:12px 12px;font-size:13px;color:#1f2532;">{{ item.label }}</td>
+                          <td align="right" style="border:1px solid #e6e8ee;border-top:0;padding:12px 12px;font-size:13px;color:#1f2532;font-weight:600;">{{ item.count }}</td>
+                        </tr>
+                        {% endfor %}
+                      </table>
+                    </td>
+                  </tr>
+                  
+                  <!-- Topic Statistics Section -->
+                  <tr>
+                    <td colspan="2" style="padding-top:20px;padding-bottom:10px;">
+                      <h2 style="margin:0;font-size:14px;line-height:20px;font-weight:700;color:#2a3a5e;">Topic Statistics</h2>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 0 12px 0;font-size:0;" colspan="2">
+                      <div style="display:inline-block;width:100%;max-width:50%;vertical-align:top;">
+                        <div style="background:#fef3e2;border:1px solid #f6d55c;border-radius:10px;padding:16px;margin-right:6px;">
+                          <div style="font-size:12px;color:#8b5a00;text-transform:uppercase;letter-spacing:0.4px;">Topics Today</div>
+                          <div style="font-size:28px;line-height:34px;font-weight:700;color:#8b5a00;">{{ total_unique_topics_today }}</div>
+                          <div style="font-size:11px;color:#8b5a00;margin-top:2px;">{{ total_topic_assignments_today }} assignments</div>
+                        </div>
+                      </div>
+                      <div style="display:inline-block;width:100%;max-width:50%;vertical-align:top;">
+                        <div style="background:#e8f5e8;border:1px solid #4caf50;border-radius:10px;padding:16px;margin-left:6px;">
+                          <div style="font-size:12px;color:#2e7d32;text-transform:uppercase;letter-spacing:0.4px;">Topics This Month</div>
+                          <div style="font-size:28px;line-height:34px;font-weight:700;color:#2e7d32;">{{ total_unique_topics_month }}</div>
+                          <div style="font-size:11px;color:#2e7d32;margin-top:2px;">{{ total_topic_assignments_month }} assignments</div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  
+                  <!-- Today's Top Topics -->
+                  {% if today_topics %}
+                  <tr>
+                    <td colspan="2" style="padding-bottom:8px;">
+                      <h3 style="margin:0;font-size:13px;line-height:18px;font-weight:600;color:#2a3a5e;">Top Topics Today</h3>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;width:100%;">
+                        {% for topic in today_topics|slice:":5" %}
+                        <tr>
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:12px;color:#1f2532;">{{ topic.title }}</td>
+                          <td align="right" style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:12px;color:#1f2532;font-weight:600;">{{ topic.count }} jobs</td>
+                        </tr>
+                        {% endfor %}
+                      </table>
+                    </td>
+                  </tr>
+                  {% endif %}
+                  
+                  <!-- Monthly Top Topics -->
+                  {% if monthly_topics %}
+                  <tr>
+                    <td colspan="2" style="padding-top:12px;padding-bottom:8px;">
+                      <h3 style="margin:0;font-size:13px;line-height:18px;font-weight:600;color:#2a3a5e;">Top Topics This Month</h3>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;width:100%;">
+                        {% for topic in monthly_topics|slice:":10" %}
+                        <tr>
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:12px;color:#1f2532;">{{ topic.title }}</td>
+                          <td align="right" style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:12px;color:#1f2532;font-weight:600;">{{ topic.count }} jobs</td>
+                        </tr>
+                        {% endfor %}
+                      </table>
+                    </td>
+                  </tr>
+                  {% endif %}
+                  
+                  <!-- Daily Breakdown Section -->
+                  <tr>
+                    <td colspan="2" style="padding-top:20px;padding-bottom:10px;">
+                      <h2 style="margin:0;font-size:14px;line-height:20px;font-weight:700;color:#2a3a5e;">Daily Breakdown - {{ month_name }}</h2>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <div style="overflow-x:auto;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;width:100%;min-width:600px;">
+                          <tr>
+                            <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 6px;font-size:11px;color:#5b6b8b;font-weight:600;width:60px;">Date</th>
+                            <th align="center" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 6px;font-size:11px;color:#5b6b8b;font-weight:600;width:50px;">Day</th>
+                            <th align="right" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 6px;font-size:11px;color:#5b6b8b;font-weight:600;width:50px;">Daily</th>
+                            <th align="right" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 6px;font-size:11px;color:#5b6b8b;font-weight:600;width:60px;">Cumulative</th>
+                            <th align="center" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 6px;font-size:11px;color:#5b6b8b;font-weight:600;">Status Breakdown</th>
+                          </tr>
+                          {% for day in daily_stats %}
+                          <tr style="{% if day.is_today %}background-color:#fff3cd;{% endif %}">
+                            <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 6px;font-size:11px;color:#1f2532;{% if day.is_today %}font-weight:600;{% endif %}">{{ day.date }}</td>
+                            <td align="center" style="border:1px solid #e6e8ee;border-top:0;padding:8px 6px;font-size:11px;color:#1f2532;">{{ day.day_name }}</td>
+                            <td align="right" style="border:1px solid #e6e8ee;border-top:0;padding:8px 6px;font-size:11px;color:#1f2532;font-weight:600;">{{ day.total }}</td>
+                            <td align="right" style="border:1px solid #e6e8ee;border-top:0;padding:8px 6px;font-size:11px;color:#1f2532;font-weight:600;">{{ day.cumulative_total }}</td>
+                            <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 6px;font-size:10px;color:#1f2532;">
+                              {% for status_key, count in day.status_counts.items %}
+                                {% if count > 0 %}
+                                  <span style="display:inline-block;margin:1px 2px;padding:2px 4px;background:#f0f0f0;border-radius:3px;font-size:9px;">{{ status_key|title|replace:"_"," " }}: {{ count }}</span>
+                                {% endif %}
+                              {% endfor %}
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        </table>
+                      </div>
                     </td>
                   </tr>
                 </table>

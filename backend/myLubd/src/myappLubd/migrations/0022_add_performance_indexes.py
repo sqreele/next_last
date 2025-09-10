@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('myappLubd', '0019_maintenanceprocedure_difficulty_level_and_more'),
+        ('myappLubd', '0021_add_performance_indexes'),
     ]
 
     operations = [

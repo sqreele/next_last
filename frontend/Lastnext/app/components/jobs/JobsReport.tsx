@@ -61,6 +61,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
   const [isGenerating, setIsGenerating] = useState(false);
   const [reportJobs, setReportJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
+  const [jobError, setJobError] = useState<string | null>(null);
 
   // Get current property information
   const currentProperty = useMemo(() => {
@@ -189,13 +190,26 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
           
           if (!session?.user?.accessToken) {
             console.error('❌ JobsReport: No access token available');
-            throw new Error('No access token available');
+            setJobError('Authentication required. Please log in again.');
+            return;
           }
           
           const propertyJobs = await fetchJobsForProperty(selectedProperty, session.user.accessToken);
+          console.log('✅ JobsReport: Loaded jobs:', propertyJobs.length);
           setReportJobs(propertyJobs);
-        } catch (error) {
+          setJobError(null);
+        } catch (error: any) {
           console.error('Error loading property jobs:', error);
+          const errorMessage = error?.message || 'Failed to load jobs';
+          setJobError(errorMessage);
+          
+          // Log more details about the error
+          if (error?.status) {
+            console.error('Error status:', error.status);
+          }
+          if (error?.errorData) {
+            console.error('Error data:', error.errorData);
+          }
         } finally {
           setLoading(false);
         }
@@ -318,6 +332,34 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
           <div className="text-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-2 text-gray-500">Loading jobs for {currentProperty?.name}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show error if there's any
+  if (jobError) {
+    return (
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-red-600" />
+            Error Loading Jobs Report
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-red-600" />
+            <p className="text-red-600 font-medium">{jobError}</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Please try refreshing the page or contact support if the issue persists.
+            </p>
+            {onRefresh && (
+              <Button onClick={onRefresh} className="mt-4">
+                Try Again
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

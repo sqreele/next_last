@@ -107,54 +107,69 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     }
   };
 
-  const filteredJobs = jobs.filter(job => {
+  // Helper to check if a job belongs to the selected property by examining
+  // all possible locations where a property reference might exist
+  const doesMatchSelectedProperty = (job: Job): boolean => {
+    if (!selectedProperty) return true;
 
-    // Apply property-based filtering
-    let matchesProperty = true;
-    
-    if (selectedProperty) {
-      matchesProperty = false;
-      
-      // Direct property_id match
-      if (job.property_id && String(job.property_id) === String(selectedProperty)) {
-        matchesProperty = true;
-      }
-      
-      // Check if job has properties array
-      if (!matchesProperty && job.properties && Array.isArray(job.properties)) {
-        matchesProperty = job.properties.some(prop => {
-          if (typeof prop === 'string' || typeof prop === 'number') {
-            return String(prop) === String(selectedProperty);
-          }
-          if (prop && typeof prop === 'object' && 'property_id' in prop) {
-            return String(prop.property_id) === String(selectedProperty);
-          }
-          return false;
-        });
-      }
-      
-      // Check rooms for property match
-      if (!matchesProperty && job.rooms && Array.isArray(job.rooms)) {
-        matchesProperty = job.rooms.some((room: any) => {
-          if (room && room.properties && Array.isArray(room.properties)) {
-            return room.properties.some((prop: any) => {
-              if (typeof prop === 'string' || typeof prop === 'number') {
-                return String(prop) === String(selectedProperty);
-              }
-              if (prop && typeof prop === 'object' && 'property_id' in prop) {
-                return String(prop.property_id) === String(selectedProperty);
-              }
-              return false;
-            });
-          }
-          return false;
-        });
+    const selectedIds = selectedPropertyIdentifiers;
+    const matches = (value: unknown): boolean => {
+      if (value === undefined || value === null) return false;
+      return selectedIds.has(String(value));
+    };
+
+    // Direct property reference on job
+    if (matches((job as any).property_id)) return true;
+
+    // Job-level properties collection
+    if (Array.isArray((job as any).properties)) {
+      for (const prop of (job as any).properties) {
+        if (typeof prop === 'string' || typeof prop === 'number') {
+          if (matches(prop)) return true;
+        } else if (prop && typeof prop === 'object') {
+          if ('property_id' in prop && matches((prop as any).property_id)) return true;
+          if ('id' in prop && matches((prop as any).id)) return true;
+        }
       }
     }
 
-    if (!matchesProperty) {
-      console.log('❌ Job', job.job_id, 'filtered out by property');
-      return false;
+    // Properties via profile image metadata
+    if ((job as any).profile_image && Array.isArray((job as any).profile_image.properties)) {
+      for (const prop of (job as any).profile_image.properties) {
+        if (prop && typeof prop === 'object') {
+          if ('property_id' in prop && matches((prop as any).property_id)) return true;
+          if ('id' in prop && matches((prop as any).id)) return true;
+        }
+      }
+    }
+
+    // Room-level properties or direct room property references
+    if (Array.isArray((job as any).rooms)) {
+      for (const room of (job as any).rooms) {
+        if (room && matches((room as any).property_id)) return true;
+        if (room && Array.isArray((room as any).properties)) {
+          for (const prop of (room as any).properties) {
+            if (typeof prop === 'string' || typeof prop === 'number') {
+              if (matches(prop)) return true;
+            } else if (prop && typeof prop === 'object') {
+              if ('property_id' in prop && matches((prop as any).property_id)) return true;
+              if ('id' in prop && matches((prop as any).id)) return true;
+            }
+          }
+        }
+      }
+    }
+
+    return false;
+  };
+
+  const filteredJobs = jobs.filter(job => {
+    // Apply property-based filtering across all known sources
+    if (selectedProperty) {
+      const matchesProperty = doesMatchSelectedProperty(job);
+      if (!matchesProperty) {
+        return false;
+      }
     }
 
     // Room filtering

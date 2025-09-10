@@ -69,7 +69,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
 
   // Memoize the current property ID to reduce unnecessary re-renders
   const effectiveProperty = useMemo(() => {
-    return selectedProperty || (userProperties.length > 0 ? userProperties[0].property_id : null);
+    return selectedProperty || (userProperties.length > 0 ? String(userProperties[0].property_id || userProperties[0].id) : null);
   }, [selectedProperty, userProperties]);
 
   // Simplified session refresh

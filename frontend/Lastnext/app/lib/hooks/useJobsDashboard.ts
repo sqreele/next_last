@@ -4,6 +4,7 @@ import { jobsApi, JobsApiError } from '../api/jobsApi';
 import { Job, JobStatus, Property } from '../types';
 import { useToast } from './use-toast';
 import { exportFilteredJobsToCSV } from '../utils/csv-export';
+import { useMainStore } from '../stores/mainStore';
 
 interface JobsDashboardState {
   jobs: Job[];
@@ -102,6 +103,9 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   const [state, setState] = useState<JobsDashboardState>(initialState);
   const abortControllerRef = useRef<AbortController | null>(null);
   const realTimeUnsubscribeRef = useRef<(() => void) | null>(null);
+  
+  // Get selected property from main store
+  const selectedPropertyId = useMainStore(state => state.selectedPropertyId);
 
   // Memoized access token
   const accessToken = useMemo(() => session?.user?.accessToken, [session?.user?.accessToken]);
@@ -129,10 +133,16 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         jobsApi.invalidateCache('properties');
       }
 
+      // Include selected property in filters
+      const filtersWithProperty = {
+        ...state.filters,
+        property: selectedPropertyId || state.filters.property
+      };
+
       const [jobsResponse, properties, stats] = await Promise.all([
-        jobsApi.getJobs(accessToken, state.filters, pageToLoad, state.pagination.pageSize),
+        jobsApi.getJobs(accessToken, filtersWithProperty, pageToLoad, state.pagination.pageSize),
         jobsApi.getProperties(accessToken),
-        jobsApi.getJobStats(accessToken, state.filters)
+        jobsApi.getJobStats(accessToken, filtersWithProperty)
       ]);
 
       setState(prev => ({
@@ -166,7 +176,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         }));
       }
     }
-  }, [isAuthenticated, accessToken, state.filters, state.pagination.page, state.pagination.pageSize]);
+  }, [isAuthenticated, accessToken, state.filters, state.pagination.page, state.pagination.pageSize, selectedPropertyId]);
 
   // Update job status
   const updateJobStatus = useCallback(async (jobId: string, status: string) => {
@@ -444,6 +454,13 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
       refreshJobs(false);
     }
   }, [isAuthenticated, state.filters]);
+  
+  // Refresh when selected property changes
+  useEffect(() => {
+    if (isAuthenticated && selectedPropertyId !== undefined) {
+      refreshJobs(false);
+    }
+  }, [isAuthenticated, selectedPropertyId]);
 
   // Cleanup on unmount
   useEffect(() => {

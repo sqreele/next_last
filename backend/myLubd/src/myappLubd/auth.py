@@ -108,8 +108,11 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
             unverified_payload = jwt.get_unverified_claims(token)
             actual_issuer = unverified_payload.get('iss')
             logger.debug(f"Token issuer: {actual_issuer}, Expected issuer: {issuer}")
+        except JWTError as e:
+            logger.warning(f"Could not decode unverified payload (JWT Error): {e}")
+            actual_issuer = None
         except Exception as e:
-            logger.warning(f"Could not decode unverified payload: {e}")
+            logger.warning(f"Could not decode unverified payload (Unexpected error): {type(e).__name__}: {e}")
             actual_issuer = None
 
         # Prepare validation options - be more flexible with issuer validation

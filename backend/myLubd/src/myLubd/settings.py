@@ -38,12 +38,34 @@ _default_allowed_hosts = [
     'www.pcms.live',
     'django-backend',
     'backend',
+    # Include with port for internal Docker communication
+    'backend:8000',
+    'django-backend:8000',
+    'localhost:8000',
+    '127.0.0.1:8000',
 ]
 _env_allowed_hosts = os.getenv('DJANGO_ALLOWED_HOSTS')
 if _env_allowed_hosts:
+    # Parse ALLOWED_HOSTS from environment variable
+    # Support both comma and space separated values
     ALLOWED_HOSTS = [h.strip() for h in _env_allowed_hosts.replace(',', ' ').split() if h.strip()]
+    # Always include essential hosts (with and without port)
+    essential_hosts = ['backend', 'django-backend', 'localhost', '127.0.0.1']
+    # Also add with common ports
+    for host in essential_hosts:
+        if host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(host)
+        # Add with port 8000 for internal Docker communication
+        host_with_port = f"{host}:8000"
+        if host_with_port not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(host_with_port)
 else:
     ALLOWED_HOSTS = _default_allowed_hosts
+
+# Log the final ALLOWED_HOSTS for debugging
+import logging
+logger = logging.getLogger(__name__)
+logger.info(f"ALLOWED_HOSTS configured as: {ALLOWED_HOSTS}")
 # Google OAuth Settings
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')

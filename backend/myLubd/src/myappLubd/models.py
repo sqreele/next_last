@@ -4,6 +4,7 @@ from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
+from django.db.models import Q  # ✅ PERFORMANCE OPTIMIZATION: Import Q for partial indexes
 from PIL import Image
 from io import BytesIO
 import os
@@ -672,6 +673,30 @@ class Job(models.Model):
         ordering = ['-created_at']
         verbose_name_plural = 'Maintenance Jobs'
         indexes = [
+            # ✅ PERFORMANCE OPTIMIZATION: Comprehensive database indexes
+            # Single field indexes for common queries
+            models.Index(fields=['status']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['priority']),
+            models.Index(fields=['is_preventivemaintenance']),
+            models.Index(fields=['user']),
+            models.Index(fields=['updated_by']),
+            models.Index(fields=['completed_at']),
+            
+            # Composite indexes for complex queries
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['user', 'status']),
+            models.Index(fields=['is_preventivemaintenance', 'status']),
+            models.Index(fields=['created_at', 'status', 'priority']),
+            models.Index(fields=['user', 'created_at']),
+            models.Index(fields=['status', 'priority']),
+            
+            # Partial indexes for better performance on filtered data
+            models.Index(fields=['created_at'], condition=Q(status='pending'), name='job_pending_created_idx'),
+            models.Index(fields=['created_at'], condition=Q(is_preventivemaintenance=True), name='job_pm_created_idx'),
+            models.Index(fields=['completed_at'], condition=Q(completed_at__isnull=False), name='job_completed_at_idx'),
+            
+            # Legacy index (keeping for backward compatibility)
             models.Index(fields=['status', 'created_at','is_preventivemaintenance']),
         ]
 

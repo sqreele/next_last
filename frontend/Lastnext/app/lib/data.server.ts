@@ -131,8 +131,23 @@ export async function fetchJobsForProperty(
     // Backend expects property_id
     const baseUrl = `/api/v1/jobs/?property_id=${propertyId}`;
     const url = additionalParams ? `${baseUrl}&${additionalParams}` : baseUrl;
-    const jobs = await fetchWithToken<Job[]>(url, accessToken);
-    console.log(`📋 Jobs fetched: { count: ${jobs.length} }`);
+    const response = await fetchWithToken<any>(url, accessToken);
+    
+    // Handle paginated response from Django REST Framework
+    let jobs: Job[];
+    if (response && typeof response === 'object' && 'results' in response) {
+      // Paginated response: { count: 4, results: [...], ... }
+      jobs = response.results;
+      console.log(`📋 Jobs fetched: { count: ${response.count}, results: ${jobs.length} }`);
+    } else if (Array.isArray(response)) {
+      // Direct array response
+      jobs = response;
+      console.log(`📋 Jobs fetched: { count: ${jobs.length} }`);
+    } else {
+      console.error('Unexpected response format:', response);
+      jobs = [];
+    }
+    
     const sanitizedJobs = sanitizeJobsData(jobs);
     return fixJobsImageUrls(sanitizedJobs);
   } catch (error) {

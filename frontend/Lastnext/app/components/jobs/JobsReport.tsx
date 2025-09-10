@@ -185,14 +185,33 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         try {
           console.log('🔍 JobsReport: Loading property jobs for:', selectedProperty);
           console.log('🔍 JobsReport: Session available:', !!session);
+          console.log('🔍 JobsReport: Session user:', session?.user);
           console.log('🔍 JobsReport: Access token available:', !!session?.user?.accessToken);
           
-          if (!session?.user?.accessToken) {
+          // Try to get access token from session, or use a fallback
+          let accessToken = session?.user?.accessToken;
+          
+          // If no access token in session, try to get it from the session endpoint
+          if (!accessToken) {
+            console.log('🔍 JobsReport: No access token in session, trying to fetch from session endpoint...');
+            try {
+              const sessionResponse = await fetch('/api/auth/session-compat');
+              if (sessionResponse.ok) {
+                const sessionData = await sessionResponse.json();
+                accessToken = sessionData?.user?.accessToken;
+                console.log('🔍 JobsReport: Access token from session endpoint:', !!accessToken);
+              }
+            } catch (sessionError) {
+              console.error('❌ JobsReport: Error fetching session:', sessionError);
+            }
+          }
+          
+          if (!accessToken) {
             console.error('❌ JobsReport: No access token available');
             throw new Error('No access token available');
           }
           
-          const propertyJobs = await fetchJobsForProperty(selectedProperty, session.user.accessToken);
+          const propertyJobs = await fetchJobsForProperty(selectedProperty, accessToken);
           setReportJobs(propertyJobs);
         } catch (error) {
           console.error('Error loading property jobs:', error);

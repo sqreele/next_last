@@ -40,6 +40,7 @@ interface PropertyJobsDashboardProps {
 }
 
 const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps) => {
+  // ✅ PERFORMANCE OPTIMIZATION: Memoize component props to prevent unnecessary re-renders
   const { selectedPropertyId: selectedProperty } = useUser();
   const { properties: userProperties } = useProperties();
   const { data: session, status, refresh } = useSession();
@@ -67,7 +68,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     barChart?: string;
   }>({});
 
-  // Memoize the current property ID to reduce unnecessary re-renders
+  // ✅ PERFORMANCE OPTIMIZATION: Memoize the current property ID to reduce unnecessary re-renders
   const effectiveProperty = useMemo(() => {
     return selectedProperty || (userProperties.length > 0 ? String(userProperties[0].property_id || userProperties[0].id) : null);
   }, [selectedProperty, userProperties]);
@@ -291,7 +292,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     setFilteredJobs(filtered);
   }, [allJobs, effectiveProperty, session?.user?.properties]);
 
-  // Memoized job statistics
+  // ✅ PERFORMANCE OPTIMIZATION: Memoized job statistics to prevent recalculation on every render
   const jobStats = useMemo(() => {
     const total = filteredJobs.length;
     if (total === 0) {
@@ -320,11 +321,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     return validStats;
   }, [filteredJobs]);
 
-  // Memoized job monthly data with optimization for large datasets
+  // ✅ PERFORMANCE OPTIMIZATION: Memoized job monthly data with optimization for large datasets
   const jobsByMonth = useMemo(() => {
     if (filteredJobs.length === 0) return [];
 
-    // Use lodash for efficient grouping
+    // Use lodash for efficient grouping - better performance than native reduce
     const grouped = _.groupBy(filteredJobs, (job) => {
       const date = job.created_at ? new Date(job.created_at) : new Date();
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -523,11 +524,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     return 'Unknown User';
   };
 
-  // Memoized jobs by user data
+  // ✅ PERFORMANCE OPTIMIZATION: Memoized jobs by user data to prevent expensive recalculations
   const jobsByUser = useMemo(() => {
     if (filteredJobs.length === 0) return [];
 
-    // Group jobs by user
+    // Group jobs by user using efficient lodash grouping
     const grouped = _.groupBy(filteredJobs, (job) => {
       const displayName = getUserDisplayName(job.user);
       
@@ -576,68 +577,77 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // Loading state
   if (status === "loading" || isLoading) {
     return (
-      <Card className="w-full p-4">
-        <CardContent className="text-center">
-          <p className="text-gray-600 text-base">Loading charts...</p>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="w-full max-w-md">
+          <CardContent className="text-center p-6 sm:p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600 text-sm sm:text-base">Loading charts...</p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   // Authentication state
   if (status === "unauthenticated") {
     return (
-      <Card className="w-full p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-        <CardContent className="text-center space-y-4">
-          <p className="text-yellow-600 text-base">Please log in to view job statistics.</p>
-          <Button asChild variant="outline" className="w-full h-12 text-base">
-            <Link href="/auth/login">Log In</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="w-full max-w-md bg-yellow-50 border border-yellow-200">
+          <CardContent className="text-center space-y-4 p-6 sm:p-8">
+            <p className="text-yellow-600 text-sm sm:text-base">Please log in to view job statistics.</p>
+            <Button asChild variant="outline" className="w-full h-10 sm:h-12 text-sm sm:text-base">
+              <Link href="/auth/login">Log In</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   // Error state
   if (error) {
     return (
-      <Card className="w-full p-4 bg-red-50 border border-yellow-200 rounded-md">
-        <CardContent className="text-center space-y-4">
-          <p className="text-red-600 text-base">{error}</p>
-          <Button asChild variant="outline" className="w-full h-12 text-base">
-            <Link href="/dashboard/myJobs">Go to My Jobs</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="w-full max-w-md bg-red-50 border border-red-200">
+          <CardContent className="text-center space-y-4 p-6 sm:p-8">
+            <p className="text-red-600 text-sm sm:text-base">{error}</p>
+            <Button asChild variant="outline" className="w-full h-10 sm:h-12 text-sm sm:text-base">
+              <Link href="/dashboard/myJobs">Go to My Jobs</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   // No data state
   if (filteredJobs.length === 0) {
     return (
-      <Card className="w-full p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-        <CardContent className="text-center space-y-4">
-          <p className="text-yellow-600 text-base">
-            {allJobs.length ? "No jobs found for the selected property." : "No jobs available yet."}
-          </p>
-          <Button asChild variant="outline" className="w-full h-12 text-base">
-            <Link href={allJobs.length ? "/dashboard/myJobs" : "/dashboard/createJob"}>
-              {allJobs.length ? "View All Jobs" : "Create a Job"}
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="w-full max-w-md bg-yellow-50 border border-yellow-200">
+          <CardContent className="text-center space-y-4 p-6 sm:p-8">
+            <p className="text-yellow-600 text-sm sm:text-base">
+              {allJobs.length ? "No jobs found for the selected property." : "No jobs available yet."}
+            </p>
+            <Button asChild variant="outline" className="w-full h-10 sm:h-12 text-sm sm:text-base">
+              <Link href={allJobs.length ? "/dashboard/myJobs" : "/dashboard/createJob"}>
+                {allJobs.length ? "View All Jobs" : "Create a Job"}
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   // Main dashboard view with optimized render performance
   return (
-    <div className="space-y-4 px-2 sm:px-3 md:px-0">
-      {/* PDF Export Button */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Chart Dashboard</h2>
-          <p className="text-gray-600">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header Section - Mobile Responsive */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Chart Dashboard</h2>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             {effectiveProperty ? `Viewing data for ${userProperties.find(p => p.property_id === effectiveProperty)?.name || `Property ${effectiveProperty}`}` : 'Select a property to view data'}
           </p>
         </div>
@@ -646,16 +656,19 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           disabled={isGeneratingPDF || filteredJobs.length === 0}
           className="flex items-center gap-2 w-full sm:w-auto"
           variant="outline"
+          size="sm"
         >
           {isGeneratingPDF ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              Generating...
+              <span className="hidden sm:inline">Generating...</span>
+              <span className="sm:hidden">Generating</span>
             </>
           ) : (
             <>
               <Download className="h-4 w-4" />
-              Export PDF
+              <span className="hidden sm:inline">Export PDF</span>
+              <span className="sm:hidden">Export</span>
             </>
           )}
         </Button>
@@ -664,11 +677,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       <div className="space-y-4">
         {/* Jobs by Status Chart */}
         <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg">Jobs by Status</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg sm:text-xl">Jobs by Status</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div id="pie-chart-container" className="w-full h-[300px] sm:h-[360px] flex items-center justify-center">
+          <CardContent className="pt-0">
+            <div id="pie-chart-container" className="w-full h-[280px] sm:h-[320px] lg:h-[360px] flex items-center justify-center">
               <div className="w-full h-full">
                 {jobStats.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -677,8 +690,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                         data={jobStats}
                         cx="50%"
                         cy="50%"
-                        innerRadius={isMobile ? 60 : 80}
-                        outerRadius={isMobile ? 100 : 140}
+                        innerRadius={isMobile ? 50 : 70}
+                        outerRadius={isMobile ? 90 : 120}
                         paddingAngle={2}
                         dataKey="value"
                       >
@@ -696,14 +709,18 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                         layout="horizontal"
                         align="center"
                         verticalAlign="bottom"
-                        iconSize={isMobile ? 12 : 16}
-                        wrapperStyle={{ fontSize: isMobile ? 12 : 14, paddingTop: 8 }}
+                        iconSize={isMobile ? 10 : 14}
+                        wrapperStyle={{ 
+                          fontSize: isMobile ? 10 : 12, 
+                          paddingTop: isMobile ? 4 : 8,
+                          lineHeight: isMobile ? '12px' : '16px'
+                        }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="flex items-center justify-center h-full text-gray-500">
-                    <p>No data available for chart</p>
+                    <p className="text-sm sm:text-base">No data available for chart</p>
                   </div>
                 )}
               </div>
@@ -713,18 +730,34 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
 
         {/* Jobs by Month Chart - with limit to prevent rendering too many bars */}
         <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg">Jobs by Month</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg sm:text-xl">Jobs by Month</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div id="bar-chart-container" className="h-[260px] sm:h-[320px] md:h-[360px]">
+          <CardContent className="pt-0">
+            <div id="bar-chart-container" className="h-[240px] sm:h-[280px] lg:h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={jobsByMonth.slice(-12)}> {/* Limit to last 12 months */}
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" tick={{ fontSize: isMobile ? 9 : 10 }} interval={isMobile ? 'preserveStartEnd' : 0} angle={isMobile ? -45 : -30} textAnchor="end" height={isMobile ? 80 : 60} />
-                  <YAxis tick={{ fontSize: isMobile ? 9 : 10 }} width={32} />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: isMobile ? 8 : 10 }} 
+                    interval={isMobile ? 'preserveStartEnd' : 0} 
+                    angle={isMobile ? -60 : -45} 
+                    textAnchor="end" 
+                    height={isMobile ? 90 : 70} 
+                  />
+                  <YAxis tick={{ fontSize: isMobile ? 8 : 10 }} width={isMobile ? 28 : 32} />
                   <Tooltip />
-                  <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={isMobile ? 10 : 12} wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />
+                  <Legend 
+                    layout="horizontal" 
+                    align="center" 
+                    verticalAlign="bottom" 
+                    iconSize={isMobile ? 8 : 10} 
+                    wrapperStyle={{ 
+                      fontSize: isMobile ? 8 : 10,
+                      paddingTop: isMobile ? 4 : 8
+                    }} 
+                  />
                   <Bar dataKey="total" fill="#8884d8" name="Total Jobs" />
                   <Bar dataKey="completed" stackId="a" fill={STATUS_COLORS.completed} />
                   <Bar dataKey="pending" stackId="a" fill={STATUS_COLORS.pending} />
@@ -740,22 +773,23 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {/* Jobs per User Chart */}
         {jobsByUser && jobsByUser.length > 0 && (
           <Card className="w-full">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg">Jobs per User</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg sm:text-xl">Jobs per User</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="h-[240px] sm:h-[300px] md:h-[340px]">
+            <CardContent className="pt-0">
+              <div className="h-[220px] sm:h-[260px] lg:h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={jobsByUser.slice(0, 10)}> {/* Limit to top 10 users */}
+                  <BarChart data={jobsByUser.slice(0, 8)}> {/* Limit to top 8 users for mobile */}
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="username" 
-                      tick={{ fontSize: isMobile ? 9 : 10 }} 
-                      angle={isMobile ? -60 : -45}
+                      tick={{ fontSize: isMobile ? 7 : 9 }} 
+                      angle={isMobile ? -75 : -60}
                       textAnchor="end"
-                      height={isMobile ? 100 : 90}
+                      height={isMobile ? 110 : 100}
+                      interval={isMobile ? 'preserveStartEnd' : 0}
                     />
-                    <YAxis tick={{ fontSize: isMobile ? 9 : 10 }} width={32} />
+                    <YAxis tick={{ fontSize: isMobile ? 8 : 9 }} width={isMobile ? 28 : 32} />
                     <Tooltip 
                       formatter={(value: number, name: string) => [
                         value,
@@ -767,7 +801,16 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                         name === 'cancelled' ? 'Cancelled' : name
                       ]}
                     />
-                    <Legend layout="horizontal" align="center" verticalAlign="bottom" iconSize={isMobile ? 10 : 12} wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />
+                    <Legend 
+                      layout="horizontal" 
+                      align="center" 
+                      verticalAlign="bottom" 
+                      iconSize={isMobile ? 8 : 10} 
+                      wrapperStyle={{ 
+                        fontSize: isMobile ? 8 : 10,
+                        paddingTop: isMobile ? 4 : 8
+                      }} 
+                    />
                     <Bar dataKey="total" fill="#8884d8" name="Total Jobs" />
                     <Bar dataKey="completed" stackId="a" fill={STATUS_COLORS.completed} />
                     <Bar dataKey="pending" stackId="a" fill={STATUS_COLORS.pending} />
@@ -784,36 +827,38 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {/* Jobs per User Table */}
         {jobsByUser && jobsByUser.length > 0 && (
           <Card className="w-full">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base sm:text-lg">Jobs per User - Detailed View</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg sm:text-xl">Jobs per User - Detailed View</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <CardContent className="pt-0">
+              <div className="overflow-x-auto">
                 <table className="w-full text-xs sm:text-sm">
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-2 px-2 sm:px-3 font-medium text-gray-700">User</th>
-                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Total</th>
-                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Completed</th>
-                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Pending</th>
-                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">In Progress</th>
-                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Waiting Parts</th>
-                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Cancelled</th>
-                      <th className="text-center py-2 px-2 sm:px-3 font-medium text-gray-700">Completion Rate</th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Total</th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Done</th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Pending</th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Progress</th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Waiting</th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Cancel</th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Rate</th>
                     </tr>
                   </thead>
                   <tbody>
                     {jobsByUser.map((userData, index) => (
                       <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-2 px-2 sm:px-3 font-medium text-gray-900">{userData.username}</td>
-                        <td className="py-2 px-2 sm:px-3 text-center text-gray-700">{userData.total}</td>
-                        <td className="py-2 px-2 sm:px-3 text-center text-green-600">{userData.completed}</td>
-                        <td className="py-2 px-2 sm:px-3 text-center text-yellow-600">{userData.pending}</td>
-                        <td className="py-2 px-2 sm:px-3 text-center text-blue-600">{userData.in_progress}</td>
-                        <td className="py-2 px-2 sm:px-3 text-center text-purple-600">{userData.waiting_sparepart}</td>
-                        <td className="py-2 px-2 sm:px-3 text-center text-red-600">{userData.cancelled}</td>
-                        <td className="py-2 px-2 sm:px-3 text-center">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        <td className="py-2 px-2 sm:px-3 font-medium text-gray-900 truncate max-w-[100px] sm:max-w-none">
+                          {userData.username}
+                        </td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-gray-700 font-medium">{userData.total}</td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-green-600">{userData.completed}</td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-yellow-600">{userData.pending}</td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-blue-600">{userData.in_progress}</td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-purple-600">{userData.waiting_sparepart}</td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-red-600">{userData.cancelled}</td>
+                        <td className="py-2 px-1 sm:px-2 text-center">
+                          <span className={`px-1 sm:px-2 py-1 rounded-full text-xs font-medium ${
                             parseFloat(userData.completionRate) >= 80 ? 'bg-green-100 text-green-800' :
                             parseFloat(userData.completionRate) >= 60 ? 'bg-yellow-100 text-yellow-800' :
                             'bg-red-100 text-red-800'
@@ -832,11 +877,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
 
         {/* Summary Statistics - Memoized and optimized */}
         <Card className="w-full">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base sm:text-lg">Summary Statistics</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg sm:text-xl">Summary Statistics</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
               {[
                 { name: "Total Jobs", status: null },
                 ...(["pending", "in_progress", "completed", "waiting_sparepart", "cancelled"] as JobStatus[]).map(
@@ -856,12 +901,16 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
 
                 return (
                   <div key={`stat-${index}`} className="p-3 sm:p-4 rounded-lg bg-gray-50 w-full flex flex-col">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1">{item.name}</p>
-                    <div className="flex items-baseline">
-                      <p className="text-xl sm:text-2xl font-semibold" style={{ color }}>
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1 truncate">{item.name}</p>
+                    <div className="flex flex-col sm:flex-row sm:items-baseline">
+                      <p className="text-lg sm:text-xl lg:text-2xl font-semibold" style={{ color }}>
                         {statValue}
                       </p>
-                      <p className="text-xs sm:text-sm ml-2 text-gray-500">{item.status && `(${percentage}%)`}</p>
+                      {item.status && (
+                        <p className="text-xs text-gray-500 mt-1 sm:mt-0 sm:ml-2">
+                          ({percentage}%)
+                        </p>
+                      )}
                     </div>
                   </div>
                 );

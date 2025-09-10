@@ -12,6 +12,15 @@ export async function GET() {
       return NextResponse.json({ user: undefined }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
+    // Debug: Log session structure
+    console.log('🔍 Session structure:', {
+      hasUser: !!session.user,
+      username: session.user.username,
+      hasAccessToken: !!session.user.accessToken,
+      hasRefreshToken: !!session.user.refreshToken,
+      userKeys: Object.keys(session.user)
+    });
+
     // Fetch properties for the user if they have an access token
     let properties: Property[] = [];
     if (session.user.accessToken) {
@@ -23,6 +32,10 @@ export async function GET() {
         console.error('❌ Error fetching properties for session:', error);
         // Continue with empty properties if fetch fails
       }
+    } else {
+      console.log('⚠️ No access token in session, cannot fetch properties');
+      // For now, return empty properties array
+      properties = [];
     }
 
     // Update user profile with Auth0 data if available

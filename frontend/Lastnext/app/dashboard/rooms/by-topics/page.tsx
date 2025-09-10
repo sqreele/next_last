@@ -425,38 +425,41 @@ const RoomTopicFilterPage = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Room-Topic Filter</h1>
-          <p className="text-gray-600 mt-2">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold">Room-Topic Filter</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
             Analyze which rooms have jobs for specific topics and vice versa
           </p>
         </div>
         <Button 
           onClick={handleExportPDF} 
           disabled={isGeneratingPDF}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 w-full sm:w-auto"
+          size="sm"
         >
           {isGeneratingPDF ? (
             <RefreshCw className="h-4 w-4 animate-spin" />
           ) : (
             <Download className="h-4 w-4" />
           )}
-          Export PDF
+          <span className="hidden sm:inline">Export PDF</span>
+          <span className="sm:hidden">Export</span>
         </Button>
       </div>
 
       {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
             Filters
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -573,76 +576,76 @@ const RoomTopicFilterPage = () => {
       )}
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{allJobs.length}</div>
-            <div className="text-sm text-gray-600">Total Jobs</div>
+          <CardContent className="p-3 sm:p-4">
+            <div className="text-xl sm:text-2xl font-bold">{allJobs.length}</div>
+            <div className="text-xs sm:text-sm text-gray-600">Total Jobs</div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{filteredRoomTopicData.length}</div>
-            <div className="text-sm text-gray-600">Rooms with Jobs</div>
+          <CardContent className="p-3 sm:p-4">
+            <div className="text-xl sm:text-2xl font-bold">{filteredRoomTopicData.length}</div>
+            <div className="text-xs sm:text-sm text-gray-600">Rooms with Jobs</div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">{filteredTopicRoomData.length}</div>
-            <div className="text-sm text-gray-600">Topics with Jobs</div>
+          <CardContent className="p-3 sm:p-4">
+            <div className="text-xl sm:text-2xl font-bold">{filteredTopicRoomData.length}</div>
+            <div className="text-xs sm:text-sm text-gray-600">Topics with Jobs</div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="text-2xl font-bold">
+          <CardContent className="p-3 sm:p-4">
+            <div className="text-xl sm:text-2xl font-bold">
               {filteredRoomTopicData.reduce((sum, room) => sum + room.totalJobs, 0)}
             </div>
-            <div className="text-sm text-gray-600">Filtered Jobs</div>
+            <div className="text-xs sm:text-sm text-gray-600">Filtered Jobs</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Property-based User Statistics */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
             User Statistics by Property
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-3xl font-bold text-blue-600">{allUsers.length}</div>
-              <div className="text-sm text-gray-600">
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-lg">
+              <div className="text-2xl sm:text-3xl font-bold text-blue-600">{allUsers.length}</div>
+              <div className="text-xs sm:text-sm text-gray-600">
                 {selectedProperty === 'all' ? 'Total Users' : `Users in Selected Property`}
               </div>
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-gray-500 mt-1 hidden sm:block">
                 {selectedProperty === 'all' 
                   ? 'All users across all properties' 
                   : `Filtered by ${allProperties.find(p => String(p.property_id) === String(selectedProperty))?.name || 'Unknown Property'}`
                 }
               </div>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-3xl font-bold text-green-600">
+            <div className="text-center p-3 sm:p-4 bg-green-50 rounded-lg">
+              <div className="text-2xl sm:text-3xl font-bold text-green-600">
                 {allUsers.filter(user => user.first_name && user.last_name).length}
               </div>
-              <div className="text-sm text-gray-600">Users with Full Names</div>
+              <div className="text-xs sm:text-sm text-gray-600">Users with Full Names</div>
             </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-3xl font-bold text-purple-600">
+            <div className="text-center p-3 sm:p-4 bg-purple-50 rounded-lg">
+              <div className="text-2xl sm:text-3xl font-bold text-purple-600">
                 {allUsers.filter(user => user.positions && user.positions.trim() !== '').length}
               </div>
-              <div className="text-sm text-gray-600">Users with Assigned Positions</div>
+              <div className="text-xs sm:text-sm text-gray-600">Users with Assigned Positions</div>
             </div>
           </div>
           
           {/* Property Breakdown */}
           {selectedProperty === 'all' && detailedUsers && detailedUsers.length > 0 && (
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               <h4 className="font-medium text-sm text-gray-700 mb-3">Users by Property:</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {allProperties.map(property => {
                   const usersInProperty = detailedUsers.filter((user: any) => 
                     user.properties && user.properties.some((prop: any) => {
@@ -687,14 +690,14 @@ const RoomTopicFilterPage = () => {
           
           {/* User List */}
           {allUsers.length > 0 && (
-            <div className="mt-6">
+            <div className="mt-4 sm:mt-6">
               <h4 className="font-medium text-sm text-gray-700 mb-3">
                 {selectedProperty === 'all' 
                   ? 'All Users (All Properties):' 
                   : `Users in ${allProperties.find(p => String(p.property_id) === String(selectedProperty))?.name || 'Selected Property'}:`
                 }
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
                 {allUsers.map((user, index) => {
                   const displayName = user.first_name && user.last_name 
                     ? `${user.first_name} ${user.last_name}` 
@@ -702,9 +705,9 @@ const RoomTopicFilterPage = () => {
                   const roleInfo = user.positions || user.email || 'No role';
                   
                   return (
-                    <div key={`${user.id}-${index}`} className="p-3 bg-gray-50 rounded-lg border">
-                      <div className="font-medium text-sm">{displayName}</div>
-                      <div className="text-xs text-gray-500">{roleInfo}</div>
+                    <div key={`${user.id}-${index}`} className="p-2 sm:p-3 bg-gray-50 rounded-lg border">
+                      <div className="font-medium text-xs sm:text-sm truncate">{displayName}</div>
+                      <div className="text-xs text-gray-500 truncate">{roleInfo}</div>
                       <div className="text-xs text-gray-400 mt-1">
                         Properties: {user.properties?.length || 0}
                       </div>
@@ -726,26 +729,32 @@ const RoomTopicFilterPage = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="rooms-by-topics" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="rooms-by-topics">Rooms by Topics</TabsTrigger>
-          <TabsTrigger value="topics-by-rooms">Topics by Rooms</TabsTrigger>
-          <TabsTrigger value="topic-room-filter">Topic-Room Filter</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
+          <TabsTrigger value="rooms-by-topics" className="text-xs sm:text-sm">Rooms by Topics</TabsTrigger>
+          <TabsTrigger value="topics-by-rooms" className="text-xs sm:text-sm">Topics by Rooms</TabsTrigger>
+          <TabsTrigger value="topic-room-filter" className="text-xs sm:text-sm">Topic-Room Filter</TabsTrigger>
         </TabsList>
 
         {/* Rooms by Topics Tab */}
         <TabsContent value="rooms-by-topics" className="space-y-4">
           {/* Chart */}
           <Card>
-            <CardHeader>
-              <CardTitle>Top Rooms by Job Count</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Top Rooms by Job Count</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
+            <CardContent className="pt-0">
+              <div className="h-[250px] sm:h-[300px] lg:h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={roomTopicChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="room" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
+                    <XAxis 
+                      dataKey="room" 
+                      tick={{ fontSize: 10 }} 
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip />
                     <Legend />
                     <Bar dataKey="totalJobs" fill="#8884d8" name="Total Jobs" />
@@ -757,32 +766,32 @@ const RoomTopicFilterPage = () => {
           </Card>
 
           {/* Room Details */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {filteredRoomTopicData.map((roomData, index) => (
               <Card key={`${roomData.room.room_id}-${roomData.room.name}`}>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    {roomData.room.name}
-                    <Badge variant="secondary" className="ml-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span className="truncate">{roomData.room.name}</span>
+                    <Badge variant="secondary" className="w-fit">
                       {roomData.room.room_type}
                     </Badge>
                   </CardTitle>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs sm:text-sm text-gray-600">
                     {roomData.totalJobs} total jobs
                   </p>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Topics in this room:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {roomData.topics.slice(0, 5).map((topicData) => (
-                        <Badge key={topicData.topic.id} variant="outline">
+                    <h4 className="font-medium text-xs sm:text-sm">Topics in this room:</h4>
+                    <div className="flex flex-wrap gap-1 sm:gap-2">
+                      {roomData.topics.slice(0, 4).map((topicData) => (
+                        <Badge key={topicData.topic.id} variant="outline" className="text-xs">
                           {topicData.topic.title} ({topicData.count})
                         </Badge>
                       ))}
-                      {roomData.topics.length > 5 && (
-                        <Badge variant="outline">
-                          +{roomData.topics.length - 5} more
+                      {roomData.topics.length > 4 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{roomData.topics.length - 4} more
                         </Badge>
                       )}
                     </div>
@@ -797,16 +806,22 @@ const RoomTopicFilterPage = () => {
         <TabsContent value="topics-by-rooms" className="space-y-4">
           {/* Chart */}
           <Card>
-            <CardHeader>
-              <CardTitle>Top Topics by Job Count</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Top Topics by Job Count</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
+            <CardContent className="pt-0">
+              <div className="h-[250px] sm:h-[300px] lg:h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={topicRoomChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="topic" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} />
+                    <XAxis 
+                      dataKey="topic" 
+                      tick={{ fontSize: 10 }} 
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis tick={{ fontSize: 10 }} />
                     <Tooltip />
                     <Legend />
                     <Bar dataKey="totalJobs" fill="#8884d8" name="Total Jobs" />
@@ -818,32 +833,32 @@ const RoomTopicFilterPage = () => {
           </Card>
 
           {/* Topic Details */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {filteredTopicRoomData.map((topicData, index) => (
               <Card key={`${topicData.topic.id}-${topicData.topic.title}`}>
-                <CardHeader>
-                  <CardTitle className="text-lg">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">
                     {topicData.topic.title}
                   </CardTitle>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs sm:text-sm text-gray-600">
                     {topicData.topic.description || 'No description'}
                   </p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs sm:text-sm text-gray-600">
                     {topicData.totalJobs} total jobs
                   </p>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Rooms with this topic:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {topicData.rooms.slice(0, 5).map((roomData) => (
-                        <Badge key={roomData.room.room_id} variant="outline">
+                    <h4 className="font-medium text-xs sm:text-sm">Rooms with this topic:</h4>
+                    <div className="flex flex-wrap gap-1 sm:gap-2">
+                      {topicData.rooms.slice(0, 4).map((roomData) => (
+                        <Badge key={roomData.room.room_id} variant="outline" className="text-xs">
                           {roomData.room.name} ({roomData.count})
                         </Badge>
                       ))}
-                      {topicData.rooms.length > 5 && (
-                        <Badge variant="outline">
-                          +{topicData.rooms.length - 5} more
+                      {topicData.rooms.length > 4 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{topicData.rooms.length - 4} more
                         </Badge>
                       )}
                     </div>
@@ -857,16 +872,16 @@ const RoomTopicFilterPage = () => {
         {/* Topic-Room Filter Tab */}
         <TabsContent value="topic-room-filter" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Advanced Topic-Room Filtering</CardTitle>
-              <p className="text-sm text-gray-600">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Advanced Topic-Room Filtering</CardTitle>
+              <p className="text-xs sm:text-sm text-gray-600">
                 Filter rooms by specific topics and see detailed statistics
               </p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="space-y-4">
                 {/* Topic Selection for Room Filtering */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">
                       Select Topic to Filter Rooms
@@ -907,11 +922,11 @@ const RoomTopicFilterPage = () => {
 
                 {/* Filter Results */}
                 {selectedTopic !== 'all' && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold mb-4">
+                  <div className="mt-4 sm:mt-6">
+                    <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">
                       Rooms with Topic: {allTopics.find(t => t.id.toString() === selectedTopic)?.title}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                       {filteredRoomTopicData.map((roomData) => {
                         const topicData = roomData.topics.find(t => t.topic.id.toString() === selectedTopic);
                         if (!topicData) return null;
@@ -919,22 +934,22 @@ const RoomTopicFilterPage = () => {
                         return (
                           <Card key={`filter-${roomData.room.room_id}`} className="border-l-4 border-l-blue-500">
                             <CardHeader className="pb-2">
-                              <CardTitle className="text-base flex items-center justify-between">
-                                {roomData.room.name}
-                                <Badge variant="secondary">{roomData.room.room_type}</Badge>
+                              <CardTitle className="text-sm sm:text-base flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <span className="truncate">{roomData.room.name}</span>
+                                <Badge variant="secondary" className="w-fit text-xs">{roomData.room.room_type}</Badge>
                               </CardTitle>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="pt-0">
                               <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between text-xs sm:text-sm">
                                   <span className="text-gray-600">Topic Jobs:</span>
                                   <span className="font-medium">{topicData.count}</span>
                                 </div>
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between text-xs sm:text-sm">
                                   <span className="text-gray-600">Total Jobs:</span>
                                   <span className="font-medium">{roomData.totalJobs}</span>
                                 </div>
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between text-xs sm:text-sm">
                                   <span className="text-gray-600">Percentage:</span>
                                   <span className="font-medium">{topicData.percentage}%</span>
                                 </div>
@@ -964,11 +979,11 @@ const RoomTopicFilterPage = () => {
 
                 {/* Room Selection for Topic Filtering */}
                 {selectedRoom !== 'all' && (
-                  <div className="mt-6">
-                    <h3 className="text-lg font-semibold mb-4">
+                  <div className="mt-4 sm:mt-6">
+                    <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">
                       Topics in Room: {allRooms.find(r => r.room_id.toString() === selectedRoom)?.name}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                       {filteredTopicRoomData.map((topicData) => {
                         const roomData = topicData.rooms.find(r => r.room.room_id.toString() === selectedRoom);
                         if (!roomData) return null;
@@ -976,20 +991,20 @@ const RoomTopicFilterPage = () => {
                         return (
                           <Card key={`filter-topic-${topicData.topic.id}`} className="border-l-4 border-l-green-500">
                             <CardHeader className="pb-2">
-                              <CardTitle className="text-base">{topicData.topic.title}</CardTitle>
-                              <p className="text-sm text-gray-600">{topicData.topic.description || 'No description'}</p>
+                              <CardTitle className="text-sm sm:text-base">{topicData.topic.title}</CardTitle>
+                              <p className="text-xs sm:text-sm text-gray-600">{topicData.topic.description || 'No description'}</p>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="pt-0">
                               <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between text-xs sm:text-sm">
                                   <span className="text-gray-600">Room Jobs:</span>
                                   <span className="font-medium">{roomData.count}</span>
                                 </div>
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between text-xs sm:text-sm">
                                   <span className="text-gray-600">Total Jobs:</span>
                                   <span className="font-medium">{topicData.totalJobs}</span>
                                 </div>
-                                <div className="flex justify-between text-sm">
+                                <div className="flex justify-between text-xs sm:text-sm">
                                   <span className="text-gray-600">Percentage:</span>
                                   <span className="font-medium">{roomData.percentage}%</span>
                                 </div>

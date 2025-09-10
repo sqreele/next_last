@@ -1,5 +1,7 @@
 import logging
 import requests
+import base64
+import json
 from django.contrib.auth.models import User
 from django.conf import settings
 from rest_framework import authentication, exceptions
@@ -103,9 +105,9 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
 
         # First, decode without verification to see the actual issuer
         try:
-            # python-jose requires a key argument when calling decode();
-            # use get_unverified_headers + jwt.get_unverified_claims for unverified payload
-            unverified_payload = jwt.get_unverified_claims(token)
+            # Manually decode payload without verifying signature
+            # This avoids any library-level decode() calls that require a key
+            unverified_payload = self._decode_unverified_payload(token)
             actual_issuer = unverified_payload.get('iss')
             logger.debug(f"Token issuer: {actual_issuer}, Expected issuer: {issuer}")
         except JWTError as e:
@@ -154,6 +156,26 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
         except Exception as e:
             logger.error(f"Unexpected error during JWT validation: {e}")
             raise exceptions.AuthenticationFailed(_('Token validation failed.'))
+
+    @staticmethod
+    def _decode_unverified_payload(token: str) -> dict:
+        """
+        Decode the JWT payload without verifying the signature.
+        Safe for reading public claims like issuer (iss) and audience (aud).
+        """
+        parts = token.split('.')
+        if len(parts) != 3:
+            raise exceptions.AuthenticationFailed(_('Invalid token format.'))
+
+        payload_segment = parts[1]
+        # Pad base64 string to correct length (multiple of 4)
+        padding = '=' * (-len(payload_segment) % 4)
+        try:
+            decoded_bytes = base64.urlsafe_b64decode(payload_segment + padding)
+            decoded_str = decoded_bytes.decode('utf-8')
+            return json.loads(decoded_str)
+        except Exception as exc:
+            raise exceptions.AuthenticationFailed(_('Invalid token payload.')) from exc
 
     def _get_or_create_user_from_claims(self, claims):
         # Prefer email for identity when available; fallback to sub

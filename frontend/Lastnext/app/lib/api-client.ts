@@ -130,12 +130,31 @@ apiClient.interceptors.request.use(
         return config;
     }
 
-    // For Auth0, we don't need to handle token refresh in the interceptor
-    // Auth0 handles this automatically. We just need to get the current access token.
-    // The token will be injected by the components using the useUser hook.
-    
-    // Skip token injection here - let components handle it
-    console.log("[RequestInterceptor] Auth0 mode - skipping token injection in interceptor");
+    // For Auth0, we need to get the current access token from the session
+    // and add it to the request headers
+    try {
+      // Get the current session data
+      const sessionResponse = await fetch('/api/auth/session-compat', { 
+        credentials: 'include',
+        cache: 'no-store'
+      });
+      
+      if (sessionResponse.ok) {
+        const sessionData = await sessionResponse.json();
+        
+        if (sessionData?.user?.accessToken) {
+          // Add the access token to the request headers
+          config.headers.Authorization = `Bearer ${sessionData.user.accessToken}`;
+          console.log("[RequestInterceptor] Added access token to request headers");
+        } else {
+          console.warn("[RequestInterceptor] No access token found in session");
+        }
+      } else {
+        console.warn("[RequestInterceptor] Failed to get session data");
+      }
+    } catch (error) {
+      console.warn("[RequestInterceptor] Error getting session data:", error);
+    }
     
     // Add CSRF token for non-GET requests (only when CSRF is enabled)
     if (config.method && typeof config.method === 'string' && !['GET', 'HEAD', 'OPTIONS'].includes(config.method.toUpperCase())) {

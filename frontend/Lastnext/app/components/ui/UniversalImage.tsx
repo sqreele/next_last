@@ -124,15 +124,17 @@ export function UniversalImage({
 
   // Handle image load
   const handleLoad = useCallback(() => {
+    console.log('✅ Image loaded successfully:', src);
     setIsLoaded(true);
     onLoad?.();
-  }, [onLoad]);
+  }, [onLoad, src]);
 
   // Handle image error
   const handleError = useCallback(() => {
+    console.error('❌ Image failed to load:', src);
     setHasError(true);
     onError?.();
-  }, [onError]);
+  }, [onError, src]);
 
   // Handle loading complete
   const handleLoadingComplete = useCallback(() => {
@@ -182,6 +184,7 @@ export function UniversalImage({
   // Debug logging
   if (process.env.NODE_ENV === 'development' && isExternalImage) {
     console.log('External image detected:', src, 'shouldUnoptimize:', shouldUnoptimize);
+    console.log('Image component props:', { src, alt, className, width, height, fill });
   }
 
   // Error state with fallback
@@ -267,8 +270,8 @@ export function UniversalImage({
             objectPosition,
             transition: 'opacity 0.3s ease-in-out',
             opacity: isLoaded ? 1 : 0,
-            width: fill ? '100%' : width,
-            height: fill ? '100%' : height,
+            width: fill ? '100%' : (width ? `${width}px` : 'auto'),
+            height: fill ? '100%' : (height ? `${height}px` : 'auto'),
           }}
           onLoad={handleLoad}
           onError={handleError}

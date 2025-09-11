@@ -350,6 +350,14 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
     testMachineFiltering
   };
 
+  // Debug: Log context value
+  console.log('🔍 PreventiveContext - contextValue:', {
+    hasFetchMaintenanceItems: typeof fetchMaintenanceItems === 'function',
+    fetchMaintenanceItemsType: typeof fetchMaintenanceItems,
+    contextKeys: Object.keys(contextValue),
+    maintenanceItemsCount: maintenanceItems?.length || 0
+  });
+
   return (
     <PreventiveMaintenanceContext.Provider value={contextValue}>
       {children}

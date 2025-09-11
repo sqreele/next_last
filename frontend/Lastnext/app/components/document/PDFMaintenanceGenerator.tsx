@@ -1,5 +1,6 @@
 // PDFMaintenanceGenerator.tsx
 
+/// <reference types="react" />
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -27,7 +28,7 @@ import {
   getLocationString,
   itemMatchesMachine
 } from '@/app/lib/preventiveMaintenanceModels';
-import { usePreventiveMaintenance } from '@/app/lib/stores/mainStore';
+import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -790,24 +791,25 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="min-h-screen bg-gray-50">
       {/* Controls Section - Hidden in print */}
-      <div className="no-print mb-8 bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center">
-            <Link
-              href="/dashboard/preventive-maintenance"
-              className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 mr-4"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to List
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-              <FileText className="h-6 w-6 mr-2 text-blue-600" />
-              Generate Maintenance PDF Report
-            </h1>
-          </div>
-          <div className="flex space-x-3">
+      <div className="no-print bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center">
+              <Link
+                href="/dashboard/preventive-maintenance"
+                className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 mr-4"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to List
+              </Link>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                <FileText className="h-6 w-6 mr-2 text-blue-600" />
+                Generate Maintenance PDF Report
+              </h1>
+            </div>
+            <div className="flex flex-wrap gap-3">
             {process.env.NODE_ENV === 'development' && (
               <>
                 <button
@@ -883,26 +885,26 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
               <Download className="h-4 w-4 mr-2" />
               Download HTML
             </button>
-          </div>
-        </div>
-
-        {/* Show applied filters */}
-        {initialFilters && (
-          <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-            <h3 className="font-medium text-blue-900 mb-2">Applied Filters from Main Page:</h3>
-            <div className="text-sm text-blue-800 space-y-1">
-              {initialFilters.status && <div>Status: <span className="font-medium capitalize">{initialFilters.status}</span></div>}
-              {initialFilters.frequency && <div>Frequency: <span className="font-medium capitalize">{initialFilters.frequency}</span></div>}
-              {initialFilters.machineId && <div>Machine: <span className="font-medium">{initialFilters.machineId}</span></div>}
-              {initialFilters.search && <div>Search: <span className="font-medium">"{initialFilters.search}"</span></div>}
-              {initialFilters.startDate && <div>Start Date: <span className="font-medium">{initialFilters.startDate}</span></div>}
-              {initialFilters.endDate && <div>End Date: <span className="font-medium">{initialFilters.endDate}</span></div>}
             </div>
           </div>
-        )}
 
-        {/* Additional Filters for PDF */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+          {/* Show applied filters */}
+          {initialFilters && (
+            <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-medium text-blue-900 mb-2">Applied Filters from Main Page:</h3>
+              <div className="text-sm text-blue-800 space-y-1">
+                {initialFilters.status && <div>Status: <span className="font-medium capitalize">{initialFilters.status}</span></div>}
+                {initialFilters.frequency && <div>Frequency: <span className="font-medium capitalize">{initialFilters.frequency}</span></div>}
+                {initialFilters.machineId && <div>Machine: <span className="font-medium">{initialFilters.machineId}</span></div>}
+                {initialFilters.search && <div>Search: <span className="font-medium">"{initialFilters.search}"</span></div>}
+                {initialFilters.startDate && <div>Start Date: <span className="font-medium">{initialFilters.startDate}</span></div>}
+                {initialFilters.endDate && <div>End Date: <span className="font-medium">{initialFilters.endDate}</span></div>}
+              </div>
+            </div>
+          )}
+
+          {/* Additional Filters for PDF */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Override Status Filter</label>
             <select
@@ -1123,20 +1125,22 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
        )}
      </div>
 
-     {/* PDF Content - Fixed width and centering */}
-     <div 
-       id="pdf-content" 
-       ref={printRef} 
-       className="bg-white mx-auto"
-       style={{ 
-         width: '794px', // A4 width in pixels at 96 DPI
-         maxWidth: '100%',
-         padding: '40px',
-         fontFamily: 'Arial, sans-serif',
-         lineHeight: '1.6',
-         color: '#000000'
-       }}
-     >
+      {/* PDF Content - Fixed width and centering */}
+      <div className="flex justify-center p-6">
+        <div 
+          id="pdf-content" 
+          ref={printRef} 
+          className="bg-white shadow-lg"
+          style={{ 
+            width: '794px', // A4 width in pixels at 96 DPI
+            maxWidth: '100%',
+            padding: '40px',
+            fontFamily: 'Arial, sans-serif',
+            lineHeight: '1.6',
+            color: '#000000',
+            minHeight: '1123px' // A4 height in pixels at 96 DPI
+          }}
+        >
        {/* Header */}
        <div className="text-center mb-8 border-b-2 border-gray-300 pb-6">
          <h1 className="text-3xl font-bold text-gray-900 mb-2">Preventive Maintenance Report</h1>
@@ -1186,118 +1190,110 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
      </div>
 
      {/* Maintenance Tasks Table */}
-     {filteredData.length > 0 && (
-       <div className="mb-8">
-         <h2 className="text-xl font-semibold mb-4 flex items-center">
-           <CheckCircle className="h-5 w-5 mr-2" />
-           Maintenance Tasks
-         </h2>
-         
-         <div className="overflow-x-auto">
-           <table className="w-full border-collapse border border-gray-300">
-             <thead>
-               <tr className="bg-gray-100">
-                 <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Task ID</th>
-                 <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Title</th>
-                 <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Procedure</th>
-                 <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Date</th>
-                 <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Status</th>
-                 <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Frequency</th>
-                 <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Machines</th>
-                 <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Topics</th>
-                 <th className="border border-gray-300 px-3 py-2 text-left text-xs font-semibold">Location</th>
-               </tr>
-             </thead>
-             <tbody>
-               {filteredData.map((item, index) => (
-                 <tr key={item.pm_id || `item-${index}`}>
-                   <td className="border border-gray-300 px-3 py-2 font-mono text-xs">{item.pm_id}</td>
-                   <td className="border border-gray-300 px-3 py-2 font-medium text-xs">
-                     {item.pmtitle || item.job_description || 'No title'}
-                   </td>
-                   <td className="border border-gray-300 px-3 py-2 text-xs">
-                     {item.procedure || item.job_description || 'No procedure'}
-                   </td>
-                   <td className="border border-gray-300 px-3 py-2 text-xs">{formatDate(item.scheduled_date)}</td>
-                   <td className={`border border-gray-300 px-3 py-2 font-medium text-xs ${getStatusColor(item)}`}>
-                     <span className="capitalize">{getTaskStatus(item)}</span>
-                   </td>
-                   <td className={`border border-gray-300 px-3 py-2 font-medium text-xs ${getFrequencyColor(item.frequency)}`}>
-                     <span className="capitalize">{item.frequency}</span>
-                   </td>
-                   <td className="border border-gray-300 px-3 py-2 text-xs">
-                     {getMachinesString(item.machines)}
-                   </td>
-                   <td className="border border-gray-300 px-3 py-2 text-xs">
-                     {getTopicsString(item.topics)}
-                   </td>
-                   <td className="border border-gray-300 px-3 py-2 text-xs">
-                     {getLocationString(item)}
-                   </td>
-                 </tr>
-               ))}
-             </tbody>
-           </table>
-         </div>
-       </div>
-     )}
+          {filteredData.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4 flex items-center">
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Maintenance Tasks Summary
+              </h2>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse border border-gray-300 text-xs">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-300 px-2 py-2 text-left font-semibold">ID</th>
+                      <th className="border border-gray-300 px-2 py-2 text-left font-semibold">Title</th>
+                      <th className="border border-gray-300 px-2 py-2 text-left font-semibold">Date</th>
+                      <th className="border border-gray-300 px-2 py-2 text-left font-semibold">Status</th>
+                      <th className="border border-gray-300 px-2 py-2 text-left font-semibold">Frequency</th>
+                      <th className="border border-gray-300 px-2 py-2 text-left font-semibold">Machines</th>
+                      <th className="border border-gray-300 px-2 py-2 text-left font-semibold">Location</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredData.map((item, index) => (
+                      <tr key={item.pm_id || `item-${index}`} className="hover:bg-gray-50">
+                        <td className="border border-gray-300 px-2 py-2 font-mono">{item.pm_id}</td>
+                        <td className="border border-gray-300 px-2 py-2 font-medium max-w-xs truncate" title={item.pmtitle || item.job_description || 'No title'}>
+                          {item.pmtitle || item.job_description || 'No title'}
+                        </td>
+                        <td className="border border-gray-300 px-2 py-2">{formatDate(item.scheduled_date)}</td>
+                        <td className={`border border-gray-300 px-2 py-2 font-medium ${getStatusColor(item)}`}>
+                          <span className="capitalize">{getTaskStatus(item)}</span>
+                        </td>
+                        <td className={`border border-gray-300 px-2 py-2 font-medium ${getFrequencyColor(item.frequency)}`}>
+                          <span className="capitalize">{item.frequency}</span>
+                        </td>
+                        <td className="border border-gray-300 px-2 py-2 max-w-xs truncate" title={getMachinesString(item.machines)}>
+                          {getMachinesString(item.machines)}
+                        </td>
+                        <td className="border border-gray-300 px-2 py-2 max-w-xs truncate" title={getLocationString(item)}>
+                          {getLocationString(item)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
-     {/* Detailed View Section */}
-     {includeDetails && filteredData.length > 0 && (
-       <div className="mb-8">
-         <h2 className="text-xl font-semibold mb-6 flex items-center">
-           <AlertCircle className="h-5 w-5 mr-2" />
-           Detailed Task Information
-         </h2>
-         
-         {filteredData.map((item, index) => (
-           <div key={item.pm_id || `item-${index}`} className="mb-6 border border-gray-300 rounded-lg p-4">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-               <div>
-                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                   {item.pmtitle || item.job_description || 'No title'} ({item.pm_id})
-                 </h3>
-                 <div className="space-y-1 text-sm">
-                   <div><strong>Scheduled Date:</strong> {formatDate(item.scheduled_date)}</div>
-                   <div><strong>Status:</strong> <span className={`font-medium ${getStatusColor(item)} capitalize`}>{getTaskStatus(item)}</span></div>
-                   <div><strong>Frequency:</strong> <span className={`font-medium ${getFrequencyColor(item.frequency)} capitalize`}>{item.frequency}</span></div>
-                 </div>
-               </div>
-               <div>
-                 <div className="space-y-1 text-sm">
-                   <div><strong>Machines:</strong> {getMachinesString(item.machines)}</div>
-                   <div><strong>Topics:</strong> {getTopicsString(item.topics)}</div>
-                   <div><strong>Location:</strong> {getLocationString(item)}</div>
-                 </div>
-               </div>
-             </div>
+          {/* Detailed View Section */}
+          {includeDetails && filteredData.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-6 flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                Detailed Task Information
+              </h2>
+              
+              {filteredData.map((item, index) => (
+                <div key={item.pm_id || `item-${index}`} className="mb-6 border border-gray-300 rounded-lg p-4 bg-gray-50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {item.pmtitle || item.job_description || 'No title'} ({item.pm_id})
+                      </h3>
+                      <div className="space-y-1 text-sm">
+                        <div><strong>Scheduled Date:</strong> {formatDate(item.scheduled_date)}</div>
+                        <div><strong>Status:</strong> <span className={`font-medium ${getStatusColor(item)} capitalize`}>{getTaskStatus(item)}</span></div>
+                        <div><strong>Frequency:</strong> <span className={`font-medium ${getFrequencyColor(item.frequency)} capitalize`}>{item.frequency}</span></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="space-y-1 text-sm">
+                        <div><strong>Machines:</strong> {getMachinesString(item.machines)}</div>
+                        <div><strong>Topics:</strong> {getTopicsString(item.topics)}</div>
+                        <div><strong>Location:</strong> {getLocationString(item)}</div>
+                      </div>
+                    </div>
+                  </div>
              
-             {/* Procedure and Job Description Section */}
-             {(item.procedure || item.job_description) && (
-               <div className="border-t border-gray-200 pt-3 mb-3">
-                 {item.procedure && (
-                   <div className="mb-3">
-                     <h4 className="font-medium text-gray-900 mb-2">Procedure:</h4>
-                     <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">{item.procedure}</p>
-                   </div>
-                 )}
-                 {item.job_description && (
-                   <div className="mb-3">
-                     <h4 className="font-medium text-gray-900 mb-2">Job Description:</h4>
-                     <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded border">{item.job_description}</p>
-                   </div>
-                 )}
-               </div>
-             )}
-             
-             {item.notes && (
-               <div className="border-t border-gray-200 pt-3">
-                 <h4 className="font-medium text-gray-900 mb-2">Notes:</h4>
-                 <p className="text-sm text-gray-700">{item.notes}</p>
-               </div>
-             )}
+                  {/* Procedure and Job Description Section */}
+                  {(item.procedure || item.job_description) && (
+                    <div className="border-t border-gray-200 pt-3 mb-3">
+                      {item.procedure && (
+                        <div className="mb-3">
+                          <h4 className="font-medium text-gray-900 mb-2">Procedure:</h4>
+                          <p className="text-sm text-gray-700 bg-white p-3 rounded border">{item.procedure}</p>
+                        </div>
+                      )}
+                      {item.job_description && (
+                        <div className="mb-3">
+                          <h4 className="font-medium text-gray-900 mb-2">Job Description:</h4>
+                          <p className="text-sm text-gray-700 bg-white p-3 rounded border">{item.job_description}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {item.notes && (
+                    <div className="border-t border-gray-200 pt-3">
+                      <h4 className="font-medium text-gray-900 mb-2">Notes:</h4>
+                      <p className="text-sm text-gray-700">{item.notes}</p>
+                    </div>
+                  )}
 
-             {(() => {
+                  {(() => {
                console.log('PDF Debug - Image section for item:', {
                  id: item.id,
                  pm_id: item.pm_id,
@@ -1318,129 +1314,131 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
                  return null;
                }
                
-               return (
-                 <div className="border-t border-gray-200 pt-3 mt-3">
-                   <h4 className="font-medium text-gray-900 mb-3">Images:</h4>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   {item.before_image_url && (
-                     <div>
-                       <p className="text-sm font-medium text-gray-700 mb-2">Before:</p>
-                       <div className="relative">
-                         <img 
-                           src={imageDataUrls[`before_${item.pm_id || item.id}`] || fixImageUrl(item.before_image_url || '') || item.before_image_url || ''} 
-                           alt="Before maintenance"
-                           className="w-full h-auto rounded border border-gray-300"
-                           style={{ 
-                             maxHeight: '250px', 
-                             objectFit: 'contain',
-                             display: 'block',
-                             margin: '0 auto',
-                             backgroundColor: '#f9f9f9'
-                           }}
-                           crossOrigin="anonymous"
-                           loading="lazy"
-                           onLoad={(e) => {
-                             console.log('PDF Debug - Before image loaded successfully for item:', item.id);
-                             console.log('PDF Debug - Image source:', e.currentTarget.src);
-                             e.currentTarget.style.backgroundColor = 'transparent';
-                           }}
-                           onError={(e) => {
-                             console.error('PDF Debug - Before image failed to load for item:', item.id);
-                             console.error('PDF Debug - Failed URL:', e.currentTarget.src);
-                             console.error('PDF Debug - Error details:', e);
-                             // Show placeholder instead of hiding
-                             const img = e.currentTarget;
-                             img.style.display = 'none';
-                             const placeholder = document.createElement('div');
-                             placeholder.className = 'w-full h-48 bg-gray-200 rounded border border-gray-300 flex items-center justify-center';
-                             placeholder.innerHTML = `
-                               <div class="text-center text-gray-500">
-                                 <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                 </svg>
-                                 <p class="text-sm">Image not available</p>
-                               </div>
-                             `;
-                             img.parentNode?.insertBefore(placeholder, img.nextSibling);
-                           }}
-                         />
-                       </div>
-                     </div>
-                   )}
-                   {item.after_image_url && (
-                     <div>
-                       <p className="text-sm font-medium text-gray-700 mb-2">After:</p>
-                       <div className="relative">
-                         <img 
-                           src={imageDataUrls[`after_${item.pm_id || item.id}`] || fixImageUrl(item.after_image_url || '') || item.after_image_url || ''} 
-                           alt="After maintenance"
-                           className="w-full h-auto rounded border border-gray-300"
-                           style={{ 
-                             maxHeight: '250px', 
-                             objectFit: 'contain',
-                             display: 'block',
-                             margin: '0 auto',
-                             backgroundColor: '#f9f9f9'
-                           }}
-                           crossOrigin="anonymous"
-                           loading="lazy"
-                           onLoad={(e) => {
-                             console.log('PDF Debug - After image loaded successfully for item:', item.id);
-                             e.currentTarget.style.backgroundColor = 'transparent';
-                           }}
-                           onError={(e) => {
-                             console.error('PDF Debug - After image failed to load for item:', item.id);
-                             console.error('PDF Debug - Failed URL:', e.currentTarget.src);
-                             // Show placeholder instead of hiding
-                             const img = e.currentTarget;
-                             img.style.display = 'none';
-                             const placeholder = document.createElement('div');
-                             placeholder.className = 'w-full h-48 bg-gray-200 rounded border border-gray-300 flex items-center justify-center';
-                             placeholder.innerHTML = `
-                               <div class="text-center text-gray-500">
-                                 <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                 </svg>
-                                 <p class="text-sm">Image not available</p>
-                               </div>
-                             `;
-                             img.parentNode?.insertBefore(placeholder, img.nextSibling);
-                           }}
-                         />
-                       </div>
-                     </div>
-                   )}
-                                 </div>
-              </div>
-            );
-          })()}
-           </div>
-         ))}
-       </div>
-     )}
+                  return (
+                    <div className="border-t border-gray-200 pt-3 mt-3">
+                      <h4 className="font-medium text-gray-900 mb-3">Images:</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {item.before_image_url && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-700 mb-2">Before:</p>
+                            <div className="relative">
+                              <img 
+                                src={imageDataUrls[`before_${item.pm_id || item.id}`] || fixImageUrl(item.before_image_url || '') || item.before_image_url || ''} 
+                                alt="Before maintenance"
+                                className="w-full h-auto rounded border border-gray-300"
+                                style={{ 
+                                  maxHeight: '250px', 
+                                  objectFit: 'contain',
+                                  display: 'block',
+                                  margin: '0 auto',
+                                  backgroundColor: '#f9f9f9'
+                                }}
+                                crossOrigin="anonymous"
+                                loading="lazy"
+                                onLoad={(e) => {
+                                  console.log('PDF Debug - Before image loaded successfully for item:', item.id);
+                                  console.log('PDF Debug - Image source:', e.currentTarget.src);
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                                onError={(e) => {
+                                  console.error('PDF Debug - Before image failed to load for item:', item.id);
+                                  console.error('PDF Debug - Failed URL:', e.currentTarget.src);
+                                  console.error('PDF Debug - Error details:', e);
+                                  // Show placeholder instead of hiding
+                                  const img = e.currentTarget;
+                                  img.style.display = 'none';
+                                  const placeholder = document.createElement('div');
+                                  placeholder.className = 'w-full h-48 bg-gray-200 rounded border border-gray-300 flex items-center justify-center';
+                                  placeholder.innerHTML = `
+                                    <div class="text-center text-gray-500">
+                                      <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                      </svg>
+                                      <p class="text-sm">Image not available</p>
+                                    </div>
+                                  `;
+                                  img.parentNode?.insertBefore(placeholder, img.nextSibling);
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {item.after_image_url && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-700 mb-2">After:</p>
+                            <div className="relative">
+                              <img 
+                                src={imageDataUrls[`after_${item.pm_id || item.id}`] || fixImageUrl(item.after_image_url || '') || item.after_image_url || ''} 
+                                alt="After maintenance"
+                                className="w-full h-auto rounded border border-gray-300"
+                                style={{ 
+                                  maxHeight: '250px', 
+                                  objectFit: 'contain',
+                                  display: 'block',
+                                  margin: '0 auto',
+                                  backgroundColor: '#f9f9f9'
+                                }}
+                                crossOrigin="anonymous"
+                                loading="lazy"
+                                onLoad={(e) => {
+                                  console.log('PDF Debug - After image loaded successfully for item:', item.id);
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                                onError={(e) => {
+                                  console.error('PDF Debug - After image failed to load for item:', item.id);
+                                  console.error('PDF Debug - Failed URL:', e.currentTarget.src);
+                                  // Show placeholder instead of hiding
+                                  const img = e.currentTarget;
+                                  img.style.display = 'none';
+                                  const placeholder = document.createElement('div');
+                                  placeholder.className = 'w-full h-48 bg-gray-200 rounded border border-gray-300 flex items-center justify-center';
+                                  placeholder.innerHTML = `
+                                    <div class="text-center text-gray-500">
+                                      <svg class="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                      </svg>
+                                      <p class="text-sm">Image not available</p>
+                                    </div>
+                                  `;
+                                  img.parentNode?.insertBefore(placeholder, img.nextSibling);
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+                </div>
+              ))}
+            </div>
+          )}
 
-     {/* Footer */}
-     <div className="border-t border-gray-300 pt-4 text-center text-sm text-gray-500">
-       <p>This report was automatically generated by the Facility Management System</p>
-       <p>© 2025 - Confidential and Proprietary Information</p>
-     </div>
-   </div>
+          {/* Footer */}
+          <div className="border-t border-gray-300 pt-4 text-center text-sm text-gray-500">
+            <p>This report was automatically generated by the Facility Management System</p>
+            <p>© 2025 - Confidential and Proprietary Information</p>
+          </div>
+        </div>
+      </div>
 
-   {/* No data message */}
-   {filteredData.length === 0 && (
-     <div className="no-print text-center py-12">
-       <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-       <h3 className="text-lg font-medium text-gray-900 mb-2">No maintenance tasks found</h3>
-       <p className="text-gray-600">
-         {maintenanceData.length === 0 
-           ? "No maintenance data is available. Please ensure maintenance records are loaded."
-           : "Try adjusting your filters to see more results."
-         }
-       </p>
-     </div>
-   )}
- </div>
-);
+      {/* No data message */}
+      {filteredData.length === 0 && (
+        <div className="no-print text-center py-12">
+          <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No maintenance tasks found</h3>
+          <p className="text-gray-600">
+            {maintenanceData.length === 0 
+              ? "No maintenance data is available. Please ensure maintenance records are loaded."
+              : "Try adjusting your filters to see more results."
+            }
+          </p>
+        </div>
+      )}
+    </div>
+    </div>
+  );
 };
 
 export default PDFMaintenanceGenerator;

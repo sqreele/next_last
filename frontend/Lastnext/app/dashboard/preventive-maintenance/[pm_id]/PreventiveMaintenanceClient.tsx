@@ -269,16 +269,26 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
   // Image URL functions
   const getBeforeImageUrl = (): string | null => {
+    console.log('🔍 Debug - maintenanceData.before_image_url:', maintenanceData.before_image_url);
     if (maintenanceData.before_image_url) {
-      return fixImageUrl(maintenanceData.before_image_url);
+      const fixedUrl = fixImageUrl(maintenanceData.before_image_url);
+      console.log('🔍 Debug - fixed before image URL:', fixedUrl);
+      console.log('🔍 Debug - URL starts with http:', fixedUrl?.startsWith('http'));
+      return fixedUrl;
     }
+    console.log('🔍 Debug - No before_image_url found');
     return null;
   };
 
   const getAfterImageUrl = (): string | null => {
+    console.log('🔍 Debug - maintenanceData.after_image_url:', maintenanceData.after_image_url);
     if (maintenanceData.after_image_url) {
-      return fixImageUrl(maintenanceData.after_image_url);
+      const fixedUrl = fixImageUrl(maintenanceData.after_image_url);
+      console.log('🔍 Debug - fixed after image URL:', fixedUrl);
+      console.log('🔍 Debug - URL starts with http:', fixedUrl?.startsWith('http'));
+      return fixedUrl;
     }
+    console.log('🔍 Debug - No after_image_url found');
     return null;
   };
 
@@ -295,8 +305,23 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
     setCurrentImage(null);
   };
 
+  // Debug: Log the full maintenance data structure
+  console.log('🔍 Debug - Full maintenance data:', maintenanceData);
+  console.log('🔍 Debug - Image fields:', {
+    before_image_url: maintenanceData.before_image_url,
+    after_image_url: maintenanceData.after_image_url
+  });
+
   const beforeImageUrl = getBeforeImageUrl();
   const afterImageUrl = getAfterImageUrl();
+  
+  // Additional debugging
+  console.log('🔍 Final image URLs:', {
+    beforeImageUrl,
+    afterImageUrl,
+    beforeImageUrlType: typeof beforeImageUrl,
+    afterImageUrlType: typeof afterImageUrl
+  });
   
   // Helper function to format dates
   const formatDate = (dateString: string | null | undefined) => {
@@ -743,6 +768,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {console.log('🔍 Rendering check - beforeImageUrl:', beforeImageUrl, 'truthy:', !!beforeImageUrl)}
               {beforeImageUrl ? (
                 <div className="bg-white/80 p-4 rounded-xl">
                   <div className="text-gray-700 font-medium mb-3 flex items-center gap-2">
@@ -753,11 +779,13 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                     className="relative w-full h-56 bg-gray-100 rounded-xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-xl transition-all duration-300"
                     onClick={() => openImageModal(beforeImageUrl, 'Before Maintenance')}
                   >
-                    <MaintenanceImage
-                      src={beforeImageUrl}
+                    <img
+                      src={beforeImageUrl || ''}
                       alt="Before Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      fill
+                      style={{ width: '100%', height: '100%' }}
+                      onLoad={() => console.log('✅ Before image loaded successfully')}
+                      onError={(e) => console.error('❌ Before image failed to load:', e)}
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
                       <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">
@@ -781,6 +809,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                 </div>
               )}
 
+              {console.log('🔍 Rendering check - afterImageUrl:', afterImageUrl, 'truthy:', !!afterImageUrl)}
               {afterImageUrl ? (
                 <div className="bg-white/80 p-4 rounded-xl">
                   <div className="text-gray-700 font-medium mb-3 flex items-center gap-2">
@@ -791,11 +820,13 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                     className="relative w-full h-56 bg-gray-100 rounded-xl overflow-hidden cursor-pointer group shadow-lg hover:shadow-xl transition-all duration-300"
                     onClick={() => openImageModal(afterImageUrl, 'After Maintenance')}
                   >
-                    <MaintenanceImage
-                      src={afterImageUrl}
+                    <img
+                      src={afterImageUrl || ''}
                       alt="After Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      fill
+                      style={{ width: '100%', height: '100%' }}
+                      onLoad={() => console.log('✅ After image loaded successfully')}
+                      onError={(e) => console.error('❌ After image failed to load:', e)}
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
                       <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { appSignOut } from '@/app/lib/logout';
+import { PreventiveMaintenanceProvider } from '@/app/lib/PreventiveContext';
 import {
   Home,
   LineChart,
@@ -65,21 +66,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isSidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   return (
-    <div className="flex min-h-screen w-full bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800">
-      <DesktopNav 
-        collapsed={isSidebarCollapsed} 
-        toggleCollapse={() => setSidebarCollapsed(!isSidebarCollapsed)} 
-      />
-      <div className="flex flex-1 flex-col">
-        <MobileHeader />
-        <DesktopHeader sidebarCollapsed={isSidebarCollapsed} />
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto transition-colors pb-20 md:pb-0">
-          <div className="mx-auto w-full max-w-7xl">{children}</div>
-        </main>
-        <PropertyDebug />
-        <BottomNav />
+    <PreventiveMaintenanceProvider>
+      <div className="flex min-h-screen w-full bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800">
+        <DesktopNav 
+          collapsed={isSidebarCollapsed} 
+          toggleCollapse={() => setSidebarCollapsed(!isSidebarCollapsed)} 
+        />
+        <div className="flex flex-1 flex-col">
+          <MobileHeader />
+          <DesktopHeader sidebarCollapsed={isSidebarCollapsed} />
+          <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto transition-colors pb-20 md:pb-0">
+            <div className="mx-auto w-full max-w-7xl">{children}</div>
+          </main>
+          <PropertyDebug />
+          <BottomNav />
+        </div>
       </div>
-    </div>
+    </PreventiveMaintenanceProvider>
   );
 }
 

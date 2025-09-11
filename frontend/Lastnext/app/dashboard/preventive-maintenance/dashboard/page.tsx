@@ -1,14 +1,8 @@
 'use client';
 
 import React from 'react';
-import dynamic from 'next/dynamic';
 import { PreventiveMaintenanceProvider } from '@/app/lib/PreventiveContext';
-
-// Dynamically import the dashboard component with no SSR
-const PreventiveMaintenanceDashboard = dynamic(
-  () => import('@/app/components/preventive/PreventiveMaintenanceDashboard'),
-  { ssr: false }
-);
+import PreventiveMaintenanceDashboard from '@/app/components/preventive/PreventiveMaintenanceDashboard';
 
 export default function PreventiveMaintenanceDashboardPage() {
   return (

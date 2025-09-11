@@ -373,7 +373,7 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
     class Meta:
         model = PreventiveMaintenance
         fields = [
-            'pm_id', 'job_id', 'job_description', 'scheduled_date', 'completed_date',
+            'pm_id', 'pmtitle', 'job_id', 'job_description', 'scheduled_date', 'completed_date',
             'frequency', 'next_due_date', 'status', 'topics', 'machines', 'property_id',
             'procedure', 'notes', 'before_image_url', 'after_image_url'
         ]

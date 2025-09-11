@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { usePreventiveMaintenance } from '@/app/lib/stores/mainStore';
+import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { preventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
 import Image from 'next/image';
@@ -73,12 +73,72 @@ const formatFrequencyName = (frequency: string | undefined | null): string => {
 
 export default function PreventiveMaintenanceDashboard() {
   // Use our store hook to access all maintenance data and actions
+  const context = usePreventiveMaintenance();
   const { 
     maintenanceItems, 
     maintenanceLoading: isLoading, 
     maintenanceError: error,
-    setMaintenanceItems 
-  } = usePreventiveMaintenance();
+    fetchMaintenanceItems
+  } = context;
+
+  // Pagination state for upcoming maintenance
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [upcomingPageSize, setUpcomingPageSize] = useState(10);
+  const [upcomingItems, setUpcomingItems] = useState<PreventiveMaintenance[]>([]);
+  const [upcomingTotal, setUpcomingTotal] = useState(0);
+  const [upcomingLoading, setUpcomingLoading] = useState(false);
+
+  // Debug: Log what's available in the context
+  console.log('🔍 Dashboard context:', {
+    hasFetchMaintenanceItems: typeof fetchMaintenanceItems === 'function',
+    contextKeys: Object.keys(context),
+    maintenanceItemsCount: maintenanceItems?.length || 0
+  });
+
+  // Function to fetch upcoming maintenance with pagination
+  const fetchUpcomingMaintenance = useCallback(async (page: number = 1, pageSize: number = 10) => {
+    setUpcomingLoading(true);
+    try {
+      console.log('🔍 Fetching upcoming maintenance with pagination:', { page, pageSize });
+      
+      const params = {
+        status: 'pending',
+        page: page,
+        page_size: pageSize,
+        ordering: 'scheduled_date'
+      };
+
+      const response = await preventiveMaintenanceService.getAllPreventiveMaintenance(params);
+      
+      if (response.success && response.data) {
+        let items: PreventiveMaintenance[];
+        let total: number;
+        
+        if (Array.isArray(response.data)) {
+          items = response.data;
+          total = response.data.length;
+        } else {
+          // Paginated response
+          items = response.data.results || [];
+          total = response.data.count || 0;
+        }
+        
+        setUpcomingItems(items);
+        setUpcomingTotal(total);
+        console.log('✅ Upcoming maintenance fetched:', { items: items.length, total });
+      } else {
+        console.error('❌ Failed to fetch upcoming maintenance:', response.message);
+        setUpcomingItems([]);
+        setUpcomingTotal(0);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching upcoming maintenance:', error);
+      setUpcomingItems([]);
+      setUpcomingTotal(0);
+    } finally {
+      setUpcomingLoading(false);
+    }
+  }, []);
 
   // Transform maintenance items into statistics format for compatibility
   const statistics = useMemo(() => {
@@ -105,23 +165,76 @@ export default function PreventiveMaintenanceDashboard() {
     };
   }, [maintenanceItems]);
 
-  // Fetch stats on component mount
+  // Fetch maintenance data on component mount
   useEffect(() => {
-    // For now, just set some mock data
-    setMaintenanceItems([]);
-  }, [setMaintenanceItems]);
+    console.log('🔍 Dashboard: Fetching maintenance data...');
+    console.log('🔍 fetchMaintenanceItems type:', typeof fetchMaintenanceItems);
+    console.log('🔍 fetchMaintenanceItems value:', fetchMaintenanceItems);
+    console.log('🔍 Full context object:', context);
+    
+    if (maintenanceItems.length === 0 && !isLoading) {
+      if (typeof fetchMaintenanceItems === 'function') {
+        console.log('🔍 Calling fetchMaintenanceItems...');
+        fetchMaintenanceItems();
+      } else {
+        console.error('❌ fetchMaintenanceItems is not available:', fetchMaintenanceItems);
+        console.log('🔍 Available context keys:', Object.keys(context));
+        
+        // Try to access the function directly from context
+        if (context && typeof context.fetchMaintenanceItems === 'function') {
+          console.log('🔍 Found fetchMaintenanceItems in context, calling it...');
+          context.fetchMaintenanceItems();
+        } else {
+          console.error('❌ fetchMaintenanceItems not found in context either');
+          // Try to manually fetch data using the service directly
+          console.log('🔍 Attempting manual data fetch...');
+          const manualFetch = async () => {
+            try {
+              const response = await preventiveMaintenanceService.getAllPreventiveMaintenance();
+              if (response.success && response.data) {
+                console.log('✅ Manual fetch successful:', response.data);
+                // Note: This won't update the context, but will show data is available
+              }
+            } catch (error) {
+              console.error('❌ Manual fetch failed:', error);
+            }
+          };
+          manualFetch();
+        }
+      }
+    }
+  }, [maintenanceItems.length, isLoading, fetchMaintenanceItems, context]);
 
-  // Debug effect to log statistics data
+  // Debug effect to log data
   useEffect(() => {
+    console.log('=== DASHBOARD DEBUG ===');
+    console.log('Maintenance items count:', maintenanceItems?.length || 0);
+    console.log('Is loading:', isLoading);
+    console.log('Error:', error);
+    console.log('Statistics object:', statistics);
     if (statistics) {
-      console.log('=== DASHBOARD DEBUG ===');
-      console.log('Statistics object:', statistics);
-      console.log('Frequency distribution:', statistics.frequency_distribution);
       console.log('Upcoming array:', statistics.upcoming);
       console.log('Upcoming length:', statistics.upcoming?.length);
       console.log('Avg completion times:', statistics.avg_completion_times);
     }
-  }, [statistics]);
+  }, [maintenanceItems, isLoading, error, statistics]);
+
+  // Fetch upcoming maintenance with pagination
+  useEffect(() => {
+    fetchUpcomingMaintenance(upcomingPage, upcomingPageSize);
+  }, [upcomingPage, upcomingPageSize, fetchUpcomingMaintenance]);
+
+  // Pagination control functions
+  const handlePageChange = (newPage: number) => {
+    setUpcomingPage(newPage);
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setUpcomingPageSize(newPageSize);
+    setUpcomingPage(1); // Reset to first page when changing page size
+  };
+
+  const totalPages = Math.ceil(upcomingTotal / upcomingPageSize);
 
   // Format date
   const formatDate = (dateString: string | null | undefined): string => {
@@ -396,10 +509,24 @@ export default function PreventiveMaintenanceDashboard() {
         <div className="px-6 py-4 border-b">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-700">Upcoming Maintenance</h2>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-500">
-                Next 7 days: {statistics.upcoming?.length || 0} tasks
+                Total: {upcomingTotal} tasks
               </span>
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-gray-500">Show:</label>
+                <select
+                  value={upcomingPageSize}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                  className="text-sm border border-gray-300 rounded px-2 py-1"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                </select>
+                <span className="text-sm text-gray-500">per page</span>
+              </div>
               {process.env.NODE_ENV === 'development' && (
                 <button 
                   onClick={handleDebugClick}
@@ -412,9 +539,15 @@ export default function PreventiveMaintenanceDashboard() {
           </div>
         </div>
         
-        {statistics.upcoming && Array.isArray(statistics.upcoming) && statistics.upcoming.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+        {upcomingLoading ? (
+          <div className="p-8 text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <p className="mt-2 text-gray-500">Loading upcoming maintenance...</p>
+          </div>
+        ) : upcomingItems && Array.isArray(upcomingItems) && upcomingItems.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -441,7 +574,7 @@ export default function PreventiveMaintenanceDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {statistics.upcoming
+                {upcomingItems
                   .filter((item: PreventiveMaintenance) => item && typeof item === 'object')
                   .map((item: PreventiveMaintenance) => {
                   // Determine PM status
@@ -530,8 +663,61 @@ export default function PreventiveMaintenanceDashboard() {
                   );
                 })}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+            <div className="px-6 py-4 border-t bg-gray-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-700">
+                    Showing {((upcomingPage - 1) * upcomingPageSize) + 1} to {Math.min(upcomingPage * upcomingPageSize, upcomingTotal)} of {upcomingTotal} results
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handlePageChange(upcomingPage - 1)}
+                    disabled={upcomingPage <= 1}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  
+                  {/* Page numbers */}
+                  <div className="flex space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const pageNum = Math.max(1, Math.min(totalPages - 4, upcomingPage - 2)) + i;
+                      if (pageNum > totalPages) return null;
+                      
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`px-3 py-1 text-sm border rounded ${
+                            pageNum === upcomingPage
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => handlePageChange(upcomingPage + 1)}
+                    disabled={upcomingPage >= totalPages}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+            )}
+          </>
         ) : (
           <div className="p-6 text-center">
             <div className="text-gray-400 mb-2">
@@ -539,12 +725,12 @@ export default function PreventiveMaintenanceDashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V9a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V11a2 2 0 00-2-2v0" />
               </svg>
             </div>
-            <p className="text-gray-500 mb-2">No upcoming maintenance tasks in the next 7 days</p>
+            <p className="text-gray-500 mb-2">No upcoming maintenance tasks found</p>
             <p className="text-sm text-gray-400">This could mean:</p>
             <ul className="text-sm text-gray-400 mt-1 list-disc list-inside">
               <li>All tasks are completed</li>
-              <li>Tasks are scheduled beyond 7 days</li>
-              <li>No maintenance tasks exist yet</li>
+              <li>No pending maintenance tasks exist</li>
+              <li>Try adjusting your filters</li>
             </ul>
             <div className="mt-4 space-x-2">
               <Link 

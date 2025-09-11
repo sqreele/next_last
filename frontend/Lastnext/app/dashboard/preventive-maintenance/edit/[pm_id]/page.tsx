@@ -2,12 +2,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import type { JSX } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
 import { PreventiveMaintenance, FrequencyType } from '@/app/lib/preventiveMaintenanceModels';
 import { UpdatePreventiveMaintenanceData } from '@/app/lib/PreventiveMaintenanceService';
 import { PreviewImage } from '@/app/components/ui/UniversalImage';
+import { fixImageUrl } from '@/app/lib/utils/image-utils';
 import { 
   Calendar, 
   Save, 
@@ -128,7 +130,22 @@ export default function EditPreventiveMaintenancePage() {
       incoming_data: data,
       pmtitle_from_data: data.pmtitle,
       pmtitle_type: typeof data.pmtitle,
-      pmtitle_length: data.pmtitle?.length || 0
+      pmtitle_length: data.pmtitle?.length || 0,
+      before_image_url: data.before_image_url,
+      after_image_url: data.after_image_url,
+      has_before_image: !!data.before_image_url,
+      has_after_image: !!data.after_image_url
+    });
+
+    // Fix image URLs before setting them
+    const fixedBeforeImageUrl = data.before_image_url ? fixImageUrl(data.before_image_url) : null;
+    const fixedAfterImageUrl = data.after_image_url ? fixImageUrl(data.after_image_url) : null;
+    
+    console.log('[EDIT FORM] Image URL fixing:', {
+      original_before_url: data.before_image_url,
+      fixed_before_url: fixedBeforeImageUrl,
+      original_after_url: data.after_image_url,
+      fixed_after_url: fixedAfterImageUrl
     });
 
     setFormState({
@@ -142,8 +159,8 @@ export default function EditPreventiveMaintenancePage() {
       machine_ids: data.machines ? data.machines.map(m => typeof m === 'object' ? m.machine_id : m) : [],
       before_image_file: null,
       after_image_file: null,
-      before_image_preview: data.before_image_url || null,
-      after_image_preview: data.after_image_url || null
+      before_image_preview: fixedBeforeImageUrl,
+      after_image_preview: fixedAfterImageUrl
     });
   };
 
@@ -563,12 +580,22 @@ export default function EditPreventiveMaintenancePage() {
                 
                 {formState.before_image_preview ? (
                   <div className="relative">
+                    {console.log('[EDIT FORM] Rendering before image:', {
+                      preview: formState.before_image_preview,
+                      type: typeof formState.before_image_preview,
+                      length: formState.before_image_preview?.length
+                    })}
                     <PreviewImage
                       src={formState.before_image_preview}
                       alt="Before maintenance"
                       className="w-full h-48 object-cover rounded-lg border border-gray-300"
                       width={400}
                       height={192}
+                      onLoad={() => console.log('[EDIT FORM] Before image loaded successfully')}
+                      onError={(e) => {
+                        console.error('[EDIT FORM] Before image failed to load:', e);
+                        console.error('[EDIT FORM] Failed URL:', formState.before_image_preview);
+                      }}
                     />
                     <button
                       type="button"
@@ -592,6 +619,7 @@ export default function EditPreventiveMaintenancePage() {
                         />
                       </label>
                     </div>
+                    {console.log('[EDIT FORM] No before image preview available - formState.before_image_preview:', formState.before_image_preview)}
                   </div>
                 )}
               </div>
@@ -604,12 +632,22 @@ export default function EditPreventiveMaintenancePage() {
                 
                 {formState.after_image_preview ? (
                   <div className="relative">
+                    {console.log('[EDIT FORM] Rendering after image:', {
+                      preview: formState.after_image_preview,
+                      type: typeof formState.after_image_preview,
+                      length: formState.after_image_preview?.length
+                    })}
                     <PreviewImage
                       src={formState.after_image_preview}
                       alt="After maintenance"
                       className="w-full h-48 object-cover rounded-lg border border-gray-300"
                       width={400}
                       height={192}
+                      onLoad={() => console.log('[EDIT FORM] After image loaded successfully')}
+                      onError={(e) => {
+                        console.error('[EDIT FORM] After image failed to load:', e);
+                        console.error('[EDIT FORM] Failed URL:', formState.after_image_preview);
+                      }}
                     />
                     <button
                       type="button"
@@ -633,6 +671,7 @@ export default function EditPreventiveMaintenancePage() {
                         />
                       </label>
                     </div>
+                    {console.log('[EDIT FORM] No after image preview available - formState.after_image_preview:', formState.after_image_preview)}
                   </div>
                 )}
               </div>

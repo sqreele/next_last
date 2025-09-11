@@ -295,12 +295,25 @@ class JobImageInline(admin.TabularInline):
         return "No Image"
     image_preview.short_description = 'Image Preview'
 
+# Filters
+class PropertyFilter(admin.SimpleListFilter):
+    title = 'property'
+    parameter_name = 'property'
+
+    def lookups(self, request, model_admin):
+        return [(str(p.id), p.name) for p in Property.objects.all().order_by('name')]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(rooms__properties__id=self.value()).distinct()
+        return queryset
+
 # ModelAdmins
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
     form = JobAdminForm
     list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_user_display', 'user_id', 'get_properties_display', 'get_timestamps_display', 'is_preventivemaintenance']
-    list_filter = ['status', 'priority', 'is_defective', 'created_at', 'updated_at', 'is_preventivemaintenance', 'user']
+    list_filter = ['status', 'priority', 'is_defective', 'created_at', 'updated_at', 'is_preventivemaintenance', 'user', PropertyFilter]
     search_fields = ['job_id', 'description', 'user__username', 'updated_by__username', 'topics__title']
     readonly_fields = ['job_id', 'updated_by']
     filter_horizontal = ['rooms', 'topics']
@@ -419,6 +432,9 @@ class JobAdmin(admin.ModelAdmin):
         )
     get_timestamps_display.short_description = 'Timestamps'
     get_timestamps_display.admin_order_field = 'created_at'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user', 'updated_by').prefetch_related('rooms__properties', 'topics')
 
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)

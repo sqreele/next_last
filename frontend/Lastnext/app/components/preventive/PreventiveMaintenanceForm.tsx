@@ -18,6 +18,7 @@ import apiClient from '@/app/lib/api-client';
 import FileUpload from '@/app/components/jobs/FileUpload';
 import { useToast } from '@/app/lib/hooks/use-toast';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
+import { useSession } from '@/app/lib/session.client';
 import { PreviewImage } from '@/app/components/ui/UniversalImage';
 import { preventiveMaintenanceService, 
   type CreatePreventiveMaintenanceData,
@@ -58,7 +59,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   machineId,
 }) => {
   const { toast } = useToast();
-  const { accessToken, user } = useClientAuth0();
+  const { accessToken: auth0AccessToken, user } = useClientAuth0();
+  const { data: session } = useSession();
+  const accessToken = auth0AccessToken || session?.user?.accessToken || null;
   const {
     properties: userProperties,
   } = useProperties();

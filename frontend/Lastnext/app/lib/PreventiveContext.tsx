@@ -51,7 +51,9 @@ export interface PreventiveMaintenanceContextType {
 const PreventiveMaintenanceContext = createContext<PreventiveMaintenanceContextType | undefined>(undefined);
 
 export function PreventiveMaintenanceProvider({ children }: { children: React.ReactNode }) {
-  const { accessToken, user } = useClientAuth0();
+  const { accessToken: auth0AccessToken, user } = useClientAuth0();
+  const { data: session } = useSession();
+  const accessToken = auth0AccessToken || session?.user?.accessToken || null;
   const { selectedProperty } = useAuthStore();
   
   // Zustand store

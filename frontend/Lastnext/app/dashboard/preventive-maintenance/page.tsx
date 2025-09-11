@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { usePreventiveMaintenance } from '@/app/lib/stores/mainStore';
+import { usePreventiveMaintenance as usePreventiveMaintenanceContext } from '@/app/lib/PreventiveContext';
 import { useFilterStore } from '@/app/lib/stores';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
+import { PreventiveMaintenanceProvider } from '@/app/lib/PreventiveContext';
 
 // Import types
 import { FilterState, MachineOption, Stats } from '@/app/lib/hooks/filterTypes';
@@ -35,7 +36,7 @@ import {
 // Define the sort field type
 type SortField = 'date' | 'status' | 'frequency' | 'machine';
 
-export default function PreventiveMaintenanceListPage() {
+function PreventiveMaintenanceListPageContent() {
   const router = useRouter();
   const { 
     status, 
@@ -59,31 +60,19 @@ export default function PreventiveMaintenanceListPage() {
   
   const {
     maintenanceItems,
-    maintenanceLoading: isLoading,
-    maintenanceError: error
-  } = usePreventiveMaintenance();
+    topics,
+    machines,
+    isLoading,
+    error,
+    fetchMaintenanceItems,
+    deleteMaintenance,
+    clearError,
+    debugMachineFilter,
+    testMachineFiltering,
+    totalCount
+  } = usePreventiveMaintenanceContext();
 
-  // Mock data for now - these will need to be implemented in the main store
-  const machines: any[] = [];
-  const totalCount = maintenanceItems.length;
-  const fetchMaintenanceItems = useCallback(async () => {
-    console.log('🔍 fetchMaintenanceItems called - needs implementation in main store');
-    return Promise.resolve();
-  }, []);
-  const deleteMaintenance = useCallback(async (id: string) => {
-    console.log('🔍 deleteMaintenance called - needs implementation in main store');
-    return Promise.resolve(true);
-  }, []);
-  const clearError = useCallback(() => {
-    console.log('🔍 clearError called - needs implementation in main store');
-  }, []);
-  const debugMachineFilter = useCallback(async (machineId: string) => {
-    console.log('🔍 debugMachineFilter called - needs implementation in main store');
-    return Promise.resolve();
-  }, []);
-  const testMachineFiltering = useCallback(() => {
-    console.log('🔍 testMachineFiltering called - needs implementation in main store');
-  }, []);
+  // Now using real data from context - removed mock implementations
 
   // Debug logging
   console.log('🔍 PreventiveMaintenanceListPage Debug:', {
@@ -496,5 +485,13 @@ export default function PreventiveMaintenanceListPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function PreventiveMaintenanceListPage() {
+  return (
+    <PreventiveMaintenanceProvider>
+      <PreventiveMaintenanceListPageContent />
+    </PreventiveMaintenanceProvider>
   );
 }

@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('myappLubd', '0021_merge_20250909_0901'),
+        ('myappLubd', '0021_add_performance_indexes'),
     ]
 
     operations = [

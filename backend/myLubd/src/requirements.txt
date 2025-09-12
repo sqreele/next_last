@@ -22,7 +22,6 @@ multidict==6.1.0
 oauthlib==3.2.2
 packaging==24.2
 pillow==10.4.0
-psycopg2==2.9.10
 psycopg2-binary==2.9.10
 pyasn1==0.6.1
 pyasn1_modules==0.4.1

@@ -17,10 +17,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='job',
-            index=models.Index(fields=['is_preventivemaintenance', '-created_at'], name='job_pm_created_idx'),
-        ),
-        migrations.AddIndex(
-            model_name='job',
             index=models.Index(fields=['is_defective', '-created_at'], name='job_defect_created_idx'),
         ),
         migrations.AddIndex(

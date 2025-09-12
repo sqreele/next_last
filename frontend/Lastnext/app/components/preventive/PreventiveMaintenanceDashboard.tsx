@@ -76,8 +76,8 @@ export default function PreventiveMaintenanceDashboard() {
   const context = usePreventiveMaintenance();
   const { 
     maintenanceItems, 
-    maintenanceLoading: isLoading, 
-    maintenanceError: error,
+    isLoading, 
+    error,
     fetchMaintenanceItems
   } = context;
 

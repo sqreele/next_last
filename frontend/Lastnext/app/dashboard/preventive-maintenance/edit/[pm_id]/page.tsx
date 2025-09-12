@@ -580,11 +580,6 @@ export default function EditPreventiveMaintenancePage() {
                 
                 {formState.before_image_preview ? (
                   <div className="relative">
-                    {console.log('[EDIT FORM] Rendering before image:', {
-                      preview: formState.before_image_preview,
-                      type: typeof formState.before_image_preview,
-                      length: formState.before_image_preview?.length
-                    })}
                     <PreviewImage
                       src={formState.before_image_preview}
                       alt="Before maintenance"
@@ -619,7 +614,7 @@ export default function EditPreventiveMaintenancePage() {
                         />
                       </label>
                     </div>
-                    {console.log('[EDIT FORM] No before image preview available - formState.before_image_preview:', formState.before_image_preview)}
+                    
                   </div>
                 )}
               </div>
@@ -632,11 +627,6 @@ export default function EditPreventiveMaintenancePage() {
                 
                 {formState.after_image_preview ? (
                   <div className="relative">
-                    {console.log('[EDIT FORM] Rendering after image:', {
-                      preview: formState.after_image_preview,
-                      type: typeof formState.after_image_preview,
-                      length: formState.after_image_preview?.length
-                    })}
                     <PreviewImage
                       src={formState.after_image_preview}
                       alt="After maintenance"
@@ -671,7 +661,7 @@ export default function EditPreventiveMaintenancePage() {
                         />
                       </label>
                     </div>
-                    {console.log('[EDIT FORM] No after image preview available - formState.after_image_preview:', formState.after_image_preview)}
+                    
                   </div>
                 )}
               </div>

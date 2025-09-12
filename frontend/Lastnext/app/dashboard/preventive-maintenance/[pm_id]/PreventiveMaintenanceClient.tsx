@@ -768,7 +768,6 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {console.log('🔍 Rendering check - beforeImageUrl:', beforeImageUrl, 'truthy:', !!beforeImageUrl)}
               {beforeImageUrl ? (
                 <div className="bg-white/80 p-4 rounded-xl">
                   <div className="text-gray-700 font-medium mb-3 flex items-center gap-2">
@@ -809,7 +808,6 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                 </div>
               )}
 
-              {console.log('🔍 Rendering check - afterImageUrl:', afterImageUrl, 'truthy:', !!afterImageUrl)}
               {afterImageUrl ? (
                 <div className="bg-white/80 p-4 rounded-xl">
                   <div className="text-gray-700 font-medium mb-3 flex items-center gap-2">

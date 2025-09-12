@@ -301,8 +301,18 @@ class Command(BaseCommand):
             explicit_to = options.get("to_email")
             recipients = []
 
+            # Allow override via environment variable for fixed recipients list
+            env_recipients = getattr(settings, "DAILY_SUMMARY_RECIPIENTS", None)
+
             if explicit_to:
                 recipients = [explicit_to]
+            elif env_recipients:
+                # Support comma/semicolon separated list in env
+                if isinstance(env_recipients, str):
+                    candidates = [e.strip() for e in env_recipients.replace(";", ",").split(",")]
+                else:
+                    candidates = list(env_recipients)
+                recipients = [e for e in candidates if e]
             else:
                 User = get_user_model()
                 if options.get("all_users"):

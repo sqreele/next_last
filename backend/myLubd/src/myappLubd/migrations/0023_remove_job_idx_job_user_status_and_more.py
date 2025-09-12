@@ -23,22 +23,6 @@ class Migration(migrations.Migration):
             name='idx_job_updated_at',
         ),
         migrations.RemoveIndex(
-            model_name='job',
-            name='job_status_created_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='job',
-            name='job_pm_created_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='job',
-            name='job_defect_created_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='job',
-            name='job_created_idx',
-        ),
-        migrations.RemoveIndex(
             model_name='jobimage',
             name='idx_jobimage_job',
         ),
@@ -79,14 +63,6 @@ class Migration(migrations.Migration):
             name='idx_pm_created_by',
         ),
         migrations.RemoveIndex(
-            model_name='preventivemaintenance',
-            name='pm_schedule_complete_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='preventivemaintenance',
-            name='pm_freq_schedule_idx',
-        ),
-        migrations.RemoveIndex(
             model_name='property',
             name='idx_property_pm',
         ),
@@ -95,20 +71,12 @@ class Migration(migrations.Migration):
             name='idx_property_name',
         ),
         migrations.RemoveIndex(
-            model_name='property',
-            name='property_id_idx',
-        ),
-        migrations.RemoveIndex(
             model_name='room',
             name='idx_room_type_active',
         ),
         migrations.RemoveIndex(
             model_name='room',
             name='idx_room_name',
-        ),
-        migrations.RemoveIndex(
-            model_name='room',
-            name='room_name_idx',
         ),
         migrations.RemoveIndex(
             model_name='userprofile',

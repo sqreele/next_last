@@ -587,8 +587,8 @@ export default function EditPreventiveMaintenancePage() {
                       width={400}
                       height={192}
                       onLoad={() => console.log('[EDIT FORM] Before image loaded successfully')}
-                      onError={(e) => {
-                        console.error('[EDIT FORM] Before image failed to load:', e);
+                      onError={() => {
+                        console.error('[EDIT FORM] Before image failed to load');
                         console.error('[EDIT FORM] Failed URL:', formState.before_image_preview);
                       }}
                     />
@@ -634,8 +634,8 @@ export default function EditPreventiveMaintenancePage() {
                       width={400}
                       height={192}
                       onLoad={() => console.log('[EDIT FORM] After image loaded successfully')}
-                      onError={(e) => {
-                        console.error('[EDIT FORM] After image failed to load:', e);
+                      onError={() => {
+                        console.error('[EDIT FORM] After image failed to load');
                         console.error('[EDIT FORM] Failed URL:', formState.after_image_preview);
                       }}
                     />

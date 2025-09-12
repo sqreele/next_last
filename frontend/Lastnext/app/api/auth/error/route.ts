@@ -16,14 +16,24 @@ export async function GET(request: NextRequest) {
     // If no error parameter, set a default one
     if (!error || error === 'undefined') {
       console.log('🔐 No error parameter found, setting default error');
-      const errorUrl = new URL('/auth/error', request.url);
+      const baseUrl =
+        process.env.AUTH0_BASE_URL ||
+        process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
+        process.env.APP_BASE_URL ||
+        'https://pcms.live';
+      const errorUrl = new URL('/auth/error', baseUrl);
       errorUrl.searchParams.set('error', ERROR_TYPES.SESSION_EXPIRED);
       
       return NextResponse.redirect(errorUrl);
     }
 
     // If error parameter exists, redirect to error page with it
-    const errorUrl = new URL('/auth/error', request.url);
+    const baseUrl =
+      process.env.AUTH0_BASE_URL ||
+      process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
+      process.env.APP_BASE_URL ||
+      'https://pcms.live';
+    const errorUrl = new URL('/auth/error', baseUrl);
     errorUrl.searchParams.set('error', error);
     
     console.log('🔐 Redirecting to error page with error:', error);
@@ -33,7 +43,12 @@ export async function GET(request: NextRequest) {
     console.error('🔐 Error handler error:', error);
     
     // Fallback to error page with session expired error
-    const errorUrl = new URL('/auth/error', request.url);
+    const baseUrl =
+      process.env.AUTH0_BASE_URL ||
+      process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
+      process.env.APP_BASE_URL ||
+      'https://pcms.live';
+    const errorUrl = new URL('/auth/error', baseUrl);
     errorUrl.searchParams.set('error', ERROR_TYPES.SESSION_EXPIRED);
     
     return NextResponse.redirect(errorUrl);

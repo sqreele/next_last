@@ -83,7 +83,12 @@ export function middleware(request: NextRequest) {
   if (isProtectedRoute || isProtectedApiRoute) {
     if (!isAuthenticated) {
       // Store the original URL for redirect after login
-      const loginUrl = new URL('/auth/login', request.url);
+      const baseUrl =
+        process.env.AUTH0_BASE_URL ||
+        process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
+        process.env.APP_BASE_URL ||
+        'https://pcms.live';
+      const loginUrl = new URL('/auth/login', baseUrl);
       loginUrl.searchParams.set('redirect', pathname);
       
       // For API routes, return 401 status
@@ -111,7 +116,12 @@ export function middleware(request: NextRequest) {
   // Handle login page - redirect authenticated users to dashboard
   if (pathname === '/auth/login' && isAuthenticated) {
     const redirectUrl = request.nextUrl.searchParams.get('redirect') || '/dashboard';
-    return NextResponse.redirect(new URL(redirectUrl, request.url));
+    const baseUrl =
+      process.env.AUTH0_BASE_URL ||
+      process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
+      process.env.APP_BASE_URL ||
+      'https://pcms.live';
+    return NextResponse.redirect(new URL(redirectUrl, baseUrl));
   }
 
   // Handle root page - allow both authenticated and unauthenticated users

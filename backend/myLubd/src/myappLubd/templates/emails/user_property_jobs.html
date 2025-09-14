@@ -1,0 +1,187 @@
+{% load string_filters %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Your Jobs - {{ property_name }}</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f5f7fb;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f5f7fb;">
+      <tr>
+        <td align="center" style="padding:24px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e6e8ee;">
+            <tr>
+              <td style="padding:24px 24px 16px 24px;background:linear-gradient(135deg,#2b5876,#4e4376);color:#ffffff;">
+                <h1 style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:20px;line-height:28px;font-weight:700;">Your Jobs - {{ property_name }}</h1>
+                <p style="margin:8px 0 0 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:13px;opacity:0.9;">{{ user_name }} &middot; {{ date_range }}</p>
+                <p style="margin:4px 0 0 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;opacity:0.8;">Property ID: {{ property_id }}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:Inter,Segoe UI,Arial,sans-serif;color:#1f2532;">
+                  
+                  <!-- Job Summary -->
+                  <tr>
+                    <td style="padding:0 0 12px 0;font-size:0;" colspan="2">
+                      <div style="display:inline-block;width:100%;max-width:33.33%;vertical-align:top;">
+                        <div style="background:#f0f4ff;border:1px solid #dbe4ff;border-radius:10px;padding:16px;margin-right:6px;">
+                          <div style="font-size:12px;color:#5b6b8b;text-transform:uppercase;letter-spacing:0.4px;">Total Jobs</div>
+                          <div style="font-size:24px;line-height:30px;font-weight:700;color:#2a3a5e;">{{ total_jobs }}</div>
+                        </div>
+                      </div>
+                      <div style="display:inline-block;width:100%;max-width:33.33%;vertical-align:top;">
+                        <div style="background:#eefaf3;border:1px solid #c7efd8;border-radius:10px;padding:16px;margin:0 3px;">
+                          <div style="font-size:12px;color:#4a6b56;text-transform:uppercase;letter-spacing:0.4px;">Completed</div>
+                          <div style="font-size:24px;line-height:30px;font-weight:700;color:#245438;">{{ completed_jobs }}</div>
+                        </div>
+                      </div>
+                      <div style="display:inline-block;width:100%;max-width:33.33%;vertical-align:top;">
+                        <div style="background:#fff3e0;border:1px solid #ffcc02;border-radius:10px;padding:16px;margin-left:6px;">
+                          <div style="font-size:12px;color:#e65100;text-transform:uppercase;letter-spacing:0.4px;">Pending</div>
+                          <div style="font-size:24px;line-height:30px;font-weight:700;color:#e65100;">{{ pending_jobs }}</div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- Status Breakdown -->
+                  <tr>
+                    <td colspan="2" style="padding-top:4px;padding-bottom:10px;">
+                      <h2 style="margin:0;font-size:14px;line-height:20px;font-weight:700;color:#2a3a5e;">Jobs by Status</h2>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;width:100%;">
+                        <tr>
+                          <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:10px 12px;font-size:12px;color:#5b6b8b;font-weight:600;">Status</th>
+                          <th align="right" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:10px 12px;font-size:12px;color:#5b6b8b;font-weight:600;">Count</th>
+                        </tr>
+                        {% for item in status_list %}
+                        <tr>
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:12px 12px;font-size:13px;color:#1f2532;">{{ item.label }}</td>
+                          <td align="right" style="border:1px solid #e6e8ee;border-top:0;padding:12px 12px;font-size:13px;color:#1f2532;font-weight:600;">{{ item.count }}</td>
+                        </tr>
+                        {% endfor %}
+                      </table>
+                    </td>
+                  </tr>
+
+                  <!-- Your Jobs List -->
+                  {% if jobs %}
+                  <tr>
+                    <td colspan="2" style="padding-top:20px;padding-bottom:10px;">
+                      <h2 style="margin:0;font-size:14px;line-height:20px;font-weight:700;color:#2a3a5e;">Your Jobs ({{ jobs|length }})</h2>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;width:100%;">
+                        <tr>
+                          <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Job ID</th>
+                          <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Description</th>
+                          <th align="center" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Status</th>
+                          <th align="center" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Priority</th>
+                          <th align="center" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Created</th>
+                        </tr>
+                        {% for job in jobs %}
+                        <tr style="{% if job.status == 'completed' %}background-color:#f8fff8;{% elif job.status == 'in_progress' %}background-color:#fff8f0;{% elif job.priority == 'high' %}background-color:#fff5f5;{% endif %}">
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;font-weight:600;">
+                            <a href="{{ base_url }}/jobs/{{ job.job_id }}" style="color:#4f46e5;text-decoration:none;">{{ job.job_id }}</a>
+                          </td>
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;">{{ job.description|truncatechars:40 }}</td>
+                          <td align="center" style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;">
+                            <span style="display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600;background:{% if job.status == 'completed' %}#e8f5e8;color:#2e7d32;{% elif job.status == 'in_progress' %}#fff3e0;color:#f57c00;{% elif job.status == 'pending' %}#e3f2fd;color:#1976d2;{% else %}#f3e5f5;color:#7b1fa2;{% endif %}">
+                              {{ job.status|title }}
+                            </span>
+                          </td>
+                          <td align="center" style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;">
+                            <span style="display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600;background:{% if job.priority == 'high' %}#ffebee;color:#c62828;{% elif job.priority == 'medium' %}#fff3e0;color:#ef6c00;{% else %}#e8f5e8;color:#2e7d32;{% endif %}">
+                              {{ job.priority|title }}
+                            </span>
+                          </td>
+                          <td align="center" style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;">{{ job.created_at|date:"M d, Y" }}</td>
+                        </tr>
+                        {% endfor %}
+                      </table>
+                    </td>
+                  </tr>
+                  {% else %}
+                  <tr>
+                    <td colspan="2" style="padding:20px;text-align:center;color:#6b7280;">
+                      <p style="margin:0;font-size:14px;">No jobs found for this property in the selected date range.</p>
+                    </td>
+                  </tr>
+                  {% endif %}
+
+                  <!-- Room Statistics -->
+                  {% if room_stats %}
+                  <tr>
+                    <td colspan="2" style="padding-top:20px;padding-bottom:10px;">
+                      <h2 style="margin:0;font-size:14px;line-height:20px;font-weight:700;color:#2a3a5e;">Jobs by Room</h2>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;width:100%;">
+                        <tr>
+                          <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Room</th>
+                          <th align="right" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Jobs</th>
+                        </tr>
+                        {% for room in room_stats %}
+                        <tr>
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;">{{ room.name }}</td>
+                          <td align="right" style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;font-weight:600;">{{ room.job_count }}</td>
+                        </tr>
+                        {% endfor %}
+                      </table>
+                    </td>
+                  </tr>
+                  {% endif %}
+
+                  <!-- Topics -->
+                  {% if topic_stats %}
+                  <tr>
+                    <td colspan="2" style="padding-top:20px;padding-bottom:10px;">
+                      <h2 style="margin:0;font-size:14px;line-height:20px;font-weight:700;color:#2a3a5e;">Topics in Your Jobs</h2>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2">
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;width:100%;">
+                        <tr>
+                          <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Topic</th>
+                          <th align="right" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Jobs</th>
+                        </tr>
+                        {% for topic in topic_stats %}
+                        <tr>
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;">{{ topic.title }}</td>
+                          <td align="right" style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;font-weight:600;">{{ topic.count }}</td>
+                        </tr>
+                        {% endfor %}
+                      </table>
+                    </td>
+                  </tr>
+                  {% endif %}
+
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px;background:#fafbff;border-top:1px solid #eef0f6;">
+                <p style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;color:#6b7280;">
+                  Hello {{ user_name }},<br>
+                  This email contains your jobs for <strong>{{ property_name }}</strong> ({{ date_range }}).<br>
+                  <a href="{{ base_url }}/dashboard" style="color:#4f46e5;text-decoration:none;">View your dashboard</a> for more details.
+                </p>
+              </td>
+            </tr>
+          </table>
+          <div style="padding:12px 0 0 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:11px;color:#98a2b3;">&copy; {{ date_str|slice:":4" }} {{ brand_name }}. All rights reserved.</div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

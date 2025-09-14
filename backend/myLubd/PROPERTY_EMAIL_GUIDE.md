@@ -12,7 +12,34 @@ The system now supports sending email notifications filtered by property, allowi
 
 ## Available Commands
 
-### 1. Property-Specific Daily Summary
+### 1. User-Specific Property Job Emails ⭐ NEW
+
+Send personalized job emails to users based on their property access:
+
+```bash
+# Send job emails to all users for their accessible properties (last 7 days)
+python manage.py send_user_property_jobs
+
+# Send job emails for specific property to all users
+python manage.py send_user_property_jobs --property-id 1
+
+# Send job emails for last 30 days
+python manage.py send_user_property_jobs --days 30
+
+# Send job emails to specific user
+python manage.py send_user_property_jobs --user-id 1
+
+# Filter by job status
+python manage.py send_user_property_jobs --status pending --property-id 1
+
+# Filter by job priority
+python manage.py send_user_property_jobs --priority high --days 3
+
+# Test mode (send to first user only)
+python manage.py send_user_property_jobs --test --property-id 1
+```
+
+### 2. Property-Specific Daily Summary
 
 Send a daily summary email filtered by property:
 
@@ -27,7 +54,7 @@ python manage.py send_daily_summary --property-id 1
 python manage.py send_daily_summary --property-id 1 --all-users
 ```
 
-### 2. Property Jobs Summary
+### 3. Property Jobs Summary
 
 Send a comprehensive property-specific job report:
 
@@ -42,16 +69,31 @@ python manage.py send_property_jobs_summary --property-id 1 --days 30
 python manage.py send_property_jobs_summary --all-properties
 ```
 
-### 3. Test Property Email
+### 4. Test Commands
 
-Test the property email functionality:
+Test the email functionality:
 
 ```bash
-# Test email for property 1
+# Test user-specific job email
+python manage.py test_user_job_email --user-id 1 --property-id 1
+
+# Test property email
 python manage.py test_property_email --property-id 1 --to test@example.com
 ```
 
 ## Email Templates
+
+### User Property Jobs Template ⭐ NEW
+- **File**: `templates/emails/user_property_jobs.html`
+- **Usage**: Personalized job emails for individual users
+- **Features**:
+  - Personalized greeting with user name
+  - User's jobs for their accessible properties
+  - Job details with status and priority
+  - Clickable job IDs linking to dashboard
+  - Room-based job breakdown
+  - Topic statistics for user's jobs
+  - Color-coded status and priority indicators
 
 ### Daily Summary Template
 - **File**: `templates/emails/daily_summary.html`
@@ -117,7 +159,50 @@ Users receive property-specific emails based on:
 
 ## Usage Examples
 
-### 1. Daily Property Summary
+### 1. User-Specific Job Emails ⭐ NEW
+
+Send personalized job emails to all users for their accessible properties:
+
+```bash
+# Send job emails to all users (last 7 days)
+python manage.py send_user_property_jobs
+```
+
+This will:
+- Find all active users
+- Get their accessible properties
+- Send personalized emails with their jobs
+- Include job details, status, priority, and statistics
+
+### 2. Property-Specific User Emails
+
+Send job emails to all users for a specific property:
+
+```bash
+python manage.py send_user_property_jobs --property-id 1 --days 14
+```
+
+This will:
+- Send emails to all users who have access to property 1
+- Include jobs from the last 14 days
+- Show property name in the email header
+
+### 3. Filtered Job Emails
+
+Send emails with specific job filters:
+
+```bash
+# Send only pending jobs for property 1
+python manage.py send_user_property_jobs --property-id 1 --status pending
+
+# Send only high priority jobs for last 3 days
+python manage.py send_user_property_jobs --priority high --days 3
+
+# Send to specific user only
+python manage.py send_user_property_jobs --user-id 5 --property-id 1
+```
+
+### 4. Daily Property Summary
 
 Send a daily summary for "Lubd Bangkok Chainatown" property:
 
@@ -131,7 +216,7 @@ This will send an email with:
 - Daily and monthly breakdowns for the property
 - Topic statistics for the property
 
-### 2. Weekly Property Report
+### 5. Weekly Property Report
 
 Send a comprehensive weekly report for a property:
 
@@ -145,7 +230,7 @@ This will send an email with:
 - Room-based job breakdown
 - Top topics for the property
 
-### 3. All Properties Summary
+### 6. All Properties Summary
 
 Send summaries for all properties to their respective users:
 

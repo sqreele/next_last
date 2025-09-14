@@ -2,7 +2,31 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+# Custom User Admin
+class CustomUserAdmin(BaseUserAdmin):
+    list_display = BaseUserAdmin.list_display + ('property_name', 'property_id')
+    list_filter = BaseUserAdmin.list_filter + ('property_name',)
+    search_fields = BaseUserAdmin.search_fields + ('property_name', 'property_id')
+    
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ('Property Information', {'fields': ('property_name', 'property_id')}),
+    )
+    
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ('Property Information', {'fields': ('property_name', 'property_id')}),
+    )
+
+# Register our custom User admin (unregister first if already registered)
+try:
+    admin.site.unregister(User)
+except admin.sites.NotRegistered:
+    pass
+admin.site.register(User, CustomUserAdmin)
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
@@ -33,14 +57,22 @@ class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
     verbose_name_plural = 'Profile'
-    fields = ['positions', 'profile_image', 'google_id', 'email_verified', 'login_provider']
+    fields = ['positions', 'profile_image', 'property_name', 'property_id', 'google_id', 'email_verified', 'login_provider']
 
 class UserAdmin(BaseUserAdmin):
     inlines = (UserProfileInline,)
-    list_display = ['username', 'email', 'first_name', 'last_name', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
-    list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined']
-    search_fields = ['username', 'first_name', 'last_name', 'email']
+    list_display = ['username', 'email', 'first_name', 'last_name', 'property_name', 'get_property_id_display', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
+    list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined', 'property_name']
+    search_fields = ['username', 'first_name', 'last_name', 'email', 'property_name', 'property_id']
     actions = ['export_users_csv', 'export_users_pdf']
+    
+    fieldsets = BaseUserAdmin.fieldsets + (
+        ('Property Information', {'fields': ('property_name', 'property_id')}),
+    )
+    
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ('Property Information', {'fields': ('property_name', 'property_id')}),
+    )
     
     def get_google_info(self, obj):
         try:
@@ -52,6 +84,20 @@ class UserAdmin(BaseUserAdmin):
             return "No Profile"
     get_google_info.short_description = 'Auth Type'
     get_google_info.admin_order_field = 'userprofile__google_id'
+
+    def get_property_id_display(self, obj):
+        """Display the property_id from the User model, or from related Property if available"""
+        if obj.property_id:
+            return obj.property_id
+        
+        # If User.property_id is empty, try to get it from the related Property
+        if obj.accessible_properties.exists():
+            property_obj = obj.accessible_properties.first()
+            return property_obj.property_id if property_obj else "-"
+        
+        return "-"
+    get_property_id_display.short_description = 'Property ID'
+    get_property_id_display.admin_order_field = 'property_id'
 
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
@@ -357,10 +403,11 @@ class JobAdmin(admin.ModelAdmin):
         if obj.rooms.exists():
             for room in obj.rooms.all():
                 for prop in room.properties.all():
-                    if prop.name not in properties:
-                        properties.append(prop.name)
+                    prop_display = f"{prop.property_id} - {prop.name}"
+                    if prop_display not in properties:
+                        properties.append(prop_display)
         return ", ".join(properties) if properties else "No Properties"
-    get_properties_display.short_description = 'Properties'
+    get_properties_display.short_description = 'Properties (ID - Name)'
 
     def get_description_display(self, obj):
         if obj.description:
@@ -510,6 +557,19 @@ class PropertyAdmin(admin.ModelAdmin):
     list_filter = ['created_at', 'is_preventivemaintenance']
     filter_horizontal = ['users']
     readonly_fields = ['property_id', 'created_at']
+    
+    fieldsets = (
+        ('Property Information', {
+            'fields': ('property_id', 'name', 'description', 'is_preventivemaintenance')
+        }),
+        ('Users', {
+            'fields': ('users',)
+        }),
+        ('Timestamps', {
+            'classes': ('collapse',),
+            'fields': ('created_at',)
+        }),
+    )
 
     def get_users_count(self, obj):
         return obj.users.count()
@@ -542,8 +602,8 @@ class RoomAdmin(admin.ModelAdmin):
     actions = ['activate_rooms', 'deactivate_rooms']
 
     def get_properties_display(self, obj):
-        return ", ".join([prop.name for prop in obj.properties.all()])
-    get_properties_display.short_description = 'Properties'
+        return ", ".join([f"{prop.property_id} - {prop.name}" for prop in obj.properties.all()])
+    get_properties_display.short_description = 'Properties (ID - Name)'
 
     def activate_rooms(self, request, queryset):
         updated_count = queryset.update(is_active=True)
@@ -567,8 +627,8 @@ class TopicAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ['user_link', 'positions', 'profile_image_preview']
-    search_fields = ['user__username', 'user__first_name', 'user__last_name', 'positions']
+    list_display = ['user_link', 'positions', 'get_properties_display', 'profile_image_preview']
+    search_fields = ['user__username', 'user__first_name', 'user__last_name', 'positions', 'properties__name', 'properties__property_id']
     filter_horizontal = ['properties']
     raw_id_fields = ['user']
     readonly_fields = [
@@ -585,9 +645,7 @@ class UserProfileAdmin(admin.ModelAdmin):
     )
 
     def user_link(self, obj):
-        from django.urls import reverse
-        link = reverse("admin:auth_user_change", args=[obj.user.id])
-        return format_html('<a href="{}">{}</a>', link, obj.user.username)
+        return obj.user.username
     user_link.short_description = 'User'
 
     def profile_image_preview(self, obj):
@@ -595,6 +653,47 @@ class UserProfileAdmin(admin.ModelAdmin):
             return format_html('<img src="{}" style="max-width: 100px; max-height: 100px; border-radius: 50%;" />', obj.profile_image.url)
         return "No Image"
     profile_image_preview.short_description = 'Profile Image'
+    
+    def user_property_name(self, obj):
+        return obj.user.property_name if obj.user.property_name else "-"
+    user_property_name.short_description = 'Property Name'
+    
+    def user_property_id(self, obj):
+        """Display the property_id from the User model, or from related Property if available"""
+        if obj.user.property_id:
+            return obj.user.property_id
+        
+        # If User.property_id is empty, try to get it from the related Property
+        if obj.user.accessible_properties.exists():
+            property_obj = obj.user.accessible_properties.first()
+            return property_obj.property_id if property_obj else "-"
+        
+        return "-"
+    user_property_id.short_description = 'User Property ID'
+    
+    def profile_property_name(self, obj):
+        return obj.property_name if obj.property_name else "-"
+    profile_property_name.short_description = 'Profile Property Name'
+    
+    def profile_property_id(self, obj):
+        """Display the property_id from the UserProfile model, or from related Property if available"""
+        if obj.property_id:
+            return obj.property_id
+        
+        # If UserProfile.property_id is empty, try to get it from the related Property
+        if obj.properties.exists():
+            property_obj = obj.properties.first()
+            return property_obj.property_id if property_obj else "-"
+        
+        return "-"
+    profile_property_id.short_description = 'Profile Property ID'
+
+    def get_properties_display(self, obj):
+        """Display properties from the ManyToManyField relationship"""
+        if obj.properties.exists():
+            return ", ".join([f"{prop.property_id} - {prop.name}" for prop in obj.properties.all()])
+        return "No Properties"
+    get_properties_display.short_description = 'Properties (ID - Name)'
 
 @admin.register(PreventiveMaintenance)
 class PreventiveMaintenanceAdmin(admin.ModelAdmin):
@@ -609,6 +708,7 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
         'get_status_display',
         'created_by_user',
         'get_machines_display',
+        'get_properties_display',
     )
     list_filter = (
         'frequency',
@@ -639,6 +739,17 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
     def get_topics_display(self, obj):
         return ", ".join([topic.title for topic in obj.topics.all()])
     get_topics_display.short_description = 'Topics'
+
+    def get_properties_display(self, obj):
+        properties = []
+        if obj.job and obj.job.rooms.exists():
+            for room in obj.job.rooms.all():
+                for prop in room.properties.all():
+                    prop_display = f"{prop.property_id} - {prop.name}"
+                    if prop_display not in properties:
+                        properties.append(prop_display)
+        return ", ".join(properties) if properties else "No Properties"
+    get_properties_display.short_description = 'Properties (ID - Name)'
 
     def get_status_display(self, obj):
         if obj.completed_date:

@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -77,6 +79,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     created_at = serializers.DateTimeField(source='user.date_joined', read_only=True)
+    # Property fields from User model
+    user_property_name = serializers.CharField(source='user.property_name', read_only=True)
+    user_property_id = serializers.CharField(source='user.property_id', read_only=True)
+    # Property fields from UserProfile model
+    profile_property_name = serializers.CharField(source='property_name', read_only=True)
+    profile_property_id = serializers.CharField(source='property_id', read_only=True)
 
     class Meta:
         model = UserProfile
@@ -89,6 +97,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'profile_image',
             'positions',
             'properties',
+            'user_property_name',
+            'user_property_id',
+            'profile_property_name',
+            'profile_property_id',
             'created_at',
         ]
         read_only_fields = ['id', 'username', 'email', 'first_name', 'last_name', 'created_at']

@@ -81,6 +81,9 @@ OAUTH2_SETTINGS = {
     }
 }
 
+# Custom User Model
+AUTH_USER_MODEL = 'myappLubd.User'
+
 # Applications
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -180,6 +183,7 @@ USE_CACHE = True
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',  # For DRF browsable API
         'myappLubd.auth.Auth0JWTAuthentication',     # Auth0 only
         'rest_framework_simplejwt.authentication.JWTAuthentication',  # Fallback
     ],

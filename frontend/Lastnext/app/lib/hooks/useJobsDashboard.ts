@@ -411,16 +411,11 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     }
   }, [isAuthenticated, accessToken, state.jobs, state.properties, state.filters, toast]);
 
-  // Computed values
+  // Computed values - return raw jobs for JobList to handle filtering
   const filteredJobs = useMemo(() => {
     let filtered = state.jobs;
 
-    // Apply status filter based on selected tab
-    if (state.selectedTab !== 'all') {
-      filtered = filtered.filter(job => job.status === state.selectedTab);
-    }
-
-    // Apply search filter
+    // Only apply search filter here, let JobList handle tab filtering
     if (state.filters.search) {
       const searchLower = state.filters.search.toLowerCase();
       filtered = filtered.filter(job => 
@@ -430,7 +425,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     }
 
     return filtered;
-  }, [state.jobs, state.selectedTab, state.filters.search]);
+  }, [state.jobs, state.filters.search]);
 
   const isLoadingMore = useMemo(() => 
     state.loading && state.jobs.length > 0, 

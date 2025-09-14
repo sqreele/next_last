@@ -231,6 +231,14 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
         break;
     }
     
+    // Debug logging for defect and in_progress filters
+    if (filter === 'defect' && process.env.NODE_ENV === 'development') {
+      console.log(`🔍 Defect filter - Job ${job.job_id}: is_defective=${job.is_defective}, matches=${matchesStatus}`);
+    }
+    if (filter === 'in_progress' && process.env.NODE_ENV === 'development') {
+      console.log(`🔍 In Progress filter - Job ${job.job_id}: status=${job.status}, matches=${matchesStatus}`);
+    }
+    
     
     // Status filtering enabled
     

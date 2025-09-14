@@ -927,7 +927,7 @@ class JobViewSet(viewsets.ModelViewSet):
         ).prefetch_related(
             'rooms__properties',  # Many-to-many through rooms
             'topics',            # Many-to-many relationship
-            'images',            # Many-to-many relationship
+            'job_images',        # Reverse foreign key to JobImage
             'preventivemaintenance_set'  # Reverse foreign key
         ).distinct()  # Remove duplicates from joins
 

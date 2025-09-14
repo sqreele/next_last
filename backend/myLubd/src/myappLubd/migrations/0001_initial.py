@@ -8,10 +8,10 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
 
-    initial = True
+    initial = False
 
     dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        ('myappLubd', '0000_create_user_model'),
     ]
 
     operations = [

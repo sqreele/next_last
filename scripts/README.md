@@ -18,8 +18,7 @@
 
 # View logs
 ./scripts/dev-logs.sh
-./scripts/dev-logs.sh frontend
-./scripts/dev-logs.sh backend
+./scripts/dev-logs.sh
 
 # Access shells
 ./scripts/dev-shell.sh frontend
@@ -31,3 +30,11 @@
 
 # Delete development user
 ./scripts/delete-developer-user.sh
+
+# Fix fixture files (remove invalid 'images' field from Job model)
+python3 scripts/fix_fixture_images_field.py <input_file> <output_file>
+python3 scripts/fix_all_fixtures.py <directory>
+
+# Example:
+python3 scripts/fix_fixture_images_field.py backend/myLubd/src/backup_3.json backend/myLubd/src/backup_3_fixed.json
+python3 scripts/fix_all_fixtures.py backend/myLubd/src/

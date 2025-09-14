@@ -457,7 +457,7 @@ export default function ImprovedDashboard() {
               {tabConfig.map(({ value }) => (
                 <TabsContent key={value} value={value} className="mt-0">
                   <JobList 
-                    jobs={filteredJobs}
+                    jobs={jobs}
                     filter={value as any}
                     properties={properties}
                     viewMode={viewMode}

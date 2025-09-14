@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
@@ -19,9 +19,13 @@ import logging
 # Set up logger
 logger = logging.getLogger(__name__)
 
-# Use get_user_model() for proper user model reference
-from django.contrib.auth import get_user_model
-User = get_user_model()
+# Custom User Model with property fields
+class User(AbstractUser):
+    property_name = models.CharField(max_length=255, blank=True, null=True, help_text="Name of the property this user belongs to")
+    property_id = models.CharField(max_length=50, blank=True, null=True, help_text="ID of the property this user belongs to")
+    
+    class Meta:
+        pass
 
 class PreventiveMaintenance(models.Model):
     FREQUENCY_CHOICES = [
@@ -151,7 +155,7 @@ class PreventiveMaintenance(models.Model):
     
     # Completion details
     completed_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -173,7 +177,7 @@ class PreventiveMaintenance(models.Model):
     )
     
     verified_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -183,7 +187,7 @@ class PreventiveMaintenance(models.Model):
     verification_date = models.DateTimeField(null=True, blank=True)
     
     created_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='created_preventive_maintenances'
     )
@@ -406,7 +410,7 @@ class Property(models.Model):
     )
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, null=True)
-    users = models.ManyToManyField(User, related_name='accessible_properties')
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='accessible_properties')
     created_at = models.DateTimeField(auto_now_add=True)
     is_preventivemaintenance=models.BooleanField(default=False)
 
@@ -497,7 +501,7 @@ class JobImage(models.Model):
     )
 
     uploaded_by = models.ForeignKey(
-        'auth.User',
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         related_name='uploaded_job_images',
@@ -628,10 +632,10 @@ class Job(models.Model):
         blank=True, 
         editable=False
     )
-    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='updated_jobs')
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='updated_jobs')
    
     user = models.ForeignKey(
-        User, 
+        settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
         related_name='maintenance_jobs'
     )
@@ -647,11 +651,8 @@ class Job(models.Model):
     )
     is_defective = models.BooleanField(default=False)
     
-    images = models.ManyToManyField(
-        'JobImage', 
-        related_name='jobs', 
-        blank=True
-    )
+    # Images are accessed through the reverse ForeignKey relationship
+    # Use job.job_images.all() to get all images for a job
     description = models.TextField()
     remarks = models.TextField()
     status = models.CharField(
@@ -747,7 +748,7 @@ class Job(models.Model):
 
 
 class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     positions = models.TextField(blank=True, null=True)
     profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
     properties = models.ManyToManyField(
@@ -755,6 +756,10 @@ class UserProfile(models.Model):
         related_name='user_profiles',
         blank=True
     )
+    
+    # Property fields (also available in User model)
+    property_name = models.CharField(max_length=255, blank=True, null=True, help_text="Name of the property this user belongs to")
+    property_id = models.CharField(max_length=50, blank=True, null=True, help_text="ID of the property this user belongs to")
     
     # Google OAuth fields
     google_id = models.CharField(max_length=100, blank=True, null=True)
@@ -845,14 +850,14 @@ class UserProfile(models.Model):
         self.save()
 
 
-@receiver(post_save, sender=User)
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_user_profile(sender, instance, created, **kwargs):
     """Create a UserProfile for every new User"""
     if created:
         UserProfile.objects.create(user=instance)
 
 
-@receiver(post_save, sender=User)
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def save_user_profile(sender, instance, **kwargs):
     """Save UserProfile when User is saved"""
     if not hasattr(instance, 'userprofile'):
@@ -861,7 +866,7 @@ def save_user_profile(sender, instance, **kwargs):
 
 
 class Session(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sessions')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sessions')
     session_token = models.CharField(max_length=255, unique=True)
     access_token = models.TextField()
     refresh_token = models.TextField()
@@ -1123,7 +1128,7 @@ class MaintenanceChecklist(models.Model):
     description = models.TextField(blank=True, null=True)
     is_completed = models.BooleanField(default=False)
     completed_by = models.ForeignKey(
-        User, 
+        settings.AUTH_USER_MODEL, 
         on_delete=models.SET_NULL, 
         null=True, 
         blank=True,
@@ -1151,7 +1156,7 @@ class MaintenanceHistory(models.Model):
     action = models.CharField(max_length=100)  # e.g., 'started', 'completed', 'rescheduled'
     notes = models.TextField(blank=True, null=True)
     performed_by = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True

@@ -853,6 +853,9 @@ class UserProfile(models.Model):
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_user_profile(sender, instance, created, **kwargs):
     """Create a UserProfile for every new User"""
+    # Skip during loaddata/fixture deserialization
+    if kwargs.get('raw'):
+        return
     if created:
         UserProfile.objects.create(user=instance)
 
@@ -860,6 +863,9 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def save_user_profile(sender, instance, **kwargs):
     """Save UserProfile when User is saved"""
+    # Skip during loaddata/fixture deserialization
+    if kwargs.get('raw'):
+        return
     if not hasattr(instance, 'userprofile'):
         UserProfile.objects.create(user=instance)
     instance.userprofile.save()

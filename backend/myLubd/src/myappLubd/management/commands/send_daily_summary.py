@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     help = "Send daily maintenance notification summary via email"
 
-    def get_daily_and_monthly_stats(self, now):
+    def get_daily_and_monthly_stats(self, now, property_filter=None):
         """Calculate daily status counts and monthly cumulative totals."""
         # Get start of current month
         start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -30,6 +30,10 @@ class Command(BaseCommand):
         jobs_this_month = Job.objects.filter(
             created_at__range=(start_of_month, end_of_month)
         )
+        
+        # Apply property filter if provided
+        if property_filter:
+            jobs_this_month = jobs_this_month.filter(property_filter).distinct()
         
         # Calculate daily breakdown
         daily_stats = []
@@ -94,7 +98,7 @@ class Command(BaseCommand):
             'month_name': now.strftime('%B %Y'),
         }
 
-    def get_topic_statistics(self, now):
+    def get_topic_statistics(self, now, property_filter=None):
         """Calculate topic statistics for today and this month."""
         # Get start of current month
         start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -108,6 +112,11 @@ class Command(BaseCommand):
         # Get jobs for today and this month
         jobs_today = Job.objects.filter(created_at__range=(start_of_day, end_of_day))
         jobs_this_month = Job.objects.filter(created_at__range=(start_of_month, end_of_month))
+        
+        # Apply property filter if provided
+        if property_filter:
+            jobs_today = jobs_today.filter(property_filter).distinct()
+            jobs_this_month = jobs_this_month.filter(property_filter).distinct()
         
         # Calculate topic counts for today
         today_topic_counts = {}
@@ -163,6 +172,12 @@ class Command(BaseCommand):
             dest="all_users",
             help="Send to all active users with an email (default sends to active staff only)",
         )
+        parser.add_argument(
+            "--property-id",
+            dest="property_id",
+            default=None,
+            help="Filter jobs by specific property ID",
+        )
 
     def handle(self, *args, **options):
         try:
@@ -174,8 +189,18 @@ class Command(BaseCommand):
             start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_window = now.replace(minute=59, second=59, microsecond=999999)
 
+            # Apply property filter if specified
+            property_filter = Q()
+            property_id = options.get('property_id')
+            if property_id:
+                property_filter = Q(
+                    Q(property_id=property_id) | 
+                    Q(rooms__properties__id=property_id) |
+                    Q(properties__contains=[str(property_id)])
+                )
+
             # Aggregate Job status counts for today
-            jobs_today = Job.objects.filter(created_at__range=(start_of_day, end_of_window))
+            jobs_today = Job.objects.filter(created_at__range=(start_of_day, end_of_window)).filter(property_filter).distinct()
             total_created = jobs_today.count()
             status_counts = {
                 status_key: jobs_today.filter(status=status_key).count()
@@ -184,27 +209,52 @@ class Command(BaseCommand):
 
             completed_today = Job.objects.filter(
                 completed_at__range=(start_of_day, end_of_window)
-            ).count()
+            ).filter(property_filter).distinct().count()
 
             # Get daily and monthly statistics
-            monthly_stats = self.get_daily_and_monthly_stats(now)
+            monthly_stats = self.get_daily_and_monthly_stats(now, property_filter)
             
             # Get topic statistics
-            topic_stats = self.get_topic_statistics(now)
+            topic_stats = self.get_topic_statistics(now, property_filter)
 
             # Compose email
-            subject = f"Daily Maintenance Summary - {now.strftime('%Y-%m-%d')}"
+            if property_id:
+                try:
+                    from myappLubd.models import Property
+                    property_obj = Property.objects.get(id=property_id)
+                    property_name = property_obj.name
+                    subject = f"Daily Maintenance Summary - {property_name} - {now.strftime('%Y-%m-%d')}"
+                except Property.DoesNotExist:
+                    subject = f"Daily Maintenance Summary - Property {property_id} - {now.strftime('%Y-%m-%d')}"
+            else:
+                subject = f"Daily Maintenance Summary - {now.strftime('%Y-%m-%d')}"
 
             # Plain-text fallback body
             lines = [
                 f"Date: {now.strftime('%Y-%m-%d')} (Asia/Bangkok)",
-                "",
+            ]
+            
+            if property_id:
+                try:
+                    from myappLubd.models import Property
+                    property_obj = Property.objects.get(id=property_id)
+                    lines.extend([
+                        f"Property: {property_obj.name} (ID: {property_id})",
+                        "",
+                    ])
+                except Property.DoesNotExist:
+                    lines.extend([
+                        f"Property: Property {property_id}",
+                        "",
+                    ])
+            
+            lines.extend([
                 f"TODAY'S SUMMARY:",
                 f"Total jobs created today: {total_created}",
                 f"Total jobs completed today: {completed_today}",
                 "",
                 "Breakdown by status (created today):",
-            ]
+            ])
             for key, label in Job.STATUS_CHOICES:
                 lines.append(f"- {label}: {status_counts.get(key, 0)}")
             

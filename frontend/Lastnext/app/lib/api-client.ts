@@ -1,5 +1,6 @@
 // ./app/lib/api-client.ts - Improved version
 "use client";
+declare const process: any;
 
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { useSession } from "@/app/lib/session.client";
@@ -57,7 +58,7 @@ const apiClient: AxiosInstance = axios.create({
 
 // Enable request debugging in development
 if (process.env.NODE_ENV === 'development') {
-  apiClient.interceptors.request.use(request => {
+  apiClient.interceptors.request.use((request: any) => {
     console.log('[API Request]', request.method?.toUpperCase(), request.url);
     return request;
   });
@@ -140,7 +141,7 @@ apiClient.interceptors.request.use(
       });
       
       if (sessionResponse.ok) {
-        const sessionData = await sessionResponse.json();
+        const sessionData: any = await sessionResponse.json();
         
         if (sessionData?.user?.accessToken) {
           // Add the access token to the request headers
@@ -156,14 +157,11 @@ apiClient.interceptors.request.use(
       console.warn("[RequestInterceptor] Error getting session data:", error);
     }
     
-    // Add CSRF token for non-GET requests (only when CSRF is enabled)
+    // Add CSRF token for non-GET/HEAD/OPTIONS requests
     if (config.method && typeof config.method === 'string' && !['GET', 'HEAD', 'OPTIONS'].includes(config.method.toUpperCase())) {
       try {
-        // Temporarily disable CSRF token fetching to resolve the error
-        // TODO: Re-enable when CSRF is properly configured
-        console.log("[RequestInterceptor] CSRF token fetching temporarily disabled");
-        // const csrfHeaders = await getCsrfHeaders();
-        // Object.assign(config.headers, csrfHeaders);
+        const csrfHeaders = await getCsrfHeaders();
+        Object.assign(config.headers, csrfHeaders);
       } catch (csrfError) {
         console.warn("[RequestInterceptor] Failed to add CSRF headers:", csrfError);
       }
@@ -171,7 +169,7 @@ apiClient.interceptors.request.use(
     
     return config;
   },
-  (error) => {
+  (error: any) => {
       console.error("[RequestInterceptor] Request setup error:", error);
       return Promise.reject(error);
   }
@@ -259,7 +257,7 @@ export const handleApiError = (error: unknown): ApiError => {
             details = { ...errorData };
             
             // Create a summary message from field errors if no detail message
-            const fieldErrors = Object.entries(details)
+            const fieldErrors = Object.entries(details || {})
                 .filter(([key]) => key !== 'detail')
                 .map(([field, errors]) => {
                     const errorString = Array.isArray(errors) ? errors.join(', ') : String(errors);

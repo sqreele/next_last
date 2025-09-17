@@ -101,7 +101,7 @@ export default {
   },
   plugins: [
     // Custom plugin for mobile-first utilities
-    function({ addUtilities, theme }) {
+    function({ addUtilities, theme }: { addUtilities: any; theme: any }) {
       const newUtilities = {
         ".touch-manipulation": {
           "touch-action": "manipulation",

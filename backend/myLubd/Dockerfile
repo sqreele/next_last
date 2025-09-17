@@ -1,5 +1,5 @@
 
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 
 # Set environment variables
@@ -12,8 +12,11 @@ ENV TZ=Asia/Bangkok
 WORKDIR /app
 
 # Install system dependencies (include image libs for Pillow WebP/JPEG) and cron
-RUN apt-get update && apt-get install -y \
-    postgresql-client \
+RUN apt-get update && apt-get install -y wget gnupg && \
+    sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $VERSION_CODENAME)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg && \
+    apt-get update && apt-get install -y \
+    postgresql-client-17 \
     netcat-traditional \
     libjpeg62-turbo-dev \
     zlib1g-dev \
@@ -21,7 +24,8 @@ RUN apt-get update && apt-get install -y \
     libpng-dev \
     cron \
     tzdata \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get purge -y --auto-remove wget gnupg && \
+    rm -rf /var/lib/apt/lists/*
 
 # Configure timezone
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone

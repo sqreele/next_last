@@ -29,7 +29,7 @@ import { useToast } from "@/app/components/ui/use-toast";
 import { useUser, useJobs } from "@/app/lib/stores/mainStore";
 import { useJobsData } from "@/app/lib/hooks/useJobsData";
 import { Job, JobStatus, JobPriority, Topic } from "@/app/lib/types";
-import { fetchTopics } from "@/app/lib/data.server";
+import { fetchTopics, deleteJob as deleteJobApi } from "@/app/lib/data.server";
 // --- Component Imports ---
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import JobFilters, { FilterState } from "@/app/components/jobs/JobFilters";
@@ -688,8 +688,15 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
 
     setIsSubmitting(true);
     try {
-              // Delete job from store
-        storeDeleteJob(selectedJob.id);
+      if (!session?.user?.accessToken) {
+        throw new Error("Not authenticated");
+      }
+
+      // Delete on backend first
+      await deleteJobApi(String(selectedJob.job_id), session.user.accessToken);
+
+      // Then update local stores/state
+      storeDeleteJob(selectedJob.id);
       removeJob(selectedJob.job_id);
 
       toast({ title: "Success", description: "Job deleted successfully." });

@@ -144,11 +144,11 @@ services:
       - app-network
 
   db:
-    image: postgres:13-alpine
+    image: postgres:17-alpine
     container_name: db
     restart: unless-stopped
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
+      - postgres_data_v17:/var/lib/postgresql/data/
     env_file:
       - .env
     environment:
@@ -215,9 +215,9 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
+  postgres_data_v17:
     driver: local
-    name: pcms_postgres_data
+    name: pcms_postgres_data_v17
   # ✅ PERFORMANCE OPTIMIZATION: Redis data volume for caching
   redis_data:
     driver: local

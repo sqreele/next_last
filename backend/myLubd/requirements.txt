@@ -10,7 +10,7 @@ reportlab>=3.6.0
 Pillow>=8.0.0
 
 # Database
-psycopg2-binary>=2.9.0
+psycopg2-binary>=2.9.9
 
 # HTTP and API
 requests>=2.25.0

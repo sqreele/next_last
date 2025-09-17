@@ -13,6 +13,19 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Safe area utilities for devices with notches/home indicators */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pb-safe-nav {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 56px);
+}
+
 /* Hidden scrollbar for cleaner UI */
 .scrollbar-none {
   -ms-overflow-style: none;

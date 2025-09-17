@@ -30,7 +30,7 @@ export function MobileNav({ className }: MobileNavProps) {
   const pathname = usePathname();
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg md:hidden ${className || ''}`}>
+    <div className={`fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg md:hidden safe-bottom ${className || ''}`}>
       <div className="flex items-center justify-around px-2 py-2">
         {navigationItems.map((item) => {
           const isActive = pathname === item.href;
@@ -66,7 +66,7 @@ export function MobileNav({ className }: MobileNavProps) {
 
 export function MobileTopBar({ className }: MobileNavProps) {
   return (
-    <div className={`sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm md:hidden ${className || ''}`}>
+    <div className={`sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm md:hidden safe-top ${className || ''}`}>
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" className="p-2">

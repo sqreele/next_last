@@ -22,6 +22,23 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = '__all__'
 
+
+class RoomSummarySerializer(serializers.ModelSerializer):
+    """
+    Lightweight room serializer for nested usage (e.g., inside jobs/properties).
+    Returns only essential fields and a simplified list of property_ids to
+    avoid deep nesting and large payloads.
+    """
+    properties = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Room
+        fields = ['room_id', 'name', 'room_type', 'properties']
+
+    def get_properties(self, obj):
+        # Return property_id strings to keep payload small
+        return list(obj.properties.values_list('property_id', flat=True))
+
 # Property serializer for PM status endpoint
 class PropertyPMStatusSerializer(serializers.ModelSerializer):
     """Serializer for property preventive maintenance status endpoint"""
@@ -51,9 +68,15 @@ class PropertySerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'is_preventivemaintenance']
     
     def get_rooms(self, obj):
-        """Get rooms for this property"""
+        """Get rooms for this property.
+        To reduce payload size on list views, rooms are only included when
+        context['include_rooms'] is True. Otherwise, return an empty list.
+        """
+        include_rooms = self.context.get('include_rooms', False)
+        if not include_rooms:
+            return []
         rooms = obj.rooms.all()
-        return RoomSerializer(rooms, many=True, context=self.context).data
+        return RoomSummarySerializer(rooms, many=True, context=self.context).data
     
     def get_is_preventivemaintenance(self, obj):
         """
@@ -141,10 +164,10 @@ class JobSerializer(serializers.ModelSerializer):
     user_email = serializers.CharField(source='user.email', read_only=True)
     images = JobImageSerializer(source='job_images', many=True, read_only=True)
     topics = TopicSerializer(many=True, read_only=True)
-    profile_image = UserProfileSerializer(source='user.userprofile', read_only=True)
+    profile_image = serializers.SerializerMethodField()
     room_type = serializers.CharField(source='room.room_type', read_only=True)
     name = serializers.CharField(source='room.name', read_only=True)
-    rooms = RoomSerializer(many=True, read_only=True)
+    rooms = RoomSummarySerializer(many=True, read_only=True)
     topic_data = serializers.JSONField(write_only=True)
     room_id = serializers.IntegerField(write_only=True)
     image_urls = serializers.SerializerMethodField()
@@ -194,6 +217,31 @@ class JobSerializer(serializers.ModelSerializer):
                 'full_name': f"{obj.user.first_name} {obj.user.last_name}".strip() if obj.user.first_name or obj.user.last_name else obj.user.username
             }
         return None
+
+    def get_profile_image(self, obj):
+        """
+        Lightweight serializer for user's profile image info to avoid deep
+        nesting. Returns:
+          { profile_image: <url or null>, properties: [{property_id, name}] }
+        """
+        userprofile = getattr(obj.user, 'userprofile', None)
+        if not userprofile:
+            return None
+
+        request = self.context.get('request')
+        image_url = None
+        if userprofile.profile_image and request:
+            image_url = request.build_absolute_uri(userprofile.profile_image.url)
+        elif userprofile.profile_image:
+            image_url = userprofile.profile_image.url
+
+        properties_qs = userprofile.properties.all().values('property_id', 'name')
+        properties = list(properties_qs)
+
+        return {
+            'profile_image': image_url,
+            'properties': properties,
+        }
 
     def get_image_urls(self, obj):
         """Return a list of full URLs for all images associated with the job."""

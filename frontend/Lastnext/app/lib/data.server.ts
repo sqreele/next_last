@@ -1,5 +1,6 @@
 import { Job, Property, JobStatus, Room, User, Topic } from "./types";
 import { API_CONFIG } from "./config";
+import { getCsrfHeaders } from "./csrf";
 import { fixJobsImageUrls, fixJobImageUrls, sanitizeJobsData, sanitizeJobData } from "./utils/image-utils";
 
 // Server-side compatible error class
@@ -40,6 +41,19 @@ export async function fetchWithToken<T>(
 
   if (method !== "GET" && body) {
     options.body = JSON.stringify(body);
+  }
+
+  // For non-GET/HEAD/OPTIONS requests, attach CSRF headers and credentials
+  const upperMethod = method.toUpperCase();
+  if (!["GET", "HEAD", "OPTIONS"].includes(upperMethod)) {
+    try {
+      const csrf = await getCsrfHeaders();
+      Object.assign(headers, csrf);
+    } catch (e) {
+      // Non-fatal: proceed without CSRF header if fetching token fails
+    }
+    // Ensure cookies (session) are sent in the browser
+    (options as any).credentials = 'include';
   }
 
   // Handle relative URLs by making them absolute for server-side requests

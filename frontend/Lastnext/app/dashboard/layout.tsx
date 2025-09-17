@@ -40,6 +40,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/app/components/
 import { Input } from '@/app/components/ui/input';
 import { cn } from '@/app/lib/utils/cn';
 import { PropertyDebug } from '@/app/components/debug/PropertyDebug';
+import { ResponsiveDebug } from '@/app/components/debug/ResponsiveDebug';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,19 +68,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <PreventiveMaintenanceProvider>
-      <div className="flex min-h-screen w-full bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800">
+      <div className="flex min-h-screen-safe w-full bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800 overscroll-none">
+        {/* Desktop Navigation - Hidden on mobile and tablet */}
         <DesktopNav 
           collapsed={isSidebarCollapsed} 
           toggleCollapse={() => setSidebarCollapsed(!isSidebarCollapsed)} 
         />
-        <div className="flex flex-1 flex-col">
+        
+        {/* Main Content Area */}
+        <div className="flex flex-1 flex-col min-w-0">
+          {/* Mobile Header - Hidden on desktop */}
           <MobileHeader />
+          
+          {/* Desktop Header - Hidden on mobile, shown on tablet+ */}
           <DesktopHeader sidebarCollapsed={isSidebarCollapsed} />
-          <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto transition-colors pb-safe-nav md:pb-0">
-            <div className="mx-auto w-full max-w-7xl">{children}</div>
+          
+          {/* Main Content */}
+          <main className="
+            flex-1 overflow-auto
+            p-3 mobile:p-4 tablet:p-5 desktop:p-6
+            pb-20 mobile:pb-24 tablet:pb-6 desktop:pb-6
+            transition-all duration-200
+            scroll-smooth
+            touch-pan-y
+          ">
+            <div className="
+              mx-auto w-full 
+              max-w-sm mobile:max-w-full tablet:max-w-6xl desktop:max-w-7xl
+              space-y-4 mobile:space-y-5 tablet:space-y-6
+            ">
+              {children}
+            </div>
           </main>
-          <PropertyDebug />
+          
+          {/* Debug Component - Hidden on mobile */}
+          <div className="mobile:hidden">
+            <PropertyDebug />
+          </div>
+          
+          {/* Mobile Bottom Navigation */}
           <BottomNav />
+          
+          {/* Responsive Debug Tool */}
+          <ResponsiveDebug />
         </div>
       </div>
     </PreventiveMaintenanceProvider>
@@ -94,8 +125,8 @@ function DesktopNav({ collapsed, toggleCollapse }: {
 
   return (
     <aside className={cn(
-      "hidden lg:flex flex-col border-r transition-all duration-300 bg-white border-gray-200 shadow-lg",
-      collapsed ? "w-[80px]" : "w-[240px]",
+      "hidden desktop:flex flex-col border-r transition-all duration-300 bg-white border-gray-200 shadow-lg relative z-30",
+      collapsed ? "w-[80px]" : "w-[240px] tablet:w-[220px]",
     )}>
       <div className={cn(
         "p-4 border-b flex items-center border-gray-200",

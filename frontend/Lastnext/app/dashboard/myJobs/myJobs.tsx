@@ -1,7 +1,9 @@
 // MyJobs.js - Updated with Status Update functionality
 "use client";
 
-import React from "react";
+import * as React from "react";
+/// <reference types="react" />
+/// <reference types="react-dom" />
 import { useSession } from "@/app/lib/session.client";
 import { useRouter } from "next/navigation";
 import {

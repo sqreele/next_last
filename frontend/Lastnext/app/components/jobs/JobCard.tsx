@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useMemo, MouseEvent, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, MouseEvent, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { UpdateStatusModal } from "./UpdateStatusModal";
 import { Job, JobStatus, Property } from "@/app/lib/types";
@@ -53,6 +53,10 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
     timestamps: false,
     remarks: false,
   });
+
+  // Touch swipe state for image gallery
+  const touchStartXRef = useRef<number | null>(null);
+  const touchDeltaXRef = useRef<number>(0);
 
   const imageUrls = useMemo(() => {
     const urls: string[] = [];
@@ -317,11 +321,65 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
     }
   }, []);
 
-  const handleThumbnailClick = (index: number, e: MouseEvent) => {
+  const handleThumbnailClick = (index: number, e: MouseEvent | React.TouchEvent) => {
     e.stopPropagation();
     if (!imageUrls[index] || failedImageIndexes.has(index)) return;
     setSelectedImage(index);
   };
+
+  // Helpers to navigate images, skipping failed ones
+  const selectPrevImage = useCallback(() => {
+    if (imageUrls.length <= 1) return;
+    let prevIndex = selectedImage;
+    for (let i = 1; i <= imageUrls.length; i++) {
+      const candidate = (selectedImage - i + imageUrls.length) % imageUrls.length;
+      if (imageUrls[candidate] && !failedImageIndexes.has(candidate)) {
+        prevIndex = candidate;
+        break;
+      }
+    }
+    if (prevIndex !== selectedImage) setSelectedImage(prevIndex);
+  }, [imageUrls, selectedImage, failedImageIndexes]);
+
+  const selectNextImage = useCallback(() => {
+    if (imageUrls.length <= 1) return;
+    let nextIndex = selectedImage;
+    for (let i = 1; i <= imageUrls.length; i++) {
+      const candidate = (selectedImage + i) % imageUrls.length;
+      if (imageUrls[candidate] && !failedImageIndexes.has(candidate)) {
+        nextIndex = candidate;
+        break;
+      }
+    }
+    if (nextIndex !== selectedImage) setSelectedImage(nextIndex);
+  }, [imageUrls, selectedImage, failedImageIndexes]);
+
+  // Touch handlers for swipe gestures on the main image
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    touchStartXRef.current = e.touches[0]?.clientX ?? null;
+    touchDeltaXRef.current = 0;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartXRef.current === null) return;
+    const currentX = e.touches[0]?.clientX ?? touchStartXRef.current;
+    touchDeltaXRef.current = currentX - touchStartXRef.current;
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchStartXRef.current === null) return;
+    const deltaX = touchDeltaXRef.current;
+    const swipeThreshold = 30; // pixels
+    if (Math.abs(deltaX) > swipeThreshold) {
+      if (deltaX < 0) {
+        selectNextImage();
+      } else {
+        selectPrevImage();
+      }
+    }
+    touchStartXRef.current = null;
+    touchDeltaXRef.current = 0;
+  }, [selectNextImage, selectPrevImage]);
 
   const handleStatusUpdateComplete = useCallback(() => {
     window.location.reload();
@@ -391,16 +449,31 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
             <Badge 
               variant="outline" 
               className="px-2 py-0.5 text-xs font-medium"
+              aria-label={`Priority ${job.priority || 'Medium'}`}
             >
-              {job.priority?.charAt(0).toUpperCase() + job.priority?.slice(1) || 'Medium'}
+              <span className="xs:hidden">
+                {(job.priority?.charAt(0).toUpperCase() || 'M')}
+              </span>
+              <span className="hidden xs:inline">
+                {job.priority?.charAt(0).toUpperCase() + job.priority?.slice(1) || 'Medium'}
+              </span>
             </Badge>
             {job.is_defective && (
-              <Badge variant="destructive" className="px-2 py-0.5 text-xs">
-                Defective
+              <Badge 
+                variant="destructive" 
+                className="px-2 py-0.5 text-xs flex items-center gap-1"
+                aria-label="Defective"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Defective</span>
               </Badge>
             )}
             {job.is_preventivemaintenance && (
-              <Badge variant="secondary" className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700">
+              <Badge 
+                variant="secondary" 
+                className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700"
+                aria-label="Preventive Maintenance"
+              >
                 PM
               </Badge>
             )}
@@ -412,11 +485,16 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
         <div className={`space-y-2 ${
           viewMode === 'list' ? "flex flex-col sm:flex-row gap-3 sm:gap-4" : ""
         }`}>
-          <div className={`relative overflow-hidden rounded-md bg-gray-100 ${
+          <div 
+            className={`relative overflow-hidden rounded-md bg-gray-100 ${
             viewMode === 'list' 
               ? "w-full sm:w-32 h-32 sm:h-24 flex-shrink-0" 
               : "w-full aspect-video"
-          }`}>
+            } swipe-container touch-feedback`} 
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             {imageUrls.length > 0 && imageUrls[selectedImage] && !failedImageIndexes.has(selectedImage) ? (
               <Image
                 src={imageUrls[selectedImage]}
@@ -424,10 +502,27 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
                 fill
                 className="object-cover rounded-md"
                 unoptimized={true}
+                draggable={false}
                 onError={() => handleImageError(selectedImage)}
               />
             ) : (
               <MissingImage className="w-full h-full" />
+            )}
+
+            {imageUrls.length > 1 && (
+              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1 rounded-full bg-black/30">
+                {imageUrls.map((_, idx) => (
+                  <button
+                    key={`dot-${idx}`}
+                    type="button"
+                    aria-label={`Show image ${idx + 1}`}
+                    onClick={(e) => handleThumbnailClick(idx, e)}
+                    className={`w-1.5 h-1.5 rounded-full transition-opacity ${
+                      selectedImage === idx ? "bg-white opacity-100" : "bg-white/70 opacity-70"
+                    }`}
+                  />
+                ))}
+              </div>
             )}
           </div>
           {imageUrls.length > 1 && viewMode === 'grid' && (

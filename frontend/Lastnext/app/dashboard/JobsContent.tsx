@@ -78,6 +78,13 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
   };
 
   const currentTabConfig = tabConfig.find(tab => tab.value === currentTab);
+  const getTabCount = (value: TabValue | "defect" | "preventive_maintenance") => {
+    if (!Array.isArray(filteredJobs)) return 0;
+    if (value === "all") return filteredJobs.length;
+    if (value === "defect") return filteredJobs.filter((j: any) => j.is_defective === true).length;
+    if (value === "preventive_maintenance") return filteredJobs.filter((j: any) => j.is_preventivemaintenance === true || j.is_preventive_maintenance === true).length;
+    return filteredJobs.filter((j: any) => j.status === value).length;
+  };
 
   return (
     <div className="w-full">
@@ -129,6 +136,9 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
                 >
                   <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
                   {label}
+                  <span className="ml-2 inline-flex items-center justify-center px-1.5 min-w-[1.5rem] h-5 text-[10px] font-semibold rounded-full bg-gray-200 text-gray-700">
+                    {getTabCount(value as any)}
+                  </span>
                 </TabsTrigger>
               ))}
             </TabsList>

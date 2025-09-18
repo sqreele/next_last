@@ -7,6 +7,8 @@ import Pagination from '@/app/components/jobs/Pagination';
 import JobActions from '@/app/components/jobs/JobActions';
 import { Job, TabValue, Property, SortOrder } from '@/app/lib/types';
 import { Loader2 } from 'lucide-react';
+import { Button } from '@/app/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import {
   startOfDay, endOfDay, subDays,
   startOfWeek, endOfWeek, startOfMonth, endOfMonth,
@@ -58,10 +60,15 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   // Debug logging
 
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [showDebug, setShowDebug] = useState(false);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [filter, sortOrder, selectedProperty, dateFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -287,7 +294,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   if (sortedJobs.length === 0 && !isLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex justify-end mb-2">
+        <div className="flex justify-end items-center mb-2 gap-2">
           <JobActions
             jobs={sortedJobs}
             currentTab={filter}
@@ -300,6 +307,25 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
             onRoomFilter={onRoomFilter}
             currentRoomFilter={selectedRoom}
           />
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline text-xs text-gray-500">Per page</span>
+            <Select value={String(itemsPerPage)} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
+              <SelectTrigger className="h-8 w-[82px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {process.env.NODE_ENV === 'development' && (
+            <Button variant="outline" size="sm" className="h-8" onClick={() => setShowDebug((s) => !s)}>
+              {showDebug ? 'Hide Debug' : 'Show Debug'}
+            </Button>
+          )}
         </div>
 
         <div className="flex flex-col items-center justify-center min-h-[200px] p-4 text-center bg-white rounded-lg shadow-sm">
@@ -311,15 +337,17 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
               ? `No jobs match your current filters`
               : 'No property selected.'}
           </p>
-          {/* Debug information */}
-          <div className="mt-4 p-4 bg-gray-100 rounded text-left text-xs">
-            <p><strong>Debug Info:</strong></p>
-            <p>Total jobs: {jobs?.length || 0}</p>
-            <p>Selected property: {selectedProperty || 'None'}</p>
-            <p>Filtered jobs: {filteredJobs?.length || 0}</p>
-            <p>Sorted jobs: {sortedJobs?.length || 0}</p>
-            <p>Properties count: {properties?.length || 0}</p>
-          </div>
+          {/* Debug information (dev only) */}
+          {process.env.NODE_ENV === 'development' && showDebug && (
+            <div className="mt-4 p-4 bg-gray-100 rounded text-left text-xs">
+              <p><strong>Debug Info:</strong></p>
+              <p>Total jobs: {jobs?.length || 0}</p>
+              <p>Selected property: {selectedProperty || 'None'}</p>
+              <p>Filtered jobs: {filteredJobs?.length || 0}</p>
+              <p>Sorted jobs: {sortedJobs?.length || 0}</p>
+              <p>Properties count: {properties?.length || 0}</p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -327,7 +355,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-end items-center mb-2 gap-2">
         <JobActions
           jobs={sortedJobs}
           currentTab={filter}
@@ -340,10 +368,24 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
           onRoomFilter={onRoomFilter}
           currentRoomFilter={selectedRoom}
         />
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline text-xs text-gray-500">Per page</span>
+          <Select value={String(itemsPerPage)} onValueChange={(v) => setItemsPerPage(parseInt(v))}>
+            <SelectTrigger className="h-8 w-[82px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="100">100</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="text-sm text-gray-500 mb-2">
-        Showing {Math.min(currentJobs.length, itemsPerPage)} of {sortedJobs.length} results
+        Showing {sortedJobs.length === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, sortedJobs.length)} of {sortedJobs.length} results
       </div>
 
       {isLoading ? (

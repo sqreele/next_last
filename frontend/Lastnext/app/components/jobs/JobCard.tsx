@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/app/lib/stores/mainStore";
 import { MissingImage } from "@/app/components/jobs/MissingImage";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
-import { formatDate, formatDateTime } from "@/app/lib/utils/date-utils";
+import { formatDateTime } from "@/app/lib/utils/date-utils";
 import { useSession } from "@/app/lib/session.client";
 
 interface JobCardProps {
@@ -153,7 +153,7 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
     return configs[status] || configs.pending;
   };
 
-  const formatDate = useCallback((dateString: string) => {
+  const formatDateLabel = useCallback((dateString: string) => {
     try {
       return formatDateTime(dateString);
     } catch (error) {
@@ -163,6 +163,24 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
   }, []);
 
   const statusConfig = useMemo(() => getStatusConfig(job.status), [job.status]);
+  const statusAccentClass = useMemo(() => {
+    switch (job.status) {
+      case 'completed': return 'bg-green-500';
+      case 'in_progress': return 'bg-blue-500';
+      case 'pending': return 'bg-yellow-500';
+      case 'waiting_sparepart': return 'bg-purple-500';
+      case 'cancelled': return 'bg-red-500';
+      default: return 'bg-gray-300';
+    }
+  }, [job.status]);
+
+  const createdAtLabel = useMemo(() => {
+    try {
+      return new Date(job.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return 'Unknown';
+    }
+  }, [job.created_at]);
 
   const handleImageError = useCallback((index: number) => {
     setFailedImageIndexes(prev => {
@@ -391,13 +409,14 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
 
   return (
     <Card 
-      className={`w-full flex flex-col transition-all duration-200 bg-white shadow hover:shadow-md cursor-pointer mobile-card ${
+      className={`w-full flex flex-col transition-all duration-200 bg-white shadow hover:shadow-md cursor-pointer mobile-card relative overflow-hidden ${
         viewMode === 'list' 
           ? "max-w-none" 
           : "max-w-none sm:max-w-md mx-auto"
       }`}
       onClick={handleCardClick}
     >
+      <div className={cn("absolute left-0 top-0 h-full w-1", statusAccentClass)} />
       <CardHeader className="flex-shrink-0 p-3 sm:p-4 pb-2 sm:pb-3 border-b border-gray-100">
         <div className="flex flex-col gap-2">
           <div className="flex items-start justify-between gap-2">
@@ -435,13 +454,16 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
                 </span>
               </div>
             </div>
-            <Badge 
-              variant="secondary"
-              className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium flex-shrink-0 ${statusConfig.color} whitespace-nowrap`}
-            >
-              {statusConfig.icon}
-              <span className="hidden xs:inline">{statusConfig.label}</span>
-            </Badge>
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+              <Badge 
+                variant="secondary"
+                className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium flex-shrink-0 ${statusConfig.color} whitespace-nowrap`}
+              >
+                {statusConfig.icon}
+                <span className="hidden xs:inline">{statusConfig.label}</span>
+              </Badge>
+              <span className="text-[11px] text-gray-500">ID #{String(job.job_id).slice(0, 8)}</span>
+            </div>
           </div>
           
           {/* Mobile-friendly priority and status indicators */}
@@ -457,6 +479,14 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
               <span className="hidden xs:inline">
                 {job.priority?.charAt(0).toUpperCase() + job.priority?.slice(1) || 'Medium'}
               </span>
+            </Badge>
+            <Badge 
+              variant="outline" 
+              className="px-2 py-0.5 text-xs flex items-center gap-1"
+              aria-label="Created date"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{createdAtLabel}</span>
             </Badge>
             {job.is_defective && (
               <Badge 
@@ -698,22 +728,22 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
             <div className="space-y-2 mt-2 p-2 sm:p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
                 <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <span className="truncate"><span className="font-medium">Created:</span> {formatDate(job.created_at)}</span>
+                <span className="truncate"><span className="font-medium">Created:</span> {formatDateLabel(job.created_at)}</span>
               </div>
               <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
                 <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <span className="truncate"><span className="font-medium">Updated:</span> {formatDate(job.updated_at)}</span>
+                <span className="truncate"><span className="font-medium">Updated:</span> {formatDateLabel(job.updated_at)}</span>
               </div>
               {job.completed_at && (
                 <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
                   <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="truncate"><span className="font-medium">Completed:</span> {formatDate(job.completed_at)}</span>
+                  <span className="truncate"><span className="font-medium">Completed:</span> {formatDateLabel(job.completed_at)}</span>
                 </div>
               )}
               {job.status === "in_progress" && (
                 <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
                   <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0"></span>
-                  <span className="truncate">In progress since {formatDate(job.updated_at)}</span>
+                  <span className="truncate">In progress since {formatDateLabel(job.updated_at)}</span>
                 </div>
               )}
             </div>

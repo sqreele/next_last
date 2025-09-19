@@ -353,8 +353,8 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
       ) : (
         <div className="job-grid-container mb-10">
           <div className={viewMode === 'list' 
-            ? "gap-3 space-y-3" 
-            : "gap-2 sm:gap-3 grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+            ? "gap-4 space-y-4" 
+            : "grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 auto-rows-fr"
           }>
             {currentJobs.map((job, index) => (
               <div key={job.job_id || `job-${index}`} className={viewMode === 'list' ? "h-full w-full" : "h-full"}>

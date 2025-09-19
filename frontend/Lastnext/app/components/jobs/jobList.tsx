@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
-import { JobCard } from '@/app/components/jobs/JobCard';
+import InstagramJobCard from '@/app/components/jobs/InstagramJobCard';
 import Pagination from '@/app/components/jobs/Pagination';
 import JobActions from '@/app/components/jobs/JobActions';
 import { Job, TabValue, Property, SortOrder } from '@/app/lib/types';
@@ -359,7 +359,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
             {currentJobs.map((job, index) => (
               <div key={job.job_id || `job-${index}`} className={viewMode === 'list' ? "h-full w-full" : "h-full"}>
                 <div className="h-full touch-action-manipulation">
-                  <JobCard job={job} properties={properties} viewMode={viewMode} />
+                  <InstagramJobCard job={job} viewMode={viewMode} />
                 </div>
               </div>
             ))}

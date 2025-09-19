@@ -51,7 +51,7 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
   const [activeIdx, setActiveIdx] = useState(0);
   const [failed, setFailed] = useState<Set<number>>(new Set());
   const [liked, setLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState<number>(Math.max(0, (job.id % 37) + 5));
+  
 
   const onError = useCallback((idx: number) => {
     setFailed(prev => new Set(prev).add(idx));
@@ -63,11 +63,7 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
 
   const toggleLike = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    setLiked((prev: boolean) => {
-      const next = !prev;
-      setLikesCount((count: number) => count + (next ? 1 : -1));
-      return next;
-    });
+    setLiked((prev: boolean) => !prev);
   }, []);
 
   const goToDetail = useCallback(() => {
@@ -75,6 +71,28 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
   }, [router, job.job_id]);
 
   const status = getStatusConfig(job.status);
+  
+  const creatorName = useMemo(() => {
+    const user: any = job.user as any;
+    try {
+      if (!user) return "Unknown";
+      if (typeof user === "object") {
+        if (user.full_name && typeof user.full_name === "string") return user.full_name;
+        const firstName = user.first_name || "";
+        const lastName = user.last_name || "";
+        const combined = `${firstName} ${lastName}`.trim();
+        if (combined) return combined;
+        if (user.name && typeof user.name === "string") return user.name;
+        if (user.username && typeof user.username === "string") return user.username;
+        if (user.email && typeof user.email === "string") return user.email.split("@")[0];
+        if (user.id) return String(user.id);
+        return "Unknown";
+      }
+      return typeof user === "string" ? user : `User ${String(user)}`;
+    } catch {
+      return "Unknown";
+    }
+  }, [job.user]);
 
   return (
     <div className="rounded-md shadow-md bg-white text-gray-900 overflow-hidden cursor-pointer" onClick={goToDetail}>
@@ -134,14 +152,14 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
           </button>
         </div>
 
-        {/* Likes row */}
+        {/* Creator row */}
         <div className="flex items-center gap-2 pt-3 pb-1">
           <div className="flex -space-x-1">
             <img alt="" className="w-5 h-5 border rounded-full bg-gray-200 border-gray-300" src="/favicon.ico" />
             <img alt="" className="w-5 h-5 border rounded-full bg-gray-200 border-gray-300" src="/favicon.ico" />
             <img alt="" className="w-5 h-5 border rounded-full bg-gray-200 border-gray-300" src="/favicon.ico" />
           </div>
-          <span className="text-sm">Liked by <span className="font-semibold">Staff</span> and <span className="font-semibold">{likesCount} others</span></span>
+          <span className="text-sm">Created by <span className="font-semibold">{creatorName}</span></span>
         </div>
 
         {/* Caption and input */}

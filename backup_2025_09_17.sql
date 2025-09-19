@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ZcOb8WHWcHXSmzdNahtrHoDFBfll7iEJweCvEJtki4h7xCmwI2YWRAe2zzJnV8m
+\restrict lL7gBPV716lqyLeZDMGPr12qlK8UoamonQ9lx3wmeU5LxKDz8IkUiAuSDgHwrMd
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -1614,13 +1614,10 @@ z86bbnnauy39no79xbonwra29v9h5ssw	.eJxVjEsLgkAURv_LrEPu4OOO7QqMwqRVLtzIdWZ8FQ46ik
 COPY public."myappLubd_job" (id, job_id, is_defective, description, remarks, status, priority, created_at, updated_at, completed_at, user_id, updated_by_id, is_preventivemaintenance) FROM stdin;
 258	j25A6FF34	f	แก้ไขประตู shower ตก	.	completed	medium	2025-09-16 18:40:08.778063+00	2025-09-16 18:40:08.77821+00	2025-09-16 18:40:08.778213+00	10	10	f
 265	j25064B59	f	แก้ไขแอร์ไม่เย็น	.	completed	medium	2025-09-16 19:15:42.759366+00	2025-09-16 19:15:42.759553+00	2025-09-16 19:15:42.759556+00	10	10	f
-252	j256E8338	f	ไฟไม่ติด	.	pending	medium	2025-09-16 13:17:28.867076+00	2025-09-16 13:17:28.867311+00	\N	8	8	f
 259	j25B447C9	f	ทาสีผนังห้อง	.	completed	medium	2025-09-16 18:41:47.664302+00	2025-09-16 18:41:47.664441+00	2025-09-16 18:41:47.664447+00	10	10	f
 266	j25DFB57D	f	แก้ไขแอร์ไม่เย็น	.	completed	medium	2025-09-16 19:18:54.684768+00	2025-09-16 19:18:54.684941+00	2025-09-16 19:18:54.684946+00	10	10	f
-253	j25BDE5B2	f	ทำความสะอาดคราบกาว	.	pending	medium	2025-09-16 13:18:44.183244+00	2025-09-16 13:18:44.18342+00	\N	8	8	f
 260	j25F61296	f	แก้ไขผนังบวมและติดขอบสแตนเลตพื้น	.	completed	medium	2025-09-16 18:43:58.626193+00	2025-09-16 18:43:58.626347+00	2025-09-16 18:43:58.62635+00	10	10	f
 267	j25545C8A	f	แก้ไขแอร์ไม่เย็น	.	completed	medium	2025-09-16 19:20:17.945876+00	2025-09-16 19:20:17.946124+00	2025-09-16 19:20:17.946129+00	10	10	f
-254	j257C6EF6	f	ยิงชิลิโคนที่พื้น	.	pending	medium	2025-09-16 13:20:15.891836+00	2025-09-16 13:20:15.892039+00	\N	8	8	f
 261	j25E6AD9F	f	ติดขอบสแตนเลสพื้น	.	completed	medium	2025-09-16 18:45:58.868374+00	2025-09-16 18:45:58.868515+00	2025-09-16 18:45:58.868519+00	10	10	f
 268	j25F02E1B	f	ทาสีผนังและเช็ดสีฝาครอบกิ่งหน้าห้อง	.	completed	medium	2025-09-16 19:23:07.67743+00	2025-09-16 19:23:07.677645+00	2025-09-16 19:23:07.67765+00	10	10	f
 158	j25ED972B	f	ผนังเลอะ	ทาสีผนัง	completed	medium	2025-08-28 02:47:37+00	2025-08-28 02:47:37+00	2025-08-28 02:47:37+00	9	1	f
@@ -1657,6 +1654,7 @@ COPY public."myappLubd_job" (id, job_id, is_defective, description, remarks, sta
 45	j251B1E30	f	แก้ไขชักโครกมีกลิ่นและทาสีผนังห้องน้ำ	.	completed	medium	2025-08-01 09:16:51+00	2025-08-01 09:16:51+00	2025-08-01 09:16:51+00	10	1	f
 46	j251F6B96	f	แก้ไขน้ำแก้ไขน้ำแอร์หยุดลงมาจากข้างบนฝ้าช่องเซอร์วิส	.	completed	medium	2025-08-09 09:18:00+00	2025-08-09 09:18:00+00	2025-08-09 09:18:00+00	11	1	f
 47	j25525166	f	ยึดคิ้วสแตนเลสพื้น	.	completed	medium	2025-08-09 09:19:59+00	2025-08-09 09:19:59+00	2025-08-09 09:19:59+00	11	1	f
+254	j257C6EF6	f	ยิงชิลิโคนที่พื้น	.	completed	medium	2025-09-16 13:20:15.891836+00	2025-09-17 14:38:02.233806+00	2025-09-17 14:38:02.23349+00	8	8	f
 48	j25BC4A43	f	แก้ไขไฟหัวเตียงดับ	.	completed	medium	2025-08-09 09:21:46+00	2025-08-09 09:21:46+00	2025-08-09 09:21:46+00	11	1	f
 49	j250790F6	f	แก้ไขสายชำระน้ำหยด	.	completed	medium	2025-08-09 09:23:34+00	2025-08-09 09:23:34+00	2025-08-09 09:23:34+00	11	1	f
 50	j252EE219	f	ปรับรีโมทแอร์แอร์ไม่เย็น	.	completed	medium	2025-08-09 09:24:40+00	2025-08-09 09:24:40+00	2025-08-09 09:24:40+00	11	1	f
@@ -1856,7 +1854,6 @@ COPY public."myappLubd_job" (id, job_id, is_defective, description, remarks, sta
 246	j2555EE8A	f	แก้ไขน้ำรั่วซึมลงมาจากดาดฟ้า\r\nรอทากันซึมและทาสีฝ้าเพดานภายในห้อง	.	pending	medium	2025-09-11 09:11:35.871+00	2025-09-11 09:11:35.871+00	\N	11	11	f
 247	j2549B714	f	ทาสีผนังรอยด่าง	.	completed	medium	2025-09-11 09:38:11.443+00	2025-09-11 09:38:11.443+00	2025-09-11 09:38:11.443+00	11	11	f
 248	j25E1944E	f	ทาสีผนังห้องรอยด่าง	.	completed	medium	2025-09-11 09:41:22.555+00	2025-09-11 09:41:22.555+00	2025-09-11 09:41:22.555+00	11	11	f
-249	j2573D304	f	แก้ไขคราบน้ำแอร์หยด โป๊ฝ้าเพดาน รอทาสี	.	pending	medium	2025-09-11 10:24:51.464+00	2025-09-11 10:24:51.465+00	\N	11	11	f
 250	j259D2AA9	f	แก้ไขทีวีเชื่อมกับมือถือไม่ได้	.	completed	medium	2025-09-15 08:45:30.319+00	2025-09-15 08:45:30.319+00	2025-09-15 08:45:30.319+00	11	11	f
 257	j252C3C18	f	แก้ไขชักโครกตัน	.	completed	medium	2025-09-16 18:38:29.610714+00	2025-09-16 18:38:29.610962+00	2025-09-16 18:38:29.610968+00	10	10	f
 264	j259BE638	f	แก้ไขผนังร้าว	.	completed	medium	2025-09-16 19:12:14.464778+00	2025-09-16 19:12:14.464975+00	2025-09-16 19:12:14.46498+00	10	10	f
@@ -1864,6 +1861,27 @@ COPY public."myappLubd_job" (id, job_id, is_defective, description, remarks, sta
 270	j25BED0E1	f	ฝาชักโครกโยก	ฝาชักโครกโยก	completed	medium	2025-09-17 10:39:27.800806+00	2025-09-17 10:39:27.800972+00	2025-09-17 10:39:27.800976+00	9	9	f
 271	j25BD25C5	f	เก็บสีรอยเลอะ	เก็บรอยขอบปูนข้างห้องน้ำ +  ทาสี	completed	medium	2025-09-17 10:46:54.494765+00	2025-09-17 10:46:54.494887+00	2025-09-17 10:46:54.494889+00	9	9	f
 272	j25BF6B73	f	เก็บสีห้อง	เก็บสี	completed	medium	2025-09-17 10:49:03.608099+00	2025-09-17 10:49:03.608237+00	2025-09-17 10:49:03.608241+00	9	9	f
+252	j256E8338	f	ไฟไม่ติด	.	completed	medium	2025-09-16 13:17:28.867076+00	2025-09-17 14:37:45.820989+00	2025-09-17 14:37:45.820641+00	8	8	f
+253	j25BDE5B2	f	ทำความสะอาดคราบกาว	.	completed	medium	2025-09-16 13:18:44.183244+00	2025-09-17 14:37:55.618648+00	2025-09-17 14:37:55.618096+00	8	8	f
+249	j2573D304	f	แก้ไขคราบน้ำแอร์หยด โป๊ฝ้าเพดาน รอทาสี	.	completed	medium	2025-09-11 10:24:51.464+00	2025-09-18 01:41:16.128033+00	2025-09-18 01:41:16.127689+00	11	1	f
+273	j25088117	f	ฝาชักโครกโยก	ฝาโยก	completed	medium	2025-09-18 06:00:20.012379+00	2025-09-18 06:00:20.012526+00	2025-09-18 06:00:20.01253+00	9	9	f
+274	j25EEB5D1	f	ฝาชักโครกโยก	ขันน๊อต	completed	medium	2025-09-18 06:32:55.602672+00	2025-09-18 06:32:55.60284+00	2025-09-18 06:32:55.602844+00	9	9	f
+275	j25EB4830	f	ชักโครกตันห้องน้ำ lobby ทั้ง 2 ห้อง	.	completed	medium	2025-09-18 06:55:34.764078+00	2025-09-18 06:55:34.76421+00	2025-09-18 06:55:34.764213+00	10	10	f
+276	j25310C83	f	ทาสีฝ้าห้องน้ำ	.	completed	medium	2025-09-18 06:57:15.149754+00	2025-09-18 06:57:15.149961+00	2025-09-18 06:57:15.149965+00	10	10	f
+277	j25628408	f	ชักโครกตัน	.	completed	medium	2025-09-18 06:58:40.54884+00	2025-09-18 06:58:40.548983+00	2025-09-18 06:58:40.548986+00	10	10	f
+278	j25923473	f	ฝาชักโครกหลุด	.	completed	medium	2025-09-18 07:00:03.552548+00	2025-09-18 07:00:03.553418+00	2025-09-18 07:00:03.553426+00	10	10	f
+279	j25C54FB0	f	ไปหัวเตียงดับ	.	completed	medium	2025-09-18 07:01:16.940276+00	2025-09-18 07:01:16.940448+00	2025-09-18 07:01:16.940452+00	10	10	f
+280	j254002F4	f	ฝาชักโครกหลุด	.	completed	medium	2025-09-18 07:03:04.533614+00	2025-09-18 07:03:04.533783+00	2025-09-18 07:03:04.533787+00	10	10	f
+281	j254A6AB7	f	ยาแนวห้องอาบน้ำใหม่	ยาแนวพื้นห้องอาบน้ำ	completed	medium	2025-09-18 09:41:14.51711+00	2025-09-18 09:41:14.517246+00	2025-09-18 09:41:14.51725+00	9	9	f
+282	j254FB5C2	f	แก้ไขประตูตก	.	completed	medium	2025-09-18 10:21:53.700495+00	2025-09-18 10:21:53.700681+00	2025-09-18 10:21:53.700688+00	11	11	f
+283	j25B2B669	f	เชื่อมต่อทีวีกับมือถือให้ลูกค้า	.	completed	medium	2025-09-18 10:22:49.689284+00	2025-09-18 10:22:49.68942+00	2025-09-18 10:22:49.689424+00	11	11	f
+284	j25A422C9	f	ต่อวาล์วท่อเดนแอร์ห้อง CCTV	.	completed	medium	2025-09-18 10:24:07.538507+00	2025-09-18 10:24:07.538675+00	2025-09-18 10:24:07.538679+00	11	11	f
+285	j255B2B79	f	ต่อวาล์วท่อเดนแอร์ห้อง CCTV	.	completed	medium	2025-09-18 10:24:59.419825+00	2025-09-18 10:24:59.419981+00	2025-09-18 10:24:59.419987+00	11	11	f
+286	j2557EDF7	f	แก้ไขไฟหัวเตียงดับ	.	completed	medium	2025-09-18 10:59:12.67655+00	2025-09-18 10:59:12.67666+00	2025-09-18 10:59:12.676663+00	11	11	f
+287	j25DF66E3	f	แก้ไขโคมไฟหลุด	.	completed	medium	2025-09-18 11:00:59.243047+00	2025-09-18 11:00:59.243237+00	2025-09-18 11:00:59.243241+00	11	11	f
+288	j25ED4A12	f	เช็ดคราบกาว	.	completed	medium	2025-09-18 11:02:07.666913+00	2025-09-18 11:02:07.667073+00	2025-09-18 11:02:07.667076+00	11	11	f
+289	j257F0F00	f	ซ่อมเครื่องดูดฝุ่น	.	completed	medium	2025-09-18 11:26:59.695401+00	2025-09-18 11:26:59.695588+00	2025-09-18 11:26:59.695592+00	11	11	f
+290	j25ABDBD9	f	ซ่อมเครื่องดูดฝุ่น	.	completed	medium	2025-09-18 11:27:06.246422+00	2025-09-18 11:27:06.24659+00	2025-09-18 11:27:06.246594+00	11	11	f
 \.
 
 
@@ -2124,6 +2142,24 @@ COPY public."myappLubd_job_rooms" (id, job_id, room_id) FROM stdin;
 481	270	54
 482	271	35
 483	272	55
+484	273	181
+485	274	62
+486	275	181
+487	276	56
+488	277	117
+489	278	1
+490	279	45
+491	280	76
+492	281	120
+493	282	101
+494	283	81
+495	284	181
+496	285	181
+497	286	40
+498	287	181
+499	288	181
+500	289	181
+501	290	181
 \.
 
 
@@ -2383,6 +2419,24 @@ COPY public."myappLubd_job_topics" (id, job_id, topic_id) FROM stdin;
 479	270	2
 480	271	3
 481	272	3
+482	273	2
+483	274	2
+484	275	2
+485	276	3
+486	277	2
+487	278	2
+488	279	5
+489	280	2
+490	281	2
+491	282	2
+492	283	6
+493	284	8
+494	285	8
+495	286	5
+496	287	5
+497	288	9
+498	289	9
+499	290	9
 \.
 
 
@@ -2799,6 +2853,29 @@ COPY public."myappLubd_jobimage" (id, image, uploaded_at, job_id, uploaded_by_id
 428	maintenance_job_images/2025/09/IMG_4054.jpeg	2025-09-17 10:46:54.792116+00	271	9	IMG_4054.jpg
 429	maintenance_job_images/2025/09/IMG_4052.jpeg	2025-09-17 10:49:03.930674+00	272	9	IMG_4052.jpg
 430	maintenance_job_images/2025/09/IMG_4051.jpeg	2025-09-17 10:49:04.195356+00	272	9	IMG_4051.jpg
+431	maintenance_job_images/2025/09/IMG_4082.jpeg	2025-09-18 06:00:20.360325+00	273	9	IMG_4082.jpg
+432	maintenance_job_images/2025/09/IMG_4084.jpeg	2025-09-18 06:32:55.956978+00	274	9	IMG_4084.jpg
+433	maintenance_job_images/2025/09/1000006352.jpg	2025-09-18 06:55:35.133438+00	275	10	1000006352.jpg
+434	maintenance_job_images/2025/09/1000006351.jpg	2025-09-18 06:55:35.501825+00	275	10	1000006351.jpg
+435	maintenance_job_images/2025/09/1000006366.jpg	2025-09-18 06:57:15.515131+00	276	10	1000006366.jpg
+436	maintenance_job_images/2025/09/1000006365.jpg	2025-09-18 06:58:40.849842+00	277	10	1000006365.jpg
+437	maintenance_job_images/2025/09/1000006359.jpg	2025-09-18 07:00:04.009315+00	278	10	1000006359.jpg
+438	maintenance_job_images/2025/09/1000006355.jpg	2025-09-18 07:01:17.168349+00	279	10	1000006355.jpg
+439	maintenance_job_images/2025/09/1000006349.jpg	2025-09-18 07:03:04.835134+00	280	10	1000006349.jpg
+440	maintenance_job_images/2025/09/IMG_4086.jpeg	2025-09-18 09:41:14.859253+00	281	9	IMG_4086.jpg
+441	maintenance_job_images/2025/09/IMG_2721.jpeg	2025-09-18 10:21:53.999818+00	282	11	IMG_2721.jpg
+442	maintenance_job_images/2025/09/IMG_2716_N7nKDkh.jpeg	2025-09-18 10:22:49.980748+00	283	11	IMG_2716.jpg
+443	maintenance_job_images/2025/09/IMG_2714.jpeg	2025-09-18 10:24:07.81802+00	284	11	IMG_2714.jpg
+444	maintenance_job_images/2025/09/IMG_2717.jpeg	2025-09-18 10:24:08.081034+00	284	11	IMG_2717.jpg
+445	maintenance_job_images/2025/09/IMG_2714_XwC05yG.jpeg	2025-09-18 10:24:59.730112+00	285	11	IMG_2714.jpg
+446	maintenance_job_images/2025/09/IMG_2717_5WfHTwa.jpeg	2025-09-18 10:24:59.976479+00	285	11	IMG_2717.jpg
+447	maintenance_job_images/2025/09/IMG_2803.jpeg	2025-09-18 10:59:12.917266+00	286	11	IMG_2803.jpg
+448	maintenance_job_images/2025/09/IMG_2805.jpeg	2025-09-18 11:00:59.354572+00	287	11	IMG_2805.jpg
+449	maintenance_job_images/2025/09/IMG_2804.jpeg	2025-09-18 11:00:59.655315+00	287	11	IMG_2804.jpg
+450	maintenance_job_images/2025/09/IMG_2806.jpeg	2025-09-18 11:02:07.792262+00	288	11	IMG_2806.jpg
+451	maintenance_job_images/2025/09/IMG_2807.jpeg	2025-09-18 11:02:07.885847+00	288	11	IMG_2807.jpg
+452	maintenance_job_images/2025/09/IMG_2819.jpeg	2025-09-18 11:26:59.781827+00	289	11	IMG_2819.jpg
+453	maintenance_job_images/2025/09/IMG_2819_diR0T7S.jpeg	2025-09-18 11:27:06.342193+00	290	11	IMG_2819.jpg
 \.
 
 
@@ -3412,28 +3489,28 @@ SELECT pg_catalog.setval('public.django_migrations_id_seq', 47, true);
 -- Name: myappLubd_job_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_id_seq"', 272, true);
+SELECT pg_catalog.setval('public."myappLubd_job_id_seq"', 290, true);
 
 
 --
 -- Name: myappLubd_job_rooms_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_rooms_id_seq"', 483, true);
+SELECT pg_catalog.setval('public."myappLubd_job_rooms_id_seq"', 501, true);
 
 
 --
 -- Name: myappLubd_job_topics_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_topics_id_seq"', 481, true);
+SELECT pg_catalog.setval('public."myappLubd_job_topics_id_seq"', 499, true);
 
 
 --
 -- Name: myappLubd_jobimage_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_jobimage_id_seq"', 430, true);
+SELECT pg_catalog.setval('public."myappLubd_jobimage_id_seq"', 453, true);
 
 
 --
@@ -4886,5 +4963,5 @@ ALTER TABLE ONLY public."myappLubd_userprofile"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ZcOb8WHWcHXSmzdNahtrHoDFBfll7iEJweCvEJtki4h7xCmwI2YWRAe2zzJnV8m
+\unrestrict lL7gBPV716lqyLeZDMGPr12qlK8UoamonQ9lx3wmeU5LxKDz8IkUiAuSDgHwrMd
 

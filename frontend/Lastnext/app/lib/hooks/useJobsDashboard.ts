@@ -19,6 +19,7 @@ interface JobsDashboardState {
     cancelled: number;
     defect: number;
     preventiveMaintenance: number;
+    waitingSparepart: number;
   };
   filters: {
     property?: string;
@@ -86,6 +87,7 @@ const initialState: JobsDashboardState = {
     cancelled: 0,
     defect: 0,
     preventiveMaintenance: 0,
+    waitingSparepart: 0,
   },
   filters: {},
   viewMode: 'grid',

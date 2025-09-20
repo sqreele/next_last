@@ -332,165 +332,167 @@ export default function ImprovedDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        {/* Mobile Top Bar */}
-        <MobileTopBar />
-        
-        {/* Enhanced Dashboard Header */}
-        <DashboardHeader
-          username={user?.username || 'User'}
-          onRefresh={() => refreshJobs()}
-          onExport={exportJobs}
-          onClearCache={clearCache}
-          onToggleRealTime={handleRealTimeToggle}
-          isRealTimeEnabled={stats.total > 0}
-        />
+    <div className="min-h-screen bg-white">
+      {/* Instagram-style header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
+            <div className="flex items-center gap-4">
+              <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <RefreshCw className="w-5 h-5" onClick={() => refreshJobs()} />
+              </button>
+              <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <Settings className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        {/* Enhanced Statistics Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-          <StatCard
-            title="Total Jobs"
-            value={stats.total}
-            icon={<Building className="w-6 h-6 text-blue-600" />}
-            color="bg-blue-100"
-            trend={trends.total}
-          />
-          <StatCard
-            title="Pending"
-            value={stats.pending}
-            icon={<div className="w-6 h-6 bg-yellow-500 rounded-full animate-pulse" />}
-            color="bg-yellow-100"
-            trend={trends.pending}
-          />
-          <StatCard
-            title="In Progress"
-            value={stats.inProgress}
-            icon={<div className="w-6 h-6 bg-orange-500 rounded-full" />}
-            color="bg-orange-100"
-            trend={trends.inProgress}
-          />
-          <StatCard
-            title="Completed"
-            value={stats.completed}
-            icon={<div className="w-6 h-6 bg-green-500 rounded-full" />}
-            color="bg-green-100"
-            trend={trends.completed}
-          />
+      <div className="max-w-4xl mx-auto">
+        {/* Instagram-style stories/stats section */}
+        <div className="px-4 py-6 border-b border-gray-200">
+          <div className="flex items-center gap-6 overflow-x-auto pb-2">
+            <div className="flex flex-col items-center min-w-[80px]">
+              <div className="w-16 h-16 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-full p-0.5">
+                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                  <span className="text-2xl font-bold text-gray-900">{stats.total}</span>
+                </div>
+              </div>
+              <span className="text-xs text-gray-500 mt-1">Total</span>
+            </div>
+            <div className="flex flex-col items-center min-w-[80px]">
+              <div className="w-16 h-16 bg-gradient-to-tr from-yellow-400 to-orange-500 rounded-full p-0.5">
+                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                  <span className="text-2xl font-bold text-gray-900">{stats.pending}</span>
+                </div>
+              </div>
+              <span className="text-xs text-gray-500 mt-1">Pending</span>
+            </div>
+            <div className="flex flex-col items-center min-w-[80px]">
+              <div className="w-16 h-16 bg-gradient-to-tr from-blue-400 to-blue-600 rounded-full p-0.5">
+                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                  <span className="text-2xl font-bold text-gray-900">{stats.inProgress}</span>
+                </div>
+              </div>
+              <span className="text-xs text-gray-500 mt-1">In Progress</span>
+            </div>
+            <div className="flex flex-col items-center min-w-[80px]">
+              <div className="w-16 h-16 bg-gradient-to-tr from-green-400 to-green-600 rounded-full p-0.5">
+                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                  <span className="text-2xl font-bold text-gray-900">{stats.completed}</span>
+                </div>
+              </div>
+              <span className="text-xs text-gray-500 mt-1">Completed</span>
+            </div>
+          </div>
         </div>
 
-        {/* Search and Filters */}
-        <Card className="mt-6">
-          <CardContent className="p-6">
-            <SearchAndFilters
-              search={filters.search || ''}
-              onSearchChange={handleSearch}
-              onFiltersChange={handleFiltersChange}
-              properties={properties}
+        {/* Instagram-style search */}
+        <div className="px-4 py-4 border-b border-gray-200">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search jobs..."
+              value={filters.search || ''}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-100 border-none rounded-lg text-sm focus:outline-none focus:bg-white focus:ring-1 focus:ring-gray-300 transition-all"
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Jobs Content with Enhanced Tabs */}
-        <Card className="mt-6">
-          <CardHeader className="pb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="space-y-1">
-                <h2 className="text-xl font-semibold text-gray-900">Maintenance Jobs</h2>
-                <p className="text-sm text-gray-600">
-                  {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} found
-                  {loading && <span className="ml-2 text-blue-600">(Loading...)</span>}
-                </p>
-              </div>
-              
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className="h-9 px-3"
-                >
-                  Grid
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className="h-9 px-3"
-                >
-                  List
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-0">
+        {/* Instagram-style tabs */}
+        <div className="border-b border-gray-200">
+          <div className="px-4">
             <Tabs
               defaultValue="all"
               className="w-full"
               value={selectedTab}
               onValueChange={setSelectedTab}
             >
-              <div className="px-6 pt-4">
-                {/* Desktop Tabs - Horizontal Scrollable */}
-                <div className="hidden md:block overflow-x-auto">
-                  <TabsList className="inline-flex h-12 items-center justify-center rounded-xl bg-gray-50 p-1 border border-gray-200">
-                    {tabConfig.map(({ value, label, icon, color }) => (
-                      <TabsTrigger 
-                        key={value} 
-                        value={value} 
-                        className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm hover:bg-gray-100 hover:text-gray-900 min-w-fit"
+              {/* Instagram-style horizontal scrolling tabs */}
+              <div className="flex items-center justify-between py-3">
+                <div className="flex-1 overflow-x-auto">
+                  <div className="flex gap-8 min-w-max">
+                    {tabConfig.map(({ value, label, icon }) => (
+                      <button
+                        key={value}
+                        onClick={() => setSelectedTab(value)}
+                        className={`flex items-center gap-2 pb-3 border-b-2 transition-colors whitespace-nowrap ${
+                          selectedTab === value
+                            ? 'border-gray-900 text-gray-900'
+                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                        }`}
                       >
-                        <span className="mr-2">{icon}</span>
-                        {label}
-                        <Badge variant="secondary" className="ml-2">
+                        <span className="text-sm">{icon}</span>
+                        <span className="text-sm font-medium">{label}</span>
+                        <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">
                           {value === 'all' ? stats.total : stats[value as keyof typeof stats] || 0}
-                        </Badge>
-                      </TabsTrigger>
+                        </span>
+                      </button>
                     ))}
-                  </TabsList>
+                  </div>
+                </div>
+                
+                {/* View Mode Toggle - Instagram style */}
+                <div className="flex items-center gap-1 ml-4">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 rounded-md transition-colors ${
+                      viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 rounded-md transition-colors ${
+                      viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                 </div>
               </div>
 
-              {/* Tab Content */}
+              {/* Instagram-style content area */}
               {tabConfig.map(({ value }) => (
-                <TabsContent key={value} value={value} className="mt-0">
-                  <JobList 
-                    jobs={jobs}
-                    filter={value as any}
-                    properties={properties}
-                    viewMode={viewMode}
-                    selectedRoom={selectedRoom}
-                    onRoomFilter={handleRoomFilter}
-                    onRefresh={refreshJobs}
-                  />
-                  
-                  {/* Load More Button */}
-                  {hasMoreJobs && (
-                    <div className="p-6 text-center">
-                      <Button
-                        variant="outline"
-                        onClick={() => setPage(pagination.page + 1)}
-                        disabled={isLoadingMore}
-                        className="flex items-center gap-2"
-                      >
-                        {isLoadingMore ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                            Loading...
-                          </>
-                        ) : (
-                          'Load More Jobs'
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </TabsContent>
+                <div key={value} className={selectedTab === value ? 'block' : 'hidden'}>
+                  <div className="bg-white">
+                    <JobList 
+                      jobs={jobs}
+                      filter={value as any}
+                      properties={properties}
+                      viewMode={viewMode}
+                      selectedRoom={selectedRoom}
+                      onRoomFilter={handleRoomFilter}
+                      onRefresh={refreshJobs}
+                    />
+                    
+                    {/* Instagram-style load more */}
+                    {hasMoreJobs && (
+                      <div className="px-4 py-6 text-center border-t border-gray-200">
+                        <button
+                          onClick={() => setPage(pagination.page + 1)}
+                          disabled={isLoadingMore}
+                          className="text-blue-500 text-sm font-medium hover:text-blue-700 disabled:text-gray-400 transition-colors"
+                        >
+                          {isLoadingMore ? 'Loading...' : 'Load more jobs'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
               ))}
             </Tabs>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

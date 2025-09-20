@@ -57,7 +57,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
   // Debug logging
 
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(24);
 
   useEffect(() => {
     setCurrentPage(1);

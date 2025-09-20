@@ -96,6 +96,17 @@ const JobTableRow: React.FC<JobTableRowProps> = React.memo(
         >
           {job.priority.charAt(0).toUpperCase() + job.priority.slice(1)}
         </Badge>
+        {job.remarks && (
+          <div className="mt-2">
+            <div className="text-xs text-gray-500 font-medium">Comments:</div>
+            <div 
+              className="text-xs text-gray-600 bg-gray-50 p-1.5 rounded border max-w-xs"
+              title={job.remarks.length > 50 ? job.remarks : undefined}
+            >
+              {job.remarks.length > 50 ? `${job.remarks.substring(0, 50)}...` : job.remarks}
+            </div>
+          </div>
+        )}
       </TableCell>
       <TableCell className="py-3 max-w-sm">
         <p className="text-sm text-gray-700 truncate mb-1">{job.description}</p>
@@ -237,6 +248,14 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
           <p className="text-sm font-medium text-gray-700">Created:</p>
           <div className="text-sm text-gray-600">{new Date(job.created_at).toLocaleDateString()}</div>
         </div>
+        {job.remarks && (
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-gray-700">Comments:</p>
+            <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded border">
+              {job.remarks}
+            </div>
+          </div>
+        )}
         <div className="pt-2" onClick={(e) => e.stopPropagation()}>
           {/* Add the Update Status button for mobile */}
           <UpdateStatusButton 

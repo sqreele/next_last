@@ -237,7 +237,7 @@ export class JobsApiService {
   }
 
   // Jobs CRUD operations with pagination support
-  async getJobs(token: string, filters?: any, page: number = 1, pageSize: number = 25): Promise<any> {
+  async getJobs(token: string, filters?: any, page: number = 1, pageSize: number = 24): Promise<any> {
     const params = new URLSearchParams();
     
     // Add pagination params

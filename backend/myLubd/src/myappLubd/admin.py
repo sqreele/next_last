@@ -627,7 +627,7 @@ class TopicAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ['user_link', 'positions', 'get_properties_display', 'profile_image_preview']
+    list_display = ['user_link', 'positions', 'user_property_name', 'user_property_id', 'get_properties_display', 'profile_image_preview']
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'positions', 'properties__name', 'properties__property_id']
     filter_horizontal = ['properties']
     raw_id_fields = ['user']

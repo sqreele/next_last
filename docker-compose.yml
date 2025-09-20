@@ -173,12 +173,14 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      # Port 443 not needed - Cloudflare handles SSL termination
+      - "443:443"
     volumes:
       # Nginx configuration files
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       # Cloudflare IP ranges configuration (for real IP detection)
       - ./nginx/cloudflare.conf:/etc/nginx/cloudflare.conf:ro
+      # SSL certificates for Origin SSL (optional)
+      - ./nginx/ssl:/etc/nginx/ssl:ro
       # Static and media files
       - static_volume:/usr/share/nginx/html/static:ro
       - media_volume:/usr/share/nginx/html/media:ro

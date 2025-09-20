@@ -9,7 +9,7 @@ class StandardResultsSetPagination(PageNumberPagination):
     """
     Standard pagination for most endpoints
     """
-    page_size = 25
+    page_size = 24
     page_size_query_param = 'page_size'
     max_page_size = 100
     

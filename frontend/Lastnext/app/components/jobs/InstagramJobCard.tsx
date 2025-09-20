@@ -41,17 +41,17 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
       }
       // Priority 2: Check for first_name and last_name combination
       if ('first_name' in user && 'last_name' in user) {
-        const firstName = user.first_name || '';
-        const lastName = user.last_name || '';
+        const firstName = typeof user.first_name === 'string' ? user.first_name : '';
+        const lastName = typeof user.last_name === 'string' ? user.last_name : '';
         const fullName = `${firstName} ${lastName}`.trim();
         if (fullName) return fullName;
       }
       // Priority 3: Check for name property
-      if ('name' in user && user.name) {
+      if ('name' in user && user.name && typeof user.name === 'string') {
         return user.name;
       }
       // Priority 4: Check for username property (clean Auth0 usernames)
-      if ('username' in user && user.username) {
+      if ('username' in user && user.username && typeof user.username === 'string') {
         let cleanUsername = user.username;
         // Clean up Auth0 usernames for better display
         if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
@@ -60,7 +60,7 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
         return cleanUsername;
       }
       // Priority 5: Check for email and extract name part
-      if ('email' in user && user.email) {
+      if ('email' in user && user.email && typeof user.email === 'string') {
         return user.email.split('@')[0]; // Return part before @ as display name
       }
     }

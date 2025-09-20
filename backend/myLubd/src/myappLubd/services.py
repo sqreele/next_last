@@ -114,7 +114,7 @@ class JobService:
             )
         
         # Pagination
-        page_size = filters.get('page_size', 25)
+        page_size = filters.get('page_size', 24)
         page_number = filters.get('page', 1)
         
         paginator = Paginator(queryset, page_size)

@@ -175,11 +175,19 @@ services:
       - "80:80"
       - "443:443"
     volumes:
+      # Nginx configuration files
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Cloudflare SSL certificates (ensure these exist)
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      # Cloudflare IP ranges configuration
       - ./nginx/cloudflare.conf:/etc/nginx/cloudflare.conf:ro
+      # Static and media files
       - static_volume:/usr/share/nginx/html/static:ro
       - media_volume:/usr/share/nginx/html/media:ro
+    environment:
+      # Nginx environment variables for production
+      - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
+      - DOMAIN=${DOMAIN:-pcms.live}
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 30s

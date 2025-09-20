@@ -21,10 +21,6 @@ server {
     listen [::]:80;
     server_name pcms.live www.pcms.live;
 
-    # Allow Let's Encrypt challenges (if using Let's Encrypt instead of Cloudflare)
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
 
     # Redirect all HTTP traffic to HTTPS
     location / {

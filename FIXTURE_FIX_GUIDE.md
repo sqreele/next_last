@@ -29,7 +29,6 @@ python3 scripts/quick_fixture_fix.py backend/myLubd/src/backup.json
 docker compose exec backend python manage.py loaddata backup_quick_fixed.json
 ```
 
-### 2. Comprehensive Fix
 For more complex issues, use the comprehensive fixer:
 
 ```bash

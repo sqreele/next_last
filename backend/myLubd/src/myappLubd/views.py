@@ -962,7 +962,7 @@ class JobViewSet(viewsets.ModelViewSet):
             )
 
         if room_filter:
-            queryset = queryset.filter(rooms__id=room_filter)
+            queryset = queryset.filter(rooms__room_id=room_filter)
 
         if room_name_filter:
             queryset = queryset.filter(rooms__name__icontains=room_name_filter)
@@ -1004,12 +1004,12 @@ class JobViewSet(viewsets.ModelViewSet):
         stats = base_queryset.aggregate(
             total=Count('id', distinct=True),
             pending=Count(Case(When(status='pending', then=1))),
-            in_progress=Count(Case(When(status='in_progress', then=1))),
+            inProgress=Count(Case(When(status='in_progress', then=1))),
             completed=Count(Case(When(status='completed', then=1))),
             cancelled=Count(Case(When(status='cancelled', then=1))),
-            waiting_sparepart=Count(Case(When(status='waiting_sparepart', then=1))),
+            waitingSparepart=Count(Case(When(status='waiting_sparepart', then=1))),
             defect=Count(Case(When(is_defective=True, then=1))),
-            preventive_maintenance=Count(Case(When(is_preventivemaintenance=True, then=1)))
+            preventiveMaintenance=Count(Case(When(is_preventivemaintenance=True, then=1)))
         )
         
         return stats
@@ -1070,7 +1070,7 @@ class JobViewSet(viewsets.ModelViewSet):
             jobs = jobs.filter(is_preventivemaintenance=val)
         
         if room_filter:
-            jobs = jobs.filter(rooms__id=room_filter)
+            jobs = jobs.filter(rooms__room_id=room_filter)
         
         if room_name_filter:
             jobs = jobs.filter(rooms__name__icontains=room_name_filter)

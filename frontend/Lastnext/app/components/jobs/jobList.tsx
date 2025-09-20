@@ -256,6 +256,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     return sortOrder === "Newest first" ? dateB - dateA : dateA - dateB;
   });
 
+
   const totalPages = Math.ceil(sortedJobs.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;

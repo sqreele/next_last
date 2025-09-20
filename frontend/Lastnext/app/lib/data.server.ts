@@ -317,7 +317,8 @@ export async function fetchRoom(roomId: string, accessToken?: string): Promise<R
 }
 
 export async function fetchJobsForRoom(roomId: string, accessToken?: string): Promise<Job[]> {
-  const jobs = await fetchWithToken<Job[]>(`/api/v1/jobs/?room=${roomId}`, accessToken);
+  const response = await fetchWithToken<{results: Job[]}>(`/api/v1/jobs/?room_id=${roomId}`, accessToken);
+  const jobs = response.results || [];
   const sanitizedJobs = sanitizeJobsData(jobs);
   return fixJobsImageUrls(sanitizedJobs);
 }

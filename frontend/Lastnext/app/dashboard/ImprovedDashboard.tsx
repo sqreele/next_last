@@ -429,7 +429,11 @@ export default function ImprovedDashboard() {
                         <span className="text-sm">{icon}</span>
                         <span className="text-sm font-medium">{label}</span>
                         <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">
-                          {value === 'all' ? stats.total : stats[value as keyof typeof stats] || 0}
+                          {value === 'all' ? stats.total : 
+                           value === 'in_progress' ? stats.inProgress :
+                           value === 'waiting_sparepart' ? stats.waitingSparepart :
+                           value === 'preventive_maintenance' ? stats.preventiveMaintenance :
+                           stats[value as keyof typeof stats] || 0}
                         </span>
                       </button>
                     ))}

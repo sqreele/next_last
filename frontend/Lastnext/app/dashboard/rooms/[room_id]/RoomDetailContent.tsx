@@ -64,7 +64,10 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
         <CardHeader>
           <div className="flex justify-between items-start">
             <CardTitle className="text-2xl font-bold">Room {room.name || 'N/A'}</CardTitle>
-            <Badge variant={room.is_active ? 'default' : 'secondary'}>
+            <Badge 
+              variant={room.is_active ? 'default' : 'secondary'}
+              className={room.is_active ? 'bg-green-100 text-green-800 border-green-200' : ''}
+            >
               {room.is_active ? 'Active' : 'Inactive'}
             </Badge>
           </div>
@@ -88,14 +91,24 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
 
           {/* Jobs Section */}
           <div className="mt-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Jobs in this Room</h2>
+            <div className="flex items-center gap-2 mb-2">
+              <h2 className="text-xl font-semibold text-gray-800">Jobs in this Room</h2>
+              <Badge variant="secondary" className="text-sm">
+                {roomJobs.length} {roomJobs.length === 1 ? 'job' : 'jobs'}
+              </Badge>
+            </div>
             {roomJobs.length > 0 ? (
               <ul className="space-y-2">
-                {roomJobs.map((job) => (
+                {roomJobs.map((job, index) => (
                   <li key={job.job_id} className="border p-3 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
                     <Link href={`/dashboard/jobs/${job.job_id}`} className="block">
                       <div className="flex justify-between items-start">
-                        <p><strong>Job ID:</strong> {job.job_id}</p>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            #{index + 1}
+                          </Badge>
+                          <p><strong>Job ID:</strong> {job.job_id}</p>
+                        </div>
                         <Badge className={cn("px-2 py-1 text-xs", statusColors[job.status])}>
                           {job.status.replace('_', ' ').toUpperCase()}
                         </Badge>

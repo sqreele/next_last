@@ -145,6 +145,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         jobsApi.getJobStats(accessToken, filtersWithProperty)
       ]);
 
+
       setState(prev => ({
         ...prev,
         jobs: loadMore ? [...prev.jobs, ...jobsResponse.results] : jobsResponse.results,

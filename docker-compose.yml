@@ -178,8 +178,6 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - ./nginx/cloudflare.conf:/etc/nginx/cloudflare.conf:ro
-      - ./nginx/letsencrypt:/etc/letsencrypt:ro
-      - ./nginx/certbot:/var/www/certbot:ro
       - static_volume:/usr/share/nginx/html/static:ro
       - media_volume:/usr/share/nginx/html/media:ro
     healthcheck:
@@ -193,21 +191,6 @@ services:
     networks:
       - app-network
 
-  certbot:
-    image: certbot/certbot:latest
-    container_name: certbot
-    restart: unless-stopped
-    volumes:
-      - ./nginx/letsencrypt:/etc/letsencrypt
-      - ./nginx/certbot:/var/www/certbot
-    env_file:
-      - .env
-    entrypoint: "/bin/sh"
-    command: -c 'echo "0 0,12 * * * certbot renew --quiet" | crontab - && crond -f'
-    depends_on:
-      - nginx
-    networks:
-      - app-network
 
 networks:
   app-network:

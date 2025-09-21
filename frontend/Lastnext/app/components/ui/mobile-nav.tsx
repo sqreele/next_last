@@ -23,8 +23,8 @@ interface MobileNavProps {
 const navigationItems = [
   { name: 'Dashboard', href: '/dashboard', icon: Home, shortName: 'Home' },
   { name: 'My Jobs', href: '/dashboard/myJobs', icon: ShoppingCart, shortName: 'Jobs' },
-  { name: 'Analytics', href: '/dashboard/chartdashboard', icon: LineChart, shortName: 'Charts' },
   { name: 'Create Job', href: '/dashboard/createJob', icon: Plus, shortName: 'Create' },
+  { name: 'Analytics', href: '/dashboard/chartdashboard', icon: LineChart, shortName: 'Analytics' },
   { name: 'Profile', href: '/dashboard/profile', icon: User, shortName: 'Profile' },
 ];
 
@@ -33,11 +33,11 @@ export function MobileNav({ className }: MobileNavProps) {
 
   return (
     <nav 
-      className={`fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-lg md:hidden safe-area-inset ${className || ''}`}
+      className={`fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 md:hidden safe-area-inset ${className || ''}`}
       role="navigation"
       aria-label="Mobile navigation"
     >
-      <div className="flex items-center justify-around px-1 py-1">
+      <div className="flex items-center justify-around px-2 py-2">
         {navigationItems.map((item, index) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -46,44 +46,38 @@ export function MobileNav({ className }: MobileNavProps) {
             <Link 
               key={item.name} 
               href={item.href}
-              className="flex-1 max-w-20"
+              className="flex-1"
               tabIndex={0}
             >
-              <Button
-                variant="ghost"
-                size="sm"
+              <div
                 className={`
-                  flex flex-col items-center gap-1 h-auto py-3 px-2 w-full
-                  min-h-touch-target min-w-touch-target
-                  rounded-2xl transition-all duration-200 ease-in-out
-                  touch-manipulation
-                  hover:bg-gray-50 hover:text-blue-600 hover:scale-105
-                  active:scale-95 active:bg-blue-100
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                  flex flex-col items-center gap-1 py-2 px-1
+                  rounded-lg transition-all duration-200 ease-in-out
+                  touch-manipulation relative
                   ${isActive 
-                    ? "text-blue-600 bg-blue-50 shadow-sm scale-105" 
-                    : "text-gray-600 hover:text-blue-600"
+                    ? "text-gray-900" 
+                    : "text-gray-600 hover:text-gray-900"
                   }
                 `}
                 aria-label={`Navigate to ${item.name}`}
                 aria-current={isActive ? 'page' : undefined}
               >
+                {/* Instagram-style active indicator */}
+                {isActive && (
+                  <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-gray-900 rounded-full" />
+                )}
                 <Icon 
-                  className={`w-5 h-5 transition-all duration-200 ${
-                    isActive ? "text-blue-600" : "text-gray-500"
+                  className={`w-6 h-6 transition-all duration-200 ${
+                    isActive ? "text-gray-900" : "text-gray-600"
                   }`} 
                   aria-hidden="true"
                 />
-                <span className={`text-2xs font-medium leading-tight ${
-                  isActive ? "text-blue-600" : "text-gray-600"
+                <span className={`text-xs font-medium ${
+                  isActive ? "text-gray-900" : "text-gray-600"
                 }`}>
                   {item.shortName}
                 </span>
-                {/* Active indicator */}
-                {isActive && (
-                  <div className="absolute -top-0.5 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-600 rounded-full" />
-                )}
-              </Button>
+              </div>
             </Link>
           );
         })}

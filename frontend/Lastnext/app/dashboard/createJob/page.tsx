@@ -4,7 +4,7 @@ import { Metadata } from 'next';
 import CreateJobForm from '@/app/components/jobs/CreateJobForm';
 import { redirect } from 'next/navigation';
 import { getServerSession } from '@/app/lib/session.server';
-import { Plus, Wrench, Building, Calendar, Users } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,83 +44,38 @@ export default async function CreateJobPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <div className="flex justify-center mb-6">
-              <div className="p-4 bg-white/20 rounded-full backdrop-blur-sm">
-                <Plus className="h-12 w-12 text-white" />
-              </div>
+    <div className="min-h-screen bg-white">
+      {/* Instagram-style header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-gray-900">Create Job</h1>
+            <div className="flex items-center gap-4">
+              <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <Plus className="w-5 h-5" />
+              </button>
             </div>
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
-              Create New Maintenance Job
-            </h1>
-            <p className="text-xl text-blue-100 max-w-3xl mx-auto leading-relaxed">
-              Streamline your maintenance workflow with our intuitive job creation tool. 
-              Assign tasks, set priorities, and track progress efficiently.
-            </p>
           </div>
         </div>
       </div>
 
-      {/* Features Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-blue-100 rounded-xl">
-                <Wrench className="h-6 w-6 text-blue-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Task Management</h3>
-            </div>
-            <p className="text-gray-600 text-sm">
-              Create detailed maintenance tasks with descriptions, priorities, and status tracking.
-            </p>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-green-100 rounded-xl">
-                <Building className="h-6 w-6 text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Room Assignment</h3>
-            </div>
-            <p className="text-gray-600 text-sm">
-              Assign jobs to specific rooms and locations for better organization and tracking.
-            </p>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-white/20 shadow-lg">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-purple-100 rounded-xl">
-                <Calendar className="h-6 w-6 text-purple-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Priority System</h3>
-            </div>
-            <p className="text-gray-600 text-sm">
-              Set job priorities and track completion status for efficient maintenance management.
-            </p>
-          </div>
-        </div>
-
-        {/* Form Section */}
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="bg-gradient-to-r from-gray-50 to-slate-50 px-8 py-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Job Details</h2>
-              <p className="text-gray-600">
-                Fill out the form below to create a new maintenance job. All required fields are marked with an asterisk (*).
+      <div className="max-w-4xl mx-auto">
+        {/* Form Section with Instagram-style clean design */}
+        <div className="px-4 py-6">
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">New Maintenance Job</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Fill out the details below to create a new maintenance job.
               </p>
             </div>
             
-            <div className="p-8">
+            <div className="p-6">
               <Suspense fallback={
                 <div className="flex items-center justify-center py-12">
                   <div className="flex flex-col items-center gap-4">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                    <p className="text-gray-500 text-lg">Loading job creation form...</p>
+                    <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
+                    <p className="text-sm text-gray-500">Loading...</p>
                   </div>
                 </div>
               }>

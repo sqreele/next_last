@@ -93,10 +93,19 @@ export default function ProfilePage() {
   // Show loading while checking session
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-          <p className="text-lg font-medium text-gray-600">Loading profile...</p>
+      <div className="min-h-screen bg-white">
+        <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
+          <div className="max-w-4xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="text-center space-y-4">
+            <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto"></div>
+            <p className="text-sm text-gray-500">Loading...</p>
+          </div>
         </div>
       </div>
     );
@@ -109,32 +118,46 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
-              <h2 className="text-xl font-semibold text-gray-900">Profile Not Found</h2>
-              <p className="text-gray-600">Unable to load user profile information.</p>
-              <Button onClick={() => router.push('/dashboard')}>
-                Go to Dashboard
-              </Button>
+      <div className="min-h-screen bg-white">
+        <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
+          <div className="max-w-4xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <Card className="max-w-md mx-auto">
+            <CardContent className="pt-6">
+              <div className="text-center space-y-4">
+                <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
+                <h2 className="text-xl font-semibold text-gray-900">Profile Not Found</h2>
+                <p className="text-gray-600">Unable to load user profile information.</p>
+                <Button onClick={() => router.push('/dashboard')}>
+                  Go to Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile</h1>
-          <p className="text-gray-600">Manage your personal information and preferences</p>
+    <div className="min-h-screen bg-white">
+      {/* Instagram-style header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
+          </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-4xl mx-auto px-4 py-6">
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Profile Information */}
           <div className="lg:col-span-2">
             <Card>

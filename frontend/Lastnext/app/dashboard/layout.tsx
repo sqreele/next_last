@@ -68,7 +68,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <PreventiveMaintenanceProvider>
-      <div className="flex min-h-screen-safe w-full bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800 overscroll-none">
+      <div className="flex min-h-screen-safe w-full bg-white text-gray-800 overscroll-none">
         {/* Desktop Navigation - Hidden on mobile and tablet */}
         <DesktopNav 
           collapsed={isSidebarCollapsed} 

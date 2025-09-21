@@ -768,146 +768,156 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
 
   // Main Render Output
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-800">My Maintenance Jobs</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            {filteredJobs.length === jobs.length && !filtersApplied()
-              ? `Viewing ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`
-              : `Viewing ${filteredJobs.length} of ${jobs.length} total job${jobs.length !== 1 ? 's' : ''}`
-            }
-            {userProfile?.username && ` for ${userProfile.username}`}
-            {(activePropertyId ?? selectedProperty) && ` on property ${(activePropertyId ?? selectedProperty)}`}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={handleManualRefresh} variant="outline" size="sm" disabled={isLoading}>
-            <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          {(activePropertyId ?? selectedProperty) && (
-            <CreateJobButton
-              propertyId={(activePropertyId ?? selectedProperty) as string}
-              onJobCreated={handleJobCreated}
-            />
-          )}
+    <div className="min-h-screen bg-white">
+      {/* Instagram-style header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-gray-900">My Jobs</h1>
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={handleManualRefresh}
+                disabled={isLoading}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <RefreshCcw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <JobFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onClearFilters={handleClearFilters}
-      />
-
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg mb-6 flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-500 mt-0.5"/>
-          <div>
-            <p className="font-medium">Error Loading Jobs</p>
-            <p className="text-sm">{error}</p>
-            <Button onClick={() => refreshJobs(true)} variant="link" size="sm" className="text-red-700 p-0 h-auto mt-1">
-              Try Again
-            </Button>
-          </div>
+      <div className="max-w-4xl mx-auto">
+        {/* Job count info */}
+        <div className="px-4 py-4 border-b border-gray-200">
+          <p className="text-sm text-gray-600">
+            {filteredJobs.length === jobs.length && !filtersApplied()
+              ? `${jobs.length} job${jobs.length !== 1 ? 's' : ''}`
+              : `${filteredJobs.length} of ${jobs.length} jobs`
+            }
+            {userProfile?.username && ` • ${userProfile.username}`}
+          </p>
         </div>
-      )}
 
-      {/* Job List or Empty State */}
-      {!error && (
-        isLoading && jobs.length === 0 ? (
-          <div className="text-center p-12 border rounded-lg bg-white shadow-sm">
-            <Loader className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Loading jobs...</p>
-          </div>
-        ) : filteredJobs.length > 0 ? (
-          <>
-            {/* Table for Desktop */}
-            <div className="border rounded-lg overflow-x-auto hidden md:block">
-              <Table className="w-full">
-                <TableHeader>
-                  <TableRow className="bg-gray-50 hover:bg-gray-50">
-                    <TableHead className="w-[180px] py-3 text-gray-700 font-semibold">Job Details</TableHead>
-                    <TableHead className="py-3 text-gray-700 font-semibold">Description</TableHead>
-                    <TableHead className="py-3 text-gray-700 font-semibold">Location</TableHead>
-                    <TableHead className="py-3 text-gray-700 font-semibold">Status</TableHead>
-                    <TableHead className="py-3 text-gray-700 font-semibold">Created</TableHead>
-                    <TableHead className="w-[100px] py-3 text-gray-700 font-semibold text-right pr-6">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {currentJobs.map((job) => (
-                    <JobTableRow 
-                      key={job.job_id} 
-                      job={job} 
-                      onEdit={handleEdit} 
-                      onDelete={handleDelete} 
-                      onStatusUpdated={handleStatusUpdated} 
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            
-            {/* Cards for Mobile */}
-            <div className="md:hidden space-y-4">
-              {currentJobs.map((job) => (
-                <JobMobileCard 
-                  key={job.job_id} 
-                  job={job} 
-                  onEdit={handleEdit} 
-                  onDelete={handleDelete} 
-                  onStatusUpdated={handleStatusUpdated} 
-                />
-              ))}
-            </div>
-            
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-6">
-                <div className="text-sm text-gray-600 mb-2 text-center">
-                  Showing {startIndex + 1} to {endIndex} of {filteredJobs.length} results
-                </div>
-                <Pagination 
-                  totalPages={totalPages} 
-                  currentPage={currentPage} 
-                  onPageChange={handlePageChange} 
-                />
-              </div>
-            )}
-          </>
-        ) : (
-          // Empty State
-          <div className="text-center p-12 border rounded-lg bg-white shadow-sm">
-            <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900">
-              {jobs.length > 0 ? "No jobs match filters" : "No maintenance jobs found"}
-            </h3>
-            <p className="text-gray-600 mt-2">
-              {jobs.length > 0
-                ? "Try adjusting your filters or search term."
-                : (activePropertyId ?? selectedProperty)
-                  ? "There are no maintenance requests for this property yet."
-                  : "You haven't created any maintenance requests."}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 mt-4 justify-center">
-              {jobs.length > 0 && filtersApplied() && (
-                <Button onClick={handleClearFilters} variant="outline" size="sm">
-                  Clear Filters
+        {/* Filters */}
+        <div className="px-4 py-4 border-b border-gray-200">
+          <JobFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+          />
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="px-4 py-4">
+            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-500 mt-0.5"/>
+              <div>
+                <p className="font-medium">Error Loading Jobs</p>
+                <p className="text-sm">{error}</p>
+                <Button onClick={() => refreshJobs(true)} variant="link" size="sm" className="text-red-700 p-0 h-auto mt-1">
+                  Try Again
                 </Button>
-              )}
-              <Button onClick={() => refreshJobs(true)} variant="outline" size="sm" disabled={isLoading}>
-                <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh List
-              </Button>
+              </div>
             </div>
           </div>
-        )
-      )}
+        )}
+
+        {/* Job List or Empty State */}
+        {!error && (
+          isLoading && jobs.length === 0 ? (
+            <div className="px-4 py-12 text-center">
+              <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-sm text-gray-500">Loading...</p>
+            </div>
+          ) : filteredJobs.length > 0 ? (
+            <>
+              {/* Table for Desktop */}
+              <div className="hidden md:block">
+                <div className="border-t border-gray-200">
+                  <Table className="w-full">
+                    <TableHeader>
+                      <TableRow className="bg-gray-50 hover:bg-gray-50">
+                        <TableHead className="w-[180px] py-3 text-gray-700 font-semibold">Job Details</TableHead>
+                        <TableHead className="py-3 text-gray-700 font-semibold">Description</TableHead>
+                        <TableHead className="py-3 text-gray-700 font-semibold">Location</TableHead>
+                        <TableHead className="py-3 text-gray-700 font-semibold">Status</TableHead>
+                        <TableHead className="py-3 text-gray-700 font-semibold">Created</TableHead>
+                        <TableHead className="w-[100px] py-3 text-gray-700 font-semibold text-right pr-6">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentJobs.map((job) => (
+                        <JobTableRow 
+                          key={job.job_id} 
+                          job={job} 
+                          onEdit={handleEdit} 
+                          onDelete={handleDelete} 
+                          onStatusUpdated={handleStatusUpdated} 
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+              
+              {/* Cards for Mobile */}
+              <div className="md:hidden px-4 py-4 space-y-4">
+                {currentJobs.map((job) => (
+                  <JobMobileCard 
+                    key={job.job_id} 
+                    job={job} 
+                    onEdit={handleEdit} 
+                    onDelete={handleDelete} 
+                    onStatusUpdated={handleStatusUpdated} 
+                  />
+                ))}
+              </div>
+              
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="px-4 py-6 text-center border-t border-gray-200">
+                  <div className="text-sm text-gray-600 mb-4">
+                    Showing {startIndex + 1} to {endIndex} of {filteredJobs.length} results
+                  </div>
+                  <Pagination 
+                    totalPages={totalPages} 
+                    currentPage={currentPage} 
+                    onPageChange={handlePageChange} 
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            // Empty State
+            <div className="px-4 py-12 text-center">
+              <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900">
+                {jobs.length > 0 ? "No jobs match filters" : "No maintenance jobs found"}
+              </h3>
+              <p className="text-gray-600 mt-2">
+                {jobs.length > 0
+                  ? "Try adjusting your filters or search term."
+                  : (activePropertyId ?? selectedProperty)
+                    ? "There are no maintenance requests for this property yet."
+                    : "You haven't created any maintenance requests."}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 mt-4 justify-center">
+                {jobs.length > 0 && filtersApplied() && (
+                  <Button onClick={handleClearFilters} variant="outline" size="sm">
+                    Clear Filters
+                  </Button>
+                )}
+                <Button onClick={() => refreshJobs(true)} variant="outline" size="sm" disabled={isLoading}>
+                  <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh List
+                </Button>
+              </div>
+            </div>
+          )
+        )}
+      </div>
 
       {/* Dialogs */}
       <EditDialog 

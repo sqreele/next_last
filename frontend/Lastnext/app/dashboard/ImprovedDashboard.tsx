@@ -339,8 +339,11 @@ export default function ImprovedDashboard() {
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
             <div className="flex items-center gap-4">
-              <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                <RefreshCw className="w-5 h-5" onClick={() => refreshJobs()} />
+              <button 
+                onClick={() => refreshJobs()} 
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <RefreshCw className="w-5 h-5" />
               </button>
               <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                 <Settings className="w-5 h-5" />

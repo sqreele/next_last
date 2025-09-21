@@ -12,14 +12,17 @@ export default function JobsReportPage() {
   const { properties: userProperties } = useProperties();
 
   return (
-    <div className="container mx-auto px-4 py-6 space-y-6">
-      {/* Page Header */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-gray-900">Jobs Report Dashboard</h1>
-        <p className="text-gray-600">
-          Generate comprehensive reports for your selected property
-        </p>
+    <div className="min-h-screen bg-white">
+      {/* Instagram-style header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-gray-900">Jobs Report</h1>
+          </div>
+        </div>
       </div>
+
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
 
       {/* Property Selection Info */}
       <Card>
@@ -132,8 +135,9 @@ export default function JobsReportPage() {
         </CardContent>
       </Card>
 
-      {/* Jobs Report Component */}
-      <JobsReport />
+        {/* Jobs Report Component */}
+        <JobsReport />
+      </div>
     </div>
   );
 }

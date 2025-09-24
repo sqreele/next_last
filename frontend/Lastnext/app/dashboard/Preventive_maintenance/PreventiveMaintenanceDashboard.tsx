@@ -77,7 +77,14 @@ export default function PreventiveMaintenanceDashboard({
     error,
     loadJobs,
     getStats,
-    lastLoadTime
+    lastLoadTime,
+    // New pagination API from hook
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    totalPages,
+    totalCount
   } = usePreventiveMaintenanceJobs({
     propertyId,
     limit,
@@ -174,8 +181,7 @@ export default function PreventiveMaintenanceDashboard({
     ? filteredJobs
     : jobsByStatus[activeTab as keyof typeof jobsByStatus] || [];
 
-  // Pagination logic
-  const totalPages = Math.ceil(displayJobs.length / itemsPerPage);
+  // Client-side pagination for tabs/filters view only (uses server pagination for base list)
   const paginatedJobs = displayJobs.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -462,7 +468,7 @@ export default function PreventiveMaintenanceDashboard({
             </TabsList>
             
             <TabsContent value={activeTab} className="space-y-4">
-              <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">
                   {activeTab === 'overview' 
                     ? 'All Preventive Maintenance Jobs' 
@@ -470,11 +476,9 @@ export default function PreventiveMaintenanceDashboard({
                       ? 'Preventive Maintenance Tasks'
                       : `${activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace('_', ' ')} Maintenance Tasks`}
                 </h3>
-                {filteredJobs.length !== jobs.length && (
-                  <div className="text-sm text-gray-500">
-                    Showing {filteredJobs.length} of {jobs.length} jobs
-                  </div>
-                )}
+            <div className="text-sm text-gray-500">
+              Total {totalCount} jobs
+            </div>
               </div>
               
               {/* Job cards or empty state */}
@@ -484,14 +488,14 @@ export default function PreventiveMaintenanceDashboard({
                     <JobCard key={job.job_id} job={job} />
                   ))}
                   
-                  {/* Pagination */}
+                  {/* Server-side pagination controls (overall list) */}
                   {totalPages > 1 && (
                     <Pagination className="mt-6">
                       <PaginationContent>
                         <PaginationItem>
                           <PaginationPrevious 
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                            className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                            onClick={() => setPage(Math.max(1, page - 1))}
+                            className={page === 1 ? "pointer-events-none opacity-50" : ""}
                           />
                         </PaginationItem>
                         
@@ -501,20 +505,20 @@ export default function PreventiveMaintenanceDashboard({
                           // Logic to show appropriate page numbers
                           if (totalPages <= 5) {
                             pageNumber = i + 1;
-                          } else if (currentPage <= 3) {
+                          } else if (page <= 3) {
                             pageNumber = i + 1;
-                          } else if (currentPage >= totalPages - 2) {
+                          } else if (page >= totalPages - 2) {
                             pageNumber = totalPages - 4 + i;
                           } else {
-                            pageNumber = currentPage - 2 + i;
+                            pageNumber = page - 2 + i;
                           }
                           
                           if (pageNumber > 0 && pageNumber <= totalPages) {
                             return (
                               <PaginationItem key={pageNumber}>
                                 <PaginationLink
-                                  onClick={() => setCurrentPage(pageNumber)}
-                                  isActive={currentPage === pageNumber}
+                                  onClick={() => setPage(pageNumber)}
+                                  isActive={page === pageNumber}
                                 >
                                   {pageNumber}
                                 </PaginationLink>
@@ -526,8 +530,8 @@ export default function PreventiveMaintenanceDashboard({
                         
                         <PaginationItem>
                           <PaginationNext 
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                            onClick={() => setPage(Math.min(totalPages, page + 1))}
+                            className={page === totalPages ? "pointer-events-none opacity-50" : ""}
                           />
                         </PaginationItem>
                       </PaginationContent>

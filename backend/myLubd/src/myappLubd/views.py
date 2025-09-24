@@ -1693,10 +1693,17 @@ def get_preventive_maintenance_jobs(request):
     # Get query parameters
     property_id = request.query_params.get('property_id')
     status_param = request.query_params.get('status')
-    limit = request.query_params.get('limit', 50)  # Default to 50 jobs
+    # Backward compatibility: support 'limit' but prefer standard page/page_size
+    page = int(request.query_params.get('page', 1) or 1)
+    page_size_param = request.query_params.get('page_size')
+    legacy_limit = request.query_params.get('limit')
+    try:
+        page_size = int(page_size_param) if page_size_param is not None else (int(legacy_limit) if legacy_limit is not None else 50)
+    except ValueError:
+        page_size = 50
     
-    # Build base query
-    query = Job.objects.filter(is_preventivemaintenance=True)
+    # Build base filtered queryset
+    base_queryset = Job.objects.filter(is_preventivemaintenance=True)
     
     # Add property filter if provided
     if property_id:
@@ -1708,7 +1715,7 @@ def get_preventive_maintenance_jobs(request):
                     {"detail": "You do not have permission to access this property"},
                     status=status.HTTP_403_FORBIDDEN
                 )
-            query = query.filter(rooms__properties__in=[property_obj])
+            base_queryset = base_queryset.filter(rooms__properties__in=[property_obj])
         except Property.DoesNotExist:
             return Response(
                 {"detail": f"Property with ID {property_id} not found"},
@@ -1717,24 +1724,39 @@ def get_preventive_maintenance_jobs(request):
     else:
         # If no property specified, filter by user's properties
         user_properties = Property.objects.filter(users=request.user)
-        query = query.filter(rooms__properties__in=user_properties)
+        base_queryset = base_queryset.filter(rooms__properties__in=user_properties)
     
     # Add status filter if provided
     if status_param:
-        query = query.filter(status=status_param)
+        base_queryset = base_queryset.filter(status=status_param)
     
-    # Apply distinct, select related, and prefetch related for efficiency
-    query = query.distinct().select_related('user').prefetch_related(
+    # Distinct to avoid duplicates from joins
+    base_queryset = base_queryset.distinct()
+
+    # Total count BEFORE pagination
+    total_count = base_queryset.count()
+
+    # Calculate pagination bounds
+    page = page if page > 0 else 1
+    page_size = page_size if page_size > 0 else 50
+    total_pages = math.ceil(total_count / page_size) if page_size else 1
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+
+    # Apply ordering and related optimizations AFTER counting
+    query = base_queryset.select_related('user').prefetch_related(
         'rooms', 'topics', 'job_images'
-    )
-    
-    # Apply limit
-    if limit and limit.isdigit():
-        query = query[:int(limit)]
+    ).order_by('-created_at')[start_idx:end_idx]
     
     # Serialize and return
     serializer = JobSerializer(query, many=True, context={'request': request})
-    return Response({'jobs': serializer.data, 'count': len(serializer.data)})
+    return Response({
+        'count': total_count,
+        'page': page,
+        'page_size': page_size,
+        'total_pages': total_pages,
+        'results': serializer.data
+    })
 
 
 @api_view(['GET'])

@@ -77,16 +77,22 @@ export function usePreventiveMaintenanceJobs({
   const [retryCount, setRetryCount] = useState<number>(0);
   const [isPMProperty, setIsPMProperty] = useState<boolean | null>(null);
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
+  // Server-side pagination state
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(limit || 10);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalCount, setTotalCount] = useState<number>(0);
   
   // Use refs to avoid dependency issues
   const lastLoadTimeRef = useRef<Date | null>(null);
   const retryCountRef = useRef<number>(0);
   const isLoadingRef = useRef<boolean>(false);
+  const lastQueryKeyRef = useRef<string | null>(null);
   
   // Create a cache key based on query parameters
   const cacheKey = useMemo(() => 
-    `pm_jobs_${propertyId || 'all'}_${limit}_${isPM ? 'true' : 'false'}`,
-    [propertyId, limit, isPM]
+    `pm_jobs_${propertyId || 'all'}_${page}_${pageSize}_${isPM ? 'true' : 'false'}`,
+    [propertyId, page, pageSize, isPM]
   );
 
   // Helper function to create authenticated config
@@ -157,13 +163,13 @@ export function usePreventiveMaintenanceJobs({
       return;
     }
     
-    // Use cached data if we loaded recently and not forcing refresh
+    // Use cached data if we loaded recently for the SAME query and not forcing refresh
     const now = new Date();
-    if (!forceRefresh && lastLoadTimeRef.current && 
+    if (!forceRefresh && lastLoadTimeRef.current && lastQueryKeyRef.current === cacheKey &&
         (now.getTime() - lastLoadTimeRef.current.getTime()) < 2 * 60 * 1000) {
-      debug(`Using recently loaded data (${(now.getTime() - lastLoadTimeRef.current.getTime()) / 1000}s ago)`);
+      debug(`Using recently loaded data for same query (${(now.getTime() - lastLoadTimeRef.current.getTime()) / 1000}s ago)`);
       isLoadingRef.current = false;
-      return; // Use existing data if loaded within last 2 minutes
+      return; // Use existing data if loaded within last 2 minutes for same query
     }
 
     if (!autoLoad && initialJobs.length > 0 && !forceRefresh) {
@@ -177,7 +183,7 @@ export function usePreventiveMaintenanceJobs({
       isLoadingRef.current = true;
       setLoading(true);
       setError(null);
-      debug(`Loading jobs: propertyId=${propertyId}, limit=${limit}, isPM=${isPM}`);
+      debug(`Loading jobs: propertyId=${propertyId}, page=${page}, pageSize=${pageSize}, isPM=${isPM}`);
       
       // Check if this property has PM enabled, but don't fail if it doesn't
       let hasPM = true;
@@ -202,6 +208,7 @@ export function usePreventiveMaintenanceJobs({
               setJobs(cachedData.data);
               setLastLoadTime(cacheTime.getTime());
               lastLoadTimeRef.current = cacheTime;
+              lastQueryKeyRef.current = cacheKey;
               isLoadingRef.current = false;
               setLoading(false);
               return;
@@ -218,7 +225,9 @@ export function usePreventiveMaintenanceJobs({
       // Fallback to /api/v1/jobs/ if needed
       const params: Record<string, string> = {};
       if (propertyId) params.property_id = propertyId;
-      if (limit) params.limit = limit.toString();
+      // Prefer page/page_size over legacy limit
+      params.page = String(page);
+      params.page_size = String(pageSize);
 
       // Build querystring
       const toQuery = (obj: Record<string, string>) =>
@@ -233,12 +242,26 @@ export function usePreventiveMaintenanceJobs({
       try {
         const pmUrl = `/api/v1/preventive-maintenance/jobs${Object.keys(params).length ? `?${toQuery(params)}` : ''}`;
         debug(`Fetching PM jobs via dedicated endpoint: ${pmUrl}`);
-        const pmResponse = await fetchData<{ jobs: Job[]; count: number }>(pmUrl, createAuthConfig());
-        if (pmResponse && Array.isArray(pmResponse.jobs)) {
-          fetchedJobs = pmResponse.jobs;
-          debug(`Received ${pmResponse.jobs.length} jobs from PM jobs endpoint`);
-        } else {
-          debug(`Unexpected PM jobs response format:`, pmResponse);
+        const pmResponse = await fetchData<any>(pmUrl, createAuthConfig());
+        if (pmResponse) {
+          if (Array.isArray(pmResponse.results)) {
+            fetchedJobs = pmResponse.results as Job[];
+            setTotalCount(typeof pmResponse.count === 'number' ? pmResponse.count : fetchedJobs.length);
+            setTotalPages(typeof pmResponse.total_pages === 'number' ? pmResponse.total_pages : 1);
+            debug(`Received ${fetchedJobs.length} jobs (paginated). Total ${pmResponse.count}, pages ${pmResponse.total_pages}`);
+          } else if (Array.isArray(pmResponse.jobs)) {
+            // Backward compatibility
+            fetchedJobs = pmResponse.jobs as Job[];
+            setTotalCount(typeof pmResponse.count === 'number' ? pmResponse.count : fetchedJobs.length);
+            setTotalPages(Math.ceil((pmResponse.count || fetchedJobs.length) / pageSize));
+            debug(`Received ${fetchedJobs.length} jobs (legacy shape).`);
+          } else if (Array.isArray(pmResponse)) {
+            fetchedJobs = pmResponse as Job[];
+            setTotalCount(fetchedJobs.length);
+            setTotalPages(1);
+          } else {
+            debug(`Unexpected PM jobs response format:`, pmResponse);
+          }
         }
       } catch (e) {
         debug(`PM jobs endpoint failed:`, e);
@@ -249,13 +272,22 @@ export function usePreventiveMaintenanceJobs({
         const fallbackParams = { ...params, is_preventivemaintenance: 'true' };
         const fallbackUrl = `/api/v1/jobs${Object.keys(fallbackParams).length ? `?${toQuery(fallbackParams)}` : ''}`;
         debug(`Falling back to jobs endpoint: ${fallbackUrl}`);
-        const response = await fetchData<Job[]>(fallbackUrl, createAuthConfig());
-        if (response && Array.isArray(response)) {
-          fetchedJobs = response;
-          debug(`Received ${response.length} jobs from fallback jobs endpoint`);
-        } else {
-          debug(`Unexpected fallback jobs response format:`, response);
-          fetchedJobs = [];
+        const response = await fetchData<any>(fallbackUrl, createAuthConfig());
+        if (response) {
+          if (Array.isArray(response.results)) {
+            fetchedJobs = response.results as Job[];
+            setTotalCount(typeof response.count === 'number' ? response.count : fetchedJobs.length);
+            setTotalPages(Math.ceil((response.count || fetchedJobs.length) / pageSize));
+            debug(`Received ${fetchedJobs.length} jobs from fallback (paginated)`);
+          } else if (Array.isArray(response)) {
+            fetchedJobs = response as Job[];
+            setTotalCount(fetchedJobs.length);
+            setTotalPages(1);
+            debug(`Received ${fetchedJobs.length} jobs from fallback (array)`);
+          } else {
+            debug(`Unexpected fallback jobs response format:`, response);
+            fetchedJobs = [];
+          }
         }
       }
 
@@ -270,6 +302,7 @@ export function usePreventiveMaintenanceJobs({
       
       // Also update refs
       lastLoadTimeRef.current = now;
+      lastQueryKeyRef.current = cacheKey;
       retryCountRef.current = 0;
       
       // Cache the results
@@ -296,7 +329,7 @@ export function usePreventiveMaintenanceJobs({
       isLoadingRef.current = false;
       setLoading(false);
     }
-  }, [propertyId, limit, autoLoad, initialJobs, isPM, cacheKey, checkPropertyPMStatus, setJobs, setLoading, setError, setLastLoadTime, createAuthConfig]);
+  }, [propertyId, page, pageSize, autoLoad, initialJobs, isPM, cacheKey, checkPropertyPMStatus, setJobs, setLoading, setError, setLastLoadTime, createAuthConfig]);
 
   useEffect(() => {
     if (autoLoad) {
@@ -379,6 +412,13 @@ export function usePreventiveMaintenanceJobs({
     isPMProperty,
     clearCache,
     debugInfo,
-    toggleDebugMode
+    toggleDebugMode,
+    // Pagination API
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    totalPages,
+    totalCount
   };
 }

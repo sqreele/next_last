@@ -134,7 +134,7 @@ export default function PreventiveMaintenancePage() {
       </div>
       
       {/* Pass the selected property ID to the Preventive Maintenance Dashboard */}
-      <PreventiveMaintenanceDashboard propertyId={selectedProperty} limit={1000} />
+      <PreventiveMaintenanceDashboard propertyId={selectedProperty} />
     </div>
   );
 }

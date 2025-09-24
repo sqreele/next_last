@@ -71,6 +71,19 @@ const formatFrequencyName = (frequency: string | undefined | null): string => {
   return frequency.charAt(0).toUpperCase() + frequency.slice(1);
 };
 
+// Exclude placeholder/aggregate PM records like "All PM" from counts/lists
+const isAllPMItem = (item: PreventiveMaintenance): boolean => {
+  const title = (item?.pmtitle || '').trim().toLowerCase();
+  if (!title) return false;
+  return (
+    title === 'all pm' ||
+    title === 'all preventive maintenance' ||
+    title === 'all preventive' ||
+    title.startsWith('all pm ') ||
+    title.endsWith(' all pm')
+  );
+};
+
 export default function PreventiveMaintenanceDashboard() {
   // Use our store hook to access all maintenance data and actions
   const context = usePreventiveMaintenance();
@@ -123,8 +136,10 @@ export default function PreventiveMaintenanceDashboard() {
           total = response.data.count || 0;
         }
         
-        setUpcomingItems(items);
-        setUpcomingTotal(total);
+        // Filter out aggregate/placeholder entries (e.g., title "All PM")
+        const filtered = items.filter((it) => !isAllPMItem(it));
+        setUpcomingItems(filtered);
+        setUpcomingTotal(filtered.length);
         console.log('✅ Upcoming maintenance fetched:', { items: items.length, total });
       } else {
         console.error('❌ Failed to fetch upcoming maintenance:', response.message);
@@ -151,16 +166,20 @@ export default function PreventiveMaintenanceDashboard() {
       };
     }
 
-    // Create mock statistics from maintenance items
+    // Filter out aggregate/placeholder entries (e.g., title "All PM")
+    const filtered = maintenanceItems.filter(
+      (item: PreventiveMaintenance) => !isAllPMItem(item)
+    );
+
     return {
       counts: {
-        total: maintenanceItems.length,
-        pending: maintenanceItems.filter((item: any) => !item.status || item.status === 'pending').length,
-        overdue: maintenanceItems.filter((item: any) => item.status === 'overdue').length,
-        completed: maintenanceItems.filter((item: any) => item.status === 'completed').length
+        total: filtered.length,
+        pending: filtered.filter((item: any) => !item.status || item.status === 'pending').length,
+        overdue: filtered.filter((item: any) => item.status === 'overdue').length,
+        completed: filtered.filter((item: any) => item.status === 'completed').length
       },
       frequency_distribution: [],
-      upcoming: maintenanceItems.slice(0, 5), // Show first 5 items as upcoming
+      upcoming: filtered.slice(0, 5),
       avg_completion_times: {}
     };
   }, [maintenanceItems]);

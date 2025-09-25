@@ -337,6 +337,7 @@ export default function JobActions({
             propertyName={propertyName}
             includeImages={true}
             includeDetails={true}
+            applyPropertyFilter={false}
           />
         );
         return await generatePdfBlob(pdfDocument);

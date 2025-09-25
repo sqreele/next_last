@@ -287,18 +287,64 @@ const styles = StyleSheet.create({
 // Supported raster formats for @react-pdf/renderer
 const SUPPORTED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif']);
 
+function getMediaBaseUrl(): string {
+  try {
+    if (typeof window !== 'undefined') {
+      const isProd = window.location?.hostname?.endsWith('pcms.live');
+      if (isProd) return 'https://pcms.live';
+      return process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000';
+    }
+    // SSR fallback
+    return process.env.NEXT_PUBLIC_MEDIA_URL || process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
+  } catch {
+    return 'https://pcms.live';
+  }
+}
+
 function toAbsolutePdfImageUrl(originalUrl: string): string {
   if (!originalUrl) return '';
-  if (originalUrl.startsWith('http')) return originalUrl;
 
-  const isProd = typeof window !== 'undefined' ? window.location.hostname.endsWith('pcms.live') : true;
-  const prodOrigin = 'https://pcms.live';
-  const devOrigin = 'http://localhost:8000';
-  const baseUrl = isProd ? prodOrigin : (process.env.NEXT_PUBLIC_MEDIA_URL || devOrigin);
-  const normalizedPath = originalUrl.startsWith('/media/')
-    ? originalUrl
-    : (originalUrl.startsWith('/') ? originalUrl : `/media/${originalUrl}`);
-  return `${baseUrl}${normalizedPath}`;
+  // Data URLs can be used directly
+  if (originalUrl.startsWith('data:')) return originalUrl;
+
+  const base = getMediaBaseUrl();
+
+  try {
+    // Absolute URL
+    if (originalUrl.startsWith('http')) {
+      const url = new URL(originalUrl);
+      const pathname = url.pathname || '/';
+
+      // If it's pointing to media on an internal host (backend, localhost, http), rebase to the public origin
+      const looksLikeInternal = /(^backend$)|(^localhost)|(^127\.0\.0\.1)/.test(url.hostname) || url.protocol === 'http:';
+      const isMediaPath = pathname.startsWith('/media/');
+      if (looksLikeInternal && isMediaPath) {
+        // Preserve query for access if present, but change origin and protocol
+        return `${base}${pathname}${url.search || ''}`;
+      }
+      // If already on pcms.live but using http, force https
+      if (url.hostname.endsWith('pcms.live') && url.protocol !== 'https:') {
+        return `https://pcms.live${pathname}${url.search || ''}`;
+      }
+      return originalUrl;
+    }
+
+    // Relative URL
+    let path = originalUrl;
+    if (!path.startsWith('/')) {
+      path = path.startsWith('media/') ? `/${path}` : `/media/${path}`;
+    }
+    if (!path.startsWith('/media/')) {
+      path = `/media${path}`;
+    }
+    return `${base}${path}`;
+  } catch {
+    // Best-effort fallback
+    const normalizedPath = originalUrl.startsWith('/media/')
+      ? originalUrl
+      : (originalUrl.startsWith('/') ? originalUrl : `/media/${originalUrl}`);
+    return `${base}${normalizedPath}`;
+  }
 }
 
 function pickSupportedImageUrlFromJob(job: any): string | null {
@@ -327,7 +373,15 @@ function pickSupportedImageUrlFromJob(job: any): string | null {
       }
 
       const abs = toAbsolutePdfImageUrl(raw);
-      const ext = abs.split('.').pop()?.toLowerCase();
+      // Determine extension using URL pathname (ignore query/hash)
+      let ext = '';
+      try {
+        const u = new URL(abs, getMediaBaseUrl());
+        const pathname = u.pathname || '';
+        ext = pathname.split('.').pop()?.toLowerCase() || '';
+      } catch {
+        ext = abs.split('?')[0].split('#')[0].split('.').pop()?.toLowerCase() || '';
+      }
       if (ext && SUPPORTED_IMAGE_EXTENSIONS.has(ext)) {
         return abs;
       }

@@ -284,6 +284,61 @@ const styles = StyleSheet.create({
   },
 });
 
+// Supported raster formats for @react-pdf/renderer
+const SUPPORTED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif']);
+
+function toAbsolutePdfImageUrl(originalUrl: string): string {
+  if (!originalUrl) return '';
+  if (originalUrl.startsWith('http')) return originalUrl;
+
+  const isProd = typeof window !== 'undefined' ? window.location.hostname.endsWith('pcms.live') : true;
+  const prodOrigin = 'https://pcms.live';
+  const devOrigin = 'http://localhost:8000';
+  const baseUrl = isProd ? prodOrigin : (process.env.NEXT_PUBLIC_MEDIA_URL || devOrigin);
+  const normalizedPath = originalUrl.startsWith('/media/')
+    ? originalUrl
+    : (originalUrl.startsWith('/') ? originalUrl : `/media/${originalUrl}`);
+  return `${baseUrl}${normalizedPath}`;
+}
+
+function pickSupportedImageUrlFromJob(job: any): string | null {
+  try {
+    const candidates: string[] = [];
+
+    if (job?.images && Array.isArray(job.images)) {
+      for (const img of job.images) {
+        if (img?.jpeg_url) candidates.push(String(img.jpeg_url));
+        if (img?.image_url) candidates.push(String(img.image_url));
+      }
+    }
+
+    if (job?.image_urls && Array.isArray(job.image_urls)) {
+      for (const url of job.image_urls) {
+        if (typeof url === 'string' && url) candidates.push(url);
+      }
+    }
+
+    for (let raw of candidates) {
+      if (!raw) continue;
+
+      // Convert webp to jpg fallback (backend often provides parallel JPEGs)
+      if (raw.toLowerCase().endsWith('.webp')) {
+        raw = raw.replace(/\.webp$/i, '.jpg');
+      }
+
+      const abs = toAbsolutePdfImageUrl(raw);
+      const ext = abs.split('.').pop()?.toLowerCase();
+      if (ext && SUPPORTED_IMAGE_EXTENSIONS.has(ext)) {
+        return abs;
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({ 
   jobs, 
   filter, 
@@ -658,194 +713,30 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
               >
                 {/* Image Column */}
                 <View style={styles.imageColumn}>
-                  {includeImages && ((job.images && job.images.length > 0) || (job.image_urls && job.image_urls.length > 0)) ? (
+                  {includeImages ? (
                     (() => {
-                    try {
-                      // Get image URL from either images array or image_urls array
-                      let imageUrl: string;
-                      let imageSource = 'none';
-                      
-                      console.log('PDF Debug - Available image sources:', {
-                        hasImages: !!job.images,
-                        imagesLength: job.images?.length || 0,
-                        hasImageUrls: !!job.image_urls,
-                        imageUrlsLength: job.image_urls?.length || 0,
-                        firstImage: job.images?.[0],
-                        firstImageUrl: job.image_urls?.[0]
-                      });
-                    
-                    if (job.images && job.images.length > 0) {
-                      // Prefer JPEG-converted URL when available for PDF compatibility
-                      const firstImage = job.images[0] as any;
-                      imageUrl = firstImage?.jpeg_url || firstImage?.image_url;
-                      imageSource = firstImage?.jpeg_url ? 'job.images[0].jpeg_url' : 'job.images[0].image_url';
-                      console.log('PDF Debug - Using image from job.images:', imageUrl, 'source:', imageSource);
-                    } else if (job.image_urls && job.image_urls.length > 0) {
-                      // Use direct string array
-                      imageUrl = job.image_urls[0];
-                      imageSource = 'job.image_urls[0]';
-                      console.log('PDF Debug - Using image from job.image_urls:', imageUrl);
-                    } else {
-                      console.log('PDF Debug - No images found in either source');
+                      const url = pickSupportedImageUrlFromJob(job);
+                      if (!url) {
+                        return (
+                          <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                            <Text style={{ fontSize: 8, color: '#9ca3af' }}>No Image</Text>
+                          </View>
+                        );
+                      }
                       return (
-                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
-                          <Text style={{ fontSize: 8, color: '#9ca3af' }}>No Image</Text>
-                        </View>
+                        <Image
+                          src={url}
+                          style={styles.jobImage}
+                          cache={false}
+                        />
                       );
-                    }
-                    
-                    // For PDF generation, we need absolute URLs
-                    // If relative, prepend production origin or backend depending on environment
-                    if (imageUrl && !imageUrl.startsWith('http')) {
-                      const isProd = typeof window !== 'undefined' ? window.location.hostname.endsWith('pcms.live') : true;
-                      const prodOrigin = 'https://pcms.live';
-                      const devOrigin = 'http://localhost:8000';
-                      const baseUrl = isProd ? prodOrigin : (process.env.NEXT_PUBLIC_MEDIA_URL || devOrigin);
-                      imageUrl = `${baseUrl}${imageUrl}`;
-                    }
-                    
-                    // For PDF generation, convert WebP to JPEG if needed
-                    // @react-pdf/renderer only supports JPG, JPEG, PNG, and GIF
-                    if (imageUrl && imageUrl.toLowerCase().endsWith('.webp')) {
-                      // If the image is WebP and no JPEG path is available, try to construct a JPEG URL
-                      console.log('PDF Debug - WebP image detected, attempting to use JPEG version');
-                      const jpegUrl = imageUrl.replace(/\.webp$/i, '.jpg');
-                      console.log('PDF Debug - Attempting JPEG URL:', jpegUrl);
-                      imageUrl = jpegUrl;
-                    }
-                    
-                    // Additional check: if we still have WebP after conversion attempts, show placeholder
-                    if (imageUrl && imageUrl.toLowerCase().includes('.webp')) {
-                      console.log('PDF Debug - WebP still detected after conversion attempts, showing placeholder');
-                      return (
-                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
-                          <Text style={{ fontSize: 8, color: '#9ca3af', textAlign: 'center' }}>
-                            WebP Image
-                          </Text>
-                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
-                            (Convert to JPEG)
-                          </Text>
-                        </View>
-                      );
-                    }
-                    
-                    // Final fallback: if we have a supported format, try to use it
-                    const finalImageExtension = imageUrl.split('.').pop()?.toLowerCase();
-                    if (finalImageExtension && ['jpg', 'jpeg', 'png', 'gif'].includes(finalImageExtension)) {
-                      console.log('PDF Debug - Using supported image format:', finalImageExtension);
-                    } else {
-                      console.log('PDF Debug - Unsupported format, showing placeholder');
-                      return (
-                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
-                          <Text style={{ fontSize: 8, color: '#9ca3af', textAlign: 'center' }}>
-                            No Image
-                          </Text>
-                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
-                            (Format not supported)
-                          </Text>
-                        </View>
-                      );
-                    }
-                    
-
-                    
-                    console.log('PDF Debug - Final image processing:', {
-                      originalUrl: job.images?.[0]?.image_url || job.image_urls?.[0],
-                      processedUrl: imageUrl,
-                      finalUrl: imageUrl,
-                      imageSource: imageSource,
-
-                      isWebP: imageUrl.toLowerCase().includes('.webp'),
-                      convertedToJpeg: imageUrl.toLowerCase().includes('.jpg') || imageUrl.toLowerCase().includes('.jpeg'),
-                      finalExtension: imageUrl.split('.').pop()?.toLowerCase()
-                    });
-                    
-                    // Try to load the image, but if it fails, show a placeholder
-                    console.log('PDF Debug - Attempting to load image:', imageUrl);
-                    
-                    // TEST: Try a simple test image first to verify PDF generation works
-                    if (process.env.NODE_ENV === 'development') {
-                      console.log('PDF Debug - Development mode, attempting to load test image');
-                    }
-                    
-                    // Safety check: ensure imageUrl is defined
-                    if (typeof imageUrl === 'undefined') {
-                      console.log('PDF Debug - imageUrl is undefined, showing placeholder');
-                      return (
-                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
-                          <Text style={{ fontSize: 8, color: '#ef4444', textAlign: 'center' }}>
-                            Image Error
-                          </Text>
-                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
-                            (Undefined URL)
-                          </Text>
-                        </View>
-                      );
-                    }
-                    
-                    // Try to load the image with better error handling
-                    console.log('PDF Debug - Final image URL to load:', imageUrl);
-                    
-                    // Check if the URL looks valid
-                    if (!imageUrl || imageUrl === 'undefined' || imageUrl === 'null') {
-                      console.log('PDF Debug - Invalid image URL, showing placeholder');
-                      return (
-                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
-                          <Text style={{ fontSize: 8, color: '#9ca3af', textAlign: 'center' }}>
-                            No Image
-                          </Text>
-                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
-                            (Invalid URL)
-                          </Text>
-                        </View>
-                      );
-                    }
-                    
-                    // Additional validation: check if URL has proper format
-                    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/media/')) {
-                      console.log('PDF Debug - Malformed image URL:', imageUrl);
-                      return (
-                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
-                          <Text style={{ fontSize: 8, color: '#9ca3af', textAlign: 'center' }}>
-                            No Image
-                          </Text>
-                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
-                            (Malformed URL)
-                          </Text>
-                        </View>
-                      );
-                    }
-                    
-                    // Final attempt to load the image
-                    console.log('PDF Debug - Attempting to load image with URL:', imageUrl);
-                    
-                    return (
-                      <Image
-                        src={imageUrl}
-                        style={styles.jobImage}
-                        cache={false}
-                      />
-                    );
-                    } catch (imageError) {
-                      console.error('PDF Image processing error:', imageError);
-                      return (
-                        <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
-                          <Text style={{ fontSize: 8, color: '#ef4444', textAlign: 'center' }}>
-                            Image Error
-                          </Text>
-                          <Text style={{ fontSize: 6, color: '#9ca3af', textAlign: 'center' }}>
-                            Failed to load
-                          </Text>
-                        </View>
-                      );
-                    }
-                  })()
-                ) : (
-                  <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
-                    <Text style={{ fontSize: 8, color: '#9ca3af' }}>No Image</Text>
-                  </View>
-                )}
-              </View>
+                    })()
+                  ) : (
+                    <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
+                      <Text style={{ fontSize: 8, color: '#9ca3af' }}>No Image</Text>
+                    </View>
+                  )}
+                </View>
 
               {/* Information Column - Two Column Layout */}
               <View style={styles.infoColumn}>

@@ -131,16 +131,56 @@ class UserProfileSerializer(serializers.ModelSerializer):
 # Job image serializer
 class JobImageSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
+    jpeg_url = serializers.SerializerMethodField()
 
     class Meta:
         model = JobImage
-        fields = ['id', 'image_url', 'uploaded_by', 'uploaded_at']
+        fields = ['id', 'image_url', 'jpeg_url', 'uploaded_by', 'uploaded_at']
 
     def get_image_url(self, obj):
         """Return the absolute URL for the image."""
         if obj.image:
             return self.context['request'].build_absolute_uri(obj.image.url)
         return None
+
+    def get_jpeg_url(self, obj):
+        """Return the absolute URL for the JPEG-converted image when available."""
+        jpeg_path = getattr(obj, 'jpeg_path', None)
+        if not jpeg_path:
+            return None
+        # Build a proper media URL path
+        jp = str(jpeg_path)
+        if jp.startswith('/media/'):
+            url_path = jp
+        elif '/' in jp:
+            # Already a relative path under media
+            url_path = f"/media/{jp}"
+        else:
+            # Backward-compat: only filename stored; infer directory from original image
+            base_dir = None
+            try:
+                if obj.image and hasattr(obj.image, 'url'):
+                    # obj.image.url is like /media/maintenance_job_images/2025/02/filename.ext
+                    full_url: str = obj.image.url  # type: ignore
+                    # Strip leading /media/ and filename to get directory
+                    if full_url.startswith('/media/'):
+                        remainder = full_url[len('/media/'):]
+                        slash_idx = remainder.rfind('/')
+                        if slash_idx != -1:
+                            base_dir = remainder[:slash_idx]
+            except Exception:
+                base_dir = None
+            if base_dir:
+                url_path = f"/media/{base_dir}/{jp}"
+            else:
+                url_path = f"/media/{jp}"
+        request = self.context.get('request')
+        if request:
+            try:
+                return request.build_absolute_uri(url_path)
+            except Exception:
+                return url_path
+        return url_path
 
 # Topic serializer
 class TopicSerializer(serializers.ModelSerializer):

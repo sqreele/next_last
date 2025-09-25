@@ -92,7 +92,8 @@ export function fixJobImageUrls(job: any): any {
       if (img && typeof img === 'object') {
         return {
           ...img,
-          image_url: fixImageUrl(img.image_url)
+          image_url: fixImageUrl(img.image_url),
+          jpeg_url: fixImageUrl(img.jpeg_url)
         };
       }
       return img;

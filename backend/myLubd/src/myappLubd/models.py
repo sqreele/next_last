@@ -587,8 +587,8 @@ class JobImage(models.Model):
                 with open(jpeg_full_path, 'wb') as f:
                     f.write(processed_images['jpeg'].getvalue())
 
-                # Store JPEG path for PDF generation
-                self.jpeg_path = jpeg_name
+                # Store JPEG path for PDF generation (relative to MEDIA_ROOT)
+                self.jpeg_path = jpeg_path
 
                 # Close the processed images to free memory
                 processed_images['jpeg'].close()

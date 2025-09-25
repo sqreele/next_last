@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, Filter, X, Calendar, CalendarIcon, Check, Wrench } from "lucide-react";
+import { Search, Filter, X, CalendarIcon, Wrench } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import {
@@ -163,14 +163,29 @@ const JobFilters: React.FC<JobFiltersProps> = ({
           </Button>
         </form>
         
+        {/* Mobile Filters toggle */}
+        <Button
+          type="button"
+          onClick={() => setIsFiltersOpen((v) => !v)}
+          className="md:hidden h-10 bg-gray-50 border border-gray-200 text-gray-700"
+       >
+          <Filter className="h-4 w-4 mr-2" />
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="ml-2 inline-flex items-center justify-center rounded-full bg-blue-600 text-white text-xs h-5 w-5">
+              {activeFilterCount}
+            </span>
+          )}
+        </Button>
+        
         {/* Filter buttons - desktop view on right */}
-        <div className="flex gap-2 flex-wrap md:flex-nowrap">
+        <div className={cn("gap-2 flex-wrap", isFiltersOpen ? "flex" : "hidden", "md:flex md:flex-nowrap")}> 
           {/* Status filter */}
           <Select
             value={filters.status}
             onValueChange={handleStatusChange}
           >
-            <SelectTrigger className="w-full md:w-40 h-10 bg-gray-50 border-gray-200">
+            <SelectTrigger aria-label="Filter by status" className="w-full md:w-40 h-10 bg-gray-50 border-gray-200">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -188,7 +203,7 @@ const JobFilters: React.FC<JobFiltersProps> = ({
             value={filters.priority}
             onValueChange={handlePriorityChange}
           >
-            <SelectTrigger className="w-full md:w-40 h-10 bg-gray-50 border-gray-200">
+            <SelectTrigger aria-label="Filter by priority" className="w-full md:w-40 h-10 bg-gray-50 border-gray-200">
               <SelectValue placeholder="Priority" />
             </SelectTrigger>
             <SelectContent>
@@ -207,6 +222,7 @@ const JobFilters: React.FC<JobFiltersProps> = ({
               ...filters,
               room_id: e.target.value || null
             })}
+            aria-label="Filter by room ID"
             className="w-full md:w-32 h-10 bg-gray-50 border-gray-200"
           />
           
@@ -218,6 +234,7 @@ const JobFilters: React.FC<JobFiltersProps> = ({
               ...filters,
               room_name: e.target.value || null
             })}
+            aria-label="Filter by room name"
             className="w-full md:w-40 h-10 bg-gray-50 border-gray-200"
           />
           
@@ -226,7 +243,7 @@ const JobFilters: React.FC<JobFiltersProps> = ({
             value={getPreventiveMaintenanceValue()}
             onValueChange={handlePreventiveMaintenanceChange}
           >
-            <SelectTrigger className="w-full md:w-40 h-10 bg-gray-50 border-gray-200">
+            <SelectTrigger aria-label="Filter by job type" className="w-full md:w-40 h-10 bg-gray-50 border-gray-200">
               <SelectValue placeholder="Maintenance Type" />
             </SelectTrigger>
             <SelectContent>
@@ -241,6 +258,7 @@ const JobFilters: React.FC<JobFiltersProps> = ({
             <PopoverTrigger asChild>
               <Button 
                 variant="outline" 
+                aria-label="Filter by date range"
                 className={cn(
                   "w-full md:w-48 h-10 bg-gray-50 border-gray-200 justify-start text-left font-normal", 
                   !filters.dateRange?.from && !filters.dateRange?.to ? "text-gray-500" : ""

@@ -675,10 +675,11 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
                       });
                     
                     if (job.images && job.images.length > 0) {
-                      // Use JobImage object structure
-                      imageUrl = job.images[0].image_url;
-                      imageSource = 'job.images[0].image_url';
-                      console.log('PDF Debug - Using image from job.images:', imageUrl);
+                      // Prefer JPEG-converted URL when available for PDF compatibility
+                      const firstImage = job.images[0] as any;
+                      imageUrl = firstImage?.jpeg_url || firstImage?.image_url;
+                      imageSource = firstImage?.jpeg_url ? 'job.images[0].jpeg_url' : 'job.images[0].image_url';
+                      console.log('PDF Debug - Using image from job.images:', imageUrl, 'source:', imageSource);
                     } else if (job.image_urls && job.image_urls.length > 0) {
                       // Use direct string array
                       imageUrl = job.image_urls[0];
@@ -694,21 +695,12 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
                     }
                     
                     // For PDF generation, we need absolute URLs
-                    // Since the image URLs have already been processed by fixJobImageUrls,
-                    // they should already have the /media/ prefix
+                    // If relative, prepend production origin or backend depending on environment
                     if (imageUrl && !imageUrl.startsWith('http')) {
-                      // Try to use the environment variable first, then fallback to localhost
-                      const baseUrl = process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000';
-                      
-                      console.log('PDF Environment Variables:', {
-                        NEXT_PUBLIC_MEDIA_URL: process.env.NEXT_PUBLIC_MEDIA_URL,
-                        NODE_ENV: process.env.NODE_ENV,
-                        baseUrl: baseUrl
-                      });
-                      console.log('PDF Image URL (relative):', imageUrl);
-                      
-                      // The image URL should already have /media/ prefix from fixJobImageUrls
-                      // Just add the base URL to make it absolute
+                      const isProd = typeof window !== 'undefined' ? window.location.hostname.endsWith('pcms.live') : true;
+                      const prodOrigin = 'https://pcms.live';
+                      const devOrigin = 'http://localhost:8000';
+                      const baseUrl = isProd ? prodOrigin : (process.env.NEXT_PUBLIC_MEDIA_URL || devOrigin);
                       imageUrl = `${baseUrl}${imageUrl}`;
                     }
                     

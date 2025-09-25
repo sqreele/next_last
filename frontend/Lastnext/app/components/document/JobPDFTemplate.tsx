@@ -475,9 +475,14 @@ function renderJobsList(jobs: Job[], styles: any, config: JobPDFConfig) {
             // Try to get the first available image from multiple sources
             let imageUrl = null;
             
-            // Check job.images array first
-            if (job.images && job.images.length > 0 && job.images[0]?.image_url) {
-              imageUrl = job.images[0].image_url;
+            // Check job.images array first (prefer JPEG URL if available)
+            if (job.images && job.images.length > 0) {
+              const first = job.images[0] as any;
+              if (first?.jpeg_url) {
+                imageUrl = first.jpeg_url;
+              } else if (first?.image_url) {
+                imageUrl = first.image_url;
+              }
             }
             // Check job.image_urls array as fallback
             else if (job.image_urls && job.image_urls.length > 0) {
@@ -674,12 +679,13 @@ function resolveImageUrl(imageUrl: string): string {
   if (!imageUrl) return '';
 
   const getMediaBaseUrl = () => {
-    // Use internal backend URL during server-side rendering to avoid TLS/edge issues
+    // Server-side: use backend service; Client-side: prefer production origin
     if (typeof window === 'undefined') {
       return process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
     }
-    // Client-side should use the public URL
-    return process.env.NEXT_PUBLIC_MEDIA_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
+    const isProd = window.location?.hostname?.endsWith('pcms.live');
+    if (isProd) return 'https://pcms.live';
+    return process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000';
   };
 
   // If it's already a full URL, normalize media host when rendering server-side

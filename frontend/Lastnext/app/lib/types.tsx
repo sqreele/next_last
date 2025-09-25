@@ -50,6 +50,7 @@ export type JobPriority = 'low' | 'medium' | 'high';
 export interface JobImage {
   id: number;
   image_url: string;
+  jpeg_url?: string;
   uploaded_by?: number | string | User | null;
   uploaded_at: string;
 }

@@ -34,6 +34,7 @@ import { generatePdfWithRetry, downloadPdf } from "@/app/lib/pdfUtils";
 import { generatePdfBlob } from "@/app/lib/pdfRenderer";
 import ChartDashboardPDF from "@/app/components/document/ChartDashboardPDF";
 import html2canvas from "html2canvas";
+import { jobsApi } from "@/app/lib/api/jobsApi";
 
 interface PropertyJobsDashboardProps {
   initialJobs?: Job[];
@@ -67,6 +68,19 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     pieChart?: string;
     barChart?: string;
   }>({});
+
+  // Backend stats (server authoritative counts)
+  const [backendStats, setBackendStats] = useState<{
+    total: number;
+    pending: number;
+    inProgress: number;
+    completed: number;
+    cancelled: number;
+    waitingSparepart: number;
+    defect: number;
+    preventiveMaintenance: number;
+  } | null>(null);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
 
   // ✅ PERFORMANCE OPTIMIZATION: Memoize the current property ID to reduce unnecessary re-renders
   const effectiveProperty = useMemo(() => {
@@ -126,6 +140,33 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       setFilteredJobs(initialJobs);
     }
   }, [initialJobs, jobs, setJobs]);
+
+  // Fetch backend job stats to ensure totals are not limited by pagination
+  useEffect(() => {
+    const token = session?.user?.accessToken;
+    if (!token) {
+      setBackendStats(null);
+      return;
+    }
+
+    const fetchStats = async () => {
+      try {
+        setIsStatsLoading(true);
+        const stats = await jobsApi.getJobStats(
+          token,
+          effectiveProperty ? { property_id: effectiveProperty } : undefined
+        );
+        setBackendStats(stats);
+      } catch (e) {
+        // Non-fatal: fall back to client-computed counts
+        setBackendStats(null);
+      } finally {
+        setIsStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [session?.user?.accessToken, effectiveProperty, jobCreationCount]);
 
   // Function to capture chart as image
   const captureChartAsImage = async (chartId: string): Promise<string | null> => {
@@ -294,7 +335,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
 
   // ✅ PERFORMANCE OPTIMIZATION: Memoized job statistics to prevent recalculation on every render
   const jobStats = useMemo(() => {
-    const total = filteredJobs.length;
+    const total = backendStats?.total ?? filteredJobs.length;
     if (total === 0) {
       return [];
     }
@@ -309,9 +350,31 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     const result = (["pending", "in_progress", "completed", "waiting_sparepart", "cancelled"] as JobStatus[]).map(
       (status) => ({
         name: status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " "),
-        value: statusCounts[status] || 0,
+        value: backendStats
+          ? (status === "pending"
+              ? backendStats.pending
+              : status === "in_progress"
+              ? backendStats.inProgress
+              : status === "completed"
+              ? backendStats.completed
+              : status === "waiting_sparepart"
+              ? backendStats.waitingSparepart
+              : backendStats.cancelled) || 0
+          : statusCounts[status] || 0,
         color: STATUS_COLORS[status],
-        percentage: total > 0 ? ((statusCounts[status] || 0) / total * 100).toFixed(1) : "0",
+        percentage: total > 0
+          ? ((backendStats
+              ? (status === "pending"
+                  ? backendStats.pending
+                  : status === "in_progress"
+                  ? backendStats.inProgress
+                  : status === "completed"
+                  ? backendStats.completed
+                  : status === "waiting_sparepart"
+                  ? backendStats.waitingSparepart
+                  : backendStats.cancelled)
+              : (statusCounts[status] || 0)) / total * 100).toFixed(1)
+          : "0",
       })
     );
     
@@ -650,6 +713,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           <p className="text-sm sm:text-base text-gray-600 mt-1">
             {effectiveProperty ? `Viewing data for ${userProperties.find(p => p.property_id === effectiveProperty)?.name || `Property ${effectiveProperty}`}` : 'Select a property to view data'}
           </p>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+            {backendStats
+              ? `Showing ${filteredJobs.length} of ${backendStats.total}${isStatsLoading ? ' (updating...)' : ''}`
+              : `Showing ${filteredJobs.length}`}
+          </p>
         </div>
         <Button
           onClick={handleExportPDF}
@@ -892,12 +960,22 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                 ),
               ].map((item, index) => {
                 const statValue = item.status
-                  ? filteredJobs.filter((job) => job.status === item.status).length
-                  : filteredJobs.length;
+                  ? (backendStats
+                      ? (item.status === "pending"
+                          ? backendStats.pending
+                          : item.status === "in_progress"
+                          ? backendStats.inProgress
+                          : item.status === "completed"
+                          ? backendStats.completed
+                          : item.status === "waiting_sparepart"
+                          ? backendStats.waitingSparepart
+                          : backendStats.cancelled)
+                      : filteredJobs.filter((job) => job.status === item.status).length)
+                  : (backendStats?.total ?? filteredJobs.length);
                 const color = item.status ? STATUS_COLORS[item.status] : "#8884d8";
                 const percentage = item.status
-                  ? ((statValue / filteredJobs.length) * 100).toFixed(1)
-                  : "100.0";
+                  ? ((statValue / (backendStats?.total ?? filteredJobs.length)) * 100).toFixed(1)
+                  : (backendStats ? ((backendStats.total > 0 ? 100 : 0).toFixed(1)) : "100.0");
 
                 return (
                   <div key={`stat-${index}`} className="p-3 sm:p-4 rounded-lg bg-gray-50 w-full flex flex-col">

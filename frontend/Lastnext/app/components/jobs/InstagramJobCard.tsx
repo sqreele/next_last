@@ -112,8 +112,9 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
     const urls: string[] = [];
     if (Array.isArray(job.images)) {
       for (const img of job.images) {
-        if (img?.image_url) {
-          const u = createImageUrl(img.image_url);
+        const rawUrl = (img && (img.jpeg_url || img.image_url)) || null;
+        if (rawUrl) {
+          const u = createImageUrl(rawUrl);
           if (u) urls.push(u);
         }
       }
@@ -199,6 +200,11 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
 
       {/* Image */}
       <div className={viewMode === "list" ? "h-60 w-full relative" : "relative aspect-square sm:aspect-square w-full bg-gray-50 min-h-[250px] sm:min-h-0"}>
+        {job.status === 'waiting_sparepart' && (
+          <div className="absolute top-2 left-2 z-10 bg-orange-600 text-white text-xs font-medium px-2 py-0.5 rounded">
+            Parts
+          </div>
+        )}
         {imageUrls.length > 0 && imageUrls[activeIdx] && !failed.has(activeIdx) ? (
           <Image src={imageUrls[activeIdx]} alt="job" fill className="object-cover" unoptimized onError={() => onError(activeIdx)} />
         ) : (

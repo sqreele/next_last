@@ -60,12 +60,11 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
 
   const imageUrls = useMemo(() => {
     const urls: string[] = [];
-    
-    
     if (Array.isArray(job.images)) {
       for (const img of job.images) {
-        if (img?.image_url) {
-          const fixedUrl = createImageUrl(img.image_url);
+        const rawUrl = (img && (img.jpeg_url || img.image_url)) || null;
+        if (rawUrl) {
+          const fixedUrl = createImageUrl(rawUrl);
           if (fixedUrl) {
             urls.push(fixedUrl);
           }

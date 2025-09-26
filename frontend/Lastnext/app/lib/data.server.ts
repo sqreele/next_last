@@ -3,6 +3,9 @@ import { API_CONFIG } from "./config";
 import { getCsrfHeaders } from "./csrf";
 import { fixJobsImageUrls, fixJobImageUrls, sanitizeJobsData, sanitizeJobData } from "./utils/image-utils";
 
+// Allow using process.env without requiring Node types in this module
+declare const process: { env: Record<string, string | undefined> };
+
 // Server-side compatible error class
 export class ServerApiError extends Error {
   status: number;
@@ -174,40 +177,61 @@ export async function fetchJobs(accessToken?: string): Promise<Job[]> {
   try {
     console.log('fetchJobs: Starting to fetch all jobs...');
     console.log('fetchJobs: Access token available:', !!accessToken);
-    
-    const response = await fetchWithToken<any>('/api/v1/jobs/', accessToken);
-    console.log('fetchJobs: Raw response type:', typeof response);
-    console.log('fetchJobs: Response structure:', response ? Object.keys(response) : 'null');
-    
-    // Handle paginated response format
-    let jobs: Job[] = [];
-    if (response && typeof response === 'object') {
-      if (Array.isArray(response)) {
-        // Direct array response
-        jobs = response;
-        console.log(`fetchJobs: Direct array response - ${jobs.length} jobs`);
-      } else if (response.results && Array.isArray(response.results)) {
-        // Paginated response with results field
-        jobs = response.results;
-        console.log(`fetchJobs: Paginated response - ${jobs.length} jobs from results field`);
-        if (response.count !== undefined) {
-          console.log(`fetchJobs: Total count from pagination: ${response.count}`);
+
+    // Request a large page size first to minimize round trips
+    const PAGE_SIZE = 500;
+    let currentPage = 1;
+    let totalCount = 0;
+    let allJobs: Job[] = [];
+
+    while (true) {
+      const url = `/api/v1/jobs/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+      const response = await fetchWithToken<any>(url, accessToken);
+      console.log('fetchJobs: Page response type:', typeof response);
+
+      let pageJobs: Job[] = [];
+      if (response && typeof response === 'object') {
+        if (Array.isArray(response)) {
+          // Non-paginated array response
+          pageJobs = response;
+          totalCount = pageJobs.length;
+        } else if (response.results && Array.isArray(response.results)) {
+          // Paginated response
+          pageJobs = response.results;
+          totalCount = typeof response.count === 'number' ? response.count : totalCount;
+        } else {
+          console.error('fetchJobs: Unexpected response format:', response);
+          break;
         }
       } else {
-        console.error('fetchJobs: Unexpected response format:', response);
-        return [];
+        console.error('fetchJobs: Invalid response:', response);
+        break;
       }
-    } else {
-      console.error('fetchJobs: Invalid response:', response);
-      return [];
+
+      allJobs = allJobs.concat(pageJobs);
+      console.log(`fetchJobs: Accumulated ${allJobs.length}${totalCount ? ` of ${totalCount}` : ''}`);
+
+      // Break conditions
+      const receivedFewerThanPage = pageJobs.length < PAGE_SIZE;
+      const receivedAllByCount = totalCount > 0 && allJobs.length >= totalCount;
+      if (receivedFewerThanPage || receivedAllByCount) {
+        break;
+      }
+
+      // Safety cap to avoid infinite loops
+      currentPage += 1;
+      if (currentPage > 50) {
+        console.warn('fetchJobs: Reached safety page cap, stopping pagination');
+        break;
+      }
     }
-    
-    const sanitizedJobs = sanitizeJobsData(jobs);
+
+    const sanitizedJobs = sanitizeJobsData(allJobs);
     console.log(`fetchJobs: After sanitization - ${sanitizedJobs.length} jobs`);
-    
+
     const fixedJobs = fixJobsImageUrls(sanitizedJobs);
     console.log(`fetchJobs: After image URL fixing - ${fixedJobs.length} jobs`);
-    
+
     return fixedJobs;
   } catch (error) {
     console.error('Error fetching jobs:', error);

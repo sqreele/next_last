@@ -175,63 +175,26 @@ export async function fetchJobsForProperty(
 
 export async function fetchJobs(accessToken?: string): Promise<Job[]> {
   try {
-    console.log('fetchJobs: Starting to fetch all jobs...');
-    console.log('fetchJobs: Access token available:', !!accessToken);
+    console.log('fetchJobs: Fetching first page of jobs...');
+    const response = await fetchWithToken<any>('/api/v1/jobs/', accessToken);
 
-    // Request a large page size first to minimize round trips
-    const PAGE_SIZE = 500;
-    let currentPage = 1;
-    let totalCount = 0;
-    let allJobs: Job[] = [];
-
-    while (true) {
-      const url = `/api/v1/jobs/?page=${currentPage}&page_size=${PAGE_SIZE}`;
-      const response = await fetchWithToken<any>(url, accessToken);
-      console.log('fetchJobs: Page response type:', typeof response);
-
-      let pageJobs: Job[] = [];
-      if (response && typeof response === 'object') {
-        if (Array.isArray(response)) {
-          // Non-paginated array response
-          pageJobs = response;
-          totalCount = pageJobs.length;
-        } else if (response.results && Array.isArray(response.results)) {
-          // Paginated response
-          pageJobs = response.results;
-          totalCount = typeof response.count === 'number' ? response.count : totalCount;
-        } else {
-          console.error('fetchJobs: Unexpected response format:', response);
-          break;
-        }
+    let jobs: Job[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        jobs = response;
+      } else if (response.results && Array.isArray(response.results)) {
+        jobs = response.results;
       } else {
-        console.error('fetchJobs: Invalid response:', response);
-        break;
+        console.error('fetchJobs: Unexpected response format:', response);
+        return [];
       }
-
-      allJobs = allJobs.concat(pageJobs);
-      console.log(`fetchJobs: Accumulated ${allJobs.length}${totalCount ? ` of ${totalCount}` : ''}`);
-
-      // Break conditions
-      const receivedFewerThanPage = pageJobs.length < PAGE_SIZE;
-      const receivedAllByCount = totalCount > 0 && allJobs.length >= totalCount;
-      if (receivedFewerThanPage || receivedAllByCount) {
-        break;
-      }
-
-      // Safety cap to avoid infinite loops
-      currentPage += 1;
-      if (currentPage > 50) {
-        console.warn('fetchJobs: Reached safety page cap, stopping pagination');
-        break;
-      }
+    } else {
+      console.error('fetchJobs: Invalid response:', response);
+      return [];
     }
 
-    const sanitizedJobs = sanitizeJobsData(allJobs);
-    console.log(`fetchJobs: After sanitization - ${sanitizedJobs.length} jobs`);
-
+    const sanitizedJobs = sanitizeJobsData(jobs);
     const fixedJobs = fixJobsImageUrls(sanitizedJobs);
-    console.log(`fetchJobs: After image URL fixing - ${fixedJobs.length} jobs`);
-
     return fixedJobs;
   } catch (error) {
     console.error('Error fetching jobs:', error);
@@ -252,6 +215,71 @@ export async function fetchJobs(accessToken?: string): Promise<Job[]> {
     }
     
     // Re-throw the error for development to help with debugging
+    throw error;
+  }
+}
+
+// Dedicated function for Chart Dashboard: fetch ALL jobs by paginating
+export async function fetchAllJobsForDashboard(accessToken?: string): Promise<Job[]> {
+  try {
+    console.log('fetchAllJobsForDashboard: Starting to fetch all jobs...');
+    const PAGE_SIZE = 500;
+    let currentPage = 1;
+    let totalCount = 0;
+    let allJobs: Job[] = [];
+
+    while (true) {
+      const url = `/api/v1/jobs/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+      const response = await fetchWithToken<any>(url, accessToken);
+
+      let pageJobs: Job[] = [];
+      if (response && typeof response === 'object') {
+        if (Array.isArray(response)) {
+          pageJobs = response;
+          totalCount = pageJobs.length;
+        } else if (response.results && Array.isArray(response.results)) {
+          pageJobs = response.results;
+          totalCount = typeof response.count === 'number' ? response.count : totalCount;
+        } else {
+          console.error('fetchAllJobsForDashboard: Unexpected response format:', response);
+          break;
+        }
+      } else {
+        console.error('fetchAllJobsForDashboard: Invalid response:', response);
+        break;
+      }
+
+      allJobs = allJobs.concat(pageJobs);
+
+      const receivedFewerThanPage = pageJobs.length < PAGE_SIZE;
+      const receivedAllByCount = totalCount > 0 && allJobs.length >= totalCount;
+      if (receivedFewerThanPage || receivedAllByCount) {
+        break;
+      }
+
+      currentPage += 1;
+      if (currentPage > 50) {
+        console.warn('fetchAllJobsForDashboard: Reached safety page cap, stopping pagination');
+        break;
+      }
+    }
+
+    const sanitizedJobs = sanitizeJobsData(allJobs);
+    const fixedJobs = fixJobsImageUrls(sanitizedJobs);
+    return fixedJobs;
+  } catch (error) {
+    console.error('Error fetching all jobs for dashboard:', error);
+    if (error instanceof ServerApiError) {
+      console.error('ServerApiError details:', {
+        status: error.status,
+        message: error.message,
+        errorData: error.errorData
+      });
+    }
+    if (process.env.NODE_ENV === 'production' || error instanceof ServerApiError) {
+      console.warn('Returning empty jobs array due to fetch error (dashboard)');
+      return [];
+    }
     throw error;
   }
 }

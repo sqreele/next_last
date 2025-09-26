@@ -1,6 +1,6 @@
 // ./app/dashboard/chartdashboard/page.tsx
 import { Suspense } from 'react';
-import { fetchJobs } from '@/app/lib/data.server';
+import { fetchAllJobsForDashboard } from '@/app/lib/data.server';
 import PropertyJobsDashboard from '@/app/components/jobs/PropertyJobsDashboard';
 import { getServerSession } from '@/app/lib/session.server';
 import ErrorBoundary from '@/app/components/ErrorBoundary';
@@ -13,7 +13,7 @@ export default async function ChartDashboardPage() {
     const session = await getServerSession();
     const accessToken = session?.user?.accessToken;
 
-    const jobs = await fetchJobs(accessToken);
+    const jobs = await fetchAllJobsForDashboard(accessToken);
 
     return (
       <div className="min-h-screen bg-white">

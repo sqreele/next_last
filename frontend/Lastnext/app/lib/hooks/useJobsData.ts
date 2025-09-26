@@ -4,7 +4,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSession } from "@/app/lib/session.client";
 // Import specific functions needed from the updated data.server.ts
-import { fetchJobs, fetchJobsForProperty, fetchMyJobs } from "@/app/lib/data.server";
+import { fetchAllJobsForProperty, fetchAllMyJobs } from "@/app/lib/data.server";
 import { useUser } from "@/app/lib/stores/mainStore";
 import { Job } from "@/app/lib/types";
 
@@ -85,7 +85,7 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
         }
         
         const queryString = queryParams.toString();
-        fetchedJobs = await fetchJobsForProperty(activePropertyId, session.user.accessToken, queryString);
+        fetchedJobs = await fetchAllJobsForProperty(activePropertyId, session.user.accessToken, queryString);
       } else {
         console.log("useJobsData: Fetching my jobs (user-specific)");
         // Build query parameters for room filtering
@@ -101,7 +101,7 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
         }
         
         const queryString = queryParams.toString();
-        fetchedJobs = await fetchMyJobs(session.user.accessToken, queryString);
+        fetchedJobs = await fetchAllMyJobs(session.user.accessToken, queryString);
       }
 
       console.log(`useJobsData: Fetched ${fetchedJobs.length} jobs`);

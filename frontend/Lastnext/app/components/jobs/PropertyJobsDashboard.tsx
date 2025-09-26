@@ -99,7 +99,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     }
   };
 
-  // Load jobs from store instead of API call
+  // Load jobs for dashboard: prefer initialJobs (server-fetched full set) over store
   const loadJobs = () => {
     if (status !== "authenticated" || !session?.user) {
       // Use initialJobs if available even when not authenticated
@@ -114,11 +114,16 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     setError(null);
 
     try {
-      // Use jobs already available in the store or fall back to initialJobs
-      if (Array.isArray(jobs) && jobs.length > 0) {
-        setAllJobs(jobs);
-      } else if (Array.isArray(initialJobs) && initialJobs.length > 0) {
+      // Prefer initialJobs if provided (they may contain the full dataset for dashboard)
+      if (Array.isArray(initialJobs) && initialJobs.length > 0) {
         setAllJobs(initialJobs);
+        setFilteredJobs(initialJobs);
+        // Optionally sync store if store has fewer items than server-provided list
+        if (!Array.isArray(jobs) || jobs.length < initialJobs.length) {
+          setJobs(initialJobs);
+        }
+      } else if (Array.isArray(jobs) && jobs.length > 0) {
+        setAllJobs(jobs);
       } else {
         setAllJobs([]);
       }

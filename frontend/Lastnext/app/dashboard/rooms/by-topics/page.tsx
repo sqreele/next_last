@@ -15,7 +15,7 @@ import { Job, Topic, Room, User, Property } from '../../../lib/types';
 import { downloadPdf } from '../../../lib/pdfUtils';
 import { generatePdfBlob } from '../../../lib/pdfRenderer';
 import { useSession } from '../../../lib/session.client';
-import { fetchUsers, fetchUsersByProperty, fetchTopics, fetchRooms } from '../../../lib/data.server';
+import { fetchUsers, fetchUsersByProperty, fetchAllTopics, fetchAllRooms } from '../../../lib/data.server';
 import { useDetailedUsers } from '../../../lib/hooks/useDetailedUsers';
 import RoomTopicFilterPDF from '../../../components/document/RoomTopicFilterPDF';
 
@@ -99,24 +99,12 @@ const RoomTopicFilterPage = () => {
         console.log('Starting data fetch with selectedProperty:', selectedProperty);
         
         // Fetch topics and rooms (rooms filtered by property when selected)
-        const topics = await fetchTopics(session.user.accessToken);
+        const topics = await fetchAllTopics(session.user.accessToken);
         let rooms: Room[] = [];
         if (selectedProperty && selectedProperty !== 'all') {
-          try {
-            const res = await fetch(`/api/rooms/?property=${encodeURIComponent(selectedProperty)}`, { method: 'GET' });
-            if (res.ok) {
-              const data = await res.json();
-              rooms = Array.isArray(data) ? data : (data?.results ?? []);
-            } else {
-              console.warn('Rooms API returned non-OK status for property filter, falling back to all rooms:', res.status);
-              rooms = await fetchRooms(session.user.accessToken);
-            }
-          } catch (e) {
-            console.warn('Rooms API request failed, falling back to all rooms:', e);
-            rooms = await fetchRooms(session.user.accessToken);
-          }
+          rooms = await fetchAllRooms(session.user.accessToken, selectedProperty);
         } else {
-          rooms = await fetchRooms(session.user.accessToken);
+          rooms = await fetchAllRooms(session.user.accessToken);
         }
 
         setAllTopics(topics);

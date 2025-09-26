@@ -284,6 +284,247 @@ export async function fetchAllJobsForDashboard(accessToken?: string): Promise<Jo
   }
 }
 
+// Fetch ALL topics with pagination support
+export async function fetchAllTopics(accessToken?: string): Promise<Topic[]> {
+  const PAGE_SIZE = 500;
+  let currentPage = 1;
+  let totalCount = 0;
+  let allTopics: Topic[] = [];
+
+  while (true) {
+    const url = `/api/v1/topics/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+    const response = await fetchWithToken<any>(url, accessToken);
+
+    let pageTopics: Topic[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        pageTopics = response;
+        totalCount = pageTopics.length;
+      } else if (response.results && Array.isArray(response.results)) {
+        pageTopics = response.results;
+        totalCount = typeof response.count === 'number' ? response.count : totalCount;
+      } else {
+        console.error('fetchAllTopics: Unexpected response format:', response);
+        break;
+      }
+    } else {
+      console.error('fetchAllTopics: Invalid response:', response);
+      break;
+    }
+
+    allTopics = allTopics.concat(pageTopics);
+
+    const receivedFewerThanPage = pageTopics.length < PAGE_SIZE;
+    const receivedAllByCount = totalCount > 0 && allTopics.length >= totalCount;
+    if (receivedFewerThanPage || receivedAllByCount) {
+      break;
+    }
+
+    currentPage += 1;
+    if (currentPage > 50) {
+      console.warn('fetchAllTopics: Reached safety page cap, stopping pagination');
+      break;
+    }
+  }
+
+  return allTopics;
+}
+
+// Fetch ALL rooms with optional property filter and pagination
+export async function fetchAllRooms(accessToken?: string, propertyId?: string | null): Promise<Room[]> {
+  const PAGE_SIZE = 500;
+  let currentPage = 1;
+  let totalCount = 0;
+  let allRooms: Room[] = [];
+
+  while (true) {
+    const base = `/api/v1/rooms/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+    const url = propertyId ? `${base}&property=${encodeURIComponent(propertyId)}` : base;
+    const response = await fetchWithToken<any>(url, accessToken);
+
+    let pageRooms: Room[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        pageRooms = response;
+        totalCount = pageRooms.length;
+      } else if (response.results && Array.isArray(response.results)) {
+        pageRooms = response.results;
+        totalCount = typeof response.count === 'number' ? response.count : totalCount;
+      } else {
+        console.error('fetchAllRooms: Unexpected response format:', response);
+        break;
+      }
+    } else {
+      console.error('fetchAllRooms: Invalid response:', response);
+      break;
+    }
+
+    allRooms = allRooms.concat(pageRooms);
+
+    const receivedFewerThanPage = pageRooms.length < PAGE_SIZE;
+    const receivedAllByCount = totalCount > 0 && allRooms.length >= totalCount;
+    if (receivedFewerThanPage || receivedAllByCount) {
+      break;
+    }
+
+    currentPage += 1;
+    if (currentPage > 50) {
+      console.warn('fetchAllRooms: Reached safety page cap, stopping pagination');
+      break;
+    }
+  }
+
+  return allRooms;
+}
+
+// Fetch ALL jobs with optional query params (e.g., filters)
+export async function fetchAllJobs(accessToken?: string, additionalParams?: string): Promise<Job[]> {
+  const PAGE_SIZE = 500;
+  let currentPage = 1;
+  let totalCount = 0;
+  let allJobs: Job[] = [];
+
+  while (true) {
+    const base = `/api/v1/jobs/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+    const url = additionalParams ? `${base}&${additionalParams}` : base;
+    const response = await fetchWithToken<any>(url, accessToken);
+
+    let pageJobs: Job[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        pageJobs = response;
+        totalCount = pageJobs.length;
+      } else if (response.results && Array.isArray(response.results)) {
+        pageJobs = response.results;
+        totalCount = typeof response.count === 'number' ? response.count : totalCount;
+      } else {
+        console.error('fetchAllJobs: Unexpected response format:', response);
+        break;
+      }
+    } else {
+      console.error('fetchAllJobs: Invalid response:', response);
+      break;
+    }
+
+    allJobs = allJobs.concat(pageJobs);
+
+    const receivedFewerThanPage = pageJobs.length < PAGE_SIZE;
+    const receivedAllByCount = totalCount > 0 && allJobs.length >= totalCount;
+    if (receivedFewerThanPage || receivedAllByCount) {
+      break;
+    }
+
+    currentPage += 1;
+    if (currentPage > 50) {
+      console.warn('fetchAllJobs: Reached safety page cap, stopping pagination');
+      break;
+    }
+  }
+
+  const sanitizedJobs = sanitizeJobsData(allJobs);
+  return fixJobsImageUrls(sanitizedJobs);
+}
+
+// Fetch ALL jobs for a specific property with optional filters
+export async function fetchAllJobsForProperty(
+  propertyId: string,
+  accessToken?: string,
+  additionalParams?: string
+): Promise<Job[]> {
+  const PAGE_SIZE = 500;
+  let currentPage = 1;
+  let totalCount = 0;
+  let allJobs: Job[] = [];
+
+  while (true) {
+    const base = `/api/v1/jobs/?property_id=${encodeURIComponent(propertyId)}&page=${currentPage}&page_size=${PAGE_SIZE}`;
+    const url = additionalParams ? `${base}&${additionalParams}` : base;
+    const response = await fetchWithToken<any>(url, accessToken);
+
+    let pageJobs: Job[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        pageJobs = response;
+        totalCount = pageJobs.length;
+      } else if (response.results && Array.isArray(response.results)) {
+        pageJobs = response.results;
+        totalCount = typeof response.count === 'number' ? response.count : totalCount;
+      } else {
+        console.error('fetchAllJobsForProperty: Unexpected response format:', response);
+        break;
+      }
+    } else {
+      console.error('fetchAllJobsForProperty: Invalid response:', response);
+      break;
+    }
+
+    allJobs = allJobs.concat(pageJobs);
+
+    const receivedFewerThanPage = pageJobs.length < PAGE_SIZE;
+    const receivedAllByCount = totalCount > 0 && allJobs.length >= totalCount;
+    if (receivedFewerThanPage || receivedAllByCount) {
+      break;
+    }
+
+    currentPage += 1;
+    if (currentPage > 50) {
+      console.warn('fetchAllJobsForProperty: Reached safety page cap, stopping pagination');
+      break;
+    }
+  }
+
+  const sanitizedJobs = sanitizeJobsData(allJobs);
+  return fixJobsImageUrls(sanitizedJobs);
+}
+
+// Fetch ALL jobs for current user with optional filters
+export async function fetchAllMyJobs(accessToken?: string, additionalParams?: string): Promise<Job[]> {
+  const PAGE_SIZE = 500;
+  let currentPage = 1;
+  let totalCount = 0;
+  let allJobs: Job[] = [];
+
+  while (true) {
+    const base = `/api/v1/jobs/my_jobs/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+    const url = additionalParams ? `${base}&${additionalParams}` : base;
+    const response = await fetchWithToken<any>(url, accessToken);
+
+    let pageJobs: Job[] = [];
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response)) {
+        pageJobs = response;
+        totalCount = pageJobs.length;
+      } else if (response.results && Array.isArray(response.results)) {
+        pageJobs = response.results;
+        totalCount = typeof response.count === 'number' ? response.count : totalCount;
+      } else {
+        console.error('fetchAllMyJobs: Unexpected response format:', response);
+        break;
+      }
+    } else {
+      console.error('fetchAllMyJobs: Invalid response:', response);
+      break;
+    }
+
+    allJobs = allJobs.concat(pageJobs);
+
+    const receivedFewerThanPage = pageJobs.length < PAGE_SIZE;
+    const receivedAllByCount = totalCount > 0 && allJobs.length >= totalCount;
+    if (receivedFewerThanPage || receivedAllByCount) {
+      break;
+    }
+
+    currentPage += 1;
+    if (currentPage > 50) {
+      console.warn('fetchAllMyJobs: Reached safety page cap, stopping pagination');
+      break;
+    }
+  }
+
+  const sanitizedJobs = sanitizeJobsData(allJobs);
+  return fixJobsImageUrls(sanitizedJobs);
+}
+
 export async function fetchJob(jobId: string, accessToken?: string): Promise<Job | null> {
   try {
     const job = await fetchWithToken<Job>(`/api/v1/jobs/${jobId}/`, accessToken);

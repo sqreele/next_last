@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict CyUmhT4fk98QK6g4Mn3hAhRJzUp0jo2ntxKTc40fPKkdl4g3YFFFUmV40llowh3
+\restrict SPhq0Ewo4OgM1SqJIPKkf6OFWlnhfWTdtTZlKJiQXB8VePnwshHvoGu9dNdqdRy
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -1912,7 +1912,6 @@ COPY public."myappLubd_job" (id, job_id, is_defective, description, remarks, sta
 321	j2514D06B	f	เช็ดทำความสะอาดกิวแอร์และฟิลเตอร์แอร์	.	completed	medium	2025-09-21 09:50:24.959824+00	2025-09-21 09:50:24.959921+00	2025-09-21 09:50:24.959923+00	10	10	t
 322	j258432C7	f	เช็ดทำความสะอาดกิวแอร์และฟิลเตอร์แอร์	.	completed	medium	2025-09-21 09:51:26.81829+00	2025-09-21 09:51:26.818458+00	2025-09-21 09:51:26.818461+00	10	10	t
 323	j25B5E760	f	622 ไม่มีน้ำหยดลงมาแล้ววันนี้ทาสีน้ำมัน (รอทาสีน้ำ)	.	pending	medium	2025-09-21 14:19:46.683753+00	2025-09-21 14:19:46.683894+00	\N	11	11	f
-324	j254A124D	f	606 มีคราบน้ำหยดลงมาในห้องน้ำบนฝ้าเพดาน หาจุดที่น้ำซึมลงมายังไม่เจอวันนี้เลยทาสีน้ำมันปิดคาบน้ำไว้	.	pending	medium	2025-09-21 14:21:57.041472+00	2025-09-21 14:21:57.041608+00	\N	11	11	f
 325	j257A5458	f	ทำความสะอาดกิวหน้าแอร์และล้างฟิลเตอร์แอร์	.	completed	medium	2025-09-22 05:53:10.6374+00	2025-09-22 05:53:10.637506+00	2025-09-22 05:53:10.637509+00	11	11	t
 326	j25172568	f	ทำความสะอาดกริวแอร์	ทำความสะอาดกริวแอร์	completed	medium	2025-09-22 06:00:33.254747+00	2025-09-22 06:00:33.254893+00	2025-09-22 06:00:33.254896+00	9	9	t
 196	j25EF29E7	f	น้ำรั่วซึมขอบกระจก	น้ำซึมขอบซีลีโคนเก่า	completed	medium	2025-09-05 09:46:23.203+00	2025-09-22 06:43:02.836001+00	2025-09-22 06:43:02.835713+00	9	9	f
@@ -2009,6 +2008,21 @@ COPY public."myappLubd_job" (id, job_id, is_defective, description, remarks, sta
 417	j25F82B2C	f	ไฟทางเดิน บันไดหนีไฟดับ	ไฟดับ	completed	medium	2025-09-24 13:16:57.269031+00	2025-09-24 13:16:57.269213+00	2025-09-24 13:16:57.269217+00	9	9	f
 418	j252A1A1D	f	ปิดฝ้าผนัง ที่พื้นที่เช่า	โป้วปิดฝ้าผนัง พื้นที่เช่าหลังป้ายไฟ	completed	medium	2025-09-24 15:25:01.752816+00	2025-09-24 15:25:01.75294+00	2025-09-24 15:25:01.752943+00	9	9	f
 419	j258569E3	f	แก้ไขชักโครกฝาโยก	.	completed	medium	2025-09-25 02:02:23.349556+00	2025-09-25 02:02:23.349729+00	2025-09-25 02:02:23.349732+00	11	11	f
+420	j2569CB2B	f	ทำความสะอาดกิวหน้าแอร์และล้างฟิลเตอร์	.	completed	medium	2025-09-25 03:19:44.656859+00	2025-09-25 03:19:44.657036+00	2025-09-25 03:19:44.65704+00	11	11	t
+421	j25B5FBC7	f	แก้ไขสายชำระน้ำซึม	.	completed	medium	2025-09-25 04:51:16.640006+00	2025-09-25 04:51:16.64026+00	2025-09-25 04:51:16.640263+00	11	11	f
+422	j2599ABB9	f	ทำความสะอาดกิวหน้าแอร์และล้างฟิลเตอร์แอร์	.	completed	medium	2025-09-25 07:15:46.142918+00	2025-09-25 07:15:46.143154+00	2025-09-25 07:15:46.14316+00	11	11	t
+426	j25B81A3D	f	หลอดไฟบันไดหนีไฟด้านหลังเสีย	ทั้งหมด 12 หลอด 6500k  15w  ขั้วหลอด  E27	waiting_sparepart	medium	2025-09-25 07:57:29.368697+00	2025-09-25 07:57:29.368905+00	\N	9	9	f
+433	j25A344AD	f	ทำความสะอาดฟิวเตอร์ เครื่องซักผ้า	ทำความสะอาดฟิวเตอร์ เครื่องซักผ้า	completed	medium	2025-09-25 09:54:55.620857+00	2025-09-25 09:54:55.621028+00	2025-09-25 09:54:55.621033+00	9	9	f
+423	j258B4D7B	f	ทำความสะอาดกิวหน้าแอร์และล้างฟิลเตอร์แอร์	.	completed	medium	2025-09-25 07:19:47.245813+00	2025-09-25 07:19:47.245955+00	2025-09-25 07:19:47.245958+00	11	11	t
+427	j250161C1	f	ทำความสะอาดกิวหน้าแอร์และล้างฟิลเตอร์แอร์	.	completed	medium	2025-09-25 08:22:41.822459+00	2025-09-25 08:22:41.822628+00	2025-09-25 08:22:41.822631+00	11	11	t
+424	j25AABCCD	f	ทำความสะอาดกิวแอร์และล้างฟิลเตอร์แอร์	.	completed	medium	2025-09-25 07:21:34.849103+00	2025-09-25 07:21:34.849297+00	2025-09-25 07:21:34.849301+00	11	11	t
+428	j253530C2	f	ทำความสะอาดกิวแอร์และฟิลเตอร์แล้ว	.	completed	medium	2025-09-25 08:41:54.136863+00	2025-09-25 08:41:54.13702+00	2025-09-25 08:41:54.137024+00	11	11	t
+425	j2515EAFF	f	ทำความสะอาดกิวหน้าแอร์ล้างฟิลเตอร์แอร์	.	completed	medium	2025-09-25 07:30:54.794426+00	2025-09-25 07:30:54.794713+00	2025-09-25 07:30:54.794719+00	11	11	t
+324	j254A124D	f	606 มีคราบน้ำหยดลงมาในห้องน้ำบนฝ้าเพดาน หาจุดที่น้ำซึมลงมายังไม่เจอวันนี้เลยทาสีน้ำมันปิดคาบน้ำไว้	.	pending	medium	2025-09-21 14:21:57.041472+00	2025-09-25 09:00:15.440901+00	2025-09-25 08:59:57.903462+00	11	11	f
+429	j256986F0	f	แก้ไขฝ้าเพดานคราบน้ำซึม \r\nเช็ครั่วแล้ว	.	completed	medium	2025-09-25 09:01:57.645233+00	2025-09-25 09:01:57.645381+00	2025-09-25 09:01:57.645386+00	11	11	f
+430	j25F73AB9	f	ทำความสะอาดกริวแอร์ กับ ฟิวเตอร์	ทำความสะอาดกริวแอร์ กับ ฟิวเตอร์	completed	medium	2025-09-25 09:33:31.846234+00	2025-09-25 09:33:31.846371+00	2025-09-25 09:33:31.846375+00	9	9	t
+431	j2551E4FC	f	ทำความสะอาดกริวแอร์ กับ ฟิวเตอร์	ทำความสะอาดกริวแอร์ กับ ฟิวเตอร์	completed	medium	2025-09-25 09:35:07.909369+00	2025-09-25 09:35:07.909523+00	2025-09-25 09:35:07.909526+00	9	9	t
+432	j25C10F9B	f	ทำความสะอาดกริวแอร์ กับ ฟิวเตอร์	ทำความสะอาดกริวแอร์ กับ ฟิวเตอร์	completed	medium	2025-09-25 09:36:42.259073+00	2025-09-25 09:36:42.259204+00	2025-09-25 09:36:42.259206+00	9	9	t
 \.
 
 
@@ -2414,6 +2428,20 @@ COPY public."myappLubd_job_rooms" (id, job_id, room_id) FROM stdin;
 628	417	181
 629	418	181
 630	419	181
+631	420	87
+632	421	62
+633	422	85
+634	423	5
+635	424	35
+636	425	83
+637	426	181
+638	427	82
+639	428	79
+640	429	116
+641	430	11
+642	431	12
+643	432	64
+644	433	181
 \.
 
 
@@ -2818,6 +2846,20 @@ COPY public."myappLubd_job_topics" (id, job_id, topic_id) FROM stdin;
 626	417	5
 627	418	3
 628	419	2
+629	420	1
+630	421	2
+631	422	1
+632	423	2
+633	424	1
+634	425	1
+635	426	5
+636	427	1
+637	428	1
+638	429	8
+639	430	1
+640	431	1
+641	432	1
+642	433	9
 \.
 
 
@@ -3494,6 +3536,38 @@ COPY public."myappLubd_jobimage" (id, image, uploaded_at, job_id, uploaded_by_id
 690	maintenance_job_images/2025/09/IMG_4323.jpeg	2025-09-24 15:25:02.271362+00	418	9	IMG_4323.jpg
 691	maintenance_job_images/2025/09/IMG_3126.jpeg	2025-09-25 02:02:23.659832+00	419	11	IMG_3126.jpg
 692	maintenance_job_images/2025/09/IMG_3127.jpeg	2025-09-25 02:02:23.957453+00	419	11	IMG_3127.jpg
+693	maintenance_job_images/2025/09/IMG_3134.jpeg	2025-09-25 03:19:45.047077+00	420	11	maintenance_job_images/%Y/%m//IMG_3134.jpg
+694	maintenance_job_images/2025/09/IMG_3135.jpeg	2025-09-25 03:19:45.363004+00	420	11	maintenance_job_images/%Y/%m//IMG_3135.jpg
+695	maintenance_job_images/2025/09/IMG_3137.jpeg	2025-09-25 03:19:45.621725+00	420	11	maintenance_job_images/%Y/%m//IMG_3137.jpg
+696	maintenance_job_images/2025/09/IMG_3139.jpeg	2025-09-25 04:51:17.027535+00	421	11	maintenance_job_images/%Y/%m//IMG_3139.jpg
+697	maintenance_job_images/2025/09/IMG_3155.jpeg	2025-09-25 07:15:46.575732+00	422	11	maintenance_job_images/%Y/%m//IMG_3155.jpg
+698	maintenance_job_images/2025/09/IMG_3156.jpeg	2025-09-25 07:15:46.889192+00	422	11	maintenance_job_images/%Y/%m//IMG_3156.jpg
+699	maintenance_job_images/2025/09/IMG_3159.jpeg	2025-09-25 07:15:47.175293+00	422	11	maintenance_job_images/%Y/%m//IMG_3159.jpg
+700	maintenance_job_images/2025/09/IMG_3163.jpeg	2025-09-25 07:19:47.572647+00	423	11	maintenance_job_images/%Y/%m//IMG_3163.jpg
+701	maintenance_job_images/2025/09/IMG_3164.jpeg	2025-09-25 07:19:47.872551+00	423	11	maintenance_job_images/%Y/%m//IMG_3164.jpg
+702	maintenance_job_images/2025/09/IMG_3165.jpeg	2025-09-25 07:19:48.122722+00	423	11	maintenance_job_images/%Y/%m//IMG_3165.jpg
+703	maintenance_job_images/2025/09/IMG_3166.jpeg	2025-09-25 07:19:48.420293+00	423	11	maintenance_job_images/%Y/%m//IMG_3166.jpg
+704	maintenance_job_images/2025/09/IMG_3160.jpeg	2025-09-25 07:21:35.204287+00	424	11	maintenance_job_images/%Y/%m//IMG_3160.jpg
+705	maintenance_job_images/2025/09/IMG_3159_8dHBSup.jpeg	2025-09-25 07:21:35.473643+00	424	11	maintenance_job_images/%Y/%m//IMG_3159.jpg
+706	maintenance_job_images/2025/09/IMG_3170.jpeg	2025-09-25 07:30:55.133981+00	425	11	maintenance_job_images/%Y/%m//IMG_3170.jpg
+707	maintenance_job_images/2025/09/IMG_3172.jpeg	2025-09-25 07:30:55.398215+00	425	11	maintenance_job_images/%Y/%m//IMG_3172.jpg
+708	maintenance_job_images/2025/09/IMG_3171.jpeg	2025-09-25 07:30:55.764719+00	425	11	maintenance_job_images/%Y/%m//IMG_3171.jpg
+709	maintenance_job_images/2025/09/IMG_4349.jpeg	2025-09-25 07:57:29.829868+00	426	9	maintenance_job_images/%Y/%m//IMG_4349.jpg
+710	maintenance_job_images/2025/09/IMG_4348.jpeg	2025-09-25 07:57:30.182518+00	426	9	maintenance_job_images/%Y/%m//IMG_4348.jpg
+711	maintenance_job_images/2025/09/IMG_3174.jpeg	2025-09-25 08:22:42.147619+00	427	11	maintenance_job_images/%Y/%m//IMG_3174.jpg
+712	maintenance_job_images/2025/09/IMG_3175.jpeg	2025-09-25 08:22:42.412521+00	427	11	maintenance_job_images/%Y/%m//IMG_3175.jpg
+713	maintenance_job_images/2025/09/IMG_3176.jpeg	2025-09-25 08:41:54.426956+00	428	11	maintenance_job_images/%Y/%m//IMG_3176.jpg
+714	maintenance_job_images/2025/09/IMG_3178.jpeg	2025-09-25 08:41:54.667888+00	428	11	maintenance_job_images/%Y/%m//IMG_3178.jpg
+715	maintenance_job_images/2025/09/IMG_3177.jpeg	2025-09-25 08:41:54.919412+00	428	11	maintenance_job_images/%Y/%m//IMG_3177.jpg
+716	maintenance_job_images/2025/09/IMG_3179.jpeg	2025-09-25 09:01:57.966312+00	429	11	maintenance_job_images/%Y/%m//IMG_3179.jpg
+717	maintenance_job_images/2025/09/IMG_3180.jpeg	2025-09-25 09:01:58.251143+00	429	11	maintenance_job_images/%Y/%m//IMG_3180.jpg
+718	maintenance_job_images/2025/09/IMG_3181.jpeg	2025-09-25 09:01:58.575281+00	429	11	maintenance_job_images/%Y/%m//IMG_3181.jpg
+719	maintenance_job_images/2025/09/IMG_4356.jpeg	2025-09-25 09:33:32.137157+00	430	9	maintenance_job_images/%Y/%m//IMG_4356.jpg
+720	maintenance_job_images/2025/09/IMG_4358.jpeg	2025-09-25 09:35:08.326609+00	431	9	maintenance_job_images/%Y/%m//IMG_4358.jpg
+721	maintenance_job_images/2025/09/IMG_4357.jpeg	2025-09-25 09:35:08.721488+00	431	9	maintenance_job_images/%Y/%m//IMG_4357.jpg
+722	maintenance_job_images/2025/09/IMG_4364.jpeg	2025-09-25 09:36:42.552675+00	432	9	maintenance_job_images/%Y/%m//IMG_4364.jpg
+723	maintenance_job_images/2025/09/IMG_4363.jpeg	2025-09-25 09:36:42.811033+00	432	9	maintenance_job_images/%Y/%m//IMG_4363.jpg
+724	maintenance_job_images/2025/09/IMG_4365.jpeg	2025-09-25 09:54:55.939357+00	433	9	maintenance_job_images/%Y/%m//IMG_4365.jpg
 \.
 
 
@@ -4107,28 +4181,28 @@ SELECT pg_catalog.setval('public.django_migrations_id_seq', 47, true);
 -- Name: myappLubd_job_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_id_seq"', 419, true);
+SELECT pg_catalog.setval('public."myappLubd_job_id_seq"', 433, true);
 
 
 --
 -- Name: myappLubd_job_rooms_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_rooms_id_seq"', 630, true);
+SELECT pg_catalog.setval('public."myappLubd_job_rooms_id_seq"', 644, true);
 
 
 --
 -- Name: myappLubd_job_topics_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_topics_id_seq"', 628, true);
+SELECT pg_catalog.setval('public."myappLubd_job_topics_id_seq"', 642, true);
 
 
 --
 -- Name: myappLubd_jobimage_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_jobimage_id_seq"', 692, true);
+SELECT pg_catalog.setval('public."myappLubd_jobimage_id_seq"', 724, true);
 
 
 --
@@ -5581,5 +5655,5 @@ ALTER TABLE ONLY public."myappLubd_userprofile"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict CyUmhT4fk98QK6g4Mn3hAhRJzUp0jo2ntxKTc40fPKkdl4g3YFFFUmV40llowh3
+\unrestrict SPhq0Ewo4OgM1SqJIPKkf6OFWlnhfWTdtTZlKJiQXB8VePnwshHvoGu9dNdqdRy
 

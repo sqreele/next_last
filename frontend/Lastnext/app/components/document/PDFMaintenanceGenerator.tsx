@@ -28,6 +28,7 @@ import {
   getLocationString,
   itemMatchesMachine
 } from '@/app/lib/preventiveMaintenanceModels';
+import { getProductionImageUrl } from '@/app/lib/utils/pdfImageUtils';
 import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -180,29 +181,9 @@ const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initi
       } catch {
         fullUrl = imageUrl;
       }
-    } else if (imageUrl.startsWith('/media/')) {
-      // Relative media path: prefer building absolute URL from NEXT_PUBLIC_MEDIA_URL
-      const baseUrl = process.env.NEXT_PUBLIC_MEDIA_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
-      fullUrl = `${baseUrl}${imageUrl}`;
-    } else if (imageUrl.startsWith('/')) {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
-      fullUrl = `${baseUrl}${imageUrl}`;
     } else {
-      // Try to derive from helper or treat as relative
-      const url = getImageUrl(imageUrl);
-      if (url) {
-        // If helper returns relative /media path, build absolute
-        if (url.startsWith('/')) {
-          const baseUrl = process.env.NEXT_PUBLIC_MEDIA_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
-          fullUrl = `${baseUrl}${url}`;
-        } else {
-          fullUrl = url;
-        }
-      } else {
-        const fixed = tryRelative(imageUrl);
-        const baseUrl = process.env.NEXT_PUBLIC_MEDIA_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
-        fullUrl = fixed.startsWith('http') ? fixed : `${baseUrl}${fixed}`;
-      }
+      // Use the unified image resolution function for all other cases
+      fullUrl = getProductionImageUrl(imageUrl);
     }
     
     if (!fullUrl) return undefined;

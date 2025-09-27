@@ -12,6 +12,7 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { Job, TabValue, FILTER_TITLES } from '@/app/lib/types';
+import { getSupportedImageFromJob } from '@/app/lib/utils/pdfImageUtils';
 
 
 
@@ -348,49 +349,8 @@ function toAbsolutePdfImageUrl(originalUrl: string): string {
 }
 
 function pickSupportedImageUrlFromJob(job: any): string | null {
-  try {
-    const candidates: string[] = [];
-
-    if (job?.images && Array.isArray(job.images)) {
-      for (const img of job.images) {
-        if (img?.jpeg_url) candidates.push(String(img.jpeg_url));
-        if (img?.image_url) candidates.push(String(img.image_url));
-      }
-    }
-
-    if (job?.image_urls && Array.isArray(job.image_urls)) {
-      for (const url of job.image_urls) {
-        if (typeof url === 'string' && url) candidates.push(url);
-      }
-    }
-
-    for (let raw of candidates) {
-      if (!raw) continue;
-
-      // Convert webp to jpg fallback (backend often provides parallel JPEGs)
-      if (raw.toLowerCase().endsWith('.webp')) {
-        raw = raw.replace(/\.webp$/i, '.jpg');
-      }
-
-      const abs = toAbsolutePdfImageUrl(raw);
-      // Determine extension using URL pathname (ignore query/hash)
-      let ext = '';
-      try {
-        const u = new URL(abs, getMediaBaseUrl());
-        const pathname = u.pathname || '';
-        ext = pathname.split('.').pop()?.toLowerCase() || '';
-      } catch {
-        ext = abs.split('?')[0].split('#')[0].split('.').pop()?.toLowerCase() || '';
-      }
-      if (ext && SUPPORTED_IMAGE_EXTENSIONS.has(ext)) {
-        return abs;
-      }
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
+  // Use the unified image resolution function
+  return getSupportedImageFromJob(job);
 }
 
 const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({ 

@@ -4,6 +4,7 @@ import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { Job, TabValue, FILTER_TITLES } from '@/app/lib/types';
 import { JobPDFConfig } from '@/app/components/jobs/JobPDFConfig';
+import { getProductionImageUrl, getSupportedImageFromJob } from '@/app/lib/utils/pdfImageUtils';
 
 // Register fonts with fallback
 try {
@@ -473,32 +474,8 @@ function renderJobsList(jobs: Job[], styles: any, config: JobPDFConfig) {
       {config.includeImages && (
         <View style={styles.imageColumn}>
           {(() => {
-            // Prefer first supported image across arrays (jpeg_url > image_url > image_urls strings)
-            const candidates: string[] = [];
-            if (Array.isArray(job.images)) {
-              for (const img of job.images as any[]) {
-                if (img?.jpeg_url) candidates.push(String(img.jpeg_url));
-                if (img?.image_url) candidates.push(String(img.image_url));
-              }
-            }
-            if (Array.isArray(job.image_urls)) {
-              for (const url of job.image_urls) {
-                if (typeof url === 'string' && url) candidates.push(url);
-              }
-            }
-
-            let selected: string | null = null;
-            for (let raw of candidates) {
-              if (!raw) continue;
-              // Convert webp to jpg fallback for PDF support
-              if (raw.toLowerCase().endsWith('.webp')) raw = raw.replace(/\.webp$/i, '.jpg');
-              const abs = resolveImageUrl(raw);
-              const ext = abs.split('.').pop()?.toLowerCase();
-              if (ext && (ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'gif')) {
-                selected = abs;
-                break;
-              }
-            }
+            // Use the unified image resolution function
+            const selected = getSupportedImageFromJob(job);
 
             if (selected) {
               return (

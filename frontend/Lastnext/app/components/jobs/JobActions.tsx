@@ -367,20 +367,25 @@ export default function JobActions({
 
   const exportCount = jobs.length;
 
-  const menuItemClass = "flex items-center gap-2 px-3 py-2 text-sm text-zinc-100 hover:bg-zinc-800 hover:text-white cursor-pointer";
-  const menuLabelClass = "text-xs font-semibold text-zinc-400 px-3 py-1.5";
-  const dropdownContentClass = "w-[200px] bg-zinc-950 border-zinc-800 rounded-lg shadow-lg";
-  const buttonClass = "flex items-center gap-2 text-sm h-9";
+  const menuItemClass = "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 cursor-pointer transition-colors";
+  const menuLabelClass = "text-xs font-semibold text-gray-500 px-3 py-1.5 uppercase tracking-wide";
+  const dropdownContentClass = "w-[220px] bg-white border border-gray-200 rounded-lg shadow-lg";
+  const buttonClass = "flex items-center gap-2 text-sm h-9 px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors shadow-sm";
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
       {/* Desktop Actions */}
-      <div className="hidden md:flex items-center gap-2">
+      <div className="hidden md:flex items-center gap-2 flex-wrap">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className={buttonClass}>
+            <Button 
+              variant={selectedProperty ? "default" : "outline"} 
+              size="sm" 
+              className={`${buttonClass} ${selectedProperty ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100' : ''}`}
+            >
               <Building className="h-4 w-4" />
               <span className="truncate max-w-[120px]">{getCurrentPropertyInfo().name}</span>
+              {selectedProperty && <span className="ml-1 text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">Active</span>}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className={dropdownContentClass}>
@@ -404,9 +409,14 @@ export default function JobActions({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className={buttonClass}>
+            <Button 
+              variant={currentDateFilter !== "all" ? "default" : "outline"} 
+              size="sm" 
+              className={`${buttonClass} ${currentDateFilter !== "all" ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100' : ''}`}
+            >
               <Calendar className="h-4 w-4" />
               <span>{getDateFilterLabel(currentDateFilter)}</span>
+              {currentDateFilter !== "all" && <span className="ml-1 text-xs bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full">Active</span>}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className={dropdownContentClass}>
@@ -435,15 +445,16 @@ export default function JobActions({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button 
-              variant="outline" 
+              variant={currentRoomFilter ? "default" : "outline"} 
               size="sm" 
-              className={buttonClass}
+              className={`${buttonClass} ${currentRoomFilter ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : ''}`}
               disabled={isLoadingRooms}
             >
               <DoorOpen className="h-4 w-4" />
               <span className="truncate max-w-[120px]">
                 {isLoadingRooms ? "Loading..." : getRoomName(currentRoomFilter)}
               </span>
+              {currentRoomFilter && <span className="ml-1 text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full">Active</span>}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className={dropdownContentClass}>
@@ -454,7 +465,7 @@ export default function JobActions({
                 value={roomSearch}
                 onChange={(e) => setRoomSearch(e.target.value)}
                 placeholder="Search room number, name, or type..."
-                className="w-full h-8 px-2 text-xs rounded bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-none"
+                className="w-full h-8 px-3 text-xs rounded-md bg-gray-50 border border-gray-200 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               />
             </div>
             <DropdownMenuItem 
@@ -490,8 +501,8 @@ export default function JobActions({
                 );
               })}
             {getFilteredRooms().length === 0 && selectedProperty && !isLoadingRooms && (
-              <DropdownMenuItem disabled className={menuItemClass}>
-                <span className="text-zinc-500">
+              <DropdownMenuItem disabled className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 cursor-not-allowed">
+                <span>
                   {rooms.length === 0 
                     ? "No rooms loaded" 
                     : `No rooms found for property ${selectedProperty}`
@@ -578,7 +589,7 @@ export default function JobActions({
               <Plus className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className={`${dropdownContentClass} max-h-[75vh] overflow-y-auto`} sideOffset={5}>
+          <DropdownMenuContent align="end" className={`${dropdownContentClass} max-h-[80vh] overflow-y-auto w-[280px]`} sideOffset={5}>
             <DropdownMenuLabel className={menuLabelClass}>Properties</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => setSelectedProperty(null)} className={menuItemClass}>
               <Building className="h-4 w-4" /> All Properties
@@ -593,7 +604,7 @@ export default function JobActions({
                 <span className="truncate">{property.name}</span>
               </DropdownMenuItem>
             ))}
-            <DropdownMenuSeparator className="bg-zinc-800 my-1" />
+            <DropdownMenuSeparator className="bg-gray-200 my-1" />
 
             <DropdownMenuLabel className={menuLabelClass}>Rooms</DropdownMenuLabel>
             <div className="px-2 pb-1">
@@ -602,7 +613,7 @@ export default function JobActions({
                 value={roomSearch}
                 onChange={(e) => setRoomSearch(e.target.value)}
                 placeholder="Search room number, name, or type..."
-                className="w-full h-8 px-2 text-xs rounded bg-zinc-900 border border-zinc-800 text-zinc-100 placeholder-zinc-500 focus:outline-none"
+                className="w-full h-8 px-3 text-xs rounded-md bg-gray-50 border border-gray-200 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:bg-gray-100 disabled:text-gray-400"
                 disabled={!selectedProperty}
               />
             </div>
@@ -639,11 +650,11 @@ export default function JobActions({
                 );
               })}
             {getFilteredRooms().length === 0 && selectedProperty && !isLoadingRooms && (
-              <DropdownMenuItem disabled className={menuItemClass}>
-                <span className="text-zinc-500">No rooms available for this property</span>
+              <DropdownMenuItem disabled className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 cursor-not-allowed">
+                <span>No rooms available for this property</span>
               </DropdownMenuItem>
             )}
-            <DropdownMenuSeparator className="bg-zinc-800 my-1" />
+            <DropdownMenuSeparator className="bg-gray-200 my-1" />
 
             <DropdownMenuLabel className={menuLabelClass}>Date Range</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => handleDateFilterChange("all")} className={menuItemClass}>
@@ -664,7 +675,7 @@ export default function JobActions({
             <DropdownMenuItem onClick={() => handleDateFilterChange("custom")} className={menuItemClass}>
               <Calendar className="h-4 w-4" /> Custom Range
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-zinc-800 my-1" />
+            <DropdownMenuSeparator className="bg-gray-200 my-1" />
 
             <DropdownMenuLabel className={menuLabelClass}>Sort By</DropdownMenuLabel>
             <DropdownMenuItem onClick={() => onSort?.("Newest first")} className={menuItemClass}>
@@ -673,13 +684,13 @@ export default function JobActions({
             <DropdownMenuItem onClick={() => onSort?.("Oldest first")} className={menuItemClass}>
               <SortAsc className="h-4 w-4" /> Oldest first
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-zinc-800 my-1" />
+            <DropdownMenuSeparator className="bg-gray-200 my-1" />
 
             <DropdownMenuItem onClick={handleGeneratePDF} disabled={isGenerating || exportCount === 0} className={menuItemClass}>
               <FileDown className="h-4 w-4" />
               {isGenerating ? "Generating..." : `Export PDF (${exportCount})`}
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-zinc-800 my-1" />
+            <DropdownMenuSeparator className="bg-gray-200 my-1" />
 
             <DropdownMenuItem onClick={handleRefresh} className={menuItemClass}>
               <Plus className="h-4 w-4" /> Create Job

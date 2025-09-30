@@ -453,6 +453,61 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     }
   }, [isAuthenticated, state.filters]);
   
+  // Apply server-side filters when selected tab changes to ensure we load
+  // the correct status from the backend (rather than filtering only the
+  // currently loaded page on the client). This prevents empty tabs when
+  // the first page doesn't contain the desired status.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Map selectedTab to backend filters
+    const nextFilters: Partial<JobsDashboardState['filters']> = { ...state.filters };
+
+    // Reset tab-related filters
+    delete (nextFilters as any).status;
+    delete (nextFilters as any).is_preventivemaintenance;
+
+    switch (state.selectedTab) {
+      case 'pending':
+        nextFilters.status = 'pending' as any;
+        break;
+      case 'in_progress':
+        nextFilters.status = 'in_progress' as any;
+        break;
+      case 'completed':
+        nextFilters.status = 'completed' as any;
+        break;
+      case 'cancelled':
+        nextFilters.status = 'cancelled' as any;
+        break;
+      case 'waiting_sparepart':
+        nextFilters.status = 'waiting_sparepart' as any;
+        break;
+      case 'preventive_maintenance':
+        // Server supports this via is_preventivemaintenance flag
+        (nextFilters as any).is_preventivemaintenance = true as any;
+        break;
+      case 'defect':
+        // No server-side filter available for defect; keep client-side filtering
+        break;
+      case 'all':
+      default:
+        // No status filter for 'all'
+        break;
+    }
+
+    // Only update filters (and trigger refresh) if something actually changed
+    const filtersChanged = JSON.stringify(state.filters) !== JSON.stringify(nextFilters);
+    if (filtersChanged) {
+      updateFilters(nextFilters);
+    }
+    // If filters didn't change (e.g., re-clicking same tab), still ensure we refresh
+    // to avoid cases where the list is stale after updates.
+    if (!filtersChanged) {
+      refreshJobs(false);
+    }
+  }, [isAuthenticated, state.selectedTab]);
+  
   // Refresh when selected property changes
   useEffect(() => {
     if (isAuthenticated && selectedPropertyId !== undefined) {

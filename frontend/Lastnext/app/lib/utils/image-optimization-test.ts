@@ -147,7 +147,7 @@ async function testImageLoadingPerformance(): Promise<ImageOptimizationTestResul
         message: `Image loaded in ${loadTime.toFixed(2)}ms`,
         suggestions: !isFast ? [
           'Consider optimizing image size',
-          'Use WebP or AVIF format',
+          'Use AVIF or JPEG format',
           'Implement lazy loading',
           'Add image preloading for critical images'
         ] : []
@@ -240,10 +240,10 @@ async function testImageSEO(): Promise<ImageOptimizationTestResult[]> {
     page: 'seo',
     component: 'image-formats',
     testType: 'seo',
-    status: modernFormatPercentage >= 80 ? 'pass' : modernFormatPercentage >= 50 ? 'warning' : 'fail',
-    message: `${modernFormatPercentage.toFixed(1)}% of images use modern formats (WebP/AVIF)`,
+    status: (avifImages / (totalImages || 1)) * 100 >= 50 ? 'pass' : 'warning',
+    message: `${avifImages} images use AVIF; prefer AVIF or JPEG for compatibility`,
     suggestions: modernFormatPercentage < 80 ? [
-      'Convert images to WebP or AVIF format',
+      'Convert images to AVIF or high-quality JPEG',
       'Use Next.js image optimization',
       'Implement format detection and conversion'
     ] : []

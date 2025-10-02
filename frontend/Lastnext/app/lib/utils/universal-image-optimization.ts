@@ -213,7 +213,7 @@ export function generateOptimizedImageUrl(
   width: number,
   height: number,
   quality: number = 75,
-  format: 'webp' | 'avif' | 'jpeg' = 'webp'
+  format: 'avif' | 'jpeg' = 'jpeg'
 ): string {
   if (isExternalImage(src)) {
     return src; // Return original URL for external images

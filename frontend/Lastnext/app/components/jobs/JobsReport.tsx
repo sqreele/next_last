@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   TrendingUp,
   Users,
-  Settings
+  Settings,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
@@ -59,6 +60,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
   const { properties: userProperties } = useProperties();
   
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingCsv, setIsGeneratingCsv] = useState(false);
   const [reportJobs, setReportJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -264,6 +266,82 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
     }
   };
 
+  // Generate CSV export
+  const handleGenerateCSV = async () => {
+    if (!reportJobs.length) {
+      alert('No jobs available to export.');
+      return;
+    }
+
+    try {
+      setIsGeneratingCsv(true);
+      const propertyName = currentProperty?.name || `Property ${selectedProperty}`;
+      
+      // CSV Headers
+      const headers = [
+        'Job ID',
+        'Title',
+        'Description',
+        'Status',
+        'Priority',
+        'Created At',
+        'Completed At',
+        'Assigned To',
+        'Room',
+        'Property',
+        'Urgency',
+        'Category'
+      ];
+
+      // Convert jobs to CSV rows
+      const rows = reportJobs.map(job => {
+        const assignedTo = job.assigned_users?.map((u: any) => u.username || u.name).join('; ') || 'Unassigned';
+        const room = job.rooms?.[0]?.name || job.room_name || 'N/A';
+        const createdAt = format(new Date(job.created_at), 'yyyy-MM-dd HH:mm:ss');
+        const completedAt = job.completed_at ? format(new Date(job.completed_at), 'yyyy-MM-dd HH:mm:ss') : 'N/A';
+        
+        return [
+          job.job_id || job.id,
+          `"${(job.title || '').replace(/"/g, '""')}"`,
+          `"${(job.description || '').replace(/"/g, '""')}"`,
+          job.status || 'N/A',
+          job.priority || 'N/A',
+          createdAt,
+          completedAt,
+          `"${assignedTo.replace(/"/g, '""')}"`,
+          `"${room.replace(/"/g, '""')}"`,
+          propertyName,
+          job.urgency || 'N/A',
+          job.category || 'N/A'
+        ].join(',');
+      });
+
+      // Combine headers and rows
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      const date = format(new Date(), 'yyyy-MM-dd');
+      const filename = `${propertyName.replace(/\s+/g, '-')}-jobs-report-${date}.csv`;
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      console.error('Error generating CSV:', error);
+      alert(`Failed to generate CSV: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsGeneratingCsv(false);
+    }
+  };
+
   // Check if session is still loading
   if (!session) {
     return (
@@ -358,23 +436,43 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
                 Property ID: {selectedProperty} | Filter: {filter}
               </p>
             </div>
-            <Button 
-              onClick={handleGeneratePDF} 
-              disabled={isGenerating || reportJobs.length === 0}
-              className="flex items-center gap-2"
-            >
-              {isGenerating ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                  Download PDF
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={handleGenerateCSV} 
+                disabled={isGeneratingCsv || reportJobs.length === 0}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                {isGeneratingCsv ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Export CSV
+                  </>
+                )}
+              </Button>
+              <Button 
+                onClick={handleGeneratePDF} 
+                disabled={isGenerating || reportJobs.length === 0}
+                className="flex items-center gap-2"
+              >
+                {isGenerating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Download PDF
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </CardHeader>
       </Card>

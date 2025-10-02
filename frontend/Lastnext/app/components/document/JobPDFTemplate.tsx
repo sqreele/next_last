@@ -470,11 +470,12 @@ function renderJobsList(jobs: Job[], styles: any, config: JobPDFConfig) {
       ]} 
       wrap={false}
     >
-      {/* Image Column */}
+      {/* Image Column - Displays only ONE image per job */}
       {config.includeImages && (
         <View style={styles.imageColumn}>
           {(() => {
-            // Use the unified image resolution function
+            // Get ONLY the first supported image (not all images)
+            // This ensures consistent layout and manageable PDF file size
             const selected = getSupportedImageFromJob(job);
 
             if (selected) {

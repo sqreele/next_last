@@ -164,6 +164,21 @@ export function validateImageForPdf(imageUrl: string): Promise<boolean> {
   });
 }
 
+/**
+ * Gets a single supported image from a job for PDF export.
+ * 
+ * ⚠️ IMPORTANT: This function returns ONLY ONE IMAGE (the first supported image found).
+ * When exporting jobs to PDF, only one image per job will be displayed, not all images.
+ * This is by design to keep PDF file sizes manageable and maintain consistent layout.
+ * 
+ * Priority order:
+ * 1. First JPEG image (job.images[0].jpeg_url)
+ * 2. First image URL (job.images[0].image_url or job.images[0].url)
+ * 3. First URL from image_urls array
+ * 
+ * @param job - The job object containing image data
+ * @returns A single image URL in a supported format (JPG, JPEG, PNG, GIF) or null if none found
+ */
 export function getSupportedImageFromJob(job: any): string | null {
   if (!job) {
     console.warn('[PDF Image Utils] Job is null or undefined');
@@ -181,6 +196,7 @@ export function getSupportedImageFromJob(job: any): string | null {
   });
   
   // Collect all possible image URLs
+  // Note: We collect all candidates but will only return the FIRST supported one
   if (Array.isArray(job.images)) {
     for (const img of job.images) {
       if (img?.jpeg_url) {
@@ -209,7 +225,8 @@ export function getSupportedImageFromJob(job: any): string | null {
   
   console.log('[PDF Image Utils] Total candidates found:', candidates.length);
   
-  // Find the first supported image format
+  // Find and return ONLY the FIRST supported image format
+  // This ensures only one image per job is displayed in the PDF
   for (let rawUrl of candidates) {
     if (!rawUrl) continue;
     const resolvedUrl = getProductionImageUrl(rawUrl);
@@ -224,8 +241,8 @@ export function getSupportedImageFromJob(job: any): string | null {
     
     // Check if it's a supported format for PDF
     if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
-      console.log('[PDF Image Utils] ✅ Selected image URL:', resolvedUrl);
-      return resolvedUrl;
+      console.log('[PDF Image Utils] ✅ Selected FIRST image URL (only one per job):', resolvedUrl);
+      return resolvedUrl; // Return immediately - only one image per job
     }
   }
   

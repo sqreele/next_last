@@ -12,7 +12,7 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { Job, TabValue, FILTER_TITLES } from '@/app/lib/types';
-import { getSupportedImageFromJob } from '@/app/lib/utils/pdfImageUtils';
+import { getSupportedImageFromJob, getProductionImageUrl } from '@/app/lib/utils/pdfImageUtils';
 
 
 
@@ -285,73 +285,8 @@ const styles = StyleSheet.create({
   },
 });
 
-// Supported raster formats for @react-pdf/renderer
-const SUPPORTED_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif']);
-
-function getMediaBaseUrl(): string {
-  try {
-    if (typeof window !== 'undefined') {
-      const isProd = window.location?.hostname?.endsWith('pcms.live');
-      if (isProd) return 'https://pcms.live';
-      return process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000';
-    }
-    // SSR fallback
-    return process.env.NEXT_PUBLIC_MEDIA_URL || process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
-  } catch {
-    return 'https://pcms.live';
-  }
-}
-
-function toAbsolutePdfImageUrl(originalUrl: string): string {
-  if (!originalUrl) return '';
-
-  // Data URLs can be used directly
-  if (originalUrl.startsWith('data:')) return originalUrl;
-
-  const base = getMediaBaseUrl();
-
-  try {
-    // Absolute URL
-    if (originalUrl.startsWith('http')) {
-      const url = new URL(originalUrl);
-      const pathname = url.pathname || '/';
-
-      // If it's pointing to media on an internal host (backend, localhost, http), rebase to the public origin
-      const looksLikeInternal = /(^backend$)|(^localhost)|(^127\.0\.0\.1)/.test(url.hostname) || url.protocol === 'http:';
-      const isMediaPath = pathname.startsWith('/media/');
-      if (looksLikeInternal && isMediaPath) {
-        // Preserve query for access if present, but change origin and protocol
-        return `${base}${pathname}${url.search || ''}`;
-      }
-      // If already on pcms.live but using http, force https
-      if (url.hostname.endsWith('pcms.live') && url.protocol !== 'https:') {
-        return `https://pcms.live${pathname}${url.search || ''}`;
-      }
-      return originalUrl;
-    }
-
-    // Relative URL
-    let path = originalUrl;
-    if (!path.startsWith('/')) {
-      path = path.startsWith('media/') ? `/${path}` : `/media/${path}`;
-    }
-    if (!path.startsWith('/media/')) {
-      path = `/media${path}`;
-    }
-    return `${base}${path}`;
-  } catch {
-    // Best-effort fallback
-    const normalizedPath = originalUrl.startsWith('/media/')
-      ? originalUrl
-      : (originalUrl.startsWith('/') ? originalUrl : `/media/${originalUrl}`);
-    return `${base}${normalizedPath}`;
-  }
-}
-
-function pickSupportedImageUrlFromJob(job: any): string | null {
-  // Use the unified image resolution function
-  return getSupportedImageFromJob(job);
-}
+// Note: Image URL resolution and selection is now handled by unified functions
+// from @/app/lib/utils/pdfImageUtils.ts to ensure consistency across production and development
 
 const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({ 
   jobs, 
@@ -730,8 +665,9 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
                   {includeImages ? (
                     (() => {
                       // Get ONLY the first supported image (not all images)
-                      const url = pickSupportedImageUrlFromJob(job);
-                      console.log(`[PDF Image Debug] Job ${job.job_id}:`, {
+                      // Uses unified function from pdfImageUtils.ts for consistent production URL resolution
+                      const url = getSupportedImageFromJob(job);
+                      console.log(`[JobsPDF Image Debug] Job ${job.job_id}:`, {
                         hasUrl: !!url,
                         url: url,
                         imageData: {
@@ -741,14 +677,14 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
                         note: 'Only first supported image is used'
                       });
                       if (!url) {
-                        console.warn(`[PDF Image] No supported image found for job ${job.job_id}`);
+                        console.warn(`[JobsPDF Image] No supported image found for job ${job.job_id}`);
                         return (
                           <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
                             <Text style={{ fontSize: 8, color: '#9ca3af' }}>No Image</Text>
                           </View>
                         );
                       }
-                      console.log(`[PDF Image] Using FIRST image for job ${job.job_id}:`, url);
+                      console.log(`[JobsPDF Image] Using FIRST image for job ${job.job_id}:`, url);
                       return (
                         <Image
                           src={url}

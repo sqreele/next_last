@@ -296,7 +296,10 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
 
       // Convert jobs to CSV rows
       const rows = reportJobs.map(job => {
-        const assignedTo = job.assigned_users?.map((u: any) => u.username || u.name).join('; ') || 'Unassigned';
+        const user = job.user;
+        const assignedTo = user && typeof user === 'object' 
+          ? (user.username || user.name || 'Unassigned')
+          : (typeof user === 'string' ? user : 'Unassigned');
         const room = job.rooms?.[0]?.name || job.room_name || 'N/A';
         const createdAt = format(new Date(job.created_at), 'yyyy-MM-dd HH:mm:ss');
         const completedAt = job.completed_at ? format(new Date(job.completed_at), 'yyyy-MM-dd HH:mm:ss') : 'N/A';

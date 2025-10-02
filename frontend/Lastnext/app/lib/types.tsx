@@ -7,6 +7,8 @@ export interface User {
   email: string | null;
   first_name?: string;
   last_name?: string;
+  name?: string;
+  full_name?: string;
   profile_image: string | null;
   positions: string;
   properties: Property[];
@@ -98,6 +100,10 @@ export interface Job {
   is_defective?: boolean;
   image_urls?: string[];
   is_preventivemaintenance?: boolean;
+  title?: string;
+  room_name?: string;
+  urgency?: string;
+  category?: string;
 }
 
 export interface Property {

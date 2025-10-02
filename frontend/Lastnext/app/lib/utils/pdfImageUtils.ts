@@ -136,21 +136,13 @@ export function getSupportedImageFromJob(job: any): string | null {
   // Find the first supported image format
   for (let rawUrl of candidates) {
     if (!rawUrl) continue;
-    
-    const lower = rawUrl.toLowerCase();
-    const isWebp = lower.endsWith('.webp') || lower.includes('format=webp');
-    
     const resolvedUrl = getProductionImageUrl(rawUrl);
     const extension = getImageExtension(resolvedUrl);
     
     // Check if it's a supported format for PDF
-    if (['jpg', 'jpeg', 'png', 'gif'].includes(extension) && !isWebp) {
+    if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
       return resolvedUrl;
     }
-
-    // If unsupported (e.g., webp) or unknown extension, route via proxy which converts to jpeg
-    const encoded = encodeURIComponent(resolvedUrl);
-    return `/api/proxy-image?url=${encoded}`;
   }
   
   return null;

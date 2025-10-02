@@ -6,7 +6,7 @@ export interface ImageOptimizationOptions {
   width?: number;
   height?: number;
   quality?: number;
-  format?: 'webp' | 'jpeg' | 'png' | 'avif';
+  format?: 'jpeg' | 'png' | 'avif';
   placeholder?: 'blur' | 'empty';
   priority?: boolean;
   sizes?: string;
@@ -23,7 +23,7 @@ export function getOptimizedImageUrl(
     width = 400,
     height = 300,
     quality = 75,
-    format = 'webp',
+    format = 'jpeg',
     placeholder = 'blur'
   } = options;
 

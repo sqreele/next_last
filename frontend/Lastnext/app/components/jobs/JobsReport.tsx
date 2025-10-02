@@ -294,9 +294,34 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         'Category'
       ];
 
+      // Helper to get a readable assigned user name
+      const getUserDisplayName = (user: any): string => {
+        if (!user) return 'Unassigned';
+        if (typeof user === 'object' && user) {
+          if (user.full_name && user.full_name.trim()) return user.full_name.trim();
+          if (user.first_name && user.last_name) return `${user.first_name} ${user.last_name}`.trim();
+          if (user.name) return user.name;
+          if (user.username) {
+            let clean = user.username as string;
+            if (clean.includes('auth0_') || clean.includes('google-oauth2_')) {
+              clean = clean.replace(/^(auth0_|google-oauth2_)/, '');
+            }
+            return clean;
+          }
+          if (user.email) return (user.email as string).split('@')[0];
+          if (user.id) return `User ${user.id}`;
+        }
+        if (typeof user === 'string') {
+          if (/^\d+$/.test(user)) return `User ${user}`;
+          return user;
+        }
+        if (typeof user === 'number') return `User ${user}`;
+        return 'Unknown User';
+      };
+
       // Convert jobs to CSV rows
       const rows = reportJobs.map(job => {
-        const assignedTo = job.assigned_users?.map((u: any) => u.username || u.name).join('; ') || 'Unassigned';
+        const assignedTo = getUserDisplayName((job as any).user);
         const room = job.rooms?.[0]?.name || job.room_name || 'N/A';
         const createdAt = format(new Date(job.created_at), 'yyyy-MM-dd HH:mm:ss');
         const completedAt = job.completed_at ? format(new Date(job.completed_at), 'yyyy-MM-dd HH:mm:ss') : 'N/A';

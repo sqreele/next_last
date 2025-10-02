@@ -80,6 +80,7 @@ export interface Room {
 export interface Job {
   id: number;
   job_id: string;
+  title?: string;
   description: string;
   status: JobStatus;
   priority: JobPriority;
@@ -92,12 +93,15 @@ export interface Job {
   images?: JobImage[];
   topics?: Topic[];
   rooms?: Room[];
+  room_name?: string;
   property_id?: string | number;
   properties?: Array<string | number | { property_id?: string | number; id?: string | number }>; // Added
   remarks?: string | undefined | null;
   is_defective?: boolean;
   image_urls?: string[];
   is_preventivemaintenance?: boolean;
+  urgency?: string;
+  category?: string;
 }
 
 export interface Property {

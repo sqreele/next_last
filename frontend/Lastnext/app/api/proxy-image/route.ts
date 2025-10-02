@@ -51,7 +51,7 @@ export async function GET(request: Request) {
           .jpeg({ quality, mozjpeg: true })
           .toBuffer();
 
-        return new Response(output, {
+        return new Response(new Uint8Array(output), {
           status: 200,
           headers: {
             'Content-Type': 'image/jpeg',
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
         });
       }
 
-      return new Response(inputBuffer, {
+      return new Response(new Uint8Array(inputBuffer), {
         status: 200,
         headers: {
           'Content-Type': contentType || 'application/octet-stream',
@@ -80,7 +80,7 @@ export async function GET(request: Request) {
       .jpeg({ quality, mozjpeg: true })
       .toBuffer();
 
-    return new Response(converted, {
+    return new Response(new Uint8Array(converted), {
       status: 200,
       headers: {
         'Content-Type': 'image/jpeg',

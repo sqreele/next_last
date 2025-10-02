@@ -20,7 +20,7 @@ import {
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
 import { Job, TabValue, JobStatus, JobPriority, STATUS_COLORS } from '@/app/lib/types';
-import { fetchJobsForProperty } from '@/app/lib/data.server';
+import { fetchAllJobsForProperty } from '@/app/lib/data.server';
 import JobsPDFDocument from '@/app/components/document/JobsPDFGenerator';
 import { generatePdfWithRetry, downloadPdf } from '@/app/lib/pdfUtils';
 import { generatePdfBlob } from '@/app/lib/pdfRenderer';
@@ -213,7 +213,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
             throw new Error('No access token available');
           }
           
-          const propertyJobs = await fetchJobsForProperty(selectedProperty, accessToken);
+          const propertyJobs = await fetchAllJobsForProperty(selectedProperty, accessToken);
+          console.log(`✅ JobsReport: Loaded ${propertyJobs.length} jobs for property ${selectedProperty}`);
           setReportJobs(propertyJobs);
         } catch (error) {
           console.error('Error loading property jobs:', error);

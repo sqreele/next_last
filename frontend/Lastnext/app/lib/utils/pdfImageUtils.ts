@@ -76,12 +76,21 @@ function getPdfMediaBaseUrl(): string {
   
   // Client-side
   try {
-    const isProduction = window.location?.hostname?.endsWith('pcms.live');
+    const hostname = window.location?.hostname;
+    const isProduction = hostname?.endsWith('pcms.live');
     if (isProduction) {
       return 'https://pcms.live';
     }
-    return process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000';
+    // In development (localhost), use localhost:8000
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return process.env.NEXT_PUBLIC_MEDIA_URL || 'http://localhost:8000';
+    }
+    return 'https://pcms.live';
   } catch {
+    // Fallback: check NODE_ENV for development
+    if (process.env.NODE_ENV === 'development') {
+      return 'http://localhost:8000';
+    }
     return 'https://pcms.live';
   }
 }

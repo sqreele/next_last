@@ -725,10 +725,11 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
                 ]} 
                 wrap={false}
               >
-                {/* Image Column */}
+                {/* Image Column - Displays only ONE image per job */}
                 <View style={styles.imageColumn}>
                   {includeImages ? (
                     (() => {
+                      // Get ONLY the first supported image (not all images)
                       const url = pickSupportedImageUrlFromJob(job);
                       console.log(`[PDF Image Debug] Job ${job.job_id}:`, {
                         hasUrl: !!url,
@@ -736,7 +737,8 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
                         imageData: {
                           images: job.images,
                           image_urls: job.image_urls,
-                        }
+                        },
+                        note: 'Only first supported image is used'
                       });
                       if (!url) {
                         console.warn(`[PDF Image] No supported image found for job ${job.job_id}`);
@@ -746,7 +748,7 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
                           </View>
                         );
                       }
-                      console.log(`[PDF Image] Using URL for job ${job.job_id}:`, url);
+                      console.log(`[PDF Image] Using FIRST image for job ${job.job_id}:`, url);
                       return (
                         <Image
                           src={url}

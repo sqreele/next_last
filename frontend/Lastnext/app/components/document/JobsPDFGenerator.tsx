@@ -730,13 +730,23 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
                   {includeImages ? (
                     (() => {
                       const url = pickSupportedImageUrlFromJob(job);
+                      console.log(`[PDF Image Debug] Job ${job.job_id}:`, {
+                        hasUrl: !!url,
+                        url: url,
+                        imageData: {
+                          images: job.images,
+                          image_urls: job.image_urls,
+                        }
+                      });
                       if (!url) {
+                        console.warn(`[PDF Image] No supported image found for job ${job.job_id}`);
                         return (
                           <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>
                             <Text style={{ fontSize: 8, color: '#9ca3af' }}>No Image</Text>
                           </View>
                         );
                       }
+                      console.log(`[PDF Image] Using URL for job ${job.job_id}:`, url);
                       return (
                         <Image
                           src={url}

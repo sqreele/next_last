@@ -3,6 +3,8 @@
  * Handles production vs development URL differences
  */
 
+import { pdfDebug } from '@/app/lib/utils/pdfDebug';
+
 // Type definitions for environment variables
 declare const process: {
   env: {
@@ -20,6 +22,7 @@ export function getProductionImageUrl(imageUrl: string): string {
   
   // Get the correct base URL for the current environment
   const baseUrl = getPdfMediaBaseUrl();
+  try { pdfDebug.log('image.baseUrl', { baseUrl }); } catch {}
   
   try {
     // Handle absolute URLs
@@ -32,14 +35,19 @@ export function getProductionImageUrl(imageUrl: string): string {
       const isMediaPath = pathname.startsWith('/media/');
       
       if (isInternal && isMediaPath) {
-        return `${baseUrl}${pathname}${url.search || ''}`;
+        const resolved = `${baseUrl}${pathname}${url.search || ''}`;
+        try { pdfDebug.imageResolve({ sourceUrl: imageUrl, resolvedUrl: resolved, note: 'rebased-internal' }); } catch {}
+        return resolved;
       }
       
       // Force HTTPS for production domain
       if (url.hostname.endsWith('pcms.live') && url.protocol !== 'https:') {
-        return `https://pcms.live${pathname}${url.search || ''}`;
+        const resolved = `https://pcms.live${pathname}${url.search || ''}`;
+        try { pdfDebug.imageResolve({ sourceUrl: imageUrl, resolvedUrl: resolved, note: 'forced-https' }); } catch {}
+        return resolved;
       }
       
+      try { pdfDebug.imageResolve({ sourceUrl: imageUrl, resolvedUrl: imageUrl, note: 'absolute-unchanged' }); } catch {}
       return imageUrl;
     }
     
@@ -52,14 +60,18 @@ export function getProductionImageUrl(imageUrl: string): string {
       path = `/media${path}`;
     }
     
-    return `${baseUrl}${path}`;
+    const resolved = `${baseUrl}${path}`;
+    try { pdfDebug.imageResolve({ sourceUrl: imageUrl, resolvedUrl: resolved, baseUrl, note: 'relative-rebased' } as any); } catch {}
+    return resolved;
   } catch (error) {
     console.warn('Error resolving PDF image URL:', error);
     // Fallback: construct basic URL
     const normalizedPath = imageUrl.startsWith('/media/') 
       ? imageUrl 
       : (imageUrl.startsWith('/') ? imageUrl : `/media/${imageUrl}`);
-    return `${baseUrl}${normalizedPath}`;
+    const resolved = `${baseUrl}${normalizedPath}`;
+    try { pdfDebug.imageResolve({ sourceUrl: imageUrl, resolvedUrl: resolved, baseUrl, note: 'fallback' } as any); } catch {}
+    return resolved;
   }
 }
 
@@ -106,16 +118,19 @@ export function validateImageForPdf(imageUrl: string): Promise<boolean> {
     img.crossOrigin = 'anonymous';
     
     const timeout = setTimeout(() => {
+      try { pdfDebug.imageValidate({ url: imageUrl, valid: false, error: 'timeout' } as any); } catch {}
       resolve(false);
     }, 5000); // 5 second timeout
     
     img.onload = () => {
       clearTimeout(timeout);
+      try { pdfDebug.imageValidate({ url: imageUrl, valid: true } as any); } catch {}
       resolve(true);
     };
     
     img.onerror = () => {
       clearTimeout(timeout);
+      try { pdfDebug.imageValidate({ url: imageUrl, valid: false, error: 'onerror' } as any); } catch {}
       resolve(false);
     };
     
@@ -150,10 +165,12 @@ export function getSupportedImageFromJob(job: any): string | null {
     
     // Check if it's a supported format for PDF
     if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
+      try { pdfDebug.imageResolve({ sourceUrl: rawUrl, resolvedUrl, note: 'selected-supported', extension } as any); } catch {}
       return resolvedUrl;
     }
   }
   
+  try { pdfDebug.imageResolve({ sourceUrl: '', resolvedUrl: '', note: 'no-supported-image' } as any); } catch {}
   return null;
 }
 

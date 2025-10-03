@@ -13,6 +13,7 @@ import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image, Font } from '@react-pdf/renderer';
 import { Job, TabValue, FILTER_TITLES } from '@/app/lib/types';
 import { getSupportedImageFromJob } from '@/app/lib/utils/pdfImageUtils';
+import { pdfDebug } from '@/app/lib/utils/pdfDebug';
 
 
 
@@ -368,16 +369,31 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
   applyPropertyFilter = false
 }) => {
   // Debug logging
-  console.log('JobsPDFDocument Props:', {
-    jobsCount: jobs?.length || 0,
-    filter,
-    selectedProperty,
-    propertyName,
-    includeDetails,
-    includeImages,
-    includeStatistics,
-    reportTitle
-  });
+  try {
+    if (!pdfDebug.isActive()) {
+      pdfDebug.startSession({
+        component: 'JobsPDFDocument',
+        jobsCount: (jobs?.length || 0) as any,
+        filter: (filter as any),
+        selectedProperty: (selectedProperty as any),
+        propertyName: (propertyName as any),
+        includeDetails: (includeDetails as any),
+        includeImages: (includeImages as any),
+        includeStatistics: (includeStatistics as any),
+        reportTitle: (reportTitle as any),
+      } as any);
+    }
+    pdfDebug.log('JobsPDFDocument.props', {
+      jobsCount: jobs?.length || 0,
+      filter: (filter as any),
+      selectedProperty: (selectedProperty as any),
+      propertyName: (propertyName as any),
+      includeDetails: (includeDetails as any),
+      includeImages: (includeImages as any),
+      includeStatistics: (includeStatistics as any),
+      reportTitle: (reportTitle as any),
+    } as any);
+  } catch {}
   // Trust the caller's filtering by default. Optionally apply an internal
   // property-based filter only when explicitly requested.
   let filteredJobs = jobs;
@@ -705,16 +721,17 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
             
             {jobGroup.map((job, jobIndex) => {
               // Debug logging for image data
-              if (includeImages) {
-                console.log(`Job ${job.job_id} image data:`, {
-                  hasImages: !!job.images,
-                  imagesLength: job.images?.length || 0,
-                  hasImageUrls: !!job.image_urls,
-                  imageUrlsLength: job.image_urls?.length || 0,
-                  firstImage: job.images?.[0],
-                  firstImageUrl: job.image_urls?.[0]
-                });
-              }
+              try {
+                if (includeImages) {
+                  pdfDebug.log('job.imageData', {
+                    jobId: (job.job_id as any),
+                    hasImages: !!job.images,
+                    imagesLength: (job.images?.length || 0) as any,
+                    hasImageUrls: !!job.image_urls,
+                    imageUrlsLength: (job.image_urls?.length || 0) as any,
+                  } as any);
+                }
+              } catch {}
               
               return (
               <View 
@@ -730,6 +747,7 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
                   {includeImages ? (
                     (() => {
                       const url = pickSupportedImageUrlFromJob(job);
+                      try { pdfDebug.log('job.imageSelected', { jobId: (job.job_id as any), url: (url as any) } as any); } catch {}
                       if (!url) {
                         return (
                           <View style={[styles.jobImage, { backgroundColor: '#f3f4f6', justifyContent: 'center', alignItems: 'center' }]}>

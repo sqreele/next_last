@@ -1014,6 +1014,21 @@ class JobViewSet(viewsets.ModelViewSet):
         
         return stats
 
+    @action(detail=False, methods=['get'])
+    def all(self, request):
+        """
+        Return all jobs matching current filters without pagination.
+        Useful for exports/reports where the client needs the full dataset.
+        Applies the same filtering and permission rules as list/get_queryset.
+        """
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
+        return Response({
+            'count': len(data),
+            'results': data
+        }, status=status.HTTP_200_OK)
+
     def get_object(self):
         queryset = self.get_queryset()
         filter_kwargs = {self.lookup_field: self.kwargs[self.lookup_field]}

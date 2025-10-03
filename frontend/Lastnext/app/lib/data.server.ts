@@ -223,42 +223,33 @@ export async function fetchJobs(accessToken?: string): Promise<Job[]> {
 export async function fetchAllJobsForDashboard(accessToken?: string): Promise<Job[]> {
   try {
     console.log('fetchAllJobsForDashboard: Starting to fetch all jobs...');
-    const PAGE_SIZE = 500;
+    const REQUEST_PAGE_SIZE = 100; // Respect backend max_page_size
     let currentPage = 1;
-    let totalCount = 0;
     let allJobs: Job[] = [];
 
     while (true) {
-      const url = `/api/v1/jobs/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+      const url = `/api/v1/jobs/?page=${currentPage}&page_size=${REQUEST_PAGE_SIZE}`;
       const response = await fetchWithToken<any>(url, accessToken);
 
-      let pageJobs: Job[] = [];
-      if (response && typeof response === 'object') {
-        if (Array.isArray(response)) {
-          pageJobs = response;
-          totalCount = pageJobs.length;
-        } else if (response.results && Array.isArray(response.results)) {
-          pageJobs = response.results;
-          totalCount = typeof response.count === 'number' ? response.count : totalCount;
-        } else {
-          console.error('fetchAllJobsForDashboard: Unexpected response format:', response);
-          break;
-        }
-      } else {
+      if (!response || typeof response !== 'object') {
         console.error('fetchAllJobsForDashboard: Invalid response:', response);
         break;
       }
 
+      if (Array.isArray(response)) {
+        allJobs = allJobs.concat(response);
+        break; // Unpaginated fallback
+      }
+
+      const pageJobs: Job[] = Array.isArray(response.results) ? response.results : [];
       allJobs = allJobs.concat(pageJobs);
 
-      const receivedFewerThanPage = pageJobs.length < PAGE_SIZE;
-      const receivedAllByCount = totalCount > 0 && allJobs.length >= totalCount;
-      if (receivedFewerThanPage || receivedAllByCount) {
-        break;
+      if (!response.next) {
+        break; // No more pages
       }
 
       currentPage += 1;
-      if (currentPage > 50) {
+      if (currentPage > 200) {
         console.warn('fetchAllJobsForDashboard: Reached safety page cap, stopping pagination');
         break;
       }
@@ -379,43 +370,34 @@ export async function fetchAllRooms(accessToken?: string, propertyId?: string | 
 
 // Fetch ALL jobs with optional query params (e.g., filters)
 export async function fetchAllJobs(accessToken?: string, additionalParams?: string): Promise<Job[]> {
-  const PAGE_SIZE = 500;
+  const REQUEST_PAGE_SIZE = 100; // Respect backend max_page_size
   let currentPage = 1;
-  let totalCount = 0;
   let allJobs: Job[] = [];
 
   while (true) {
-    const base = `/api/v1/jobs/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+    const base = `/api/v1/jobs/?page=${currentPage}&page_size=${REQUEST_PAGE_SIZE}`;
     const url = additionalParams ? `${base}&${additionalParams}` : base;
     const response = await fetchWithToken<any>(url, accessToken);
 
-    let pageJobs: Job[] = [];
-    if (response && typeof response === 'object') {
-      if (Array.isArray(response)) {
-        pageJobs = response;
-        totalCount = pageJobs.length;
-      } else if (response.results && Array.isArray(response.results)) {
-        pageJobs = response.results;
-        totalCount = typeof response.count === 'number' ? response.count : totalCount;
-      } else {
-        console.error('fetchAllJobs: Unexpected response format:', response);
-        break;
-      }
-    } else {
+    if (!response || typeof response !== 'object') {
       console.error('fetchAllJobs: Invalid response:', response);
       break;
     }
 
+    if (Array.isArray(response)) {
+      allJobs = allJobs.concat(response);
+      break; // Unpaginated fallback
+    }
+
+    const pageJobs: Job[] = Array.isArray(response.results) ? response.results : [];
     allJobs = allJobs.concat(pageJobs);
 
-    const receivedFewerThanPage = pageJobs.length < PAGE_SIZE;
-    const receivedAllByCount = totalCount > 0 && allJobs.length >= totalCount;
-    if (receivedFewerThanPage || receivedAllByCount) {
-      break;
+    if (!response.next) {
+      break; // No more pages
     }
 
     currentPage += 1;
-    if (currentPage > 50) {
+    if (currentPage > 200) {
       console.warn('fetchAllJobs: Reached safety page cap, stopping pagination');
       break;
     }
@@ -431,43 +413,55 @@ export async function fetchAllJobsForProperty(
   accessToken?: string,
   additionalParams?: string
 ): Promise<Job[]> {
-  const PAGE_SIZE = 500;
+  // First, try the unpaginated export endpoint
+  try {
+    const allUrlBase = `/api/v1/jobs/all/?property_id=${encodeURIComponent(propertyId)}`;
+    const allUrl = additionalParams ? `${allUrlBase}&${additionalParams}` : allUrlBase;
+    const allResponse = await fetchWithToken<any>(allUrl, accessToken);
+    let jobs: Job[] = [];
+    if (Array.isArray(allResponse)) {
+      jobs = allResponse as Job[];
+    } else if (allResponse && typeof allResponse === 'object' && Array.isArray(allResponse.results)) {
+      jobs = allResponse.results as Job[];
+    }
+    if (jobs.length > 0 || (allResponse && typeof allResponse === 'object')) {
+      const sanitized = sanitizeJobsData(jobs);
+      return fixJobsImageUrls(sanitized);
+    }
+  } catch (e) {
+    // Fallback to paginated fetching
+    console.warn('fetchAllJobsForProperty: all endpoint unavailable, falling back to pagination');
+  }
+
+  // Paginated fallback
+  const REQUEST_PAGE_SIZE = 100; // Respect backend max_page_size
   let currentPage = 1;
-  let totalCount = 0;
   let allJobs: Job[] = [];
 
   while (true) {
-    const base = `/api/v1/jobs/?property_id=${encodeURIComponent(propertyId)}&page=${currentPage}&page_size=${PAGE_SIZE}`;
+    const base = `/api/v1/jobs/?property_id=${encodeURIComponent(propertyId)}&page=${currentPage}&page_size=${REQUEST_PAGE_SIZE}`;
     const url = additionalParams ? `${base}&${additionalParams}` : base;
     const response = await fetchWithToken<any>(url, accessToken);
 
-    let pageJobs: Job[] = [];
-    if (response && typeof response === 'object') {
-      if (Array.isArray(response)) {
-        pageJobs = response;
-        totalCount = pageJobs.length;
-      } else if (response.results && Array.isArray(response.results)) {
-        pageJobs = response.results;
-        totalCount = typeof response.count === 'number' ? response.count : totalCount;
-      } else {
-        console.error('fetchAllJobsForProperty: Unexpected response format:', response);
-        break;
-      }
-    } else {
+    if (!response || typeof response !== 'object') {
       console.error('fetchAllJobsForProperty: Invalid response:', response);
       break;
     }
 
+    if (Array.isArray(response)) {
+      allJobs = allJobs.concat(response);
+      break; // Unpaginated fallback
+    }
+
+    const pageJobs: Job[] = Array.isArray(response.results) ? response.results : [];
     allJobs = allJobs.concat(pageJobs);
 
-    const receivedFewerThanPage = pageJobs.length < PAGE_SIZE;
-    const receivedAllByCount = totalCount > 0 && allJobs.length >= totalCount;
-    if (receivedFewerThanPage || receivedAllByCount) {
-      break;
+    if (!response.next) {
+      break; // No more pages
     }
 
     currentPage += 1;
-    if (currentPage > 50) {
+    if (currentPage > 200) {
       console.warn('fetchAllJobsForProperty: Reached safety page cap, stopping pagination');
       break;
     }
@@ -479,43 +473,34 @@ export async function fetchAllJobsForProperty(
 
 // Fetch ALL jobs for current user with optional filters
 export async function fetchAllMyJobs(accessToken?: string, additionalParams?: string): Promise<Job[]> {
-  const PAGE_SIZE = 500;
+  const REQUEST_PAGE_SIZE = 100; // Respect backend max_page_size
   let currentPage = 1;
-  let totalCount = 0;
   let allJobs: Job[] = [];
 
   while (true) {
-    const base = `/api/v1/jobs/my_jobs/?page=${currentPage}&page_size=${PAGE_SIZE}`;
+    const base = `/api/v1/jobs/my_jobs/?page=${currentPage}&page_size=${REQUEST_PAGE_SIZE}`;
     const url = additionalParams ? `${base}&${additionalParams}` : base;
     const response = await fetchWithToken<any>(url, accessToken);
 
-    let pageJobs: Job[] = [];
-    if (response && typeof response === 'object') {
-      if (Array.isArray(response)) {
-        pageJobs = response;
-        totalCount = pageJobs.length;
-      } else if (response.results && Array.isArray(response.results)) {
-        pageJobs = response.results;
-        totalCount = typeof response.count === 'number' ? response.count : totalCount;
-      } else {
-        console.error('fetchAllMyJobs: Unexpected response format:', response);
-        break;
-      }
-    } else {
+    if (!response || typeof response !== 'object') {
       console.error('fetchAllMyJobs: Invalid response:', response);
       break;
     }
 
+    if (Array.isArray(response)) {
+      allJobs = allJobs.concat(response);
+      break; // Unpaginated fallback
+    }
+
+    const pageJobs: Job[] = Array.isArray(response.results) ? response.results : [];
     allJobs = allJobs.concat(pageJobs);
 
-    const receivedFewerThanPage = pageJobs.length < PAGE_SIZE;
-    const receivedAllByCount = totalCount > 0 && allJobs.length >= totalCount;
-    if (receivedFewerThanPage || receivedAllByCount) {
-      break;
+    if (!response.next) {
+      break; // No more pages
     }
 
     currentPage += 1;
-    if (currentPage > 50) {
+    if (currentPage > 200) {
       console.warn('fetchAllMyJobs: Reached safety page cap, stopping pagination');
       break;
     }

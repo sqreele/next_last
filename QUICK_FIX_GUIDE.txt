@@ -1,0 +1,71 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    IMAGE PATH FIX - QUICK REFERENCE                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+PROBLEM:
+--------
+PDF export fails with:
+  • "Not valid image extension" errors
+  • 403 Forbidden: .../media/maintenance_job_images/%Y/%m//IMG_*.jpg
+
+ROOT CAUSE:
+-----------
+Backend was storing literal "%Y/%m" instead of actual dates like "2025/10"
+
+SOLUTION:
+---------
+Fixed 3 locations in models.py to use actual uploaded file paths
+
+FILES CHANGED:
+--------------
+  ✓ backend/myLubd/src/myappLubd/models.py (3 fixes)
+  ✓ backend/myLubd/src/myappLubd/management/commands/fix_jpeg_paths.py (new)
+
+DEPLOYMENT (4 STEPS):
+---------------------
+
+  1. Deploy Code
+     ├─ Commit changes
+     └─ Push to production
+
+  2. Restart App
+     └─ sudo systemctl restart your-django-app
+
+  3. Fix Database
+     ├─ python manage.py fix_jpeg_paths --dry-run  (preview)
+     └─ python manage.py fix_jpeg_paths             (apply)
+
+  4. Test
+     └─ Export PDF with images (should work now!)
+
+VERIFICATION:
+-------------
+  ✓ Upload new image → check jpeg_path has dates, not %Y/%m
+  ✓ Export PDF → images appear, no console errors
+  ✓ Database query: SELECT * FROM myapplubd_jobimage WHERE jpeg_path LIKE '%Y%';
+    → Should return 0 rows
+
+BEFORE vs AFTER:
+----------------
+  BEFORE: maintenance_job_images/%Y/%m//IMG_4743.jpg      ❌
+  AFTER:  maintenance_job_images/2025/10/IMG_4743.jpg     ✅
+
+SAFETY:
+-------
+  • No database migrations needed
+  • Backward compatible
+  • Can run fix command multiple times safely
+  • Low risk change
+
+DOCUMENTATION:
+--------------
+  • FIX_COMPLETE_SUMMARY.md ........... Executive summary
+  • CHANGES_SUMMARY.md ................ What changed
+  • IMAGE_PATH_FIX_README.md .......... Technical details
+  • DEPLOYMENT_STEPS.md ............... Detailed deployment guide
+
+STATUS: ✅ Ready to Deploy
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Questions? Check the detailed documentation files above.

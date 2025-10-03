@@ -183,3 +183,128 @@ function getImageExtension(url: string): string {
     return url.split('?')[0].split('#')[0].split('.').pop()?.toLowerCase() || '';
   }
 }
+
+/**
+ * Return all candidate image URLs from a job in priority order
+ */
+function getCandidateImageUrlsFromJob(job: any): string[] {
+  const candidates: string[] = [];
+  try {
+    if (Array.isArray(job?.images)) {
+      for (const img of job.images) {
+        if (img?.jpeg_url) candidates.push(String(img.jpeg_url));
+        if (img?.image_url) candidates.push(String(img.image_url));
+      }
+    }
+    if (Array.isArray(job?.image_urls)) {
+      for (const url of job.image_urls) {
+        if (typeof url === 'string' && url) candidates.push(url);
+      }
+    }
+  } catch {}
+  return candidates;
+}
+
+async function blobToDataURL(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    try {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+async function fetchAsDataUrl(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' },
+    credentials: 'omit',
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  const blob = await response.blob();
+  if (!blob.type.startsWith('image/')) {
+    throw new Error(`Invalid content type: ${blob.type}`);
+  }
+  return await blobToDataURL(blob);
+}
+
+function dataUrlToJpegDataUrl(dataUrl: string, maxSize: number = 1024, quality: number = 0.86): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > maxSize || height > maxSize) {
+        const ratio = Math.min(maxSize / width, maxSize / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      try {
+        const jpeg = canvas.toDataURL('image/jpeg', quality);
+        resolve(jpeg);
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.crossOrigin = 'anonymous';
+    img.src = dataUrl;
+  });
+}
+
+/**
+ * Enrich jobs with a preprocessed image source suitable for PDF embedding
+ * - Prefers existing supported formats
+ * - Falls back to converting first available image to JPEG data URL
+ */
+export async function enrichJobsWithPdfImages(jobs: any[]): Promise<any[]> {
+  const tasks = (jobs || []).map(async (job) => {
+    try {
+      if (job && job.pdf_image_src) {
+        return job;
+      }
+      const supported = getSupportedImageFromJob(job);
+      if (supported) {
+        // Supported as-is; no need to convert
+        return job;
+      }
+      const candidates = getCandidateImageUrlsFromJob(job);
+      for (const raw of candidates) {
+        if (!raw) continue;
+        const absolute = getProductionImageUrl(raw);
+        try {
+          const dataUrl = await fetchAsDataUrl(absolute);
+          // Convert any format (including WebP/AVIF) into JPEG data URL for PDF compatibility
+          const jpegDataUrl = await dataUrlToJpegDataUrl(dataUrl);
+          if (jpegDataUrl && jpegDataUrl.startsWith('data:image/jpeg')) {
+            try { pdfDebug.imageResolve({ sourceUrl: raw, resolvedUrl: 'data:image/jpeg;base64,...', note: 'converted-jpeg-dataurl' } as any); } catch {}
+            return { ...job, pdf_image_src: jpegDataUrl };
+          }
+        } catch (e) {
+          // Try next candidate
+          continue;
+        }
+      }
+      return job;
+    } catch {
+      return job;
+    }
+  });
+  return await Promise.all(tasks);
+}

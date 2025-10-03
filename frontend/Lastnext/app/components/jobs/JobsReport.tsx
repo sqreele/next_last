@@ -22,6 +22,7 @@ import { useSession } from '@/app/lib/session.client';
 import { Job, TabValue, JobStatus, JobPriority, STATUS_COLORS } from '@/app/lib/types';
 import { fetchAllJobsForProperty } from '@/app/lib/data.server';
 import JobsPDFDocument from '@/app/components/document/JobsPDFGenerator';
+import { enrichJobsWithPdfImages } from '@/app/lib/utils/pdfImageUtils';
 import { generatePdfWithRetry, downloadPdf } from '@/app/lib/pdfUtils';
 import { generatePdfBlob } from '@/app/lib/pdfRenderer';
 import { format } from 'date-fns';
@@ -242,9 +243,10 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       const propertyName = currentProperty?.name || `Property ${selectedProperty}`;
       
       const blob = await generatePdfWithRetry(async () => {
+        const jobsWithImages = await enrichJobsWithPdfImages(reportJobs);
         const pdfDocument = (
           <JobsPDFDocument
-            jobs={reportJobs}
+            jobs={jobsWithImages}
             filter={filter}
             selectedProperty={selectedProperty}
             propertyName={propertyName}

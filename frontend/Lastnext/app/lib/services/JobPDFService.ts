@@ -3,6 +3,7 @@ import React from 'react';
 import { Job, TabValue, FILTER_TITLES } from '@/app/lib/types';
 import { JobPDFConfig } from '@/app/components/jobs/JobPDFConfig';
 import { generatePdfBlob } from '@/app/lib/pdfRenderer';
+import { enrichJobsWithPdfImages } from '@/app/lib/utils/pdfImageUtils';
 import { downloadPdf, generatePdfWithRetry } from '@/app/lib/pdfUtils';
 import JobPDFTemplate from '@/app/components/document/JobPDFTemplate';
 
@@ -41,13 +42,16 @@ export class JobPDFService {
     
     // Process jobs based on configuration
     const processedJobs = this.processJobs(jobs, config);
+
+    // Preprocess images for PDF (convert unsupported formats to JPEG data URLs)
+    const jobsWithImages = await enrichJobsWithPdfImages(processedJobs);
     
     // Generate statistics if requested
     const statistics = config.includeStatistics ? this.calculateStatistics(processedJobs) : null;
     
     // Create PDF document
     const pdfDocument = React.createElement(JobPDFTemplate, {
-      jobs: processedJobs,
+      jobs: jobsWithImages,
       filter: filter,
       selectedProperty: selectedProperty,
       propertyName: propertyName,

@@ -142,7 +142,7 @@ export function getSupportedImageFromJob(job: any): string | null {
     }
   }
   
-  // Find the first supported image format; proxy unsupported formats via API
+  // Find the first supported image format
   for (let rawUrl of candidates) {
     if (!rawUrl) continue;
     const resolvedUrl = getProductionImageUrl(rawUrl);
@@ -160,12 +160,6 @@ export function getSupportedImageFromJob(job: any): string | null {
     // Return directly if extension is supported by @react-pdf/renderer
     if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
       return resolvedUrl;
-    }
-
-    // Fallback: route through proxy to convert unsupported formats (e.g., webp) to JPEG
-    // Also helps avoid CORS/mixed-content by serving from same origin
-    if (resolvedUrl) {
-      return `/api/proxy-image?url=${encodeURIComponent(resolvedUrl)}&q=80&w=1000`;
     }
   }
   

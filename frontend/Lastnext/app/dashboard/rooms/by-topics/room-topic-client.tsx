@@ -14,29 +14,55 @@ type Props = {
   rooms: Room[];
   topics: Topic[];
   properties: Property[];
-  jobs?: Job[]; // optional: if provided we can compute topic-room relationships more accurately
+  jobs?: Job[]; // provided from server to compute counts
 };
 
-export default function RoomsByTopicClient({ rooms, topics, properties }: Props) {
+export default function RoomsByTopicClient({ rooms, topics, properties, jobs }: Props) {
   const [selectedTopicId, setSelectedTopicId] = React.useState<number | null>(null);
   const getVariant = (active: boolean): 'default' | 'outline' => (active ? 'default' : 'outline');
 
-  // For now, we infer topic counts by scanning jobs is not available here.
-  // Many parts of the app attach topics to jobs, not rooms directly. To keep UI useful,
-  // we show rooms list and allow topic selection, but counts default to 0 without jobs context.
-  const topicCounts = React.useMemo(() => new Map<number, number>(), []);
+  // Build counts: topicId -> number of unique rooms that have at least one job with that topic
+  const { topicCounts, topicToRoomIds } = React.useMemo(() => {
+    const counts = new Map<number, number>();
+    const mapping = new Map<number, Set<number>>();
+    if (Array.isArray(jobs)) {
+      for (const job of jobs) {
+        const jobTopics = Array.isArray(job.topics) ? job.topics : [];
+        const jobRooms = Array.isArray(job.rooms) ? job.rooms : [];
+        if (jobTopics.length === 0 || jobRooms.length === 0) continue;
+        // For each topic on the job, add each job room to that topic's room set
+        for (const topic of jobTopics) {
+          if (!topic || typeof topic.id !== 'number') continue;
+          let set = mapping.get(topic.id);
+          if (!set) {
+            set = new Set<number>();
+            mapping.set(topic.id, set);
+          }
+          for (const room of jobRooms) {
+            if (room && typeof room.room_id === 'number') {
+              set.add(room.room_id);
+            }
+          }
+        }
+      }
+    }
+    // Convert sets to counts
+    for (const [topicId, roomSet] of mapping.entries()) {
+      counts.set(topicId, roomSet.size);
+    }
+    return { topicCounts: counts, topicToRoomIds: mapping };
+  }, [jobs]);
 
   const allCount = React.useMemo(() => Array.isArray(rooms) ? rooms.length : 0, [rooms]);
   const selectedTopic = React.useMemo(() => topics.find(t => t.id === selectedTopicId) || null, [topics, selectedTopicId]);
 
-  // If topic is selected, we attempt to filter rooms by topic presence via naive heuristic:
-  // Show all rooms when no topic selected; otherwise show none (until backend relation exists).
-  // This prevents confusion yet keeps the page functional. You can enhance by supplying jobs to compute mapping.
+  // Filter rooms to those that are linked to the selected topic via jobs
   const filteredRooms = React.useMemo(() => {
     if (!selectedTopicId) return rooms;
-    // Placeholder: no direct room-topic relation available here
-    return rooms; // keep all visible to avoid empty state confusion
-  }, [rooms, selectedTopicId]);
+    const ids = topicToRoomIds.get(selectedTopicId);
+    if (!ids || ids.size === 0) return [];
+    return rooms.filter(r => typeof r.room_id === 'number' && ids.has(r.room_id));
+  }, [rooms, selectedTopicId, topicToRoomIds]);
 
   return (
     <div className="space-y-4">
@@ -47,7 +73,7 @@ export default function RoomsByTopicClient({ rooms, topics, properties }: Props)
               <p className="text-sm text-gray-600">Filter rooms by topic</p>
               <h2 className="text-lg font-semibold text-gray-900">Rooms by Topic</h2>
               <p className="text-xs text-gray-500">
-                {selectedTopic ? `${selectedTopic.title}` : `${allCount} total rooms`}
+                {selectedTopic ? `${selectedTopic.title} • ${topicCounts.get(selectedTopic.id) || 0} rooms` : `${allCount} total rooms`}
               </p>
             </div>
 

@@ -142,15 +142,30 @@ export function getSupportedImageFromJob(job: any): string | null {
     }
   }
   
-  // Find the first supported image format
+  // Find the first supported image format; proxy unsupported formats via API
   for (let rawUrl of candidates) {
     if (!rawUrl) continue;
     const resolvedUrl = getProductionImageUrl(rawUrl);
+
+    // Allow supported data URLs directly
+    if (resolvedUrl.startsWith('data:')) {
+      const isSupportedData = /data:image\/(jpeg|jpg|png|gif)/i.test(resolvedUrl);
+      if (isSupportedData) return resolvedUrl;
+      // Otherwise continue to next candidate
+      continue;
+    }
+
     const extension = getImageExtension(resolvedUrl);
-    
-    // Check if it's a supported format for PDF
+
+    // Return directly if extension is supported by @react-pdf/renderer
     if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
       return resolvedUrl;
+    }
+
+    // Fallback: route through proxy to convert unsupported formats (e.g., webp) to JPEG
+    // Also helps avoid CORS/mixed-content by serving from same origin
+    if (resolvedUrl) {
+      return `/api/proxy-image?url=${encodeURIComponent(resolvedUrl)}&q=80&w=1000`;
     }
   }
   

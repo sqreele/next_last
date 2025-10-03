@@ -1,0 +1,58 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║                  HOW TO RUN THE FIX COMMAND - SIMPLE                     ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+OPTION 1: Use the Helper Script (Easiest!)
+===========================================
+
+  1. Run this command:
+
+     bash /workspace/RUN_FIX_NOW.sh
+
+  2. Choose option 1 (Dry-run) to preview changes
+  3. Choose option 2 to apply the fixes
+
+
+OPTION 2: Run Commands Manually
+================================
+
+  Step 1: Go to the correct directory
+  ------------------------------------
+  cd /workspace/backend/myLubd/src
+
+
+  Step 2: Preview changes (safe, doesn't modify anything)
+  -------------------------------------------------------
+  python3 manage.py fix_jpeg_paths --dry-run
+
+
+  Step 3: Apply the fixes (after reviewing dry-run output)
+  --------------------------------------------------------
+  python3 manage.py fix_jpeg_paths
+
+
+THAT'S IT!
+==========
+
+The command will:
+  ✓ Find all database records with bad paths (containing %Y/%m)
+  ✓ Fix them to use real dates (like 2025/10)
+  ✓ Show you what was fixed
+  ✓ Report how many records were updated
+
+After running, test PDF export - it should work now!
+
+
+QUICK COPY-PASTE:
+=================
+
+# All in one (dry-run first, then apply):
+cd /workspace/backend/myLubd/src && \
+python3 manage.py fix_jpeg_paths --dry-run && \
+read -p "Apply fixes? (y/n): " confirm && \
+[[ $confirm == "y" ]] && python3 manage.py fix_jpeg_paths
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+Questions? Check HOW_TO_RUN_FIX_COMMAND.md for detailed troubleshooting.

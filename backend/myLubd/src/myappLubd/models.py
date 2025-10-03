@@ -265,7 +265,10 @@ class PreventiveMaintenance(models.Model):
             processed_images = self.process_image(self.before_image)
             if processed_images:
                 # Save the JPEG version (for PDF generation)
-                jpeg_path = f'maintenance_pm_images/{processed_images["jpeg_name"]}'
+                # Use the directory from the actual uploaded image path, not a hardcoded path
+                image_path = Path(self.before_image.name)
+                jpeg_name = f'{image_path.stem}.jpg'
+                jpeg_path = str(image_path.parent / jpeg_name)
                 jpeg_full_path = os.path.join(settings.MEDIA_ROOT, jpeg_path)
                 
                 # Ensure directory exists
@@ -288,7 +291,10 @@ class PreventiveMaintenance(models.Model):
             processed_images = self.process_image(self.after_image)
             if processed_images:
                 # Save the JPEG version (for PDF generation)
-                jpeg_path = f'maintenance_pm_images/{processed_images["jpeg_name"]}'
+                # Use the directory from the actual uploaded image path, not a hardcoded path
+                image_path = Path(self.after_image.name)
+                jpeg_name = f'{image_path.stem}.jpg'
+                jpeg_path = str(image_path.parent / jpeg_name)
                 jpeg_full_path = os.path.join(settings.MEDIA_ROOT, jpeg_path)
                 
                 # Ensure directory exists
@@ -573,11 +579,14 @@ class JobImage(models.Model):
                 processed_images = self.process_image(self.image)
 
                 # Generate filename for JPEG version
-                base_name = Path(self.image.name).stem
+                # Extract the directory from the actual image path (which has date directories)
+                image_path = Path(self.image.name)
+                base_name = image_path.stem
                 jpeg_name = f'{base_name}.jpg'
 
                 # Save the JPEG version (for PDF generation)
-                jpeg_path = f'{self.image.field.upload_to}/{jpeg_name}'
+                # Use the directory from the actual uploaded image path, not the template
+                jpeg_path = str(image_path.parent / jpeg_name)
                 jpeg_full_path = os.path.join(settings.MEDIA_ROOT, jpeg_path)
                 
                 # Ensure directory exists

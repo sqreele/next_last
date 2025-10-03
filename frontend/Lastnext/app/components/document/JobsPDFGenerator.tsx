@@ -746,7 +746,7 @@ const JobsPDFDocument: React.FC<JobsPDFDocumentProps> = ({
                 <View style={styles.imageColumn}>
                   {includeImages ? (
                     (() => {
-                      const url = pickSupportedImageUrlFromJob(job);
+                      const url = (job as any).pdf_image_src || pickSupportedImageUrlFromJob(job);
                       try { pdfDebug.log('job.imageSelected', { jobId: (job.job_id as any), url: (url as any) } as any); } catch {}
                       if (!url) {
                         return (

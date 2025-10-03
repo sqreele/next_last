@@ -475,7 +475,7 @@ function renderJobsList(jobs: Job[], styles: any, config: JobPDFConfig) {
         <View style={styles.imageColumn}>
           {(() => {
             // Use the unified image resolution function
-            const selected = getSupportedImageFromJob(job);
+            const selected = (job as any).pdf_image_src || getSupportedImageFromJob(job);
 
             if (selected) {
               return (

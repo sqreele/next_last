@@ -14,6 +14,7 @@ import { generatePdfWithRetry, downloadPdf } from "@/app/lib/pdfUtils";
 import { generatePdfBlob } from "@/app/lib/pdfRenderer";
 import JobsPDFDocument from "@/app/components/document/JobsPDFGenerator";
 import { pdfDebug } from "@/app/lib/utils/pdfDebug";
+import { enrichJobsWithPdfImages } from "@/app/lib/utils/pdfImageUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -330,9 +331,10 @@ export default function JobActions({
       const propertyName = getPropertyName(selectedProperty);
 
       const blob = await generatePdfWithRetry(async () => {
+        const jobsWithImages = await enrichJobsWithPdfImages(jobs);
         const pdfDocument = (
           <JobsPDFDocument
-            jobs={jobs}
+            jobs={jobsWithImages}
             filter={currentTab}
             selectedProperty={selectedProperty}
             propertyName={propertyName}
@@ -595,9 +597,10 @@ export default function JobActions({
 
               const propertyName = getPropertyName(selectedProperty);
               const blob = await generatePdfWithRetry(async () => {
+                const jobsWithImages = await enrichJobsWithPdfImages(jobs);
                 const pdfDocument = (
                   <JobsPDFDocument
-                    jobs={jobs}
+                    jobs={jobsWithImages}
                     filter={currentTab}
                     selectedProperty={selectedProperty}
                     propertyName={propertyName}

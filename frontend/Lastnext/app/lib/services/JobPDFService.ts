@@ -309,7 +309,8 @@ export class JobPDFService {
       'Location',
       'Created Date',
       'Completed Date',
-      'Remarks'
+      'Remarks',
+      'Topics'
     ];
 
     const csvContent = [
@@ -324,7 +325,8 @@ export class JobPDFService {
         `"${(job.rooms?.[0]?.name || '').replace(/"/g, '""')}"`,
         job.created_at || '',
         job.completed_at || '',
-        `"${(job.remarks || '').replace(/"/g, '""')}"`
+        `"${(job.remarks || '').replace(/"/g, '""')}"`,
+        `"${(Array.isArray(job.topics) && job.topics.length > 0 ? job.topics.map(t => (t as any).title || (t as any).description || '').filter(Boolean).join('; ') : 'N/A').replace(/"/g, '""')}"`
       ].join(','))
     ].join('\n');
 

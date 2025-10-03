@@ -291,7 +291,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         'Room',
         'Property',
         'Urgency',
-        'Category'
+        'Category',
+        'Topics'
       ];
 
       // Helper to get a readable assigned user name
@@ -325,6 +326,9 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         const room = job.rooms?.[0]?.name || job.room_name || 'N/A';
         const createdAt = format(new Date(job.created_at), 'yyyy-MM-dd HH:mm:ss');
         const completedAt = job.completed_at ? format(new Date(job.completed_at), 'yyyy-MM-dd HH:mm:ss') : 'N/A';
+        const topics = Array.isArray(job.topics) && job.topics.length > 0
+          ? job.topics.map(t => t.title || t.description || '').filter(Boolean).join('; ')
+          : 'N/A';
         
         return [
           job.job_id || job.id,
@@ -338,7 +342,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
           `"${room.replace(/"/g, '""')}"`,
           propertyName,
           job.urgency || 'N/A',
-          job.category || 'N/A'
+          job.category || 'N/A',
+          `"${topics.replace(/"/g, '""')}"`
         ].join(',');
       });
 

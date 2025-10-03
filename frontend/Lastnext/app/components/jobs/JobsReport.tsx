@@ -25,6 +25,7 @@ import JobsPDFDocument from '@/app/components/document/JobsPDFGenerator';
 import { generatePdfWithRetry, downloadPdf } from '@/app/lib/pdfUtils';
 import { generatePdfBlob } from '@/app/lib/pdfRenderer';
 import { format } from 'date-fns';
+import { jobsToCSV, downloadCSV } from '@/app/lib/utils/csv-export';
 
 interface JobsReportProps {
   jobs?: Job[];
@@ -277,94 +278,19 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
     try {
       setIsGeneratingCsv(true);
       const propertyName = currentProperty?.name || `Property ${selectedProperty}`;
-      
-      // CSV Headers
-      const headers = [
-        'Job ID',
-        'Title',
-        'Description',
-        'Status',
-        'Priority',
-        'Created At',
-        'Completed At',
-        'Assigned To',
-        'Room',
-        'Property',
-        'Urgency',
-        'Category',
-        'Topics'
-      ];
 
-      // Helper to get a readable assigned user name
-      const getUserDisplayName = (user: any): string => {
-        if (!user) return 'Unassigned';
-        if (typeof user === 'object' && user) {
-          if (user.full_name && user.full_name.trim()) return user.full_name.trim();
-          if (user.first_name && user.last_name) return `${user.first_name} ${user.last_name}`.trim();
-          if (user.name) return user.name;
-          if (user.username) {
-            let clean = user.username as string;
-            if (clean.includes('auth0_') || clean.includes('google-oauth2_')) {
-              clean = clean.replace(/^(auth0_|google-oauth2_)/, '');
-            }
-            return clean;
-          }
-          if (user.email) return (user.email as string).split('@')[0];
-          if (user.id) return `User ${user.id}`;
-        }
-        if (typeof user === 'string') {
-          if (/^\d+$/.test(user)) return `User ${user}`;
-          return user;
-        }
-        if (typeof user === 'number') return `User ${user}`;
-        return 'Unknown User';
-      };
-
-      // Convert jobs to CSV rows
-      const rows = reportJobs.map(job => {
-        const assignedTo = getUserDisplayName((job as any).user);
-        const room = job.rooms?.[0]?.name || job.room_name || 'N/A';
-        const createdAt = format(new Date(job.created_at), 'yyyy-MM-dd HH:mm:ss');
-        const completedAt = job.completed_at ? format(new Date(job.completed_at), 'yyyy-MM-dd HH:mm:ss') : 'N/A';
-        const topics = Array.isArray(job.topics) && job.topics.length > 0
-          ? job.topics.map(t => t.title || t.description || '').filter(Boolean).join('; ')
-          : 'N/A';
-        
-        return [
-          job.job_id || job.id,
-          `"${(job.title || '').replace(/"/g, '""')}"`,
-          `"${(job.description || '').replace(/"/g, '""')}"`,
-          job.status || 'N/A',
-          job.priority || 'N/A',
-          createdAt,
-          completedAt,
-          `"${assignedTo.replace(/"/g, '""')}"`,
-          `"${room.replace(/"/g, '""')}"`,
-          propertyName,
-          job.urgency || 'N/A',
-          job.category || 'N/A',
-          `"${topics.replace(/"/g, '""')}"`
-        ].join(',');
+      const csvContent = jobsToCSV(reportJobs, userProperties, {
+        includeImages: false,
+        includeUserDetails: true,
+        includeRoomDetails: true,
+        includePropertyDetails: true,
+        dateFormat: 'readable'
       });
 
-      // Combine headers and rows
-      const csvContent = [headers.join(','), ...rows].join('\n');
-      
-      // Create blob and download
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      
       const date = format(new Date(), 'yyyy-MM-dd');
       const filename = `${propertyName.replace(/\s+/g, '-')}-jobs-report-${date}.csv`;
-      
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+
+      downloadCSV(csvContent, filename);
     } catch (error: any) {
       console.error('Error generating CSV:', error);
       alert(`Failed to generate CSV: ${error.message || 'Unknown error'}`);

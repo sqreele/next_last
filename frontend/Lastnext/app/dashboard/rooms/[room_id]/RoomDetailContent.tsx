@@ -23,22 +23,38 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
   );
 
   const getPropertyName = () => {
-    if (room.properties && room.properties.length > 0) {
-      // Handle the first property in the array
-      const prop = room.properties[0];
-      let propId: string | number;
+    // Helper to resolve a property name by an arbitrary id-like value
+    const resolvePropertyName = (maybeId: unknown): string | null => {
+      if (maybeId === null || maybeId === undefined) return null;
+      const idStr = String(maybeId);
+      const match = properties.find(p => String(p.property_id) === idStr || String(p.id) === idStr);
+      return match?.name ?? null;
+    };
 
-      if (typeof prop === 'string' || typeof prop === 'number') {
-        propId = String(prop);
-      } else if (typeof prop === 'object' && prop !== null) {
-        propId = String(prop.property_id || '');
-      } else {
-        return 'N/A';
+    // Prefer the explicit properties array if present
+    if (Array.isArray(room.properties) && room.properties.length > 0) {
+      // Try to resolve using the first valid entry; fall through if none resolve
+      for (const prop of room.properties) {
+        if (prop === null || prop === undefined) continue;
+        if (typeof prop === 'string' || typeof prop === 'number') {
+          const name = resolvePropertyName(prop);
+          if (name) return name;
+        } else if (typeof prop === 'object') {
+          const obj: any = prop;
+          const nameFromPropertyId = resolvePropertyName(obj.property_id);
+          if (nameFromPropertyId) return nameFromPropertyId;
+          const nameFromId = resolvePropertyName(obj.id);
+          if (nameFromId) return nameFromId;
+        }
       }
-
-      const property = properties.find(p => p.property_id === propId);
-      return property?.name || 'N/A';
     }
+
+    // Fallback: many room responses include a single property_id field
+    if (room.property_id !== undefined && room.property_id !== null && room.property_id !== '') {
+      const name = resolvePropertyName(room.property_id);
+      if (name) return name;
+    }
+
     return 'N/A';
   };
 

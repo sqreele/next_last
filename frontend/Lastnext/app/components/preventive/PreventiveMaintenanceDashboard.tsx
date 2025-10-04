@@ -655,9 +655,7 @@ export default function PreventiveMaintenanceDashboard() {
                               />
                             </div>
                           )}
-                          {!beforeImageUrl && !afterImageUrl && (
-                            <span className="text-xs text-gray-500">No images</span>
-                          )}
+                          {!beforeImageUrl && !afterImageUrl && null}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

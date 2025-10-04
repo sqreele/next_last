@@ -20,6 +20,7 @@ import { useUser, useJobs } from '@/app/lib/stores/mainStore';
 
 // Use Next.js API routes for proxying to the backend
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILES = 2; // Maximum number of images allowed
 
 interface FormValues {
   description: string;
@@ -59,6 +60,7 @@ const validationSchema = Yup.object().shape({
         .test('fileType', 'Only image files allowed', (value) => !value || !(value instanceof File) || value.type.startsWith('image/'))
     )
     .min(1, 'At least one image is required')
+    .max(MAX_FILES, `You can upload up to ${MAX_FILES} images`)
     .required('At least one image is required'),
   is_defective: Yup.boolean().default(false),
   is_preventivemaintenance: Yup.boolean().default(false),
@@ -115,6 +117,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   const validateFiles = (files: File[]) => {
     if (!files || files.length === 0) {
       return 'At least one image is required';
+    }
+    if (files.length > MAX_FILES) {
+      return `You can upload up to ${MAX_FILES} images`;
     }
     for (const file of files) {
       if (file.size > MAX_FILE_SIZE) {
@@ -490,15 +495,16 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               
               <div className="space-y-2">
                 <Label className="font-medium text-gray-700">
-                  Images <span className="text-red-500">*</span>
+                  Images (up to {MAX_FILES}) <span className="text-red-500">*</span>
                 </Label>
                 <FileUpload
                   onFileSelect={(selectedFiles) => setFieldValue('files', selectedFiles)}
                   error={touched.files && typeof errors.files === 'string' ? errors.files : undefined}
                   disabled={isSubmitting}
+                  maxFiles={MAX_FILES}
                 />
                 <p className="text-sm text-gray-500">
-                  Upload images to document the current condition or issue. Maximum file size: 5MB per image.
+                  Upload up to {MAX_FILES} images to document the issue. Max 5MB each.
                 </p>
               </div>
             </div>

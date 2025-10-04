@@ -81,7 +81,8 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
         }
       }
     }
-    return urls;
+    // Limit to a maximum of 2 images for display
+    return urls.slice(0, 2);
   }, [job.images, job.image_urls]);
 
   const toggleSection = useCallback((section: keyof typeof expandedSections, e: MouseEvent) => {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, FileDown, Filter, SortAsc, SortDesc, Building, Calendar, DoorOpen, Settings, Bug, TestTube } from "lucide-react";
+import { Plus, FileDown, Filter, SortAsc, SortDesc, Building, Calendar, DoorOpen, Settings } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import JobPDFConfig from "@/app/components/jobs/JobPDFConfig";
@@ -13,7 +13,6 @@ import { JobPDFConfig as JobPDFConfigType } from "@/app/components/jobs/JobPDFCo
 import { generatePdfWithRetry, downloadPdf } from "@/app/lib/pdfUtils";
 import { generatePdfBlob } from "@/app/lib/pdfRenderer";
 import JobsPDFDocument from "@/app/components/document/JobsPDFGenerator";
-import { pdfDebug } from "@/app/lib/utils/pdfDebug";
 import { enrichJobsWithPdfImages } from "@/app/lib/utils/pdfImageUtils";
 import {
   DropdownMenu,
@@ -579,53 +578,7 @@ export default function JobActions({
           <FileDown className="h-4 w-4" />
           {isGenerating ? "Generating..." : `Export (${exportCount})`}
         </Button>
-
-        {/* Debug Export Button - visible in all envs but harmless */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={async () => {
-            try {
-              setIsGenerating(true);
-              pdfDebug.startSession({
-                action: 'Export PDF (Debug)',
-                jobsCount: (jobs.length as any),
-                selectedProperty: (selectedProperty as any),
-                currentTab: (currentTab as any),
-              } as any);
-              pdfDebug.log('debug.start');
-
-              const propertyName = getPropertyName(selectedProperty);
-              const blob = await generatePdfWithRetry(async () => {
-                const jobsWithImages = await enrichJobsWithPdfImages(jobs);
-                const pdfDocument = (
-                  <JobsPDFDocument
-                    jobs={jobsWithImages}
-                    filter={currentTab}
-                    selectedProperty={selectedProperty}
-                    propertyName={propertyName}
-                    includeImages={true}
-                    includeDetails={true}
-                    applyPropertyFilter={false}
-                  />
-                );
-                return await generatePdfBlob(pdfDocument);
-              });
-              pdfDebug.log('debug.pdfGenerated', { size: (blob as any)?.size || null } as any);
-            } catch (e) {
-              pdfDebug.error('debug.generateFailed', e as Error);
-            } finally {
-              try { pdfDebug.downloadReport(); } catch {}
-              setIsGenerating(false);
-            }
-          }}
-          disabled={isGenerating || exportCount === 0}
-          className={buttonClass}
-        >
-          <TestTube className="h-4 w-4" />
-          Debug Export
-        </Button>
-
+        
         <CreateJobButton onJobCreated={handleRefresh} propertyId={selectedProperty ?? ""} />
 
       </div>

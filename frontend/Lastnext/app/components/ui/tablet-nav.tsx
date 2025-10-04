@@ -29,7 +29,7 @@ const navigationItems = [
   { name: 'My Jobs', href: '/dashboard/myJobs', icon: ShoppingCart },
   { name: 'Analytics', href: '/dashboard/chartdashboard', icon: LineChart },
   { name: 'Jobs Report', href: '/dashboard/jobs-report', icon: FileText },
-  { name: 'Room Filter', href: '/dashboard/rooms/by-topics', icon: Filter },
+  { name: 'Rooms by Topic', href: '/dashboard/rooms/by-topics', icon: Filter },
   { name: 'Create Job', href: '/dashboard/createJob', icon: Plus },
   { name: 'Profile', href: '/dashboard/profile', icon: User },
 ];

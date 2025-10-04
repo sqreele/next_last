@@ -138,6 +138,23 @@ export function validateImageForPdf(imageUrl: string): Promise<boolean> {
   });
 }
 
+/**
+ * Build a same-origin proxy URL to fetch/convert images for PDF embedding.
+ * The proxy converts unsupported formats (e.g., WebP/AVIF) to JPEG and
+ * standardizes headers to avoid CORS issues during client-side PDF generation.
+ */
+function getProxiedImageUrl(
+  absoluteUrl: string,
+  opts: { width?: number; height?: number; quality?: number } = {}
+): string {
+  const params = new URLSearchParams();
+  params.set('url', absoluteUrl);
+  if (opts.quality) params.set('q', String(opts.quality));
+  if (opts.width) params.set('w', String(opts.width));
+  if (opts.height) params.set('h', String(opts.height));
+  return `/api/proxy-image?${params.toString()}`;
+}
+
 export function getSupportedImageFromJob(job: any): string | null {
   if (!job) return null;
   
@@ -279,28 +296,20 @@ export async function enrichJobsWithPdfImages(jobs: any[]): Promise<any[]> {
       if (job && job.pdf_image_src) {
         return job;
       }
-      const supported = getSupportedImageFromJob(job);
-      if (supported) {
-        // Supported as-is; no need to convert
-        return job;
-      }
+
+      // Try candidates and route through same-origin proxy for reliability
       const candidates = getCandidateImageUrlsFromJob(job);
       for (const raw of candidates) {
         if (!raw) continue;
         const absolute = getProductionImageUrl(raw);
-        try {
-          const dataUrl = await fetchAsDataUrl(absolute);
-          // Convert any format (including WebP/AVIF) into JPEG data URL for PDF compatibility
-          const jpegDataUrl = await dataUrlToJpegDataUrl(dataUrl);
-          if (jpegDataUrl && jpegDataUrl.startsWith('data:image/jpeg')) {
-            try { pdfDebug.imageResolve({ sourceUrl: raw, resolvedUrl: 'data:image/jpeg;base64,...', note: 'converted-jpeg-dataurl' } as any); } catch {}
-            return { ...job, pdf_image_src: jpegDataUrl };
-          }
-        } catch (e) {
-          // Try next candidate
-          continue;
-        }
+
+        // Prefer proxied JPEG to avoid CORS/format issues and reduce size
+        const proxied = getProxiedImageUrl(absolute, { width: 1200, quality: 82 });
+        try { pdfDebug.imageResolve({ sourceUrl: raw, resolvedUrl: proxied, note: 'proxy-selected' } as any); } catch {}
+        return { ...job, pdf_image_src: proxied };
       }
+
+      // Fallback: if no candidates, leave the job unchanged
       return job;
     } catch {
       return job;

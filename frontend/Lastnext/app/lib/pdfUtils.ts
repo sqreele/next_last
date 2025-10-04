@@ -133,9 +133,12 @@ export const generatePdfWithRetry = async (
       console.error(`PDF generation attempt ${i + 1} failed:`, error);
       lastError = error as Error;
       
+      // If the error smells like a font or image CORS/format issue, wait a bit longer before retry
+      const errMsg = String((error as any)?.message || error || '');
+      const backoffMs = /font|%PDF|image|CORS|NetworkError/i.test(errMsg) ? (1500 * (i + 1)) : (1000 * (i + 1));
       if (i < maxRetries - 1) {
         // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, backoffMs)); // Slightly longer backoff for likely transient issues
       }
     }
   }

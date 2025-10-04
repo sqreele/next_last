@@ -2,6 +2,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { Room, Topic, Property, Job } from '@/app/lib/types';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
@@ -159,10 +160,15 @@ export default function RoomsByTopicClient({ rooms, topics, properties, jobs }: 
         <CardContent className="p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredRooms.map(room => (
-              <div key={room.room_id} className="border rounded-md p-3">
+              <Link
+                key={room.room_id}
+                href={`/dashboard/rooms/${room.room_id}`}
+                className="border rounded-md p-3 hover:bg-gray-50 transition-colors block focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-label={`View details for room ${room.name}`}
+              >
                 <div className="font-medium text-gray-900">{room.name}</div>
                 <div className="text-xs text-gray-500">{room.room_type}</div>
-              </div>
+              </Link>
             ))}
             {filteredRooms.length === 0 && (
               <div className="text-sm text-gray-500">No rooms found.</div>

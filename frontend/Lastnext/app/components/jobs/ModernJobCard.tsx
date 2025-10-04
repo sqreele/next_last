@@ -48,7 +48,8 @@ export default function ModernJobCard({ job, viewMode = "grid" }: ModernJobCardP
         if (u && !urls.includes(u)) urls.push(u);
       }
     }
-    return urls;
+    // Limit to a maximum of 2 images for display
+    return urls.slice(0, 2);
   }, [job.images, job.image_urls]);
 
   const [activeIdx, setActiveIdx] = useState(0);

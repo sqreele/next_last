@@ -80,22 +80,34 @@ export default function RoomsByTopicClient({ rooms, topics, properties, jobs }: 
 
             <div className="flex items-center gap-2">
               {selectedTopicId !== null && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="hidden sm:inline-flex"
-                  onClick={() => setSelectedTopicId(null)}
-                >
-                  <X className="w-4 h-4 mr-2" /> Clear
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hidden sm:inline-flex"
+                    onClick={() => setSelectedTopicId(null)}
+                  >
+                    <X className="w-4 h-4 mr-2" /> Clear
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="sm:hidden h-9 w-9"
+                    onClick={() => setSelectedTopicId(null)}
+                    aria-label="Clear topic filter"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </>
               )}
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-9">
+                  <Button variant="outline" size="sm" className="h-9 pr-2 pl-2">
                     <Filter className="w-4 h-4 mr-2" />
                     <span className="hidden xs:inline">{selectedTopic ? selectedTopic.title : 'Select Topic'}</span>
                     <span className="xs:hidden">Topic</span>
+                    <span className="ml-2 text-xs text-gray-500">{selectedTopic ? (topicCounts.get(selectedTopic.id) || 0) : allCount}</span>
                     <ChevronDown className="w-4 h-4 ml-2 opacity-60" />
                   </Button>
                 </PopoverTrigger>

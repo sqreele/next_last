@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Job, JobStatus } from "@/app/lib/types";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
 import { Badge } from "@/app/components/ui/badge";
-import { CheckCircle2, Clock, AlertCircle, AlertTriangle, ClipboardList, ImageOff, User, Calendar, MessageSquare } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, AlertTriangle, ClipboardList, User, Calendar, MessageSquare } from "lucide-react";
 
 type ViewMode = "grid" | "list";
 
@@ -209,7 +209,7 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
         {imageUrls.length > 0 && imageUrls[activeIdx] && !failed.has(activeIdx) ? (
           <Image src={imageUrls[activeIdx]} alt="job" fill className="object-cover" unoptimized onError={() => onError(activeIdx)} />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100"><ImageOff className="w-6 h-6 text-gray-400" /></div>
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100"></div>
         )}
 
         {imageUrls.length > 1 && (

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Job, JobStatus, Property } from "@/app/lib/types";
-import { Calendar, MapPin, CheckCircle2, Clock, AlertCircle, AlertTriangle, ClipboardList, ImageOff } from "lucide-react";
+import { Calendar, MapPin, CheckCircle2, Clock, AlertCircle, AlertTriangle, ClipboardList } from "lucide-react";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
 
 type ViewMode = "grid" | "list";
@@ -90,9 +90,7 @@ export default function ModernJobCard({ job, viewMode = "grid" }: ModernJobCardP
               onError={() => onError(activeIdx)}
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-              <ImageOff className="w-6 h-6 text-gray-400" />
-            </div>
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-100"></div>
           )}
         </div>
 

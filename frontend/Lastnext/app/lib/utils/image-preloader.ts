@@ -199,8 +199,7 @@ export function preloadCriticalImages(pageType: 'dashboard' | 'jobs' | 'maintena
     case 'maintenance':
       // Preload maintenance images, icons
       criticalImages.push(
-        '/images/maintenance-icon.png',
-        '/images/placeholder-maintenance.jpg'
+        '/images/maintenance-icon.png'
       );
       break;
       

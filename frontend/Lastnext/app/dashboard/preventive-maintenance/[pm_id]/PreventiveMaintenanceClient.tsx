@@ -1014,8 +1014,6 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       className="w-full max-h-64 object-contain rounded-lg border border-gray-300"
                       width={400}
                       height={256}
-                      fallbackSrc="/placeholder-maintenance.jpg"
-                      showFallback={true}
                     />
                     <div className="hidden w-full h-48 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
                       <span className="text-gray-500 text-sm">Before image unavailable</span>
@@ -1031,8 +1029,6 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       className="w-full max-h-64 object-contain rounded-lg border border-gray-300"
                       width={400}
                       height={256}
-                      fallbackSrc="/placeholder-maintenance.jpg"
-                      showFallback={true}
                     />
                     <div className="hidden w-full h-48 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
                       <span className="text-gray-500 text-sm">After image unavailable</span>

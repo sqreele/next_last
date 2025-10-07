@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
-import { CalendarClock, Home, MapPin } from 'lucide-react';
+import { CalendarClock, Home, MapPin, Wrench } from 'lucide-react';
 import { Room, Property, Job } from '@/app/lib/types';
 import { cn } from '@/app/lib/utils/cn';
 import Link from 'next/link';
@@ -21,6 +21,8 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
       String(jobRoom.room_id) === String(room.room_id)
     )
   );
+
+  const preventiveMaintenanceJobs = roomJobs.filter(job => job.is_preventivemaintenance === true);
 
   const getPropertyName = () => {
     // Helper to resolve a property name by an arbitrary id-like value
@@ -105,6 +107,33 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
             <span>Created: {new Date(room.created_at).toLocaleString()}</span>
           </div>
 
+          {preventiveMaintenanceJobs.length > 0 && (
+            <div className="mt-6">
+              <div className="flex items-center gap-2 mb-2">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                  <Wrench className="w-5 h-5 text-blue-600" />
+                  Preventive Maintenance
+                </h2>
+                <Badge variant="secondary" className="text-sm">
+                  {preventiveMaintenanceJobs.length}
+                </Badge>
+              </div>
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 flex items-center justify-between">
+                <p className="text-sm text-blue-900">
+                  {preventiveMaintenanceJobs.length} PM {preventiveMaintenanceJobs.length === 1 ? 'job' : 'jobs'} in this room.
+                </p>
+                <div className="flex gap-2">
+                  <Link href="/dashboard/Preventive_maintenance">
+                    <Button size="sm" variant="secondary">Open PM Dashboard</Button>
+                  </Link>
+                  <Link href="/dashboard/preventive-maintenance/create">
+                    <Button size="sm">Create PM</Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Jobs Section */}
           <div className="mt-6">
             <div className="flex items-center gap-2 mb-2">
@@ -125,9 +154,14 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
                           </Badge>
                           <p><strong>Job ID:</strong> {job.job_id}</p>
                         </div>
-                        <Badge className={cn("px-2 py-1 text-xs", statusColors[job.status])}>
-                          {job.status.replace('_', ' ').toUpperCase()}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className={cn("px-2 py-1 text-xs", statusColors[job.status])}>
+                            {job.status.replace('_', ' ').toUpperCase()}
+                          </Badge>
+                          {job.is_preventivemaintenance && (
+                            <Badge variant="outline" className="px-2 py-1 text-xs bg-blue-50 text-blue-700 border-blue-200">PM</Badge>
+                          )}
+                        </div>
                       </div>
                       <p className="mt-2"><strong>Description:</strong> {job.description || 'N/A'}</p>
                       <div className="flex justify-between items-center mt-2">

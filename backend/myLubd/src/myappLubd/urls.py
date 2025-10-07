@@ -46,6 +46,7 @@ urlpatterns = [
     path('api/v1/auth/session/', views.CustomSessionView.as_view(), name='auth_session'),
     path('api/v1/auth/_log', views.log_view, name='log_view'),
     path('api/v1/auth/check/', views.auth_check, name='auth_check'),
+    path('api/v1/auth/is-backend-admin/', views.is_backend_admin, name='is_backend_admin'),
     path('api/v1/auth/login/', views.login_view, name='login'),
     path('api/v1/auth/register/', views.RegisterView.as_view(), name='register'),
     path('api/v1/auth/google/', views.google_auth, name='google_auth'),

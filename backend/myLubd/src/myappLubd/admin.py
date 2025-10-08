@@ -562,6 +562,20 @@ class JobAdmin(admin.ModelAdmin):
             base_dir = getattr(settings, 'BASE_DIR', '')
             project_root = os.path.dirname(base_dir) if base_dir else ''
             candidates = [
+                # Collected static root (Docker runtime mounts to /app/static)
+                (
+                    os.path.join(getattr(settings, 'STATIC_ROOT', ''), 'fonts', 'Sarabun-Regular.ttf'),
+                    os.path.join(getattr(settings, 'STATIC_ROOT', ''), 'fonts', 'Sarabun-Bold.ttf'),
+                    'Sarabun-Regular',
+                    'Sarabun-Bold'
+                ),
+                # Common container path for static files (explicit)
+                (
+                    '/app/static/fonts/Sarabun-Regular.ttf',
+                    '/app/static/fonts/Sarabun-Bold.ttf',
+                    'Sarabun-Regular',
+                    'Sarabun-Bold'
+                ),
                 # Noto Sans Thai (common on servers)
                 (
                     '/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf',

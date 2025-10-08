@@ -645,35 +645,66 @@ class JobAdmin(admin.ModelAdmin):
             for reg, bold, reg_name, bold_name in candidates:
                 try:
                     if reg and bold and os.path.isfile(reg) and os.path.isfile(bold):
-                        pdfmetrics.registerFont(TTFont(reg_name, reg))
-                        pdfmetrics.registerFont(TTFont(bold_name, bold))
+                        # Check if fonts are already registered to avoid double registration
+                        from reportlab.pdfbase.pdfmetrics import getRegisteredFontNames
+                        registered_fonts = getRegisteredFontNames()
+                        
+                        if reg_name not in registered_fonts:
+                            pdfmetrics.registerFont(TTFont(reg_name, reg))
+                        if bold_name not in registered_fonts:
+                            pdfmetrics.registerFont(TTFont(bold_name, bold))
+                        
                         # Derive a family name (e.g., "Sarabun" from "Sarabun-Regular")
                         family_name = reg_name.rsplit('-', 1)[0] if '-' in reg_name else reg_name
                         family_registered = False
+                        
+                        # First check if family is already working
+                        from reportlab.lib.fonts import ps2tt
                         try:
-                            pdfmetrics.registerFontFamily(
-                                family_name,
-                                normal=reg_name,
-                                bold=bold_name,
-                                italic=reg_name,      # use regular for italic fallback
-                                boldItalic=bold_name, # use bold for bold-italic fallback
-                            )
-                            # Verify registration succeeded by testing font retrieval
-                            # This ensures the family is actually usable
-                            from reportlab.pdfbase.pdfmetrics import getFont
-                            try:
-                                # Try to get the font to verify it's registered
-                                getFont(reg_name)
-                                getFont(bold_name)
-                                family_registered = True
-                            except:
-                                family_registered = False
-                        except Exception as e:
-                            # If family registration fails, we'll use individual faces
+                            # Test if family already exists and works
+                            test_normal = ps2tt(family_name, 0, 0)
+                            test_bold = ps2tt(family_name, 1, 0)
+                            test_italic = ps2tt(family_name, 0, 1)
+                            test_bold_italic = ps2tt(family_name, 1, 1)
+                            # If we got here, family already registered and works
+                            family_registered = True
                             import logging
                             logger = logging.getLogger(__name__)
-                            logger.warning(f"Thai font family registration failed for {family_name}: {e}")
-                            family_registered = False
+                            logger.info(f"Thai font family {family_name} already registered and working")
+                        except:
+                            # Family doesn't exist or doesn't work, try to register it
+                            try:
+                                pdfmetrics.registerFontFamily(
+                                    family_name,
+                                    normal=reg_name,
+                                    bold=bold_name,
+                                    italic=reg_name,      # use regular for italic fallback
+                                    boldItalic=bold_name, # use bold for bold-italic fallback
+                                )
+                                # Verify registration succeeded by testing font family mapping
+                                try:
+                                    # Test all font variants in the family to ensure mapping works
+                                    test_normal = ps2tt(family_name, 0, 0)  # normal
+                                    test_bold = ps2tt(family_name, 1, 0)    # bold
+                                    test_italic = ps2tt(family_name, 0, 1)  # italic
+                                    test_bold_italic = ps2tt(family_name, 1, 1)  # bold-italic
+                                    # If we got here, all mappings work
+                                    family_registered = True
+                                    import logging
+                                    logger = logging.getLogger(__name__)
+                                    logger.info(f"Thai font family {family_name} registered successfully")
+                                except Exception as verify_error:
+                                    # Family mapping verification failed
+                                    import logging
+                                    logger = logging.getLogger(__name__)
+                                    logger.warning(f"Thai font family mapping verification failed for {family_name}: {verify_error}")
+                                    family_registered = False
+                            except Exception as e:
+                                # If family registration fails, we'll use individual faces
+                                import logging
+                                logger = logging.getLogger(__name__)
+                                logger.warning(f"Thai font family registration failed for {family_name}: {e}")
+                                family_registered = False
                         # Always record faces; only record family if registered
                         thai_regular, thai_bold = reg_name, bold_name
                         thai_family = family_name if family_registered else None

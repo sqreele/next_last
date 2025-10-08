@@ -530,6 +530,8 @@ class JobAdmin(admin.ModelAdmin):
             from reportlab.lib.styles import getSampleStyleSheet
             from reportlab.lib.units import inch
             from reportlab.lib import colors
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
         except Exception:
             self.message_user(request, 'ReportLab is required for PDF export. Install with: pip install reportlab', level='error')
             return None
@@ -537,6 +539,7 @@ class JobAdmin(admin.ModelAdmin):
         # Local imports for file handling
         import os
         from django.conf import settings
+        from xml.sax.saxutils import escape as xml_escape
 
         # Prefetch related data to avoid N+1 queries
         qs = queryset.select_related('user').prefetch_related('rooms__properties', 'rooms', 'topics', 'job_images').order_by('created_at')
@@ -544,10 +547,91 @@ class JobAdmin(admin.ModelAdmin):
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=48, bottomMargin=36)
         styles = getSampleStyleSheet()
+
+        # ---------------------------------
+        # Thai font registration (if present)
+        # ---------------------------------
+        thai_regular = None
+        thai_bold = None
+
+        def register_thai_fonts():
+            nonlocal thai_regular, thai_bold
+            if thai_regular and thai_bold:
+                return
+            candidates = [
+                # Noto Sans Thai (common on servers)
+                (
+                    '/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf',
+                    '/usr/share/fonts/truetype/noto/NotoSansThai-Bold.ttf',
+                    'NotoSansThai-Regular',
+                    'NotoSansThai-Bold'
+                ),
+                # TH Sarabun New (common in Thailand)
+                (
+                    '/usr/share/fonts/truetype/thai/THSarabunNew.ttf',
+                    '/usr/share/fonts/truetype/thai/THSarabunNewBold.ttf',
+                    'THSarabunNew',
+                    'THSarabunNew-Bold'
+                ),
+                # Project fonts directories
+                (
+                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'fonts', 'NotoSansThai-Regular.ttf'),
+                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'fonts', 'NotoSansThai-Bold.ttf'),
+                    'NotoSansThai-Regular',
+                    'NotoSansThai-Bold'
+                ),
+                (
+                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'fonts', 'NotoSansThai-Regular.ttf'),
+                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'fonts', 'NotoSansThai-Bold.ttf'),
+                    'NotoSansThai-Regular',
+                    'NotoSansThai-Bold'
+                ),
+                (
+                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'fonts', 'THSarabunNew.ttf'),
+                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'fonts', 'THSarabunNew-Bold.ttf'),
+                    'THSarabunNew',
+                    'THSarabunNew-Bold'
+                ),
+                (
+                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'fonts', 'THSarabunNew.ttf'),
+                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'fonts', 'THSarabunNew-Bold.ttf'),
+                    'THSarabunNew',
+                    'THSarabunNew-Bold'
+                ),
+            ]
+            for reg, bold, reg_name, bold_name in candidates:
+                try:
+                    if reg and bold and os.path.isfile(reg) and os.path.isfile(bold):
+                        pdfmetrics.registerFont(TTFont(reg_name, reg))
+                        pdfmetrics.registerFont(TTFont(bold_name, bold))
+                        thai_regular, thai_bold = reg_name, bold_name
+                        break
+                except Exception:
+                    # Try next candidate
+                    continue
+
+        register_thai_fonts()
+
+        # Add Thai-capable styles
+        if thai_regular:
+            from reportlab.lib.styles import ParagraphStyle
+            styles.add(ParagraphStyle(name='ThaiTitle', parent=styles['Title'], fontName=thai_bold))
+            styles.add(ParagraphStyle(name='ThaiHeading2', parent=styles['Heading2'], fontName=thai_bold))
+            styles.add(ParagraphStyle(name='ThaiHeading3', parent=styles['Heading3'], fontName=thai_bold))
+            styles.add(ParagraphStyle(name='ThaiNormal', parent=styles['Normal'], fontName=thai_regular, fontSize=9, leading=11, wordWrap='CJK'))
+            styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontName=thai_regular, fontSize=8, leading=10, wordWrap='CJK'))
+        else:
+            # Fallback styles use default fonts
+            from reportlab.lib.styles import ParagraphStyle
+            styles.add(ParagraphStyle(name='ThaiTitle', parent=styles['Title']))
+            styles.add(ParagraphStyle(name='ThaiHeading2', parent=styles['Heading2']))
+            styles.add(ParagraphStyle(name='ThaiHeading3', parent=styles['Heading3']))
+            styles.add(ParagraphStyle(name='ThaiNormal', parent=styles['Normal'], fontSize=9, leading=11))
+            styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontSize=8, leading=10))
         story = []
 
         now_display = timezone.now().strftime('%Y-%m-%d')
-        story.append(Paragraph(f"Jobs Export ({now_display})", styles['Title']))
+        story.append(Paragraph(f"Jobs Export ({now_display})", styles['ThaiTitle']))
         story.append(Spacer(1, 12))
 
         # Summary row
@@ -559,54 +643,63 @@ class JobAdmin(admin.ModelAdmin):
 
         headers = ['Job ID', 'Status', 'Priority', 'User', 'Properties', 'Created', 'Completed']
 
+        header_font = thai_bold or 'Helvetica-Bold'
+        body_font = thai_regular or 'Helvetica'
+
         table_style = TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTNAME', (0, 0), (-1, 0), header_font),
             ('FONTSIZE', (0, 0), (-1, 0), 9),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('FONTNAME', (0, 1), (-1, -1), body_font),
             ('FONTSIZE', (0, 1), (-1, -1), 8),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.whitesmoke]),
             ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
         ])
 
         # Prepare rows
+        # Compute A4-usable width for column sizing
+        page_width, _page_height = A4
+        usable_width = page_width - doc.leftMargin - doc.rightMargin
+        fractions = [0.12, 0.14, 0.14, 0.18, 0.28, 0.07, 0.07]
+        col_widths = [usable_width * f for f in fractions]
+
         rows = []
         for job in qs:
             user_str = job.user.username if job.user else ''
             props_str = self.get_properties_display(job)
             created = job.created_at.strftime('%Y-%m-%d') if job.created_at else ''
             completed_dt = job.completed_at.strftime('%Y-%m-%d') if job.completed_at else ''
+
+            # Use Paragraphs to enable wrapping (Thai-capable styles)
             rows.append([
-                job.job_id,
-                job.get_status_display(),
-                job.get_priority_display().title(),
-                user_str,
-                props_str,
-                created,
-                completed_dt,
+                Paragraph(xml_escape(str(job.job_id or '')), styles['ThaiSmall']),
+                Paragraph(xml_escape(job.get_status_display() or ''), styles['ThaiSmall']),
+                Paragraph(xml_escape(job.get_priority_display().title() if job.get_priority_display() else ''), styles['ThaiSmall']),
+                Paragraph(xml_escape(user_str or ''), styles['ThaiSmall']),
+                Paragraph(xml_escape(props_str or ''), styles['ThaiSmall']),
+                Paragraph(xml_escape(created or ''), styles['ThaiSmall']),
+                Paragraph(xml_escape(completed_dt or ''), styles['ThaiSmall']),
             ])
 
         # Chunk rows to ensure tables fit on pages
-        chunk_size = 35
-        col_widths = [1.1*inch, 0.9*inch, 0.9*inch, 1.2*inch, 2.8*inch, 1.0*inch, 1.0*inch]
-        for i in range(0, len(rows), chunk_size):
-            chunk = rows[i:i+chunk_size]
-            data = [headers] + chunk
-            table = Table(data, repeatRows=1, colWidths=col_widths)
-            table.setStyle(table_style)
-            story.append(table)
-            story.append(Spacer(1, 12))
+        # Build table; allow automatic page splits with repeated header
+        data = [headers] + rows
+        table = Table(data, repeatRows=1, colWidths=col_widths)
+        table.setStyle(table_style)
+        story.append(table)
+        story.append(Spacer(1, 12))
 
         # -----------------------------
         # Detailed section with requested fields
         # -----------------------------
         story.append(PageBreak())
-        story.append(Paragraph("Job Details", styles['Heading2']))
+        story.append(Paragraph("Job Details", styles['ThaiHeading2']))
         story.append(Spacer(1, 6))
 
         def _escape_text(text):
-            return (text or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            return xml_escape(text or '')
 
         for job in qs:
             # Core fields
@@ -615,22 +708,25 @@ class JobAdmin(admin.ModelAdmin):
             description_str = _escape_text(job.description)
             remarks_str = _escape_text(job.remarks)
 
-            story.append(Paragraph(f"Job {job.job_id}", styles['Heading3']))
+            story.append(Paragraph(f"Job {job.job_id}", styles['ThaiHeading3']))
             story.append(Spacer(1, 4))
 
             details_data = [
-                [Paragraph('<b>Status</b>', styles['Normal']), Paragraph(_escape_text(job.get_status_display()), styles['Normal'])],
-                [Paragraph('<b>Priority</b>', styles['Normal']), Paragraph(_escape_text(job.get_priority_display().title()), styles['Normal'])],
-                [Paragraph('<b>User</b>', styles['Normal']), Paragraph(_escape_text(job.user.username if job.user else ''), styles['Normal'])],
-                [Paragraph('<b>Rooms</b>', styles['Normal']), Paragraph(_escape_text(rooms_str), styles['Normal'])],
-                [Paragraph('<b>Topics</b>', styles['Normal']), Paragraph(_escape_text(topics_str), styles['Normal'])],
-                [Paragraph('<b>Description</b>', styles['Normal']), Paragraph(description_str or '-', styles['Normal'])],
-                [Paragraph('<b>Remarks</b>', styles['Normal']), Paragraph(remarks_str or '-', styles['Normal'])],
+                [Paragraph('<b>Status</b>', styles['ThaiNormal']), Paragraph(_escape_text(job.get_status_display()), styles['ThaiNormal'])],
+                [Paragraph('<b>Priority</b>', styles['ThaiNormal']), Paragraph(_escape_text(job.get_priority_display().title()), styles['ThaiNormal'])],
+                [Paragraph('<b>User</b>', styles['ThaiNormal']), Paragraph(_escape_text(job.user.username if job.user else ''), styles['ThaiNormal'])],
+                [Paragraph('<b>Rooms</b>', styles['ThaiNormal']), Paragraph(_escape_text(rooms_str), styles['ThaiNormal'])],
+                [Paragraph('<b>Topics</b>', styles['ThaiNormal']), Paragraph(_escape_text(topics_str), styles['ThaiNormal'])],
+                [Paragraph('<b>Description</b>', styles['ThaiNormal']), Paragraph(description_str or '-', styles['ThaiNormal'])],
+                [Paragraph('<b>Remarks</b>', styles['ThaiNormal']), Paragraph(remarks_str or '-', styles['ThaiNormal'])],
             ]
 
-            details_table = Table(details_data, hAlign='LEFT', colWidths=[1.2*inch, 5.6*inch])
+            # Use page width for better A4 fit
+            details_col_widths = [usable_width * 0.18, usable_width * 0.82]
+            details_table = Table(details_data, hAlign='LEFT', colWidths=details_col_widths)
             details_table.setStyle(TableStyle([
                 ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('FONTNAME', (0, 0), (-1, -1), body_font),
                 ('FONTSIZE', (0, 0), (-1, -1), 9),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ]))
@@ -658,7 +754,7 @@ class JobAdmin(admin.ModelAdmin):
 
             if images:
                 story.append(Spacer(1, 6))
-                story.append(Paragraph("Images:", styles['Normal']))
+                story.append(Paragraph("Images:", styles['ThaiNormal']))
                 # Arrange images in rows of up to 4 per row
                 row = []
                 rows = []

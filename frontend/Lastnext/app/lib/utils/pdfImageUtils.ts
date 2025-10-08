@@ -306,7 +306,25 @@ export async function enrichJobsWithPdfImages(jobs: any[]): Promise<any[]> {
         // Prefer proxied JPEG to avoid CORS/format issues and reduce size
         const proxied = getProxiedImageUrl(absolute, { width: 1200, quality: 82 });
         try { pdfDebug.imageResolve({ sourceUrl: raw, resolvedUrl: proxied, note: 'proxy-selected' } as any); } catch {}
-        return { ...job, pdf_image_src: proxied };
+
+        // Validate the proxied image actually loads; if not, try next candidate
+        try {
+          const ok = await validateImageForPdf(proxied);
+          if (ok) {
+            return { ...job, pdf_image_src: proxied };
+          }
+        } catch {}
+
+        // Fallback: if proxied fails, try the absolute URL directly for supported formats
+        try {
+          const ext = getImageExtension(absolute);
+          if (["jpg", "jpeg", "png"].includes(ext)) {
+            const okDirect = await validateImageForPdf(absolute);
+            if (okDirect) {
+              return { ...job, pdf_image_src: absolute };
+            }
+          }
+        } catch {}
       }
 
       // Fallback: if no candidates, leave the job unchanged

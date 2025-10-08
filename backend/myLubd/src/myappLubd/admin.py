@@ -649,18 +649,27 @@ class JobAdmin(admin.ModelAdmin):
                         pdfmetrics.registerFont(TTFont(bold_name, bold))
                         # Derive a family name (e.g., "Sarabun" from "Sarabun-Regular")
                         family_name = reg_name.rsplit('-', 1)[0] if '-' in reg_name else reg_name
+                        family_registered = False
                         try:
                             pdfmetrics.registerFontFamily(
                                 family_name,
                                 normal=reg_name,
                                 bold=bold_name,
-                                italic=reg_name,
-                                boldItalic=bold_name,
+                                italic=reg_name,      # use regular for italic fallback
+                                boldItalic=bold_name, # use bold for bold-italic fallback
                             )
+                            # Verify family actually exists in metrics
+                            fam = getattr(pdfmetrics, 'getFamily', None)
+                            if fam is not None:
+                                family_registered = bool(pdfmetrics.getFamily(family_name))
+                            else:
+                                # Older reportlab versions don't expose getFamily; assume success
+                                family_registered = True
                         except Exception:
-                            # Family registration is best-effort; continue even if it fails
-                            pass
-                        thai_regular, thai_bold, thai_family = reg_name, bold_name, family_name
+                            family_registered = False
+                        # Always record faces; only record family if registered
+                        thai_regular, thai_bold = reg_name, bold_name
+                        thai_family = family_name if family_registered else None
                         break
                 except Exception:
                     # Try next candidate
@@ -671,7 +680,7 @@ class JobAdmin(admin.ModelAdmin):
         # Add Thai-capable styles
         if thai_regular:
             from reportlab.lib.styles import ParagraphStyle
-            # Use the family for paragraph styles so inline <b> uses the Thai bold face
+            # Prefer the registered family so inline <b> maps to bold; otherwise, fall back to the regular face
             base_family = thai_family or thai_regular
             styles.add(ParagraphStyle(name='ThaiTitle', parent=styles['Title'], fontName=thai_bold))
             styles.add(ParagraphStyle(name='ThaiHeading2', parent=styles['Heading2'], fontName=thai_bold))

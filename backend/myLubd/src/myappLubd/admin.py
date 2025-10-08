@@ -526,7 +526,7 @@ class JobAdmin(admin.ModelAdmin):
         """Export selected/filtered jobs to a compact PDF table, respecting current filters."""
         try:
             from reportlab.lib.pagesizes import A4
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
             from reportlab.lib.styles import getSampleStyleSheet
             from reportlab.lib.units import inch
             from reportlab.lib import colors
@@ -534,8 +534,12 @@ class JobAdmin(admin.ModelAdmin):
             self.message_user(request, 'ReportLab is required for PDF export. Install with: pip install reportlab', level='error')
             return None
 
+        # Local imports for file handling
+        import os
+        from django.conf import settings
+
         # Prefetch related data to avoid N+1 queries
-        qs = queryset.select_related('user').prefetch_related('rooms__properties').order_by('created_at')
+        qs = queryset.select_related('user').prefetch_related('rooms__properties', 'rooms', 'topics', 'job_images').order_by('created_at')
 
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=48, bottomMargin=36)
@@ -592,6 +596,90 @@ class JobAdmin(admin.ModelAdmin):
             table = Table(data, repeatRows=1, colWidths=col_widths)
             table.setStyle(table_style)
             story.append(table)
+            story.append(Spacer(1, 12))
+
+        # -----------------------------
+        # Detailed section with requested fields
+        # -----------------------------
+        story.append(PageBreak())
+        story.append(Paragraph("Job Details", styles['Heading2']))
+        story.append(Spacer(1, 6))
+
+        def _escape_text(text):
+            return (text or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+        for job in qs:
+            # Core fields
+            rooms_str = ", ".join([room.name for room in job.rooms.all()]) or "-"
+            topics_str = ", ".join([topic.title for topic in job.topics.all()]) or "-"
+            description_str = _escape_text(job.description)
+            remarks_str = _escape_text(job.remarks)
+
+            story.append(Paragraph(f"Job {job.job_id}", styles['Heading3']))
+            story.append(Spacer(1, 4))
+
+            details_data = [
+                [Paragraph('<b>Status</b>', styles['Normal']), Paragraph(_escape_text(job.get_status_display()), styles['Normal'])],
+                [Paragraph('<b>Priority</b>', styles['Normal']), Paragraph(_escape_text(job.get_priority_display().title()), styles['Normal'])],
+                [Paragraph('<b>User</b>', styles['Normal']), Paragraph(_escape_text(job.user.username if job.user else ''), styles['Normal'])],
+                [Paragraph('<b>Rooms</b>', styles['Normal']), Paragraph(_escape_text(rooms_str), styles['Normal'])],
+                [Paragraph('<b>Topics</b>', styles['Normal']), Paragraph(_escape_text(topics_str), styles['Normal'])],
+                [Paragraph('<b>Description</b>', styles['Normal']), Paragraph(description_str or '-', styles['Normal'])],
+                [Paragraph('<b>Remarks</b>', styles['Normal']), Paragraph(remarks_str or '-', styles['Normal'])],
+            ]
+
+            details_table = Table(details_data, hAlign='LEFT', colWidths=[1.2*inch, 5.6*inch])
+            details_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            story.append(details_table)
+
+            # Images section (embed small thumbnails)
+            images = []
+            for img in job.job_images.all():
+                img_path = None
+                if getattr(img, 'jpeg_path', None):
+                    img_path = os.path.join(settings.MEDIA_ROOT, img.jpeg_path)
+                elif getattr(img, 'image', None) and hasattr(img.image, 'path'):
+                    img_path = img.image.path
+
+                if img_path and os.path.isfile(img_path):
+                    try:
+                        thumb = Image(img_path, width=1.8*inch, height=1.35*inch)
+                        images.append(thumb)
+                    except Exception:
+                        # Skip images that fail to load
+                        continue
+
+                if len(images) >= 4:  # Limit number of thumbnails per job
+                    break
+
+            if images:
+                story.append(Spacer(1, 6))
+                story.append(Paragraph("Images:", styles['Normal']))
+                # Arrange images in rows of up to 4 per row
+                row = []
+                rows = []
+                for idx, im in enumerate(images, start=1):
+                    row.append(im)
+                    if len(row) == 4:
+                        rows.append(row)
+                        row = []
+                if row:
+                    rows.append(row)
+
+                images_table = Table(rows, hAlign='LEFT', colWidths=[1.9*inch]*max(1, len(rows[0])))
+                images_table.setStyle(TableStyle([
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+                    ('TOPPADDING', (0, 0), (-1, -1), 2),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ]))
+                story.append(images_table)
+
             story.append(Spacer(1, 12))
 
         # Build and return response

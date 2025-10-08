@@ -658,14 +658,21 @@ class JobAdmin(admin.ModelAdmin):
                                 italic=reg_name,      # use regular for italic fallback
                                 boldItalic=bold_name, # use bold for bold-italic fallback
                             )
-                            # Verify family actually exists in metrics
-                            fam = getattr(pdfmetrics, 'getFamily', None)
-                            if fam is not None:
-                                family_registered = bool(pdfmetrics.getFamily(family_name))
-                            else:
-                                # Older reportlab versions don't expose getFamily; assume success
+                            # Verify registration succeeded by testing font retrieval
+                            # This ensures the family is actually usable
+                            from reportlab.pdfbase.pdfmetrics import getFont
+                            try:
+                                # Try to get the font to verify it's registered
+                                getFont(reg_name)
+                                getFont(bold_name)
                                 family_registered = True
-                        except Exception:
+                            except:
+                                family_registered = False
+                        except Exception as e:
+                            # If family registration fails, we'll use individual faces
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.warning(f"Thai font family registration failed for {family_name}: {e}")
                             family_registered = False
                         # Always record faces; only record family if registered
                         thai_regular, thai_bold = reg_name, bold_name
@@ -678,29 +685,47 @@ class JobAdmin(admin.ModelAdmin):
         register_thai_fonts()
 
         # Add Thai-capable styles
-        if thai_regular:
-            from reportlab.lib.styles import ParagraphStyle
-            # Prefer the registered family so inline <b> maps to bold; otherwise, fall back to the regular face
-            base_family = thai_family or thai_regular
+        from reportlab.lib.styles import ParagraphStyle
+        if thai_regular and thai_family:
+            # Font family is properly registered, we can use it with inline markup
             styles.add(ParagraphStyle(name='ThaiTitle', parent=styles['Title'], fontName=thai_bold))
             styles.add(ParagraphStyle(name='ThaiHeading2', parent=styles['Heading2'], fontName=thai_bold))
             styles.add(ParagraphStyle(name='ThaiHeading3', parent=styles['Heading3'], fontName=thai_bold))
-            styles.add(ParagraphStyle(name='ThaiNormal', parent=styles['Normal'], fontName=base_family, fontSize=9, leading=11, wordWrap='CJK'))
-            styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontName=base_family, fontSize=8, leading=10, wordWrap='CJK'))
+            styles.add(ParagraphStyle(name='ThaiNormal', parent=styles['Normal'], fontName=thai_family, fontSize=9, leading=11, wordWrap='CJK'))
+            styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontName=thai_family, fontSize=8, leading=10, wordWrap='CJK'))
+            # Store whether we can use markup in a custom attribute
+            styles['ThaiNormal'].allowMarkup = True
+            styles['ThaiSmall'].allowMarkup = True
         else:
-            # Fallback styles use default fonts
-            from reportlab.lib.styles import ParagraphStyle
+            # Fallback: Font family not properly registered, use default fonts to avoid mapping errors
+            # This prevents "Can't map determine family/bold/italic" errors
             styles.add(ParagraphStyle(name='ThaiTitle', parent=styles['Title']))
             styles.add(ParagraphStyle(name='ThaiHeading2', parent=styles['Heading2']))
             styles.add(ParagraphStyle(name='ThaiHeading3', parent=styles['Heading3']))
             styles.add(ParagraphStyle(name='ThaiNormal', parent=styles['Normal'], fontSize=9, leading=11))
             styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontSize=8, leading=10))
+            styles['ThaiNormal'].allowMarkup = True  # Default fonts support markup
+            styles['ThaiSmall'].allowMarkup = True
         story = []
+
+        # Helper functions
+        def _escape_text(text):
+            return xml_escape(text or '')
+        
+        def _make_paragraph(text, style, allow_markup=None):
+            """Create a paragraph, handling markup safety based on font family registration."""
+            if allow_markup is None:
+                allow_markup = getattr(style, 'allowMarkup', True)
+            if not allow_markup:
+                # Strip HTML tags if markup is not safe (font family not registered)
+                import re
+                text = re.sub(r'<[^>]+>', '', text)
+            return Paragraph(text, style)
 
         # Header
         now_display = timezone.now().strftime('%Y-%m-%d %H:%M')
         story.append(Paragraph("Jobs Report", styles['ThaiTitle']))
-        story.append(Paragraph(f"Generated: {now_display}", styles['ThaiNormal']))
+        story.append(_make_paragraph(f"Generated: {now_display}", styles['ThaiNormal']))
         story.append(Spacer(1, 10))
 
         # Layout helpers
@@ -712,9 +737,6 @@ class JobAdmin(admin.ModelAdmin):
 
         header_font = thai_bold or 'Helvetica-Bold'
         body_font = thai_regular or 'Helvetica'
-
-        def _escape_text(text):
-            return xml_escape(text or '')
 
         def _first_image_path(job_obj):
             for img in job_obj.job_images.all():
@@ -783,14 +805,14 @@ class JobAdmin(admin.ModelAdmin):
             staff_str = job.user.get_full_name() if getattr(job.user, 'get_full_name', None) and job.user.get_full_name() else (job.user.username if job.user else 'N/A')
 
             left_info_rows = [
-                [Paragraph(f"<b>Job ID:</b> #{_escape_text(str(job.job_id))}", styles['ThaiNormal'])],
-                [Paragraph(f"<b>Topics:</b> {_escape_text(topics_str)}", styles['ThaiNormal'])],
-                [Paragraph(f"<b>Description:</b> {_escape_text(job.description or '-')}", styles['ThaiNormal'])],
+                [_make_paragraph(f"<b>Job ID:</b> #{_escape_text(str(job.job_id))}", styles['ThaiNormal'])],
+                [_make_paragraph(f"<b>Topics:</b> {_escape_text(topics_str)}", styles['ThaiNormal'])],
+                [_make_paragraph(f"<b>Description:</b> {_escape_text(job.description or '-')}", styles['ThaiNormal'])],
             ]
             right_info_rows = [
-                [Paragraph(f"<b>Location:</b> {_escape_text(rooms_str)}", styles['ThaiNormal'])],
-                [Paragraph(f"<b>Staff:</b> {_escape_text(staff_str)}", styles['ThaiNormal'])],
-                [Paragraph(f"<b>Remarks:</b> {_escape_text(job.remarks or 'N/A')}", styles['ThaiNormal'])],
+                [_make_paragraph(f"<b>Location:</b> {_escape_text(rooms_str)}", styles['ThaiNormal'])],
+                [_make_paragraph(f"<b>Staff:</b> {_escape_text(staff_str)}", styles['ThaiNormal'])],
+                [_make_paragraph(f"<b>Remarks:</b> {_escape_text(job.remarks or 'N/A')}", styles['ThaiNormal'])],
             ]
 
             left_info_table = Table(left_info_rows, colWidths=[col_widths[1] * 0.48])
@@ -851,17 +873,17 @@ class JobAdmin(admin.ModelAdmin):
             completed_txt = job.completed_at.strftime('%Y-%m-%d %H:%M') if job.completed_at else ''
 
             status_table_rows = [
-                [Paragraph('<b>Status:</b>', styles['ThaiSmall'])],
+                [_make_paragraph('<b>Status:</b>', styles['ThaiSmall'])],
                 [status_badge],
                 [Spacer(1, 4)],
-                [Paragraph('<b>Priority:</b>', styles['ThaiSmall'])],
+                [_make_paragraph('<b>Priority:</b>', styles['ThaiSmall'])],
                 [priority_badge],
                 [Spacer(1, 4)],
-                [Paragraph(f"<b>Created:</b> {_escape_text(created_txt)}", styles['ThaiSmall'])],
-                [Paragraph(f"<b>Updated:</b> {_escape_text(updated_txt)}", styles['ThaiSmall'])],
+                [_make_paragraph(f"<b>Created:</b> {_escape_text(created_txt)}", styles['ThaiSmall'])],
+                [_make_paragraph(f"<b>Updated:</b> {_escape_text(updated_txt)}", styles['ThaiSmall'])],
             ]
             if completed_txt:
-                status_table_rows.append([Paragraph(f"<b>Completed:</b> {_escape_text(completed_txt)}", styles['ThaiSmall'])])
+                status_table_rows.append([_make_paragraph(f"<b>Completed:</b> {_escape_text(completed_txt)}", styles['ThaiSmall'])])
 
             status_table = Table(status_table_rows, colWidths=[col_widths[2] - 6])
             status_table.setStyle(TableStyle([

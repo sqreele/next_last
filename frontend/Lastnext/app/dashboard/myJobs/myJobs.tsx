@@ -548,8 +548,8 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     updateJob, // Hook's function to update local state
     removeJob, // Hook's function to remove from local state
   } = useJobsData({ 
-    propertyId: null, // Force null to always use fetchMyJobs
-    filters: filters // Pass current filters for backend filtering
+    propertyId: activePropertyId ?? selectedProperty ?? null,
+    filters: { ...filters, user_id: session?.user?.id ?? null }
   });
 
   // Filter jobs based on local state

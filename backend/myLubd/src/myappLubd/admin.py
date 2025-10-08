@@ -354,12 +354,24 @@ class PropertyFilter(admin.SimpleListFilter):
             return queryset.filter(rooms__properties__id=self.value()).distinct()
         return queryset
 
+class RoomFilter(admin.SimpleListFilter):
+    title = 'room'
+    parameter_name = 'room'
+
+    def lookups(self, request, model_admin):
+        return [(str(r.room_id), r.name) for r in Room.objects.all().order_by('name')]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(rooms__room_id=self.value()).distinct()
+        return queryset
+
 # ModelAdmins
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
     form = JobAdminForm
     list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_user_display', 'user_id', 'get_properties_display', 'get_timestamps_display', 'is_preventivemaintenance']
-    list_filter = ['status', 'priority', 'is_defective', 'created_at', 'updated_at', 'is_preventivemaintenance', 'user', PropertyFilter]
+    list_filter = ['status', 'priority', 'is_defective', 'created_at', 'updated_at', 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter]
     search_fields = ['job_id', 'description', 'user__username', 'updated_by__username', 'topics__title']
     readonly_fields = ['job_id', 'updated_by']
     filter_horizontal = ['rooms', 'topics']
@@ -492,7 +504,7 @@ class JobAdmin(admin.ModelAdmin):
         formset.save_m2m()
 
     # Admin actions for timestamp management and export
-    actions = ['update_timestamps_to_now', 'reset_completed_timestamps', 'export_jobs_pdf']
+    actions = ['update_timestamps_to_now', 'reset_completed_timestamps', 'export_jobs_pdf', 'export_jobs_csv']
 
     def update_timestamps_to_now(self, request, queryset):
         """Update selected jobs' timestamps to current time"""
@@ -658,21 +670,18 @@ class JobAdmin(admin.ModelAdmin):
                         family_name = reg_name.rsplit('-', 1)[0] if '-' in reg_name else reg_name
                         family_registered = False
                         
-                        # First check if family is already working
-                        from reportlab.lib.fonts import ps2tt
+                        # First check if family is already registered
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        
+                        # Check if fonts are already registered by trying to get them
                         try:
-                            # Test if family already exists and works
-                            test_normal = ps2tt(family_name, 0, 0)
-                            test_bold = ps2tt(family_name, 1, 0)
-                            test_italic = ps2tt(family_name, 0, 1)
-                            test_bold_italic = ps2tt(family_name, 1, 1)
-                            # If we got here, family already registered and works
-                            family_registered = True
-                            import logging
-                            logger = logging.getLogger(__name__)
-                            logger.info(f"Thai font family {family_name} already registered and working")
-                        except:
-                            # Family doesn't exist or doesn't work, try to register it
+                            # Test if individual fonts exist
+                            pdfmetrics.getFont(reg_name)
+                            pdfmetrics.getFont(bold_name)
+                            
+                            # Try to register the font family
+                            # Note: registerFontFamily doesn't error if already registered
                             try:
                                 pdfmetrics.registerFontFamily(
                                     family_name,
@@ -681,30 +690,16 @@ class JobAdmin(admin.ModelAdmin):
                                     italic=reg_name,      # use regular for italic fallback
                                     boldItalic=bold_name, # use bold for bold-italic fallback
                                 )
-                                # Verify registration succeeded by testing font family mapping
-                                try:
-                                    # Test all font variants in the family to ensure mapping works
-                                    test_normal = ps2tt(family_name, 0, 0)  # normal
-                                    test_bold = ps2tt(family_name, 1, 0)    # bold
-                                    test_italic = ps2tt(family_name, 0, 1)  # italic
-                                    test_bold_italic = ps2tt(family_name, 1, 1)  # bold-italic
-                                    # If we got here, all mappings work
-                                    family_registered = True
-                                    import logging
-                                    logger = logging.getLogger(__name__)
-                                    logger.info(f"Thai font family {family_name} registered successfully")
-                                except Exception as verify_error:
-                                    # Family mapping verification failed
-                                    import logging
-                                    logger = logging.getLogger(__name__)
-                                    logger.warning(f"Thai font family mapping verification failed for {family_name}: {verify_error}")
-                                    family_registered = False
+                                family_registered = True
+                                logger.info(f"Thai font family {family_name} registered successfully")
                             except Exception as e:
-                                # If family registration fails, we'll use individual faces
-                                import logging
-                                logger = logging.getLogger(__name__)
+                                # Family registration failed, but individual fonts work
                                 logger.warning(f"Thai font family registration failed for {family_name}: {e}")
                                 family_registered = False
+                        except Exception as e:
+                            # Fonts don't exist or aren't registered
+                            logger.warning(f"Thai fonts not available ({reg_name}, {bold_name}): {e}")
+                            family_registered = False
                         # Always record faces; only record family if registered
                         thai_regular, thai_bold = reg_name, bold_name
                         thai_family = family_name if family_registered else None
@@ -717,19 +712,19 @@ class JobAdmin(admin.ModelAdmin):
 
         # Add Thai-capable styles
         from reportlab.lib.styles import ParagraphStyle
-        if thai_regular and thai_family:
-            # Font family is properly registered, we can use it with inline markup
+        if thai_regular and thai_bold:
+            # Use individual font names instead of family to avoid mapping errors in ReportLab 4.x
+            # This prevents "Can't map determine family/bold/italic" errors
             styles.add(ParagraphStyle(name='ThaiTitle', parent=styles['Title'], fontName=thai_bold))
             styles.add(ParagraphStyle(name='ThaiHeading2', parent=styles['Heading2'], fontName=thai_bold))
             styles.add(ParagraphStyle(name='ThaiHeading3', parent=styles['Heading3'], fontName=thai_bold))
-            styles.add(ParagraphStyle(name='ThaiNormal', parent=styles['Normal'], fontName=thai_family, fontSize=9, leading=11, wordWrap='CJK'))
-            styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontName=thai_family, fontSize=8, leading=10, wordWrap='CJK'))
-            # Store whether we can use markup in a custom attribute
-            styles['ThaiNormal'].allowMarkup = True
-            styles['ThaiSmall'].allowMarkup = True
+            styles.add(ParagraphStyle(name='ThaiNormal', parent=styles['Normal'], fontName=thai_regular, fontSize=9, leading=11, wordWrap='CJK'))
+            styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontName=thai_regular, fontSize=8, leading=10, wordWrap='CJK'))
+            # Use individual fonts - no inline bold/italic markup to avoid family mapping
+            styles['ThaiNormal'].allowMarkup = False
+            styles['ThaiSmall'].allowMarkup = False
         else:
-            # Fallback: Font family not properly registered, use default fonts to avoid mapping errors
-            # This prevents "Can't map determine family/bold/italic" errors
+            # Fallback: Font not available, use default fonts
             styles.add(ParagraphStyle(name='ThaiTitle', parent=styles['Title']))
             styles.add(ParagraphStyle(name='ThaiHeading2', parent=styles['Heading2']))
             styles.add(ParagraphStyle(name='ThaiHeading3', parent=styles['Heading3']))
@@ -753,18 +748,72 @@ class JobAdmin(admin.ModelAdmin):
                 text = re.sub(r'<[^>]+>', '', text)
             return Paragraph(text, style)
 
-        # Header
-        now_display = timezone.now().strftime('%Y-%m-%d %H:%M')
-        story.append(Paragraph("Jobs Report", styles['ThaiTitle']))
-        story.append(_make_paragraph(f"Generated: {now_display}", styles['ThaiNormal']))
-        story.append(Spacer(1, 10))
-
         # Layout helpers
         page_width, _page_height = A4
         usable_width = page_width - doc.leftMargin - doc.rightMargin
 
-        # Column widths approx: image 20%, info 50% (split inside), status 30%
-        col_widths = [usable_width * 0.20, usable_width * 0.50, usable_width * 0.30]
+        # Header
+        now_display = timezone.now().strftime('%Y-%m-%d %H:%M')
+        story.append(Paragraph("Jobs Report", styles['ThaiTitle']))
+        story.append(_make_paragraph(f"Generated: {now_display}", styles['ThaiNormal']))
+        story.append(Spacer(1, 12))
+
+        # Statistics Section (like frontend)
+        total_jobs = qs.count()
+        completed = qs.filter(status='completed').count()
+        in_progress = qs.filter(status='in_progress').count()
+        pending = qs.filter(status='pending').count()
+        high_priority = qs.filter(priority='high').count()
+        
+        # Statistics header with metadata
+        metadata_data = [
+            [
+                _make_paragraph(f"<b>Total Jobs:</b> {total_jobs}", styles['ThaiSmall']),
+                _make_paragraph(f"<b>Date:</b> {now_display}", styles['ThaiSmall']),
+            ]
+        ]
+        metadata_table = Table(metadata_data, colWidths=[usable_width * 0.5, usable_width * 0.5])
+        metadata_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.95, 0.97, 0.99)),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.Color(0.42, 0.45, 0.5)),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('ROUNDEDCORNERS', (0, 0), (-1, -1), [5, 5, 5, 5]),
+        ]))
+        story.append(metadata_table)
+        story.append(Spacer(1, 10))
+        
+        # Statistics boxes (like frontend)
+        stat_data = [
+            [
+                _make_paragraph(f"<b>{completed}</b><br/><font size='8'>Completed</font>", styles['ThaiSmall']),
+                _make_paragraph(f"<b>{in_progress}</b><br/><font size='8'>In Progress</font>", styles['ThaiSmall']),
+                _make_paragraph(f"<b>{pending}</b><br/><font size='8'>Pending</font>", styles['ThaiSmall']),
+                _make_paragraph(f"<b>{high_priority}</b><br/><font size='8'>High Priority</font>", styles['ThaiSmall']),
+            ]
+        ]
+        stat_widths = [usable_width * 0.25] * 4
+        stat_table = Table(stat_data, colWidths=stat_widths)
+        stat_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.94, 0.96, 0.98)),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.Color(0.06, 0.09, 0.16)),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('ROUNDEDCORNERS', (0, 0), (-1, -1), [8, 8, 8, 8]),
+        ]))
+        story.append(stat_table)
+        story.append(Spacer(1, 15))
+
+        # Column widths matching frontend: image 20%, info 45%, status 35%
+        col_widths = [usable_width * 0.20, usable_width * 0.45, usable_width * 0.35]
 
         header_font = thai_bold or 'Helvetica-Bold'
         body_font = thai_regular or 'Helvetica'
@@ -780,170 +829,218 @@ class JobAdmin(admin.ModelAdmin):
                     return img_path
             return None
 
-        # Color helpers for badges (approximate tinted backgrounds)
+        # Color helpers matching frontend (using RGB values from frontend)
+        # Status colors: #16a34a (green), #2563eb (blue), #ea580c (orange), #dc2626 (red), #7c3aed (purple)
         status_bg_map = {
-            'completed': colors.lightgreen,
-            'in_progress': colors.lightblue,
-            'pending': colors.lightgoldenrodyellow,
-            'cancelled': colors.pink,
-            'waiting_sparepart': colors.lavender,
+            'completed': colors.Color(0.09, 0.64, 0.29, alpha=0.15),      # #16a34a with 15% opacity
+            'in_progress': colors.Color(0.15, 0.39, 0.92, alpha=0.15),    # #2563eb with 15% opacity
+            'pending': colors.Color(0.92, 0.35, 0.05, alpha=0.15),        # #ea580c with 15% opacity
+            'cancelled': colors.Color(0.86, 0.15, 0.15, alpha=0.15),      # #dc2626 with 15% opacity
+            'waiting_sparepart': colors.Color(0.49, 0.23, 0.93, alpha=0.15), # #7c3aed with 15% opacity
         }
         status_text_map = {
-            'completed': colors.green,
-            'in_progress': colors.blue,
-            'pending': colors.orange,
-            'cancelled': colors.red,
-            'waiting_sparepart': colors.purple,
+            'completed': colors.Color(0.09, 0.64, 0.29),      # #16a34a (green)
+            'in_progress': colors.Color(0.15, 0.39, 0.92),    # #2563eb (blue)
+            'pending': colors.Color(0.92, 0.35, 0.05),        # #ea580c (orange)
+            'cancelled': colors.Color(0.86, 0.15, 0.15),      # #dc2626 (red)
+            'waiting_sparepart': colors.Color(0.49, 0.23, 0.93), # #7c3aed (purple)
         }
+        # Priority colors: #dc2626 (red), #ea580c (orange), #16a34a (green)
         priority_bg_map = {
-            'high': colors.mistyrose,
-            'medium': colors.bisque,
-            'low': colors.honeydew,
+            'high': colors.Color(0.86, 0.15, 0.15, alpha=0.15),     # #dc2626 with 15% opacity
+            'medium': colors.Color(0.92, 0.35, 0.05, alpha=0.15),   # #ea580c with 15% opacity
+            'low': colors.Color(0.09, 0.64, 0.29, alpha=0.15),      # #16a34a with 15% opacity
         }
         priority_text_map = {
-            'high': colors.red,
-            'medium': colors.orange,
-            'low': colors.green,
+            'high': colors.Color(0.86, 0.15, 0.15),     # #dc2626 (red)
+            'medium': colors.Color(0.92, 0.35, 0.05),   # #ea580c (orange)
+            'low': colors.Color(0.09, 0.64, 0.29),      # #16a34a (green)
         }
 
         # Card renderer
-        for job in qs:
-            # Image cell
+        for job_index, job in enumerate(qs):
+            # Image cell - use proportional sizing matching frontend
+            img_width = col_widths[0] - 12
+            img_height = 80  # Fixed height like frontend
             img_path = _first_image_path(job)
             if img_path:
                 try:
-                    image_cell = Image(img_path, width=1.9*inch, height=1.35*inch)
+                    image_cell = Image(img_path, width=img_width, height=img_height)
                 except Exception:
-                    image_cell = Table([[Paragraph('No Image', styles['ThaiSmall'])]], colWidths=[1.9*inch], rowHeights=[1.35*inch])
+                    image_cell = Table([[Paragraph('No Image', styles['ThaiSmall'])]], colWidths=[img_width], rowHeights=[img_height])
                     image_cell.setStyle(TableStyle([
                         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                        ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke),
-                        ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),
+                        ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.95, 0.96, 0.97)),
+                        ('ROUNDEDCORNERS', (0, 0), (-1, -1), [4, 4, 4, 4]),
                     ]))
             else:
-                image_cell = Table([[Paragraph('No Image', styles['ThaiSmall'])]], colWidths=[1.9*inch], rowHeights=[1.35*inch])
+                image_cell = Table([[Paragraph('No Image', styles['ThaiSmall'])]], colWidths=[img_width], rowHeights=[img_height])
                 image_cell.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                     ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke),
-                    ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.95, 0.96, 0.97)),
+                    ('ROUNDEDCORNERS', (0, 0), (-1, -1), [4, 4, 4, 4]),
                 ]))
 
-            # Info column (two sub-columns)
-            topics_str = ", ".join([t.title for t in job.topics.all()]) or 'N/A'
-            rooms_str = ", ".join([r.name for r in job.rooms.all()]) or 'N/A'
+            # Info column - single column like frontend
             staff_str = job.user.get_full_name() if getattr(job.user, 'get_full_name', None) and job.user.get_full_name() else (job.user.username if job.user else 'N/A')
+            description_truncated = (job.description[:100] + '...') if job.description and len(job.description) > 100 else (job.description or 'No description')
+            remarks_truncated = (job.remarks[:80] + '...') if job.remarks and len(job.remarks) > 80 else (job.remarks or '')
+            topics_str = ", ".join([t.title for t in job.topics.all()]) or 'N/A'
 
-            left_info_rows = [
-                [_make_paragraph(f"<b>Job ID:</b> #{_escape_text(str(job.job_id))}", styles['ThaiNormal'])],
-                [_make_paragraph(f"<b>Topics:</b> {_escape_text(topics_str)}", styles['ThaiNormal'])],
-                [_make_paragraph(f"<b>Description:</b> {_escape_text(job.description or '-')}", styles['ThaiNormal'])],
+            info_rows = [
+                [_make_paragraph(f"<font color='#6b7280' size='7'><b>Job ID:</b></font>", styles['ThaiSmall'])],
+                [_make_paragraph(f"{_escape_text(str(job.job_id))}", styles['ThaiNormal'])],
+                [Spacer(1, 2)],
+                [_make_paragraph(f"<font color='#6b7280' size='7'><b>Topics:</b></font>", styles['ThaiSmall'])],
+                [_make_paragraph(f"{_escape_text(topics_str)}", styles['ThaiNormal'])],
+                [Spacer(1, 2)],
+                [_make_paragraph(f"<font color='#6b7280' size='7'><b>Description:</b></font>", styles['ThaiSmall'])],
+                [_make_paragraph(f"{_escape_text(description_truncated)}", styles['ThaiNormal'])],
             ]
-            right_info_rows = [
-                [_make_paragraph(f"<b>Location:</b> {_escape_text(rooms_str)}", styles['ThaiNormal'])],
-                [_make_paragraph(f"<b>Staff:</b> {_escape_text(staff_str)}", styles['ThaiNormal'])],
-                [_make_paragraph(f"<b>Remarks:</b> {_escape_text(job.remarks or 'N/A')}", styles['ThaiNormal'])],
-            ]
+            
+            if remarks_truncated:
+                info_rows.extend([
+                    [Spacer(1, 2)],
+                    [_make_paragraph(f"<font color='#6b7280' size='7'><b>Remarks:</b></font>", styles['ThaiSmall'])],
+                    [_make_paragraph(f"{_escape_text(remarks_truncated)}", styles['ThaiNormal'])],
+                ])
+            
+            info_rows.extend([
+                [Spacer(1, 2)],
+                [_make_paragraph(f"<font color='#6b7280' size='7'><b>Defect by:</b></font>", styles['ThaiSmall'])],
+                [_make_paragraph(f"{_escape_text(staff_str)}", styles['ThaiNormal'])],
+            ])
 
-            left_info_table = Table(left_info_rows, colWidths=[col_widths[1] * 0.48])
-            left_info_table.setStyle(TableStyle([
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('FONTNAME', (0, 0), (-1, -1), body_font),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('LEADING', (0, 0), (-1, -1), 11),
-            ]))
-
-            right_info_table = Table(right_info_rows, colWidths=[col_widths[1] * 0.48])
-            right_info_table.setStyle(TableStyle([
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('FONTNAME', (0, 0), (-1, -1), body_font),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('LEADING', (0, 0), (-1, -1), 11),
-            ]))
-
-            info_table = Table([[left_info_table, right_info_table]], colWidths=[col_widths[1] * 0.5, col_widths[1] * 0.5])
+            info_table = Table(info_rows, colWidths=[col_widths[1] - 12])
             info_table.setStyle(TableStyle([
                 ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ('FONTNAME', (0, 0), (-1, -1), body_font),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('LEADING', (0, 0), (-1, -1), 11),
+                ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 8),
                 ('TOPPADDING', (0, 0), (-1, -1), 0),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
             ]))
 
-            # Status/priority column
+            # Status/priority column - matching frontend layout
             status_key = (job.status or '').lower()
             priority_key = (job.priority or '').lower()
-            status_label = job.get_status_display() if hasattr(job, 'get_status_display') else (job.status or '-')
-            priority_label = job.get_priority_display().title() if hasattr(job, 'get_priority_display') and job.get_priority_display() else (job.priority or '-')
+            status_label = job.get_status_display().upper().replace('_', ' ') if hasattr(job, 'get_status_display') else (job.status or 'UNKNOWN').upper().replace('_', ' ')
+            priority_label = (job.priority or 'NORMAL').upper()
 
-            status_badge = Table([[Paragraph(_escape_text(str(status_label)), styles['ThaiSmall'])]], colWidths=[col_widths[2] - 10])
+            # Status badge with frontend styling
+            status_badge_para = Paragraph(
+                f"<font color='{status_text_map.get(status_key, colors.grey).hexval()}'><b>{_escape_text(status_label)}</b></font>",
+                styles['ThaiSmall']
+            )
+            status_badge = Table([[status_badge_para]], colWidths=[col_widths[2] - 16])
             status_badge.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), status_bg_map.get(status_key, colors.whitesmoke)),
-                ('TEXTCOLOR', (0, 0), (-1, -1), status_text_map.get(status_key, colors.grey)),
+                ('BACKGROUND', (0, 0), (-1, -1), status_bg_map.get(status_key, colors.Color(0.96, 0.96, 0.96))),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ('ROUNDEDCORNERS', (0, 0), (-1, -1), [3, 3, 3, 3]),
             ]))
 
-            priority_badge = Table([[Paragraph(_escape_text(str(priority_label)), styles['ThaiSmall'])]], colWidths=[col_widths[2] - 10])
+            # Priority badge with frontend styling
+            priority_badge_para = Paragraph(
+                f"<font color='{priority_text_map.get(priority_key, colors.grey).hexval()}'><b>{_escape_text(priority_label)}</b></font>",
+                styles['ThaiSmall']
+            )
+            priority_badge = Table([[priority_badge_para]], colWidths=[col_widths[2] - 16])
             priority_badge.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), priority_bg_map.get(priority_key, colors.whitesmoke)),
-                ('TEXTCOLOR', (0, 0), (-1, -1), priority_text_map.get(priority_key, colors.grey)),
+                ('BACKGROUND', (0, 0), (-1, -1), priority_bg_map.get(priority_key, colors.Color(0.96, 0.96, 0.96))),
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),
-                ('TOPPADDING', (0, 0), (-1, -1), 2),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ('ROUNDEDCORNERS', (0, 0), (-1, -1), [3, 3, 3, 3]),
             ]))
 
-            created_txt = job.created_at.strftime('%Y-%m-%d %H:%M') if job.created_at else ''
-            updated_txt = job.updated_at.strftime('%Y-%m-%d %H:%M') if job.updated_at else ''
-            completed_txt = job.completed_at.strftime('%Y-%m-%d %H:%M') if job.completed_at else ''
+            # Date formatting like frontend
+            created_txt = job.created_at.strftime('%m/%d/%Y %H:%M') if job.created_at else 'N/A'
+            completed_txt = job.completed_at.strftime('%m/%d/%Y %H:%M') if job.completed_at else ''
+            # Include both room type and name
+            rooms_list = [f"{r.room_type} - {r.name}" for r in job.rooms.all()]
+            rooms_str = ", ".join(rooms_list) if rooms_list else 'N/A'
 
-            status_table_rows = [
-                [_make_paragraph('<b>Status:</b>', styles['ThaiSmall'])],
+            # Build status table rows with Location at the top
+            status_table_rows = []
+            
+            # Location first (if available)
+            if rooms_str != 'N/A':
+                status_table_rows.extend([
+                    [_make_paragraph('<font color="#6b7280" size="7"><b>Location:</b></font>', styles['ThaiSmall'])],
+                    [_make_paragraph(f'<font size="8">{_escape_text(rooms_str)}</font>', styles['ThaiNormal'])],
+                    [Spacer(1, 3)],
+                ])
+            
+            # Status
+            status_table_rows.extend([
+                [_make_paragraph('<font color="#6b7280" size="7"><b>Status:</b></font>', styles['ThaiSmall'])],
                 [status_badge],
-                [Spacer(1, 4)],
-                [_make_paragraph('<b>Priority:</b>', styles['ThaiSmall'])],
+                [Spacer(1, 3)],
+            ])
+            
+            # Priority
+            status_table_rows.extend([
+                [_make_paragraph('<font color="#6b7280" size="7"><b>Priority:</b></font>', styles['ThaiSmall'])],
                 [priority_badge],
-                [Spacer(1, 4)],
-                [_make_paragraph(f"<b>Created:</b> {_escape_text(created_txt)}", styles['ThaiSmall'])],
-                [_make_paragraph(f"<b>Updated:</b> {_escape_text(updated_txt)}", styles['ThaiSmall'])],
-            ]
+                [Spacer(1, 3)],
+            ])
+            
+            # Created date
+            status_table_rows.extend([
+                [_make_paragraph('<font color="#6b7280" size="7"><b>Created:</b></font>', styles['ThaiSmall'])],
+                [_make_paragraph(f'<font size="7">{_escape_text(created_txt)}</font>', styles['ThaiSmall'])],
+            ])
+            
+            # Completed date (if exists)
             if completed_txt:
-                status_table_rows.append([_make_paragraph(f"<b>Completed:</b> {_escape_text(completed_txt)}", styles['ThaiSmall'])])
+                status_table_rows.extend([
+                    [Spacer(1, 2)],
+                    [_make_paragraph('<font color="#6b7280" size="7"><b>Completed:</b></font>', styles['ThaiSmall'])],
+                    [_make_paragraph(f'<font size="7">{_escape_text(completed_txt)}</font>', styles['ThaiSmall'])],
+                ])
 
-            status_table = Table(status_table_rows, colWidths=[col_widths[2] - 6])
+            status_table = Table(status_table_rows, colWidths=[col_widths[2] - 12])
             status_table.setStyle(TableStyle([
                 ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('LEFTPADDING', (0, 0), (-1, -1), 4),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 8),
                 ('TOPPADDING', (0, 0), (-1, -1), 0),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
             ]))
 
-            # Card container
+            # Card container with alternating backgrounds like frontend
+            row_bg_color = colors.white if job_index % 2 == 0 else colors.Color(0.98, 0.98, 0.99)  # #f8f9fa for alternating
+            
             card = Table([[image_cell, info_table, status_table]], colWidths=col_widths)
             card.setStyle(TableStyle([
                 ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('BACKGROUND', (0, 0), (-1, -1), colors.white),
-                ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-                ('TOPPADDING', (0, 0), (-1, -1), 6),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('BACKGROUND', (0, 0), (-1, -1), row_bg_color),
+                ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ('TOPPADDING', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
             ]))
 
             story.append(card)
-            # Separator line between cards
+            # Separator line between cards (subtle like frontend)
             sep = Table([['']], colWidths=[usable_width])
             sep.setStyle(TableStyle([
-                ('LINEBELOW', (0, 0), (-1, -1), 0.3, colors.lightgrey),
+                ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.Color(0.9, 0.91, 0.92)),  # #e5e7eb
             ]))
             story.append(sep)
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 8))
 
         # Build PDF
         doc.build(story)
@@ -953,6 +1050,93 @@ class JobAdmin(admin.ModelAdmin):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     export_jobs_pdf.short_description = "Export selected/filtered jobs to PDF"
+
+    def export_jobs_csv(self, request, queryset):
+        """Export selected/filtered jobs to CSV"""
+        import csv
+        from django.utils import timezone
+        
+        # Prefetch related data to avoid N+1 queries
+        qs = queryset.select_related('user').prefetch_related('rooms__properties', 'rooms', 'topics', 'job_images').order_by('created_at')
+        
+        # Create the HttpResponse object with CSV header
+        filename = f"jobs_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        writer = csv.writer(response)
+        
+        # Write header row
+        writer.writerow([
+            'Job ID',
+            'Description',
+            'Status',
+            'Priority',
+            'Defect by',
+            'Topics',
+            'Location (Room Type - Room Name)',
+            'Properties',
+            'Remarks',
+            'Is Defective',
+            'Is Preventive Maintenance',
+            'Created At',
+            'Updated At',
+            'Completed At',
+        ])
+        
+        # Write data rows
+        for job in qs:
+            # Get user info
+            user_info = ''
+            if job.user:
+                user_info = f"{job.user.username}"
+                if job.user.first_name or job.user.last_name:
+                    user_info += f" ({job.user.first_name} {job.user.last_name})".strip()
+            
+            # Get topics
+            topics = ", ".join([t.title for t in job.topics.all()])
+            
+            # Get rooms with type
+            rooms = ", ".join([f"{r.room_type} - {r.name}" for r in job.rooms.all()])
+            
+            # Get properties
+            properties = []
+            if job.rooms.exists():
+                for room in job.rooms.all():
+                    for prop in room.properties.all():
+                        prop_display = f"{prop.property_id} - {prop.name}"
+                        if prop_display not in properties:
+                            properties.append(prop_display)
+            properties_str = ", ".join(properties)
+            
+            # Format dates
+            created_at = job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else ''
+            updated_at = job.updated_at.strftime('%Y-%m-%d %H:%M:%S') if job.updated_at else ''
+            completed_at = job.completed_at.strftime('%Y-%m-%d %H:%M:%S') if job.completed_at else ''
+            
+            # Get status display
+            status = job.get_status_display() if hasattr(job, 'get_status_display') else job.status
+            priority = job.get_priority_display() if hasattr(job, 'get_priority_display') else job.priority
+            
+            writer.writerow([
+                job.job_id,
+                job.description or '',
+                status,
+                priority,
+                user_info,
+                topics,
+                rooms,
+                properties_str,
+                job.remarks or '',
+                'Yes' if job.is_defective else 'No',
+                'Yes' if job.is_preventivemaintenance else 'No',
+                created_at,
+                updated_at,
+                completed_at,
+            ])
+        
+        return response
+    export_jobs_csv.short_description = "Export selected/filtered jobs to CSV"
 
 @admin.register(JobImage)
 class JobImageAdmin(admin.ModelAdmin):

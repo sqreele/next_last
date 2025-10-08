@@ -523,7 +523,7 @@ class JobAdmin(admin.ModelAdmin):
     reset_completed_timestamps.short_description = "Reset completed timestamps"
 
     def export_jobs_pdf(self, request, queryset):
-        """Export selected/filtered jobs to a compact PDF table, respecting current filters."""
+        """Export selected/filtered jobs to a PDF with card-style rows matching the web Job PDF."""
         try:
             from reportlab.lib.pagesizes import A4
             from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
@@ -630,155 +630,202 @@ class JobAdmin(admin.ModelAdmin):
             styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontSize=8, leading=10))
         story = []
 
-        now_display = timezone.now().strftime('%Y-%m-%d')
-        story.append(Paragraph(f"Jobs Export ({now_display})", styles['ThaiTitle']))
-        story.append(Spacer(1, 12))
+        # Header
+        now_display = timezone.now().strftime('%Y-%m-%d %H:%M')
+        story.append(Paragraph("Jobs Report", styles['ThaiTitle']))
+        story.append(Paragraph(f"Generated: {now_display}", styles['ThaiNormal']))
+        story.append(Spacer(1, 10))
 
-        # Summary row
-        total = qs.count()
-        completed = qs.filter(status='completed').count()
-        other = total - completed
-        story.append(Paragraph(f"Total: {total} | Completed: {completed} | Other: {other}", styles['Normal']))
-        story.append(Spacer(1, 12))
+        # Layout helpers
+        page_width, _page_height = A4
+        usable_width = page_width - doc.leftMargin - doc.rightMargin
 
-        headers = ['Job ID', 'Status', 'Priority', 'User', 'Properties', 'Created', 'Completed']
+        # Column widths approx: image 20%, info 50% (split inside), status 30%
+        col_widths = [usable_width * 0.20, usable_width * 0.50, usable_width * 0.30]
 
         header_font = thai_bold or 'Helvetica-Bold'
         body_font = thai_regular or 'Helvetica'
 
-        table_style = TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-            ('FONTNAME', (0, 0), (-1, 0), header_font),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('FONTNAME', (0, 1), (-1, -1), body_font),
-            ('FONTSIZE', (0, 1), (-1, -1), 8),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.whitesmoke]),
-            ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
-        ])
-
-        # Prepare rows
-        # Compute A4-usable width for column sizing
-        page_width, _page_height = A4
-        usable_width = page_width - doc.leftMargin - doc.rightMargin
-        fractions = [0.12, 0.14, 0.14, 0.18, 0.28, 0.07, 0.07]
-        col_widths = [usable_width * f for f in fractions]
-
-        rows = []
-        for job in qs:
-            user_str = job.user.username if job.user else ''
-            props_str = self.get_properties_display(job)
-            created = job.created_at.strftime('%Y-%m-%d') if job.created_at else ''
-            completed_dt = job.completed_at.strftime('%Y-%m-%d') if job.completed_at else ''
-
-            # Use Paragraphs to enable wrapping (Thai-capable styles)
-            rows.append([
-                Paragraph(xml_escape(str(job.job_id or '')), styles['ThaiSmall']),
-                Paragraph(xml_escape(job.get_status_display() or ''), styles['ThaiSmall']),
-                Paragraph(xml_escape(job.get_priority_display().title() if job.get_priority_display() else ''), styles['ThaiSmall']),
-                Paragraph(xml_escape(user_str or ''), styles['ThaiSmall']),
-                Paragraph(xml_escape(props_str or ''), styles['ThaiSmall']),
-                Paragraph(xml_escape(created or ''), styles['ThaiSmall']),
-                Paragraph(xml_escape(completed_dt or ''), styles['ThaiSmall']),
-            ])
-
-        # Chunk rows to ensure tables fit on pages
-        # Build table; allow automatic page splits with repeated header
-        data = [headers] + rows
-        table = Table(data, repeatRows=1, colWidths=col_widths)
-        table.setStyle(table_style)
-        story.append(table)
-        story.append(Spacer(1, 12))
-
-        # -----------------------------
-        # Detailed section with requested fields
-        # -----------------------------
-        story.append(PageBreak())
-        story.append(Paragraph("Job Details", styles['ThaiHeading2']))
-        story.append(Spacer(1, 6))
-
         def _escape_text(text):
             return xml_escape(text or '')
 
-        for job in qs:
-            # Core fields
-            rooms_str = ", ".join([room.name for room in job.rooms.all()]) or "-"
-            topics_str = ", ".join([topic.title for topic in job.topics.all()]) or "-"
-            description_str = _escape_text(job.description)
-            remarks_str = _escape_text(job.remarks)
-
-            story.append(Paragraph(f"Job {job.job_id}", styles['ThaiHeading3']))
-            story.append(Spacer(1, 4))
-
-            details_data = [
-                [Paragraph('<b>Status</b>', styles['ThaiNormal']), Paragraph(_escape_text(job.get_status_display()), styles['ThaiNormal'])],
-                [Paragraph('<b>Priority</b>', styles['ThaiNormal']), Paragraph(_escape_text(job.get_priority_display().title()), styles['ThaiNormal'])],
-                [Paragraph('<b>User</b>', styles['ThaiNormal']), Paragraph(_escape_text(job.user.username if job.user else ''), styles['ThaiNormal'])],
-                [Paragraph('<b>Rooms</b>', styles['ThaiNormal']), Paragraph(_escape_text(rooms_str), styles['ThaiNormal'])],
-                [Paragraph('<b>Topics</b>', styles['ThaiNormal']), Paragraph(_escape_text(topics_str), styles['ThaiNormal'])],
-                [Paragraph('<b>Description</b>', styles['ThaiNormal']), Paragraph(description_str or '-', styles['ThaiNormal'])],
-                [Paragraph('<b>Remarks</b>', styles['ThaiNormal']), Paragraph(remarks_str or '-', styles['ThaiNormal'])],
-            ]
-
-            # Use page width for better A4 fit
-            details_col_widths = [usable_width * 0.18, usable_width * 0.82]
-            details_table = Table(details_data, hAlign='LEFT', colWidths=details_col_widths)
-            details_table.setStyle(TableStyle([
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('FONTNAME', (0, 0), (-1, -1), body_font),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-            ]))
-            story.append(details_table)
-
-            # Images section (embed small thumbnails)
-            images = []
-            for img in job.job_images.all():
+        def _first_image_path(job_obj):
+            for img in job_obj.job_images.all():
                 img_path = None
                 if getattr(img, 'jpeg_path', None):
                     img_path = os.path.join(settings.MEDIA_ROOT, img.jpeg_path)
                 elif getattr(img, 'image', None) and hasattr(img.image, 'path'):
                     img_path = img.image.path
-
                 if img_path and os.path.isfile(img_path):
-                    try:
-                        thumb = Image(img_path, width=1.8*inch, height=1.35*inch)
-                        images.append(thumb)
-                    except Exception:
-                        # Skip images that fail to load
-                        continue
+                    return img_path
+            return None
 
-                if len(images) >= 4:  # Limit number of thumbnails per job
-                    break
+        # Color helpers for badges (approximate tinted backgrounds)
+        status_bg_map = {
+            'completed': colors.lightgreen,
+            'in_progress': colors.lightblue,
+            'pending': colors.lightgoldenrodyellow,
+            'cancelled': colors.pink,
+            'waiting_sparepart': colors.lavender,
+        }
+        status_text_map = {
+            'completed': colors.green,
+            'in_progress': colors.blue,
+            'pending': colors.orange,
+            'cancelled': colors.red,
+            'waiting_sparepart': colors.purple,
+        }
+        priority_bg_map = {
+            'high': colors.mistyrose,
+            'medium': colors.bisque,
+            'low': colors.honeydew,
+        }
+        priority_text_map = {
+            'high': colors.red,
+            'medium': colors.orange,
+            'low': colors.green,
+        }
 
-            if images:
-                story.append(Spacer(1, 6))
-                story.append(Paragraph("Images:", styles['ThaiNormal']))
-                # Arrange images in rows of up to 4 per row
-                row = []
-                rows = []
-                for idx, im in enumerate(images, start=1):
-                    row.append(im)
-                    if len(row) == 4:
-                        rows.append(row)
-                        row = []
-                if row:
-                    rows.append(row)
-
-                images_table = Table(rows, hAlign='LEFT', colWidths=[1.9*inch]*max(1, len(rows[0])))
-                images_table.setStyle(TableStyle([
+        # Card renderer
+        for job in qs:
+            # Image cell
+            img_path = _first_image_path(job)
+            if img_path:
+                try:
+                    image_cell = Image(img_path, width=1.9*inch, height=1.35*inch)
+                except Exception:
+                    image_cell = Table([[Paragraph('No Image', styles['ThaiSmall'])]], colWidths=[1.9*inch], rowHeights=[1.35*inch])
+                    image_cell.setStyle(TableStyle([
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke),
+                        ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),
+                    ]))
+            else:
+                image_cell = Table([[Paragraph('No Image', styles['ThaiSmall'])]], colWidths=[1.9*inch], rowHeights=[1.35*inch])
+                image_cell.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                     ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 2),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),
-                    ('TOPPADDING', (0, 0), (-1, -1), 2),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.whitesmoke),
+                    ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),
                 ]))
-                story.append(images_table)
 
-            story.append(Spacer(1, 12))
+            # Info column (two sub-columns)
+            topics_str = ", ".join([t.title for t in job.topics.all()]) or 'N/A'
+            rooms_str = ", ".join([r.name for r in job.rooms.all()]) or 'N/A'
+            staff_str = job.user.get_full_name() if getattr(job.user, 'get_full_name', None) and job.user.get_full_name() else (job.user.username if job.user else 'N/A')
 
-        # Build and return response
+            left_info_rows = [
+                [Paragraph(f"<b>Job ID:</b> #{_escape_text(str(job.job_id))}", styles['ThaiNormal'])],
+                [Paragraph(f"<b>Topics:</b> {_escape_text(topics_str)}", styles['ThaiNormal'])],
+                [Paragraph(f"<b>Description:</b> {_escape_text(job.description or '-')}", styles['ThaiNormal'])],
+            ]
+            right_info_rows = [
+                [Paragraph(f"<b>Location:</b> {_escape_text(rooms_str)}", styles['ThaiNormal'])],
+                [Paragraph(f"<b>Staff:</b> {_escape_text(staff_str)}", styles['ThaiNormal'])],
+                [Paragraph(f"<b>Remarks:</b> {_escape_text(job.remarks or 'N/A')}", styles['ThaiNormal'])],
+            ]
+
+            left_info_table = Table(left_info_rows, colWidths=[col_widths[1] * 0.48])
+            left_info_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('FONTNAME', (0, 0), (-1, -1), body_font),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('LEADING', (0, 0), (-1, -1), 11),
+            ]))
+
+            right_info_table = Table(right_info_rows, colWidths=[col_widths[1] * 0.48])
+            right_info_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('FONTNAME', (0, 0), (-1, -1), body_font),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('LEADING', (0, 0), (-1, -1), 11),
+            ]))
+
+            info_table = Table([[left_info_table, right_info_table]], colWidths=[col_widths[1] * 0.5, col_widths[1] * 0.5])
+            info_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+
+            # Status/priority column
+            status_key = (job.status or '').lower()
+            priority_key = (job.priority or '').lower()
+            status_label = job.get_status_display() if hasattr(job, 'get_status_display') else (job.status or '-')
+            priority_label = job.get_priority_display().title() if hasattr(job, 'get_priority_display') and job.get_priority_display() else (job.priority or '-')
+
+            status_badge = Table([[Paragraph(_escape_text(str(status_label)), styles['ThaiSmall'])]], colWidths=[col_widths[2] - 10])
+            status_badge.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), status_bg_map.get(status_key, colors.whitesmoke)),
+                ('TEXTCOLOR', (0, 0), (-1, -1), status_text_map.get(status_key, colors.grey)),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ]))
+
+            priority_badge = Table([[Paragraph(_escape_text(str(priority_label)), styles['ThaiSmall'])]], colWidths=[col_widths[2] - 10])
+            priority_badge.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), priority_bg_map.get(priority_key, colors.whitesmoke)),
+                ('TEXTCOLOR', (0, 0), (-1, -1), priority_text_map.get(priority_key, colors.grey)),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('BOX', (0, 0), (-1, -1), 0.25, colors.lightgrey),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ]))
+
+            created_txt = job.created_at.strftime('%Y-%m-%d %H:%M') if job.created_at else ''
+            updated_txt = job.updated_at.strftime('%Y-%m-%d %H:%M') if job.updated_at else ''
+            completed_txt = job.completed_at.strftime('%Y-%m-%d %H:%M') if job.completed_at else ''
+
+            status_table_rows = [
+                [Paragraph('<b>Status:</b>', styles['ThaiSmall'])],
+                [status_badge],
+                [Spacer(1, 4)],
+                [Paragraph('<b>Priority:</b>', styles['ThaiSmall'])],
+                [priority_badge],
+                [Spacer(1, 4)],
+                [Paragraph(f"<b>Created:</b> {_escape_text(created_txt)}", styles['ThaiSmall'])],
+                [Paragraph(f"<b>Updated:</b> {_escape_text(updated_txt)}", styles['ThaiSmall'])],
+            ]
+            if completed_txt:
+                status_table_rows.append([Paragraph(f"<b>Completed:</b> {_escape_text(completed_txt)}", styles['ThaiSmall'])])
+
+            status_table = Table(status_table_rows, colWidths=[col_widths[2] - 6])
+            status_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 4),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+
+            # Card container
+            card = Table([[image_cell, info_table, status_table]], colWidths=col_widths)
+            card.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ]))
+
+            story.append(card)
+            # Separator line between cards
+            sep = Table([['']], colWidths=[usable_width])
+            sep.setStyle(TableStyle([
+                ('LINEBELOW', (0, 0), (-1, -1), 0.3, colors.lightgrey),
+            ]))
+            story.append(sep)
+            story.append(Spacer(1, 6))
+
+        # Build PDF
         doc.build(story)
         buffer.seek(0)
         filename = f"jobs_{timezone.now().strftime('%Y_%m_%d')}.pdf"

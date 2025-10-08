@@ -558,6 +558,8 @@ class JobAdmin(admin.ModelAdmin):
             nonlocal thai_regular, thai_bold
             if thai_regular and thai_bold:
                 return
+            base_dir = getattr(settings, 'BASE_DIR', '')
+            project_root = os.path.dirname(base_dir) if base_dir else ''
             candidates = [
                 # Noto Sans Thai (common on servers)
                 (
@@ -575,26 +577,45 @@ class JobAdmin(admin.ModelAdmin):
                 ),
                 # Project fonts directories
                 (
-                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'fonts', 'NotoSansThai-Regular.ttf'),
-                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'fonts', 'NotoSansThai-Bold.ttf'),
+                    os.path.join(base_dir, 'static', 'fonts', 'NotoSansThai-Regular.ttf'),
+                    os.path.join(base_dir, 'static', 'fonts', 'NotoSansThai-Bold.ttf'),
                     'NotoSansThai-Regular',
                     'NotoSansThai-Bold'
                 ),
                 (
-                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'fonts', 'NotoSansThai-Regular.ttf'),
-                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'fonts', 'NotoSansThai-Bold.ttf'),
+                    os.path.join(base_dir, 'fonts', 'NotoSansThai-Regular.ttf'),
+                    os.path.join(base_dir, 'fonts', 'NotoSansThai-Bold.ttf'),
                     'NotoSansThai-Regular',
                     'NotoSansThai-Bold'
                 ),
+                # Sarabun (Thai) - commonly used in our frontend
                 (
-                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'fonts', 'THSarabunNew.ttf'),
-                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'static', 'fonts', 'THSarabunNew-Bold.ttf'),
+                    os.path.join(project_root, 'static_volume', 'fonts', 'Sarabun-Regular.ttf'),
+                    os.path.join(project_root, 'static_volume', 'fonts', 'Sarabun-Bold.ttf'),
+                    'Sarabun-Regular',
+                    'Sarabun-Bold'
+                ),
+                (
+                    os.path.join(base_dir, 'static', 'fonts', 'Sarabun-Regular.ttf'),
+                    os.path.join(base_dir, 'static', 'fonts', 'Sarabun-Bold.ttf'),
+                    'Sarabun-Regular',
+                    'Sarabun-Bold'
+                ),
+                (
+                    os.path.join(base_dir, 'fonts', 'Sarabun-Regular.ttf'),
+                    os.path.join(base_dir, 'fonts', 'Sarabun-Bold.ttf'),
+                    'Sarabun-Regular',
+                    'Sarabun-Bold'
+                ),
+                (
+                    os.path.join(base_dir, 'static', 'fonts', 'THSarabunNew.ttf'),
+                    os.path.join(base_dir, 'static', 'fonts', 'THSarabunNew-Bold.ttf'),
                     'THSarabunNew',
                     'THSarabunNew-Bold'
                 ),
                 (
-                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'fonts', 'THSarabunNew.ttf'),
-                    os.path.join(getattr(settings, 'BASE_DIR', ''), 'fonts', 'THSarabunNew-Bold.ttf'),
+                    os.path.join(base_dir, 'fonts', 'THSarabunNew.ttf'),
+                    os.path.join(base_dir, 'fonts', 'THSarabunNew-Bold.ttf'),
                     'THSarabunNew',
                     'THSarabunNew-Bold'
                 ),

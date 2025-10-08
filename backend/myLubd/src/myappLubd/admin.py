@@ -553,9 +553,10 @@ class JobAdmin(admin.ModelAdmin):
         # ---------------------------------
         thai_regular = None
         thai_bold = None
+        thai_family = None
 
         def register_thai_fonts():
-            nonlocal thai_regular, thai_bold
+            nonlocal thai_regular, thai_bold, thai_family
             if thai_regular and thai_bold:
                 return
             base_dir = getattr(settings, 'BASE_DIR', '')
@@ -607,6 +608,13 @@ class JobAdmin(admin.ModelAdmin):
                     'Sarabun-Regular',
                     'Sarabun-Bold'
                 ),
+                # Static volume (mounted) fonts: backend/static_volume/fonts
+                (
+                    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(base_dir))), 'static_volume', 'fonts', 'Sarabun-Regular.ttf'),
+                    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(base_dir))), 'static_volume', 'fonts', 'Sarabun-Bold.ttf'),
+                    'Sarabun-Regular',
+                    'Sarabun-Bold'
+                ),
                 (
                     os.path.join(base_dir, 'static', 'fonts', 'THSarabunNew.ttf'),
                     os.path.join(base_dir, 'static', 'fonts', 'THSarabunNew-Bold.ttf'),
@@ -625,7 +633,20 @@ class JobAdmin(admin.ModelAdmin):
                     if reg and bold and os.path.isfile(reg) and os.path.isfile(bold):
                         pdfmetrics.registerFont(TTFont(reg_name, reg))
                         pdfmetrics.registerFont(TTFont(bold_name, bold))
-                        thai_regular, thai_bold = reg_name, bold_name
+                        # Derive a family name (e.g., "Sarabun" from "Sarabun-Regular")
+                        family_name = reg_name.rsplit('-', 1)[0] if '-' in reg_name else reg_name
+                        try:
+                            pdfmetrics.registerFontFamily(
+                                family_name,
+                                normal=reg_name,
+                                bold=bold_name,
+                                italic=reg_name,
+                                boldItalic=bold_name,
+                            )
+                        except Exception:
+                            # Family registration is best-effort; continue even if it fails
+                            pass
+                        thai_regular, thai_bold, thai_family = reg_name, bold_name, family_name
                         break
                 except Exception:
                     # Try next candidate
@@ -636,11 +657,13 @@ class JobAdmin(admin.ModelAdmin):
         # Add Thai-capable styles
         if thai_regular:
             from reportlab.lib.styles import ParagraphStyle
+            # Use the family for paragraph styles so inline <b> uses the Thai bold face
+            base_family = thai_family or thai_regular
             styles.add(ParagraphStyle(name='ThaiTitle', parent=styles['Title'], fontName=thai_bold))
             styles.add(ParagraphStyle(name='ThaiHeading2', parent=styles['Heading2'], fontName=thai_bold))
             styles.add(ParagraphStyle(name='ThaiHeading3', parent=styles['Heading3'], fontName=thai_bold))
-            styles.add(ParagraphStyle(name='ThaiNormal', parent=styles['Normal'], fontName=thai_regular, fontSize=9, leading=11, wordWrap='CJK'))
-            styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontName=thai_regular, fontSize=8, leading=10, wordWrap='CJK'))
+            styles.add(ParagraphStyle(name='ThaiNormal', parent=styles['Normal'], fontName=base_family, fontSize=9, leading=11, wordWrap='CJK'))
+            styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontName=base_family, fontSize=8, leading=10, wordWrap='CJK'))
         else:
             # Fallback styles use default fonts
             from reportlab.lib.styles import ParagraphStyle

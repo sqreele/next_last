@@ -491,8 +491,8 @@ class JobAdmin(admin.ModelAdmin):
             instance.save()
         formset.save_m2m()
 
-    # Admin actions for timestamp management
-    actions = ['update_timestamps_to_now', 'reset_completed_timestamps']
+    # Admin actions for timestamp management and export
+    actions = ['update_timestamps_to_now', 'reset_completed_timestamps', 'export_jobs_pdf']
 
     def update_timestamps_to_now(self, request, queryset):
         """Update selected jobs' timestamps to current time"""
@@ -521,6 +521,87 @@ class JobAdmin(admin.ModelAdmin):
         
         self.message_user(request, f"Reset completed timestamps for {updated_count} completed jobs.")
     reset_completed_timestamps.short_description = "Reset completed timestamps"
+
+    def export_jobs_pdf(self, request, queryset):
+        """Export selected/filtered jobs to a compact PDF table, respecting current filters."""
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib.units import inch
+            from reportlab.lib import colors
+        except Exception:
+            self.message_user(request, 'ReportLab is required for PDF export. Install with: pip install reportlab', level='error')
+            return None
+
+        # Prefetch related data to avoid N+1 queries
+        qs = queryset.select_related('user').prefetch_related('rooms__properties').order_by('created_at')
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=48, bottomMargin=36)
+        styles = getSampleStyleSheet()
+        story = []
+
+        now_display = timezone.now().strftime('%Y-%m-%d')
+        story.append(Paragraph(f"Jobs Export ({now_display})", styles['Title']))
+        story.append(Spacer(1, 12))
+
+        # Summary row
+        total = qs.count()
+        completed = qs.filter(status='completed').count()
+        other = total - completed
+        story.append(Paragraph(f"Total: {total} | Completed: {completed} | Other: {other}", styles['Normal']))
+        story.append(Spacer(1, 12))
+
+        headers = ['Job ID', 'Status', 'Priority', 'User', 'Properties', 'Created', 'Completed']
+
+        table_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.whitesmoke]),
+            ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
+        ])
+
+        # Prepare rows
+        rows = []
+        for job in qs:
+            user_str = job.user.username if job.user else ''
+            props_str = self.get_properties_display(job)
+            created = job.created_at.strftime('%Y-%m-%d') if job.created_at else ''
+            completed_dt = job.completed_at.strftime('%Y-%m-%d') if job.completed_at else ''
+            rows.append([
+                job.job_id,
+                job.get_status_display(),
+                job.get_priority_display().title(),
+                user_str,
+                props_str,
+                created,
+                completed_dt,
+            ])
+
+        # Chunk rows to ensure tables fit on pages
+        chunk_size = 35
+        col_widths = [1.1*inch, 0.9*inch, 0.9*inch, 1.2*inch, 2.8*inch, 1.0*inch, 1.0*inch]
+        for i in range(0, len(rows), chunk_size):
+            chunk = rows[i:i+chunk_size]
+            data = [headers] + chunk
+            table = Table(data, repeatRows=1, colWidths=col_widths)
+            table.setStyle(table_style)
+            story.append(table)
+            story.append(Spacer(1, 12))
+
+        # Build and return response
+        doc.build(story)
+        buffer.seek(0)
+        filename = f"jobs_{timezone.now().strftime('%Y_%m_%d')}.pdf"
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    export_jobs_pdf.short_description = "Export selected/filtered jobs to PDF"
 
 @admin.register(JobImage)
 class JobImageAdmin(admin.ModelAdmin):

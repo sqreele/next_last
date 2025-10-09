@@ -45,6 +45,12 @@ class Command(BaseCommand):
             dest="all_properties",
             help="Send summary for all properties to their respective users",
         )
+        parser.add_argument(
+            "--include-staff",
+            action="store_true",
+            dest="include_staff",
+            help="Include staff users in email recipients (by default, only property-assigned users receive emails)",
+        )
 
     def get_property_job_statistics(self, property_id, days=7):
         """Calculate job statistics for a specific property."""
@@ -75,8 +81,19 @@ class Command(BaseCommand):
         # Calculate completed jobs
         completed_jobs = jobs.filter(status='completed').count()
         
-        # Get recent jobs (last 10)
-        recent_jobs = jobs.order_by('-created_at')[:10]
+        # Get recent jobs (last 10) with property information
+        recent_jobs_queryset = jobs.order_by('-created_at')[:10]
+        recent_jobs = []
+        for job in recent_jobs_queryset:
+            # Get all properties this job belongs to through its rooms
+            job_properties = Property.objects.filter(
+                rooms__jobs=job
+            ).distinct().values_list('name', flat=True)
+            
+            recent_jobs.append({
+                'job': job,
+                'properties': list(job_properties) if job_properties else []
+            })
         
         # Get room statistics
         room_stats = []
@@ -115,18 +132,34 @@ class Command(BaseCommand):
             'days': days,
         }
 
-    def get_property_users(self, property_id):
-        """Get users who have access to this property."""
+    def get_property_users(self, property_id, strict_mode=True):
+        """Get users who have access to this property.
+        
+        Args:
+            property_id: The property ID to filter users by
+            strict_mode: If True, only users assigned to this property receive emails.
+                        If False, staff users also receive emails (default: True)
+        """
         User = get_user_model()
-        return User.objects.filter(
-            Q(is_active=True) & 
-            (Q(profile__properties__id=property_id) | Q(is_staff=True))
-        ).exclude(email__isnull=True).exclude(email__exact="")
+        if strict_mode:
+            # Only users explicitly assigned to this property
+            return User.objects.filter(
+                is_active=True,
+                profile__properties__id=property_id
+            ).exclude(email__isnull=True).exclude(email__exact="")
+        else:
+            # Include staff users (legacy behavior)
+            return User.objects.filter(
+                Q(is_active=True) & 
+                (Q(profile__properties__id=property_id) | Q(is_staff=True))
+            ).exclude(email__isnull=True).exclude(email__exact="")
 
     def handle(self, *args, **options):
         try:
             now = timezone.localtime()
             days = options.get('days', 7)
+            include_staff = options.get('include_staff', False)
+            strict_mode = not include_staff  # strict_mode is True unless --include-staff is specified
             
             if options.get('all_properties'):
                 # Send summary for all properties
@@ -135,7 +168,7 @@ class Command(BaseCommand):
                 
                 for property_obj in properties:
                     stats = self.get_property_job_statistics(property_obj.id, days)
-                    users = self.get_property_users(property_obj.id)
+                    users = self.get_property_users(property_obj.id, strict_mode=strict_mode)
                     
                     if users.exists():
                         success = self.send_property_summary_email(stats, users, now)
@@ -156,16 +189,19 @@ class Command(BaseCommand):
                 if explicit_to:
                     users = [explicit_to]
                 else:
-                    user_objects = self.get_property_users(property_id)
+                    user_objects = self.get_property_users(property_id, strict_mode=strict_mode)
                     users = list(user_objects.values_list("email", flat=True))
                     
                     if not users:
-                        # Fallback to staff users
+                        # Fallback to staff users if no property-assigned users found
                         User = get_user_model()
                         staff_users = User.objects.filter(
                             is_active=True, is_staff=True
                         ).exclude(email__isnull=True).exclude(email__exact="")
                         users = list(staff_users.values_list("email", flat=True))
+                        
+                        if users:
+                            logger.info(f"No property-assigned users found. Falling back to {len(users)} staff users")
                 
                 if not users:
                     logger.error("No recipient email addresses found.")
@@ -213,8 +249,11 @@ class Command(BaseCommand):
                 "Recent jobs:",
             ])
             
-            for job in stats['recent_jobs']:
-                lines.append(f"- {job.job_id}: {job.description[:50]}... ({job.status})")
+            for job_data in stats['recent_jobs']:
+                job = job_data['job']
+                properties = job_data['properties']
+                properties_str = f" [Properties: {', '.join(properties)}]" if properties else ""
+                lines.append(f"- {job.job_id}: {job.description[:50]}... ({job.status}){properties_str}")
             
             if stats['room_stats']:
                 lines.extend([

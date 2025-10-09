@@ -958,6 +958,7 @@ class JobViewSet(viewsets.ModelViewSet):
         search_term = self.request.query_params.get('search')
         room_filter = self.request.query_params.get('room_id')
         room_name_filter = self.request.query_params.get('room_name')
+        user_filter = self.request.query_params.get('user_id')
 
         if property_filter:
             queryset = queryset.filter(rooms__properties__property_id=property_filter)
@@ -981,6 +982,10 @@ class JobViewSet(viewsets.ModelViewSet):
 
         if room_name_filter:
             queryset = queryset.filter(rooms__name__icontains=room_name_filter)
+
+        if user_filter:
+            # Filter by user ID - useful for admins or viewing specific user's jobs
+            queryset = queryset.filter(user__id=user_filter)
 
         return queryset.distinct()
 
@@ -1071,15 +1076,26 @@ class JobViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def my_jobs(self, request):
-        """Get jobs for the currently authenticated user"""
+        """Get jobs for the currently authenticated user or a specific user (admin only)"""
         user = request.user
         
-        # Get all jobs where the user is the owner/creator
-        jobs = Job.objects.filter(user=user).select_related(
-            'user', 'updated_by'
-        ).prefetch_related(
-            'rooms', 'topics', 'job_images', 'job_images__uploaded_by'
-        ).order_by('-created_at')
+        # Check if user_id parameter is provided (admin feature)
+        user_filter = request.query_params.get('user_id')
+        
+        if user_filter and (user.is_staff or user.is_superuser):
+            # Admin can view jobs for any specific user
+            jobs = Job.objects.filter(user__id=user_filter).select_related(
+                'user', 'updated_by'
+            ).prefetch_related(
+                'rooms', 'topics', 'job_images', 'job_images__uploaded_by'
+            ).order_by('-created_at')
+        else:
+            # Regular users can only see their own jobs
+            jobs = Job.objects.filter(user=user).select_related(
+                'user', 'updated_by'
+            ).prefetch_related(
+                'rooms', 'topics', 'job_images', 'job_images__uploaded_by'
+            ).order_by('-created_at')
         
         # Apply additional filters if provided
         property_filter = request.query_params.get('property_id')

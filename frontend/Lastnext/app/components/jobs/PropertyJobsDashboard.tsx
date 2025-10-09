@@ -387,7 +387,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     const validStats = result.filter(stat => stat.value > 0);
     
     return validStats;
-  }, [filteredJobs]);
+  }, [filteredJobs, backendStats]);
 
   // ✅ PERFORMANCE OPTIMIZATION: Memoized job monthly data with optimization for large datasets
   const jobsByMonth = useMemo(() => {

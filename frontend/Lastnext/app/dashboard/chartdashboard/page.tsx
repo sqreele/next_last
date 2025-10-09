@@ -4,6 +4,7 @@ import { fetchAllJobsForDashboard } from '@/app/lib/data.server';
 import PropertyJobsDashboard from '@/app/components/jobs/PropertyJobsDashboard';
 import { getServerSession } from '@/app/lib/session.server';
 import ErrorBoundary from '@/app/components/ErrorBoundary';
+import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 
 // Force dynamic rendering to avoid static generation issues with cookies
 export const dynamic = 'force-dynamic';
@@ -20,8 +21,9 @@ export default async function ChartDashboardPage() {
         {/* Instagram-style header */}
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
           <div className="max-w-4xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <h1 className="text-xl font-semibold text-gray-900">Analytics</h1>
+              <HeaderPropertyList />
             </div>
           </div>
         </div>
@@ -50,8 +52,9 @@ export default async function ChartDashboardPage() {
         {/* Instagram-style header */}
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
           <div className="max-w-4xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <h1 className="text-xl font-semibold text-gray-900">Analytics</h1>
+              <HeaderPropertyList />
             </div>
           </div>
         </div>

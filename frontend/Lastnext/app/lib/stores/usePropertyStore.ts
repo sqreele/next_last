@@ -22,13 +22,30 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
     return get().userProperties.length > 0;
   },
   setSelectedProperty: (propertyId: string | null) => {
-    // Persist selection
-    if (typeof window !== "undefined") {
-      if (propertyId) {
-        localStorage.setItem("selectedPropertyId", propertyId);
-      } else {
+    // ✅ SECURITY: Validate property access before setting
+    const props = get().userProperties;
+    
+    // Allow null selection (deselect)
+    if (propertyId === null) {
+      if (typeof window !== "undefined") {
         localStorage.removeItem("selectedPropertyId");
       }
+      set({ selectedProperty: null });
+      return;
+    }
+    
+    // Verify user has access to this property
+    const hasAccess = props.some((p) => p.property_id === propertyId);
+    if (!hasAccess) {
+      console.warn(`⚠️ Security: Attempted to select unauthorized property: ${propertyId}`);
+      console.warn(`⚠️ User only has access to: ${props.map(p => p.property_id).join(', ')}`);
+      // Don't set the unauthorized property
+      return;
+    }
+    
+    // Persist selection only if validated
+    if (typeof window !== "undefined") {
+      localStorage.setItem("selectedPropertyId", propertyId);
     }
     set({ selectedProperty: propertyId });
   },

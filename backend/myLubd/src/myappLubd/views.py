@@ -574,6 +574,8 @@ class MaintenanceProcedureViewSet(viewsets.ModelViewSet):
     """
     ViewSet for MaintenanceProcedure model.
     Provides CRUD operations for maintenance procedures and step management.
+    Note: Maintenance procedures are shared templates accessible to all users.
+    Only admin users can create, update, or delete procedures.
     """
     serializer_class = MaintenanceProcedureSerializer
     pagination_class = MaintenancePagination
@@ -585,7 +587,29 @@ class MaintenanceProcedureViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        """
+        Return all maintenance procedures for all users (they are shared templates).
+        However, only admin users can create/update/delete them.
+        """
         return MaintenanceProcedure.objects.all()
+
+    def perform_create(self, serializer):
+        """Only admin users can create procedures"""
+        if not (self.request.user.is_superuser or self.request.user.is_staff):
+            raise PermissionDenied("Only admin users can create maintenance procedures")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        """Only admin users can update procedures"""
+        if not (self.request.user.is_superuser or self.request.user.is_staff):
+            raise PermissionDenied("Only admin users can update maintenance procedures")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        """Only admin users can delete procedures"""
+        if not (self.request.user.is_superuser or self.request.user.is_staff):
+            raise PermissionDenied("Only admin users can delete maintenance procedures")
+        instance.delete()
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -828,23 +852,13 @@ class RoomViewSet(viewsets.ModelViewSet):
                 queryset = queryset2
                 logger.info(f"Final result: {queryset.count()} rooms for property {property_id}")
                 
-                # If no rooms found, try to return all rooms for this user (fallback)
-                if queryset.count() == 0:
-                    logger.warning(f"No rooms found for property {property_id}, falling back to user's accessible rooms")
-                    fallback_queryset = Room.objects.filter(properties__in=user_properties).distinct()
-                    logger.info(f"Fallback query result: {fallback_queryset.count()} rooms")
-                    return fallback_queryset
-                
+                # Return the queryset (even if empty)
                 return queryset
                 
             except Property.DoesNotExist:
                 logger.warning(f"User {user.username} doesn't have access to property {property_id}")
-                
-                # Instead of returning empty, try to return rooms from user's accessible properties
-                logger.info("Attempting to return rooms from user's accessible properties as fallback")
-                fallback_queryset = Room.objects.filter(properties__in=user_properties).distinct()
-                logger.info(f"Fallback query result: {fallback_queryset.count()} rooms")
-                return fallback_queryset
+                # Return empty queryset if user doesn't have access to the requested property
+                return Room.objects.none()
         
         # If no property filter, return all rooms from user's properties
         logger.info(f"User properties: {[p.property_id for p in user_properties]}")
@@ -876,33 +890,34 @@ class RoomViewSet(viewsets.ModelViewSet):
         
         logger.info(f"Final result: {queryset.count()} total rooms for user")
         
-        # If still no rooms found, return all rooms as a last resort (for debugging)
-        if queryset.count() == 0:
-            logger.warning("No rooms found for user's properties, returning all rooms as debug fallback")
-            all_rooms = Room.objects.all()
-            logger.info(f"Debug fallback: {all_rooms.count()} total rooms in database")
-            
-            # Additional debug info
-            logger.info(f"All rooms in database: {[r.name for r in all_rooms]}")
-            logger.info(f"User properties: {[p.name for p in user_properties]}")
-            
-            # Try to understand why the relationship isn't working
-            for room in all_rooms:
-                room_props = list(room.properties.all())
-                logger.info(f"Room {room.name} has properties: {[p.property_id for p in room_props]}")
-            
-            for prop in user_properties:
-                prop_rooms = list(prop.rooms.all())
-                logger.info(f"Property {prop.name} has rooms: {[r.name for r in prop_rooms]}")
-            
-            return all_rooms
-        
+        # Return the filtered queryset (even if empty)
+        # Users should only see rooms they have access to
         return queryset
 
 class TopicViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Topic.objects.all()
     serializer_class = TopicSerializer
+
+    def get_queryset(self):
+        """
+        Return topics that are associated with jobs in properties the user has access to.
+        Admin/staff users can see all topics.
+        """
+        user = self.request.user
+        
+        # Admin users can access all topics
+        if user.is_superuser or user.is_staff:
+            return Topic.objects.all()
+        
+        # Get properties the user has access to
+        accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
+        
+        # Return topics that are used in jobs within user's accessible properties
+        return Topic.objects.filter(
+            Q(jobs__rooms__properties__in=accessible_property_ids) |
+            Q(preventive_maintenances__job__rooms__properties__in=accessible_property_ids)
+        ).distinct()
 
 class JobViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -1141,9 +1156,13 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     serializer_class = UserProfileSerializer
 
     def get_queryset(self):
-        # For the 'detailed' action, return all user profiles for all authenticated users
+        # For the 'detailed' action, only admins can see all user profiles
         if self.action == 'detailed':
-            return UserProfile.objects.all().prefetch_related('properties')
+            if self.request.user.is_superuser or self.request.user.is_staff:
+                return UserProfile.objects.all().prefetch_related('properties')
+            else:
+                # Non-admin users can only see their own profile
+                return UserProfile.objects.filter(user=self.request.user).prefetch_related('properties')
         else:
             # For other actions, return only the current user's profile
             return UserProfile.objects.filter(user=self.request.user).prefetch_related('properties')
@@ -1157,6 +1176,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def detailed(self, request):
         """Get all user profiles with properties for admin users"""
+        # Verify admin access
+        if not (request.user.is_superuser or request.user.is_staff):
+            raise PermissionDenied("Only admin users can access all user profiles")
+        
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)

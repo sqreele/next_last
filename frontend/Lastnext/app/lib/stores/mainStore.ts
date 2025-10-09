@@ -135,7 +135,27 @@ export const useMainStore = create<MainStore>()(
         
         // User Actions
         setUserProfile: (profile) => set({ userProfile: profile, isAuthenticated: !!profile }),
-        setSelectedPropertyId: (propertyId) => set({ selectedPropertyId: propertyId }),
+        setSelectedPropertyId: (propertyId) => {
+          // ✅ SECURITY: Validate property access before setting
+          if (propertyId === null) {
+            set({ selectedPropertyId: null });
+            return;
+          }
+          
+          const state = get();
+          const userProps = state.properties;
+          
+          // Verify user has access to this property
+          const hasAccess = userProps.some((p) => p.property_id === propertyId);
+          if (!hasAccess) {
+            console.warn(`⚠️ Security: Attempted to select unauthorized property: ${propertyId}`);
+            console.warn(`⚠️ User only has access to: ${userProps.map(p => p.property_id).join(', ')}`);
+            // Don't set the unauthorized property
+            return;
+          }
+          
+          set({ selectedPropertyId: propertyId });
+        },
         setAuthTokens: (access, refresh) => set({ accessToken: access, refreshToken: refresh }),
         logout: () => set({ 
           userProfile: null, 

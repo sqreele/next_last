@@ -31,18 +31,23 @@ export interface FilterState {
   is_preventivemaintenance?: boolean | null;
   room_id?: string | null;
   room_name?: string | null;
+  user_id?: string | null; // For admin users to filter by specific user
 }
 
 interface JobFiltersProps {
   filters: FilterState;
   onFilterChange: (filters: FilterState) => void;
   onClearFilters: () => void;
+  showUserFilter?: boolean; // Show user filter for admin users
+  availableUsers?: Array<{ id: number; username: string; full_name?: string }>; // List of users for filtering
 }
 
 const JobFilters: React.FC<JobFiltersProps> = ({
   filters,
   onFilterChange,
   onClearFilters,
+  showUserFilter = false,
+  availableUsers = [],
 }) => {
   const [searchTerm, setSearchTerm] = useState(filters.search);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -56,7 +61,8 @@ const JobFilters: React.FC<JobFiltersProps> = ({
     filters.dateRange?.from || filters.dateRange?.to ? 1 : 0,
     filters.is_preventivemaintenance !== null ? 1 : 0,
     filters.room_id ? 1 : 0,
-    filters.room_name ? 1 : 0
+    filters.room_name ? 1 : 0,
+    filters.user_id ? 1 : 0
   ].reduce((a, b) => a + b, 0);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,9 +114,17 @@ const JobFilters: React.FC<JobFiltersProps> = ({
       dateRange: undefined,
       is_preventivemaintenance: null,
       room_id: null,
-      room_name: null
+      room_name: null,
+      user_id: null
     });
     setSearchTerm("");
+  };
+
+  const handleUserChange = (value: string) => {
+    onFilterChange({
+      ...filters,
+      user_id: value === "all" ? null : value
+    });
   };
 
   // Format date range for display
@@ -249,6 +263,36 @@ const JobFilters: React.FC<JobFiltersProps> = ({
               <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded-full">Active</span>
             )}
           </div>
+
+          {/* User filter (Admin only) */}
+          {showUserFilter && availableUsers.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700 whitespace-nowrap">User:</span>
+              <Select
+                value={filters.user_id || "all"}
+                onValueChange={handleUserChange}
+              >
+                <SelectTrigger 
+                  className={`w-48 h-9 px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors shadow-sm ${
+                    filters.user_id ? 'border-cyan-300 bg-cyan-50' : ''
+                  }`}
+                >
+                  <SelectValue placeholder="All Users" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                  <SelectItem value="all">All Users</SelectItem>
+                  {availableUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id.toString()}>
+                      {user.full_name || user.username} ({user.username})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {filters.user_id && (
+                <span className="text-xs bg-cyan-100 text-cyan-600 px-2 py-1 rounded-full">Active</span>
+              )}
+            </div>
+          )}
 
           {/* Clear All Filters Button */}
           {activeFilterCount > 0 && (
@@ -453,6 +497,19 @@ const JobFilters: React.FC<JobFiltersProps> = ({
                 <X 
                   className="h-3 w-3 cursor-pointer hover:text-green-900" 
                   onClick={() => onFilterChange({...filters, dateRange: {}})}
+                />
+              </Badge>
+            )}
+            
+            {filters.user_id && showUserFilter && (
+              <Badge 
+                variant="secondary" 
+                className="flex items-center gap-1.5 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 border border-cyan-200 transition-colors"
+              >
+                User: {availableUsers.find(u => u.id.toString() === filters.user_id)?.username || filters.user_id}
+                <X 
+                  className="h-3 w-3 cursor-pointer hover:text-cyan-900" 
+                  onClick={() => onFilterChange({...filters, user_id: null})}
                 />
               </Badge>
             )}

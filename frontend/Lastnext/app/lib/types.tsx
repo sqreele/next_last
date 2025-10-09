@@ -32,7 +32,8 @@ export interface UserProfile {
   positions: string;
   properties: Property[];
   created_at: string;
-
+  is_staff?: boolean;
+  is_superuser?: boolean;
 }
 
 export interface UserContextType {

@@ -109,7 +109,8 @@ python manage.py test_property_email --property-id 1 --to test@example.com
 - **Usage**: Property-specific job reports
 - **Features**:
   - Property-specific job statistics
-  - Recent jobs list
+  - Recent jobs list with property information for each job
+  - Shows all properties that each job belongs to (for jobs spanning multiple properties)
   - Room-based job breakdown
   - Topic statistics for the property
   - Property identification in header

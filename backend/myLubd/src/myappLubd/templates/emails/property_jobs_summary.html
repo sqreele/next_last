@@ -76,19 +76,29 @@
                         <tr>
                           <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Job ID</th>
                           <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Description</th>
+                          <th align="left" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Properties</th>
                           <th align="center" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Status</th>
                           <th align="center" style="background:#f7f9fc;border:1px solid #e6e8ee;border-bottom:0;padding:8px 12px;font-size:11px;color:#5b6b8b;font-weight:600;">Created</th>
                         </tr>
-                        {% for job in recent_jobs %}
+                        {% for job_data in recent_jobs %}
                         <tr>
-                          <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;font-weight:600;">{{ job.job_id }}</td>
-                          <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;">{{ job.description|truncatechars:50 }}</td>
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;font-weight:600;">{{ job_data.job.job_id }}</td>
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;">{{ job_data.job.description|truncatechars:50 }}</td>
+                          <td style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:10px;color:#6b7280;">
+                            {% if job_data.properties %}
+                              {% for prop in job_data.properties %}
+                                <span style="display:inline-block;padding:2px 6px;margin:2px;border-radius:3px;font-size:9px;font-weight:600;background:#e0f2fe;color:#0369a1;">{{ prop }}</span>
+                              {% endfor %}
+                            {% else %}
+                              <span style="color:#9ca3af;">N/A</span>
+                            {% endif %}
+                          </td>
                           <td align="center" style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;">
-                            <span style="display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600;background:{% if job.status == 'completed' %}#e8f5e8;color:#2e7d32;{% elif job.status == 'in_progress' %}#fff3e0;color:#f57c00;{% elif job.status == 'pending' %}#e3f2fd;color:#1976d2;{% else %}#f3e5f5;color:#7b1fa2;{% endif %}">
-                              {{ job.status|title }}
+                            <span style="display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600;background:{% if job_data.job.status == 'completed' %}#e8f5e8;color:#2e7d32;{% elif job_data.job.status == 'in_progress' %}#fff3e0;color:#f57c00;{% elif job_data.job.status == 'pending' %}#e3f2fd;color:#1976d2;{% else %}#f3e5f5;color:#7b1fa2;{% endif %}">
+                              {{ job_data.job.status|title }}
                             </span>
                           </td>
-                          <td align="center" style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;">{{ job.created_at|date:"M d, Y" }}</td>
+                          <td align="center" style="border:1px solid #e6e8ee;border-top:0;padding:8px 12px;font-size:11px;color:#1f2532;">{{ job_data.job.created_at|date:"M d, Y" }}</td>
                         </tr>
                         {% endfor %}
                       </table>

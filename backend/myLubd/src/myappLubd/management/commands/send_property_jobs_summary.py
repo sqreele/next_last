@@ -75,8 +75,19 @@ class Command(BaseCommand):
         # Calculate completed jobs
         completed_jobs = jobs.filter(status='completed').count()
         
-        # Get recent jobs (last 10)
-        recent_jobs = jobs.order_by('-created_at')[:10]
+        # Get recent jobs (last 10) with property information
+        recent_jobs_queryset = jobs.order_by('-created_at')[:10]
+        recent_jobs = []
+        for job in recent_jobs_queryset:
+            # Get all properties this job belongs to through its rooms
+            job_properties = Property.objects.filter(
+                rooms__jobs=job
+            ).distinct().values_list('name', flat=True)
+            
+            recent_jobs.append({
+                'job': job,
+                'properties': list(job_properties) if job_properties else []
+            })
         
         # Get room statistics
         room_stats = []
@@ -213,8 +224,11 @@ class Command(BaseCommand):
                 "Recent jobs:",
             ])
             
-            for job in stats['recent_jobs']:
-                lines.append(f"- {job.job_id}: {job.description[:50]}... ({job.status})")
+            for job_data in stats['recent_jobs']:
+                job = job_data['job']
+                properties = job_data['properties']
+                properties_str = f" [Properties: {', '.join(properties)}]" if properties else ""
+                lines.append(f"- {job.job_id}: {job.description[:50]}... ({job.status}){properties_str}")
             
             if stats['room_stats']:
                 lines.extend([

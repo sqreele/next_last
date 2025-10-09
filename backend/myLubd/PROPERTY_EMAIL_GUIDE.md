@@ -59,15 +59,23 @@ python manage.py send_daily_summary --property-id 1 --all-users
 Send a comprehensive property-specific job report:
 
 ```bash
-# Send property summary for last 7 days
+# Send property summary for last 7 days (only to users assigned to property 1)
 python manage.py send_property_jobs_summary --property-id 1 --to admin@example.com
 
 # Send property summary for last 30 days
 python manage.py send_property_jobs_summary --property-id 1 --days 30
 
-# Send summaries for all properties to their respective users
+# Send summaries for all properties to their respective users (strict mode - users only see their assigned properties)
 python manage.py send_property_jobs_summary --all-properties
+
+# Include staff users in email recipients (staff will receive emails for all properties)
+python manage.py send_property_jobs_summary --all-properties --include-staff
 ```
+
+**Important**: By default, users only receive emails for properties they are explicitly assigned to. This ensures:
+- Users in Property A only see jobs from Property A
+- Users in Property B only see jobs from Property B
+- Staff users do NOT automatically receive all property emails (unless `--include-staff` is used)
 
 ### 4. Test Commands
 
@@ -154,9 +162,18 @@ DAILY_SUMMARY_RECIPIENTS=admin@example.com,manager@example.com
 ### User Access Control
 
 Users receive property-specific emails based on:
-- **Property Access**: Users assigned to specific properties
-- **Staff Status**: Staff users can receive all property emails
+- **Property Assignment** (PRIMARY): Users explicitly assigned to specific properties via `UserProfile.properties`
+- **Staff Status** (OPTIONAL): Staff users can be included using the `--include-staff` flag
 - **Explicit Recipients**: When using `--to` parameter
+
+**Default Behavior (Strict Mode)**:
+- Users ONLY receive emails for properties they are assigned to
+- A user assigned to Property A will NOT receive emails about Property B
+- Staff users do NOT automatically see all properties
+
+**Legacy Behavior (Include Staff)**:
+- Use `--include-staff` flag to include staff users
+- Staff users will receive emails for ALL properties when this flag is used
 
 ## Usage Examples
 

@@ -30,6 +30,7 @@ import { useToast } from "@/app/components/ui/use-toast";
 // --- Lib/Hook Imports ---
 import { useUser, useJobs } from "@/app/lib/stores/mainStore";
 import { useJobsData } from "@/app/lib/hooks/useJobsData";
+import { useDetailedUsers } from "@/app/lib/hooks/useDetailedUsers";
 import { Job, JobStatus, JobPriority, Topic } from "@/app/lib/types";
 import { fetchTopics, deleteJob as deleteJobApi } from "@/app/lib/data.server";
 // --- Component Imports ---
@@ -524,6 +525,19 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
   const userLoading = false; // TODO: Add loading state to store if needed
   const router = useRouter();
 
+  // Check if user is admin/staff
+  const isAdmin = userProfile?.is_staff || userProfile?.is_superuser || false;
+  
+  // Fetch users for admin filter (only if admin)
+  const { users: detailedUsers } = useDetailedUsers();
+  const availableUsers = React.useMemo(() => {
+    return detailedUsers.map(user => ({
+      id: user.id,
+      username: user.username,
+      full_name: user.full_name
+    }));
+  }, [detailedUsers]);
+
   // Local state for UI
   const [filters, setFilters] = React.useState<FilterState>({
     search: "", status: "all", priority: "all"
@@ -549,7 +563,11 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     removeJob, // Hook's function to remove from local state
   } = useJobsData({ 
     propertyId: null, // Always null for My Jobs page to fetch only user's created jobs
-    filters: { ...filters, user_id: session?.user?.id ?? null }
+    filters: {
+      ...filters,
+      // Pass user_id only if admin has selected a specific user to filter
+      ...(isAdmin && filters.user_id ? { user_id: filters.user_id } : {})
+    }
   });
 
   // Filter jobs based on local state
@@ -808,6 +826,8 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
             filters={filters}
             onFilterChange={handleFilterChange}
             onClearFilters={handleClearFilters}
+            showUserFilter={isAdmin}
+            availableUsers={availableUsers}
           />
         </div>
 

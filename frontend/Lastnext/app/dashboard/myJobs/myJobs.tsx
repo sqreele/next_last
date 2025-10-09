@@ -548,7 +548,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     updateJob, // Hook's function to update local state
     removeJob, // Hook's function to remove from local state
   } = useJobsData({ 
-    propertyId: activePropertyId ?? selectedProperty ?? null,
+    propertyId: null, // Always null for My Jobs page to fetch only user's created jobs
     filters: { ...filters, user_id: session?.user?.id ?? null }
   });
 
@@ -565,8 +565,11 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
       const matchesSearch = filters.search === "" || descMatch || idMatch || roomMatch || topicMatch;
       const matchesStatus = filters.status === "all" || job.status === filters.status;
       const matchesPriority = filters.priority === "all" || job.priority === filters.priority;
+      
+      // Always exclude completed jobs
+      const isNotCompleted = job.status !== "completed";
 
-      return matchesSearch && matchesStatus && matchesPriority;
+      return matchesSearch && matchesStatus && matchesPriority && isNotCompleted;
     });
   }, [jobs, filters]);
 

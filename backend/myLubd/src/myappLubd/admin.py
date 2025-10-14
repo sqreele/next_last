@@ -359,7 +359,17 @@ class RoomFilter(admin.SimpleListFilter):
     parameter_name = 'room'
 
     def lookups(self, request, model_admin):
-        return [(str(r.room_id), r.name) for r in Room.objects.all().order_by('name')]
+        # Get the selected property from the request (if any)
+        property_id = request.GET.get('property')
+        
+        # If a property is selected, only show rooms belonging to that property
+        if property_id:
+            rooms = Room.objects.filter(properties__id=property_id).distinct().order_by('name')
+        else:
+            # Show all rooms if no property is selected
+            rooms = Room.objects.all().order_by('name')
+        
+        return [(str(r.room_id), r.name) for r in rooms]
 
     def queryset(self, request, queryset):
         if self.value():

@@ -163,6 +163,10 @@ DATABASES = {
         'PASSWORD': os.getenv('SQL_PASSWORD', os.getenv('POSTGRES_PASSWORD', '')),
         'HOST': os.getenv('SQL_HOST', os.getenv('POSTGRES_HOST', 'db')),
         'PORT': os.getenv('SQL_PORT', os.getenv('POSTGRES_PORT', '5432')),
+        # Ensure PostgreSQL session stores and operates in UTC
+        'OPTIONS': {
+            'options': '-c timezone=UTC'
+        },
     }
 }
 

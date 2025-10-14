@@ -84,6 +84,8 @@ DATABASES = {
             'MAX_CONNS': 20,
             'MIN_CONNS': 5,
             'CONN_MAX_AGE': 600,  # 10 minutes connection pooling
+            # Ensure PostgreSQL session stores and operates in UTC
+            'options': '-c timezone=UTC'
         },
     }
 }

@@ -366,12 +366,24 @@ class RoomFilter(admin.SimpleListFilter):
             return queryset.filter(rooms__room_id=self.value()).distinct()
         return queryset
 
+class TopicFilter(admin.SimpleListFilter):
+    title = 'topic'
+    parameter_name = 'topic'
+
+    def lookups(self, request, model_admin):
+        return [(str(t.id), t.title) for t in Topic.objects.all().order_by('title')]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(topics__id=self.value()).distinct()
+        return queryset
+
 # ModelAdmins
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
     form = JobAdminForm
     list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_user_display', 'user_id', 'get_properties_display', 'get_timestamps_display', 'is_preventivemaintenance']
-    list_filter = ['status', 'priority', 'is_defective', 'created_at', 'updated_at', 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter]
+    list_filter = ['status', 'priority', 'is_defective', 'created_at', 'updated_at', 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
     search_fields = ['job_id', 'description', 'user__username', 'updated_by__username', 'topics__title']
     readonly_fields = ['job_id', 'updated_by']
     filter_horizontal = ['rooms', 'topics']

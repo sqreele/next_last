@@ -548,8 +548,13 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     updateJob, // Hook's function to update local state
     removeJob, // Hook's function to remove from local state
   } = useJobsData({ 
-    propertyId: null, // Always null for My Jobs page to fetch only user's created jobs
-    filters: { ...filters, user_id: session?.user?.id ?? null }
+    propertyId: null, // keep using My Jobs endpoint
+    filters: { 
+      ...filters,
+      user_id: session?.user?.id ?? null,
+      // pass selected property as a filter so backend restricts My Jobs to that property
+      property_id: selectedProperty ?? null,
+    }
   });
 
   // Filter jobs based on local state
@@ -594,9 +599,10 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
   // Effect to refresh jobs when filters change
   React.useEffect(() => {
     if (sessionStatus === "authenticated") {
+      // refresh when filters change or selected property changes
       refreshJobs();
     }
-  }, [filters, sessionStatus, refreshJobs]);
+  }, [filters, selectedProperty, sessionStatus, refreshJobs]);
 
   // Function to fetch available topics
   const fetchAvailableTopics = async () => {

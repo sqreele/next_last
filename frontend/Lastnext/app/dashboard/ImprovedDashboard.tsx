@@ -382,6 +382,14 @@ export default function ImprovedDashboard() {
               <span className="text-xs text-gray-500 mt-1">In Progress</span>
             </div>
             <div className="flex flex-col items-center min-w-[80px]">
+              <div className="w-16 h-16 bg-gradient-to-tr from-orange-400 to-orange-600 rounded-full p-0.5">
+                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                  <span className="text-2xl font-bold text-gray-900">{stats.waitingSparepart}</span>
+                </div>
+              </div>
+              <span className="text-xs text-gray-500 mt-1">Waiting Parts</span>
+            </div>
+            <div className="flex flex-col items-center min-w-[80px]">
               <div className="w-16 h-16 bg-gradient-to-tr from-green-400 to-green-600 rounded-full p-0.5">
                 <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
                   <span className="text-2xl font-bold text-gray-900">{stats.completed}</span>

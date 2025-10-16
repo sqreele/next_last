@@ -1,0 +1,584 @@
+
+> myapp@0.2.0 build
+> next build
+
+ ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /workspace/package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * /workspace/frontend/Lastnext/package-lock.json
+
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+   ▲ Next.js 15.5.2
+   - Experiments (use with caution):
+     · serverActions
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 20.6s
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/58) ...
+   Generating static pages (14/58) 
+   Generating static pages (28/58) 
+✅ Auth0 hooks loaded successfully
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+   Generating static pages (43/58) 
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+✅ Sarabun font registered successfully with italic fallback
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+🔍 Dashboard context: {
+  hasFetchMaintenanceItems: true,
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+🔍 PreventiveMaintenanceListPage Debug: {
+  maintenanceItemsCount: 0,
+  machinesCount: 0,
+  totalCount: 0,
+  isLoading: false,
+  error: null,
+  status: 'all',
+  frequency: 'all',
+  search: '',
+  start_date: '',
+  end_date: '',
+  machine_id: '',
+  page: 1,
+  page_size: 10
+}
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+ ✓ Generating static pages (58/58)
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+🔍 PreventiveContext - contextValue: {
+  hasFetchMaintenanceItems: true,
+  fetchMaintenanceItemsType: 'function',
+  contextKeys: [
+    'maintenanceItems',
+    'topics',
+    'machines',
+    'statistics',
+    'selectedMaintenance',
+    'totalCount',
+    'isLoading',
+    'error',
+    'filterParams',
+    'fetchMaintenanceItems',
+    'fetchStatistics',
+    'fetchMaintenanceById',
+    'fetchMaintenanceByMachine',
+    'createMaintenance',
+    'updateMaintenance',
+    'deleteMaintenance',
+    'completeMaintenance',
+    'fetchTopics',
+    'fetchMachines',
+    'setFilterParams',
+    'clearError',
+    'debugMachineFilter',
+    'testMachineFiltering'
+  ],
+  maintenanceItemsCount: 0
+}
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                            Size  First Load JS
+┌ ○ /                                               3.28 kB         125 kB
+├ ○ /_not-found                                        1 kB         103 kB
+├ ƒ /api/auth                                         235 B         102 kB
+├ ƒ /api/auth/[...auth0]                              235 B         102 kB
+├ ƒ /api/auth/callback                                235 B         102 kB
+├ ƒ /api/auth/debug-session                           235 B         102 kB
+├ ƒ /api/auth/error                                   235 B         102 kB
+├ ƒ /api/auth/login                                   235 B         102 kB
+├ ƒ /api/auth/logout                                  235 B         102 kB
+├ ƒ /api/auth/password/forgot                         235 B         102 kB
+├ ƒ /api/auth/password/reset                          235 B         102 kB
+├ ƒ /api/auth/session-compat                          235 B         102 kB
+├ ƒ /api/auth/test-auth0-config                       235 B         102 kB
+├ ƒ /api/auth/test-login                              235 B         102 kB
+├ ƒ /api/auth/token                                   235 B         102 kB
+├ ƒ /api/auth/token/refresh                           235 B         102 kB
+├ ƒ /api/debug-auth-flow                              235 B         102 kB
+├ ƒ /api/debug-auth0                                  235 B         102 kB
+├ ƒ /api/debug-full-auth                              235 B         102 kB
+├ ƒ /api/debug/auth0                                  235 B         102 kB
+├ ƒ /api/jobs                                         235 B         102 kB
+├ ƒ /api/jobs/[jobId]                                 235 B         102 kB
+├ ƒ /api/machines                                     235 B         102 kB
+├ ƒ /api/preventive-maintenance                       235 B         102 kB
+├ ƒ /api/preventive-maintenance/[pm_id]/complete      235 B         102 kB
+├ ƒ /api/preventive-maintenance/stats                 235 B         102 kB
+├ ƒ /api/profile/[userId]                             235 B         102 kB
+├ ƒ /api/properties                                   235 B         102 kB
+├ ƒ /api/properties/[propertyId]                      235 B         102 kB
+├ ƒ /api/proxy-image                                  235 B         102 kB
+├ ƒ /api/rooms                                        235 B         102 kB
+├ ƒ /api/rooms/[roomId]                               235 B         102 kB
+├ ƒ /api/search                                       235 B         102 kB
+├ ƒ /api/test-error-redirect                          235 B         102 kB
+├ ƒ /api/test-image                                   235 B         102 kB
+├ ƒ /api/test-properties                              235 B         102 kB
+├ ƒ /api/test-session                                 235 B         102 kB
+├ ƒ /api/topics                                       235 B         102 kB
+├ ƒ /api/user-profiles                                235 B         102 kB
+├ ƒ /api/users                                        235 B         102 kB
+├ ƒ /api/users/detailed                               235 B         102 kB
+├ ○ /auth/error                                     1.95 kB         107 kB
+├ ○ /auth/forgot-password                           3.81 kB         134 kB
+├ ○ /auth/login                                     1.45 kB         123 kB
+├ ○ /auth/logout                                      883 B         103 kB
+├ ○ /auth/register                                   1.7 kB         128 kB
+├ ○ /auth/reset-password                            4.03 kB         134 kB
+├ ○ /auth/signin                                      522 B         102 kB
+├ ƒ /dashboard                                      9.68 kB         755 kB
+├ ○ /dashboard/chartdashboad                          235 B         102 kB
+├ ƒ /dashboard/chartdashboard                        146 kB         833 kB
+├ ƒ /dashboard/createJob                            10.4 kB         218 kB
+├ ○ /dashboard/jobs-report                          7.04 kB         634 kB
+├ ƒ /dashboard/jobs/[jobId]                           492 B         108 kB
+├ ƒ /dashboard/jobs/[jobId]/edit                    8.32 kB         122 kB
+├ ƒ /dashboard/jobs/by-topic                        3.19 kB         749 kB
+├ ○ /dashboard/myJobs                               18.2 kB         178 kB
+├ ○ /dashboard/Preventive_maintenance               14.4 kB         198 kB
+├ ○ /dashboard/preventive-maintenance               9.64 kB         157 kB
+├ ƒ /dashboard/preventive-maintenance/[pm_id]       13.5 kB         170 kB
+├ ○ /dashboard/preventive-maintenance/create        15.2 kB         188 kB
+├ ○ /dashboard/preventive-maintenance/dashboard      8.9 kB         157 kB
+├ ƒ /dashboard/preventive-maintenance/edit/[pm_id]  11.6 kB         167 kB
+├ ○ /dashboard/preventive-maintenance/pdf            140 kB         332 kB
+├ ○ /dashboard/profile                              8.08 kB         130 kB
+├ ƒ /dashboard/profile/edit/[id]                    5.29 kB         126 kB
+├ ƒ /dashboard/rooms/[room_id]                      4.89 kB         117 kB
+├ ƒ /dashboard/rooms/by-topics                      11.4 kB         144 kB
+├ ○ /dashboard/search                               9.91 kB         135 kB
+├ ○ /debug-session                                  1.42 kB         108 kB
+├ ○ /login                                            619 B         103 kB
+├ ○ /profile                                        4.25 kB         123 kB
+└ ○ /test-auth                                      1.53 kB         103 kB
++ First Load JS shared by all                        102 kB
+  ├ chunks/1255-92f1bd4268d9a5d2.js                 45.6 kB
+  ├ chunks/4bd1b696-100b9d70ed4e49c1.js             54.2 kB
+  └ other shared chunks (total)                     2.12 kB
+
+
+ƒ Middleware                                        34.2 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

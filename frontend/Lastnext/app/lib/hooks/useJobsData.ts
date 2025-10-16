@@ -17,6 +17,7 @@ interface UseJobsDataOptions {
     is_preventivemaintenance?: boolean | null;
     search?: string;
     user_id?: string | null;
+    property_id?: string | null; // allow filtering My Jobs by selected property
   };
 }
 
@@ -98,6 +99,8 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
           if (filters.is_preventivemaintenance !== null && filters.is_preventivemaintenance !== undefined) queryParams.append('is_preventivemaintenance', filters.is_preventivemaintenance.toString());
           if (filters.search) queryParams.append('search', filters.search);
           if (filters.user_id && filters.user_id !== 'all') queryParams.append('user_id', filters.user_id);
+          // IMPORTANT: allow My Jobs to be filtered by selected property
+          if (filters.property_id) queryParams.append('property_id', filters.property_id);
         }
         
         const queryString = queryParams.toString();
@@ -131,7 +134,20 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       setIsLoading(false);
     }
     // Dependencies: activePropertyId and user session details used for filtering
-  }, [activePropertyId, session?.user?.id, session?.user?.username, sessionStatus]);
+  }, [
+    activePropertyId,
+    session?.user?.id,
+    session?.user?.username,
+    sessionStatus,
+    // include filters used in query string to avoid stale closures
+    options?.filters?.room_id,
+    options?.filters?.room_name,
+    options?.filters?.status,
+    options?.filters?.is_preventivemaintenance,
+    options?.filters?.search,
+    options?.filters?.user_id,
+    options?.filters?.property_id,
+  ]);
 
   // Effect runs when refreshJobs identity changes
   useEffect(() => {

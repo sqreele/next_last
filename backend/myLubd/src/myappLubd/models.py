@@ -198,8 +198,14 @@ class PreventiveMaintenance(models.Model):
         verbose_name = 'Preventive Maintenance'
         verbose_name_plural = 'Preventive Maintenances'
         indexes = [
+            # ✅ PERFORMANCE: Enhanced database indexes
             models.Index(fields=['scheduled_date', 'next_due_date']),
             models.Index(fields=['frequency']),
+            models.Index(fields=['pm_id']),  # Frequently used in lookups
+            models.Index(fields=['completed_date']),  # For filtering completed/pending
+            models.Index(fields=['scheduled_date', 'completed_date']),  # Composite for overdue queries
+            models.Index(fields=['created_by']),  # Foreign key lookups
+            models.Index(fields=['job']),  # Foreign key lookups
         ]
 
     def __str__(self):
@@ -423,6 +429,11 @@ class Property(models.Model):
     class Meta:
         ordering = ['name']
         verbose_name_plural = 'Properties'
+        indexes = [
+            # ✅ PERFORMANCE: Property indexes for faster lookups
+            models.Index(fields=['property_id']),  # Frequently used in queries
+            models.Index(fields=['name']),  # For search operations
+        ]
 
     def __str__(self):
         return self.name
@@ -449,8 +460,12 @@ class Room(models.Model):
         ordering = ['room_type', 'name']
         verbose_name_plural = 'Rooms'
         indexes = [
+            # ✅ PERFORMANCE: Enhanced Room indexes
             models.Index(fields=['room_type']),
-            models.Index(fields=['is_active'])
+            models.Index(fields=['is_active']),
+            models.Index(fields=['room_id']),  # For direct lookups
+            models.Index(fields=['name']),  # For search operations
+            models.Index(fields=['room_type', 'is_active']),  # Composite for filtering
         ]
 
     def __str__(self):
@@ -482,6 +497,10 @@ class Topic(models.Model):
     class Meta:
         ordering = ['title']
         verbose_name_plural = 'Topics'
+        indexes = [
+            # ✅ PERFORMANCE: Topic indexes for faster filtering
+            models.Index(fields=['title']),  # For search and filtering
+        ]
 
     def __str__(self):
         return self.title
@@ -531,6 +550,11 @@ class JobImage(models.Model):
         ordering = ['-uploaded_at']
         verbose_name = 'Job Image'
         verbose_name_plural = 'Job Images'
+        indexes = [
+            # ✅ PERFORMANCE: JobImage indexes
+            models.Index(fields=['job']),  # Foreign key lookups
+            models.Index(fields=['uploaded_at']),  # For sorting
+        ]
 
     def __str__(self):
         return f"Image for Job {self.job.job_id} uploaded at {self.uploaded_at.date()}"
@@ -685,11 +709,19 @@ class Job(models.Model):
         indexes = [
             # ✅ PERFORMANCE OPTIMIZATION: Comprehensive database indexes
             # Single field indexes for common queries
+            models.Index(fields=['job_id']),  # Primary lookup field
             models.Index(fields=['status']),
             models.Index(fields=['created_at']),
+            models.Index(fields=['updated_at']),  # For sorting
             models.Index(fields=['priority']),
             models.Index(fields=['is_preventivemaintenance']),
             models.Index(fields=['user']),
+            models.Index(fields=['updated_by']),
+            # Composite indexes for common query patterns
+            models.Index(fields=['status', 'created_at']),  # Filter by status + sort
+            models.Index(fields=['is_preventivemaintenance', 'status']),  # PM jobs by status
+            models.Index(fields=['user', 'created_at']),  # User's jobs sorted
+            models.Index(fields=['status', 'priority']),  # Status + priority filtering
             models.Index(fields=['updated_by']),
             models.Index(fields=['completed_at']),
             
@@ -785,7 +817,10 @@ class UserProfile(models.Model):
 
     class Meta:
         indexes = [
+            # ✅ PERFORMANCE: UserProfile indexes
             models.Index(fields=['google_id']),
+            models.Index(fields=['user']),  # Primary lookup
+            models.Index(fields=['property_id']),  # Property filtering
         ]
 
     def __str__(self):
@@ -945,8 +980,13 @@ class Machine(models.Model):
         verbose_name = 'Machine'
         verbose_name_plural = 'Machines'
         indexes = [
+            # ✅ PERFORMANCE: Enhanced Machine indexes
             models.Index(fields=['machine_id']),
             models.Index(fields=['status']),
+            models.Index(fields=['property']),  # Foreign key lookups
+            models.Index(fields=['name']),  # For search
+            models.Index(fields=['status', 'property']),  # Composite for filtering
+            models.Index(fields=['last_maintenance_date']),  # For maintenance tracking
         ]
 
     def __str__(self):
@@ -999,6 +1039,12 @@ class MaintenanceProcedure(models.Model):
         ordering = ['name']
         verbose_name = 'Maintenance Procedure'
         verbose_name_plural = 'Maintenance Procedures'
+        indexes = [
+            # ✅ PERFORMANCE: Maintenance Procedure indexes
+            models.Index(fields=['name']),  # For search
+            models.Index(fields=['difficulty_level']),  # For filtering
+            models.Index(fields=['created_at']),  # For sorting
+        ]
     
     def __str__(self):
         return self.name

@@ -29,7 +29,8 @@ function getStatusConfig(status: JobStatus) {
   return (configs as any)[status] || configs.pending;
 }
 
-export default function ModernJobCard({ job, viewMode = "grid" }: ModernJobCardProps) {
+// ✅ PERFORMANCE: Wrap with React.memo to prevent unnecessary re-renders
+const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid" }: ModernJobCardProps) {
   const router = useRouter();
 
   const imageUrls = useMemo(() => {
@@ -154,5 +155,7 @@ export default function ModernJobCard({ job, viewMode = "grid" }: ModernJobCardP
       </CardContent>
     </Card>
   );
-}
+});
+
+export default ModernJobCard;
 

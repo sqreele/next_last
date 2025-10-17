@@ -1,12 +1,19 @@
 'use client';
 
+import React, { useCallback } from 'react'; // ✅ PERFORMANCE: Add React.memo support
 import { useSession } from '@/app/lib/session.client';
 import { appSignOut } from '@/app/lib/logout';
 import { User as UserIcon } from 'lucide-react'; // Explicitly import User icon
 import Image from 'next/image';
 
-export default function ClientDashboard() {
+// ✅ PERFORMANCE: Memoize component to prevent unnecessary re-renders
+const ClientDashboard = React.memo(function ClientDashboard() {
   const { data: session, status } = useSession();
+  
+  // ✅ PERFORMANCE: Memoize logout handler
+  const handleLogout = useCallback(() => {
+    appSignOut({ callbackUrl: '/auth/login' });
+  }, []);
 
   if (status === 'loading') {
     return <div className="flex items-center justify-center p-4 text-sm sm:text-base text-gray-500">Loading user data...</div>;
@@ -43,11 +50,13 @@ export default function ClientDashboard() {
         )}
       </div>
       <button
-                    onClick={() => appSignOut({ callbackUrl: '/auth/login' })}
+        onClick={handleLogout}
         className="w-full sm:w-auto px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm sm:text-base transition-colors"
       >
         Log Out
       </button>
     </div>
   );
-}
+});
+
+export default ClientDashboard;

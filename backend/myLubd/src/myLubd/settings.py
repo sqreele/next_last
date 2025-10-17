@@ -125,6 +125,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# ✅ PERFORMANCE: Session optimization
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'  # Use cache + DB for sessions
+SESSION_CACHE_ALIAS = 'default'
+SESSION_COOKIE_AGE = 1209600  # 2 weeks
+SESSION_SAVE_EVERY_REQUEST = False  # Only save when modified
+
 # Conditionally add debug_toolbar middleware if available and in debug mode
 if DEBUG:
     try:
@@ -163,17 +169,36 @@ DATABASES = {
         'PASSWORD': os.getenv('SQL_PASSWORD', os.getenv('POSTGRES_PASSWORD', '')),
         'HOST': os.getenv('SQL_HOST', os.getenv('POSTGRES_HOST', 'db')),
         'PORT': os.getenv('SQL_PORT', os.getenv('POSTGRES_PORT', '5432')),
+        # ✅ PERFORMANCE: Connection pooling
+        'CONN_MAX_AGE': 600,  # Keep connections alive for 10 minutes
+        'CONN_HEALTH_CHECKS': True,  # Verify connections before reusing
+        # ✅ PERFORMANCE: PostgreSQL specific optimizations
+        'OPTIONS': {
+            'connect_timeout': 10,
+            'options': '-c statement_timeout=30000'  # 30 second query timeout
+        },
     }
 }
 
-# Cache configuration
+# ✅ PERFORMANCE: Enhanced cache configuration with multiple levels
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
+        'LOCATION': 'default-cache',
         'OPTIONS': {
-            'MAX_ENTRIES': 1000
-        }
+            'MAX_ENTRIES': 5000,  # ✅ PERFORMANCE: Increased cache size
+            'CULL_FREQUENCY': 3,  # ✅ PERFORMANCE: Remove 1/3 of entries when max reached
+        },
+        'TIMEOUT': 300,  # ✅ PERFORMANCE: 5 minute default timeout
+    },
+    'api_cache': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'api-cache',
+        'OPTIONS': {
+            'MAX_ENTRIES': 3000,
+            'CULL_FREQUENCY': 4,
+        },
+        'TIMEOUT': 600,  # ✅ PERFORMANCE: 10 minutes for API responses
     }
 }
 

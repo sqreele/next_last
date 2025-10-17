@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from '@/app/providers';
 import { Toaster } from '@/app/components/ui/toaster';
 import { StoreProvider } from '@/app/lib/providers/StoreProvider';
+import { SWRProvider } from '@/app/lib/swr-config'; // ✅ PERFORMANCE: Global SWR caching
 import './globals.css';
 // Initialize Inter font
 const inter = Inter({
@@ -93,14 +94,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className={`${inter.variable} font-sans min-h-screen bg-background`}>
-        <AuthProvider>
-          <StoreProvider>
-            <main className="flex min-h-screen w-full flex-col">
-              {children}
-            </main>
-            <Toaster />
-          </StoreProvider>
-        </AuthProvider>
+        <SWRProvider>
+          <AuthProvider>
+            <StoreProvider>
+              <main className="flex min-h-screen w-full flex-col">
+                {children}
+              </main>
+              <Toaster />
+            </StoreProvider>
+          </AuthProvider>
+        </SWRProvider>
         <Analytics />
       </body>
     </html>

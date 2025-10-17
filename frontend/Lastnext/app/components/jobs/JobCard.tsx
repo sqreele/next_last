@@ -29,7 +29,8 @@ interface JobCardProps {
   viewMode?: 'grid' | 'list';
 }
 
-export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProps) {
+// ✅ PERFORMANCE: Wrap with React.memo to prevent unnecessary re-renders
+export const JobCard = React.memo(function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProps) {
   // This component handles tracking prevention issues with Google profile images
   // When browsers block Google profile images, it gracefully falls back to a user icon
   
@@ -768,4 +769,4 @@ export function JobCard({ job, properties = [], viewMode = 'grid' }: JobCardProp
       </CardContent>
     </Card>
   );
-}
+});

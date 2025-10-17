@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+// ✅ PERFORMANCE: Enhanced image component with lazy loading and blur placeholders
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { getOptimizedImageProps, IMAGE_PRESETS } from '@/app/lib/utils/image-optimization';
 import { cn } from '@/app/lib/utils/cn';
@@ -22,7 +23,8 @@ interface OptimizedImageProps {
   objectFit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
 }
 
-export function OptimizedImage({
+// ✅ PERFORMANCE: Memoize component to prevent unnecessary re-renders
+export const OptimizedImage = React.memo(function OptimizedImage({
   src,
   alt,
   className,
@@ -41,23 +43,50 @@ export function OptimizedImage({
 }: OptimizedImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [isInView, setIsInView] = useState(priority); // If priority, load immediately
   const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleLoad = () => {
+  // ✅ PERFORMANCE: Lazy load images using Intersection Observer
+  useEffect(() => {
+    if (priority || !containerRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsInView(true);
+            observer.disconnect();
+          }
+        });
+      },
+      {
+        rootMargin: '50px', // Start loading 50px before image enters viewport
+      }
+    );
+
+    observer.observe(containerRef.current);
+
+    return () => observer.disconnect();
+  }, [priority]);
+
+  // ✅ PERFORMANCE: Memoize handlers
+  const handleLoad = useMemo(() => () => {
     setIsLoaded(true);
     onLoad?.();
-  };
+  }, [onLoad]);
 
-  const handleError = () => {
+  const handleError = useMemo(() => () => {
     setHasError(true);
     onError?.();
-  };
+  }, [onError]);
 
   // Reset error state when src changes
   useEffect(() => {
     setHasError(false);
     setIsLoaded(false);
-  }, [src]);
+    if (!priority) setIsInView(false);
+  }, [src, priority]);
 
   if (hasError) {
     return (
@@ -99,46 +128,56 @@ export function OptimizedImage({
   const imageHeight = fill ? undefined : (height || imageProps.height || 300);
 
   return (
-    <div className={cn("relative overflow-hidden", className)}>
-      <Image
-        ref={imgRef}
-        src={imageProps.src}
-        alt={alt}
-        width={imageWidth}
-        height={imageHeight}
-        fill={fill}
-        quality={imageProps.quality}
-        placeholder={imageProps.placeholder}
-        blurDataURL={imageProps.blurDataURL}
-        sizes={imageProps.sizes}
-        priority={imageProps.priority}
-        // Avoid Next.js optimizer for media and external URLs to prevent server-side fetch
-        unoptimized={Boolean(
-          (typeof imageProps.src === 'string' && imageProps.src.includes('/media/')) ||
-          (typeof src === 'string' && (src.startsWith('http') || src.includes('/media/')))
-        )}
-        style={{
-          objectFit,
-          transition: 'opacity 0.3s ease-in-out',
-          opacity: isLoaded ? 1 : 0,
-        }}
-        onLoad={handleLoad}
-        onError={handleError}
-        {...props}
-      />
+    <div ref={containerRef} className={cn("relative overflow-hidden", className)}>
+      {/* ✅ PERFORMANCE: Only render image when in viewport or priority */}
+      {isInView ? (
+        <Image
+          ref={imgRef}
+          src={imageProps.src}
+          alt={alt}
+          width={imageWidth}
+          height={imageHeight}
+          fill={fill}
+          quality={imageProps.quality}
+          placeholder={imageProps.placeholder}
+          blurDataURL={imageProps.blurDataURL}
+          sizes={imageProps.sizes}
+          priority={imageProps.priority}
+          loading={priority ? 'eager' : 'lazy'} // ✅ PERFORMANCE: Native lazy loading
+          // Avoid Next.js optimizer for media and external URLs to prevent server-side fetch
+          unoptimized={Boolean(
+            (typeof imageProps.src === 'string' && imageProps.src.includes('/media/')) ||
+            (typeof src === 'string' && (src.startsWith('http') || src.includes('/media/')))
+          )}
+          style={{
+            objectFit,
+            transition: 'opacity 0.3s ease-in-out',
+            opacity: isLoaded ? 1 : 0,
+          }}
+          onLoad={handleLoad}
+          onError={handleError}
+          {...props}
+        />
+      ) : (
+        // Placeholder while waiting to enter viewport
+        <div 
+          className="absolute inset-0 bg-gray-100 animate-pulse"
+          style={fill ? undefined : { width: imageWidth, height: imageHeight }}
+        />
+      )}
       
       {/* Loading placeholder */}
-      {!isLoaded && !hasError && (
+      {isInView && !isLoaded && !hasError && (
         <div className="absolute inset-0 bg-gray-100 animate-pulse flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
         </div>
       )}
     </div>
   );
-}
+});
 
-// Thumbnail variant for smaller images
-export function OptimizedThumbnail({
+// ✅ PERFORMANCE: Memoize thumbnail variant
+export const OptimizedThumbnail = React.memo(function OptimizedThumbnail({
   src,
   alt,
   className,
@@ -158,10 +197,10 @@ export function OptimizedThumbnail({
       {...props}
     />
   );
-}
+});
 
-// Hero variant for large images
-export function OptimizedHero({
+// ✅ PERFORMANCE: Memoize hero variant
+export const OptimizedHero = React.memo(function OptimizedHero({
   src,
   alt,
   className,
@@ -182,4 +221,4 @@ export function OptimizedHero({
       {...props}
     />
   );
-}
+});

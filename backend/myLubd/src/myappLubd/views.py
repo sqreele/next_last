@@ -87,7 +87,20 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         - date_from & date_to
         - pm_id (exact match)
         """
-        queryset = PreventiveMaintenance.objects.all()
+        # ✅ PERFORMANCE: Optimize query with select_related and prefetch_related
+        queryset = PreventiveMaintenance.objects.select_related(
+            'job',  # Foreign key
+            'created_by',  # Foreign key
+            'completed_by',  # Foreign key
+            'verified_by',  # Foreign key
+            'procedure_template',  # Foreign key
+        ).prefetch_related(
+            'topics',  # Many-to-many
+            'machines',  # Many-to-many
+            'machines__property',  # Related property through machines
+            'job__rooms',  # Rooms through job
+            'job__rooms__properties',  # Properties through rooms
+        )
 
         pm_id = self.request.query_params.get('pm_id')
         status_param = self.request.query_params.get('status')
@@ -806,25 +819,28 @@ class RoomViewSet(viewsets.ModelViewSet):
         user = self.request.user
         logger.info(f"User {user.username} requesting rooms")
         
+        # ✅ PERFORMANCE: Optimize query with prefetch_related
+        base_queryset = Room.objects.prefetch_related('properties')
+        
         # Check if user is admin/superuser - give access to all properties and rooms
         if user.is_superuser or user.is_staff:
             logger.info(f"User {user.username} is admin/staff - returning all rooms")
             property_id = self.request.query_params.get('property')
             if property_id:
-                queryset = Room.objects.filter(properties__property_id=property_id)
+                queryset = base_queryset.filter(properties__property_id=property_id)
                 logger.info(f"Found {queryset.count()} rooms for property {property_id}")
                 return queryset
-            return Room.objects.all()
+            return base_queryset
         
         # Special case for admin username
         if user.username == 'admin':
             logger.info(f"Admin username {user.username} - returning all rooms")
             property_id = self.request.query_params.get('property')
             if property_id:
-                queryset = Room.objects.filter(properties__property_id=property_id)
+                queryset = base_queryset.filter(properties__property_id=property_id)
                 logger.info(f"Found {queryset.count()} rooms for property {property_id}")
                 return queryset
-            return Room.objects.all()
+            return base_queryset
         
         # Get properties the user has access to
         user_properties = Property.objects.filter(users=user)
@@ -1208,28 +1224,30 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
 class PropertyViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
-    queryset = Property.objects.all()
     serializer_class = PropertySerializer
     lookup_field = 'property_id'
 
     def get_queryset(self):
         logger.info(f"User {self.request.user.username} requesting properties")
         
+        # ✅ PERFORMANCE: Optimize query with prefetch_related
+        base_queryset = Property.objects.prefetch_related('users', 'rooms')
+        
         # Check if user is admin/superuser - give access to all properties
         if self.request.user.is_superuser or self.request.user.is_staff:
             logger.info(f"User {self.request.user.username} is admin/staff - returning all properties")
-            queryset = Property.objects.all()
+            queryset = base_queryset
             logger.info(f"Found {queryset.count()} total properties")
             return queryset
         
         # Check if user has properties assigned
-        user_properties = Property.objects.filter(users=self.request.user)
+        user_properties = base_queryset.filter(users=self.request.user)
         logger.info(f"User {self.request.user.username} has {user_properties.count()} assigned properties")
         
         # If user has no properties assigned, check if they're admin user
         if user_properties.count() == 0 and self.request.user.username == 'admin':
             logger.info(f"Admin user {self.request.user.username} has no properties - returning all properties")
-            queryset = Property.objects.all()
+            queryset = base_queryset
             logger.info(f"Found {queryset.count()} total properties for admin")
             return queryset
         

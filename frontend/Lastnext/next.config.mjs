@@ -10,17 +10,26 @@ const nextConfig = {
   // Temporarily disable standalone output for Docker build
   // output: 'standalone',
   
+  // ✅ PERFORMANCE: Enable compression
+  compress: true,
+  
+  // ✅ PERFORMANCE: Enable production optimizations
+  productionBrowserSourceMaps: false, // Disable source maps in production for smaller bundle
+  
+  // ✅ PERFORMANCE: Optimize power preference
+  poweredByHeader: false,
+  
+  // ✅ PERFORMANCE: Reduce bundle size
+  swcMinify: true,
+  
   images: {
-    formats: ['image/avif'],
+    formats: ['image/avif', 'image/webp'], // ✅ PERFORMANCE: Add WebP fallback
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384, 512, 768, 1024, 1200],
-    qualities: [25, 50, 60, 70, 75, 80, 85, 90, 95, 100], // All quality values we use
-    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60 * 60 * 24 * 365, // ✅ PERFORMANCE: 1 year cache
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox; img-src 'self' data: blob: https: http://localhost:8000 http://127.0.0.1:8000;",
-    // Enhanced optimization settings
-    loader: 'default', // Use Next.js default loader
-    // Enable modern image formats with fallbacks
+    loader: 'default',
     unoptimized: false,
     remotePatterns: [
       // Development - local machine
@@ -83,7 +92,15 @@ const nextConfig = {
   experimental: {
     // ✅ Fixed: serverActions must be an object in Next.js 15+
     serverActions: {},
+    // ✅ PERFORMANCE: Enable optimized package imports
+    optimizePackageImports: ['lucide-react', 'recharts', '@radix-ui/react-icons'],
   },
+  
+  // ✅ PERFORMANCE: Enable React compiler optimizations
+  reactStrictMode: true,
+  
+  // ✅ PERFORMANCE: Optimize font loading
+  optimizeFonts: true,
   
   async redirects() {
     return [
@@ -121,10 +138,58 @@ const nextConfig = {
   },
   
   // Ensure webpack resolves the '@' alias to the project root
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     config.resolve = config.resolve || {};
     config.resolve.alias = config.resolve.alias || {};
     config.resolve.alias['@'] = projectRoot;
+    
+    // ✅ PERFORMANCE: Add optimization settings
+    if (!dev) {
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'deterministic',
+        runtimeChunk: 'single',
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            // Vendor chunk for node_modules
+            vendor: {
+              name: 'vendor',
+              chunks: 'all',
+              test: /node_modules/,
+              priority: 20
+            },
+            // Common chunks used across multiple pages
+            common: {
+              name: 'common',
+              minChunks: 2,
+              chunks: 'all',
+              priority: 10,
+              reuseExistingChunk: true,
+              enforce: true
+            },
+            // Large libraries get their own chunks
+            recharts: {
+              test: /[\\/]node_modules[\\/](recharts|d3-.*)[\\/]/,
+              name: 'recharts',
+              priority: 30,
+            },
+            reactPdf: {
+              test: /[\\/]node_modules[\\/](@react-pdf|react-pdf)[\\/]/,
+              name: 'react-pdf',
+              priority: 30,
+            },
+            radix: {
+              test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
+              name: 'radix-ui',
+              priority: 25,
+            }
+          }
+        }
+      };
+    }
     
     // Handle @react-pdf/renderer for client-side rendering
     if (!isServer) {

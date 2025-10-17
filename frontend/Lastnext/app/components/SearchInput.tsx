@@ -1,14 +1,16 @@
 'use client';
-import { useTransition } from 'react';
+import React, { useTransition, useCallback } from 'react'; // ✅ PERFORMANCE: Add React.memo
 import { useRouter } from 'next/navigation';
 import { Input } from '@/app/components/ui/input';
 import { Search } from 'lucide-react';
 
-export function SearchInput() {
+// ✅ PERFORMANCE: Memoize SearchInput to prevent unnecessary re-renders
+export const SearchInput = React.memo(function SearchInput() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   
-  function searchAction(formData: FormData) {
+  // ✅ PERFORMANCE: Memoize search action
+  const searchAction = useCallback((formData: FormData) => {
     const value = formData.get('q');
     
     // Don't trigger search for empty queries
@@ -22,7 +24,7 @@ export function SearchInput() {
       // Navigate to the search page
       router.push(`/dashboard/search?${params.toString()}`);
     });
-  }
+  }, [router]);
   
   return (
     <form action={searchAction} className="relative ml-auto flex-1 md:grow-0">
@@ -40,4 +42,4 @@ export function SearchInput() {
       )}
     </form>
   );
-}
+});

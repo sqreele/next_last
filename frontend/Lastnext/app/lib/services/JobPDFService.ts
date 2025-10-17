@@ -1,3 +1,4 @@
+'use client';
 // app/lib/services/JobPDFService.ts
 import React from 'react';
 import { Job, TabValue, FILTER_TITLES } from '@/app/lib/types';

@@ -1,3 +1,4 @@
+'use client';
 // @ts-nocheck
 // app/components/document/JobPDFTemplate.tsx
 import React from 'react';

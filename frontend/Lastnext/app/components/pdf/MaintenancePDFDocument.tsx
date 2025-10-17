@@ -1,3 +1,4 @@
+'use client';
 // app/components/pdf/MaintenancePDFDocument.tsx
 
 import React, { useState, useEffect } from 'react';

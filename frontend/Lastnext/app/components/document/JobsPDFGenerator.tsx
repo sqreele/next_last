@@ -1,3 +1,4 @@
+'use client';
 // @ts-nocheck
 // ./app/components/document/JobsPDFGenerator.tsx
 // Note: @react-pdf/renderer only supports JPG, JPEG, PNG, and GIF image formats

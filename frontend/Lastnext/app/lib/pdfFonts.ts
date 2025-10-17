@@ -1,3 +1,4 @@
+'use client';
 import { Font } from '@react-pdf/renderer';
 
 // Font registration state

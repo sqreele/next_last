@@ -137,6 +137,46 @@ const nextConfig = {
     config.resolve.alias = config.resolve.alias || {};
     config.resolve.alias['@'] = projectRoot;
     
+    // ✅ FIX: Exclude browser-only libraries from server-side bundle
+    if (isServer) {
+      // Get the existing externals
+      const existingExternals = config.externals;
+      
+      // Define browser-only libraries that should not be bundled server-side
+      const browserOnlyLibs = [
+        '@react-pdf/renderer',
+        'jspdf',
+        'html2canvas',
+        'canvas',
+        'jsdom',
+        'file-saver',
+      ];
+      
+      // Create a new externals function
+      const handleExternals = async ({ context, request }, callback) => {
+        // Check if this is a browser-only library
+        if (browserOnlyLibs.some(lib => request === lib || request?.startsWith(`${lib}/`))) {
+          // Mark as external to prevent bundling
+          return callback(null, 'commonjs ' + request);
+        }
+        
+        // If there are existing externals, chain them
+        if (typeof existingExternals === 'function') {
+          return existingExternals({ context, request }, callback);
+        }
+        
+        callback();
+      };
+      
+      // Replace the externals with our handler
+      config.externals = [handleExternals];
+      
+      // If existingExternals was an array, append our handler
+      if (Array.isArray(existingExternals)) {
+        config.externals = [...existingExternals, handleExternals];
+      }
+    }
+    
     // ✅ PERFORMANCE: Add optimization settings
     if (!dev) {
       config.optimization = {

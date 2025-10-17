@@ -1,3 +1,4 @@
+'use client';
 // PDFMaintenanceGenerator.tsx
 
 /// <reference types="react" />

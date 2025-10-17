@@ -1,3 +1,4 @@
+'use client';
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Font, Svg, Rect, Circle, Image } from '@react-pdf/renderer';
 import { Job, JobStatus } from '@/app/lib/types';

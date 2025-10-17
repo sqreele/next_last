@@ -19,9 +19,6 @@ const nextConfig = {
   // ✅ PERFORMANCE: Optimize power preference
   poweredByHeader: false,
   
-  // ✅ PERFORMANCE: Reduce bundle size
-  swcMinify: true,
-  
   images: {
     formats: ['image/avif', 'image/webp'], // ✅ PERFORMANCE: Add WebP fallback
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -98,9 +95,6 @@ const nextConfig = {
   
   // ✅ PERFORMANCE: Enable React compiler optimizations
   reactStrictMode: true,
-  
-  // ✅ PERFORMANCE: Optimize font loading
-  optimizeFonts: true,
   
   async redirects() {
     return [

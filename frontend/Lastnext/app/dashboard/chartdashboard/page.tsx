@@ -82,7 +82,7 @@ export default async function ChartDashboardPage() {
                 </div>
               </div>
             }>
-              <PropertyJobsDashboard initialJobs={[]} />
+              <LazyPropertyJobsDashboard initialJobs={[]} />
             </Suspense>
           </ErrorBoundary>
         </div>

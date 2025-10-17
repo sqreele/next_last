@@ -1,8 +1,8 @@
 // ./app/dashboard/chartdashboard/page.tsx
 import { Suspense } from 'react';
 import { fetchAllJobsForDashboard } from '@/app/lib/data.server';
-// ✅ PERFORMANCE: Use lazy-loaded dashboard component
-import { LazyPropertyJobsDashboard } from '@/app/components/lazy/LazyChartComponents';
+// ✅ PERFORMANCE: Use lazy-loaded dashboard component (client-side wrapper)
+import ChartDashboardClient from '@/app/components/lazy/ChartDashboardClient';
 import { getServerSession } from '@/app/lib/session.server';
 import ErrorBoundary from '@/app/components/ErrorBoundary';
 import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
@@ -39,7 +39,7 @@ export default async function ChartDashboardPage() {
                 </div>
               </div>
             }>
-              <LazyPropertyJobsDashboard initialJobs={jobs || []} />
+              <ChartDashboardClient initialJobs={jobs || []} />
             </Suspense>
           </ErrorBoundary>
         </div>
@@ -82,7 +82,7 @@ export default async function ChartDashboardPage() {
                 </div>
               </div>
             }>
-              <LazyPropertyJobsDashboard initialJobs={[]} />
+              <ChartDashboardClient initialJobs={[]} />
             </Suspense>
           </ErrorBoundary>
         </div>

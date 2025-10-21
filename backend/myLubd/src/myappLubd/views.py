@@ -1097,9 +1097,29 @@ class JobViewSet(viewsets.ModelViewSet):
     def my_jobs(self, request):
         """Get jobs for the currently authenticated user"""
         user = request.user
-        
-        # Get all jobs where the user is the owner/creator
-        jobs = Job.objects.filter(user=user).select_related(
+
+        # Optional override: allow filtering by a specific user (admin/staff only)
+        target_user = user
+        user_filter = request.query_params.get('user_id')
+        if user_filter and str(user_filter).lower() != 'all':
+            # Resolve by numeric id or username
+            resolved_user = None
+            try:
+                resolved_user = User.objects.filter(id=int(user_filter)).first()
+            except (TypeError, ValueError):
+                resolved_user = User.objects.filter(username=str(user_filter)).first()
+
+            if resolved_user:
+                # Only admins can view other users' jobs
+                if (user.is_staff or user.is_superuser) or resolved_user.id == user.id:
+                    target_user = resolved_user
+                else:
+                    return Response({
+                        'detail': 'Not permitted to view other users\' jobs'
+                    }, status=status.HTTP_403_FORBIDDEN)
+
+        # Get all jobs where the (possibly overridden) user is the owner/creator
+        jobs = Job.objects.filter(user=target_user).select_related(
             'user', 'updated_by'
         ).prefetch_related(
             'rooms', 'topics', 'job_images', 'job_images__uploaded_by'

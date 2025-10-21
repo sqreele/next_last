@@ -974,6 +974,7 @@ class JobViewSet(viewsets.ModelViewSet):
         search_term = self.request.query_params.get('search')
         room_filter = self.request.query_params.get('room_id')
         room_name_filter = self.request.query_params.get('room_name')
+        user_filter = self.request.query_params.get('user_id')
 
         if property_filter:
             queryset = queryset.filter(rooms__properties__property_id=property_filter)
@@ -997,6 +998,13 @@ class JobViewSet(viewsets.ModelViewSet):
 
         if room_name_filter:
             queryset = queryset.filter(rooms__name__icontains=room_name_filter)
+
+        # Optional: filter by assigned user (supports numeric id or username)
+        if user_filter and str(user_filter).lower() != 'all':
+            try:
+                queryset = queryset.filter(user_id=int(user_filter))
+            except (TypeError, ValueError):
+                queryset = queryset.filter(user__username=str(user_filter))
 
         return queryset.distinct()
 
@@ -1089,9 +1097,29 @@ class JobViewSet(viewsets.ModelViewSet):
     def my_jobs(self, request):
         """Get jobs for the currently authenticated user"""
         user = request.user
-        
-        # Get all jobs where the user is the owner/creator
-        jobs = Job.objects.filter(user=user).select_related(
+
+        # Optional override: allow filtering by a specific user (admin/staff only)
+        target_user = user
+        user_filter = request.query_params.get('user_id')
+        if user_filter and str(user_filter).lower() != 'all':
+            # Resolve by numeric id or username
+            resolved_user = None
+            try:
+                resolved_user = User.objects.filter(id=int(user_filter)).first()
+            except (TypeError, ValueError):
+                resolved_user = User.objects.filter(username=str(user_filter)).first()
+
+            if resolved_user:
+                # Only admins can view other users' jobs
+                if (user.is_staff or user.is_superuser) or resolved_user.id == user.id:
+                    target_user = resolved_user
+                else:
+                    return Response({
+                        'detail': 'Not permitted to view other users\' jobs'
+                    }, status=status.HTTP_403_FORBIDDEN)
+
+        # Get all jobs where the (possibly overridden) user is the owner/creator
+        jobs = Job.objects.filter(user=target_user).select_related(
             'user', 'updated_by'
         ).prefetch_related(
             'rooms', 'topics', 'job_images', 'job_images__uploaded_by'
@@ -1750,6 +1778,7 @@ def get_preventive_maintenance_jobs(request):
     property_id = request.query_params.get('property_id')
     status_param = request.query_params.get('status')
     limit = request.query_params.get('limit', 50)  # Default to 50 jobs
+    user_filter = request.query_params.get('user_id')
     
     # Build base query
     query = Job.objects.filter(is_preventivemaintenance=True)
@@ -1778,6 +1807,13 @@ def get_preventive_maintenance_jobs(request):
     # Add status filter if provided
     if status_param:
         query = query.filter(status=status_param)
+
+    # Add user filter if provided (supports numeric id or username)
+    if user_filter and str(user_filter).lower() != 'all':
+        try:
+            query = query.filter(user_id=int(user_filter))
+        except (TypeError, ValueError):
+            query = query.filter(user__username=str(user_filter))
     
     # Apply distinct, select related, and prefetch related for efficiency
     query = query.distinct().select_related('user').prefetch_related(

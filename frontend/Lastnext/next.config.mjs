@@ -3,6 +3,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
+const repoRoot = path.resolve(projectRoot, '..', '..')
 /**
  * @type {import('next').NextConfig}
  */
@@ -71,6 +72,8 @@ const nextConfig = {
       fullUrl: true,
     },
   },
+  // Silence workspace root inference issues in monorepo-ish layout
+  outputFileTracingRoot: repoRoot,
   
   async headers() {
     return [
@@ -89,8 +92,8 @@ const nextConfig = {
   experimental: {
     // ✅ Fixed: serverActions must be an object in Next.js 15+
     serverActions: {},
-    // ✅ PERFORMANCE: Enable optimized package imports
-    optimizePackageImports: ['lucide-react', 'recharts', '@radix-ui/react-icons'],
+    // Disabled optimizePackageImports to avoid build-time TypeError in Next 15.5+
+    // optimizePackageImports: ['lucide-react', 'recharts', '@radix-ui/react-icons'],
   },
   
   // ✅ PERFORMANCE: Enable React compiler optimizations
@@ -139,10 +142,8 @@ const nextConfig = {
     
     // ✅ FIX: Exclude browser-only libraries from server-side bundle
     if (isServer) {
-      // Get the existing externals
       const existingExternals = config.externals;
-      
-      // Define browser-only libraries that should not be bundled server-side
+
       const browserOnlyLibs = [
         '@react-pdf/renderer',
         'jspdf',
@@ -151,34 +152,52 @@ const nextConfig = {
         'jsdom',
         'file-saver',
       ];
-      
-      // Create a new externals function
-      const handleExternals = async ({ context, request }, callback) => {
-        // Check if this is a browser-only library
-        if (browserOnlyLibs.some(lib => request === lib || request?.startsWith(`${lib}/`))) {
-          // Mark as external to prevent bundling
-          return callback(null, 'commonjs ' + request);
+
+      // Webpack externals signature varies; support both ({context, request}, cb) and (context, request, cb)
+      /** @param {any} arg1 @param {any} arg2 @param {any} arg3 */
+      const handleExternals = (arg1, arg2, arg3) => {
+        /** @type {{ context?: string, request?: string }} */
+        const first = arg1;
+        /** @type {string | undefined} */
+        const maybeRequest = typeof arg1 === 'string' ? arg1 : arg2;
+        /** @type {(err?: any, result?: any) => void} */
+        const callback = typeof arg3 === 'function' ? arg3 : arg2;
+        const request = maybeRequest;
+        try {
+          if (
+            request &&
+            browserOnlyLibs.some(
+              (lib) => request === lib || (typeof request === 'string' && request.startsWith(`${lib}/`))
+            )
+          ) {
+            return callback(null, 'commonjs ' + request);
+          }
+
+          if (typeof existingExternals === 'function') {
+            // try both signatures
+            if (first && typeof first === 'object' && 'context' in first) {
+              return existingExternals(first, callback);
+            }
+            return existingExternals(undefined, request, callback);
+          }
+
+          return callback();
+        } catch (error) {
+          return callback(error);
         }
-        
-        // If there are existing externals, chain them
-        if (typeof existingExternals === 'function') {
-          return existingExternals({ context, request }, callback);
-        }
-        
-        callback();
       };
-      
-      // Replace the externals with our handler
-      config.externals = [handleExternals];
-      
-      // If existingExternals was an array, append our handler
+
       if (Array.isArray(existingExternals)) {
         config.externals = [...existingExternals, handleExternals];
+      } else if (existingExternals) {
+        config.externals = [existingExternals, handleExternals];
+      } else {
+        config.externals = [handleExternals];
       }
     }
     
-    // ✅ PERFORMANCE: Add optimization settings
-    if (!dev) {
+    // ✅ PERFORMANCE: Add optimization settings (client-only)
+    if (!dev && !isServer) {
       config.optimization = {
         ...config.optimization,
         moduleIds: 'deterministic',

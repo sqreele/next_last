@@ -974,6 +974,7 @@ class JobViewSet(viewsets.ModelViewSet):
         search_term = self.request.query_params.get('search')
         room_filter = self.request.query_params.get('room_id')
         room_name_filter = self.request.query_params.get('room_name')
+        user_filter = self.request.query_params.get('user_id')
 
         if property_filter:
             queryset = queryset.filter(rooms__properties__property_id=property_filter)
@@ -997,6 +998,13 @@ class JobViewSet(viewsets.ModelViewSet):
 
         if room_name_filter:
             queryset = queryset.filter(rooms__name__icontains=room_name_filter)
+
+        # Optional: filter by assigned user (supports numeric id or username)
+        if user_filter and str(user_filter).lower() != 'all':
+            try:
+                queryset = queryset.filter(user_id=int(user_filter))
+            except (TypeError, ValueError):
+                queryset = queryset.filter(user__username=str(user_filter))
 
         return queryset.distinct()
 
@@ -1750,6 +1758,7 @@ def get_preventive_maintenance_jobs(request):
     property_id = request.query_params.get('property_id')
     status_param = request.query_params.get('status')
     limit = request.query_params.get('limit', 50)  # Default to 50 jobs
+    user_filter = request.query_params.get('user_id')
     
     # Build base query
     query = Job.objects.filter(is_preventivemaintenance=True)
@@ -1778,6 +1787,13 @@ def get_preventive_maintenance_jobs(request):
     # Add status filter if provided
     if status_param:
         query = query.filter(status=status_param)
+
+    # Add user filter if provided (supports numeric id or username)
+    if user_filter and str(user_filter).lower() != 'all':
+        try:
+            query = query.filter(user_id=int(user_filter))
+        except (TypeError, ValueError):
+            query = query.filter(user__username=str(user_filter))
     
     # Apply distinct, select related, and prefetch related for efficiency
     query = query.distinct().select_related('user').prefetch_related(

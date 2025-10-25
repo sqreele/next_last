@@ -708,31 +708,20 @@ class Job(models.Model):
         verbose_name_plural = 'Maintenance Jobs'
         indexes = [
             # ✅ PERFORMANCE OPTIMIZATION: Comprehensive database indexes
-            # Single field indexes for common queries
-            models.Index(fields=['job_id']),  # Primary lookup field
-            models.Index(fields=['status']),
+            # Single-field indexes (avoid duplicates with implicit indexes from db_index=True or FK/unique)
             models.Index(fields=['created_at']),
             models.Index(fields=['updated_at']),  # For sorting
             models.Index(fields=['priority']),
-            models.Index(fields=['is_preventivemaintenance']),
-            models.Index(fields=['user']),
-            models.Index(fields=['updated_by']),
+            models.Index(fields=['completed_at']),
+
             # Composite indexes for common query patterns
             models.Index(fields=['status', 'created_at']),  # Filter by status + sort
             models.Index(fields=['is_preventivemaintenance', 'status']),  # PM jobs by status
             models.Index(fields=['user', 'created_at']),  # User's jobs sorted
             models.Index(fields=['status', 'priority']),  # Status + priority filtering
-            models.Index(fields=['updated_by']),
-            models.Index(fields=['completed_at']),
-            
-            # Composite indexes for complex queries
-            models.Index(fields=['status', 'created_at']),
             models.Index(fields=['user', 'status']),
-            models.Index(fields=['is_preventivemaintenance', 'status']),
             models.Index(fields=['created_at', 'status', 'priority']),
-            models.Index(fields=['user', 'created_at']),
-            models.Index(fields=['status', 'priority']),
-            
+
             # Partial indexes for better performance on filtered data
             models.Index(fields=['created_at'], condition=Q(status='pending'), name='job_pending_created_idx'),
             models.Index(fields=['created_at'], condition=Q(is_preventivemaintenance=True), name='job_pm_created_idx'),

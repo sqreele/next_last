@@ -378,6 +378,42 @@ class TopicFilter(admin.SimpleListFilter):
             return queryset.filter(topics__id=self.value()).distinct()
         return queryset
 
+# Filters specifically for JobImage admin
+class JobImagePropertyFilter(admin.SimpleListFilter):
+    title = 'property'
+    parameter_name = 'property'
+
+    def lookups(self, request, model_admin):
+        return [(str(p.id), p.name) for p in Property.objects.all().order_by('name')]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(job__rooms__properties__id=self.value()).distinct()
+        return queryset
+
+class JobImageRoomFilter(admin.SimpleListFilter):
+    title = 'room'
+    parameter_name = 'room'
+
+    def lookups(self, request, model_admin):
+        return [(str(r.room_id), r.name) for r in Room.objects.all().order_by('name')]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(job__rooms__room_id=self.value()).distinct()
+        return queryset
+
+class JobImageTopicFilter(admin.SimpleListFilter):
+    title = 'topic'
+    parameter_name = 'topic'
+
+    def lookups(self, request, model_admin):
+        return [(str(t.id), t.title) for t in Topic.objects.all().order_by('title')]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(job__topics__id=self.value()).distinct()
+        return queryset
 # ModelAdmins
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
@@ -1153,7 +1189,13 @@ class JobAdmin(admin.ModelAdmin):
 @admin.register(JobImage)
 class JobImageAdmin(admin.ModelAdmin):
     list_display = ('image_preview', 'job_link', 'uploaded_by', 'uploaded_at')
-    list_filter = ('uploaded_at', 'uploaded_by')
+    list_filter = (
+        'uploaded_at',
+        'uploaded_by',
+        JobImagePropertyFilter,
+        JobImageRoomFilter,
+        JobImageTopicFilter,
+    )
     search_fields = ('job__job_id', 'uploaded_by__username')
     readonly_fields = ('image_preview', 'uploaded_at')
     raw_id_fields = ('job', 'uploaded_by')

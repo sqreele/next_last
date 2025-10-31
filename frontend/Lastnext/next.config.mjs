@@ -153,32 +153,23 @@ const nextConfig = {
         'file-saver',
       ];
 
-      // Webpack externals signature varies; support both ({context, request}, cb) and (context, request, cb)
-      /** @param {any} arg1 @param {any} arg2 @param {any} arg3 */
-      const handleExternals = (arg1, arg2, arg3) => {
-        /** @type {{ context?: string, request?: string }} */
-        const first = arg1;
-        /** @type {string | undefined} */
-        const maybeRequest = typeof arg1 === 'string' ? arg1 : arg2;
-        /** @type {(err?: any, result?: any) => void} */
-        const callback = typeof arg3 === 'function' ? arg3 : arg2;
-        const request = maybeRequest;
+      // Webpack 5+ externals: Use new format ({context, request}, callback)
+      /** @type {(ctx: {context?: string, request?: string}, callback: (err?: any, result?: any) => void) => void} */
+      const handleExternals = ({ context, request }, callback) => {
         try {
+          const req = request;
           if (
-            request &&
+            req &&
             browserOnlyLibs.some(
-              (lib) => request === lib || (typeof request === 'string' && request.startsWith(`${lib}/`))
+              (lib) => req === lib || (typeof req === 'string' && req.startsWith(`${lib}/`))
             )
           ) {
-            return callback(null, 'commonjs ' + request);
+            return callback(null, 'commonjs ' + req);
           }
 
           if (typeof existingExternals === 'function') {
-            // try both signatures
-            if (first && typeof first === 'object' && 'context' in first) {
-              return existingExternals(first, callback);
-            }
-            return existingExternals(undefined, request, callback);
+            // Use new format for existing externals as well
+            return existingExternals({ context, request }, callback);
           }
 
           return callback();

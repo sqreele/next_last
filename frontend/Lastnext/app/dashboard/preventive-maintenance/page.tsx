@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { logger } from '@/app/lib/utils/logger';
 import { useRouter } from 'next/navigation';
-import { usePreventiveMaintenance as usePreventiveMaintenanceContext } from '@/app/lib/PreventiveContext';
+import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMaintenanceActions';
 import { useFilterStore } from '@/app/lib/stores';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
-import { PreventiveMaintenanceProvider } from '@/app/lib/PreventiveContext';
 
 // Import types
 import { FilterState, MachineOption, Stats } from '@/app/lib/hooks/filterTypes';
@@ -67,10 +67,17 @@ function PreventiveMaintenanceListPageContent() {
     fetchMaintenanceItems,
     deleteMaintenance,
     clearError,
-    debugMachineFilter,
-    testMachineFiltering,
     totalCount
-  } = usePreventiveMaintenanceContext();
+  } = usePreventiveMaintenanceActions();
+  
+  // Mock functions for backward compatibility
+  const debugMachineFilter = useCallback(async (machineId: string) => {
+    logger.debug('Debug machine filter', { machineId });
+  }, []);
+  
+  const testMachineFiltering = useCallback(() => {
+    logger.debug('Test machine filtering');
+  }, []);
 
   // Now using real data from context - removed mock implementations
 
@@ -489,9 +496,5 @@ function PreventiveMaintenanceListPageContent() {
 }
 
 export default function PreventiveMaintenanceListPage() {
-  return (
-    <PreventiveMaintenanceProvider>
-      <PreventiveMaintenanceListPageContent />
-    </PreventiveMaintenanceProvider>
-  );
+  return <PreventiveMaintenanceListPageContent />;
 }

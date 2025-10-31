@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { UserProfile, Property, Job, JobStatus, JobPriority } from '../types';
+import { logger } from '../utils/logger';
 
 // User & Auth State
 interface UserState {
@@ -148,8 +149,10 @@ export const useMainStore = create<MainStore>()(
           // Verify user has access to this property
           const hasAccess = userProps.some((p) => p.property_id === propertyId);
           if (!hasAccess) {
-            console.warn(`⚠️ Security: Attempted to select unauthorized property: ${propertyId}`);
-            console.warn(`⚠️ User only has access to: ${userProps.map(p => p.property_id).join(', ')}`);
+            logger.warn('Security: Attempted to select unauthorized property', {
+              propertyId,
+              userProperties: userProps.map(p => p.property_id)
+            });
             // Don't set the unauthorized property
             return;
           }

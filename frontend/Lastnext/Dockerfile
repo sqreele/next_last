@@ -1,5 +1,5 @@
 # Use specific Node.js LTS version with Alpine for smaller image size
-FROM node:20.17.0-alpine AS base
+FROM node:20-alpine AS base
 
 # Install necessary system dependencies
 RUN apk add --no-cache \

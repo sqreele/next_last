@@ -26,7 +26,29 @@ import { useUser, useProperties, useJobs } from "@/app/lib/stores/mainStore";
 import { useSession } from "@/app/lib/session.client";
 import { appSignOut } from "@/app/lib/logout";
 import { useDetailedUsers, DetailedUser } from "@/app/lib/hooks/useDetailedUsers";
-type Session = any;
+import { User, Property } from "@/app/lib/types";
+import { logger } from "@/app/lib/utils/logger";
+
+// Proper session type based on auth-client
+interface Session {
+  user?: {
+    id: string;
+    username: string;
+    email: string | null;
+    profile_image: string | null;
+    positions: string;
+    properties: Property[];
+    accessToken: string;
+    refreshToken: string;
+    accessTokenExpires?: number;
+    first_name?: string | null;
+    last_name?: string | null;
+    created_at: string;
+  };
+  error?: string;
+  expires?: string;
+}
+
 import { Button } from "@/app/components/ui/button";
 import Link from "next/link";
 import { Download } from "lucide-react";
@@ -214,14 +236,18 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       setIsGeneratingPDF(true);
       
       // Capture charts as images
-      const [pieChartImage, barChartImage] = await Promise.all([
+      const [pieChartImage, barChartImage, topicChartImage, roomChartImage] = await Promise.all([
         captureChartAsImage('pie-chart-container'),
-        captureChartAsImage('bar-chart-container')
+        captureChartAsImage('bar-chart-container'),
+        captureChartAsImage('topic-chart-container').catch(() => null),
+        captureChartAsImage('room-chart-container').catch(() => null)
       ]);
 
       // If chart images are too small or empty, don't use them
       const usePieChartImage = pieChartImage && pieChartImage.length > 1000;
       const useBarChartImage = barChartImage && barChartImage.length > 1000;
+      const useTopicChartImage = topicChartImage && topicChartImage.length > 1000;
+      const useRoomChartImage = roomChartImage && roomChartImage.length > 1000;
       
       // Get current property name
       const currentProperty = userProperties.find(p => p.property_id === effectiveProperty);
@@ -239,11 +265,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           chartImages={{
             pieChart: usePieChartImage ? pieChartImage : null,
             barChart: useBarChartImage ? barChartImage : null,
-            topicChart: null,
-            roomChart: null
+            topicChart: useTopicChartImage ? topicChartImage : null,
+            roomChart: useRoomChartImage ? roomChartImage : null
           }}
-          jobsByTopic={[]}
-          jobsByRoom={[]}
+          jobsByTopic={jobsByTopic.map(({ topic, count, percentage }) => ({ topic, count, percentage }))}
+          jobsByRoom={jobsByRoom.map(({ room, count, percentage }) => ({ room, count, percentage }))}
         />
       );
       
@@ -263,8 +289,10 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       const filename = `${propertyName.replace(/\s+/g, '-')}-chart-dashboard-${date}.pdf`;
       await downloadPdf(blob, filename);
       
-    } catch (error: any) {
-      alert(`Failed to generate PDF: ${error?.message || 'Unknown error'}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error('Failed to generate PDF', error);
+      alert(`Failed to generate PDF: ${errorMessage}`);
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -439,7 +467,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   }, [filteredJobs]);
 
   // Helper function to extract user display name with detailed user data
-  const getUserDisplayName = (user: any): string => {
+  const getUserDisplayName = (user: User | number | string | { username?: string; id?: string | number; [key: string]: unknown } | null | undefined): string => {
     if (!user) {
       return 'Unknown User';
     }
@@ -461,11 +489,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         return cleanUsername;
       }
       // Clean up Auth0 usernames for better display
-      let cleanUsername = user.username;
-      if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
+      let cleanUsername: string = user.username || '';
+      if (cleanUsername && (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_'))) {
         cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
       }
-      return cleanUsername;
+      return cleanUsername || 'Unknown User';
     }
     
     // If it's a string or number, try to match with detailed users
@@ -641,6 +669,78 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     return sortedResult;
   }, [filteredJobs, detailedUsers, session?.user]);
 
+  // ✅ PERFORMANCE OPTIMIZATION: Memoized jobs by topic data (top 10)
+  const jobsByTopic = useMemo(() => {
+    if (filteredJobs.length === 0) return [];
+
+    // Count jobs per topic
+    const topicCounts = new Map<string, number>();
+    
+    for (const job of filteredJobs) {
+      if (Array.isArray(job.topics) && job.topics.length > 0) {
+        for (const topic of job.topics) {
+          if (topic && topic.title) {
+            const topicTitle = topic.title;
+            topicCounts.set(topicTitle, (topicCounts.get(topicTitle) || 0) + 1);
+          }
+        }
+      }
+    }
+
+    const total = filteredJobs.length;
+
+    // Convert to array and sort by count (descending)
+    const result = Array.from(topicCounts.entries())
+      .map(([title, count]) => ({
+        title,
+        topic: title,
+        count,
+        percentage: total > 0 ? ((count / total) * 100).toFixed(1) : '0.0',
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10
+
+    return result;
+  }, [filteredJobs]);
+
+  // ✅ PERFORMANCE OPTIMIZATION: Memoized jobs by room data (top 10)
+  const jobsByRoom = useMemo(() => {
+    if (filteredJobs.length === 0) return [];
+
+    // Count jobs per room
+    const roomCounts = new Map<string, number>();
+    
+    for (const job of filteredJobs) {
+      if (Array.isArray(job.rooms) && job.rooms.length > 0) {
+        for (const room of job.rooms) {
+          if (room && room.name) {
+            const roomName = room.name;
+            roomCounts.set(roomName, (roomCounts.get(roomName) || 0) + 1);
+          }
+        }
+      }
+      // Also check room_name if it exists
+      if (job.room_name) {
+        roomCounts.set(job.room_name, (roomCounts.get(job.room_name) || 0) + 1);
+      }
+    }
+
+    const total = filteredJobs.length;
+
+    // Convert to array and sort by count (descending)
+    const result = Array.from(roomCounts.entries())
+      .map(([name, count]) => ({
+        name,
+        room: name,
+        count,
+        percentage: total > 0 ? ((count / total) * 100).toFixed(1) : '0.0',
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10
+
+    return result;
+  }, [filteredJobs]);
+
 
   // Loading state
   if (status === "loading" || isLoading) {
@@ -773,8 +873,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                         ))}
                       </Pie>
                       <Tooltip
-                        formatter={(value: number, name: string, props: any) => [
-                          `${value} (${props.payload.percentage}%)`,
+                        formatter={(value: number, name: string, props: { payload?: { percentage?: string } }) => [
+                          `${value} (${props.payload?.percentage || '0'}%)`,
                           name,
                         ]}
                       />
@@ -943,6 +1043,64 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Best Topics Chart - Top 10 */}
+        {jobsByTopic && jobsByTopic.length > 0 && (
+          <Card className="w-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg sm:text-xl">Best Topics - Top 10</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div id="topic-chart-container" className="h-[240px] sm:h-[280px] lg:h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={jobsByTopic} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tick={{ fontSize: isMobile ? 8 : 10 }} />
+                    <YAxis 
+                      type="category" 
+                      dataKey="title" 
+                      tick={{ fontSize: isMobile ? 8 : 9 }} 
+                      width={isMobile ? 120 : 150}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => [value, 'Job Count']}
+                    />
+                    <Bar dataKey="count" fill="#10b981" name="Jobs" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Best Rooms for Jobs Chart - Top 10 */}
+        {jobsByRoom && jobsByRoom.length > 0 && (
+          <Card className="w-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg sm:text-xl">Best Rooms for Jobs - Top 10</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div id="room-chart-container" className="h-[240px] sm:h-[280px] lg:h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={jobsByRoom} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tick={{ fontSize: isMobile ? 8 : 10 }} />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      tick={{ fontSize: isMobile ? 8 : 9 }} 
+                      width={isMobile ? 120 : 150}
+                    />
+                    <Tooltip 
+                      formatter={(value: number) => [value, 'Job Count']}
+                    />
+                    <Bar dataKey="count" fill="#3b82f6" name="Jobs" />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
+import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMaintenanceActions';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { preventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
 import Image from 'next/image';
@@ -86,7 +86,7 @@ const isAllPMItem = (item: PreventiveMaintenance): boolean => {
 
 export default function PreventiveMaintenanceDashboard() {
   // Use our store hook to access all maintenance data and actions
-  const context = usePreventiveMaintenance();
+  const context = usePreventiveMaintenanceActions();
   const { 
     maintenanceItems, 
     isLoading, 

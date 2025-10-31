@@ -1097,6 +1097,8 @@ class JobViewSet(viewsets.ModelViewSet):
     def my_jobs(self, request):
         """Get jobs for the currently authenticated user"""
         user = request.user
+        
+        logger.info(f"my_jobs endpoint called by user {user.username} (ID: {user.id})")
 
         # Optional override: allow filtering by a specific user (admin/staff only)
         target_user = user
@@ -1113,7 +1115,9 @@ class JobViewSet(viewsets.ModelViewSet):
                 # Only admins can view other users' jobs
                 if (user.is_staff or user.is_superuser) or resolved_user.id == user.id:
                     target_user = resolved_user
+                    logger.info(f"Filtering jobs for target_user: {target_user.username} (ID: {target_user.id})")
                 else:
+                    logger.warning(f"User {user.username} attempted to view jobs for user {resolved_user.username} but lacks permission")
                     return Response({
                         'detail': 'Not permitted to view other users\' jobs'
                     }, status=status.HTTP_403_FORBIDDEN)
@@ -1125,6 +1129,9 @@ class JobViewSet(viewsets.ModelViewSet):
             'rooms', 'topics', 'job_images', 'job_images__uploaded_by'
         ).order_by('-created_at')
         
+        initial_count = jobs.count()
+        logger.info(f"Initial job count for user {target_user.username}: {initial_count}")
+        
         # Apply additional filters if provided
         property_filter = request.query_params.get('property_id')
         status_filter = request.query_params.get('status')
@@ -1135,36 +1142,73 @@ class JobViewSet(viewsets.ModelViewSet):
         
         if property_filter:
             jobs = jobs.filter(rooms__properties__property_id=property_filter)
+            logger.info(f"Applied property filter: {property_filter}")
         
         if status_filter:
             jobs = jobs.filter(status=status_filter)
+            logger.info(f"Applied status filter: {status_filter}")
         
         if is_pm_filter is not None:
             val = str(is_pm_filter).lower() in ['1', 'true', 'yes']
             jobs = jobs.filter(is_preventivemaintenance=val)
+            logger.info(f"Applied is_preventivemaintenance filter: {val}")
         
         if room_filter:
             jobs = jobs.filter(rooms__room_id=room_filter)
+            logger.info(f"Applied room_id filter: {room_filter}")
         
         if room_name_filter:
             jobs = jobs.filter(rooms__name__icontains=room_name_filter)
+            logger.info(f"Applied room_name filter: {room_name_filter}")
         
         if search_term:
             jobs = jobs.filter(
                 Q(description__icontains=search_term) |
                 Q(job_id__icontains=search_term)
             )
+            logger.info(f"Applied search filter: {search_term}")
         
-        # Serialize the jobs
+        final_count = jobs.count()
+        logger.info(f"Final job count after filters: {final_count}")
+        
+        # Use pagination if requested (frontend sends page and page_size)
+        page = request.query_params.get('page')
+        page_size = request.query_params.get('page_size')
+        
+        if page and page_size:
+            try:
+                page_num = int(page)
+                page_size_num = int(page_size)
+                # Use the paginator from the ViewSet
+                paginator = self.paginate_queryset(jobs)
+                if paginator is not None:
+                    serializer = self.get_serializer(paginator, many=True)
+                    response = self.get_paginated_response(serializer.data)
+                    # Add additional metadata
+                    response.data['user_id'] = user.id
+                    response.data['username'] = user.username
+                    response.data['target_user_id'] = target_user.id
+                    response.data['target_username'] = target_user.username
+                    logger.info(f"Returning paginated results: page {page_num}, {len(serializer.data)} jobs")
+                    return response
+            except (ValueError, TypeError) as e:
+                logger.warning(f"Invalid pagination parameters: page={page}, page_size={page_size}, error={e}")
+        
+        # If no pagination requested or pagination failed, return all results
         serializer = self.get_serializer(jobs, many=True)
         
-        return Response({
+        response_data = {
             'count': len(serializer.data),
             'results': serializer.data,
             'user_id': user.id,
             'username': user.username,
-            'message': f'Found {len(serializer.data)} jobs for user {user.username}'
-        }, status=status.HTTP_200_OK)
+            'target_user_id': target_user.id,
+            'target_username': target_user.username,
+            'message': f'Found {len(serializer.data)} jobs for user {target_user.username}'
+        }
+        
+        logger.info(f"Returning {len(serializer.data)} jobs to user {user.username} (no pagination)")
+        return Response(response_data, status=status.HTTP_200_OK)
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:

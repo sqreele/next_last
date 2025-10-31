@@ -209,13 +209,19 @@ main() {
         cleanup
     fi
     
-    # Build containers
+    # Pre-pull base images to avoid timeout issues
+    print_status "📥 Pre-pulling base images..."
+    export DOCKER_CLIENT_TIMEOUT=600 COMPOSE_HTTP_TIMEOUT=600
+    docker pull node:20-alpine || print_warning "Failed to pre-pull node:20-alpine, will try during build"
+    docker pull postgres:17-alpine || print_warning "Failed to pre-pull postgres:17-alpine, will try during build"
+    
+    # Build containers with extended timeouts
     if [ "$REBUILD" = true ]; then
-        print_status "🔨 Force rebuilding containers..."
-        docker-compose -f docker-compose.dev.yml build --no-cache
+        print_status "🔨 Force rebuilding containers with extended timeouts..."
+        DOCKER_CLIENT_TIMEOUT=600 COMPOSE_HTTP_TIMEOUT=600 docker-compose -f docker-compose.dev.yml build --no-cache
     else
-        print_status "📦 Building containers..."
-        docker-compose -f docker-compose.dev.yml build
+        print_status "📦 Building containers with extended timeouts..."
+        DOCKER_CLIENT_TIMEOUT=600 COMPOSE_HTTP_TIMEOUT=600 docker-compose -f docker-compose.dev.yml build
     fi
     
     # Start database first

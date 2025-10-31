@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { appSignOut } from '@/app/lib/logout';
-import { PreventiveMaintenanceProvider } from '@/app/lib/PreventiveContext';
 import {
   Home,
   LineChart,
@@ -68,8 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isSidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   return (
-    <PreventiveMaintenanceProvider>
-      <div className="flex min-h-screen-safe w-full bg-white text-gray-800 overscroll-none">
+    <div className="flex min-h-screen-safe w-full bg-white text-gray-800 overscroll-none">
         {/* Desktop Navigation - Hidden on mobile and tablet */}
         <DesktopNav 
           collapsed={isSidebarCollapsed} 
@@ -114,7 +112,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <ResponsiveDebug />
         </div>
       </div>
-    </PreventiveMaintenanceProvider>
   );
 }
 

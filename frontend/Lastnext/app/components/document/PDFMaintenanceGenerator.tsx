@@ -30,7 +30,7 @@ import {
   itemMatchesMachine
 } from '@/app/lib/preventiveMaintenanceModels';
 import { getProductionImageUrl } from '@/app/lib/utils/pdfImageUtils';
-import { usePreventiveMaintenance } from '@/app/lib/PreventiveContext';
+import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -65,8 +65,8 @@ interface MachineOption {
 const PDFMaintenanceGenerator: React.FC<PDFMaintenanceGeneratorProps> = ({ initialFilters }) => {
   const router = useRouter();
   
-  // Get maintenance data from context
-  const { maintenanceItems } = usePreventiveMaintenance();
+  // Get maintenance data from Zustand store
+  const maintenanceItems = usePreventiveMaintenanceStore(state => state.maintenanceItems);
   const maintenanceData = maintenanceItems || [];
   
   // Mock function since it's not available in the store

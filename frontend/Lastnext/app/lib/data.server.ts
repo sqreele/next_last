@@ -2,6 +2,7 @@ import { Job, Property, JobStatus, Room, User, Topic } from "./types";
 import { API_CONFIG } from "./config";
 import { getCsrfHeaders } from "./csrf";
 import { fixJobsImageUrls, fixJobImageUrls, sanitizeJobsData, sanitizeJobData } from "./utils/image-utils";
+import { logger } from "./utils/logger";
 
 // Allow using process.env without requiring Node types in this module
 declare const process: { env: Record<string, string | undefined> };
@@ -34,7 +35,7 @@ export async function fetchWithToken<T>(
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   } else {
-    console.warn('⚠️ No access token provided for request:', url);
+    logger.warn('No access token provided for request', { url });
   }
 
   const options: RequestInit = {
@@ -56,7 +57,7 @@ export async function fetchWithToken<T>(
       // Non-fatal: proceed without CSRF header if fetching token fails
     }
     // Ensure cookies (session) are sent in the browser
-    (options as any).credentials = 'include';
+    (options as Record<string, unknown>).credentials = 'include';
   }
 
   // Handle relative URLs by making them absolute for server-side requests
@@ -66,7 +67,7 @@ export async function fetchWithToken<T>(
     absoluteUrl = `${API_CONFIG.baseUrl}${url}`;
   }
 
-  console.log(`${method} ${absoluteUrl}`, {
+  logger.api(method, absoluteUrl, undefined, {
     hasAuth: !!headers["Authorization"],
     method
   });
@@ -75,14 +76,11 @@ export async function fetchWithToken<T>(
     const response = await fetch(absoluteUrl, options);
     const responseText = await response.text();
 
-    console.log(
-      "Response Status:",
-      response.status,
-      "Content-Length:",
-      responseText.length,
-      "Preview:",
-      responseText.length > 200 ? responseText.substring(0, 200) + "..." : responseText
-    );
+    logger.debug('API Response', {
+      status: response.status,
+      contentLength: responseText.length,
+      preview: responseText.length > 200 ? responseText.substring(0, 200) + "..." : responseText
+    });
 
     if (!response.ok) {
       const contentType = response.headers.get("content-type");
@@ -94,7 +92,7 @@ export async function fetchWithToken<T>(
           errorData = JSON.parse(responseText);
           errorMessage = errorData.detail || errorMessage;
         } catch (parseError) {
-          console.error("Failed to parse error JSON:", parseError);
+          logger.error("Failed to parse error JSON", parseError);
         }
       }
       
@@ -120,14 +118,14 @@ export async function fetchWithToken<T>(
     try {
       return JSON.parse(responseText) as T;
     } catch (parseError) {
-      console.error("Error parsing JSON response:", parseError);
+      logger.error("Error parsing JSON response", parseError);
       throw new ServerApiError(
         `Failed to parse response as JSON: ${responseText.substring(0, 200)}...`,
         500
       );
     }
   } catch (error) {
-    console.error(`Error during ${method} request to ${absoluteUrl}:`, error);
+    logger.error(`Error during ${method} request to ${absoluteUrl}`, error);
     if (error instanceof ServerApiError) {
       throw error;
     }
@@ -155,41 +153,44 @@ export async function fetchJobsForProperty(
     if (response && typeof response === 'object' && 'results' in response) {
       // Paginated response: { count: 4, results: [...], ... }
       jobs = response.results;
-      console.log(`📋 Jobs fetched: { count: ${response.count}, results: ${jobs.length} }`);
+      logger.debug('Jobs fetched for property', { 
+        count: (response as { count?: number }).count, 
+        resultsLength: jobs.length 
+      });
     } else if (Array.isArray(response)) {
       // Direct array response
       jobs = response;
-      console.log(`📋 Jobs fetched: { count: ${jobs.length} }`);
+      logger.debug('Jobs fetched for property', { count: jobs.length });
     } else {
-      console.error('Unexpected response format:', response);
+      logger.error('Unexpected response format in fetchJobsForProperty', new Error('Invalid response'), { response });
       jobs = [];
     }
     
     const sanitizedJobs = sanitizeJobsData(jobs);
     return fixJobsImageUrls(sanitizedJobs);
   } catch (error) {
-    console.error('Error in fetchJobsForProperty:', error);
+    logger.error('Error in fetchJobsForProperty', error);
     throw error;
   }
 }
 
 export async function fetchJobs(accessToken?: string): Promise<Job[]> {
   try {
-    console.log('fetchJobs: Fetching first page of jobs...');
-    const response = await fetchWithToken<any>('/api/v1/jobs/', accessToken);
+    logger.debug('fetchJobs: Fetching first page of jobs...');
+    const response = await fetchWithToken<Job[] | { results: Job[] }>('/api/v1/jobs/', accessToken);
 
     let jobs: Job[] = [];
     if (response && typeof response === 'object') {
       if (Array.isArray(response)) {
         jobs = response;
-      } else if (response.results && Array.isArray(response.results)) {
+      } else if ('results' in response && Array.isArray(response.results)) {
         jobs = response.results;
       } else {
-        console.error('fetchJobs: Unexpected response format:', response);
+        logger.error('fetchJobs: Unexpected response format', new Error('Invalid response structure'), { response });
         return [];
       }
     } else {
-      console.error('fetchJobs: Invalid response:', response);
+      logger.error('fetchJobs: Invalid response', new Error('Response is not an object'), { response });
       return [];
     }
 
@@ -197,11 +198,11 @@ export async function fetchJobs(accessToken?: string): Promise<Job[]> {
     const fixedJobs = fixJobsImageUrls(sanitizedJobs);
     return fixedJobs;
   } catch (error) {
-    console.error('Error fetching jobs:', error);
+    logger.error('Error fetching jobs', error);
     
     // Log more details about the error
     if (error instanceof ServerApiError) {
-      console.error('ServerApiError details:', {
+      logger.error('ServerApiError details', error, {
         status: error.status,
         message: error.message,
         errorData: error.errorData
@@ -210,7 +211,7 @@ export async function fetchJobs(accessToken?: string): Promise<Job[]> {
     
     // During build time or when backend is unavailable, return empty array
     if (process.env.NODE_ENV === 'production' || error instanceof ServerApiError) {
-      console.warn('Returning empty jobs array due to fetch error');
+      logger.warn('Returning empty jobs array due to fetch error');
       return [];
     }
     

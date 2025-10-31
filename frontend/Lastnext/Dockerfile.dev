@@ -1,14 +1,61 @@
 # Development Dockerfile for Next.js frontend
-FROM node:20.17.0-alpine
+FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app
 
+# Harden npm against flaky networks and speed up installs
+ENV \
+    NPM_CONFIG_FETCH_RETRIES=5 \
+    NPM_CONFIG_FETCH_RETRY_FACTOR=2 \
+    NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000 \
+    NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000 \
+    NPM_CONFIG_FETCH_TIMEOUT=300000 \
+    NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
+    NPM_CONFIG_PROGRESS=false
+
+# Optional: tools sometimes required by native deps or git-based deps
+RUN apk add --no-cache git python3 make g++
+
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Keep npm current for better reliability, then configure sensible defaults
+RUN echo "🔧 Upgrading npm and configuring retry settings..." && \
+    for i in 1 2 3; do \
+        npm install -g npm@11.6.2 && break || { \
+            echo "⚠️  npm upgrade attempt $i failed, retrying..."; \
+            [ $i -lt 3 ] && sleep 3 || exit 1; \
+        }; \
+    done && \
+    npm config set registry "https://registry.npmjs.org/" && \
+    npm config set fetch-retries ${NPM_CONFIG_FETCH_RETRIES} && \
+    npm config set fetch-retry-factor ${NPM_CONFIG_FETCH_RETRY_FACTOR} && \
+    npm config set fetch-retry-maxtimeout ${NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT} && \
+    npm config set fetch-retry-mintimeout ${NPM_CONFIG_FETCH_RETRY_MINTIMEOUT} && \
+    npm config set fetch-timeout ${NPM_CONFIG_FETCH_TIMEOUT} && \
+    npm config set progress false && \
+    npm config set legacy-peer-deps true && \
+    echo "✅ npm configured successfully"
+
+# Install dependencies with retry logic for network resilience
+RUN echo "📦 Installing dependencies with retry logic..." && \
+    for i in 1 2 3 4 5; do \
+        echo "Attempt $i of 5..." && \
+        if [ -f package-lock.json ]; then \
+            npm ci --legacy-peer-deps --no-audit --no-fund --prefer-offline --progress=false && break || true; \
+        else \
+            npm install --legacy-peer-deps --no-audit --no-fund --prefer-offline --progress=false && break || true; \
+        fi; \
+        if [ $i -lt 5 ]; then \
+            echo "⚠️  Install attempt $i failed, retrying in 5 seconds..."; \
+            sleep 5; \
+        else \
+            echo "❌ All install attempts failed"; \
+            exit 1; \
+        fi; \
+    done && \
+    echo "✅ Dependencies installed successfully"
 
 # Copy source code
 COPY . .

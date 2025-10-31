@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from '@/app/lib/session.client';
+import { Property } from '@/app/lib/types';
+import { logger } from '@/app/lib/utils/logger';
 
 export interface DetailedUser {
   id: number;
@@ -10,7 +12,7 @@ export interface DetailedUser {
   full_name: string;
   positions: string;
   profile_image: string | null;
-  properties: any[];
+  properties: Property[];
   created_at: string;
 }
 
@@ -30,8 +32,9 @@ export function useDetailedUsers() {
     setError(null);
 
     try {
-      console.log('Fetching detailed users from /api/users/detailed/');
-      console.log('Access token available:', !!session.user.accessToken);
+      logger.debug('Fetching detailed users from /api/users/detailed/', {
+        hasToken: !!session.user.accessToken
+      });
       
       const response = await fetch('/api/users/detailed/', {
         headers: {
@@ -40,21 +43,22 @@ export function useDetailedUsers() {
         },
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
+      logger.api('GET', '/api/users/detailed/', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Error response:', errorText);
+        logger.error('Error fetching users', new Error(errorText), {
+          status: response.status,
+          statusText: response.statusText
+        });
         throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('Received users data:', data.length, 'users');
-      console.log('Sample user data:', JSON.stringify(data[0], null, 2));
+      logger.debug('Received users data', { count: data.length });
       setUsers(data);
     } catch (err) {
-      console.error('Error fetching detailed users:', err);
+      logger.error('Error fetching detailed users', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch users');
       setUsers([]);
     } finally {

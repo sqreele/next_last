@@ -122,3 +122,4 @@ curl -I http://localhost:3000
 ✅ PDF generation features work in the browser
 ✅ No console errors related to @react-pdf/renderer, jspdf, or html2canvas
 
+

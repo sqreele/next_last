@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { PreventiveMaintenanceProvider } from '@/app/lib/PreventiveContext';
 import PreventiveMaintenanceForm from '@/app/components/preventive/PreventiveMaintenanceForm';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 
@@ -72,13 +71,11 @@ function CreatePageContent() {
   );
 }
 
-// Main page component that provides the context
+// Main page component
 export default function CreatePreventiveMaintenancePage() {
   return (
     <div className="bg-gray-50 min-h-screen">
-      <PreventiveMaintenanceProvider>
-        <CreatePageContent />
-      </PreventiveMaintenanceProvider>
+      <CreatePageContent />
     </div>
   );
 }

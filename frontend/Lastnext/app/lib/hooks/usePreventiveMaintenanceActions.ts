@@ -8,6 +8,8 @@ import { useSession } from '@/app/lib/session.client';
 import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import { useAuthStore } from '@/app/lib/stores/useAuthStore';
 import { createPreventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
+import { fetchTopics } from '@/app/lib/data.server';
+import MachineService from '@/app/lib/MachineService';
 import type { SearchParams, DashboardStats } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import { logger } from '@/app/lib/utils/logger';
 
@@ -39,7 +41,7 @@ export function usePreventiveMaintenanceActions() {
   } = usePreventiveMaintenanceStore();
 
   // Fetch topics
-  const fetchTopics = useCallback(async () => {
+  const fetchTopicsAction = useCallback(async () => {
     if (!accessToken) {
       logger.warn('No access token available for fetching topics');
       return;
@@ -47,13 +49,16 @@ export function usePreventiveMaintenanceActions() {
 
     try {
       setLoading(true);
-      // Create service instance with token
-      const service = createPreventiveMaintenanceService(accessToken);
-      const response = await service.getTopics();
-      
-      if (response.success && response.data) {
-        setTopics(Array.isArray(response.data) ? response.data : []);
-      }
+      // Use fetchTopics from data.server.ts
+      const topicsData = await fetchTopics(accessToken);
+      // Map topics to match the expected type (convert null to undefined for description)
+      const mappedTopics = Array.isArray(topicsData) 
+        ? topicsData.map(topic => ({
+            ...topic,
+            description: topic.description ?? undefined
+          }))
+        : [];
+      setTopics(mappedTopics);
     } catch (error) {
       logger.error('Error fetching topics', error);
       setError('Failed to fetch topics');
@@ -71,9 +76,9 @@ export function usePreventiveMaintenanceActions() {
 
     try {
       setLoading(true);
-      const service = createPreventiveMaintenanceService(accessToken);
-      const params = propertyId ? { property_id: propertyId } : {};
-      const response = await service.getMachines(params);
+      const machineService = new MachineService();
+      const targetPropertyId = propertyId || selectedProperty || undefined;
+      const response = await machineService.getMachines(targetPropertyId, accessToken);
       
       if (response.success && response.data) {
         setMachines(Array.isArray(response.data) ? response.data : []);
@@ -84,7 +89,7 @@ export function usePreventiveMaintenanceActions() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, setLoading, setMachines, setError]);
+  }, [accessToken, selectedProperty, setLoading, setMachines, setError]);
 
   // Fetch maintenance items
   const fetchMaintenanceItems = useCallback(async (params?: SearchParams) => {
@@ -142,12 +147,14 @@ export function usePreventiveMaintenanceActions() {
     try {
       setLoading(true);
       const service = createPreventiveMaintenanceService(accessToken);
-      const response = await service.getStatistics({
+      const response = await service.getMaintenanceStatistics({
         property_id: selectedProperty || undefined
       });
       
       if (response.success && response.data) {
-        setStatistics(response.data);
+        // Type assertion to match store's DashboardStats interface
+        // The API returns array format but store expects Record format
+        setStatistics(response.data as unknown as DashboardStats);
       }
     } catch (error) {
       logger.error('Error fetching statistics', error);
@@ -228,10 +235,11 @@ export function usePreventiveMaintenanceActions() {
       
       if (response.success && response.data) {
         // Update in store
+        const updatedData = response.data;
         setMaintenanceItems(maintenanceItems.map(item => 
-          item.pm_id === pmId ? response.data : item
+          item.pm_id === pmId ? updatedData : item
         ));
-        return response.data;
+        return updatedData;
       } else {
         setError(response.message || 'Failed to update maintenance item');
         return null;
@@ -259,10 +267,11 @@ export function usePreventiveMaintenanceActions() {
       
       if (response.success && response.data) {
         // Update in store
+        const completedData = response.data;
         setMaintenanceItems(maintenanceItems.map(item => 
-          item.pm_id === pmId ? response.data : item
+          item.pm_id === pmId ? completedData : item
         ));
-        return response.data;
+        return completedData;
       } else {
         setError(response.message || 'Failed to complete maintenance item');
         return null;
@@ -291,7 +300,7 @@ export function usePreventiveMaintenanceActions() {
     // Actions
     fetchMaintenanceItems,
     fetchStatistics,
-    fetchTopics,
+    fetchTopics: fetchTopicsAction,
     fetchMachines,
     fetchMaintenanceById,
     updateMaintenance,

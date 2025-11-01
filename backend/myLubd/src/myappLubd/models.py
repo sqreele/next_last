@@ -19,13 +19,34 @@ import logging
 # Set up logger
 logger = logging.getLogger(__name__)
 
-# Custom User Model with property fields
+# Custom User Model with extended organizational fields
 class User(AbstractUser):
+    ROLE_CHOICES = [
+        ('Chief Engineer', 'Chief Engineer'),
+        ('Engineer', 'Engineer'),
+        ('Technician', 'Technician'),
+        ('Contractor', 'Contractor'),
+        ('Inspector', 'Inspector'),
+    ]
+
+    full_name = models.CharField(max_length=255, blank=True, null=True, help_text="Full name of the user")
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES, blank=True, null=True, help_text="Role for responsibility tracking")
+    department = models.CharField(max_length=100, blank=True, null=True, help_text="Organizational department, e.g., Engineering")
     property_name = models.CharField(max_length=255, blank=True, null=True, help_text="Name of the property this user belongs to")
     property_id = models.CharField(max_length=50, blank=True, null=True, help_text="ID of the property this user belongs to")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        pass
+        indexes = [
+            models.Index(fields=['username']),
+            models.Index(fields=['full_name']),
+            models.Index(fields=['role']),
+            models.Index(fields=['department']),
+        ]
+
+    def __str__(self):
+        return self.full_name or self.username
 
 class PreventiveMaintenance(models.Model):
     FREQUENCY_CHOICES = [
@@ -1247,27 +1268,6 @@ class MaintenanceSchedule(models.Model):
         return f"Schedule for {self.maintenance.pm_id}"
 
 
-class Equipment(models.Model):
-    """Stores reference data for equipment types and assets."""
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    category = models.CharField(max_length=100, blank=True, null=True, help_text="Functional grouping, e.g., Fire System")
-    is_active = models.BooleanField(default=True, help_text="Flag to indicate whether the equipment is currently active")
-
-    class Meta:
-        ordering = ['name']
-        verbose_name = 'Equipment'
-        verbose_name_plural = 'Equipment'
-        indexes = [
-            models.Index(fields=['name']),
-            models.Index(fields=['category']),
-            models.Index(fields=['is_active']),
-        ]
-
-    def __str__(self):
-        return self.name
-
-
 class Frequency(models.Model):
     """Maintenance frequency definitions such as weekly or monthly."""
     name = models.CharField(max_length=100, unique=True)
@@ -1284,7 +1284,7 @@ class Frequency(models.Model):
 
 class Procedure(models.Model):
     """Defines a maintenance procedure for a given equipment and frequency."""
-    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name='procedures')
+    equipment = models.ForeignKey(Machine, on_delete=models.CASCADE, related_name='procedures', help_text="Machine this procedure applies to")
     frequency = models.ForeignKey(Frequency, on_delete=models.CASCADE, related_name='procedures')
     description = models.TextField()
     created_by = models.ForeignKey(
@@ -1307,7 +1307,6 @@ class Procedure(models.Model):
         ordering = ['-created_at']
         verbose_name = 'Procedure'
         verbose_name_plural = 'Procedures'
-        unique_together = ('equipment', 'frequency', 'description')
         indexes = [
             models.Index(fields=['equipment']),
             models.Index(fields=['frequency']),
@@ -1371,7 +1370,7 @@ class Contractor(models.Model):
     contact = models.CharField(max_length=255, blank=True, null=True)
     type = models.CharField(max_length=20, choices=ContractorType.choices, default=ContractorType.INTERNAL)
     assigned_equipment = models.ForeignKey(
-        Equipment,
+        Machine,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

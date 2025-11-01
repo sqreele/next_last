@@ -52,7 +52,6 @@ from .models import (
     MaintenanceChecklist,
     MaintenanceHistory,
     MaintenanceSchedule,
-    Equipment,
     Frequency,
     Procedure,
     MaintenanceLog,
@@ -1582,13 +1581,6 @@ class MaintenanceScheduleAdmin(admin.ModelAdmin):
             'fields': ('total_occurrences',)
         }),
     )
-
-
-@admin.register(Equipment)
-class EquipmentAdmin(admin.ModelAdmin):
-    list_display = ['name', 'category', 'is_active']
-    list_filter = ['is_active', 'category']
-    search_fields = ['name', 'category']
 
 
 @admin.register(Frequency)

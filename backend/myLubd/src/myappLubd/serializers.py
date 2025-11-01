@@ -10,7 +10,6 @@ from .models import (
     PreventiveMaintenance,
     Machine,
     MaintenanceProcedure,
-    Equipment,
     Frequency,
     Procedure,
     MaintenanceLog,
@@ -26,11 +25,12 @@ from django.utils import timezone
 from django.core.validators import FileExtensionValidator
 import math
 
-# User serializer for basic user data
-class UserSerializer(serializers.HyperlinkedModelSerializer):
+# User serializer for basic user data (read usage)
+class UserReadSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
-        fields = ['url', 'username', 'email', 'is_staff']
+        fields = ['url', 'username', 'email', 'full_name', 'role', 'department', 'is_staff', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['is_staff', 'is_active', 'created_at', 'updated_at']
 
 # Room serializer defined first to avoid circular import issues
 class RoomSerializer(serializers.ModelSerializer):
@@ -117,6 +117,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
+    full_name = serializers.CharField(source='user.full_name', read_only=True)
+    role = serializers.CharField(source='user.role', read_only=True)
+    department = serializers.CharField(source='user.department', read_only=True)
     created_at = serializers.DateTimeField(source='user.date_joined', read_only=True)
     # Property fields from User model
     user_property_name = serializers.CharField(source='user.property_name', read_only=True)
@@ -133,6 +136,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'email',
             'first_name',
             'last_name',
+            'full_name',
+            'role',
+            'department',
             'profile_image',
             'positions',
             'properties',
@@ -368,8 +374,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)
 
-# User serializer for creation
-class UserSerializer(serializers.ModelSerializer):
+# User serializer for creation/update operations
+class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
         required=True,
@@ -377,9 +383,13 @@ class UserSerializer(serializers.ModelSerializer):
     )
     email = serializers.EmailField(required=True)
 
+    full_name = serializers.CharField(required=False, allow_blank=True)
+    role = serializers.ChoiceField(choices=User.ROLE_CHOICES, required=False, allow_blank=True)
+    department = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = User
-        fields = ('username', 'password', 'email')
+        fields = ('username', 'password', 'email', 'full_name', 'role', 'department')
 
     def validate(self, attrs):
         username = attrs.get('username', '')
@@ -390,14 +400,17 @@ class UserSerializer(serializers.ModelSerializer):
         if User.objects.filter(email=email).exists():
             raise serializers.ValidationError({"email": "A user with that email already exists."})
 
+        role = attrs.get('role')
+        if role and role not in dict(User.ROLE_CHOICES):
+            raise serializers.ValidationError({"role": "Invalid role selection."})
+
         return attrs
 
     def create(self, validated_data):
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            email=validated_data['email'],
-            password=validated_data['password']
-        )
+        password = validated_data.pop('password')
+        user = User.objects.create(**validated_data)
+        user.set_password(password)
+        user.save()
         UserProfile.objects.get_or_create(user=user)
         return user
 
@@ -671,7 +684,7 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
     before_image_url = serializers.SerializerMethodField()
     after_image_url = serializers.SerializerMethodField()
     is_overdue = serializers.SerializerMethodField()
-    created_by = UserSerializer(read_only=True)
+    created_by = UserReadSerializer(read_only=True)
     days_remaining = serializers.SerializerMethodField()
     topics = TopicSerializer(many=True, read_only=True)
     topic_ids = serializers.ListField(
@@ -1192,3 +1205,79 @@ class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
     
     def get_total_estimated_time(self, obj):
         return obj.get_total_estimated_time()
+
+
+# ----- Core Reference Serializers (Frequency, Procedure, Maintenance Log, Contractor) -----
+
+
+class FrequencySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Frequency
+        fields = ['id', 'name', 'interval_days']
+
+
+class ProcedureSerializer(serializers.ModelSerializer):
+    equipment_name = serializers.CharField(source='equipment.name', read_only=True)
+    frequency_name = serializers.CharField(source='frequency.name', read_only=True)
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    updated_by_username = serializers.CharField(source='updated_by.username', read_only=True)
+
+    class Meta:
+        model = Procedure
+        fields = [
+            'id', 'equipment', 'equipment_name', 'frequency', 'frequency_name', 'description',
+            'created_by', 'created_by_username', 'updated_by', 'updated_by_username',
+            'created_at', 'updated_at', 'active'
+        ]
+        read_only_fields = ['created_by', 'created_by_username', 'updated_by', 'updated_by_username', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data.setdefault('created_by', request.user)
+            validated_data.setdefault('updated_by', request.user)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            validated_data['updated_by'] = request.user
+        return super().update(instance, validated_data)
+
+
+class MaintenanceLogSerializer(serializers.ModelSerializer):
+    procedure_description = serializers.CharField(source='procedure.description', read_only=True)
+    equipment_name = serializers.CharField(source='procedure.equipment.name', read_only=True)
+    frequency_name = serializers.CharField(source='procedure.frequency.name', read_only=True)
+    performed_by_username = serializers.CharField(source='performed_by.username', read_only=True)
+    verified_by_username = serializers.CharField(source='verified_by.username', read_only=True)
+
+    class Meta:
+        model = MaintenanceLog
+        fields = [
+            'id', 'procedure', 'procedure_description', 'equipment_name', 'frequency_name',
+            'performed_by', 'performed_by_username', 'verified_by', 'verified_by_username',
+            'date_performed', 'status', 'remarks', 'photo_url', 'created_at'
+        ]
+        read_only_fields = ['performed_by_username', 'verified_by_username', 'created_at']
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and 'performed_by' not in validated_data:
+            validated_data['performed_by'] = request.user
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and 'verified_by' not in validated_data:
+            # Only set verified_by if not explicitly provided and user has permission
+            validated_data.setdefault('verified_by', request.user)
+        return super().update(instance, validated_data)
+
+
+class ContractorSerializer(serializers.ModelSerializer):
+    assigned_equipment_name = serializers.CharField(source='assigned_equipment.name', read_only=True)
+
+    class Meta:
+        model = Contractor
+        fields = ['id', 'name', 'contact', 'type', 'assigned_equipment', 'assigned_equipment_name']

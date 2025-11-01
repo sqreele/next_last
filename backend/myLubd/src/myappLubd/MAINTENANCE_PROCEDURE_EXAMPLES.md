@@ -1,11 +1,63 @@
-# Maintenance Procedure Steps - Usage Examples
+# Maintenance Procedures - Backend Guide
 
 ## Overview
-This document shows how to create, manage, and use step-by-step maintenance procedures with the new `MaintenanceProcedure` model.
+Maintenance procedures provide reusable, step-by-step templates that engineering and property teams can attach to preventive maintenance jobs. Each procedure stores rich metadata (steps, safety guidance, tooling, difficulty) in the `MaintenanceProcedure` model and is exposed over `/api/v1/maintenance-procedures/` for the frontend or integrations. This guide explains how to work with those endpoints, manage steps, and keep the experience friendly for operators.
 
-## Step Structure
-Each step in a maintenance procedure contains:
+## Quick Start
 
+### Create from Django Admin
+- Navigate to **Maintenance > Maintenance Procedures**.
+- Click **Add maintenance procedure**.
+- Fill in the core details (name, description, estimated duration, tools, safety notes).
+- Enter the `steps` JSON (see schema below) or start with a single step and edit later.
+- Save the procedure. Steps can be added or edited directly in the JSON field or via the API.
+
+### Create via API (cURL)
+```bash
+curl -X POST https://pcms.live/api/v1/maintenance-procedures/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Monthly Pump Maintenance",
+    "description": "Regular maintenance procedure for industrial pumps",
+    "difficulty_level": "intermediate",
+    "estimated_duration": 120,
+    "required_tools": "Wrench set, lubricant, pressure gauge",
+    "safety_notes": "Ensure pump is completely shut down before starting",
+    "steps": [
+      {
+        "title": "Safety Preparation",
+        "description": "Put on safety equipment and ensure pump is locked out",
+        "estimated_time": 10,
+        "required_tools": ["PPE kit", "lockout tagout"],
+        "safety_warnings": ["Never work on a running pump"]
+      },
+      {
+        "title": "Inspect Pump Housing",
+        "description": "Check for cracks, leaks, or damage to pump housing",
+        "estimated_time": 15,
+        "required_tools": ["flashlight", "inspection_mirror"]
+      }
+    ]
+  }'
+```
+
+## Access and Permissions
+- All endpoints require an authenticated user (`IsAuthenticated`).
+- Creating, updating, deleting, or modifying steps is limited to staff or superusers. Non-admin users can list and read procedures as shared templates.
+- Procedures are global; they are not scoped per property.
+
+## Core Data Model
+- `name` (string, required) - Friendly procedure name.
+- `description` (text, required) - Purpose and background.
+- `steps` (JSON, default empty list) - Ordered step definitions.
+- `estimated_duration` (integer, minutes) - High-level duration for planning.
+- `required_tools` (text) - Free-form list of tools or equipment.
+- `safety_notes` (text) - Additional safety considerations.
+- `difficulty_level` (enum: beginner, intermediate, advanced, expert).
+- `created_at` / `updated_at` (timestamps).
+
+### Step JSON Structure
 ```json
 {
   "step_number": 1,
@@ -13,243 +65,173 @@ Each step in a maintenance procedure contains:
   "description": "Ensure all safety equipment is in place and working",
   "estimated_time": 5,
   "required_tools": ["safety_glasses", "gloves"],
-  "safety_warnings": ["Wear protective equipment", "Check emergency stop button"],
+  "safety_warnings": ["Wear protective equipment"],
   "images": ["/media/safety_check.jpg"],
   "notes": "This step is critical for worker safety",
   "created_at": "2025-01-20T10:00:00Z",
   "updated_at": "2025-01-20T10:00:00Z"
 }
 ```
+`step_number`, `created_at`, and `updated_at` are auto-managed when using the helper methods (`add_step`, `update_step`, etc.).
 
-## API Endpoints
+## API Quick Reference
+| Method | Endpoint | Description | Admin Only? |
+|--------|----------|-------------|-------------|
+| GET | `/api/v1/maintenance-procedures/` | List procedures (search, filter, paginate) | No |
+| POST | `/api/v1/maintenance-procedures/` | Create a new procedure | Yes |
+| GET | `/api/v1/maintenance-procedures/{id}/` | Retrieve detailed procedure | No |
+| PUT/PATCH | `/api/v1/maintenance-procedures/{id}/` | Update procedure metadata or steps | Yes |
+| DELETE | `/api/v1/maintenance-procedures/{id}/` | Delete a procedure | Yes |
+| POST | `/api/v1/maintenance-procedures/{id}/add_step/` | Append a new step | Yes |
+| PUT | `/api/v1/maintenance-procedures/{id}/update_step/` | Update an existing step | Yes |
+| DELETE | `/api/v1/maintenance-procedures/{id}/delete_step/?step_number=X` | Remove a step | Yes |
+| POST | `/api/v1/maintenance-procedures/{id}/reorder_steps/` | Reorder steps | Yes |
+| GET | `/api/v1/maintenance-procedures/{id}/validate_procedure/` | Validate steps and totals | No |
+| POST | `/api/v1/maintenance-procedures/{id}/duplicate/` | Duplicate with a new name | Yes |
+| GET | `/api/v1/maintenance-procedures/by_difficulty/` | Aggregate counts and average duration by difficulty | No |
+| GET | `/api/v1/maintenance-procedures/search_by_tools/?tool=...` | Find procedures by tools string | No |
 
-### 1. Create a New Procedure
+## Common Workflows
+
+### List and Filter
 ```bash
-POST /api/v1/maintenance-procedures/
+curl -H "Authorization: Bearer <token>" \
+  "https://pcms.live/api/v1/maintenance-procedures/?search=pump&difficulty_level=intermediate"
 ```
+The list view uses `MaintenanceProcedureListSerializer`, returning `steps_count`, `total_estimated_time`, and `estimated_duration` for quick comparison.
 
-**Request Body:**
-```json
-{
-  "name": "Monthly Pump Maintenance",
-  "description": "Regular maintenance procedure for industrial pumps",
-  "difficulty_level": "intermediate",
-  "estimated_duration": 120,
-  "required_tools": "Wrench set, lubricant, pressure gauge",
-  "safety_notes": "Ensure pump is completely shut down before starting",
-  "steps": [
-    {
-      "title": "Safety Preparation",
-      "description": "Put on safety equipment and ensure pump is shut down",
-      "estimated_time": 10,
-      "required_tools": ["safety_glasses", "gloves", "lockout_tagout"],
-      "safety_warnings": ["Never work on running pump", "Use lockout/tagout procedure"]
-    },
-    {
-      "title": "Inspect Pump Housing",
-      "description": "Check for cracks, leaks, or damage to pump housing",
-      "estimated_time": 15,
-      "required_tools": ["flashlight", "inspection_mirror"],
-      "safety_warnings": ["Check for hot surfaces"]
-    },
-    {
-      "title": "Check Bearings",
-      "description": "Inspect bearing condition and lubricate if necessary",
-      "estimated_time": 20,
-      "required_tools": ["lubricant", "grease_gun"],
-      "safety_warnings": ["Ensure pump is completely stopped"]
-    },
-    {
-      "title": "Test Operation",
-      "description": "Start pump and check for proper operation",
-      "estimated_time": 15,
-      "required_tools": ["pressure_gauge", "flow_meter"],
-      "safety_warnings": ["Stand clear during startup", "Monitor for unusual sounds"]
-    }
-  ]
-}
-```
-
-### 2. Add a New Step
+### Retrieve a Procedure
 ```bash
-POST /api/v1/maintenance-procedures/{id}/add_step/
+curl -H "Authorization: Bearer <token>" \
+  https://pcms.live/api/v1/maintenance-procedures/42/
 ```
+The detail view includes the full `steps` payload and validation metadata (`is_valid_procedure`).
 
-**Request Body:**
-```json
-{
-  "title": "Clean Filters",
-  "description": "Remove and clean all pump filters",
-  "estimated_time": 25,
-  "required_tools": ["filter_wrench", "cleaning_solution"],
-  "safety_warnings": ["Filters may contain hazardous materials"],
-  "notes": "Replace filters if they are damaged"
-}
-```
+### Create or Update
+- POST and PUT accept the model fields listed above.
+- When providing `steps`, validation enforces `title`, `description`, and positive `estimated_time` for each step.
+- When updating, omitting the `steps` field leaves existing steps unchanged; provide a full list to replace them entirely.
 
-### 3. Update a Step
+### Duplicate an Existing Procedure
 ```bash
-PUT /api/v1/maintenance-procedures/{id}/update_step/
+curl -X POST https://pcms.live/api/v1/maintenance-procedures/42/duplicate/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"new_name": "Monthly Pump Maintenance - Extended"}'
 ```
+The duplicate inherits all steps, notes, and difficulty level. Adjust fields with a subsequent update if needed.
 
-**Request Body:**
-```json
-{
-  "step_number": 2,
-  "title": "Inspect Pump Housing and Seals",
-  "description": "Check for cracks, leaks, or damage to pump housing and all seals",
-  "estimated_time": 20,
-  "required_tools": ["flashlight", "inspection_mirror", "seal_inspection_tool"],
-  "safety_warnings": ["Check for hot surfaces", "Inspect for chemical leaks"]
-}
-```
-
-### 4. Delete a Step
+### Group by Difficulty
 ```bash
-DELETE /api/v1/maintenance-procedures/{id}/delete_step/?step_number=3
+curl -H "Authorization: Bearer <token>" \
+  "https://pcms.live/api/v1/maintenance-procedures/by_difficulty/?difficulty=advanced"
 ```
+Returns counts and average durations per difficulty to help balance workloads.
 
-### 5. Reorder Steps
+## Step Management Endpoints
+
+### Add Step
 ```bash
-POST /api/v1/maintenance-procedures/{id}/reorder_steps/
+curl -X POST https://pcms.live/api/v1/maintenance-procedures/42/add_step/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Clean Filters",
+    "description": "Remove and clean all filters",
+    "estimated_time": 25,
+    "required_tools": ["filter_wrench", "cleaning_solution"],
+    "notes": "Replace filters if damaged"
+  }'
 ```
+`step_number`, `created_at`, and `updated_at` are assigned automatically.
 
-**Request Body:**
-```json
-{
-  "new_order": [1, 3, 2, 4, 5]
-}
-```
-
-### 6. Validate Procedure
+### Update Step
 ```bash
-GET /api/v1/maintenance-procedures/{id}/validate_procedure/
+curl -X PUT https://pcms.live/api/v1/maintenance-procedures/42/update_step/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "step_number": 2,
+    "title": "Inspect Pump Housing and Seals",
+    "description": "Check housing, seals, and nearby fittings",
+    "estimated_time": 20,
+    "required_tools": ["flashlight", "inspection_mirror", "torque_wrench"]
+  }'
 ```
 
-**Response:**
+### Delete Step
+```bash
+curl -X DELETE "https://pcms.live/api/v1/maintenance-procedures/42/delete_step/?step_number=3" \
+  -H "Authorization: Bearer <token>"
+```
+
+### Reorder Steps
+```bash
+curl -X POST https://pcms.live/api/v1/maintenance-procedures/42/reorder_steps/ \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"new_order": [1,3,2,4]}'
+```
+The backend renumbers steps sequentially after reordering.
+
+### Validate Procedure
+```bash
+curl -H "Authorization: Bearer <token>" \
+  https://pcms.live/api/v1/maintenance-procedures/42/validate_procedure/
+```
+Response example:
 ```json
 {
   "is_valid": true,
   "errors": [],
-  "total_steps": 5,
-  "total_estimated_time": 85
+  "total_steps": 4,
+  "total_estimated_time": 70
 }
 ```
+Use this before publishing a procedure or linking it to a job.
 
-### 7. Duplicate Procedure
-```bash
-POST /api/v1/maintenance-procedures/{id}/duplicate/
-```
+## Validation and Quality Checks
+- Serializer-level validation ensures each step includes `title`, `description`, and positive `estimated_time`.
+- `is_valid_procedure` (detail serializer) reports overall status.
+- `validate_steps()` returns `(True, "No steps defined")` when the procedure is empty. That is acceptable for draft templates.
+- `get_total_estimated_time()` sums each step's `estimated_time`; keep it close to `estimated_duration` for planning accuracy.
 
-**Request Body:**
-```json
-{
-  "new_name": "Monthly Pump Maintenance - Extended Version"
-}
-```
-
-## Python Code Examples
-
-### Creating a Procedure Programmatically
+## Using Procedures in Preventive Maintenance
 ```python
-from myappLubd.models import MaintenanceProcedure
 from django.utils import timezone
+from myappLubd.models import MaintenanceProcedure, PreventiveMaintenance
 
-# Create procedure
-procedure = MaintenanceProcedure.objects.create(
-    name="Weekly Equipment Inspection",
-    description="Basic weekly inspection for all equipment",
-    difficulty_level="beginner",
-    estimated_duration=60,
-    required_tools="Basic inspection tools",
-    safety_notes="Always follow safety protocols"
+procedure = MaintenanceProcedure.objects.get(name="Monthly Pump Maintenance")
+
+procedure_text = "\n".join(
+    f"{step['step_number']}. {step['title']} - {step['description']}"
+    for step in procedure.steps
 )
 
-# Add steps
-step1 = procedure.add_step({
-    "title": "Visual Inspection",
-    "description": "Look for obvious damage or wear",
-    "estimated_time": 15,
-    "required_tools": ["flashlight"],
-    "safety_warnings": ["Ensure equipment is stopped"]
-})
-
-step2 = procedure.add_step({
-    "title": "Check Operation",
-    "description": "Test basic functions",
-    "estimated_time": 20,
-    "required_tools": ["test_equipment"],
-    "safety_warnings": ["Follow startup procedures"]
-})
-
-step3 = procedure.add_step({
-    "title": "Document Findings",
-    "description": "Record all observations and issues",
-    "estimated_time": 10,
-    "required_tools": ["notebook", "camera"],
-    "safety_warnings": []
-})
-
-print(f"Procedure created with {procedure.get_steps_count()} steps")
-print(f"Total estimated time: {procedure.get_total_estimated_time()} minutes")
-
-# Validate procedure
-is_valid, errors = procedure.validate_steps()
-if is_valid:
-    print("Procedure is valid!")
-else:
-    print("Validation errors:", errors)
-```
-
-### Managing Steps
-```python
-# Get a specific step
-step = procedure.get_step(2)
-print(f"Step 2: {step['title']}")
-
-# Update a step
-procedure.update_step(2, {
-    "title": "Check Operation and Safety",
-    "description": "Test basic functions and verify safety systems",
-    "estimated_time": 25,
-    "required_tools": ["test_equipment", "safety_checklist"],
-    "safety_warnings": ["Follow startup procedures", "Verify emergency stops"]
-})
-
-# Delete a step
-procedure.delete_step(3)
-print(f"Steps remaining: {procedure.get_steps_count()}")
-
-# Reorder steps
-procedure.reorder_steps([1, 2, 4, 5])
-```
-
-### Using with Preventive Maintenance
-```python
-from myappLubd.models import PreventiveMaintenance
-
-# Create maintenance task using procedure template
 maintenance = PreventiveMaintenance.objects.create(
-    pmtitle="Weekly Pump Inspection",
-    scheduled_date=timezone.now() + timezone.timedelta(days=7),
-    frequency='weekly',
-    procedure_template=procedure,  # Link to procedure template
-    procedure=procedure.get_formatted_procedure(),  # Get formatted procedure text
-    estimated_duration=procedure.get_total_estimated_time(),
-    priority='medium'
+    pmtitle="Monthly Pump Inspection",
+    scheduled_date=timezone.now() + timezone.timedelta(days=30),
+    frequency="monthly",
+    priority="medium",
+    procedure_template=procedure,
+    procedure=procedure_text,
+    estimated_duration=procedure.get_total_estimated_time()
 )
 
-# Get procedure steps for the maintenance task
-if maintenance.procedure_template:
-    steps = maintenance.procedure_template.steps
-    print(f"Maintenance task has {len(steps)} steps:")
-    for step in steps:
-        print(f"  {step['step_number']}. {step['title']} ({step['estimated_time']} min)")
+print(f"Linked template with {maintenance.procedure_template.get_steps_count()} steps")
 ```
+
+Linking the template lets technicians see the structured steps while still keeping a text snapshot inside the maintenance record.
+
+## Django Admin Tips
+- Columns show name, estimated duration, and timestamps for quick sorting.
+- Use search to locate templates by name or description.
+- Steps are edited as raw JSON. Use the API for granular step edits if manual editing feels risky.
+- Read-only fields (`created_at`, `updated_at`) provide accountability for change history.
 
 ## Frontend Integration
 
-### TypeScript Interface
+### TypeScript Interfaces
 ```typescript
 interface MaintenanceStep {
   step_number: number;
@@ -281,83 +263,57 @@ interface MaintenanceProcedure {
 }
 ```
 
-### React Component Example
+### React Snippet
 ```tsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
-interface ProcedureStepsProps {
-  procedureId: number;
-}
-
-const ProcedureSteps: React.FC<ProcedureStepsProps> = ({ procedureId }) => {
+const ProcedureSteps: React.FC<{ procedureId: number }> = ({ procedureId }) => {
   const [procedure, setProcedure] = useState<MaintenanceProcedure | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchProcedure = async () => {
+      try {
+        const response = await fetch(`/api/v1/maintenance-procedures/${procedureId}/`);
+        setProcedure(await response.json());
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchProcedure();
   }, [procedureId]);
-
-  const fetchProcedure = async () => {
-    try {
-      const response = await fetch(`/api/v1/maintenance-procedures/${procedureId}/`);
-      const data = await response.json();
-      setProcedure(data);
-    } catch (error) {
-      console.error('Error fetching procedure:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) return <div>Loading...</div>;
   if (!procedure) return <div>Procedure not found</div>;
 
   return (
-    <div className="procedure-steps">
+    <div>
       <h2>{procedure.name}</h2>
       <p>{procedure.description}</p>
-      
-      <div className="procedure-info">
+      <div>
         <span>Difficulty: {procedure.difficulty_level}</span>
         <span>Total Steps: {procedure.steps_count}</span>
-        <span>Estimated Time: {procedure.total_estimated_time} minutes</span>
+        <span>Estimated Time: {procedure.total_estimated_time} min</span>
       </div>
-
-      <div className="steps-list">
-        {procedure.steps.map((step) => (
-          <div key={step.step_number} className="step-item">
-            <div className="step-header">
-              <h3>Step {step.step_number}: {step.title}</h3>
-              <span className="time">{step.estimated_time} min</span>
-            </div>
-            
-            <p className="description">{step.description}</p>
-            
-            {step.required_tools && step.required_tools.length > 0 && (
-              <div className="tools">
-                <strong>Tools:</strong> {step.required_tools.join(', ')}
-              </div>
-            )}
-            
-            {step.safety_warnings && step.safety_warnings.length > 0 && (
-              <div className="safety">
-                <strong>Safety:</strong>
-                <ul>
-                  {step.safety_warnings.map((warning, index) => (
-                    <li key={index}>{warning}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            
-            {step.notes && (
-              <div className="notes">
-                <strong>Notes:</strong> {step.notes}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      {procedure.steps.map((step) => (
+        <section key={step.step_number}>
+          <header>
+            <h3>Step {step.step_number}: {step.title}</h3>
+            <span>{step.estimated_time} min</span>
+          </header>
+          <p>{step.description}</p>
+          {step.required_tools?.length && <p><strong>Tools:</strong> {step.required_tools.join(', ')}</p>}
+          {step.safety_warnings?.length && (
+            <ul>
+              {step.safety_warnings.map((warning, index) => (
+                <li key={index}>{warning}</li>
+              ))}
+            </ul>
+          )}
+          {step.notes && <p><strong>Notes:</strong> {step.notes}</p>}
+        </section>
+      ))}
     </div>
   );
 };
@@ -365,45 +321,24 @@ const ProcedureSteps: React.FC<ProcedureStepsProps> = ({ procedureId }) => {
 export default ProcedureSteps;
 ```
 
-## Best Practices
+## Make It Friendly for Operators
+- Speak their language: write titles and descriptions as technician actions ("Check pressure relief valve" instead of "Valve inspection").
+- Surface safety early: add a dedicated first step for lockout or tagout if needed.
+- Keep steps short: aim for 3 to 7 items per procedure; split long instructions into smaller steps.
+- Use tools consistently: align `required_tools` values with the vocabulary used on checklists or inventory systems.
+- Leverage difficulty levels: mix beginner or intermediate tasks for onboarding; reserve advanced or expert work for certified technicians.
+- Duplicate then tweak: use the duplicate endpoint to create variants for specific machine models.
 
-### 1. Step Design
-- **Clear Titles**: Use descriptive, action-oriented titles
-- **Detailed Descriptions**: Include all necessary information
-- **Realistic Time Estimates**: Base on actual experience
-- **Safety First**: Always include relevant safety warnings
-- **Tool Requirements**: List all necessary tools and equipment
+## Troubleshooting and Debugging
+- Steps not saving? Confirm required fields (`title`, `description`, `estimated_time`) are present and positive.
+- Validation errors? Call `/validate_procedure/` to see missing fields and aggregate timing issues.
+- Permission denied? Only staff or superusers can mutate procedures or steps.
+- Serializer mismatches? Ensure frontend payloads send arrays for `required_tools` and `safety_warnings` when using the nested serializer.
+- Data drift? Use the Django admin to spot-check JSON or log the payload before sending to the API.
 
-### 2. Procedure Organization
-- **Logical Flow**: Arrange steps in logical order
-- **Group Related Steps**: Combine related activities
-- **Checkpoints**: Include verification steps
-- **Troubleshooting**: Add common problem solutions
+## Related Services
+- `MaintenanceProcedureService` wraps creation, filtering by difficulty, and tool searches for reuse in other modules.
+- `MaintenanceProcedureViewSet` (in `views.py`) exposes the actions documented above.
+- `MaintenanceProcedureSerializer` enforces validation and exposes friendly computed fields (`steps_count`, `total_estimated_time`).
 
-### 3. Validation
-- **Required Fields**: Ensure all steps have essential information
-- **Time Consistency**: Verify total time matches individual steps
-- **Safety Coverage**: Check that safety warnings are comprehensive
-- **Tool Verification**: Confirm all required tools are listed
-
-### 4. Maintenance
-- **Regular Updates**: Keep procedures current with equipment changes
-- **User Feedback**: Incorporate operator suggestions
-- **Version Control**: Track changes and improvements
-- **Training**: Ensure all users understand procedures
-
-## Troubleshooting
-
-### Common Issues
-1. **Steps Not Saving**: Check required fields (title, description, estimated_time)
-2. **Validation Errors**: Verify all step data is complete
-3. **Permission Issues**: Ensure user has proper authentication
-4. **API Errors**: Check request format and required parameters
-
-### Debug Tips
-- Use the validation endpoint to check procedure integrity
-- Check Django admin for data consistency
-- Verify serializer field mappings
-- Test with simple step data first
-
-This comprehensive step-by-step system provides a robust foundation for managing maintenance procedures with full CRUD operations, validation, and flexible step management.
+With these patterns in place, the maintenance procedures module supports authoring, validating, and executing reusable workflows while keeping both admins and technicians productive.

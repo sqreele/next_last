@@ -1,5 +1,21 @@
 from rest_framework import serializers
-from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure
+from .models import (
+    Room,
+    Topic,
+    JobImage,
+    Job,
+    Property,
+    UserProfile,
+    Session,
+    PreventiveMaintenance,
+    Machine,
+    MaintenanceProcedure,
+    Equipment,
+    Frequency,
+    Procedure,
+    MaintenanceLog,
+    Contractor,
+)
 from django.contrib.auth import get_user_model
 
 User = get_user_model()

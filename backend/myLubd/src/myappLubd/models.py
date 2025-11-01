@@ -1245,3 +1245,143 @@ class MaintenanceSchedule(models.Model):
     
     def __str__(self):
         return f"Schedule for {self.maintenance.pm_id}"
+
+
+class Equipment(models.Model):
+    """Stores reference data for equipment types and assets."""
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    category = models.CharField(max_length=100, blank=True, null=True, help_text="Functional grouping, e.g., Fire System")
+    is_active = models.BooleanField(default=True, help_text="Flag to indicate whether the equipment is currently active")
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Equipment'
+        verbose_name_plural = 'Equipment'
+        indexes = [
+            models.Index(fields=['name']),
+            models.Index(fields=['category']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class Frequency(models.Model):
+    """Maintenance frequency definitions such as weekly or monthly."""
+    name = models.CharField(max_length=100, unique=True)
+    interval_days = models.PositiveIntegerField(blank=True, null=True, help_text="Optional interval in days (e.g., 7, 30, 365)")
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Frequency'
+        verbose_name_plural = 'Frequencies'
+
+    def __str__(self):
+        return self.name
+
+
+class Procedure(models.Model):
+    """Defines a maintenance procedure for a given equipment and frequency."""
+    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name='procedures')
+    frequency = models.ForeignKey(Frequency, on_delete=models.CASCADE, related_name='procedures')
+    description = models.TextField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='procedures_created'
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='procedures_updated'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Procedure'
+        verbose_name_plural = 'Procedures'
+        unique_together = ('equipment', 'frequency', 'description')
+        indexes = [
+            models.Index(fields=['equipment']),
+            models.Index(fields=['frequency']),
+            models.Index(fields=['active']),
+        ]
+
+    def __str__(self):
+        return f"{self.equipment.name} - {self.frequency.name}"
+
+
+class MaintenanceLog(models.Model):
+    """Log entry recording a performed maintenance action."""
+
+    class Status(models.TextChoices):
+        COMPLETED = 'Completed', 'Completed'
+        PENDING = 'Pending', 'Pending'
+        SKIPPED = 'Skipped', 'Skipped'
+        RESCHEDULED = 'Rescheduled', 'Rescheduled'
+
+    procedure = models.ForeignKey(Procedure, on_delete=models.CASCADE, related_name='maintenance_logs')
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='maintenance_performed'
+    )
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='maintenance_verified'
+    )
+    date_performed = models.DateField()
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    remarks = models.TextField(blank=True, null=True)
+    photo_url = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-date_performed', '-created_at']
+        verbose_name = 'Maintenance Log'
+        verbose_name_plural = 'Maintenance Logs'
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['date_performed']),
+        ]
+
+    def __str__(self):
+        return f"{self.procedure} on {self.date_performed}"
+
+
+class Contractor(models.Model):
+    """Optional table for tracking internal or external contractors."""
+
+    class ContractorType(models.TextChoices):
+        INTERNAL = 'Internal', 'Internal'
+        EXTERNAL = 'External', 'External'
+
+    name = models.CharField(max_length=255)
+    contact = models.CharField(max_length=255, blank=True, null=True)
+    type = models.CharField(max_length=20, choices=ContractorType.choices, default=ContractorType.INTERNAL)
+    assigned_equipment = models.ForeignKey(
+        Equipment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='contractors'
+    )
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Contractor'
+        verbose_name_plural = 'Contractors'
+
+    def __str__(self):
+        return self.name

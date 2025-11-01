@@ -6,7 +6,8 @@ from .views import (
     RoomViewSet, TopicViewSet, JobViewSet, PropertyViewSet,
     UserProfileViewSet, UserViewSet, MachineViewSet,
     PreventiveMaintenanceImageUploadView, PreventiveMaintenanceViewSet,
-    MaintenanceProcedureViewSet
+    MaintenanceProcedureViewSet, FrequencyViewSet, ProcedureViewSet,
+    MaintenanceLogViewSet, ContractorViewSet
 )
 
 # Set the app name
@@ -24,6 +25,10 @@ router.register(r'maintenance-procedures', MaintenanceProcedureViewSet, basename
 router.register(r'machines', MachineViewSet, basename='machine')
 router.register(r'users', UserViewSet, basename='user')
 router.register(r'user-profiles', UserProfileViewSet, basename='user-profile')
+router.register(r'frequencies', FrequencyViewSet, basename='frequency')
+router.register(r'procedures', ProcedureViewSet, basename='procedure')
+router.register(r'maintenance-logs', MaintenanceLogViewSet, basename='maintenance-log')
+router.register(r'contractors', ContractorViewSet, basename='contractor')
 
 
 # Define the URL patterns

@@ -14,17 +14,33 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
 import math
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg
-from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure
+from .models import (
+    UserProfile,
+    Property,
+    Room,
+    Topic,
+    Job,
+    Session,
+    PreventiveMaintenance,
+    JobImage,
+    Machine,
+    MaintenanceProcedure,
+    Frequency,
+    Procedure,
+    MaintenanceLog,
+    Contractor,
+)
 from django.urls import reverse
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .serializers import (
     UserProfileSerializer, PropertySerializer, RoomSerializer, TopicSerializer, JobSerializer,
-    UserSerializer, PreventiveMaintenanceSerializer, PreventiveMaintenanceCreateUpdateSerializer,
+    UserReadSerializer, UserCreateSerializer, PreventiveMaintenanceSerializer, PreventiveMaintenanceCreateUpdateSerializer,
     PreventiveMaintenanceCompleteSerializer, PreventiveMaintenanceListSerializer,
     PreventiveMaintenanceDetailSerializer, PropertyPMStatusSerializer,
     MachineSerializer, MachineListSerializer, MachineDetailSerializer,
     MachineCreateSerializer, MachineUpdateSerializer, MachinePreventiveMaintenanceSerializer,
-    MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer
+    MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer,
+    FrequencySerializer, ProcedureSerializer, MaintenanceLogSerializer, ContractorSerializer
 )
 from PIL import Image
 from io import BytesIO
@@ -807,6 +823,62 @@ class MaintenanceProcedureViewSet(viewsets.ModelViewSet):
         })
 
 
+# Additional maintenance reference viewsets
+class FrequencyViewSet(viewsets.ModelViewSet):
+    queryset = Frequency.objects.all().order_by('name')
+    serializer_class = FrequencySerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name']
+    ordering_fields = ['name', 'interval_days']
+    ordering = ['name']
+
+
+class ProcedureViewSet(viewsets.ModelViewSet):
+    queryset = Procedure.objects.select_related('equipment', 'frequency', 'created_by', 'updated_by').all()
+    serializer_class = ProcedureSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['equipment', 'frequency', 'active']
+    search_fields = ['description', 'equipment__name', 'frequency__name']
+    ordering_fields = ['created_at', 'updated_at']
+    ordering = ['-created_at']
+
+
+class MaintenanceLogViewSet(viewsets.ModelViewSet):
+    queryset = MaintenanceLog.objects.select_related(
+        'procedure',
+        'procedure__equipment',
+        'procedure__frequency',
+        'performed_by',
+        'verified_by',
+    ).all()
+    serializer_class = MaintenanceLogSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = {
+        'status': ['exact'],
+        'procedure': ['exact'],
+        'procedure__equipment': ['exact'],
+        'procedure__frequency': ['exact'],
+        'date_performed': ['exact', 'gte', 'lte'],
+    }
+    search_fields = ['remarks', 'procedure__description', 'procedure__equipment__name']
+    ordering_fields = ['date_performed', 'created_at']
+    ordering = ['-date_performed', '-created_at']
+
+
+class ContractorViewSet(viewsets.ModelViewSet):
+    queryset = Contractor.objects.select_related('assigned_equipment').all()
+    serializer_class = ContractorSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['type', 'assigned_equipment']
+    search_fields = ['name', 'contact']
+    ordering_fields = ['name']
+    ordering = ['name']
+
+
 # Other ViewSets and Views (unchanged)
 class RoomViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -1400,8 +1472,12 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return UserCreateSerializer
+        return UserReadSerializer
 
 class PreventiveMaintenanceImageUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
@@ -1467,7 +1543,7 @@ class RegisterView(APIView):
 
     def post(self, request):
         logger.debug(f"Register request payload: {request.data}")
-        serializer = UserSerializer(data=request.data)
+        serializer = UserCreateSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
             refresh = RefreshToken.for_user(user)

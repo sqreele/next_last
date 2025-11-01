@@ -8,15 +8,19 @@ User = get_user_model()
 
 # Custom User Admin
 class CustomUserAdmin(BaseUserAdmin):
-    list_display = BaseUserAdmin.list_display + ('property_name', 'property_id')
-    list_filter = BaseUserAdmin.list_filter + ('property_name',)
-    search_fields = BaseUserAdmin.search_fields + ('property_name', 'property_id')
+    list_display = BaseUserAdmin.list_display + ('full_name', 'role', 'department', 'property_name', 'property_id', 'created_at', 'updated_at')
+    list_filter = BaseUserAdmin.list_filter + ('role', 'department', 'property_name')
+    search_fields = BaseUserAdmin.search_fields + ('full_name', 'department', 'property_name', 'property_id')
+    readonly_fields = getattr(BaseUserAdmin, 'readonly_fields', ()) + ('created_at', 'updated_at')
     
     fieldsets = BaseUserAdmin.fieldsets + (
+        ('Organizational Information', {'fields': ('full_name', 'role', 'department')}),
         ('Property Information', {'fields': ('property_name', 'property_id')}),
+        ('System Timestamps', {'fields': ('created_at', 'updated_at')}),
     )
     
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ('Organizational Information', {'fields': ('full_name', 'role', 'department')}),
         ('Property Information', {'fields': ('property_name', 'property_id')}),
     )
 
@@ -47,7 +51,11 @@ from .models import (
     MaintenanceProcedure,
     MaintenanceChecklist,
     MaintenanceHistory,
-    MaintenanceSchedule
+    MaintenanceSchedule,
+    Frequency,
+    Procedure,
+    MaintenanceLog,
+    Contractor
 )
 
 # Monitoring admin removed to avoid recursion issues
@@ -61,16 +69,20 @@ class UserProfileInline(admin.StackedInline):
 
 class UserAdmin(BaseUserAdmin):
     inlines = (UserProfileInline,)
-    list_display = ['username', 'email', 'first_name', 'last_name', 'property_name', 'get_property_id_display', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
-    list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined', 'property_name']
-    search_fields = ['username', 'first_name', 'last_name', 'email', 'property_name', 'property_id']
+    list_display = ['username', 'full_name', 'email', 'role', 'department', 'property_name', 'get_property_id_display', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'created_at', 'updated_at']
+    list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'role', 'department', 'date_joined', 'property_name']
+    search_fields = ['username', 'full_name', 'first_name', 'last_name', 'email', 'department', 'property_name', 'property_id']
     actions = ['export_users_csv', 'export_users_pdf']
+    readonly_fields = getattr(BaseUserAdmin, 'readonly_fields', ()) + ('created_at', 'updated_at')
     
     fieldsets = BaseUserAdmin.fieldsets + (
+        ('Organizational Information', {'fields': ('full_name', 'role', 'department')}),
         ('Property Information', {'fields': ('property_name', 'property_id')}),
+        ('System Timestamps', {'fields': ('created_at', 'updated_at')}),
     )
     
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ('Organizational Information', {'fields': ('full_name', 'role', 'department')}),
         ('Property Information', {'fields': ('property_name', 'property_id')}),
     )
     
@@ -1569,3 +1581,37 @@ class MaintenanceScheduleAdmin(admin.ModelAdmin):
             'fields': ('total_occurrences',)
         }),
     )
+
+
+@admin.register(Frequency)
+class FrequencyAdmin(admin.ModelAdmin):
+    list_display = ['name', 'interval_days']
+    search_fields = ['name']
+
+
+@admin.register(Procedure)
+class ProcedureAdmin(admin.ModelAdmin):
+    list_display = ['equipment', 'frequency', 'active', 'created_by', 'updated_by', 'created_at', 'updated_at']
+    list_filter = ['active', 'equipment', 'frequency']
+    search_fields = ['equipment__name', 'frequency__name', 'description']
+    readonly_fields = ['created_at', 'updated_at']
+    autocomplete_fields = ['equipment', 'frequency', 'created_by', 'updated_by']
+    list_select_related = ['equipment', 'frequency', 'created_by', 'updated_by']
+
+
+@admin.register(MaintenanceLog)
+class MaintenanceLogAdmin(admin.ModelAdmin):
+    list_display = ['procedure', 'date_performed', 'status', 'performed_by', 'verified_by']
+    list_filter = ['status', 'date_performed']
+    search_fields = ['procedure__equipment__name', 'procedure__frequency__name', 'remarks']
+    date_hierarchy = 'date_performed'
+    autocomplete_fields = ['procedure', 'performed_by', 'verified_by']
+    list_select_related = ['procedure', 'performed_by', 'verified_by']
+
+
+@admin.register(Contractor)
+class ContractorAdmin(admin.ModelAdmin):
+    list_display = ['name', 'type', 'assigned_equipment']
+    list_filter = ['type']
+    search_fields = ['name', 'contact']
+    autocomplete_fields = ['assigned_equipment']

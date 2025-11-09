@@ -1211,6 +1211,11 @@ class MaintenanceProcedure(models.Model):
         errors = []
         for i, step in enumerate(self.steps):
             step_num = i + 1
+            
+            # Skip validation if step is not a dictionary (legacy string data)
+            if not isinstance(step, dict):
+                continue
+            
             required_fields = ['title', 'description', 'estimated_time']
             
             for field in required_fields:
@@ -1218,7 +1223,7 @@ class MaintenanceProcedure(models.Model):
                     errors.append(f"Step {step_num}: Missing or empty '{field}' field")
             
             # Validate estimated_time is positive
-            if 'estimated_time' in step and step['estimated_time'] <= 0:
+            if 'estimated_time' in step and isinstance(step['estimated_time'], (int, float)) and step['estimated_time'] <= 0:
                 errors.append(f"Step {step_num}: Estimated time must be positive")
         
         return len(errors) == 0, errors

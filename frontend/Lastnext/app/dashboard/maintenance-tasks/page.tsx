@@ -35,9 +35,7 @@ interface MaintenanceTask {
   estimated_duration: string;
   responsible_department?: string;
   difficulty_level: string;
-  steps: any[];
-  steps_count?: number;
-  total_estimated_time?: string;
+  // steps removed - not displayed
   schedule_count?: number;
   required_tools?: string;
   safety_notes?: string;
@@ -228,19 +226,22 @@ export default function MaintenanceTasksPage() {
           </CardContent>
         </Card>
 
+        {/* Stats card for steps - HIDDEN */}
+        {false && (
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">With Steps</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {tasks.filter((t) => t.steps && t.steps.length > 0).length}
+                  {tasks.filter((t) => (t as any).steps && (t as any).steps.length > 0).length}
                 </p>
               </div>
               <CheckCircle2 className="h-8 w-8 text-green-600" />
             </div>
           </CardContent>
         </Card>
+        )}
       </div>
 
       {/* Filters & Search */}
@@ -402,10 +403,11 @@ export default function MaintenanceTasksPage() {
                           </Badge>
                         )}
 
-                        {task.steps && task.steps.length > 0 && (
+                        {/* Steps badge - HIDDEN */}
+                        {false && (task as any).steps && (task as any).steps.length > 0 && (
                           <Badge variant="outline" className="flex items-center gap-1">
                             <CheckCircle2 className="h-3 w-3" />
-                            {task.steps.length} Steps
+                            {(task as any).steps.length} Steps
                           </Badge>
                         )}
 
@@ -431,23 +433,23 @@ export default function MaintenanceTasksPage() {
                         )}
                       </div>
 
-                      {/* Quick Preview on Expand */}
-                      {expandedTaskId === task.id && task.steps && task.steps.length > 0 && (
+                      {/* Quick Preview on Expand - Steps removed */}
+                      {false && expandedTaskId === task.id && (task as any).steps && (task as any).steps.length > 0 && (
                         <div className="mt-4 pt-4 border-t border-gray-200">
                           <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
                             <CheckCircle2 className="h-4 w-4" />
                             Procedure Steps Preview (First 3)
                           </h4>
                           <div className="space-y-2">
-                            {task.steps.slice(0, 3).map((step, idx) => (
+                            {(task as any).steps.slice(0, 3).map((step: any, idx: number) => (
                               <div key={idx} className="flex gap-2 text-sm">
                                 <span className="font-semibold text-blue-600">{step.step_number}.</span>
                                 <span className="text-gray-700">{step.title}</span>
                               </div>
                             ))}
-                            {task.steps.length > 3 && (
+                            {(task as any).steps.length > 3 && (
                               <p className="text-xs text-gray-500 italic">
-                                +{task.steps.length - 3} more steps...
+                                +{(task as any).steps.length - 3} more steps...
                               </p>
                             )}
                           </div>

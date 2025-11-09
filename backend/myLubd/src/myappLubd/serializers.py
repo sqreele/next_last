@@ -1150,10 +1150,7 @@ class MaintenanceStepSerializer(serializers.Serializer):
 
 class MaintenanceProcedureSerializer(serializers.ModelSerializer):
     """Serializer for MaintenanceTask (MaintenanceProcedure) following ER diagram"""
-    steps = serializers.SerializerMethodField()  # Use SerializerMethodField to handle bad data
-    steps_count = serializers.SerializerMethodField()
-    total_estimated_time = serializers.SerializerMethodField()
-    is_valid_procedure = serializers.SerializerMethodField()
+    # steps field removed from API - not needed in frontend
     equipment_name = serializers.CharField(source='equipment.name', read_only=True)
     equipment_id = serializers.PrimaryKeyRelatedField(
         queryset=Machine.objects.all(),
@@ -1161,58 +1158,15 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
         required=False
     )
     
-    def get_steps(self, obj):
-        """Safely serialize steps, handling both dict and string data"""
-        if not obj.steps:
-            return []
-        
-        result = []
-        for i, step in enumerate(obj.steps):
-            if isinstance(step, dict):
-                # Valid dictionary step
-                result.append({
-                    'step_number': i + 1,
-                    'title': step.get('title', ''),
-                    'description': step.get('description', ''),
-                    'estimated_time': step.get('estimated_time', 0),
-                    'required_tools': step.get('required_tools', []),
-                    'safety_warnings': step.get('safety_warnings', []),
-                    'images': step.get('images', []),
-                    'notes': step.get('notes', ''),
-                    'created_at': step.get('created_at'),
-                    'updated_at': step.get('updated_at'),
-                })
-            elif isinstance(step, str):
-                # Legacy string step - convert to dictionary format
-                result.append({
-                    'step_number': i + 1,
-                    'title': f'Step {i + 1}',
-                    'description': step,
-                    'estimated_time': 0,
-                })
-            # Ignore other types
-        return result
-    
     class Meta:
         model = MaintenanceProcedure
         fields = [
             'id', 'equipment', 'equipment_id', 'equipment_name', 
             'name', 'description', 'frequency', 'estimated_duration', 'responsible_department',
-            'steps', 'steps_count', 'total_estimated_time',
             'required_tools', 'safety_notes', 'difficulty_level',
-            'is_valid_procedure', 'created_at', 'updated_at'
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
-    
-    def get_steps_count(self, obj):
-        return obj.get_steps_count()
-    
-    def get_total_estimated_time(self, obj):
-        return obj.get_total_estimated_time()
-    
-    def get_is_valid_procedure(self, obj):
-        is_valid, _ = obj.validate_steps()
-        return is_valid
     
     def validate_steps(self, value):
         """Validate steps data"""
@@ -1259,8 +1213,7 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
 
 class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
     """Simplified serializer for listing maintenance tasks following ER diagram"""
-    steps_count = serializers.SerializerMethodField()
-    total_estimated_time = serializers.SerializerMethodField()
+    # steps_count and total_estimated_time removed - steps not used
     equipment_name = serializers.CharField(source='equipment.name', read_only=True)
     schedule_count = serializers.SerializerMethodField()
     
@@ -1269,14 +1222,8 @@ class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'equipment', 'equipment_name', 'name', 'frequency', 'estimated_duration',
             'responsible_department', 'difficulty_level',
-            'steps_count', 'total_estimated_time', 'schedule_count', 'created_at'
+            'schedule_count', 'created_at'
         ]
-    
-    def get_steps_count(self, obj):
-        return obj.get_steps_count()
-    
-    def get_total_estimated_time(self, obj):
-        return obj.get_total_estimated_time()
     
     def get_schedule_count(self, obj):
         """Get count of maintenance schedules for this task"""

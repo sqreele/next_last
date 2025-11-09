@@ -1536,8 +1536,13 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
         ('Responsibility', {
             'fields': ('responsible_department', 'difficulty_level')
         }),
-        ('Procedure Details', {
-            'fields': ('steps', 'required_tools', 'safety_notes')
+        ('Additional Details', {
+            'fields': ('required_tools', 'safety_notes')
+        }),
+        ('Advanced', {
+            'classes': ('collapse',),
+            'fields': ('steps',),
+            'description': 'Advanced: JSON step data (for API use only)'
         }),
         ('Timestamps', {
             'classes': ('collapse',),

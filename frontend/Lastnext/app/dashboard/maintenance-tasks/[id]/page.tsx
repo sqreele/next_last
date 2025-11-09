@@ -34,16 +34,7 @@ interface MaintenanceTask {
   estimated_duration: string;
   responsible_department?: string;
   difficulty_level: string;
-  steps: Array<{
-    step_number: number;
-    title: string;
-    description: string;
-    estimated_time?: string;
-    created_at?: string;
-  }>;
-  steps_count?: number;
-  total_estimated_time?: string;
-  is_valid_procedure?: boolean;
+  // steps removed - not displayed
   required_tools?: string;
   safety_notes?: string;
   created_at: string;
@@ -321,21 +312,21 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
         </CardContent>
       </Card>
 
-      {/* Procedure Steps */}
-      {task.steps && task.steps.length > 0 && (
+      {/* Procedure Steps - HIDDEN */}
+      {false && (task as any)?.steps && (task as any).steps.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5" />
-              Procedure Steps ({task.steps.length})
+              Procedure Steps ({(task as any).steps.length})
             </CardTitle>
             <CardDescription>Follow these steps to complete the maintenance task</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {task.steps
-                .sort((a, b) => a.step_number - b.step_number)
-                .map((step, index) => (
+              {((task as any)?.steps || [])
+                .sort((a: any, b: any) => a.step_number - b.step_number)
+                .map((step: any, index: number) => (
                   <div key={index} className="flex gap-4 p-4 bg-gray-50 rounded-lg">
                     <div className="flex-shrink-0">
                       <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">

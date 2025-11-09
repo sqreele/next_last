@@ -1523,7 +1523,7 @@ class SessionAdmin(admin.ModelAdmin):
 
 @admin.register(MaintenanceProcedure)
 class MaintenanceProcedureAdmin(admin.ModelAdmin):
-    list_display = ['name', 'equipment', 'frequency', 'responsible_department', 'estimated_duration', 'difficulty_level', 'created_at']
+    list_display = ['name', 'get_equipment_display', 'frequency', 'responsible_department', 'estimated_duration', 'difficulty_level', 'created_at']
     list_filter = ['frequency', 'responsible_department', 'difficulty_level', 'equipment', 'created_at']
     search_fields = ['name', 'description', 'equipment__name']
     readonly_fields = ['created_at', 'updated_at']
@@ -1544,6 +1544,14 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
             'fields': ('created_at', 'updated_at')
         }),
     )
+    
+    def get_equipment_display(self, obj):
+        """Safely display equipment name"""
+        if obj.equipment:
+            return f"{obj.equipment.name} ({obj.equipment.machine_id})"
+        return "No Equipment"
+    get_equipment_display.short_description = 'Equipment'
+    get_equipment_display.admin_order_field = 'equipment'
 
 
 @admin.register(MaintenanceTaskImage)

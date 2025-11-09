@@ -1230,7 +1230,8 @@ class MaintenanceProcedure(models.Model):
         
         total_time = 0
         for step in self.steps:
-            if 'estimated_time' in step and isinstance(step['estimated_time'], (int, float)):
+            # Ensure step is a dictionary before accessing keys
+            if isinstance(step, dict) and 'estimated_time' in step and isinstance(step['estimated_time'], (int, float)):
                 total_time += step['estimated_time']
         
         return total_time

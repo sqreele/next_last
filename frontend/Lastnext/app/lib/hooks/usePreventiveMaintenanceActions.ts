@@ -202,19 +202,34 @@ export function usePreventiveMaintenanceActions() {
 
     try {
       setLoading(true);
+      logger.debug('Fetching maintenance by ID', { pmId, hasAccessToken: !!accessToken });
+      
       const service = createPreventiveMaintenanceService(accessToken);
       const response = await service.getPreventiveMaintenanceById(pmId);
+      
+      logger.debug('Fetch maintenance by ID response', { 
+        success: response.success, 
+        hasData: !!response.data,
+        message: response.message 
+      });
       
       if (response.success && response.data) {
         setSelectedMaintenance(response.data);
         return response.data;
       } else {
-        setError(response.message || 'Failed to fetch maintenance item');
+        const errorMsg = response.message || 'Failed to fetch maintenance item';
+        logger.error('Failed to fetch maintenance', { pmId, message: errorMsg });
+        setError(errorMsg);
         return null;
       }
-    } catch (error) {
-      logger.error('Error fetching maintenance by ID', error);
-      setError('Failed to fetch maintenance item');
+    } catch (error: any) {
+      logger.error('Error fetching maintenance by ID', { 
+        pmId, 
+        error: error.message,
+        status: error.status,
+        response: error.response 
+      });
+      setError(error.message || 'Failed to fetch maintenance item');
       return null;
     } finally {
       setLoading(false);

@@ -78,6 +78,27 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     ordering = ['-scheduled_date']
     permission_classes = [IsAuthenticated]
 
+    def get_object(self):
+        """
+        Override to support case-insensitive PM ID lookup.
+        Returns the object the view is displaying.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        pm_id = self.kwargs[lookup_url_kwarg]
+        
+        # Try case-insensitive lookup using iexact
+        obj = queryset.filter(pm_id__iexact=pm_id).first()
+        
+        if obj is None:
+            from django.http import Http404
+            raise Http404(f"No PreventiveMaintenance matches the given query with PM ID: {pm_id}")
+        
+        # May raise a permission denied
+        self.check_object_permissions(self.request, obj)
+        
+        return obj
+
     def get_queryset(self):
         """
         Return a queryset filtered by request parameters.

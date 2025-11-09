@@ -10,7 +10,6 @@ from django.conf import settings
 from django.utils import timezone
 from django.db import connection
 
-from .monitoring import performance_monitor, RequestLogger
 from .security import RateLimiter, LoginSecurity, SecurityHeaders, AuditLogger
 
 logger = logging.getLogger(__name__)
@@ -32,15 +31,13 @@ class PerformanceMiddleware(MiddlewareMixin):
             response_time = time.time() - request._start_time
             query_count = len(connection.queries) - getattr(request, '_start_queries', 0)
             
-            # Record metrics
-            performance_monitor.record_request(response_time, query_count)
-            
-            # Log request
-            RequestLogger.log_request(request, response, response_time)
-            
             # Add performance headers
             response['X-Response-Time'] = f"{response_time:.3f}s"
             response['X-Query-Count'] = str(query_count)
+            
+            # Log slow requests
+            if response_time > 1.0:
+                logger.warning(f"Slow request: {request.method} {request.path} took {response_time:.3f}s with {query_count} queries")
         
         return response
     
@@ -48,7 +45,7 @@ class PerformanceMiddleware(MiddlewareMixin):
         """Log exceptions with performance data"""
         if hasattr(request, '_start_time'):
             response_time = time.time() - request._start_time
-            RequestLogger.log_error(request, exception, response_time)
+            logger.error(f"Exception in {request.path} after {response_time:.3f}s: {str(exception)}", exc_info=True)
         
         return None
 
@@ -197,51 +194,3 @@ class AuthenticationMiddleware(MiddlewareMixin):
         return None
 
 
-class HealthCheckMiddleware(MiddlewareMixin):
-    """
-    Health check middleware
-    """
-    
-    def process_request(self, request):
-        """Handle health check requests"""
-        if request.path == '/health/':
-            from .monitoring import HealthChecker
-            health_data = HealthChecker.get_overall_health()
-            
-            # Determine overall health status
-            overall_status = 'healthy'
-            if (health_data['database']['status'] != 'healthy' or 
-                health_data['cache']['status'] != 'healthy'):
-                overall_status = 'unhealthy'
-            
-            return JsonResponse({
-                'status': overall_status,
-                'timestamp': timezone.now().isoformat(),
-                'services': health_data
-            })
-        
-        return None
-
-
-class MetricsMiddleware(MiddlewareMixin):
-    """
-    Metrics collection middleware
-    """
-    
-    def process_response(self, request, response):
-        """Collect metrics for monitoring"""
-        if request.path.startswith('/api/'):
-            # Collect API metrics
-            metrics = {
-                'endpoint': request.path,
-                'method': request.method,
-                'status_code': response.status_code,
-                'response_time': getattr(response, 'X-Response-Time', '0s'),
-                'query_count': getattr(response, 'X-Query-Count', '0'),
-                'timestamp': timezone.now().isoformat()
-            }
-            
-            # Log metrics
-            logger.info(f"API_METRICS: {metrics}")
-        
-        return response

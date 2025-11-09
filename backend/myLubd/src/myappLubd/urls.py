@@ -69,7 +69,4 @@ urlpatterns = [
     # Debug endpoints
     path('api/v1/debug/rooms/', views.debug_rooms, name='debug_rooms'),
     path('api/v1/test/rooms/all/', views.test_rooms_all, name='test_rooms_all'),
-    
-    # Monitoring endpoints
-    path('api/v1/monitoring/', include('myappLubd.monitoring_urls')),
 ]

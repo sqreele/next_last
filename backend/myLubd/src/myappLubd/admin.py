@@ -45,12 +45,11 @@ from .models import (
     Session,
     Machine,
     MaintenanceProcedure,
+    MaintenanceTaskImage,
     MaintenanceChecklist,
     MaintenanceHistory,
     MaintenanceSchedule
 )
-
-# Monitoring admin removed to avoid recursion issues
 
 # Custom User Admin to show Google OAuth information
 class UserProfileInline(admin.StackedInline):
@@ -244,21 +243,25 @@ class MachineAdmin(admin.ModelAdmin):
     list_display = [
         'machine_id', 
         'name', 
+        'brand',
+        'category',
+        'serial_number',
         'property_link', 
         'location', 
         'status', 
         'installation_date', 
         'last_maintenance_date',
-        'next_maintenance_date'
+        'next_maintenance_date',
+        'task_count'
     ]
-    list_filter = ['status', 'property', 'created_at', 'installation_date']
-    search_fields = ['machine_id', 'name', 'description', 'location']
-    readonly_fields = ['machine_id', 'created_at', 'updated_at', 'next_maintenance_date']
+    list_filter = ['status', 'category', 'brand', 'property', 'created_at', 'installation_date']
+    search_fields = ['machine_id', 'name', 'brand', 'serial_number', 'description', 'location']
+    readonly_fields = ['created_at', 'updated_at', 'next_maintenance_date']  # Removed machine_id - now editable
     filter_horizontal = ['preventive_maintenances']
     
     fieldsets = (
-        ('Machine Information', {
-            'fields': ('machine_id', 'name', 'description', 'location', 'status')
+        ('Equipment Information', {
+            'fields': ('machine_id', 'name', 'brand', 'category', 'serial_number', 'description', 'location', 'status')
         }),
         ('Property & Maintenance', {
             'fields': ('property', 'preventive_maintenances', 'installation_date', 'last_maintenance_date')
@@ -268,6 +271,11 @@ class MachineAdmin(admin.ModelAdmin):
             'fields': ('created_at', 'updated_at')
         }),
     )
+    
+    def task_count(self, obj):
+        """Display the number of maintenance tasks for this equipment"""
+        return obj.maintenance_tasks.count()
+    task_count.short_description = 'Tasks'
 
     def property_link(self, obj):
         if obj.property:
@@ -1373,18 +1381,20 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
         'get_topics_display',
         'scheduled_date',
         'completed_date',
-        'frequency',
+        # 'frequency',  # Removed - defaults to monthly
         'next_due_date',
         'get_status_display',
         'created_by_user',
         'get_machines_display',
         'get_properties_display',
+        'get_task_template_display',
     )
     list_filter = (
-        'frequency',
+        # 'frequency',  # Removed - defaults to monthly
         ('completed_date', admin.EmptyFieldListFilter),
         'scheduled_date',
         'next_due_date',
+        'procedure_template',
     )
     search_fields = ('pm_id', 'notes', 'pmtitle', 'topics__title')
     date_hierarchy = 'scheduled_date'
@@ -1395,7 +1405,16 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
             'fields': ('pm_id', 'pmtitle', 'created_by')
         }),
         ('Schedule', {
-            'fields': ('scheduled_date', 'frequency', 'custom_days', 'completed_date', 'next_due_date')
+            'fields': ('scheduled_date', 'completed_date', 'next_due_date')
+        }),
+        ('Task Template', {
+            'fields': ('procedure_template',),
+            'description': 'Link this maintenance to a reusable task template (optional)'
+        }),
+        ('Advanced', {
+            'classes': ('collapse',),
+            'fields': ('frequency', 'custom_days'),
+            'description': 'Advanced scheduling options (defaults to monthly)'
         }),
         ('Documentation & Images', {
             'fields': ('procedure', 'notes', 'before_image', 'before_image_preview', 'after_image', 'after_image_preview')
@@ -1472,6 +1491,13 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
         return ", ".join([machine.name for machine in obj.machines.all()])
     get_machines_display.short_description = 'Machines'
 
+    def get_task_template_display(self, obj):
+        if obj.procedure_template:
+            return f"{obj.procedure_template.name} (ID: {obj.procedure_template.id})"
+        return "No template"
+    get_task_template_display.short_description = 'Task Template'
+    get_task_template_display.admin_order_field = 'procedure_template'
+
 @admin.register(Session)
 class SessionAdmin(admin.ModelAdmin):
     list_display = ('user', 'session_token_short', 'expires_at', 'created_at', 'is_expired_status')
@@ -1497,23 +1523,65 @@ class SessionAdmin(admin.ModelAdmin):
 
 @admin.register(MaintenanceProcedure)
 class MaintenanceProcedureAdmin(admin.ModelAdmin):
-    list_display = ['name', 'estimated_duration', 'created_at', 'updated_at']
-    list_filter = ['created_at', 'updated_at']
-    search_fields = ['name', 'description']
+    list_display = ['name', 'equipment', 'frequency', 'responsible_department', 'estimated_duration', 'difficulty_level', 'created_at']
+    list_filter = ['frequency', 'responsible_department', 'difficulty_level', 'equipment', 'created_at']
+    search_fields = ['name', 'description', 'equipment__name']
     readonly_fields = ['created_at', 'updated_at']
+    raw_id_fields = ['equipment']
     
     fieldsets = (
-        ('Procedure Information', {
-            'fields': ('name', 'description', 'steps', 'estimated_duration')
+        ('Task Information', {
+            'fields': ('equipment', 'name', 'description', 'frequency', 'estimated_duration')
         }),
-        ('Requirements', {
-            'fields': ('required_tools', 'safety_notes')
+        ('Responsibility', {
+            'fields': ('responsible_department', 'difficulty_level')
+        }),
+        ('Procedure Details', {
+            'fields': ('steps', 'required_tools', 'safety_notes')
         }),
         ('Timestamps', {
             'classes': ('collapse',),
             'fields': ('created_at', 'updated_at')
         }),
     )
+
+
+@admin.register(MaintenanceTaskImage)
+class MaintenanceTaskImageAdmin(admin.ModelAdmin):
+    list_display = ['id', 'task', 'image_type', 'image_preview', 'uploaded_by', 'uploaded_at']
+    list_filter = ['image_type', 'uploaded_at', 'task']
+    search_fields = ['task__name', 'task__equipment__name']
+    readonly_fields = ['uploaded_at', 'jpeg_path', 'image_preview_large']
+    raw_id_fields = ['task', 'uploaded_by']
+    
+    fieldsets = (
+        ('Image Information', {
+            'fields': ('task', 'image_type', 'image_url', 'image_preview_large')
+        }),
+        ('Upload Details', {
+            'fields': ('uploaded_by', 'uploaded_at', 'jpeg_path')
+        }),
+    )
+    
+    def image_preview(self, obj):
+        """Display small image preview in list view"""
+        if obj.image_url:
+            return format_html(
+                '<img src="{}" style="max-width: 100px; max-height: 100px; border-radius: 4px;" />',
+                obj.image_url.url
+            )
+        return "No image"
+    image_preview.short_description = 'Preview'
+    
+    def image_preview_large(self, obj):
+        """Display larger image preview in detail view"""
+        if obj.image_url:
+            return format_html(
+                '<img src="{}" style="max-width: 400px; max-height: 400px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />',
+                obj.image_url.url
+            )
+        return "No image"
+    image_preview_large.short_description = 'Image Preview'
 
 
 @admin.register(MaintenanceChecklist)

@@ -5,7 +5,7 @@ import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import MaintenanceItem from './MaintenanceItem';
 
 // Define the sort field type
-type SortField = 'date' | 'status' | 'frequency' | 'machine';
+type SortField = 'date' | 'status' | 'machine';
 
 interface MaintenanceListProps {
   items: PreventiveMaintenance[];
@@ -19,7 +19,7 @@ interface MaintenanceListProps {
   formatDate: (date: string) => string;
   getMachineNames: (machines: any) => string;
   getStatusInfo: (item: PreventiveMaintenance) => any;
-  getFrequencyText: (frequency: string) => string;
+  // getFrequencyText removed - frequency no longer displayed
   currentFilters: any;
 }
 
@@ -35,7 +35,7 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
   formatDate,
   getMachineNames,
   getStatusInfo,
-  getFrequencyText,
+  // getFrequencyText removed
   currentFilters,
 }) => {
   return (
@@ -52,7 +52,7 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
             />
           </div>
           
-          <div className="flex-1 grid grid-cols-6 gap-4 ml-4">
+          <div className="flex-1 grid grid-cols-5 gap-4 ml-4">
             <button
               onClick={() => onSort('date')}
               className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 focus:outline-none"
@@ -68,13 +68,6 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
             </button>
             
             <button
-              onClick={() => onSort('frequency')}
-              className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 focus:outline-none"
-            >
-              Frequency {sortBy === 'frequency' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-            
-            <button
               onClick={() => onSort('machine')}
               className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 focus:outline-none"
             >
@@ -82,7 +75,7 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
             </button>
             
             <div className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Procedure
+              Task Template
             </div>
             
             <div className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -104,7 +97,6 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
             formatDate={formatDate}
             getMachineNames={getMachineNames}
             getStatusInfo={getStatusInfo}
-            getFrequencyText={getFrequencyText}
           />
         ))}
       </div>

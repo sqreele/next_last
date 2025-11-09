@@ -49,6 +49,7 @@ interface FormValues {
   selected_machine_ids: string[];
   property_id: string | null;
   procedure: string;
+  procedure_template: number | ''; // Maintenance task template ID (empty string for "none")
 }
 
 const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
@@ -75,6 +76,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
   const [availableMachines, setAvailableMachines] = useState<MachineDetails[]>([]);
+  const [availableMaintenanceTasks, setAvailableMaintenanceTasks] = useState<Array<{id: number, name: string, equipment_name: string}>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +85,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const [afterImagePreview, setAfterImagePreview] = useState<string | null>(null);
   const [loadingTopics, setLoadingTopics] = useState<boolean>(true);
   const [loadingMachines, setLoadingMachines] = useState<boolean>(true);
+  const [loadingMaintenanceTasks, setLoadingMaintenanceTasks] = useState<boolean>(true);
 
   const formatDateForInput = useCallback((date: Date): string => {
     // Use local methods to match the user's timezone for datetime-local inputs
@@ -283,20 +286,22 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       }
     }
     
-    if (!values.frequency) errors.frequency = 'Frequency is required';
-    if (values.frequency === 'custom' && (!values.custom_days || values.custom_days < 1)) {
-      errors.custom_days = 'Custom days must be at least 1';
-    }
-    if (values.frequency === 'custom' && values.custom_days && values.custom_days > 365) {
-      errors.custom_days = 'Custom days cannot exceed 365';
-    }
+    // Frequency validation removed - field is hidden, defaults to 'monthly'
+    // if (!values.frequency) errors.frequency = 'Frequency is required';
+    // if (values.frequency === 'custom' && (!values.custom_days || values.custom_days < 1)) {
+    //   errors.custom_days = 'Custom days must be at least 1';
+    // }
+    // if (values.frequency === 'custom' && values.custom_days && values.custom_days > 365) {
+    //   errors.custom_days = 'Custom days cannot exceed 365';
+    // }
     if (!values.property_id) errors.property_id = 'Property is required';
     if (!values.selected_machine_ids || values.selected_machine_ids.length === 0) {
       errors.selected_machine_ids = 'At least one machine must be selected';
     }
-    if (!values.selected_topics || values.selected_topics.length === 0) {
-      errors.selected_topics = 'At least one topic must be selected';
-    }
+    // Topics are now optional
+    // if (!values.selected_topics || values.selected_topics.length === 0) {
+    //   errors.selected_topics = 'At least one topic must be selected';
+    // }
 
     return errors;
   };
@@ -372,6 +377,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         selected_machine_ids: selectedMachineIds,
         property_id: propertyId,
         procedure: currentData.procedure || '',
+        procedure_template: (currentData as any).procedure_template || '',
       };
     }
 
@@ -388,6 +394,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       selected_machine_ids: machineId ? [machineId] : [],
       property_id: selectedProperty,
       procedure: '',
+      procedure_template: '',
     };
   }, [actualInitialData, selectedProperty, machineId, formatDateForInput, defaultScheduledDate, getPropertyDetails]);
 
@@ -459,6 +466,33 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     }
   }, []);
 
+  // Fetch available maintenance tasks (templates)
+  const fetchAvailableMaintenanceTasks = useCallback(async () => {
+    setLoadingMaintenanceTasks(true);
+    try {
+      const response = await apiClient.get('/api/v1/maintenance-procedures/');
+      
+      // Handle both array and paginated response
+      let tasksData: any[] = [];
+      if (Array.isArray(response.data)) {
+        tasksData = response.data;
+      } else if (response.data && 'results' in response.data) {
+        tasksData = response.data.results || [];
+      }
+      
+      setAvailableMaintenanceTasks(tasksData.map((task) => ({
+        id: task.id,
+        name: task.name,
+        equipment_name: task.equipment_name || 'Unknown Equipment'
+      })));
+    } catch (err: any) {
+      console.error('Error fetching maintenance tasks:', err);
+      setAvailableMaintenanceTasks([]);
+    } finally {
+      setLoadingMaintenanceTasks(false);
+    }
+  }, []);
+
   // Handle property ID changes and fetch machines
   useEffect(() => {
     if (selectedProperty) {
@@ -467,6 +501,13 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       setAvailableMachines([]); // Clear machines if no property is selected
     }
   }, [selectedProperty, fetchAvailableMachines]);
+
+  // Fetch maintenance tasks on mount
+  useEffect(() => {
+    if (accessToken) {
+      fetchAvailableMaintenanceTasks();
+    }
+  }, [accessToken, fetchAvailableMaintenanceTasks]);
 
   // Move all hooks to the top, before any conditional returns
   useEffect(() => {
@@ -691,6 +732,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         before_image: hasBeforeImageFile ? values.before_image_file! : undefined,
         after_image: hasAfterImageFile ? values.after_image_file! : undefined,
         procedure: values.procedure?.trim() || '',
+        procedure_template: values.procedure_template !== '' ? Number(values.procedure_template) : undefined,
       };
 
       console.log('[FORM] handleSubmit - Data prepared for service:', JSON.stringify(dataForService, (key, value) => {
@@ -699,6 +741,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         }
         return value;
       }, 2));
+      console.log('[FORM] procedure_template value:', {
+        original: values.procedure_template,
+        type: typeof values.procedure_template,
+        isEmpty: values.procedure_template === '',
+        converted: dataForService.procedure_template
+      });
 
       // Log the final date formats being sent
       console.log('[FORM] Final date formats:', {
@@ -743,16 +791,18 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       if (!dataForService.scheduled_date) {
         throw new Error('Scheduled date is required');
       }
-      if (!dataForService.frequency) {
-        throw new Error('Frequency is required');
-      }
-      if (dataForService.frequency === 'custom' && !dataForService.custom_days) {
-        throw new Error('Custom days is required when frequency is custom');
-      }
+      // Frequency validation removed - defaults to 'monthly' if not provided
+      // if (!dataForService.frequency) {
+      //   throw new Error('Frequency is required');
+      // }
+      // if (dataForService.frequency === 'custom' && !dataForService.custom_days) {
+      //   throw new Error('Custom days is required when frequency is custom');
+      // }
       // Note: property_id validation removed - it's determined by the machines assigned
-      if (!dataForService.topic_ids || dataForService.topic_ids.length === 0) {
-        throw new Error('At least one topic is required');
-      }
+      // Topics are now optional
+      // if (!dataForService.topic_ids || dataForService.topic_ids.length === 0) {
+      //   throw new Error('At least one topic is required');
+      // }
       if (!dataForService.machine_ids || dataForService.machine_ids.length === 0) {
         throw new Error('At least one machine is required');
       }
@@ -963,10 +1013,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               />
             </div>
 
-            {/* Maintenance Frequency */}
+            {/* Maintenance Frequency - HIDDEN (defaults to 'monthly') */}
+            {false && (
+            <>
             <div className="mb-6">
               <label htmlFor="frequency" className="block text-sm font-medium text-gray-700 mb-1">
-                Maintenance Frequency <span className="text-red-500">*</span>
+                Maintenance Frequency
               </label>
               <Field
                 as="select"
@@ -989,7 +1041,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             {values.frequency === 'custom' && (
               <div className="mb-6">
                 <label htmlFor="custom_days" className="block text-sm font-medium text-gray-700 mb-1">
-                  Custom Days Interval <span className="text-red-500">*</span>
+                  Custom Days Interval
                 </label>
                 <Field
                   type="number"
@@ -1005,6 +1057,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   <p className="mt-1 text-sm text-red-500">{errors.custom_days}</p>
                 )}
               </div>
+            )}
+            </>
             )}
 
             {/* Notes */}
@@ -1022,7 +1076,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               />
             </div>
 
-            {/* Procedure */}
+            {/* Procedure - HIDDEN (linked via maintenance task template) */}
+            {false && (
             <div className="mb-6">
               <label htmlFor="procedure" className="block text-sm font-medium text-gray-700 mb-1">
                 Procedure
@@ -1036,6 +1091,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 placeholder="Enter the maintenance procedure"
               />
             </div>
+            )}
 
             {/* Machines Selection */}
             <div className="mb-6">
@@ -1115,10 +1171,52 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               )}
             </div>
 
-            {/* Topics Selection */}
+            {/* Maintenance Task Template Selection */}
+            <div className="mb-6">
+              <label htmlFor="procedure_template" className="block text-sm font-medium text-gray-700 mb-1">
+                Maintenance Task Template (Optional)
+                {loadingMaintenanceTasks && <span className="text-xs text-gray-500 ml-2">(Loading...)</span>}
+              </label>
+              <Field
+                as="select"
+                id="procedure_template"
+                name="procedure_template"
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  const taskId = e.target.value ? Number(e.target.value) : '';
+                  setFieldValue('procedure_template', taskId);
+                  
+                  // If a task is selected, optionally populate procedure field
+                  if (taskId) {
+                    const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(taskId));
+                    if (selectedTask && !values.pmtitle) {
+                      // Auto-populate title if empty
+                      setFieldValue('pmtitle', selectedTask.name);
+                    }
+                  }
+                }}
+              >
+                <option value="">No template (Custom)</option>
+                {loadingMaintenanceTasks ? (
+                  <option disabled>Loading tasks...</option>
+                ) : (
+                  availableMaintenanceTasks.map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.name} - {task.equipment_name}
+                    </option>
+                  ))
+                )}
+              </Field>
+              <p className="mt-1 text-xs text-gray-500">
+                Select a task template to use as a reference for this maintenance
+              </p>
+            </div>
+
+            {/* Topics Selection - HIDDEN (Topics are now optional) */}
+            {false && (
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Topics <span className="text-red-500">*</span>{' '}
+                Topics (Optional){' '}
                 {loadingTopics && <span className="text-xs text-gray-500">(Loading...)</span>}
               </label>
               <div
@@ -1213,6 +1311,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 </div>
               )}
             </div>
+            )}
 
             {/* Image Uploads */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">

@@ -13,7 +13,7 @@ interface MaintenanceItemProps {
   formatDate: (date: string) => string;
   getMachineNames: (machines: any) => string;
   getStatusInfo: (item: PreventiveMaintenance) => any;
-  getFrequencyText: (frequency: string) => string;
+  // getFrequencyText removed - frequency no longer displayed
 }
 
 const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
@@ -24,7 +24,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
   formatDate,
   getMachineNames,
   getStatusInfo,
-  getFrequencyText
+  // getFrequencyText removed
 }) => {
   const statusInfo = getStatusInfo(item);
 
@@ -67,27 +67,17 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                     <span>{formatDate(item.scheduled_date)}</span>
                   </div>
                   <div className="flex items-center">
-                    <Clock className="h-3 w-3 mr-1" />
-                    <span>{getFrequencyText(item.frequency)}</span>
-                  </div>
-                  <div className="flex items-center">
                     <Wrench className="h-3 w-3 mr-1" />
                     <span>{getMachineNames(item.machines)}</span>
                   </div>
-                  {item.procedure && (
+                  {(item as any).procedure_template_id && (
                     <div className="flex items-center">
                       <Clipboard className="h-3 w-3 mr-1" />
-                      <span className="truncate">{item.procedure}</span>
+                      <span className="truncate">
+                        {(item as any).procedure_template_name || `Task #${(item as any).procedure_template_id}`}
+                      </span>
                     </div>
                   )}
-                  {!item.procedure && item.machines?.map(machine => (
-                    machine.procedure && machine.procedure !== "0" && (
-                      <div key={machine.machine_id} className="flex items-center">
-                        <Clipboard className="h-3 w-3 mr-1" />
-                        <span className="truncate">{machine.procedure}</span>
-                      </div>
-                    )
-                  ))}
                 </div>
                 
                 <div className="flex items-center justify-between mt-3">
@@ -125,7 +115,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
 
           {/* Desktop Layout */}
           <div className="hidden md:block">
-            <div className="grid grid-cols-6 gap-4 items-center">
+            <div className="grid grid-cols-5 gap-4 items-center">
               <div className="text-sm text-gray-900">
                 <Link 
                   href={`/dashboard/preventive-maintenance/${item.pm_id}`}
@@ -142,16 +132,27 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                 </span>
               </div>
               
-              <div className="text-sm text-gray-900">
-                {getFrequencyText(item.frequency)}
-              </div>
-              
               <div className="text-sm text-gray-900 truncate">
                 {getMachineNames(item.machines)}
               </div>
               
-              <div className="text-sm text-gray-900 truncate">
-                {item.procedure || item.machines?.find(m => m.procedure && m.procedure !== "0")?.procedure || '-'}
+              <div className="text-sm text-gray-900">
+                {(item as any).procedure_template_id ? (
+                  <Link 
+                    href={`/dashboard/maintenance-tasks/${(item as any).procedure_template_id}`}
+                    className="text-blue-600 hover:text-blue-800 hover:underline"
+                    title={(item as any).procedure_template_name || `Task #${(item as any).procedure_template_id}`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Clipboard className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">
+                        {(item as any).procedure_template_name || `Task #${(item as any).procedure_template_id}`}
+                      </span>
+                    </div>
+                  </Link>
+                ) : (
+                  <span className="text-gray-400 text-xs">No template</span>
+                )}
               </div>
               
               <div className="flex items-center space-x-2">

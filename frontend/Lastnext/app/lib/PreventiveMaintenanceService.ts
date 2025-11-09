@@ -25,6 +25,7 @@ export type CreatePreventiveMaintenanceData = {
   after_image?: File;
   procedure?: string;
   completed_date?: string;
+  procedure_template?: number; // FK to MaintenanceProcedure task template
 };
 
 export type UpdatePreventiveMaintenanceData = Partial<CreatePreventiveMaintenanceData>;
@@ -425,6 +426,12 @@ class PreventiveMaintenanceService {
       if (data.custom_days != null) formData.append('custom_days', String(data.custom_days));
       if (data.notes !== undefined) formData.append('notes', data.notes?.trim() || '');
       if (data.procedure !== undefined) formData.append('procedure', data.procedure?.trim() || '');
+      if (data.procedure_template !== undefined && data.procedure_template !== null) {
+        formData.append('procedure_template', String(data.procedure_template));
+        console.log('[SERVICE CREATE] Adding procedure_template to FormData:', data.procedure_template);
+      } else {
+        console.log('[SERVICE CREATE] procedure_template not added:', { value: data.procedure_template, isUndefined: data.procedure_template === undefined, isNull: data.procedure_template === null });
+      }
       
       // Add array fields - FIXED: removed [] from field names
       if (data.topic_ids?.length) {
@@ -579,6 +586,12 @@ class PreventiveMaintenanceService {
       }
       if (data.notes !== undefined) formData.append('notes', data.notes?.trim() || '');
       if (data.procedure !== undefined) formData.append('procedure', data.procedure?.trim() || '');
+      if (data.procedure_template !== undefined && data.procedure_template !== null) {
+        formData.append('procedure_template', String(data.procedure_template));
+        console.log('[SERVICE UPDATE] Adding procedure_template to FormData:', data.procedure_template);
+      } else {
+        console.log('[SERVICE UPDATE] procedure_template not added:', { value: data.procedure_template, isUndefined: data.procedure_template === undefined, isNull: data.procedure_template === null });
+      }
       
       // Add array fields - FIXED: removed [] from field names
       if (data.topic_ids !== undefined) {

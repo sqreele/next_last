@@ -36,6 +36,14 @@ interface PreventiveMaintenanceClientProps {
 }
 
 export default function PreventiveMaintenanceClient({ maintenanceData }: PreventiveMaintenanceClientProps) {
+  // Debug: Log procedure_template data
+  console.log('[CLIENT] Received maintenanceData procedure_template:', {
+    procedure_template: maintenanceData.procedure_template,
+    procedure_template_id: maintenanceData.procedure_template_id,
+    procedure_template_name: maintenanceData.procedure_template_name,
+    has_template: !!(maintenanceData.procedure_template_id || maintenanceData.procedure_template)
+  });
+  
   const { data: session, status } = useSession();  
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -472,17 +480,18 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
     }).join(', ');
   };
 
-  const getTopicsString = () => {
-    const topics = maintenanceData.topics;
-    if (!topics || topics.length === 0) return 'No topics';
-    
-    if (typeof topics[0] === 'object' && 'title' in topics[0]) {
-      return (topics as any[]).map(topic => topic.title).join(', ');
-    }
-    
-    // Handle case where topics are numbers (IDs)
-    return (topics as unknown as number[]).join(', ');
-  };
+  // getTopicsString function removed - topics no longer displayed
+  // const getTopicsString = () => {
+  //   const topics = maintenanceData.topics;
+  //   if (!topics || topics.length === 0) return 'No topics';
+  //   
+  //   if (typeof topics[0] === 'object' && 'title' in topics[0]) {
+  //     return (topics as any[]).map(topic => topic.title).join(', ');
+  //   }
+  //   
+  //   // Handle case where topics are numbers (IDs)
+  //   return (topics as unknown as number[]).join(', ');
+  // };
 
   return (
     <>
@@ -579,6 +588,43 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
               </div>
             </div>
             
+            {/* Always show Task Template card - with link if exists, or message if not */}
+            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${(maintenanceData.procedure_template_id || maintenanceData.procedure_template) ? 'bg-indigo-100' : 'bg-gray-100'}`}>
+                  <Settings className={`h-5 w-5 ${(maintenanceData.procedure_template_id || maintenanceData.procedure_template) ? 'text-indigo-600' : 'text-gray-400'}`} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-500">Maintenance Task Template</p>
+                  {(maintenanceData.procedure_template_id || maintenanceData.procedure_template) ? (
+                    <>
+                      <Link 
+                        href={`/dashboard/maintenance-tasks/${maintenanceData.procedure_template_id || maintenanceData.procedure_template}`}
+                        className="text-lg font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 font-mono"
+                      >
+                        {maintenanceData.procedure_template_id || maintenanceData.procedure_template}
+                        <ArrowUpRight className="h-4 w-4" />
+                      </Link>
+                      {maintenanceData.procedure_template_name && (
+                        <p className="text-xs text-gray-600 mt-1 truncate">
+                          {maintenanceData.procedure_template_name}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-500 italic">No template linked</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        <Link href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`} className="text-blue-600 hover:underline">
+                          Edit this record
+                        </Link> to link a task template
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            
             {maintenanceData.property_id && (
               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3">
@@ -618,6 +664,29 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                   <div>
                     <p className="text-sm font-medium text-gray-500">Completed</p>
                     <p className="text-lg font-semibold text-gray-900">{formatDate(maintenanceData.completed_date)}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {(maintenanceData.procedure_template_id || maintenanceData.procedure_template) && (
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <FileText className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-500">Task Template</p>
+                    <Link 
+                      href={`/dashboard/maintenance-tasks/${maintenanceData.procedure_template_id || maintenanceData.procedure_template}`}
+                      className="text-lg font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+                    >
+                      {maintenanceData.procedure_template_name || 'Task Template'}
+                      <ArrowUpRight className="h-4 w-4" />
+                    </Link>
+                    <p className="text-xs text-gray-500 mt-1 font-mono">
+                      ID: {maintenanceData.procedure_template_id || maintenanceData.procedure_template}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -690,7 +759,8 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
             {/* Right Column */}
             <div className="space-y-6">
-              {/* Frequency */}
+              {/* Frequency - HIDDEN (defaults to monthly, managed via task template) */}
+              {false && (
               <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-2xl border border-orange-100">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-orange-100 rounded-lg">
@@ -709,8 +779,10 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                   </p>
                 </div>
               </div>
+              )}
 
-              {/* Topics */}
+              {/* Topics - HIDDEN (topics removed from system) */}
+              {false && (
               <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-2xl border border-indigo-100">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-indigo-100 rounded-lg">
@@ -719,9 +791,9 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                   <h4 className="text-lg font-semibold text-gray-900">Maintenance Topics</h4>
                 </div>
                 <div className="bg-white/60 p-4 rounded-xl">
-                  {maintenanceData.topics && maintenanceData.topics.length > 0 ? (
+                  {maintenanceData.topics?.length ? (
                     <div className="flex flex-wrap gap-2">
-                      {maintenanceData.topics.map((topic, index) => {
+                      {maintenanceData.topics?.map((topic, index) => {
                         const topicTitle = typeof topic === 'object' && 'title' in topic ? topic.title : `Topic ${topic}`;
                         return (
                           <span 
@@ -738,6 +810,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                   )}
                 </div>
               </div>
+              )}
             </div>
           </div>
         </div>
@@ -783,8 +856,13 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       alt="Before Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       style={{ width: '100%', height: '100%' }}
-                      onLoad={() => console.log('✅ Before image loaded successfully')}
-                      onError={(e) => console.error('❌ Before image failed to load:', e)}
+                      onLoad={() => console.log('✅ Before image loaded successfully from:', beforeImageUrl)}
+                      onError={(e) => {
+                        console.error('❌ Before image failed to load');
+                        console.error('   URL:', beforeImageUrl);
+                        console.error('   Original URL:', maintenanceData.before_image_url);
+                        console.error('   Error event:', e);
+                      }}
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
                       <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">
@@ -823,8 +901,13 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       alt="After Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       style={{ width: '100%', height: '100%' }}
-                      onLoad={() => console.log('✅ After image loaded successfully')}
-                      onError={(e) => console.error('❌ After image failed to load:', e)}
+                      onLoad={() => console.log('✅ After image loaded successfully from:', afterImageUrl)}
+                      onError={(e) => {
+                        console.error('❌ After image failed to load');
+                        console.error('   URL:', afterImageUrl);
+                        console.error('   Original URL:', maintenanceData.after_image_url);
+                        console.error('   Error event:', e);
+                      }}
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
                       <div className="opacity-0 group-hover:opacity-100 bg-white bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">
@@ -964,14 +1047,8 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
               <span className="font-medium text-gray-600">Scheduled:</span>
               <p>{formatDate(maintenanceData.scheduled_date)}</p>
             </div>
-            <div>
-              <span className="font-medium text-gray-600">Frequency:</span>
-              <p className="capitalize">{maintenanceData.frequency}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-600">Topics:</span>
-              <p>{getTopicsString()}</p>
-            </div>
+            {/* Frequency removed from display - defaults to monthly */}
+            {/* Topics removed from display */}
             <div>
               <span className="font-medium text-gray-600">Next Due:</span>
               <p>{maintenanceData.next_due_date ? formatDate(maintenanceData.next_due_date) : 'N/A'}</p>

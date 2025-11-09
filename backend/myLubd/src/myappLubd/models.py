@@ -104,14 +104,14 @@ class PreventiveMaintenance(models.Model):
     notes = models.TextField(blank=True, null=True)
     procedure = models.TextField(blank=True, null=True, help_text="Maintenance procedure details")
     
-    # Enhanced procedure management
+    # Enhanced procedure management - Following ER diagram (task_id)
     procedure_template = models.ForeignKey(
         'MaintenanceProcedure',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='maintenance_tasks',
-        help_text="Template procedure for this maintenance task"
+        related_name='maintenance_schedules',
+        help_text="Maintenance task this schedule is for (task_id in ER diagram)"
     )
     
     # Priority and status fields
@@ -191,21 +191,43 @@ class PreventiveMaintenance(models.Model):
         on_delete=models.CASCADE,
         related_name='created_preventive_maintenances'
     )
+    
+    # Following ER diagram - assigned_to field
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_maintenance_schedules',
+        help_text="User assigned to perform this maintenance schedule"
+    )
+    
+    # Following ER diagram - remarks field
+    remarks = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Additional remarks about this maintenance schedule"
+    )
+    
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-scheduled_date']
         verbose_name = 'Preventive Maintenance'
-        verbose_name_plural = 'Preventive Maintenances'
+        verbose_name_plural = 'Preventive Maintenance'
         indexes = [
-            # ✅ PERFORMANCE: Enhanced database indexes
-            models.Index(fields=['scheduled_date', 'next_due_date']),
-            models.Index(fields=['frequency']),
-            models.Index(fields=['pm_id']),  # Frequently used in lookups
-            models.Index(fields=['completed_date']),  # For filtering completed/pending
-            models.Index(fields=['scheduled_date', 'completed_date']),  # Composite for overdue queries
-            models.Index(fields=['created_by']),  # Foreign key lookups
-            models.Index(fields=['job']),  # Foreign key lookups
+            # ✅ PERFORMANCE: Enhanced database indexes following ER diagram
+            models.Index(fields=['procedure_template']),  # FK to MaintenanceTask (task_id)
+            models.Index(fields=['assigned_to']),  # FK to User
+            models.Index(fields=['status']),  # Filter by status
+            models.Index(fields=['scheduled_date']),  # Sort by schedule
+            models.Index(fields=['completed_date']),  # Filter completed
+            models.Index(fields=['scheduled_date', 'completed_date']),  # Composite for overdue
+            models.Index(fields=['pm_id']),  # Unique ID lookups
+            models.Index(fields=['created_by']),  # Creator lookups
+            models.Index(fields=['job']),  # Related job lookups
+            models.Index(fields=['status', 'assigned_to']),  # Common filtering pattern
+            models.Index(fields=['procedure_template', 'status']),  # Task status tracking
         ]
 
     def __str__(self):
@@ -933,9 +955,13 @@ class Machine(models.Model):
         max_length=50,
         unique=True,
         blank=True,
-        editable=False
+        editable=True,  # Changed: Now you can manually edit machine IDs
+        help_text="Unique machine identifier (auto-generated if left empty)"
     )
     name = models.CharField(max_length=100)
+    brand = models.CharField(max_length=100, blank=True, null=True, help_text="Equipment brand/manufacturer")
+    category = models.CharField(max_length=100, blank=True, null=True, help_text="Equipment category/type")
+    serial_number = models.CharField(max_length=100, blank=True, null=True, unique=True, help_text="Serial number")
     description = models.TextField(blank=True, null=True)
     location = models.CharField(max_length=200, blank=True, null=True)
     
@@ -959,23 +985,29 @@ class Machine(models.Model):
         default='active'
     )
     
-    installation_date = models.DateField(null=True, blank=True)
+    installation_date = models.DateField(null=True, blank=True, help_text="Date when equipment was installed")
     last_maintenance_date = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['name']
-        verbose_name = 'Machine'
-        verbose_name_plural = 'Machines'
+        verbose_name = 'Equipment'
+        verbose_name_plural = 'Equipment'
         indexes = [
-            # ✅ PERFORMANCE: Enhanced Machine indexes
-            models.Index(fields=['machine_id']),
-            models.Index(fields=['status']),
-            models.Index(fields=['property']),  # Foreign key lookups
+            # ✅ PERFORMANCE: Enhanced Equipment indexes following ER diagram
+            models.Index(fields=['machine_id']),  # Unique ID lookups
+            models.Index(fields=['serial_number']),  # Serial number lookups
             models.Index(fields=['name']),  # For search
+            models.Index(fields=['brand']),  # Filter by brand
+            models.Index(fields=['category']),  # Filter by category/type
+            models.Index(fields=['status']),  # Filter by status
+            models.Index(fields=['property']),  # FK to Property
+            models.Index(fields=['location']),  # Search by location
             models.Index(fields=['status', 'property']),  # Composite for filtering
+            models.Index(fields=['category', 'status']),  # Equipment type and status
             models.Index(fields=['last_maintenance_date']),  # For maintenance tracking
+            models.Index(fields=['installation_date']),  # For age tracking
         ]
 
     def __str__(self):
@@ -1000,14 +1032,58 @@ class Machine(models.Model):
 
 
 class MaintenanceProcedure(models.Model):
-    """Model for storing detailed maintenance procedures"""
-    name = models.CharField(max_length=200)
-    description = models.TextField()
+    """Model for storing detailed maintenance procedures / tasks per equipment"""
+    
+    # FK to Equipment (Machine) - Following ER diagram
+    equipment = models.ForeignKey(
+        'Machine',
+        on_delete=models.CASCADE,
+        related_name='maintenance_tasks',
+        null=True,
+        blank=True,
+        help_text="Equipment this maintenance task is for"
+    )
+    
+    name = models.CharField(max_length=200, help_text="Task name/title")
+    description = models.TextField(help_text="Detailed description of the maintenance task")
+    
+    # Frequency following ER diagram
+    FREQUENCY_CHOICES = [
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+        ('quarterly', 'Quarterly'),
+        ('semi_annual', 'Semi-Annual'),
+        ('annual', 'Annual'),
+        ('custom', 'Custom'),
+    ]
+    frequency = models.CharField(
+        max_length=20,
+        choices=FREQUENCY_CHOICES,
+        default='monthly',
+        help_text="How often this task should be performed"
+    )
+    
+    estimated_duration = models.CharField(
+        max_length=50,
+        default='0 mins',
+        help_text="Estimated duration (e.g., '5 mins', '2 hours')"
+    )
+    
+    # Responsible department following ER diagram
+    responsible_department = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Department responsible for this task (e.g., Engineering, MEP Contractor)"
+    )
+    
+    # Additional fields from original design
     steps = models.JSONField(
         default=list, 
+        blank=True,
         help_text="List of maintenance steps in JSON format"
     )
-    estimated_duration = models.PositiveIntegerField(help_text="Estimated duration in minutes")
     required_tools = models.TextField(blank=True, null=True)
     safety_notes = models.TextField(blank=True, null=True)
     difficulty_level = models.CharField(
@@ -1021,22 +1097,27 @@ class MaintenanceProcedure(models.Model):
         default='intermediate',
         help_text="Skill level required for this procedure"
     )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['name']
-        verbose_name = 'Maintenance Procedure'
-        verbose_name_plural = 'Maintenance Procedures'
+        ordering = ['equipment', 'frequency', 'name']
+        verbose_name = 'Maintenance Task'
+        verbose_name_plural = 'Maintenance Tasks'
         indexes = [
-            # ✅ PERFORMANCE: Maintenance Procedure indexes
+            # ✅ PERFORMANCE: Maintenance Task indexes following ER diagram
+            models.Index(fields=['equipment']),  # FK lookup - primary relationship
+            models.Index(fields=['frequency']),  # Filter by frequency
+            models.Index(fields=['responsible_department']),  # Filter by department
             models.Index(fields=['name']),  # For search
             models.Index(fields=['difficulty_level']),  # For filtering
+            models.Index(fields=['equipment', 'frequency']),  # Composite for common queries
             models.Index(fields=['created_at']),  # For sorting
         ]
     
     def __str__(self):
-        return self.name
+        return f"{self.equipment.name} - {self.name} ({self.frequency})"
     
     def get_steps_count(self):
         """Get the total number of steps"""
@@ -1167,6 +1248,156 @@ class MaintenanceProcedure(models.Model):
         return duplicate
 
 
+class MaintenanceTaskImage(models.Model):
+    """Model for storing maintenance task images (before/after)"""
+    
+    IMAGE_TYPE_CHOICES = [
+        ('before', 'Before'),
+        ('after', 'After'),
+    ]
+    
+    # Maximum image dimensions
+    MAX_SIZE = (800, 800)
+    
+    id = models.AutoField(primary_key=True)
+    
+    # FK to MaintenanceTask (MaintenanceProcedure)
+    task = models.ForeignKey(
+        MaintenanceProcedure,
+        on_delete=models.CASCADE,
+        related_name='task_images',
+        help_text="Maintenance task this image belongs to"
+    )
+    
+    # Image type (Before/After)
+    image_type = models.CharField(
+        max_length=10,
+        choices=IMAGE_TYPE_CHOICES,
+        help_text="Type of image (Before or After)"
+    )
+    
+    # Image field
+    image_url = models.ImageField(
+        upload_to='maintenance_task_images/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif'])],
+        help_text="Image file"
+    )
+    
+    # JPEG version for PDF generation compatibility
+    jpeg_path = models.CharField(
+        max_length=500,
+        null=True,
+        blank=True,
+        help_text="Path to JPEG version of the image for PDF generation"
+    )
+    
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    # Optional: track who uploaded
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='uploaded_task_images',
+        help_text="User who uploaded this image"
+    )
+    
+    class Meta:
+        ordering = ['task', 'image_type', '-uploaded_at']
+        verbose_name = 'Maintenance Task Image'
+        verbose_name_plural = 'Maintenance Task Images'
+        indexes = [
+            models.Index(fields=['task']),  # FK lookup
+            models.Index(fields=['image_type']),  # Filter by type
+            models.Index(fields=['uploaded_at']),  # Sort by upload date
+            models.Index(fields=['task', 'image_type']),  # Common query pattern
+        ]
+    
+    def __str__(self):
+        return f"{self.task.name} - {self.get_image_type_display()} ({self.uploaded_at.strftime('%Y-%m-%d')})"
+    
+    def process_image(self, image_file, quality=85):
+        """Process and resize the image, creating JPEG version for PDF generation compatibility"""
+        try:
+            img = Image.open(image_file)
+            
+            # Resize if image is larger than MAX_SIZE
+            if img.width > self.MAX_SIZE[0] or img.height > self.MAX_SIZE[1]:
+                img.thumbnail(self.MAX_SIZE, Image.Resampling.LANCZOS)
+            
+            # Convert RGBA to RGB if necessary
+            if img.mode in ('RGBA', 'LA'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.getchannel('A'))
+                img = background
+            
+            # Convert to RGB if not already
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Create JPEG version
+            jpeg_output = BytesIO()
+            img.save(jpeg_output, 'JPEG', quality=quality, optimize=True)
+            jpeg_output.seek(0)
+            
+            return {'jpeg': jpeg_output}
+        except Exception as e:
+            raise Exception(f"Error processing image: {e}")
+    
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        
+        # Process and convert image only if it's a new image
+        if is_new and self.image_url:
+            try:
+                # Process and convert image to JPEG format
+                processed_images = self.process_image(self.image_url)
+                
+                # Generate filename for JPEG version
+                image_path = Path(self.image_url.name)
+                base_name = image_path.stem
+                jpeg_name = f'{base_name}.jpg'
+                
+                # Save the JPEG version
+                jpeg_path = str(image_path.parent / jpeg_name)
+                jpeg_full_path = os.path.join(settings.MEDIA_ROOT, jpeg_path)
+                
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(jpeg_full_path), exist_ok=True)
+                
+                # Save JPEG file
+                with open(jpeg_full_path, 'wb') as f:
+                    f.write(processed_images['jpeg'].getvalue())
+                
+                # Store JPEG path for PDF generation
+                self.jpeg_path = jpeg_path
+                
+                # Close the processed image
+                processed_images['jpeg'].close()
+                
+            except Exception as e:
+                logger.error(f"Error processing task image: {e}")
+                # Don't fail the save if image processing fails
+                pass
+        
+        super().save(*args, **kwargs)
+    
+    def delete(self, *args, **kwargs):
+        """Remove image file when model instance is deleted"""
+        if self.image_url:
+            if os.path.isfile(self.image_url.path):
+                os.remove(self.image_url.path)
+        
+        # Remove JPEG version if exists
+        if self.jpeg_path:
+            jpeg_full_path = os.path.join(settings.MEDIA_ROOT, self.jpeg_path)
+            if os.path.isfile(jpeg_full_path):
+                os.remove(jpeg_full_path)
+        
+        super().delete(*args, **kwargs)
+
+
 class MaintenanceChecklist(models.Model):
     """Model for maintenance checklists"""
     maintenance = models.ForeignKey(
@@ -1240,8 +1471,8 @@ class MaintenanceSchedule(models.Model):
     is_active = models.BooleanField(default=True)
     
     class Meta:
-        verbose_name = 'Maintenance Schedule'
-        verbose_name_plural = 'Maintenance Schedules'
+        verbose_name = 'Recurring Schedule'
+        verbose_name_plural = 'Recurring Schedules'
     
     def __str__(self):
         return f"Schedule for {self.maintenance.pm_id}"

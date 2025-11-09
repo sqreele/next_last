@@ -350,11 +350,6 @@ LOGGING = {
             'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
-        'myappLubd.monitoring': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
     },
 }
 
@@ -408,10 +403,6 @@ DBBACKUP_STORAGE = 'django.core.files.storage.FileSystemStorage'
 DBBACKUP_STORAGE_OPTIONS = {'location': '/app/backups/'}
 DBBACKUP_CLEANUP_KEEP = 7
 MEDIABACKUP_CLEANUP_KEEP = 7
-
-# Performance Monitoring
-ENABLE_PERFORMANCE_MONITORING = True
-PERFORMANCE_LOG_THRESHOLD = 1.0  # seconds
 
 # Rate Limiting
 RATE_LIMIT_ENABLED = True

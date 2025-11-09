@@ -113,8 +113,8 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
         // NOTE: This is the key fix - including required fields
         room_id: job.rooms?.[0]?.room_id,
         topic_data: job.topics?.[0] ? JSON.stringify({
-          title: job.topics[0].title,
-          description: job.topics[0].description || ""
+          title: job.topics[0]?.title || "Unknown",
+          description: job.topics[0]?.description || ""
         }) : JSON.stringify({ title: "Unknown", description: "" }),
         // Include other fields for completeness
         description: job.description,

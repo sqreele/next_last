@@ -1,0 +1,12 @@
+Equipment,Standard,Frequency,Duration_Minutes,Procedure,Responsibility,Difficulty,Location,Status
+Electric Fire Pump,Narai Group,Weekly,5,Start and observe running. Open test valve to simulate water flow when start testing fire pump.,Engineering,beginner,Fire Pump Room,active
+Electric Fire Pump,Narai Group,Yearly,120,Conduct flow test.,MEP Contractor,advanced,Fire Pump Room,active
+Emergency Generator,Narai Group,Weekly,10,Start generator and run for 10 minutes under no load. Check oil level and coolant.,Engineering,beginner,Generator Room,active
+Emergency Generator,Narai Group,Monthly,30,Run generator for 30 minutes under 30% load. Check all gauges and alarms.,Engineering,intermediate,Generator Room,active
+Emergency Generator,Narai Group,Yearly,180,Full load test and transfer switch test.,MEP Contractor,advanced,Generator Room,active
+HVAC Chiller Unit,Narai Group,Weekly,15,Check refrigerant levels and compressor operation.,Engineering,intermediate,Rooftop,active
+HVAC Chiller Unit,Narai Group,Monthly,45,Clean condenser coils and check electrical connections.,Engineering,intermediate,Rooftop,active
+HVAC Chiller Unit,Narai Group,Quarterly,120,Full system performance test and refrigerant leak check.,MEP Contractor,advanced,Rooftop,active
+Elevator System,Narai Group,Monthly,60,Inspect cables safety devices and run tests.,Elevator Contractor,advanced,Elevator Shaft,active
+Elevator System,Narai Group,Yearly,240,Comprehensive safety test and certification.,Elevator Contractor,expert,Elevator Shaft,active
+

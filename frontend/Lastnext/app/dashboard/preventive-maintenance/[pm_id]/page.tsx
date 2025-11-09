@@ -85,6 +85,11 @@ async function getPreventiveMaintenance(pmId: string): Promise<PreventiveMainten
 
     const data = await response.json();
     console.log("[SERVER_FETCH] Received maintenance data:", JSON.stringify(data, null, 2));
+    console.log("[SERVER_FETCH] procedure_template fields:", {
+      procedure_template: data.procedure_template,
+      procedure_template_id: data.procedure_template_id,
+      procedure_template_name: data.procedure_template_name
+    });
     return data as PreventiveMaintenance;
   } catch (error) {
     console.error(`[SERVER_FETCH] Exception while fetching maintenance data for ${pmId}:`, error);

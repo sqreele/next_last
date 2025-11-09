@@ -20,7 +20,7 @@ interface FilterState {
   pageSize: number;
 }
 
-type SortField = 'date' | 'status' | 'frequency' | 'machine';
+type SortField = 'date' | 'status' | 'machine';
 
 interface FilterPanelProps {
   currentFilters?: Partial<FilterState>;
@@ -133,11 +133,10 @@ export default function FilterPanel({
               <option value="">All Frequencies</option>
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
-              <option value="biweekly">Biweekly</option>
               <option value="monthly">Monthly</option>
               <option value="quarterly">Quarterly</option>
-              <option value="biannually">Biannually</option>
-              <option value="annually">Annually</option>
+              <option value="semi_annual">Semi-Annual</option>
+              <option value="annual">Annual</option>
               <option value="custom">Custom</option>
             </select>
           </div>

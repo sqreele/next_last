@@ -28,13 +28,13 @@ import { Filter, Plus, FileText } from 'lucide-react';
 // Import utility functions
 import {
   formatDate,
-  getFrequencyText,
+  // getFrequencyText removed - frequency no longer displayed
   getStatusInfo,
   getMachineNames
 } from '@/app/lib/utils/maintenanceUtils';
 
 // Define the sort field type
-type SortField = 'date' | 'status' | 'frequency' | 'machine';
+type SortField = 'date' | 'status' | 'machine';
 
 function PreventiveMaintenanceListPageContent() {
   const router = useRouter();
@@ -182,9 +182,7 @@ function PreventiveMaintenanceListPageContent() {
           const statusB = b.completed_date ? 'completed' : new Date(b.scheduled_date) < new Date() ? 'overdue' : 'pending';
           comparison = statusA.localeCompare(statusB);
           break;
-        case 'frequency':
-          comparison = a.frequency.localeCompare(b.frequency);
-          break;
+        // case 'frequency': removed - frequency column no longer displayed
         case 'machine':
           const machineA = getMachineNames(a.machines);
           const machineB = getMachineNames(b.machines);
@@ -254,9 +252,9 @@ function PreventiveMaintenanceListPageContent() {
   }, [sortBy]);
 
   // Create a wrapper that accepts string and converts to SortField
-  const handleSortWrapper = useCallback((field: string) => {
+   const handleSortWrapper = useCallback((field: string) => {
     // Validate that the field is a valid SortField
-    const validSortFields: SortField[] = ['date', 'status', 'frequency', 'machine'];
+    const validSortFields: SortField[] = ['date', 'status', 'machine'];
     if (validSortFields.includes(field as SortField)) {
       handleSort(field as SortField);
     }
@@ -432,7 +430,6 @@ function PreventiveMaintenanceListPageContent() {
             formatDate={formatDate}
             getMachineNames={getMachineNames}
             getStatusInfo={getStatusInfo}
-            getFrequencyText={getFrequencyText}
             currentFilters={currentFilters}
           />
         )}

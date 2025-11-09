@@ -60,7 +60,7 @@ const navItems = [
   { href: '/dashboard/Preventive_maintenance', label: 'PM', icon: PlusCircle },
   { href: '/dashboard/preventive-maintenance/dashboard', label: 'PM Dashboard', icon:Package },
   { href: '/dashboard/preventive-maintenance', label: 'PM List', icon:Activity },
- 
+  { href: '/dashboard/maintenance-tasks', label: 'Maintenance Tasks', icon: Settings },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

@@ -13,11 +13,10 @@ export function getFrequencyText(frequency: string): string {
   const frequencyMap: { [key: string]: string } = {
     daily: 'Daily',
     weekly: 'Weekly',
-    biweekly: 'Bi-weekly',
     monthly: 'Monthly',
     quarterly: 'Quarterly',
-    biannually: 'Bi-annually',
-    annually: 'Annually',
+    semi_annual: 'Semi-Annual',
+    annual: 'Annual',
     custom: 'Custom'
   };
   return frequencyMap[frequency] || frequency;

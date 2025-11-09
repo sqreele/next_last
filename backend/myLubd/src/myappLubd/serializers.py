@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure
+from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -415,16 +415,23 @@ class SessionSerializer(serializers.ModelSerializer):
 # ----- Machine Serializers -----
 
 class MachineSerializer(serializers.ModelSerializer):
-    """General-purpose serializer for Machine model"""
+    """General-purpose serializer for Equipment (Machine) following ER diagram"""
     property_name = serializers.CharField(source='property.name', read_only=True)
+    task_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Machine
         fields = [
-            'id', 'machine_id', 'name', 'description', 'location', 'property', 'property_name',
-            'status', 'installation_date', 'last_maintenance_date', 'created_at', 'updated_at'
+            'id', 'machine_id', 'name', 'brand', 'category', 'serial_number',
+            'description', 'location', 'property', 'property_name',
+            'status', 'installation_date', 'last_maintenance_date', 'task_count',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'machine_id', 'created_at', 'updated_at']
+    
+    def get_task_count(self, obj):
+        """Get count of maintenance tasks for this equipment"""
+        return obj.maintenance_tasks.count()
     
     def validate(self, data):
         """Custom validation for machine data"""
@@ -440,21 +447,22 @@ class MachineSerializer(serializers.ModelSerializer):
         return data
 
 class MachineListSerializer(serializers.ModelSerializer):
-    """Lighter serializer for listing machines"""
+    """Lighter serializer for listing equipment following ER diagram"""
     property_name = serializers.CharField(source='property.name', read_only=True)
-    maintenance_count = serializers.SerializerMethodField()
+    task_count = serializers.SerializerMethodField()
     next_maintenance_date = serializers.SerializerMethodField()
     
     class Meta:
         model = Machine
         fields = [
-            'id', 'machine_id', 'name', 'status', 'property_name', 
-            'maintenance_count', 'next_maintenance_date', 'last_maintenance_date'
+            'id', 'machine_id', 'name', 'brand', 'category', 'serial_number',
+            'status', 'location', 'property_name', 
+            'task_count', 'next_maintenance_date', 'last_maintenance_date'
         ]
     
-    def get_maintenance_count(self, obj):
-        """Get count of preventive maintenances associated with this machine"""
-        return obj.preventive_maintenances.count()
+    def get_task_count(self, obj):
+        """Get count of maintenance tasks for this equipment"""
+        return obj.maintenance_tasks.count()
     
     def get_next_maintenance_date(self, obj):
         """Get the next scheduled maintenance date"""
@@ -469,13 +477,16 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
     procedure = serializers.SerializerMethodField()
     before_image_url = serializers.SerializerMethodField()
     after_image_url = serializers.SerializerMethodField()
+    procedure_template_name = serializers.CharField(source='procedure_template.name', read_only=True)
+    procedure_template_id = serializers.IntegerField(source='procedure_template.id', read_only=True)
 
     class Meta:
         model = PreventiveMaintenance
         fields = [
             'pm_id', 'pmtitle', 'job_id', 'job_description', 'scheduled_date', 'completed_date',
             'frequency', 'next_due_date', 'status', 'topics', 'machines', 'property_id',
-            'procedure', 'notes', 'before_image_url', 'after_image_url'
+            'procedure', 'notes', 'before_image_url', 'after_image_url', 'procedure_template',
+            'procedure_template_id', 'procedure_template_name'
         ]
         list_serializer_class = serializers.ListSerializer
 
@@ -524,7 +535,7 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
         return None
 
 class MachineDetailSerializer(serializers.ModelSerializer):
-    """Detailed serializer for machine details view"""
+    """Detailed serializer for equipment details view following ER diagram"""
     property = PropertySerializer(read_only=True)
     property_id = serializers.PrimaryKeyRelatedField(
         queryset=Property.objects.all(),
@@ -532,17 +543,34 @@ class MachineDetailSerializer(serializers.ModelSerializer):
         write_only=True
     )
     preventive_maintenances = PreventiveMaintenanceListSerializer(many=True, read_only=True)
+    maintenance_tasks = serializers.SerializerMethodField()
     days_since_last_maintenance = serializers.SerializerMethodField()
     next_maintenance_date = serializers.SerializerMethodField()
     
     class Meta:
         model = Machine
         fields = [
-            'id', 'machine_id', 'name', 'description', 'location', 'property', 'property_id',
-            'status', 'installation_date', 'last_maintenance_date', 'preventive_maintenances',
-            'days_since_last_maintenance', 'next_maintenance_date', 'created_at', 'updated_at'
+            'id', 'machine_id', 'name', 'brand', 'category', 'serial_number',
+            'description', 'location', 'property', 'property_id',
+            'status', 'installation_date', 'last_maintenance_date', 
+            'preventive_maintenances', 'maintenance_tasks',
+            'days_since_last_maintenance', 'next_maintenance_date', 
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'machine_id', 'created_at', 'updated_at']
+    
+    def get_maintenance_tasks(self, obj):
+        """Get detailed info about maintenance tasks (ER diagram relationship)"""
+        tasks = obj.maintenance_tasks.all()
+        return [{
+            'id': task.id,
+            'name': task.name,
+            'frequency': task.frequency,
+            'estimated_duration': task.estimated_duration,
+            'responsible_department': task.responsible_department,
+            'difficulty_level': task.difficulty_level,
+            'steps_count': task.get_steps_count()
+        } for task in tasks]
     
     def get_days_since_last_maintenance(self, obj):
         """Calculate days since last maintenance"""
@@ -672,6 +700,8 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
         allow_empty=True
     )
     property_id = serializers.SerializerMethodField()
+    procedure_template_name = serializers.CharField(source='procedure_template.name', read_only=True)
+    procedure_template_id = serializers.IntegerField(source='procedure_template.id', read_only=True)
     
     before_image = serializers.ImageField(
         required=False,
@@ -689,15 +719,17 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
         fields = [
             'pm_id', 'job', 'pmtitle', 'topics', 'topic_ids', 'scheduled_date', 'completed_date',
             'frequency', 'custom_days', 'next_due_date', 'before_image', 'after_image',
-            'before_image_url', 'after_image_url', 'notes', 'procedure', 'created_by', 'updated_at',
+            'before_image_url', 'after_image_url', 'notes', 'procedure', 'procedure_template',
+            'procedure_template_id', 'procedure_template_name', 'created_by', 'updated_at',
             'is_overdue', 'days_remaining', 'machine_ids', 'machines', 'property_id'
         ]
-        read_only_fields = ['pm_id', 'created_by', 'updated_at', 'next_due_date']
+        read_only_fields = ['pm_id', 'created_by', 'updated_at', 'next_due_date', 'procedure_template_id', 'procedure_template_name']
         extra_kwargs = {
             'before_image': {'required': False},
             'after_image': {'required': False},
             'notes': {'required': False},
             'procedure': {'required': False},
+            'procedure_template': {'required': False, 'allow_null': True},
             'pmtitle': {'required': False},
             'custom_days': {'required': False},
             'completed_date': {'required': False},
@@ -752,9 +784,15 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
         return None
 
     def create(self, validated_data):
+        print(f"[PreventiveMaintenanceDetailSerializer] CREATE - validated_data: {validated_data}")
+        print(f"[PreventiveMaintenanceDetailSerializer] procedure_template in data: {validated_data.get('procedure_template')}")
+        
         topic_ids = validated_data.pop('topic_ids', [])
         machine_ids = validated_data.pop('machine_ids', [])
         instance = super().create(validated_data)
+        
+        print(f"[PreventiveMaintenanceDetailSerializer] Created instance - procedure_template: {instance.procedure_template}")
+        
         if topic_ids:
             instance.topics.set(topic_ids)
         if machine_ids:
@@ -762,9 +800,15 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
+        print(f"[PreventiveMaintenanceDetailSerializer] UPDATE - validated_data: {validated_data}")
+        print(f"[PreventiveMaintenanceDetailSerializer] procedure_template in data: {validated_data.get('procedure_template')}")
+        
         topic_ids = validated_data.pop('topic_ids', None)
         machine_ids = validated_data.pop('machine_ids', None)
         instance = super().update(instance, validated_data)
+        
+        print(f"[PreventiveMaintenanceDetailSerializer] Updated instance - procedure_template: {instance.procedure_template}")
+        
         if topic_ids is not None:
             instance.topics.set(topic_ids)
         if machine_ids is not None:
@@ -818,20 +862,24 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
     before_image_url = serializers.SerializerMethodField()
     after_image_url = serializers.SerializerMethodField()
     property_id = serializers.SerializerMethodField()
+    procedure_template_name = serializers.CharField(source='procedure_template.name', read_only=True)
+    procedure_template_id = serializers.IntegerField(source='procedure_template.id', read_only=True)
 
     class Meta:
         model = PreventiveMaintenance
         fields = [
             'pm_id', 'pmtitle', 'topics', 'topic_ids', 'scheduled_date', 'completed_date',
             'frequency', 'custom_days', 'next_due_date', 'before_image', 'after_image',
-            'before_image_url', 'after_image_url', 'notes', 'procedure', 'machine_ids', 'machines', 'property_id'
+            'before_image_url', 'after_image_url', 'notes', 'procedure', 'procedure_template',
+            'procedure_template_id', 'procedure_template_name', 'machine_ids', 'machines', 'property_id'
         ]
-        read_only_fields = ['pm_id', 'next_due_date']
+        read_only_fields = ['pm_id', 'next_due_date', 'procedure_template_id', 'procedure_template_name']
         extra_kwargs = {
             'before_image': {'required': False},
             'after_image': {'required': False},
             'notes': {'required': False},
             'procedure': {'required': False},
+            'procedure_template': {'required': False, 'allow_null': True},
             'pmtitle': {'required': False},
             'custom_days': {'required': False},
             'completed_date': {'required': False},
@@ -868,6 +916,7 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         print(f"=== DEBUG: PreventiveMaintenanceCreateUpdateSerializer.create ===")
         print(f"validated_data: {validated_data}")
         print(f"pmtitle in validated_data: {validated_data.get('pmtitle')}")
+        print(f"procedure_template in validated_data: {validated_data.get('procedure_template')}")
         
         topic_ids = validated_data.pop('topic_ids', [])
         machine_ids = validated_data.pop('machine_ids', [])
@@ -877,6 +926,7 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         instance = super().create(validated_data)
         print(f"Created instance: {instance}")
         print(f"Instance pmtitle: {instance.pmtitle}")
+        print(f"Instance procedure_template: {instance.procedure_template}")
         
         if topic_ids:
             instance.topics.set(topic_ids)
@@ -887,9 +937,16 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
+        print(f"=== DEBUG: PreventiveMaintenanceCreateUpdateSerializer.update ===")
+        print(f"validated_data: {validated_data}")
+        print(f"procedure_template in validated_data: {validated_data.get('procedure_template')}")
+        
         topic_ids = validated_data.pop('topic_ids', None)
         machine_ids = validated_data.pop('machine_ids', None)
         instance = super().update(instance, validated_data)
+        
+        print(f"Updated instance procedure_template: {instance.procedure_template}")
+        
         if topic_ids is not None:
             instance.topics.set(topic_ids)
         if machine_ids is not None:
@@ -999,7 +1056,8 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
             'pm_id', 'pmtitle', 'topics', 'topic_ids', 'scheduled_date', 'completed_date',
             'property_id', 'machine_ids', 'machines', 'frequency', 'custom_days', 'next_due_date',
             'before_image', 'after_image', 'before_image_url', 'after_image_url', 'notes',
-            'procedure', 'created_by', 'updated_at'
+            'procedure', 'procedure_template', 'assigned_to', 'remarks',
+            'created_by', 'updated_at'
         ]
         extra_kwargs = {
             'completed_date': {'required': False},
@@ -1091,17 +1149,25 @@ class MaintenanceStepSerializer(serializers.Serializer):
 
 
 class MaintenanceProcedureSerializer(serializers.ModelSerializer):
-    """Serializer for MaintenanceProcedure model"""
+    """Serializer for MaintenanceTask (MaintenanceProcedure) following ER diagram"""
     steps = MaintenanceStepSerializer(many=True, required=False)
     steps_count = serializers.SerializerMethodField()
     total_estimated_time = serializers.SerializerMethodField()
     is_valid_procedure = serializers.SerializerMethodField()
+    equipment_name = serializers.CharField(source='equipment.name', read_only=True)
+    equipment_id = serializers.PrimaryKeyRelatedField(
+        queryset=Machine.objects.all(),
+        source='equipment',
+        required=False
+    )
     
     class Meta:
         model = MaintenanceProcedure
         fields = [
-            'id', 'name', 'description', 'steps', 'steps_count', 'total_estimated_time',
-            'estimated_duration', 'required_tools', 'safety_notes', 'difficulty_level',
+            'id', 'equipment', 'equipment_id', 'equipment_name', 
+            'name', 'description', 'frequency', 'estimated_duration', 'responsible_department',
+            'steps', 'steps_count', 'total_estimated_time',
+            'required_tools', 'safety_notes', 'difficulty_level',
             'is_valid_procedure', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -1160,15 +1226,18 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
 
 
 class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
-    """Simplified serializer for listing maintenance procedures"""
+    """Simplified serializer for listing maintenance tasks following ER diagram"""
     steps_count = serializers.SerializerMethodField()
     total_estimated_time = serializers.SerializerMethodField()
+    equipment_name = serializers.CharField(source='equipment.name', read_only=True)
+    schedule_count = serializers.SerializerMethodField()
     
     class Meta:
         model = MaintenanceProcedure
         fields = [
-            'id', 'name', 'description', 'steps_count', 'total_estimated_time',
-            'estimated_duration', 'difficulty_level', 'created_at'
+            'id', 'equipment', 'equipment_name', 'name', 'frequency', 'estimated_duration',
+            'responsible_department', 'difficulty_level',
+            'steps_count', 'total_estimated_time', 'schedule_count', 'created_at'
         ]
     
     def get_steps_count(self, obj):
@@ -1176,3 +1245,51 @@ class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
     
     def get_total_estimated_time(self, obj):
         return obj.get_total_estimated_time()
+    
+    def get_schedule_count(self, obj):
+        """Get count of maintenance schedules for this task"""
+        return obj.maintenance_schedules.count()
+
+
+class MaintenanceTaskImageSerializer(serializers.ModelSerializer):
+    """Serializer for MaintenanceTaskImage model"""
+    task_name = serializers.CharField(source='task.name', read_only=True)
+    equipment_name = serializers.CharField(source='task.equipment.name', read_only=True)
+    uploaded_by_username = serializers.CharField(source='uploaded_by.username', read_only=True)
+    image_url_full = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = MaintenanceTaskImage
+        fields = [
+            'id', 'task', 'task_name', 'equipment_name',
+            'image_type', 'image_url', 'image_url_full',
+            'jpeg_path', 'uploaded_at', 'uploaded_by', 'uploaded_by_username'
+        ]
+        read_only_fields = ['id', 'jpeg_path', 'uploaded_at']
+    
+    def get_image_url_full(self, obj):
+        """Get full URL for the image"""
+        request = self.context.get('request')
+        if obj.image_url and request:
+            return request.build_absolute_uri(obj.image_url.url)
+        return None
+
+
+class MaintenanceTaskImageListSerializer(serializers.ModelSerializer):
+    """Simplified serializer for listing task images"""
+    task_name = serializers.CharField(source='task.name', read_only=True)
+    image_url_full = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = MaintenanceTaskImage
+        fields = [
+            'id', 'task', 'task_name', 'image_type',
+            'image_url_full', 'uploaded_at'
+        ]
+    
+    def get_image_url_full(self, obj):
+        """Get full URL for the image"""
+        request = self.context.get('request')
+        if obj.image_url and request:
+            return request.build_absolute_uri(obj.image_url.url)
+        return None

@@ -13,20 +13,19 @@ export interface MaintenanceImage {
   image_url?: string;
 }
 
-// Frequency options
+// Frequency options - Must match backend FREQUENCY_CHOICES exactly
 export const FREQUENCY_OPTIONS = [
   { value: 'daily', label: 'Daily' },
   { value: 'weekly', label: 'Weekly' },
-  { value: 'biweekly', label: 'Bi-Weekly' },
   { value: 'monthly', label: 'Monthly' },
   { value: 'quarterly', label: 'Quarterly' },
-  { value: 'biannually', label: 'Bi-Annually' },
-  { value: 'annually', label: 'Annually' },
+  { value: 'semi_annual', label: 'Semi-Annual' },
+  { value: 'annual', label: 'Annual' },
   { value: 'custom', label: 'Custom Days' },
 ];
 
-// Valid frequency values
-export type FrequencyType = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'biannually' | 'annually' | 'custom';
+// Valid frequency values - Must match backend exactly
+export type FrequencyType = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'semi_annual' | 'annual' | 'custom';
 
 // Frequency validation helper
 export function validateFrequency(frequency: string): FrequencyType {
@@ -78,6 +77,9 @@ export interface PreventiveMaintenance {
   after_image_url?: string | null;
   created_by?: number;
   procedure?: string; // Added procedure field
+  procedure_template?: number | null; // FK to MaintenanceProcedure task template
+  procedure_template_id?: number | null; // Task template ID (from serializer)
+  procedure_template_name?: string | null; // Task template name (from serializer)
 }
 
 // Request structure for creating/updating maintenance

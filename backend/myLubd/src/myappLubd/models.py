@@ -1117,7 +1117,8 @@ class MaintenanceProcedure(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.equipment.name} - {self.name} ({self.frequency})"
+        equipment_name = self.equipment.name if self.equipment else "No Equipment"
+        return f"{equipment_name} - {self.name} ({self.frequency})"
     
     def get_steps_count(self):
         """Get the total number of steps"""

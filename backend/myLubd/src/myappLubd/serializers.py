@@ -1150,7 +1150,7 @@ class MaintenanceStepSerializer(serializers.Serializer):
 
 class MaintenanceProcedureSerializer(serializers.ModelSerializer):
     """Serializer for MaintenanceTask (MaintenanceProcedure) following ER diagram"""
-    steps = MaintenanceStepSerializer(many=True, required=False)
+    steps = serializers.SerializerMethodField()  # Use SerializerMethodField to handle bad data
     steps_count = serializers.SerializerMethodField()
     total_estimated_time = serializers.SerializerMethodField()
     is_valid_procedure = serializers.SerializerMethodField()
@@ -1160,6 +1160,38 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
         source='equipment',
         required=False
     )
+    
+    def get_steps(self, obj):
+        """Safely serialize steps, handling both dict and string data"""
+        if not obj.steps:
+            return []
+        
+        result = []
+        for i, step in enumerate(obj.steps):
+            if isinstance(step, dict):
+                # Valid dictionary step
+                result.append({
+                    'step_number': i + 1,
+                    'title': step.get('title', ''),
+                    'description': step.get('description', ''),
+                    'estimated_time': step.get('estimated_time', 0),
+                    'required_tools': step.get('required_tools', []),
+                    'safety_warnings': step.get('safety_warnings', []),
+                    'images': step.get('images', []),
+                    'notes': step.get('notes', ''),
+                    'created_at': step.get('created_at'),
+                    'updated_at': step.get('updated_at'),
+                })
+            elif isinstance(step, str):
+                # Legacy string step - convert to dictionary format
+                result.append({
+                    'step_number': i + 1,
+                    'title': f'Step {i + 1}',
+                    'description': step,
+                    'estimated_time': 0,
+                })
+            # Ignore other types
+        return result
     
     class Meta:
         model = MaintenanceProcedure

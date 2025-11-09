@@ -131,23 +131,31 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         property_filter = self.request.query_params.get('property_id')
         machine_filter = self.request.query_params.get('machine_id')
 
+        logger.info(f"[PM Filter] User: {self.request.user.username}, property_filter: {property_filter}, machine_filter: {machine_filter}")
+
         # Restrict by user's accessible properties unless staff/admin
         user = self.request.user
         if not (user.is_staff or user.is_superuser):
             # Limit to PMs whose jobs are in rooms belonging to user's properties OR via machines' property
             accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
+            logger.info(f"[PM Filter] Non-admin user - accessible properties: {list(accessible_property_ids)}")
             queryset = queryset.filter(
                 Q(job__rooms__properties__in=accessible_property_ids)
                 |
                 Q(machines__property__in=accessible_property_ids)
             )
+            logger.info(f"[PM Filter] After permission filter: {queryset.count()} records")
 
         if property_filter:
+            logger.info(f"[PM Filter] Applying property filter: {property_filter}")
+            before_count = queryset.count()
             queryset = queryset.filter(
                 Q(job__rooms__properties__property_id=property_filter)
                 |
                 Q(machines__property__property_id=property_filter)
             )
+            after_count = queryset.count()
+            logger.info(f"[PM Filter] Property filter result: {before_count} -> {after_count} records")
 
         if machine_filter:
             queryset = queryset.filter(machines__machine_id=machine_filter)

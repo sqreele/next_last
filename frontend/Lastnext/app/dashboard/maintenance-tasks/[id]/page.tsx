@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/app/lib/session.client';
+import { useAuthStore } from '@/app/lib/stores/useAuthStore';
 import apiClient from '@/app/lib/api-client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
@@ -72,11 +73,20 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
   const unwrappedParams = use(params);
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { selectedProperty } = useAuthStore();
   const [task, setTask] = useState<MaintenanceTask | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Debug logging for property changes
+  useEffect(() => {
+    console.log('=== MAINTENANCE TASK DETAIL - PROPERTY CHANGE DEBUG ===');
+    console.log('[Property Change] Selected Property:', selectedProperty);
+    console.log('[Property Change] Task ID:', unwrappedParams.id);
+    console.log('[Property Change] Current task:', task?.id, task?.name);
+  }, [selectedProperty, unwrappedParams.id, task?.id, task?.name]);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -91,13 +101,21 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
       console.log('=== MAINTENANCE HISTORY DEBUG START ===');
       console.log('[Maintenance History] Fetching for task template ID:', taskTemplateId);
       console.log('[Maintenance History] Task template ID type:', typeof taskTemplateId);
+      console.log('[Maintenance History] Selected Property:', selectedProperty);
       
-      // Fetch ALL preventive maintenance records (we'll filter client-side)
+      // Build API params
+      const apiParams: any = { page_size: 100 };
+      if (selectedProperty) {
+        apiParams.property_id = selectedProperty;
+        console.log('[Maintenance History] Adding property_id filter:', selectedProperty);
+      }
+      
+      // Fetch preventive maintenance records (filtered by property if selected)
       const response = await apiClient.get('/api/v1/preventive-maintenance/', {
-        params: { page_size: 100 } // Get more records to ensure we catch all
+        params: apiParams
       });
       
-      console.log('[Maintenance History] API URL:', '/api/v1/preventive-maintenance/?page_size=100');
+      console.log('[Maintenance History] API URL:', '/api/v1/preventive-maintenance/', apiParams);
       console.log('[Maintenance History] Raw API response:', response.data);
       console.log('[Maintenance History] Response type:', typeof response.data);
       console.log('[Maintenance History] Is array?', Array.isArray(response.data));
@@ -127,6 +145,7 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
         console.log(`[Maintenance History] Checking record ${record.pm_id}:`, {
           procedure_template: record.procedure_template,
           procedure_template_id: record.procedure_template_id,
+          property_id: record.property_id,
           matches_template: record.procedure_template === taskTemplateId || record.procedure_template_id === taskTemplateId
         });
         
@@ -152,10 +171,12 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
     } finally {
       setLoadingHistory(false);
     }
-  }, []); // No dependencies needed
+  }, [selectedProperty]); // Add selectedProperty to dependencies
 
   // Memoize fetchTask to prevent infinite loops
   const fetchTask = useCallback(async () => {
+    console.log('[Fetch Task] Starting fetch for task ID:', unwrappedParams.id);
+    console.log('[Fetch Task] Selected Property:', selectedProperty);
     setLoading(true);
     setError(null);
     try {
@@ -176,13 +197,20 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
     } finally {
       setLoading(false);
     }
-  }, [unwrappedParams.id, fetchMaintenanceHistory]);
+  }, [unwrappedParams.id, selectedProperty, fetchMaintenanceHistory]); // Add selectedProperty
 
   useEffect(() => {
+    console.log('[useEffect - fetchTask] Trigger check:', {
+      status,
+      id: unwrappedParams.id,
+      selectedProperty,
+      willFetch: status === 'authenticated' && unwrappedParams.id
+    });
+    
     if (status === 'authenticated' && unwrappedParams.id) {
       fetchTask();
     }
-  }, [status, unwrappedParams.id, fetchTask]);
+  }, [status, unwrappedParams.id, selectedProperty, fetchTask]); // Add selectedProperty to trigger refetch
 
   if (status === 'loading' || loading) {
     return (

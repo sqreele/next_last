@@ -5,6 +5,7 @@ import { logger } from '@/app/lib/utils/logger';
 import { useRouter } from 'next/navigation';
 import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMaintenanceActions';
 import { useFilterStore } from '@/app/lib/stores';
+import { useAuthStore } from '@/app/lib/stores/useAuthStore';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 
 // Import types
@@ -38,6 +39,7 @@ type SortField = 'date' | 'status' | 'machine';
 
 function PreventiveMaintenanceListPageContent() {
   const router = useRouter();
+  const { selectedProperty } = useAuthStore();
   const { 
     status, 
     frequency, 
@@ -101,11 +103,24 @@ function PreventiveMaintenanceListPageContent() {
   // Manual data fetching if no data is present
   useEffect(() => {
     console.log('🔍 Component mounted, checking data...');
+    console.log('🔍 Selected Property:', selectedProperty);
     if (maintenanceItems.length === 0 && !isLoading && !error) {
       console.log('🔍 No data found, manually fetching...');
       fetchMaintenanceItems();
     }
-  }, [maintenanceItems.length, isLoading, error, fetchMaintenanceItems]);
+  }, [maintenanceItems.length, isLoading, error, selectedProperty, fetchMaintenanceItems]);
+
+  // Re-fetch data when selectedProperty changes
+  useEffect(() => {
+    console.log('=== PREVENTIVE MAINTENANCE LIST - PROPERTY CHANGE DEBUG ===');
+    console.log('[Property Change] Selected Property:', selectedProperty);
+    console.log('[Property Change] Will trigger data refetch');
+    
+    if (selectedProperty !== null && selectedProperty !== undefined) {
+      console.log('[Property Change] Fetching maintenance items for property:', selectedProperty);
+      fetchMaintenanceItems();
+    }
+  }, [selectedProperty, fetchMaintenanceItems]);
 
   // UI state
   const [showFilters, setShowFilters] = useState(false);

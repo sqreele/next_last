@@ -107,10 +107,23 @@ export function usePreventiveMaintenanceActions() {
         property_id: selectedProperty || filterParams.property_id, 
         ...params 
       };
+      
+      console.log('=== PREVENTIVE MAINTENANCE FETCH DEBUG ===');
+      console.log('[PM Fetch] Selected Property:', selectedProperty);
+      console.log('[PM Fetch] Filter Params:', filterParams);
+      console.log('[PM Fetch] Final Fetch Params:', fetchParams);
+      console.log('[PM Fetch] Property ID being sent:', fetchParams.property_id);
+      
       logger.debug('Fetching maintenance items with params', fetchParams);
 
       const service = createPreventiveMaintenanceService(accessToken);
       const response = await service.getAllPreventiveMaintenance(fetchParams);
+      
+      console.log('[PM Fetch] API Response:', {
+        success: response.success,
+        count: Array.isArray(response.data) ? response.data.length : response.data?.count,
+        hasData: !!response.data
+      });
       
       if (response.success && response.data) {
         let items: any[];

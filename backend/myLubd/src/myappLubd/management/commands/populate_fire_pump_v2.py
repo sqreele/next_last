@@ -363,19 +363,14 @@ Prepare comprehensive test report with recommendations.''',
         self.stdout.write(f'   Property: {property_obj.name} ({property_obj.property_id})')
         self.stdout.write(f'   Location: {equipment.location}')
         
-        self.stdout.write('\n📝 Maintenance Tasks:')
-        tasks = equipment.maintenance_tasks.all()
-        for idx, task in enumerate(tasks, 1):
-            self.stdout.write(f'\n   {idx}. {task.name}')
-            self.stdout.write(f'      Frequency: {task.frequency}')
-            self.stdout.write(f'      Duration: {task.estimated_duration}')
-            self.stdout.write(f'      Responsibility: {task.responsible_department}')
-            self.stdout.write(f'      Steps: {len(task.steps)}')
+        # Maintenance tasks relationship removed - equipment no longer linked to task templates
+        self.stdout.write('\n📝 Maintenance Tasks: Not applicable (equipment no longer linked to task templates)')
         
         if options['create_schedule']:
             self.stdout.write('\n📅 Maintenance Schedules:')
+            # Equipment no longer linked to task templates - filter by machines instead
             schedules = PreventiveMaintenance.objects.filter(
-                procedure_template__equipment=equipment
+                machines=equipment
             ).order_by('scheduled_date')
             for schedule in schedules:
                 self.stdout.write(f'\n   • {schedule.pmtitle}')
@@ -384,10 +379,10 @@ Prepare comprehensive test report with recommendations.''',
                 self.stdout.write(f'     Assigned to: {schedule.assigned_to.username if schedule.assigned_to else "Unassigned"}')
                 self.stdout.write(f'     Scheduled: {schedule.scheduled_date.strftime("%Y-%m-%d")}')
         
-        self.stdout.write(self.style.SUCCESS('\n✓ Following ER Diagram Structure:'))
-        self.stdout.write(f'  Equipment ||--o{{ MaintenanceTask (equipment FK)')
-        self.stdout.write(f'  MaintenanceTask ||--o{{ MaintenanceSchedule (task_id FK)')
-        self.stdout.write(f'  User ||--o{{ MaintenanceSchedule (assigned_to FK)')
+        self.stdout.write(self.style.SUCCESS('\n✓ Updated Structure:'))
+        self.stdout.write(f'  MaintenanceTask: Generic templates (no equipment link)')
+        self.stdout.write(f'  PreventiveMaintenance: Links to machines via M2M relationship')
+        self.stdout.write(f'  User ||--o{{ PreventiveMaintenance (assigned_to FK)')
         
         self.stdout.write(self.style.SUCCESS('\n✓ Admin URLs:'))
         self.stdout.write(f'  Equipment: /admin/myappLubd/machine/{equipment.id}/change/')

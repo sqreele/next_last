@@ -76,7 +76,14 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
   const [availableMachines, setAvailableMachines] = useState<MachineDetails[]>([]);
-  const [availableMaintenanceTasks, setAvailableMaintenanceTasks] = useState<Array<{id: number, name: string, equipment_name: string}>>([]);
+  const [availableMaintenanceTasks, setAvailableMaintenanceTasks] = useState<Array<{
+    id: number, 
+    name: string,
+    category?: string,
+    frequency: string,
+    difficulty_level: string,
+    responsible_department?: string
+  }>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -483,7 +490,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       setAvailableMaintenanceTasks(tasksData.map((task) => ({
         id: task.id,
         name: task.name,
-        equipment_name: task.equipment_name || 'Unknown Equipment'
+        category: task.category || undefined,
+        frequency: task.frequency || 'N/A',
+        difficulty_level: task.difficulty_level || 'N/A',
+        responsible_department: task.responsible_department || undefined
       })));
     } catch (err: any) {
       console.error('Error fetching maintenance tasks:', err);
@@ -1202,7 +1212,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 ) : (
                   availableMaintenanceTasks.map((task) => (
                     <option key={task.id} value={task.id}>
-                      {task.name} - {task.equipment_name}
+                      {task.name}{task.category ? ` - ${task.category}` : ''} [{task.frequency.toUpperCase()}] - {task.difficulty_level}
                     </option>
                   ))
                 )}

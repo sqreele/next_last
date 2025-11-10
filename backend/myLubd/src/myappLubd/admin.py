@@ -274,7 +274,8 @@ class MachineAdmin(admin.ModelAdmin):
     
     def task_count(self, obj):
         """Display the number of maintenance tasks for this equipment"""
-        return obj.maintenance_tasks.count()
+        # maintenance_tasks relationship removed - equipment no longer linked to task templates
+        return 0
     task_count.short_description = 'Tasks'
 
     def property_link(self, obj):
@@ -1431,12 +1432,23 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
 
     def get_properties_display(self, obj):
         properties = []
+        
+        # Get properties through job->rooms->properties relationship
         if obj.job and obj.job.rooms.exists():
             for room in obj.job.rooms.all():
                 for prop in room.properties.all():
                     prop_display = f"{prop.property_id} - {prop.name}"
                     if prop_display not in properties:
                         properties.append(prop_display)
+        
+        # Get properties through machines->property relationship
+        if obj.machines.exists():
+            for machine in obj.machines.all():
+                if machine.property:
+                    prop_display = f"{machine.property.property_id} - {machine.property.name}"
+                    if prop_display not in properties:
+                        properties.append(prop_display)
+        
         return ", ".join(properties) if properties else "No Properties"
     get_properties_display.short_description = 'Properties (ID - Name)'
 
@@ -1457,7 +1469,9 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
     created_by_user.admin_order_field = 'created_by'
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('created_by').prefetch_related('topics')
+        return super().get_queryset(request).select_related('created_by').prefetch_related(
+            'topics', 'machines__property', 'job__rooms__properties'
+        )
 
     def save_model(self, request, obj, form, change):
         if not obj.pk and not obj.created_by_id:
@@ -1523,15 +1537,14 @@ class SessionAdmin(admin.ModelAdmin):
 
 @admin.register(MaintenanceProcedure)
 class MaintenanceProcedureAdmin(admin.ModelAdmin):
-    list_display = ['name', 'get_equipment_display', 'frequency', 'responsible_department', 'estimated_duration', 'difficulty_level', 'created_at']
-    list_filter = ['frequency', 'responsible_department', 'difficulty_level', 'equipment', 'created_at']
-    search_fields = ['name', 'description', 'equipment__name']
+    list_display = ['name', 'category', 'frequency', 'responsible_department', 'estimated_duration', 'difficulty_level', 'created_at']
+    list_filter = ['category', 'frequency', 'responsible_department', 'difficulty_level', 'created_at']
+    search_fields = ['name', 'category', 'description']
     readonly_fields = ['created_at', 'updated_at']
-    raw_id_fields = ['equipment']
     
     fieldsets = (
         ('Task Information', {
-            'fields': ('equipment', 'name', 'description', 'frequency', 'estimated_duration')
+            'fields': ('name', 'category', 'description', 'frequency', 'estimated_duration')
         }),
         ('Responsibility', {
             'fields': ('responsible_department', 'difficulty_level')
@@ -1549,14 +1562,6 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
             'fields': ('created_at', 'updated_at')
         }),
     )
-    
-    def get_equipment_display(self, obj):
-        """Safely display equipment name"""
-        if obj.equipment:
-            return f"{obj.equipment.name} ({obj.equipment.machine_id})"
-        return "No Equipment"
-    get_equipment_display.short_description = 'Equipment'
-    get_equipment_display.admin_order_field = 'equipment'
 
 
 @admin.register(MaintenanceTaskImage)

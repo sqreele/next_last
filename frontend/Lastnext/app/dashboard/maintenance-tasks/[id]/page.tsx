@@ -27,8 +27,7 @@ import Link from 'next/link';
 
 interface MaintenanceTask {
   id: number;
-  equipment: number; // Equipment ID
-  equipment_name: string; // Equipment name from serializer
+  // equipment field removed - tasks are now generic templates
   name: string;
   description: string;
   frequency: string;
@@ -182,10 +181,6 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
     try {
       const response = await apiClient.get<MaintenanceTask>(`/api/v1/maintenance-procedures/${unwrappedParams.id}/`);
       console.log('Fetched maintenance task:', response.data);
-      console.log('Equipment data:', {
-        equipment: response.data.equipment,
-        equipment_name: response.data.equipment_name,
-      });
       setTask(response.data);
       
       // Fetch maintenance history for this task template
@@ -272,26 +267,7 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
       </div>
 
       {/* Equipment Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wrench className="h-5 w-5" />
-            Equipment Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-600">Equipment Name</p>
-              <p className="font-semibold text-gray-900">{task.equipment_name || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Equipment ID</p>
-              <p className="font-semibold text-gray-900">{task.equipment || 'N/A'}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Equipment Information Card removed - tasks are now generic templates */}
 
       {/* Task Details */}
       <Card>

@@ -27,8 +27,7 @@ import Link from 'next/link';
 
 interface MaintenanceTask {
   id: number;
-  equipment: number; // Equipment ID (from backend serializer)
-  equipment_name: string; // Equipment name (from backend serializer)
+  // equipment field removed - tasks are now generic templates
   name: string;
   description: string;
   frequency: string;
@@ -122,10 +121,9 @@ export default function MaintenanceTasksPage() {
     // Search filter
     if (searchQuery) {
       filtered = filtered.filter(
-        (task) =>
-          task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.equipment_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (task) =>
+        task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.description.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -173,7 +171,7 @@ export default function MaintenanceTasksPage() {
             Maintenance Tasks
           </h1>
           <p className="text-gray-600 mt-1">
-            Manage maintenance procedures and task templates for equipment
+            Manage generic maintenance task templates (not tied to specific equipment)
           </p>
         </div>
         <Button asChild>
@@ -364,14 +362,8 @@ export default function MaintenanceTasksPage() {
                             <Settings className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
                             <div>
                               <h3 className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors">
-                                {task.name}
-                              </h3>
-                              {task.equipment_name && (
-                                <p className="text-sm text-gray-600 mt-1">
-                                  <Wrench className="h-3 w-3 inline mr-1" />
-                                  Equipment: <span className="font-medium">{task.equipment_name}</span>
-                                </p>
-                              )}
+                            {task.name}
+                          </h3>
                             </div>
                           </div>
                         </div>

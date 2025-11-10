@@ -82,7 +82,14 @@ export default function EditPreventiveMaintenancePage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [availableMaintenanceTasks, setAvailableMaintenanceTasks] = useState<Array<{ id: number; name: string }>>([]);
+  const [availableMaintenanceTasks, setAvailableMaintenanceTasks] = useState<Array<{ 
+    id: number; 
+    name: string;
+    category?: string;
+    frequency: string;
+    difficulty_level: string;
+    responsible_department?: string;
+  }>>([]);
   const [loadingMaintenanceTasks, setLoadingMaintenanceTasks] = useState(false);
 
   // Load available maintenance tasks
@@ -97,7 +104,16 @@ export default function EditPreventiveMaintenancePage() {
         } else if (response.data && 'results' in response.data) {
           tasks = response.data.results || [];
         }
-        setAvailableMaintenanceTasks(tasks);
+        
+        // Map tasks to include relevant fields
+        setAvailableMaintenanceTasks(tasks.map((task: any) => ({
+          id: task.id,
+          name: task.name,
+          category: task.category || undefined,
+          frequency: task.frequency || 'N/A',
+          difficulty_level: task.difficulty_level || 'N/A',
+          responsible_department: task.responsible_department || undefined
+        })));
       } catch (err: any) {
         console.error('Error fetching maintenance tasks:', err);
       } finally {
@@ -647,7 +663,7 @@ export default function EditPreventiveMaintenancePage() {
                   <option value="">No Template (Optional)</option>
                   {availableMaintenanceTasks.map((task) => (
                     <option key={task.id} value={task.id}>
-                      {task.name} (ID: {task.id})
+                      {task.name}{task.category ? ` - ${task.category}` : ''} [{task.frequency?.toUpperCase() || 'N/A'}] - {task.difficulty_level || 'N/A'}
                     </option>
                   ))}
                 </select>

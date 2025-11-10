@@ -431,7 +431,8 @@ class MachineSerializer(serializers.ModelSerializer):
     
     def get_task_count(self, obj):
         """Get count of maintenance tasks for this equipment"""
-        return obj.maintenance_tasks.count()
+        # maintenance_tasks relationship removed - equipment no longer linked to task templates
+        return 0
     
     def validate(self, data):
         """Custom validation for machine data"""
@@ -462,7 +463,8 @@ class MachineListSerializer(serializers.ModelSerializer):
     
     def get_task_count(self, obj):
         """Get count of maintenance tasks for this equipment"""
-        return obj.maintenance_tasks.count()
+        # maintenance_tasks relationship removed - equipment no longer linked to task templates
+        return 0
     
     def get_next_maintenance_date(self, obj):
         """Get the next scheduled maintenance date"""
@@ -561,16 +563,8 @@ class MachineDetailSerializer(serializers.ModelSerializer):
     
     def get_maintenance_tasks(self, obj):
         """Get detailed info about maintenance tasks (ER diagram relationship)"""
-        tasks = obj.maintenance_tasks.all()
-        return [{
-            'id': task.id,
-            'name': task.name,
-            'frequency': task.frequency,
-            'estimated_duration': task.estimated_duration,
-            'responsible_department': task.responsible_department,
-            'difficulty_level': task.difficulty_level,
-            'steps_count': task.get_steps_count()
-        } for task in tasks]
+        # maintenance_tasks relationship removed - equipment no longer linked to task templates
+        return []
     
     def get_days_since_last_maintenance(self, obj):
         """Calculate days since last maintenance"""
@@ -1149,22 +1143,16 @@ class MaintenanceStepSerializer(serializers.Serializer):
 
 
 class MaintenanceProcedureSerializer(serializers.ModelSerializer):
-    """Serializer for MaintenanceTask (MaintenanceProcedure) following ER diagram"""
+    """Serializer for MaintenanceTask (MaintenanceProcedure) - Generic task templates"""
     # steps field removed from API - not needed in frontend
-    equipment_name = serializers.CharField(source='equipment.name', read_only=True)
-    equipment_id = serializers.PrimaryKeyRelatedField(
-        queryset=Machine.objects.all(),
-        source='equipment',
-        required=False
-    )
+    # equipment field removed - tasks are now generic templates
     
     class Meta:
         model = MaintenanceProcedure
         fields = [
-            'id', 'equipment', 'equipment_id', 'equipment_name', 
-            'name', 'description', 'frequency', 'estimated_duration', 'responsible_department',
-            'required_tools', 'safety_notes', 'difficulty_level',
-            'created_at', 'updated_at'
+            'id', 'name', 'category', 'description', 'frequency', 'estimated_duration', 
+            'responsible_department', 'required_tools', 'safety_notes', 
+            'difficulty_level', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
@@ -1212,15 +1200,15 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
 
 
 class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
-    """Simplified serializer for listing maintenance tasks following ER diagram"""
+    """Simplified serializer for listing maintenance tasks - Generic templates"""
     # steps_count and total_estimated_time removed - steps not used
-    equipment_name = serializers.CharField(source='equipment.name', read_only=True)
+    # equipment field removed - tasks are now generic templates
     schedule_count = serializers.SerializerMethodField()
     
     class Meta:
         model = MaintenanceProcedure
         fields = [
-            'id', 'equipment', 'equipment_name', 'name', 'frequency', 'estimated_duration',
+            'id', 'name', 'category', 'frequency', 'estimated_duration',
             'responsible_department', 'difficulty_level',
             'schedule_count', 'created_at'
         ]
@@ -1233,14 +1221,14 @@ class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
 class MaintenanceTaskImageSerializer(serializers.ModelSerializer):
     """Serializer for MaintenanceTaskImage model"""
     task_name = serializers.CharField(source='task.name', read_only=True)
-    equipment_name = serializers.CharField(source='task.equipment.name', read_only=True)
+    # equipment_name removed - tasks no longer have equipment field
     uploaded_by_username = serializers.CharField(source='uploaded_by.username', read_only=True)
     image_url_full = serializers.SerializerMethodField()
     
     class Meta:
         model = MaintenanceTaskImage
         fields = [
-            'id', 'task', 'task_name', 'equipment_name',
+            'id', 'task', 'task_name',
             'image_type', 'image_url', 'image_url_full',
             'jpeg_path', 'uploaded_at', 'uploaded_by', 'uploaded_by_username'
         ]

@@ -1032,19 +1032,17 @@ class Machine(models.Model):
 
 
 class MaintenanceProcedure(models.Model):
-    """Model for storing detailed maintenance procedures / tasks per equipment"""
+    """Model for storing detailed maintenance procedures / tasks (templates)"""
     
-    # FK to Equipment (Machine) - Following ER diagram
-    equipment = models.ForeignKey(
-        'Machine',
-        on_delete=models.CASCADE,
-        related_name='maintenance_tasks',
-        null=True,
-        blank=True,
-        help_text="Equipment this maintenance task is for"
-    )
+    # Equipment field removed - tasks are now generic templates
     
     name = models.CharField(max_length=200, help_text="Task name/title")
+    category = models.CharField(
+        max_length=100, 
+        blank=True, 
+        null=True, 
+        help_text="Equipment category this task is typically for (e.g., Fire Pump, HVAC, Elevator)"
+    )
     description = models.TextField(help_text="Detailed description of the maintenance task")
     
     # Frequency following ER diagram
@@ -1102,23 +1100,21 @@ class MaintenanceProcedure(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['equipment', 'frequency', 'name']
-        verbose_name = 'Maintenance Task'
-        verbose_name_plural = 'Maintenance Tasks'
+        ordering = ['category', 'frequency', 'name']
+        verbose_name = 'Maintenance Task Template'
+        verbose_name_plural = 'Maintenance Task Templates'
         indexes = [
-            # ✅ PERFORMANCE: Maintenance Task indexes following ER diagram
-            models.Index(fields=['equipment']),  # FK lookup - primary relationship
+            # ✅ PERFORMANCE: Maintenance Task indexes - equipment removed
+            models.Index(fields=['category']),  # Filter by equipment category
             models.Index(fields=['frequency']),  # Filter by frequency
             models.Index(fields=['responsible_department']),  # Filter by department
             models.Index(fields=['name']),  # For search
             models.Index(fields=['difficulty_level']),  # For filtering
-            models.Index(fields=['equipment', 'frequency']),  # Composite for common queries
             models.Index(fields=['created_at']),  # For sorting
         ]
     
     def __str__(self):
-        equipment_name = self.equipment.name if self.equipment else "No Equipment"
-        return f"{equipment_name} - {self.name} ({self.frequency})"
+        return f"{self.name} ({self.frequency})"
     
     def get_steps_count(self):
         """Get the total number of steps"""

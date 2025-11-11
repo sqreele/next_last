@@ -26,6 +26,7 @@ import { preventiveMaintenanceService,
 } from '@/app/lib/PreventiveMaintenanceService';
 import TopicService from '@/app/lib/TopicService';
 import MachineService from '@/app/lib/MachineService';
+import { useDetailedUsers } from '@/app/lib/hooks/useDetailedUsers';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface PreventiveMaintenanceFormProps {
@@ -50,6 +51,7 @@ interface FormValues {
   property_id: string | null;
   procedure: string;
   procedure_template: number | ''; // Maintenance task template ID (empty string for "none")
+  assigned_to: string;
 }
 
 const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
@@ -68,6 +70,25 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   } = useProperties();
   const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setContextSelectedProperty } = useUser();
   const hasProperties = userProperties && userProperties.length > 0;
+  const {
+    users: detailedUsers,
+    loading: loadingUsers,
+    error: usersError,
+  } = useDetailedUsers();
+  const userOptions = React.useMemo(() => {
+    return detailedUsers.map((detailedUser) => {
+      const combinedName = [detailedUser.first_name, detailedUser.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      const label = detailedUser.full_name || (combinedName || detailedUser.username);
+      return {
+        id: String(detailedUser.id),
+        label,
+        email: detailedUser.email,
+      };
+    });
+  }, [detailedUsers]);
 
   const [fetchedInitialData, setFetchedInitialData] = useState<PreventiveMaintenance | null>(null);
   const actualInitialData = initialDataProp || fetchedInitialData;
@@ -305,6 +326,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     if (!values.selected_machine_ids || values.selected_machine_ids.length === 0) {
       errors.selected_machine_ids = 'At least one machine must be selected';
     }
+    if (!values.assigned_to) {
+      errors.assigned_to = 'Assigned user is required';
+    }
     // Topics are now optional
     // if (!values.selected_topics || values.selected_topics.length === 0) {
     //   errors.selected_topics = 'At least one topic must be selected';
@@ -313,7 +337,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     return errors;
   };
 
-  const getInitialValues = useCallback((): FormValues => {
+    const getInitialValues = useCallback((): FormValues => {
     const currentData = actualInitialData;
 
     if (currentData) {
@@ -371,7 +395,21 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         completed_date_type: typeof completedDate
       });
 
-      return {
+        let assignedToId = '';
+        if (currentData.assigned_to_details?.id) {
+          assignedToId = String(currentData.assigned_to_details.id);
+        } else if (
+          currentData.assigned_to &&
+          typeof currentData.assigned_to === 'object' &&
+          currentData.assigned_to !== null &&
+          'id' in currentData.assigned_to
+        ) {
+          assignedToId = String((currentData.assigned_to as any).id);
+        } else if (typeof currentData.assigned_to === 'number') {
+          assignedToId = String(currentData.assigned_to);
+        }
+
+        return {
         pmtitle: currentData.pmtitle || '',
         scheduled_date: scheduledDate,
         completed_date: completedDate,
@@ -385,6 +423,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         property_id: propertyId,
         procedure: currentData.procedure || '',
         procedure_template: (currentData as any).procedure_template || '',
+          assigned_to: assignedToId,
       };
     }
 
@@ -402,6 +441,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       property_id: selectedProperty,
       procedure: '',
       procedure_template: '',
+        assigned_to: '',
     };
   }, [actualInitialData, selectedProperty, machineId, formatDateForInput, defaultScheduledDate, getPropertyDetails]);
 
@@ -743,6 +783,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         after_image: hasAfterImageFile ? values.after_image_file! : undefined,
         procedure: values.procedure?.trim() || '',
         procedure_template: values.procedure_template !== '' ? Number(values.procedure_template) : undefined,
+          assigned_to: values.assigned_to || undefined,
       };
 
       console.log('[FORM] handleSubmit - Data prepared for service:', JSON.stringify(dataForService, (key, value) => {
@@ -974,6 +1015,44 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 <p className="mt-1 text-sm text-red-500">{errors.property_id}</p>
               )}
             </div>
+
+              {/* Assigned User */}
+              <div className="mb-6">
+                <label htmlFor="assigned_to" className="block text-sm font-medium text-gray-700 mb-1">
+                  Assign To <span className="text-red-500">*</span>
+                </label>
+                <Field
+                  as="select"
+                  id="assigned_to"
+                  name="assigned_to"
+                  className={`w-full p-2 border rounded-md ${
+                    errors.assigned_to && touched.assigned_to ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  disabled={loadingUsers || userOptions.length === 0}
+                >
+                  <option value="">{loadingUsers ? 'Loading users...' : 'Select a user'}</option>
+                  {userOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                      {option.email ? ` (${option.email})` : ''}
+                    </option>
+                  ))}
+                </Field>
+                {loadingUsers && (
+                  <p className="mt-1 text-sm text-gray-500">Loading users...</p>
+                )}
+                {usersError && (
+                  <p className="mt-1 text-sm text-red-500">
+                    Failed to load users. Please refresh the page or try again later.
+                  </p>
+                )}
+                {!loadingUsers && !usersError && userOptions.length === 0 && (
+                  <p className="mt-1 text-sm text-yellow-600">No users available to assign.</p>
+                )}
+                {errors.assigned_to && touched.assigned_to && (
+                  <p className="mt-1 text-sm text-red-500">{errors.assigned_to}</p>
+                )}
+              </div>
 
             {/* Maintenance Title */}
             <div className="mb-6">

@@ -114,6 +114,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             'created_by',  # Foreign key
             'completed_by',  # Foreign key
             'verified_by',  # Foreign key
+            'assigned_to',  # Foreign key
             'procedure_template',  # Foreign key
         ).prefetch_related(
             'topics',  # Many-to-many

@@ -7,6 +7,16 @@ export interface Topic {
   description?: string;
 }
 
+export interface SimpleUser {
+  id: number;
+  username: string;
+  email?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  full_name?: string | null;
+  is_staff?: boolean;
+}
+
 // Image definition
 export interface MaintenanceImage {
   id?: number;
@@ -75,11 +85,15 @@ export interface PreventiveMaintenance {
   notes?: string | null;
   before_image_url?: string | null;
   after_image_url?: string | null;
-  created_by?: number;
+  created_by?: number | SimpleUser | null;
+  created_by_details?: SimpleUser | null;
   procedure?: string; // Added procedure field
   procedure_template?: number | null; // FK to MaintenanceProcedure task template
   procedure_template_id?: number | null; // Task template ID (from serializer)
   procedure_template_name?: string | null; // Task template name (from serializer)
+  assigned_to?: number | SimpleUser | null;
+  assigned_to_details?: SimpleUser | null;
+  remarks?: string | null;
 }
 
 // Request structure for creating/updating maintenance

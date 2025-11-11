@@ -16,6 +16,18 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         model = User
         fields = ['url', 'username', 'email', 'is_staff']
 
+class UserSummarySerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'is_staff']
+        read_only_fields = fields
+
+    def get_full_name(self, obj):
+        full_name = obj.get_full_name().strip()
+        return full_name or obj.username
+
 # Room serializer defined first to avoid circular import issues
 class RoomSerializer(serializers.ModelSerializer):
     class Meta:
@@ -858,6 +870,11 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
     property_id = serializers.SerializerMethodField()
     procedure_template_name = serializers.CharField(source='procedure_template.name', read_only=True)
     procedure_template_id = serializers.IntegerField(source='procedure_template.id', read_only=True)
+    assigned_to = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        allow_null=True
+    )
 
     class Meta:
         model = PreventiveMaintenance
@@ -865,7 +882,8 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             'pm_id', 'pmtitle', 'topics', 'topic_ids', 'scheduled_date', 'completed_date',
             'frequency', 'custom_days', 'next_due_date', 'before_image', 'after_image',
             'before_image_url', 'after_image_url', 'notes', 'procedure', 'procedure_template',
-            'procedure_template_id', 'procedure_template_name', 'machine_ids', 'machines', 'property_id'
+            'procedure_template_id', 'procedure_template_name', 'machine_ids', 'machines',
+            'property_id', 'assigned_to', 'remarks'
         ]
         read_only_fields = ['pm_id', 'next_due_date', 'procedure_template_id', 'procedure_template_name']
         extra_kwargs = {
@@ -878,6 +896,8 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             'custom_days': {'required': False},
             'completed_date': {'required': False},
             'next_due_date': {'required': False},
+            'assigned_to': {'required': False, 'allow_null': True},
+            'remarks': {'required': False},
         }
     
     def to_internal_value(self, data):
@@ -1043,6 +1063,8 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
     before_image_url = serializers.SerializerMethodField()
     after_image_url = serializers.SerializerMethodField()
     property_id = serializers.SerializerMethodField()
+    assigned_to_details = UserSummarySerializer(source='assigned_to', read_only=True)
+    created_by_details = UserSummarySerializer(source='created_by', read_only=True)
 
     class Meta:
         model = PreventiveMaintenance
@@ -1051,7 +1073,7 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
             'property_id', 'machine_ids', 'machines', 'frequency', 'custom_days', 'next_due_date',
             'before_image', 'after_image', 'before_image_url', 'after_image_url', 'notes',
             'procedure', 'procedure_template', 'assigned_to', 'remarks',
-            'created_by', 'updated_at'
+            'assigned_to_details', 'created_by', 'created_by_details', 'updated_at'
         ]
         extra_kwargs = {
             'completed_date': {'required': False},

@@ -2,7 +2,7 @@
 
 'use client';
 import { preventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from "@/app/lib/session.client";
@@ -26,7 +26,8 @@ import {
   Camera,
   ArrowUpRight,
   CheckCircle,
-  Clock
+  Clock,
+  User
 } from 'lucide-react';
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
 import { MaintenanceImage } from '@/app/components/ui/UniversalImage';
@@ -322,6 +323,42 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
   const beforeImageUrl = getBeforeImageUrl();
   const afterImageUrl = getAfterImageUrl();
+  const assignedUserInfo = useMemo(() => {
+    if (maintenanceData.assigned_to_details) {
+      const details = maintenanceData.assigned_to_details;
+      const combinedName = [
+        details.full_name,
+        [details.first_name, details.last_name].filter(Boolean).join(' ').trim(),
+        details.username,
+      ].find((value) => value && value.length > 0);
+      return {
+        display: combinedName || `User #${details.id}`,
+        email: details.email,
+      };
+    }
+
+    const assignee = maintenanceData.assigned_to as any;
+    if (assignee && typeof assignee === 'object') {
+      const combinedName = [
+        assignee.full_name,
+        [assignee.first_name, assignee.last_name].filter(Boolean).join(' ').trim(),
+        assignee.username,
+      ].find((value: string | undefined) => value && value.length > 0);
+      return {
+        display: combinedName || (assignee.id ? `User #${assignee.id}` : 'Assigned User'),
+        email: assignee.email,
+      };
+    }
+
+    if (typeof maintenanceData.assigned_to === 'number' || typeof maintenanceData.assigned_to === 'string') {
+      return {
+        display: `User #${maintenanceData.assigned_to}`,
+        email: undefined,
+      };
+    }
+
+    return null;
+  }, [maintenanceData.assigned_to, maintenanceData.assigned_to_details]);
   
   // Additional debugging
   console.log('🔍 Final image URLs:', {
@@ -642,6 +679,23 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                 </div>
               </div>
             )}
+              
+              {assignedUserInfo && (
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-sky-100 rounded-lg">
+                      <User className="h-5 w-5 text-sky-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Assigned To</p>
+                      <p className="text-lg font-semibold text-gray-900">{assignedUserInfo.display}</p>
+                      {assignedUserInfo.email && (
+                        <p className="text-xs text-gray-500 mt-1">{assignedUserInfo.email}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             
             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3">

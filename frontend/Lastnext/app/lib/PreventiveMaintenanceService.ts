@@ -26,6 +26,8 @@ export type CreatePreventiveMaintenanceData = {
   procedure?: string;
   completed_date?: string;
   procedure_template?: number; // FK to MaintenanceProcedure task template
+  assigned_to?: string | number | null;
+  remarks?: string;
 };
 
 export type UpdatePreventiveMaintenanceData = Partial<CreatePreventiveMaintenanceData>;
@@ -419,19 +421,35 @@ class PreventiveMaintenanceService {
       const formData = new FormData();
       
       // Add basic fields
-      if (data.pmtitle?.trim()) formData.append('pmtitle', data.pmtitle.trim());
-      formData.append('scheduled_date', data.scheduled_date);
-      if (data.completed_date) formData.append('completed_date', data.completed_date);
-      formData.append('frequency', data.frequency);
-      if (data.custom_days != null) formData.append('custom_days', String(data.custom_days));
-      if (data.notes !== undefined) formData.append('notes', data.notes?.trim() || '');
-      if (data.procedure !== undefined) formData.append('procedure', data.procedure?.trim() || '');
-      if (data.procedure_template !== undefined && data.procedure_template !== null) {
-        formData.append('procedure_template', String(data.procedure_template));
-        console.log('[SERVICE CREATE] Adding procedure_template to FormData:', data.procedure_template);
-      } else {
-        console.log('[SERVICE CREATE] procedure_template not added:', { value: data.procedure_template, isUndefined: data.procedure_template === undefined, isNull: data.procedure_template === null });
-      }
+        if (data.pmtitle?.trim()) {
+          formData.append('pmtitle', data.pmtitle.trim());
+        }
+        formData.append('scheduled_date', data.scheduled_date);
+        if (data.completed_date) {
+          formData.append('completed_date', data.completed_date);
+        }
+        formData.append('frequency', data.frequency);
+        if (data.custom_days != null) {
+          formData.append('custom_days', String(data.custom_days));
+        }
+        if (data.notes !== undefined) {
+          formData.append('notes', data.notes?.trim() || '');
+        }
+        if (data.procedure !== undefined) {
+          formData.append('procedure', data.procedure?.trim() || '');
+        }
+        if (data.procedure_template !== undefined && data.procedure_template !== null) {
+          formData.append('procedure_template', String(data.procedure_template));
+          console.log('[SERVICE CREATE] Adding procedure_template to FormData:', data.procedure_template);
+        } else {
+          console.log('[SERVICE CREATE] procedure_template not added:', { value: data.procedure_template, isUndefined: data.procedure_template === undefined, isNull: data.procedure_template === null });
+        }
+        if (data.assigned_to !== undefined && data.assigned_to !== null && data.assigned_to !== '') {
+          formData.append('assigned_to', String(data.assigned_to));
+        }
+        if (data.remarks !== undefined) {
+          formData.append('remarks', data.remarks?.trim() || '');
+        }
       
       // Add array fields - FIXED: removed [] from field names
       if (data.topic_ids?.length) {
@@ -592,6 +610,16 @@ class PreventiveMaintenanceService {
       } else {
         console.log('[SERVICE UPDATE] procedure_template not added:', { value: data.procedure_template, isUndefined: data.procedure_template === undefined, isNull: data.procedure_template === null });
       }
+        if (data.assigned_to !== undefined) {
+          if (data.assigned_to === null || data.assigned_to === '') {
+            formData.append('assigned_to', '');
+          } else {
+            formData.append('assigned_to', String(data.assigned_to));
+          }
+        }
+        if (data.remarks !== undefined) {
+          formData.append('remarks', data.remarks?.trim() || '');
+        }
       
       // Add array fields - FIXED: removed [] from field names
       if (data.topic_ids !== undefined) {

@@ -59,6 +59,22 @@ interface MaintenanceHistory {
     id: number;
     username: string;
   };
+  assigned_to?: number | {
+    id: number;
+    username: string;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+  };
+  assigned_to_details?: {
+    id: number;
+    username: string;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+  };
   machines?: Array<{
     machine_id: string;
     name: string;
@@ -461,6 +477,26 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
                               </div>
                             </div>
                           )}
+                          {(record.assigned_to_details || record.assigned_to) && (() => {
+                            const assignedUser = record.assigned_to_details || 
+                              (typeof record.assigned_to === 'object' ? record.assigned_to : null);
+                            const displayName = assignedUser 
+                              ? (assignedUser.full_name || 
+                                 [assignedUser.first_name, assignedUser.last_name].filter(Boolean).join(' ').trim() || 
+                                 assignedUser.username)
+                              : (typeof record.assigned_to === 'number' || typeof record.assigned_to === 'string' 
+                                 ? `User ${record.assigned_to}` 
+                                 : 'Unassigned');
+                            return (
+                              <div className="flex items-center gap-1 text-gray-600">
+                                <User className="h-4 w-4 text-sky-500" />
+                                <div>
+                                  <span className="text-xs text-gray-500">Assigned To:</span>
+                                  <p className="font-medium text-gray-900">{displayName}</p>
+                                </div>
+                              </div>
+                            );
+                          })()}
                           {record.created_by && (
                             <div className="flex items-center gap-1 text-gray-600">
                               <Users className="h-4 w-4 text-purple-500" />

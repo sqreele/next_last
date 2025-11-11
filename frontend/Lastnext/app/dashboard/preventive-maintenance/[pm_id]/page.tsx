@@ -90,6 +90,12 @@ async function getPreventiveMaintenance(pmId: string): Promise<PreventiveMainten
       procedure_template_id: data.procedure_template_id,
       procedure_template_name: data.procedure_template_name
     });
+    console.log("[SERVER_FETCH] assigned_to fields:", {
+      assigned_to: data.assigned_to,
+      assigned_to_type: typeof data.assigned_to,
+      assigned_to_details: data.assigned_to_details,
+      has_assigned_to_details: !!data.assigned_to_details
+    });
     return data as PreventiveMaintenance;
   } catch (error) {
     console.error(`[SERVER_FETCH] Exception while fetching maintenance data for ${pmId}:`, error);

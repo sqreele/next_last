@@ -1385,6 +1385,7 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
         # 'frequency',  # Removed - defaults to monthly
         'next_due_date',
         'get_status_display',
+        'get_assigned_to_display',
         'created_by_user',
         'get_machines_display',
         'get_properties_display',
@@ -1403,7 +1404,7 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
     readonly_fields = ('pm_id', 'next_due_date', 'before_image_preview', 'after_image_preview')
     fieldsets = (
         ('Identification', {
-            'fields': ('pm_id', 'pmtitle', 'created_by')
+            'fields': ('pm_id', 'pmtitle', 'created_by', 'assigned_to')
         }),
         ('Schedule', {
             'fields': ('scheduled_date', 'completed_date', 'next_due_date')
@@ -1424,7 +1425,7 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
             'fields': ('topics',)
         }),
     )
-    actions = ['mark_completed']
+    actions = ['mark_completed', 'export_pm_csv']
 
     def get_topics_display(self, obj):
         return ", ".join([topic.title for topic in obj.topics.all()])
@@ -1463,13 +1464,23 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
     get_status_display.short_description = 'Status'
     get_status_display.admin_order_field = 'completed_date'
 
+    def get_assigned_to_display(self, obj):
+        if obj.assigned_to:
+            full_name = obj.assigned_to.get_full_name()
+            if full_name:
+                return format_html('<span style="color: #0284c7;">{}</span>', full_name)
+            return format_html('<span style="color: #0284c7;">{}</span>', obj.assigned_to.username)
+        return format_html('<span style="color: #9ca3af;">Unassigned</span>')
+    get_assigned_to_display.short_description = 'Assigned To'
+    get_assigned_to_display.admin_order_field = 'assigned_to'
+
     def created_by_user(self, obj):
         return obj.created_by.username if obj.created_by else "N/A"
     created_by_user.short_description = 'Created By'
     created_by_user.admin_order_field = 'created_by'
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('created_by').prefetch_related(
+        return super().get_queryset(request).select_related('created_by', 'assigned_to', 'procedure_template').prefetch_related(
             'topics', 'machines__property', 'job__rooms__properties'
         )
 
@@ -1489,6 +1500,126 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
                 updated_count += 1
         self.message_user(request, f"{updated_count} preventive maintenance tasks marked as completed.")
     mark_completed.short_description = "Mark selected tasks as completed"
+
+    def export_pm_csv(self, request, queryset):
+        """Export selected/filtered preventive maintenance records to CSV"""
+        import csv
+        from django.utils import timezone
+        
+        # Prefetch related data to avoid N+1 queries
+        qs = queryset.select_related(
+            'created_by', 'assigned_to', 'procedure_template'
+        ).prefetch_related('topics', 'machines__property').order_by('scheduled_date')
+        
+        # Create the HttpResponse object with CSV header
+        filename = f"preventive_maintenance_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        # Add BOM for Excel UTF-8 compatibility
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        
+        # Write header row
+        writer.writerow([
+            'PM ID',
+            'Title',
+            'Scheduled Date',
+            'Completed Date',
+            'Status',
+            'Frequency',
+            'Custom Days',
+            'Next Due Date',
+            'Assigned To',
+            'Assigned Email',
+            'Created By',
+            'Creator Email',
+            'Task Template',
+            'Machines',
+            'Properties',
+            'Topics',
+            'Procedure',
+            'Notes',
+            'Has Before Image',
+            'Has After Image',
+        ])
+        
+        # Write data rows
+        for pm in qs:
+            # Get status
+            if pm.completed_date:
+                status = 'Completed'
+            elif pm.scheduled_date and pm.scheduled_date < timezone.now():
+                status = 'Overdue'
+            else:
+                status = 'Scheduled'
+            
+            # Get assigned user info
+            assigned_to = ''
+            assigned_email = ''
+            if pm.assigned_to:
+                assigned_to = pm.assigned_to.get_full_name() or pm.assigned_to.username
+                assigned_email = pm.assigned_to.email or ''
+            
+            # Get created by info
+            created_by = ''
+            creator_email = ''
+            if pm.created_by:
+                created_by = pm.created_by.get_full_name() or pm.created_by.username
+                creator_email = pm.created_by.email or ''
+            
+            # Get topics
+            topics = ", ".join([t.title for t in pm.topics.all()])
+            
+            # Get machines
+            machines = ", ".join([f"{m.name} ({m.machine_id})" for m in pm.machines.all()])
+            
+            # Get properties
+            properties = []
+            if pm.machines.exists():
+                for machine in pm.machines.all():
+                    if machine.property:
+                        prop_display = f"{machine.property.property_id} - {machine.property.name}"
+                        if prop_display not in properties:
+                            properties.append(prop_display)
+            properties_str = ", ".join(properties)
+            
+            # Get task template
+            task_template = ''
+            if pm.procedure_template:
+                task_template = f"{pm.procedure_template.name} (ID: {pm.procedure_template.id})"
+            
+            # Format dates
+            scheduled_date = pm.scheduled_date.strftime('%Y-%m-%d %H:%M:%S') if pm.scheduled_date else ''
+            completed_date = pm.completed_date.strftime('%Y-%m-%d %H:%M:%S') if pm.completed_date else ''
+            next_due_date = pm.next_due_date.strftime('%Y-%m-%d %H:%M:%S') if pm.next_due_date else ''
+            
+            writer.writerow([
+                pm.pm_id,
+                pm.pmtitle or '',
+                scheduled_date,
+                completed_date,
+                status,
+                pm.frequency,
+                pm.custom_days or '',
+                next_due_date,
+                assigned_to,
+                assigned_email,
+                created_by,
+                creator_email,
+                task_template,
+                machines,
+                properties_str,
+                topics,
+                pm.procedure or '',
+                pm.notes or '',
+                'Yes' if pm.before_image else 'No',
+                'Yes' if pm.after_image else 'No',
+            ])
+        
+        return response
+    export_pm_csv.short_description = "Export selected/filtered PM records to CSV"
 
     def before_image_preview(self, obj):
         if obj.before_image and hasattr(obj.before_image, 'url'):

@@ -493,6 +493,8 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
     after_image_url = serializers.SerializerMethodField()
     procedure_template_name = serializers.CharField(source='procedure_template.name', read_only=True)
     procedure_template_id = serializers.IntegerField(source='procedure_template.id', read_only=True)
+    assigned_to_details = UserSummarySerializer(source='assigned_to', read_only=True)
+    created_by_details = UserSummarySerializer(source='created_by', read_only=True)
 
     class Meta:
         model = PreventiveMaintenance
@@ -500,7 +502,7 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
             'pm_id', 'pmtitle', 'job_id', 'job_description', 'scheduled_date', 'completed_date',
             'frequency', 'next_due_date', 'status', 'topics', 'machines', 'property_id',
             'procedure', 'notes', 'before_image_url', 'after_image_url', 'procedure_template',
-            'procedure_template_id', 'procedure_template_name'
+            'procedure_template_id', 'procedure_template_name', 'assigned_to_details', 'created_by_details'
         ]
         list_serializer_class = serializers.ListSerializer
 
@@ -708,6 +710,13 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
     property_id = serializers.SerializerMethodField()
     procedure_template_name = serializers.CharField(source='procedure_template.name', read_only=True)
     procedure_template_id = serializers.IntegerField(source='procedure_template.id', read_only=True)
+    assigned_to = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        allow_null=True
+    )
+    assigned_to_details = UserSummarySerializer(source='assigned_to', read_only=True)
+    created_by_details = UserSummarySerializer(source='created_by', read_only=True)
     
     before_image = serializers.ImageField(
         required=False,
@@ -727,9 +736,10 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
             'frequency', 'custom_days', 'next_due_date', 'before_image', 'after_image',
             'before_image_url', 'after_image_url', 'notes', 'procedure', 'procedure_template',
             'procedure_template_id', 'procedure_template_name', 'created_by', 'updated_at',
-            'is_overdue', 'days_remaining', 'machine_ids', 'machines', 'property_id'
+            'is_overdue', 'days_remaining', 'machine_ids', 'machines', 'property_id',
+            'assigned_to', 'assigned_to_details', 'created_by_details'
         ]
-        read_only_fields = ['pm_id', 'created_by', 'updated_at', 'next_due_date', 'procedure_template_id', 'procedure_template_name']
+        read_only_fields = ['pm_id', 'created_by', 'updated_at', 'next_due_date', 'procedure_template_id', 'procedure_template_name', 'assigned_to_details', 'created_by_details']
         extra_kwargs = {
             'before_image': {'required': False},
             'after_image': {'required': False},
@@ -967,7 +977,21 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             instance.machines.set(Machine.objects.filter(machine_id__in=machine_ids))
         return instance
 
+    def validate_assigned_to(self, value):
+        """Custom validation for assigned_to field"""
+        print(f"=== DEBUG: validate_assigned_to ===")
+        print(f"Type: {type(value)}")
+        print(f"Value: {value}")
+        print(f"Repr: {repr(value)}")
+        return value
+
     def validate(self, data):
+        print(f"=== DEBUG: validate method ===")
+        print(f"assigned_to in data: {'assigned_to' in data}")
+        if 'assigned_to' in data:
+            print(f"assigned_to value: {data.get('assigned_to')}")
+            print(f"assigned_to type: {type(data.get('assigned_to'))}")
+        
         frequency = data.get('frequency')
         custom_days = data.get('custom_days')
 
@@ -992,7 +1016,7 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             property_ids = set(machine.property.property_id for machine in machines)
             if len(property_ids) > 1:
                 raise serializers.ValidationError("All machines must belong to the same property.")
-
+        
         return data
 
 class PreventiveMaintenanceCompleteSerializer(serializers.ModelSerializer):
@@ -1063,6 +1087,11 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
     before_image_url = serializers.SerializerMethodField()
     after_image_url = serializers.SerializerMethodField()
     property_id = serializers.SerializerMethodField()
+    assigned_to = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        required=False,
+        allow_null=True
+    )
     assigned_to_details = UserSummarySerializer(source='assigned_to', read_only=True)
     created_by_details = UserSummarySerializer(source='created_by', read_only=True)
 

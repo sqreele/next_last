@@ -26,7 +26,6 @@ import { preventiveMaintenanceService,
 } from '@/app/lib/PreventiveMaintenanceService';
 import TopicService from '@/app/lib/TopicService';
 import MachineService from '@/app/lib/MachineService';
-import { useDetailedUsers } from '@/app/lib/hooks/useDetailedUsers';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface PreventiveMaintenanceFormProps {
@@ -62,33 +61,25 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   machineId,
 }) => {
   const { toast } = useToast();
-  const { accessToken: auth0AccessToken, user } = useClientAuth0();
+  const { accessToken: auth0AccessToken, user: auth0User } = useClientAuth0();
   const { data: session } = useSession();
   const accessToken = auth0AccessToken || session?.user?.accessToken || null;
+  const user = session?.user || auth0User || null;
+  
+  // Debug: Log user info
+  React.useEffect(() => {
+    console.log('[PreventiveMaintenanceForm] User info:', {
+      hasUser: !!user,
+      userId: user?.id,
+      userIdType: typeof user?.id,
+      username: user?.username
+    });
+  }, [user]);
   const {
     properties: userProperties,
   } = useProperties();
   const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setContextSelectedProperty } = useUser();
   const hasProperties = userProperties && userProperties.length > 0;
-  const {
-    users: detailedUsers,
-    loading: loadingUsers,
-    error: usersError,
-  } = useDetailedUsers();
-  const userOptions = React.useMemo(() => {
-    return detailedUsers.map((detailedUser) => {
-      const combinedName = [detailedUser.first_name, detailedUser.last_name]
-        .filter(Boolean)
-        .join(' ')
-        .trim();
-      const label = detailedUser.full_name || (combinedName || detailedUser.username);
-      return {
-        id: String(detailedUser.id),
-        label,
-        email: detailedUser.email,
-      };
-    });
-  }, [detailedUsers]);
 
   const [fetchedInitialData, setFetchedInitialData] = useState<PreventiveMaintenance | null>(null);
   const actualInitialData = initialDataProp || fetchedInitialData;
@@ -427,6 +418,14 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       };
     }
 
+    // For new records, assign to the current user
+    const currentUserId = user?.id;
+    console.log('[getInitialValues] Current user ID for new record:', {
+      userId: currentUserId,
+      type: typeof currentUserId,
+      hasUser: !!user
+    });
+    
     return {
       pmtitle: '',
       scheduled_date: defaultScheduledDate,
@@ -441,9 +440,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       property_id: selectedProperty,
       procedure: '',
       procedure_template: '',
-        assigned_to: '',
+        assigned_to: currentUserId ? String(currentUserId) : '',
     };
-  }, [actualInitialData, selectedProperty, machineId, formatDateForInput, defaultScheduledDate, getPropertyDetails]);
+  }, [actualInitialData, selectedProperty, machineId, formatDateForInput, defaultScheduledDate, getPropertyDetails, user]);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -769,6 +768,15 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         completed_date_type: typeof completedDateISO
       });
 
+      // Debug assigned_to before conversion
+      console.log('[FORM] assigned_to debug:', {
+        raw: values.assigned_to,
+        type: typeof values.assigned_to,
+        isEmpty: values.assigned_to === '',
+        isNaN: isNaN(Number(values.assigned_to)),
+        converted: values.assigned_to ? Number(values.assigned_to) : undefined
+      });
+
       const dataForService: CreatePreventiveMaintenanceData = {
         pmtitle: values.pmtitle.trim() || 'Untitled Maintenance',
         scheduled_date: scheduledDateISO,
@@ -783,7 +791,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         after_image: hasAfterImageFile ? values.after_image_file! : undefined,
         procedure: values.procedure?.trim() || '',
         procedure_template: values.procedure_template !== '' ? Number(values.procedure_template) : undefined,
-          assigned_to: values.assigned_to || undefined,
+          assigned_to: values.assigned_to && !isNaN(Number(values.assigned_to)) ? Number(values.assigned_to) : undefined,
       };
 
       console.log('[FORM] handleSubmit - Data prepared for service:', JSON.stringify(dataForService, (key, value) => {
@@ -1016,43 +1024,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               )}
             </div>
 
-              {/* Assigned User */}
-              <div className="mb-6">
-                <label htmlFor="assigned_to" className="block text-sm font-medium text-gray-700 mb-1">
-                  Assign To <span className="text-red-500">*</span>
-                </label>
-                <Field
-                  as="select"
-                  id="assigned_to"
-                  name="assigned_to"
-                  className={`w-full p-2 border rounded-md ${
-                    errors.assigned_to && touched.assigned_to ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  disabled={loadingUsers || userOptions.length === 0}
-                >
-                  <option value="">{loadingUsers ? 'Loading users...' : 'Select a user'}</option>
-                  {userOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                      {option.email ? ` (${option.email})` : ''}
-                    </option>
-                  ))}
-                </Field>
-                {loadingUsers && (
-                  <p className="mt-1 text-sm text-gray-500">Loading users...</p>
-                )}
-                {usersError && (
-                  <p className="mt-1 text-sm text-red-500">
-                    Failed to load users. Please refresh the page or try again later.
-                  </p>
-                )}
-                {!loadingUsers && !usersError && userOptions.length === 0 && (
-                  <p className="mt-1 text-sm text-yellow-600">No users available to assign.</p>
-                )}
-                {errors.assigned_to && touched.assigned_to && (
-                  <p className="mt-1 text-sm text-red-500">{errors.assigned_to}</p>
-                )}
-              </div>
+              {/* Assigned User - Hidden, auto-assigned to current user */}
+              <Field type="hidden" name="assigned_to" />
 
             {/* Maintenance Title */}
             <div className="mb-6">

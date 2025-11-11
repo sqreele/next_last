@@ -1,0 +1,473 @@
+'use client';
+
+import React, { useState, useEffect, use } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from '@/app/lib/session.client';
+import apiClient from '@/app/lib/api-client';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
+import { Button } from '@/app/components/ui/button';
+import { Badge } from '@/app/components/ui/badge';
+import {
+  ArrowLeft,
+  Wrench,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Users,
+  Building,
+  MapPin,
+  FileText,
+  History,
+  Loader2,
+  AlertCircle
+} from 'lucide-react';
+import Link from 'next/link';
+
+interface Machine {
+  id: number;
+  machine_id: string;
+  name: string;
+  brand?: string;
+  model?: string;
+  manufacturer?: string;
+  serial_number?: string;
+  description?: string;
+  location?: string;
+  category?: string;
+  status?: string;
+  property: {
+    property_id: string;
+    name: string;
+  };
+  installation_date?: string;
+  last_maintenance_date?: string;
+  warranty_expiry?: string;
+  notes?: string;
+  preventive_maintenances?: PMHistory[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface PMHistory {
+  pm_id: string;
+  pmtitle: string;
+  scheduled_date: string;
+  completed_date?: string;
+  status: string;
+  frequency: string;
+  notes?: string;
+  procedure_template_name?: string;
+  created_by_details?: {
+    id: number;
+    username: string;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+  };
+}
+
+const getUserDisplayName = (userDetails?: {
+  id: number;
+  username: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+} | null) => {
+  if (!userDetails) return 'Unassigned';
+  return userDetails.full_name || 
+         [userDetails.first_name, userDetails.last_name].filter(Boolean).join(' ').trim() || 
+         userDetails.username;
+};
+
+export default function MachineDetailPage({ params }: { params: Promise<{ machine_id: string }> }) {
+  const unwrappedParams = use(params);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [machine, setMachine] = useState<Machine | null>(null);
+  const [pmHistory, setPMHistory] = useState<PMHistory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/login');
+    }
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchMachineDetails();
+    }
+  }, [status, unwrappedParams.machine_id]);
+
+  const fetchMachineDetails = async () => {
+    setLoading(true);
+    setLoadingHistory(true);
+    setError(null);
+    try {
+      const response = await apiClient.get(`/api/v1/machines/${unwrappedParams.machine_id}/`);
+      console.log('Machine details:', response.data);
+      setMachine(response.data);
+      
+      // Extract PM history from the machine data
+      if (response.data.preventive_maintenances) {
+        const historyData = response.data.preventive_maintenances;
+        console.log('🔍 [MACHINE] PM History from machine data:', historyData);
+        console.log('🔍 [MACHINE] Sample PM record:', historyData[0]);
+        if (historyData[0]) {
+          console.log('🔍 [MACHINE] assigned_to_details:', historyData[0].assigned_to_details);
+        }
+        // Sort by scheduled date (most recent first)
+        historyData.sort((a: PMHistory, b: PMHistory) => 
+          new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime()
+        );
+        setPMHistory(historyData);
+      } else {
+        // Fallback: fetch PM history separately
+        fetchPMHistory();
+        return;
+      }
+      setLoadingHistory(false);
+    } catch (err: any) {
+      console.error('Error fetching machine details:', err);
+      setError(err.message || 'Failed to load machine details');
+      setLoadingHistory(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPMHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const response = await apiClient.get('/api/v1/preventive-maintenance/', {
+        params: {
+          machine_id: unwrappedParams.machine_id,
+          page_size: 100
+        }
+      });
+
+      console.log('🔍 [MACHINE] Fallback PM History response:', response.data);
+
+      let historyData: PMHistory[] = [];
+      if (Array.isArray(response.data)) {
+        historyData = response.data;
+      } else if (response.data && 'results' in response.data) {
+        historyData = response.data.results || [];
+      }
+
+      console.log('🔍 [MACHINE] Fallback PM History count:', historyData.length);
+      if (historyData[0]) {
+        console.log('🔍 [MACHINE] Fallback sample record:', historyData[0]);
+        console.log('🔍 [MACHINE] Fallback assigned_to_details:', historyData[0].assigned_to_details);
+      }
+
+      // Sort by scheduled date (most recent first)
+      historyData.sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime());
+
+      setPMHistory(historyData);
+    } catch (err: any) {
+      console.error('Error fetching PM history:', err);
+      // Don't set error, just leave history empty
+      setPMHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'completed':
+        return 'bg-green-100 text-green-800 border-green-300';
+      case 'overdue':
+        return 'bg-red-100 text-red-800 border-red-300';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800 border-blue-300';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  const getUserDisplayName = (userDetails: PMHistory['assigned_to_details']) => {
+    if (!userDetails) return 'Unassigned';
+    return userDetails.full_name || 
+           [userDetails.first_name, userDetails.last_name].filter(Boolean).join(' ').trim() || 
+           userDetails.username;
+  };
+
+  if (status === 'loading' || loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading machine details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !machine) {
+    return (
+      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+              <p className="text-red-800 font-semibold">{error || 'Machine not found'}</p>
+            </div>
+            <Button asChild variant="outline">
+              <Link href="/dashboard/machines">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Machines
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button asChild variant="outline" size="sm">
+          <Link href="/dashboard/machines">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Link>
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Wrench className="h-6 w-6 text-blue-600" />
+            </div>
+            {machine.name}
+          </h1>
+          <p className="text-gray-600 mt-1 font-mono text-sm">ID: {machine.machine_id}</p>
+        </div>
+      </div>
+
+      {/* Machine Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Machine Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {machine.description && (
+            <div className="pb-4">
+              <p className="text-sm text-gray-600 mb-2">Description</p>
+              <p className="text-gray-900">{machine.description}</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {machine.category && (
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Category</p>
+                <Badge variant="secondary" className="text-sm">{machine.category}</Badge>
+              </div>
+            )}
+
+            {machine.brand && (
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Brand</p>
+                <p className="font-medium text-gray-900">{machine.brand}</p>
+              </div>
+            )}
+
+            {machine.status && (
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Status</p>
+                <Badge className={
+                  machine.status === 'active' ? 'bg-green-100 text-green-800' :
+                  machine.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                  machine.status === 'repair' ? 'bg-orange-100 text-orange-800' :
+                  machine.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                  'bg-red-100 text-red-800'
+                }>
+                  {machine.status.toUpperCase()}
+                </Badge>
+              </div>
+            )}
+
+            {machine.serial_number && (
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Serial Number</p>
+                <p className="font-medium text-gray-900 font-mono">{machine.serial_number}</p>
+              </div>
+            )}
+
+            {machine.location && (
+              <div>
+                <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                  <MapPin className="h-4 w-4" />
+                  Location
+                </p>
+                <p className="font-medium text-gray-900">{machine.location}</p>
+              </div>
+            )}
+
+            {machine.property && (
+              <div>
+                <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                  <Building className="h-4 w-4" />
+                  Property
+                </p>
+                <p className="font-medium text-gray-900">{machine.property.name}</p>
+              </div>
+            )}
+
+            {machine.installation_date && (
+              <div>
+                <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                  <Calendar className="h-4 w-4" />
+                  Installation Date
+                </p>
+                <p className="font-medium text-gray-900">{new Date(machine.installation_date).toLocaleDateString()}</p>
+              </div>
+            )}
+
+            {machine.last_maintenance_date && (
+              <div>
+                <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  Last Maintenance
+                </p>
+                <p className="font-medium text-gray-900">{new Date(machine.last_maintenance_date).toLocaleDateString()}</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* PM History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Preventive Maintenance History
+          </CardTitle>
+          <CardDescription>
+            {pmHistory.length} maintenance record{pmHistory.length !== 1 ? 's' : ''} found
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingHistory ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <p className="ml-3 text-gray-600">Loading maintenance history...</p>
+            </div>
+          ) : pmHistory.length === 0 ? (
+            <div className="text-center py-12">
+              <History className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 font-medium mb-2">No maintenance history found</p>
+              <p className="text-sm text-gray-500">This machine has no preventive maintenance records yet</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pmHistory.map((record) => (
+                <div key={record.pm_id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex flex-col lg:flex-row gap-4">
+                    {/* Main Info */}
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <Link 
+                            href={`/dashboard/preventive-maintenance/${record.pm_id}`}
+                            className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors block"
+                          >
+                            {record.pmtitle || 'Untitled Maintenance'}
+                          </Link>
+                          {record.procedure_template_name && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              Template: {record.procedure_template_name}
+                            </p>
+                          )}
+                        </div>
+                        <Badge className={getStatusColor(record.status)}>
+                          {record.status ? record.status.replace('_', ' ').toUpperCase() : 'SCHEDULED'}
+                        </Badge>
+                      </div>
+
+                      {/* Details Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs text-gray-500">Scheduled</p>
+                            <p className="font-medium text-gray-900">
+                              {new Date(record.scheduled_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        {record.completed_date && (
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500">Completed</p>
+                              <p className="font-medium text-green-700">
+                                {new Date(record.completed_date).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {record.created_by_details && (
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500">Created By</p>
+                              <p className="font-medium text-gray-900">
+                                {getUserDisplayName(record.created_by_details)}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {record.notes && (
+                        <div className="pt-2 border-t border-gray-200">
+                          <p className="text-xs text-gray-500 mb-1">Notes:</p>
+                          <p className="text-sm text-gray-700">{record.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Timestamps */}
+      {(machine.created_at || machine.updated_at) && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
+              {machine.created_at && (
+                <div>
+                  <p>Created: {new Date(machine.created_at).toLocaleString()}</p>
+                </div>
+              )}
+              {machine.updated_at && (
+                <div>
+                  <p>Updated: {new Date(machine.updated_at).toLocaleString()}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+

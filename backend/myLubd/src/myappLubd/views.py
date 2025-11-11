@@ -478,6 +478,8 @@ class MachineViewSet(viewsets.ModelViewSet):
     """
     queryset = Machine.objects.all()
     permission_classes = [IsAuthenticated]
+    pagination_class = MaintenancePagination
+    lookup_field = 'machine_id'
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'property', 'location']
     search_fields = ['name', 'description', 'machine_id']

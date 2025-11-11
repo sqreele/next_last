@@ -26,13 +26,14 @@ export type CreatePreventiveMaintenanceData = {
   procedure?: string;
   completed_date?: string;
   procedure_template?: number; // FK to MaintenanceProcedure task template
-  assigned_to?: string | number | null;
+  assigned_to?: number; // User ID (pk value)
   remarks?: string;
 };
 
 export type UpdatePreventiveMaintenanceData = Partial<CreatePreventiveMaintenanceData>;
 
 export interface CompletePreventiveMaintenanceData {
+  completed_date?: string;
   completion_notes?: string;
   after_image?: File;
 }
@@ -686,6 +687,11 @@ class PreventiveMaintenanceService {
 
     try {
       const formData = new FormData();
+      
+      if (data.completed_date) {
+        formData.append('completed_date', data.completed_date);
+      }
+      
       if (data.completion_notes?.trim()) {
         formData.append('completion_notes', data.completion_notes.trim());
       }

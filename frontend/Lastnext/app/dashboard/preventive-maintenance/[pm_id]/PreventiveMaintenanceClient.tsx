@@ -97,22 +97,18 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
     setError(null);
 
     try {
-      const response = await fetch(`/api/preventive-maintenance/${maintenanceData.pm_id}/complete/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await preventiveMaintenanceService.completePreventiveMaintenance(
+        maintenanceData.pm_id,
+        {
           completed_date: new Date().toISOString()
-        }),
-      });
+        }
+      );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || 'Failed to complete maintenance record');
+      if (response.success) {
+        router.refresh();
+      } else {
+        throw new Error(response.message || 'Failed to complete maintenance record');
       }
-
-      router.refresh();
     } catch (err: any) {
       console.error('Error completing maintenance:', err);
       setError(err.message || 'An error occurred while marking as complete');
@@ -323,40 +319,61 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
   const beforeImageUrl = getBeforeImageUrl();
   const afterImageUrl = getAfterImageUrl();
+  
+  // Debug assigned user data
+  console.log('🔍 [CLIENT] Debug assigned_to data:', {
+    assigned_to: maintenanceData.assigned_to,
+    assigned_to_type: typeof maintenanceData.assigned_to,
+    assigned_to_details: maintenanceData.assigned_to_details,
+    has_assigned_to_details: !!maintenanceData.assigned_to_details
+  });
+  
   const assignedUserInfo = useMemo(() => {
+    console.log('🔍 [CLIENT] Computing assignedUserInfo...');
+    
     if (maintenanceData.assigned_to_details) {
+      console.log('✅ [CLIENT] Has assigned_to_details:', maintenanceData.assigned_to_details);
       const details = maintenanceData.assigned_to_details;
       const combinedName = [
         details.full_name,
         [details.first_name, details.last_name].filter(Boolean).join(' ').trim(),
         details.username,
       ].find((value) => value && value.length > 0);
-      return {
+      const result = {
         display: combinedName || `User #${details.id}`,
         email: details.email,
       };
+      console.log('✅ [CLIENT] Returning user info from details:', result);
+      return result;
     }
 
     const assignee = maintenanceData.assigned_to as any;
     if (assignee && typeof assignee === 'object') {
+      console.log('✅ [CLIENT] Has assigned_to object:', assignee);
       const combinedName = [
         assignee.full_name,
         [assignee.first_name, assignee.last_name].filter(Boolean).join(' ').trim(),
         assignee.username,
       ].find((value: string | undefined) => value && value.length > 0);
-      return {
+      const result = {
         display: combinedName || (assignee.id ? `User #${assignee.id}` : 'Assigned User'),
         email: assignee.email,
       };
+      console.log('✅ [CLIENT] Returning user info from object:', result);
+      return result;
     }
 
     if (typeof maintenanceData.assigned_to === 'number' || typeof maintenanceData.assigned_to === 'string') {
-      return {
+      console.log('⚠️ [CLIENT] Has assigned_to as primitive:', maintenanceData.assigned_to);
+      const result = {
         display: `User #${maintenanceData.assigned_to}`,
         email: undefined,
       };
+      console.log('⚠️ [CLIENT] Returning user info from ID:', result);
+      return result;
     }
 
+    console.log('❌ [CLIENT] No assigned_to data found, returning null');
     return null;
   }, [maintenanceData.assigned_to, maintenanceData.assigned_to_details]);
   
@@ -1118,6 +1135,16 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             <div className="mb-4">
               <span className="font-medium text-gray-600">Property ID:</span>
               <p className="text-gray-700 mt-1">{maintenanceData.property_id}</p>
+            </div>
+          )}
+
+          {assignedUserInfo && (
+            <div className="mb-4">
+              <span className="font-medium text-gray-600">Assigned To:</span>
+              <p className="text-gray-700 mt-1">
+                {assignedUserInfo.display}
+                {assignedUserInfo.email && ` (${assignedUserInfo.email})`}
+              </p>
             </div>
           )}
 

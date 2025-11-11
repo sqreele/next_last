@@ -22,7 +22,8 @@ import {
   ChevronDown,
   Activity,
   FileText,
-  Filter
+  Filter,
+  Wrench
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -61,6 +62,7 @@ const navItems = [
   { href: '/dashboard/preventive-maintenance/dashboard', label: 'PM Dashboard', icon:Package },
   { href: '/dashboard/preventive-maintenance', label: 'PM List', icon:Activity },
   { href: '/dashboard/maintenance-tasks', label: 'Maintenance Tasks', icon: Settings },
+  { href: '/dashboard/machines', label: 'Machines', icon: Wrench },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

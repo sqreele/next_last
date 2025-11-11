@@ -117,9 +117,6 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
         const historyData = response.data.preventive_maintenances;
         console.log('🔍 [MACHINE] PM History from machine data:', historyData);
         console.log('🔍 [MACHINE] Sample PM record:', historyData[0]);
-        if (historyData[0]) {
-          console.log('🔍 [MACHINE] assigned_to_details:', historyData[0].assigned_to_details);
-        }
         // Sort by scheduled date (most recent first)
         historyData.sort((a: PMHistory, b: PMHistory) => 
           new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime()
@@ -162,7 +159,6 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
       console.log('🔍 [MACHINE] Fallback PM History count:', historyData.length);
       if (historyData[0]) {
         console.log('🔍 [MACHINE] Fallback sample record:', historyData[0]);
-        console.log('🔍 [MACHINE] Fallback assigned_to_details:', historyData[0].assigned_to_details);
       }
 
       // Sort by scheduled date (most recent first)

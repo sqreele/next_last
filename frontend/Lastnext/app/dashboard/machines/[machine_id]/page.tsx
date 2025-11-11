@@ -74,7 +74,7 @@ const getUserDisplayName = (userDetails?: {
   first_name?: string;
   last_name?: string;
   full_name?: string;
-} | null) => {
+}) => {
   if (!userDetails) return 'Unassigned';
   return userDetails.full_name || 
          [userDetails.first_name, userDetails.last_name].filter(Boolean).join(' ').trim() || 
@@ -185,13 +185,6 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';
     }
-  };
-
-  const getUserDisplayName = (userDetails: PMHistory['assigned_to_details']) => {
-    if (!userDetails) return 'Unassigned';
-    return userDetails.full_name || 
-           [userDetails.first_name, userDetails.last_name].filter(Boolean).join(' ').trim() || 
-           userDetails.username;
   };
 
   if (status === 'loading' || loading) {

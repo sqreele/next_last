@@ -445,7 +445,7 @@ class PreventiveMaintenanceService {
         } else {
           console.log('[SERVICE CREATE] procedure_template not added:', { value: data.procedure_template, isUndefined: data.procedure_template === undefined, isNull: data.procedure_template === null });
         }
-        if (data.assigned_to !== undefined && data.assigned_to !== null && data.assigned_to !== '') {
+        if (data.assigned_to !== undefined && data.assigned_to !== null) {
           formData.append('assigned_to', String(data.assigned_to));
         }
         if (data.remarks !== undefined) {
@@ -612,7 +612,7 @@ class PreventiveMaintenanceService {
         console.log('[SERVICE UPDATE] procedure_template not added:', { value: data.procedure_template, isUndefined: data.procedure_template === undefined, isNull: data.procedure_template === null });
       }
         if (data.assigned_to !== undefined) {
-          if (data.assigned_to === null || data.assigned_to === '') {
+          if (data.assigned_to === null) {
             formData.append('assigned_to', '');
           } else {
             formData.append('assigned_to', String(data.assigned_to));

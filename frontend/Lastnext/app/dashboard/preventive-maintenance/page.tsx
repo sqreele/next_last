@@ -191,18 +191,6 @@ function PreventiveMaintenanceListPageContent() {
     }
   }, [selectedProperty]);
 
-  // Count PM items matching selected property
-  const matchingPMItems = useMemo(() => {
-    return sortedItems.filter(item => verifyPMProperty(item).matches);
-  }, [sortedItems, verifyPMProperty]);
-
-  const mismatchedPMItems = useMemo(() => {
-    return sortedItems.filter(item => {
-      const verification = verifyPMProperty(item);
-      return !verification.matches && verification.totalMachines > 0;
-    });
-  }, [sortedItems, verifyPMProperty]);
-
   // Enhanced stats calculation
   const stats = useMemo((): Stats => {
     const completed = maintenanceItems.filter(item => item.completed_date).length;
@@ -267,6 +255,18 @@ function PreventiveMaintenanceListPageContent() {
     
     return sorted;
   }, [maintenanceItems, sortBy, sortOrder]);
+
+  // Count PM items matching selected property (must be after sortedItems)
+  const matchingPMItems = useMemo(() => {
+    return sortedItems.filter(item => verifyPMProperty(item).matches);
+  }, [sortedItems, verifyPMProperty]);
+
+  const mismatchedPMItems = useMemo(() => {
+    return sortedItems.filter(item => {
+      const verification = verifyPMProperty(item);
+      return !verification.matches && verification.totalMachines > 0;
+    });
+  }, [sortedItems, verifyPMProperty]);
 
   // Utility function to get machine name by ID
   const getMachineNameById = useCallback((machineId: string) => {

@@ -42,3 +42,4 @@ urllib3==2.2.3
 django-dbbackup==4.2.1
 django-filter==25.1
 python-dotenv==1.0.1
+qrcode[pil]==7.4.2

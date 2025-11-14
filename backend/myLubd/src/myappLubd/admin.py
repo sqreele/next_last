@@ -32,8 +32,12 @@ from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from datetime import timedelta
 from django.http import HttpResponse
+from django.urls import reverse, path
+from django.conf import settings
 import csv
 from io import BytesIO
+import qrcode
+import base64
 from .models import (
     Property,
     Room,
@@ -256,7 +260,7 @@ class MachineAdmin(admin.ModelAdmin):
     ]
     list_filter = ['status', 'category', 'brand', 'property', 'created_at', 'installation_date']
     search_fields = ['machine_id', 'name', 'brand', 'serial_number', 'description', 'location']
-    readonly_fields = ['created_at', 'updated_at', 'next_maintenance_date']  # Removed machine_id - now editable
+    readonly_fields = ['created_at', 'updated_at', 'next_maintenance_date', 'qr_code_preview']  # Removed machine_id - now editable
     filter_horizontal = ['preventive_maintenances']
     
     fieldsets = (
@@ -265,6 +269,10 @@ class MachineAdmin(admin.ModelAdmin):
         }),
         ('Property & Maintenance', {
             'fields': ('property', 'preventive_maintenances', 'installation_date', 'last_maintenance_date')
+        }),
+        ('QR Code', {
+            'fields': ('qr_code_preview',),
+            'description': 'QR code for quick access to this machine\'s details page'
         }),
         ('Timestamps', {
             'classes': ('collapse',),
@@ -299,13 +307,160 @@ class MachineAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('property').prefetch_related('preventive_maintenances')
 
-    actions = ['schedule_maintenance']
+    def get_machine_url(self, obj):
+        """Generate the frontend URL for this machine"""
+        if not obj or not obj.machine_id:
+            return ''
+        frontend_url = getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:3000')
+        return f"{frontend_url}/dashboard/machines/{obj.machine_id}"
+
+    def qr_code_preview(self, obj):
+        """Display QR code preview in admin"""
+        if not obj or not obj.machine_id:
+            return format_html('<p style="color: #999;">Save the machine first to generate QR code</p>')
+        
+        try:
+            machine_url = self.get_machine_url(obj)
+            if not machine_url:
+                return format_html('<p style="color: #999;">Unable to generate QR code</p>')
+            
+            # Generate QR code
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_H,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(machine_url)
+            qr.make(fit=True)
+            
+            # Create image
+            img = qr.make_image(fill_color="black", back_color="white")
+            
+            # Convert to base64 for display
+            buffer = BytesIO()
+            img.save(buffer, format='PNG')
+            img_str = base64.b64encode(buffer.getvalue()).decode()
+            
+            # Generate download link
+            download_url = reverse('admin:machine_qr_code_download', args=[obj.pk])
+            
+            return format_html(
+                '<div style="text-align: center; padding: 20px;">'
+                '<img src="data:image/png;base64,{}" style="max-width: 200px; border: 2px solid #ddd; padding: 10px; background: white;" /><br/>'
+                '<p style="margin-top: 10px; font-size: 11px; color: #666; word-break: break-all;">{}</p>'
+                '<a href="{}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #417690; color: white; text-decoration: none; border-radius: 4px;">Download QR Code</a>'
+                '</div>',
+                img_str,
+                machine_url,
+                download_url
+            )
+        except Exception as e:
+            return format_html('<p style="color: red;">Error generating QR code: {}</p>', str(e))
+    qr_code_preview.short_description = 'QR Code'
+
+    def get_urls(self):
+        """Add custom URL for QR code download"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:object_id>/qr-code/download/',
+                self.admin_site.admin_view(self.download_qr_code),
+                name='machine_qr_code_download',
+            ),
+        ]
+        return custom_urls + urls
+
+    def download_qr_code(self, request, object_id):
+        """Download QR code as PNG file"""
+        try:
+            machine = Machine.objects.get(pk=object_id)
+            machine_url = self.get_machine_url(machine)
+            
+            if not machine_url:
+                return HttpResponse("Unable to generate QR code: Invalid machine URL", status=400)
+            
+            # Generate QR code
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_H,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(machine_url)
+            qr.make(fit=True)
+            
+            # Create image
+            img = qr.make_image(fill_color="black", back_color="white")
+            
+            # Save to BytesIO
+            buffer = BytesIO()
+            img.save(buffer, format='PNG')
+            buffer.seek(0)
+            
+            # Create HTTP response
+            response = HttpResponse(buffer.getvalue(), content_type='image/png')
+            response['Content-Disposition'] = f'attachment; filename="machine-{machine.machine_id}-qr-code.png"'
+            return response
+            
+        except Machine.DoesNotExist:
+            return HttpResponse("Machine not found", status=404)
+        except Exception as e:
+            return HttpResponse(f"Error generating QR code: {str(e)}", status=500)
+
+    actions = ['schedule_maintenance', 'download_qr_codes']
 
     def schedule_maintenance(self, request, queryset):
         # This would ideally redirect to a custom view for scheduling maintenance
         # For simplicity, we'll just show a message here
         self.message_user(request, f"Selected {queryset.count()} machines for maintenance scheduling. Please use the preventive maintenance section to create schedules.")
     schedule_maintenance.short_description = "Schedule maintenance for selected machines"
+
+    def download_qr_codes(self, request, queryset):
+        """Download QR codes for selected machines as a zip file"""
+        try:
+            import zipfile
+            from django.http import HttpResponse
+            
+            buffer = BytesIO()
+            with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                for machine in queryset:
+                    if not machine.machine_id:
+                        continue
+                    
+                    machine_url = self.get_machine_url(machine)
+                    if not machine_url:
+                        continue
+                    
+                    # Generate QR code
+                    qr = qrcode.QRCode(
+                        version=1,
+                        error_correction=qrcode.constants.ERROR_CORRECT_H,
+                        box_size=10,
+                        border=4,
+                    )
+                    qr.add_data(machine_url)
+                    qr.make(fit=True)
+                    
+                    # Create image
+                    img = qr.make_image(fill_color="black", back_color="white")
+                    
+                    # Save to BytesIO
+                    img_buffer = BytesIO()
+                    img.save(img_buffer, format='PNG')
+                    img_buffer.seek(0)
+                    
+                    # Add to zip
+                    zip_file.writestr(f"machine-{machine.machine_id}-qr-code.png", img_buffer.getvalue())
+            
+            buffer.seek(0)
+            response = HttpResponse(buffer.getvalue(), content_type='application/zip')
+            response['Content-Disposition'] = 'attachment; filename="machine-qr-codes.zip"'
+            return response
+            
+        except Exception as e:
+            self.message_user(request, f"Error generating QR codes: {str(e)}", level='error')
+    download_qr_codes.short_description = "Download QR codes for selected machines"
 # Custom form for Job admin with timestamp validation
 class JobAdminForm(forms.ModelForm):
     class Meta:

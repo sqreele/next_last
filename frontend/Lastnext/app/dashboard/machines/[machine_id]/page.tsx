@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/app/lib/session.client';
 import apiClient from '@/app/lib/api-client';
@@ -19,9 +19,13 @@ import {
   FileText,
   History,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  QrCode,
+  Download,
+  Printer
 } from 'lucide-react';
 import Link from 'next/link';
+import { QRCodeSVG } from 'react-qr-code';
 
 interface Machine {
   id: number;
@@ -90,6 +94,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const qrCodeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -187,6 +192,121 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
     }
   };
 
+  // Generate machine URL for QR code
+  const getMachineUrl = () => {
+    if (typeof window !== 'undefined' && machine?.machine_id) {
+      return `${window.location.origin}/dashboard/machines/${machine.machine_id}`;
+    }
+    return '';
+  };
+
+  // Download QR code as PNG
+  const downloadQRCode = async () => {
+    if (!qrCodeRef.current || !machine) return;
+
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Get SVG element
+      const svgElement = qrCodeRef.current.querySelector('svg');
+      if (!svgElement) return;
+
+      // Convert SVG to data URL
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const svgUrl = URL.createObjectURL(svgBlob);
+
+      // Create image from SVG
+      const img = new Image();
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+
+        // Convert to blob and download
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `machine-${machine.machine_id}-qr-code.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }
+          URL.revokeObjectURL(svgUrl);
+        });
+      };
+      img.src = svgUrl;
+    } catch (error) {
+      console.error('Error downloading QR code:', error);
+    }
+  };
+
+  // Print QR code
+  const printQRCode = () => {
+    if (!qrCodeRef.current) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const qrContent = qrCodeRef.current.innerHTML;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Machine QR Code - ${machine?.machine_id}</title>
+          <style>
+            body {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              margin: 0;
+              font-family: Arial, sans-serif;
+            }
+            h1 {
+              margin-bottom: 20px;
+              color: #333;
+            }
+            .qr-container {
+              background: white;
+              padding: 20px;
+              border-radius: 8px;
+            }
+            .machine-info {
+              margin-top: 20px;
+              text-align: center;
+              color: #666;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Machine QR Code</h1>
+          <div class="qr-container">
+            ${qrContent}
+          </div>
+          <div class="machine-info">
+            <p><strong>Machine ID:</strong> ${machine?.machine_id}</p>
+            <p><strong>Name:</strong> ${machine?.name}</p>
+            <p><strong>URL:</strong> ${getMachineUrl()}</p>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
   if (status === 'loading' || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -239,6 +359,81 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
           <p className="text-gray-600 mt-1 font-mono text-sm">ID: {machine.machine_id}</p>
         </div>
       </div>
+
+      {/* QR Code Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <QrCode className="h-5 w-5" />
+            Machine QR Code
+          </CardTitle>
+          <CardDescription>
+            Scan this QR code to quickly access this machine's details
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+            <div 
+              ref={qrCodeRef}
+              className="bg-white p-4 rounded-lg border-2 border-gray-200 flex-shrink-0"
+              style={{ display: 'inline-block' }}
+            >
+              {machine?.machine_id && getMachineUrl() ? (
+                <QRCodeSVG
+                  value={getMachineUrl()}
+                  size={200}
+                  level="H"
+                  includeMargin={true}
+                  fgColor="#1f2937"
+                  bgColor="#ffffff"
+                />
+              ) : (
+                <div className="w-[200px] h-[200px] flex items-center justify-center text-gray-400">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1 space-y-4">
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Machine Information</p>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p><span className="font-medium">ID:</span> {machine.machine_id}</p>
+                  <p><span className="font-medium">Name:</span> {machine.name}</p>
+                  {machine.location && (
+                    <p><span className="font-medium">Location:</span> {machine.location}</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Quick Access URL</p>
+                <p className="text-xs text-gray-500 break-all font-mono bg-gray-50 p-2 rounded">
+                  {getMachineUrl()}
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={downloadQRCode}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download QR Code
+                </Button>
+                <Button
+                  onClick={printQRCode}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Printer className="h-4 w-4" />
+                  Print QR Code
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Machine Details */}
       <Card>

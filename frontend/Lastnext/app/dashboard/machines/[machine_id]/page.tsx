@@ -25,7 +25,26 @@ import {
   Printer
 } from 'lucide-react';
 import Link from 'next/link';
-import { QRCodeSVG } from 'react-qr-code';
+import dynamic from 'next/dynamic';
+
+// Dynamically import QRCode to avoid SSR issues
+const QRCode = dynamic(
+  () => import('react-qr-code').then((mod: any) => mod.default || mod),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-[200px] h-[200px] flex items-center justify-center text-gray-400">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    ),
+  }
+) as React.ComponentType<{
+  value: string;
+  size?: number;
+  level?: string;
+  fgColor?: string;
+  bgColor?: string;
+}>;
 
 interface Machine {
   id: number;
@@ -379,11 +398,10 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
               style={{ display: 'inline-block' }}
             >
               {machine?.machine_id && getMachineUrl() ? (
-                <QRCodeSVG
+                <QRCode
                   value={getMachineUrl()}
                   size={200}
                   level="H"
-                  includeMargin={true}
                   fgColor="#1f2937"
                   bgColor="#ffffff"
                 />

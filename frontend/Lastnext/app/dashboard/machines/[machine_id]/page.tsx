@@ -22,9 +22,13 @@ import {
   AlertCircle,
   QrCode,
   Download,
-  Printer
+  Printer,
+  AlertTriangle,
+  XCircle
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuthStore } from '@/app/lib/stores/useAuthStore';
+import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 import dynamic from 'next/dynamic';
 
 // Dynamically import QRCode to avoid SSR issues
@@ -108,12 +112,32 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
   const unwrappedParams = use(params);
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { selectedProperty } = useAuthStore();
   const [machine, setMachine] = useState<Machine | null>(null);
   const [pmHistory, setPMHistory] = useState<PMHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const qrCodeRef = useRef<HTMLDivElement>(null);
+
+  // Verify equipment location against selected property
+  const verifyMachineProperty = (): { matches: boolean; message: string } => {
+    if (!selectedProperty || !machine) {
+      return { matches: true, message: 'No property selected or machine not loaded' };
+    }
+    
+    const machinePropertyId = machine.property?.property_id;
+    const matches = machinePropertyId === selectedProperty;
+    
+    if (matches) {
+      return { matches: true, message: `Equipment is verified to be at ${machine.property?.name || 'selected property'}` };
+    } else {
+      return { 
+        matches: false, 
+        message: `Equipment is located at ${machine.property?.name || 'different property'}, not the selected property` 
+      };
+    }
+  };
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -358,6 +382,8 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
     );
   }
 
+  const propertyVerification = verifyMachineProperty();
+
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
@@ -369,15 +395,46 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Wrench className="h-6 w-6 text-blue-600" />
-            </div>
-            {machine.name}
-          </h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Wrench className="h-6 w-6 text-blue-600" />
+              </div>
+              {machine.name}
+            </h1>
+            <HeaderPropertyList />
+          </div>
           <p className="text-gray-600 mt-1 font-mono text-sm">ID: {machine.machine_id}</p>
         </div>
       </div>
+
+      {/* Property Verification Alert */}
+      {selectedProperty && machine && (
+        <Card className={propertyVerification.matches ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}>
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              {propertyVerification.matches ? (
+                <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+              ) : (
+                <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <h3 className={`font-semibold mb-1 ${propertyVerification.matches ? 'text-green-900' : 'text-orange-900'}`}>
+                  Location Verification
+                </h3>
+                <p className={`text-sm ${propertyVerification.matches ? 'text-green-800' : 'text-orange-800'}`}>
+                  {propertyVerification.message}
+                </p>
+                {!propertyVerification.matches && (
+                  <p className="text-xs text-orange-700 mt-2">
+                    This equipment belongs to a different property. Please verify the location before performing maintenance.
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* QR Code Card */}
       <Card>

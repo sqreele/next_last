@@ -21,6 +21,8 @@ interface MaintenanceListProps {
   getStatusInfo: (item: PreventiveMaintenance) => any;
   // getFrequencyText removed - frequency no longer displayed
   currentFilters: any;
+  verifyPMProperty?: (item: PreventiveMaintenance) => { matches: boolean; message: string; machinesAtProperty: number; totalMachines: number };
+  selectedProperty?: string | null;
 }
 
 const MaintenanceList: React.FC<MaintenanceListProps> = ({
@@ -37,6 +39,8 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
   getStatusInfo,
   // getFrequencyText removed
   currentFilters,
+  verifyPMProperty,
+  selectedProperty,
 }) => {
   return (
     <div className="bg-white md:border md:border-gray-200 md:rounded-lg overflow-hidden">
@@ -97,6 +101,8 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
             formatDate={formatDate}
             getMachineNames={getMachineNames}
             getStatusInfo={getStatusInfo}
+            verifyPMProperty={verifyPMProperty}
+            selectedProperty={selectedProperty}
           />
         ))}
       </div>

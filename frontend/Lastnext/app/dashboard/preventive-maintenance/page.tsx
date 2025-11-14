@@ -24,7 +24,8 @@ import LoadingState from '@/app/components/preventive/list/LoadingState';
 import EmptyState from '@/app/components/preventive/list/EmptyState';
 import ErrorDisplay from '@/app/components/preventive/list/ErrorDisplay';
 import Link from 'next/link';
-import { Filter, Plus, FileText } from 'lucide-react';
+import { Filter, Plus, FileText, CheckCircle2, AlertTriangle, XCircle, Building } from 'lucide-react';
+import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 
 // Import utility functions
 import {
@@ -145,6 +146,62 @@ function PreventiveMaintenanceListPageContent() {
     
     return options.sort((a, b) => a.name.localeCompare(b.name));
   }, [machines, maintenanceItems]);
+
+  // Verify preventive maintenance item's machines against selected property
+  const verifyPMProperty = useCallback((item: PreventiveMaintenance): { matches: boolean; message: string; machinesAtProperty: number; totalMachines: number } => {
+    if (!selectedProperty) {
+      return { matches: true, message: 'No property selected', machinesAtProperty: 0, totalMachines: 0 };
+    }
+    
+    if (!item.machines || !Array.isArray(item.machines) || item.machines.length === 0) {
+      return { matches: true, message: 'No machines assigned', machinesAtProperty: 0, totalMachines: 0 };
+    }
+    
+    // Check each machine's property
+    const machinesAtProperty = item.machines.filter((machine: any) => {
+      // Machine can have property_id directly or through property object
+      const machinePropertyId = machine.property_id || machine.property?.property_id;
+      return machinePropertyId === selectedProperty;
+    }).length;
+    
+    const totalMachines = item.machines.length;
+    const matches = machinesAtProperty === totalMachines && totalMachines > 0;
+    
+    if (matches) {
+      return { 
+        matches: true, 
+        message: `All ${totalMachines} equipment item${totalMachines !== 1 ? 's' : ''} verified at selected property`,
+        machinesAtProperty,
+        totalMachines
+      };
+    } else if (machinesAtProperty > 0) {
+      return { 
+        matches: false, 
+        message: `${machinesAtProperty} of ${totalMachines} equipment item${totalMachines !== 1 ? 's' : ''} at selected property`,
+        machinesAtProperty,
+        totalMachines
+      };
+    } else {
+      return { 
+        matches: false, 
+        message: `None of the ${totalMachines} equipment item${totalMachines !== 1 ? 's' : ''} are at the selected property`,
+        machinesAtProperty,
+        totalMachines
+      };
+    }
+  }, [selectedProperty]);
+
+  // Count PM items matching selected property
+  const matchingPMItems = useMemo(() => {
+    return sortedItems.filter(item => verifyPMProperty(item).matches);
+  }, [sortedItems, verifyPMProperty]);
+
+  const mismatchedPMItems = useMemo(() => {
+    return sortedItems.filter(item => {
+      const verification = verifyPMProperty(item);
+      return !verification.matches && verification.totalMachines > 0;
+    });
+  }, [sortedItems, verifyPMProperty]);
 
   // Enhanced stats calculation
   const stats = useMemo((): Stats => {
@@ -388,6 +445,54 @@ function PreventiveMaintenanceListPageContent() {
         onDebugMachine={handleDebugMachine}
       />
 
+      {/* Property Selection Header */}
+      <div className="container mx-auto px-4 mb-4">
+        <div className="flex items-center gap-3">
+          <HeaderPropertyList />
+          {selectedProperty && (
+            <div className="text-sm text-gray-600">
+              {matchingPMItems.length} verified • {mismatchedPMItems.length} at different property
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Property Verification Alert */}
+      {selectedProperty && mismatchedPMItems.length > 0 && (
+        <div className="container mx-auto px-4 mb-4">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-orange-900 mb-1">Location Verification</h3>
+                <p className="text-sm text-orange-800">
+                  {mismatchedPMItems.length} maintenance task{mismatchedPMItems.length !== 1 ? 's' : ''} {mismatchedPMItems.length === 1 ? 'has' : 'have'} equipment located at a different property than the selected one.
+                </p>
+                <p className="text-xs text-orange-700 mt-2">
+                  These tasks will still be displayed but may include equipment from other properties.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Property Match Confirmation */}
+      {selectedProperty && mismatchedPMItems.length === 0 && matchingPMItems.length > 0 && (
+        <div className="container mx-auto px-4 mb-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-green-900">
+                  ✓ All displayed maintenance tasks have equipment verified to be at the selected property location.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="hidden md:block container mx-auto px-4">
         <StatsCards stats={stats} />
@@ -446,6 +551,8 @@ function PreventiveMaintenanceListPageContent() {
             getMachineNames={getMachineNames}
             getStatusInfo={getStatusInfo}
             currentFilters={currentFilters}
+            verifyPMProperty={verifyPMProperty}
+            selectedProperty={selectedProperty}
           />
         )}
 

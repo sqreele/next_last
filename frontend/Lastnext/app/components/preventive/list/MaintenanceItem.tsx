@@ -3,7 +3,8 @@
 import React from 'react';
 import Link from 'next/link';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
-import { Eye, Edit, Trash2, MoreVertical, CheckCircle, AlertCircle, Clock, Calendar, Wrench, Clipboard } from 'lucide-react';
+import { Eye, Edit, Trash2, MoreVertical, CheckCircle, AlertCircle, Clock, Calendar, Wrench, Clipboard, CheckCircle2, XCircle } from 'lucide-react';
+import { Badge } from '@/app/components/ui/badge';
 
 interface MaintenanceItemProps {
   item: PreventiveMaintenance;
@@ -14,6 +15,8 @@ interface MaintenanceItemProps {
   getMachineNames: (machines: any) => string;
   getStatusInfo: (item: PreventiveMaintenance) => any;
   // getFrequencyText removed - frequency no longer displayed
+  verifyPMProperty?: (item: PreventiveMaintenance) => { matches: boolean; message: string; machinesAtProperty: number; totalMachines: number };
+  selectedProperty?: string | null;
 }
 
 const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
@@ -25,8 +28,11 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
   getMachineNames,
   getStatusInfo,
   // getFrequencyText removed
+  verifyPMProperty,
+  selectedProperty,
 }) => {
   const statusInfo = getStatusInfo(item);
+  const verification = verifyPMProperty && selectedProperty ? verifyPMProperty(item) : null;
 
   return (
     <div className="px-4 md:px-6 py-4 hover:bg-gray-50 transition-colors">
@@ -133,7 +139,27 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
               </div>
               
               <div className="text-sm text-gray-900 truncate">
-                {getMachineNames(item.machines)}
+                <div className="flex items-center gap-2">
+                  <span className="truncate">{getMachineNames(item.machines)}</span>
+                  {verification && verification.totalMachines > 0 && (
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs flex-shrink-0 ${
+                        verification.matches 
+                          ? 'bg-green-50 text-green-700 border-green-300' 
+                          : 'bg-orange-50 text-orange-700 border-orange-300'
+                      }`}
+                      title={verification.message}
+                    >
+                      {verification.matches ? (
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                      ) : (
+                        <XCircle className="h-3 w-3 mr-1" />
+                      )}
+                      {verification.machinesAtProperty}/{verification.totalMachines}
+                    </Badge>
+                  )}
+                </div>
               </div>
               
               <div className="text-sm text-gray-900">

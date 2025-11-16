@@ -25,7 +25,8 @@ import {
   Printer,
   AlertTriangle,
   XCircle,
-  FilePlus2
+  FilePlus2,
+  Hash
 } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@/app/lib/stores/mainStore';
@@ -651,62 +652,73 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
                 <div key={record.pm_id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex flex-col lg:flex-row gap-4">
                     {/* Main Info */}
-                    <div className="flex-1 space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <Link 
-                            href={`/dashboard/preventive-maintenance/${record.pm_id}`}
-                            className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors block"
-                          >
-                            {record.pmtitle || 'Untitled Maintenance'}
-                          </Link>
-                          {record.procedure_template_name && (
-                            <p className="text-sm text-gray-600 mt-1">
-                              Template: {record.procedure_template_name}
-                            </p>
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <Link 
+                              href={`/dashboard/preventive-maintenance/${record.pm_id}`}
+                              className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors block"
+                            >
+                              {record.pmtitle || 'Untitled Maintenance'}
+                            </Link>
+                            {record.procedure_template_name && (
+                              <p className="text-sm text-gray-600 mt-1">
+                                Template: {record.procedure_template_name}
+                              </p>
+                            )}
+                          </div>
+                          <Badge className={getStatusColor(record.status)}>
+                            {record.status ? record.status.replace('_', ' ').toUpperCase() : 'SCHEDULED'}
+                          </Badge>
+                        </div>
+
+                        {/* Details Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                          {record.pm_id && (
+                            <div className="flex items-center gap-2">
+                              <Hash className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs text-gray-500">PM ID</p>
+                                <p className="font-mono text-sm text-gray-900">
+                                  {record.pm_id}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-gray-500">Scheduled</p>
+                              <p className="font-medium text-gray-900">
+                                {new Date(record.scheduled_date).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+
+                          {record.completed_date && (
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs text-gray-500">Completed</p>
+                                <p className="font-medium text-green-700">
+                                  {new Date(record.completed_date).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+
+                          {record.created_by_details && (
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs text-gray-500">Created By</p>
+                                <p className="font-medium text-gray-900">
+                                  {getUserDisplayName(record.created_by_details)}
+                                </p>
+                              </div>
+                            </div>
                           )}
                         </div>
-                        <Badge className={getStatusColor(record.status)}>
-                          {record.status ? record.status.replace('_', ' ').toUpperCase() : 'SCHEDULED'}
-                        </Badge>
-                      </div>
-
-                      {/* Details Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs text-gray-500">Scheduled</p>
-                            <p className="font-medium text-gray-900">
-                              {new Date(record.scheduled_date).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-
-                        {record.completed_date && (
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                            <div>
-                              <p className="text-xs text-gray-500">Completed</p>
-                              <p className="font-medium text-green-700">
-                                {new Date(record.completed_date).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {record.created_by_details && (
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-purple-500 flex-shrink-0" />
-                            <div>
-                              <p className="text-xs text-gray-500">Created By</p>
-                              <p className="font-medium text-gray-900">
-                                {getUserDisplayName(record.created_by_details)}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
 
                       {record.notes && (
                         <div className="pt-2 border-t border-gray-200">

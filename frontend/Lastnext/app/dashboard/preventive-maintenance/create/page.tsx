@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import PreventiveMaintenanceForm from '@/app/components/preventive/PreventiveMaintenanceForm';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
-import { useUser } from '@/app/lib/stores/mainStore';
+import { useProperties, useUser } from '@/app/lib/stores/mainStore';
 
 // Create page content component that doesn't require context
 function CreatePageContent() {
@@ -14,15 +14,34 @@ function CreatePageContent() {
   const [submittedData, setSubmittedData] = useState<any>(null);
   const searchParams = useSearchParams();
   const { selectedPropertyId, setSelectedPropertyId } = useUser();
+  const { properties } = useProperties();
 
   const queryMachineId = useMemo(() => searchParams.get('machine_id') ?? undefined, [searchParams]);
   const queryPropertyId = useMemo(() => searchParams.get('property_id'), [searchParams]);
 
   useEffect(() => {
-    if (queryPropertyId && queryPropertyId !== selectedPropertyId) {
-      setSelectedPropertyId(queryPropertyId);
+    if (!queryPropertyId || queryPropertyId === selectedPropertyId) {
+      return;
     }
-  }, [queryPropertyId, selectedPropertyId, setSelectedPropertyId]);
+
+    // Wait until the user's accessible properties are loaded before attempting to sync
+    if (!properties || properties.length === 0) {
+      return;
+    }
+
+    const hasAccessToProperty = properties.some(
+      (property) => property.property_id === queryPropertyId
+    );
+
+    if (hasAccessToProperty) {
+      setSelectedPropertyId(queryPropertyId);
+    } else {
+      console.warn(
+        '[PreventiveMaintenanceCreate] Query property is not in the user property list',
+        { queryPropertyId }
+      );
+    }
+  }, [properties, queryPropertyId, selectedPropertyId, setSelectedPropertyId]);
 
   // Handle successful form submission
   const handleSuccess = (data: PreventiveMaintenance) => {

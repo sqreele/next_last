@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Vw86dKR3lSVSA2pgHUFhs2pBIPbDNlCKa83I6JC8eTZxhXehXlgbMTF8mbr9mao
+\restrict v0VGpE2Bb83sUAp5heGDcN1VJHMmr741zBcDcIeenW2bVC1g1Yywp5WQfiLUkIg
 
 -- Dumped from database version 17.7
 -- Dumped by pg_dump version 17.7
@@ -1661,6 +1661,14 @@ COPY public.django_admin_log (id, action_time, object_id, object_repr, action_fl
 554	2025-11-11 05:19:14.614335+00	12	Fire Alarm Detection System task 5 (quarterly)	1	[{"added": {}}]	16	1
 555	2025-11-11 05:21:03.508938+00	13	Fire Alarm Detection System task 6 (quarterly)	1	[{"added": {}}]	16	1
 556	2025-11-11 06:41:09.854581+00	4	Lift  Consult (monthly)	2	[{"changed": {"fields": ["Name"]}}]	16	1
+557	2025-11-16 04:20:30.955143+00	245	Job j258CF221 - Pending	3		7	1
+558	2025-11-16 04:21:55.081532+00	206	Job j2576F473 - Completed	2	[{"changed": {"fields": ["Status"]}}]	7	1
+559	2025-11-16 06:47:47.426238+00	1	Clean Filters (monthly)	2	[{"changed": {"fields": ["Required tools"]}}]	16	1
+560	2025-11-16 07:08:11.468886+00	11	Electric Fire Pump (M25478856EF)	1	[{"added": {}}]	15	1
+561	2025-11-16 07:08:33.136756+00	11	Electric Fire Pump (F25478856EF)	2	[{"changed": {"fields": ["Machine id"]}}]	15	1
+562	2025-11-16 07:10:08.805771+00	12	Jokkie pump (M254B5F0C92)	1	[{"added": {}}]	15	1
+563	2025-11-16 07:10:25.203813+00	12	Jokkie pump (J254B5F0C92)	2	[{"changed": {"fields": ["Machine id"]}}]	15	1
+564	2025-11-16 07:13:04.750107+00	13	Tranfer pump No. 1 (M2544A197EF)	1	[{"added": {}}]	15	1
 \.
 
 
@@ -1980,7 +1988,6 @@ COPY public."myappLubd_job" (id, job_id, is_defective, description, remarks, sta
 203	j25547220	f	ประตูเสียงดัง	ฉีดจาระบีขาว	completed	medium	2025-09-06 06:06:53.087+00	2025-09-06 06:06:53.087+00	2025-09-06 06:06:53.087+00	9	9	f
 204	j25C7458C	f	ยิงซิลิโคนขอบกระจกแก้ไขน้ำซึมเข้ามา	.	completed	medium	2025-09-06 11:48:11.558+00	2025-09-06 11:48:11.558+00	2025-09-06 11:48:11.558+00	11	11	f
 205	j25A8BFB2	f	เปิดฝ้าเพดานดูจุดที่มีน้ำรั่วซึมลงมาภายในห้อง พบ 1จุด	.	pending	medium	2025-09-06 11:50:41.795+00	2025-09-06 11:50:41.795+00	\N	11	11	f
-206	j2576F473	f	เปิดฝ้าเพดานดูรอยน้ำรั่วพบจุดที่น้ำรั่วซึมลงมาสองจุดคือบริเวณช่องกิวแอร์ข้างกล่องบล็อกไฟและลืมไฟระหว่างผนัง หลัง TV	.	pending	medium	2025-09-06 12:12:14.658+00	2025-09-06 12:12:14.659+00	\N	11	11	f
 207	j2581F47B	f	แก้ไขน้ำรั่วซึมเข้ามาขอบกระจก ด้วยการยิงซิลิโคนอุด	.	completed	medium	2025-09-06 13:04:53.011+00	2025-09-06 13:04:53.012+00	2025-09-06 13:04:53.012+00	11	11	f
 208	j255C4689	f	แก้ไขน้ำไหลเข้าถังพักน้ำชักโครกเบา	.	completed	medium	2025-09-06 15:15:35.138+00	2025-09-06 15:15:35.138+00	2025-09-06 15:15:35.138+00	11	11	f
 209	j256DD40F	f	เปลี่ยนอะแดปเตอร์ไดรเวอร์	.	completed	medium	2025-09-07 07:18:42.083+00	2025-09-07 07:18:42.084+00	2025-09-07 07:18:42.084+00	11	11	f
@@ -2032,7 +2039,6 @@ COPY public."myappLubd_job" (id, job_id, is_defective, description, remarks, sta
 242	j2500B3CD	f	แก้ไขไฟหลืบตกลงมา	.	completed	medium	2025-09-11 03:24:30.191+00	2025-09-11 03:24:30.192+00	2025-09-11 03:24:30.192+00	11	11	f
 243	j25033390	f	ทาสีผนังห้องน้ำรอยด่าง	.	completed	medium	2025-09-11 03:44:08.464+00	2025-09-11 03:44:08.464+00	2025-09-11 03:44:08.464+00	11	11	f
 244	j257090F0	f	ทาสีผนังห้องน้ำรอยด่าง	.	completed	medium	2025-09-11 03:47:28.085+00	2025-09-11 03:47:28.085+00	2025-09-11 03:47:28.085+00	11	11	f
-245	j258CF221	f	ขัดฝ้าเพดานแล้วรอทาสี	.	pending	medium	2025-09-11 09:04:36.646+00	2025-09-11 09:04:36.646+00	\N	11	11	f
 246	j2555EE8A	f	แก้ไขน้ำรั่วซึมลงมาจากดาดฟ้า\r\nรอทากันซึมและทาสีฝ้าเพดานภายในห้อง	.	pending	medium	2025-09-11 09:11:35.871+00	2025-09-11 09:11:35.871+00	\N	11	11	f
 247	j2549B714	f	ทาสีผนังรอยด่าง	.	completed	medium	2025-09-11 09:38:11.443+00	2025-09-11 09:38:11.443+00	2025-09-11 09:38:11.443+00	11	11	f
 248	j25E1944E	f	ทาสีผนังห้องรอยด่าง	.	completed	medium	2025-09-11 09:41:22.555+00	2025-09-11 09:41:22.555+00	2025-09-11 09:41:22.555+00	11	11	f
@@ -2691,6 +2697,8 @@ COPY public."myappLubd_job" (id, job_id, is_defective, description, remarks, sta
 920	j25E26504	f	ทาสีผนังห้องรอยด่าง	.	completed	medium	2025-11-14 09:45:04.454184+00	2025-11-14 09:45:04.454345+00	2025-11-14 09:45:04.454348+00	11	11	f
 921	j25700C0E	f	แก้ไขไฟหัวเตียงไม่ติด	.	completed	medium	2025-11-14 09:45:55.362718+00	2025-11-14 09:45:55.36284+00	2025-11-14 09:45:55.362843+00	11	11	f
 922	j25B60EDC	f	ทาสีบนฝ้าและผนังล็อบบี้	.	completed	medium	2025-11-15 12:19:08.54135+00	2025-11-15 12:19:08.541519+00	2025-11-15 12:19:08.541522+00	11	11	f
+206	j2576F473	f	เปิดฝ้าเพดานดูรอยน้ำรั่วพบจุดที่น้ำรั่วซึมลงมาสองจุดคือบริเวณช่องกิวแอร์ข้างกล่องบล็อกไฟและลืมไฟระหว่างผนัง หลัง TV	.	completed	medium	2025-09-06 12:12:14+00	2025-11-16 04:21:55.067282+00	2025-11-16 04:21:55.067291+00	11	1	f
+923	j2595CA77	f	แก้ไขฝาชักโครกโยก	.	completed	medium	2025-11-16 06:02:56.818492+00	2025-11-16 06:02:56.818623+00	2025-11-16 06:02:56.818626+00	11	11	f
 \.
 
 
@@ -2923,7 +2931,6 @@ COPY public."myappLubd_job_rooms" (id, job_id, room_id) FROM stdin;
 453	242	30
 454	243	98
 455	244	97
-456	245	115
 457	246	52
 458	247	81
 459	248	82
@@ -3592,6 +3599,7 @@ COPY public."myappLubd_job_rooms" (id, job_id, room_id) FROM stdin;
 1131	920	53
 1132	921	52
 1133	922	181
+1134	923	71
 \.
 
 
@@ -3823,7 +3831,6 @@ COPY public."myappLubd_job_topics" (id, job_id, topic_id) FROM stdin;
 451	242	5
 452	243	3
 453	244	3
-454	245	3
 455	246	8
 456	247	3
 457	248	3
@@ -4493,6 +4500,7 @@ COPY public."myappLubd_job_topics" (id, job_id, topic_id) FROM stdin;
 1129	920	3
 1130	921	5
 1131	922	3
+1132	923	2
 \.
 
 
@@ -4887,7 +4895,6 @@ COPY public."myappLubd_jobimage" (id, image, uploaded_at, job_id, uploaded_by_id
 387	maintenance_job_images/2025/09/IMG_2484.jpeg	2025-09-11 03:44:08.794+00	243	11	IMG_2484.jpg
 388	maintenance_job_images/2025/09/IMG_2486.jpeg	2025-09-11 03:47:28.157+00	244	11	IMG_2486.jpg
 389	maintenance_job_images/2025/09/IMG_2485.jpeg	2025-09-11 03:47:28.388+00	244	11	IMG_2485.jpg
-390	maintenance_job_images/2025/09/IMG_2513.jpeg	2025-09-11 09:04:36.808+00	245	11	IMG_2513.jpg
 391	maintenance_job_images/2025/09/IMG_2509.jpeg	2025-09-11 09:11:36.228+00	246	11	IMG_2509.jpg
 392	maintenance_job_images/2025/09/IMG_2517.jpeg	2025-09-11 09:38:11.524+00	247	11	IMG_2517.jpg
 393	maintenance_job_images/2025/09/IMG_2516.jpeg	2025-09-11 09:38:11.764+00	247	11	IMG_2516.jpg
@@ -5962,6 +5969,7 @@ COPY public."myappLubd_jobimage" (id, image, uploaded_at, job_id, uploaded_by_id
 1492	maintenance_job_images/2025/11/IMG_6146.jpeg	2025-11-14 09:45:55.600369+00	921	11	IMG_6146.jpg
 1493	maintenance_job_images/2025/11/IMG_6210.jpeg	2025-11-15 12:19:08.927151+00	922	11	IMG_6210.jpg
 1494	maintenance_job_images/2025/11/IMG_6205.jpeg	2025-11-15 12:19:09.218562+00	922	11	IMG_6205.jpg
+1495	maintenance_job_images/2025/11/IMG_6260.jpeg	2025-11-16 06:02:57.180968+00	923	11	IMG_6260.jpg
 \.
 
 
@@ -5980,6 +5988,9 @@ COPY public."myappLubd_machine" (id, machine_id, name, description, location, st
 6	W25D48EE74A	Washing Machine No.2		Floor 2 rd	active	2025-11-01	\N	2025-11-01 02:40:02.439703+00	2025-11-10 03:14:28.604684+00	1	LG	Laundry machine	501WSUCFA934
 9	CDU259D485D6C	CDUFL2-1	RXQ12AY1S	Floor 2 rd	active	\N	\N	2025-11-11 02:51:36.849038+00	2025-11-11 03:01:16.278775+00	1	Daikin	CDU	E008898
 10	CDU257C769BC2	CDUFL2-2	RXQ14AY1A	Floor 2 rd	active	\N	\N	2025-11-11 02:58:10.191273+00	2025-11-11 03:01:30.97885+00	1	Daikin	CDU	E004511
+11	F25478856EF	Electric Fire Pump		Gound Floor.	active	\N	\N	2025-11-16 07:08:11.447358+00	2025-11-16 07:08:33.126692+00	1	BROOK CROMPTON	Fire alarm	EN 60034/IEC34
+12	J254B5F0C92	Jokkie pump		Gound Floor.	active	\N	\N	2025-11-16 07:10:08.789683+00	2025-11-16 07:10:25.196912+00	1	Pegent	Fire alarm	9121495
+13	M2544A197EF	Tranfer pump No. 1		\N	active	\N	\N	2025-11-16 07:13:04.742908+00	2025-11-16 07:13:04.742933+00	1	Grunfosx	water	\N
 \.
 
 
@@ -5989,6 +6000,12 @@ COPY public."myappLubd_machine" (id, machine_id, name, description, location, st
 
 COPY public."myappLubd_machine_preventive_maintenances" (id, machine_id, preventivemaintenance_id) FROM stdin;
 3	1	14
+4	3	15
+5	6	15
+6	4	16
+7	5	16
+8	4	17
+9	3	18
 \.
 
 
@@ -6013,7 +6030,6 @@ COPY public."myappLubd_maintenancehistory" (id, action, notes, "timestamp", main
 --
 
 COPY public."myappLubd_maintenanceprocedure" (id, name, description, steps, estimated_duration, required_tools, safety_notes, created_at, updated_at, difficulty_level, frequency, responsible_department, category) FROM stdin;
-1	Clean Filters	Remove and clean all filters	{"notes": "Replace filters if damaged", "title": "Clean Filters", "description": "Remove and clean all filters", "estimated_time": 25, "required_tools": ["filter_wrench", "cleaning_solution"]}	10	cleaning_solution	Replace filters if damaged	2025-11-01 03:55:28.091302+00	2025-11-09 13:26:21.894577+00	intermediate	monthly	Engineer	Laundry machine
 2	Test run (on load if possible).	Test run (on load if possible).	[]	10 mins			2025-11-10 11:08:04.894419+00	2025-11-11 02:27:31.703096+00	intermediate	weekly	Enginneering	Main power
 3	Full load test. Test auto transfer switches by simulating power failure.	Full load test. Test auto transfer switches by simulating power failure.	[]	30 mins			2025-11-10 11:11:19.136662+00	2025-11-11 02:28:48.051212+00	intermediate	semi_annual	Enginneering	Main power
 5	Visually inspect functional test	Visually inspect functional test.	[]	5 mins			2025-11-11 02:32:05.234274+00	2025-11-11 02:32:05.234299+00	intermediate	monthly	Enginneering	Fire Exit Door
@@ -6026,6 +6042,7 @@ COPY public."myappLubd_maintenanceprocedure" (id, name, description, steps, esti
 12	Fire Alarm Detection System task 5	Test general alarm (action) voice/ tone bell devices during evacuation exercise.	[]	10 mins			2025-11-11 05:19:14.612636+00	2025-11-11 05:19:14.612657+00	intermediate	quarterly	Enginneering	Fire alarm
 13	Fire Alarm Detection System task 6	Test  battery back-up. (operate entire voice/ tone system for 3 minutes on emergency power)	[]	10 mins			2025-11-11 05:21:03.503795+00	2025-11-11 05:21:03.50382+00	intermediate	quarterly	Enginneering	Fire alarm
 4	Lift  Consult	Professional Independent safety inspection to be carried out by licensed contractors and/or consultants.	[]	2 hours			2025-11-10 11:13:23.002492+00	2025-11-11 06:41:09.850076+00	intermediate	monthly	Lift Inspector	Lift
+1	Clean Filters	Remove and clean all filters	{"notes": "Replace filters if damaged", "title": "Clean Filters", "description": "Remove and clean all filters", "estimated_time": 25, "required_tools": ["filter_wrench", "cleaning_solution"]}	10	cleaning solution	Replace filters if damaged	2025-11-01 03:55:28.091302+00	2025-11-16 06:47:47.42045+00	intermediate	monthly	Engineer	Laundry machine
 \.
 
 
@@ -6051,6 +6068,10 @@ COPY public."myappLubd_maintenancetaskimage" (id, image_type, image_url, jpeg_pa
 
 COPY public."myappLubd_preventivemaintenance" (id, pm_id, scheduled_date, completed_date, frequency, custom_days, next_due_date, notes, updated_at, after_image, before_image, created_by_id, pmtitle, job_id, procedure, after_image_jpeg_path, before_image_jpeg_path, actual_duration, completed_by_id, completion_notes, estimated_duration, priority, quality_score, status, verification_date, verified_by_id, procedure_template_id, assigned_to_id, remarks) FROM stdin;
 14	pm25EED33E	2025-11-11 02:00:00+00	\N	monthly	\N	\N		2025-11-11 02:38:26.016891+00	maintenance_pm_images/2025/11/S__57589763.jpg	maintenance_pm_images/2025/11/S__57597955.jpg	1	Professional Independent safety inspection to be carried out by licensed contractors and/or consultants.	\N		\N	\N	\N	\N	\N	\N	medium	\N	pending	\N	\N	4	\N	\N
+15	pm25E9C798	2025-11-16 02:00:00+00	2025-11-16 07:53:00+00	monthly	\N	2025-12-16 07:53:00+00		2025-11-16 07:55:02.862871+00	maintenance_pm_images/2025/11/IMG_6267.jpeg	maintenance_pm_images/2025/11/IMG_6264.jpeg	11	Clean Filters	\N		\N	\N	\N	\N	\N	\N	medium	\N	pending	\N	\N	1	\N	\N
+16	pm25D766C4	2025-11-16 02:00:00+00	\N	monthly	\N	\N		2025-11-16 07:56:20.356872+00	maintenance_pm_images/2025/11/IMG_6267_7YzPCRH.jpeg	maintenance_pm_images/2025/11/IMG_6263.jpeg	11	Clean Filters	\N		\N	\N	\N	\N	\N	\N	medium	\N	pending	\N	\N	1	\N	\N
+17	pm25DC2023	2025-11-16 02:00:00+00	\N	monthly	\N	\N		2025-11-16 07:58:42.68945+00	maintenance_pm_images/2025/11/IMG_6268.jpeg	maintenance_pm_images/2025/11/IMG_6265.jpeg	11	Clean Filters	\N		\N	\N	\N	\N	\N	\N	medium	\N	pending	\N	\N	1	\N	\N
+18	pm256C8B13	2025-11-16 02:00:00+00	\N	monthly	\N	\N		2025-11-16 07:59:25.304778+00	maintenance_pm_images/2025/11/IMG_6267_vKEl7pw.jpeg	maintenance_pm_images/2025/11/IMG_6266.jpeg	11	Clean Filters	\N		\N	\N	\N	\N	\N	\N	medium	\N	pending	\N	\N	1	\N	\N
 \.
 
 
@@ -6601,7 +6622,7 @@ SELECT pg_catalog.setval('public.auth_permission_id_seq', 88, true);
 -- Name: django_admin_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public.django_admin_log_id_seq', 556, true);
+SELECT pg_catalog.setval('public.django_admin_log_id_seq', 564, true);
 
 
 --
@@ -6622,42 +6643,42 @@ SELECT pg_catalog.setval('public.django_migrations_id_seq', 55, true);
 -- Name: myappLubd_job_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_id_seq"', 922, true);
+SELECT pg_catalog.setval('public."myappLubd_job_id_seq"', 923, true);
 
 
 --
 -- Name: myappLubd_job_rooms_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_rooms_id_seq"', 1133, true);
+SELECT pg_catalog.setval('public."myappLubd_job_rooms_id_seq"', 1134, true);
 
 
 --
 -- Name: myappLubd_job_topics_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_topics_id_seq"', 1131, true);
+SELECT pg_catalog.setval('public."myappLubd_job_topics_id_seq"', 1132, true);
 
 
 --
 -- Name: myappLubd_jobimage_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_jobimage_id_seq"', 1494, true);
+SELECT pg_catalog.setval('public."myappLubd_jobimage_id_seq"', 1495, true);
 
 
 --
 -- Name: myappLubd_machine_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_machine_id_seq"', 10, true);
+SELECT pg_catalog.setval('public."myappLubd_machine_id_seq"', 13, true);
 
 
 --
 -- Name: myappLubd_machine_preventive_maintenances_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_machine_preventive_maintenances_id_seq"', 3, true);
+SELECT pg_catalog.setval('public."myappLubd_machine_preventive_maintenances_id_seq"', 9, true);
 
 
 --
@@ -6699,7 +6720,7 @@ SELECT pg_catalog.setval('public."myappLubd_maintenancetaskimage_id_seq"', 1, fa
 -- Name: myappLubd_preventivemaintenance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_preventivemaintenance_id_seq"', 14, true);
+SELECT pg_catalog.setval('public."myappLubd_preventivemaintenance_id_seq"', 18, true);
 
 
 --
@@ -8423,5 +8444,5 @@ ALTER TABLE ONLY public."myappLubd_userprofile"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Vw86dKR3lSVSA2pgHUFhs2pBIPbDNlCKa83I6JC8eTZxhXehXlgbMTF8mbr9mao
+\unrestrict v0VGpE2Bb83sUAp5heGDcN1VJHMmr741zBcDcIeenW2bVC1g1Yywp5WQfiLUkIg
 

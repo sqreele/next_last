@@ -55,6 +55,9 @@ export function usePreventiveMaintenanceJobs({
   initialJobs = [],
   isPM = true // Default to true since this is specifically for PM jobs
 }: UsePreventiveMaintenanceJobsOptions) {
+  // Stabilize initialJobs to prevent useEffect dependency thrashing when callers don't pass it
+  const initialJobsMemo = useMemo(() => initialJobs, []);
+  const hasInitialJobs = !!(initialJobsMemo && initialJobsMemo.length > 0);
   // Get session for authentication
   const { data: session } = useSession();
   
@@ -299,18 +302,17 @@ export function usePreventiveMaintenanceJobs({
   }, [propertyId, limit, autoLoad, initialJobs, isPM, cacheKey, checkPropertyPMStatus, setJobs, setLoading, setError, setLastLoadTime, createAuthConfig]);
 
   useEffect(() => {
-    if (autoLoad) {
-      debug(`Auto-loading jobs (initialJobs=${initialJobs.length})`);
-      if (initialJobs.length === 0) {
-        loadJobs();
-      } else {
-        setJobs(initialJobs);
-        const now = new Date();
-        setLastLoadTime(now.getTime());
-        lastLoadTimeRef.current = now;
-      }
+    if (!autoLoad) return;
+    debug(`Auto-loading jobs (initialJobs=${hasInitialJobs ? initialJobsMemo.length : 0})`);
+    if (hasInitialJobs) {
+      setJobs(initialJobsMemo);
+      const now = new Date();
+      setLastLoadTime(now.getTime());
+      lastLoadTimeRef.current = now;
+    } else {
+      loadJobs();
     }
-  }, [autoLoad, initialJobs, loadJobs, setJobs, setLastLoadTime]);
+  }, [autoLoad, hasInitialJobs, initialJobsMemo, loadJobs, setJobs, setLastLoadTime]);
 
   const updateJob = useCallback((updatedJob: Job) => {
     debug(`Updating job ${updatedJob.job_id}`);

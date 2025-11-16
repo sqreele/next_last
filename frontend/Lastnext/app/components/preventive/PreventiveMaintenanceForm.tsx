@@ -14,7 +14,6 @@ import {
   getPropertyDetails,
   MachineDetails, // Import MachineDetails
 } from '@/app/lib/preventiveMaintenanceModels';
-import apiClient from '@/app/lib/api-client';
 import FileUpload from '@/app/components/jobs/FileUpload';
 import { useToast } from '@/app/lib/hooks/use-toast';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
@@ -26,6 +25,7 @@ import { preventiveMaintenanceService,
 } from '@/app/lib/PreventiveMaintenanceService';
 import TopicService from '@/app/lib/TopicService';
 import MachineService from '@/app/lib/MachineService';
+import { fetchAllMaintenanceProcedures, type MaintenanceProcedureTemplate } from '@/app/lib/maintenanceProcedures';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface PreventiveMaintenanceFormProps {
@@ -52,6 +52,15 @@ interface FormValues {
   procedure_template: number | ''; // Maintenance task template ID (empty string for "none")
   assigned_to: string;
 }
+
+type MaintenanceTaskOption = {
+  id: number;
+  name: string;
+  category?: string;
+  frequency: string;
+  difficulty_level: string;
+  responsible_department?: string;
+};
 
 const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   pmId,
@@ -88,14 +97,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
   const [availableMachines, setAvailableMachines] = useState<MachineDetails[]>([]);
-  const [availableMaintenanceTasks, setAvailableMaintenanceTasks] = useState<Array<{
-    id: number, 
-    name: string,
-    category?: string,
-    frequency: string,
-    difficulty_level: string,
-    responsible_department?: string
-  }>>([]);
+  const [availableMaintenanceTasks, setAvailableMaintenanceTasks] = useState<MaintenanceTaskOption[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -516,24 +518,17 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const fetchAvailableMaintenanceTasks = useCallback(async () => {
     setLoadingMaintenanceTasks(true);
     try {
-      const response = await apiClient.get('/api/v1/maintenance-procedures/');
-      
-      // Handle both array and paginated response
-      let tasksData: any[] = [];
-      if (Array.isArray(response.data)) {
-        tasksData = response.data;
-      } else if (response.data && 'results' in response.data) {
-        tasksData = response.data.results || [];
-      }
-      
-      setAvailableMaintenanceTasks(tasksData.map((task) => ({
-        id: task.id,
-        name: task.name,
-        category: task.category || undefined,
-        frequency: task.frequency || 'N/A',
-        difficulty_level: task.difficulty_level || 'N/A',
-        responsible_department: task.responsible_department || undefined
-      })));
+      const tasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
+      setAvailableMaintenanceTasks(
+        tasks.map<MaintenanceTaskOption>((task: MaintenanceProcedureTemplate) => ({
+          id: task.id,
+          name: task.name,
+          category: task.category ?? undefined,
+          frequency: task.frequency || 'N/A',
+          difficulty_level: task.difficulty_level || 'N/A',
+          responsible_department: task.responsible_department ?? undefined,
+        }))
+      );
     } catch (err: any) {
       console.error('Error fetching maintenance tasks:', err);
       setAvailableMaintenanceTasks([]);

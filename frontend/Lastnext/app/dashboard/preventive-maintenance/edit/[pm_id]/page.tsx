@@ -10,7 +10,6 @@ import { PreventiveMaintenance, FrequencyType } from '@/app/lib/preventiveMainte
 import { UpdatePreventiveMaintenanceData } from '@/app/lib/PreventiveMaintenanceService';
 import { PreviewImage } from '@/app/components/ui/UniversalImage';
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
-import apiClient from '@/app/lib/api-client';
 import { 
   Calendar, 
   Save, 
@@ -23,6 +22,7 @@ import {
   Trash2,
   ArrowLeft
 } from 'lucide-react';
+import { fetchAllMaintenanceProcedures, type MaintenanceProcedureTemplate } from '@/app/lib/maintenanceProcedures';
 
 interface FormState {
   pmtitle: string;
@@ -47,6 +47,15 @@ interface FormErrors {
   custom_days?: string;
   general?: string;
 }
+
+type MaintenanceTaskOption = {
+  id: number;
+  name: string;
+  category?: string;
+  frequency: string;
+  difficulty_level: string;
+  responsible_department?: string;
+};
 
 export default function EditPreventiveMaintenancePage() {
   const router = useRouter();
@@ -82,46 +91,34 @@ export default function EditPreventiveMaintenancePage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [availableMaintenanceTasks, setAvailableMaintenanceTasks] = useState<Array<{ 
-    id: number; 
-    name: string;
-    category?: string;
-    frequency: string;
-    difficulty_level: string;
-    responsible_department?: string;
-  }>>([]);
+  const [availableMaintenanceTasks, setAvailableMaintenanceTasks] = useState<MaintenanceTaskOption[]>([]);
   const [loadingMaintenanceTasks, setLoadingMaintenanceTasks] = useState(false);
 
   // Load available maintenance tasks
-  useEffect(() => {
-    const fetchAvailableMaintenanceTasks = async () => {
-      setLoadingMaintenanceTasks(true);
-      try {
-        const response = await apiClient.get('/api/v1/maintenance-procedures/');
-        let tasks = [];
-        if (Array.isArray(response.data)) {
-          tasks = response.data;
-        } else if (response.data && 'results' in response.data) {
-          tasks = response.data.results || [];
+    useEffect(() => {
+      const fetchAvailableMaintenanceTasks = async () => {
+        setLoadingMaintenanceTasks(true);
+        try {
+          const tasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
+          setAvailableMaintenanceTasks(
+            tasks.map<MaintenanceTaskOption>((task: MaintenanceProcedureTemplate) => ({
+              id: task.id,
+              name: task.name,
+              category: task.category ?? undefined,
+              frequency: task.frequency || 'N/A',
+              difficulty_level: task.difficulty_level || 'N/A',
+              responsible_department: task.responsible_department ?? undefined,
+            }))
+          );
+        } catch (err: any) {
+          console.error('Error fetching maintenance tasks:', err);
+          setAvailableMaintenanceTasks([]);
+        } finally {
+          setLoadingMaintenanceTasks(false);
         }
-        
-        // Map tasks to include relevant fields
-        setAvailableMaintenanceTasks(tasks.map((task: any) => ({
-          id: task.id,
-          name: task.name,
-          category: task.category || undefined,
-          frequency: task.frequency || 'N/A',
-          difficulty_level: task.difficulty_level || 'N/A',
-          responsible_department: task.responsible_department || undefined
-        })));
-      } catch (err: any) {
-        console.error('Error fetching maintenance tasks:', err);
-      } finally {
-        setLoadingMaintenanceTasks(false);
-      }
-    };
-    fetchAvailableMaintenanceTasks();
-  }, []);
+      };
+      fetchAvailableMaintenanceTasks();
+    }, []);
 
   // Load maintenance data
   useEffect(() => {

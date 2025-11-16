@@ -24,10 +24,11 @@ import {
   Download,
   Printer,
   AlertTriangle,
-  XCircle
+  XCircle,
+  FilePlus2
 } from 'lucide-react';
 import Link from 'next/link';
-import { useAuthStore } from '@/app/lib/stores/useAuthStore';
+import { useUser } from '@/app/lib/stores/mainStore';
 import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 import dynamic from 'next/dynamic';
 
@@ -112,7 +113,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
   const unwrappedParams = use(params);
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { selectedProperty } = useAuthStore();
+  const { selectedPropertyId: selectedProperty } = useUser();
   const [machine, setMachine] = useState<Machine | null>(null);
   const [pmHistory, setPMHistory] = useState<PMHistory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -383,28 +384,43 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
   }
 
   const propertyVerification = verifyMachineProperty();
+  const createPreventiveLink = machine
+    ? `/dashboard/preventive-maintenance/create?machine_id=${encodeURIComponent(machine.machine_id)}${
+        machine.property?.property_id ? `&property_id=${encodeURIComponent(machine.property.property_id)}` : ''
+      }`
+    : '/dashboard/preventive-maintenance/create';
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button asChild variant="outline" size="sm">
-          <Link href="/dashboard/machines">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Link>
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Wrench className="h-6 w-6 text-blue-600" />
-              </div>
-              {machine.name}
-            </h1>
-            <HeaderPropertyList />
+      <div className="flex flex-col lg:flex-row lg:items-start gap-4">
+        <div className="flex items-center gap-4 flex-1">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/dashboard/machines">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Link>
+          </Button>
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Wrench className="h-6 w-6 text-blue-600" />
+                </div>
+                {machine.name}
+              </h1>
+              <HeaderPropertyList />
+            </div>
+            <p className="text-gray-600 mt-1 font-mono text-sm">ID: {machine.machine_id}</p>
           </div>
-          <p className="text-gray-600 mt-1 font-mono text-sm">ID: {machine.machine_id}</p>
+        </div>
+        <div className="flex items-center gap-2 self-start">
+          <Button asChild size="sm">
+            <Link href={createPreventiveLink}>
+              <FilePlus2 className="h-4 w-4 mr-2" />
+              Create Preventive Maintenance
+            </Link>
+          </Button>
         </div>
       </div>
 

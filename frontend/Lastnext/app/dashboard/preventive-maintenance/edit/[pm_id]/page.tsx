@@ -454,23 +454,25 @@ export default function EditPreventiveMaintenancePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-gray-600">Loading maintenance record...</span>
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600"></div>
+          <span className="text-sm sm:text-base text-gray-600">Loading maintenance record...</span>
+        </div>
       </div>
     );
   }
 
   if (!maintenance) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Maintenance Record Not Found</h2>
-          <p className="text-gray-600 mb-6">The maintenance record you're looking for doesn't exist or you don't have permission to edit it.</p>
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">Maintenance Record Not Found</h2>
+          <p className="text-sm sm:text-base text-gray-600 mb-6">The maintenance record you're looking for doesn't exist or you don't have permission to edit it.</p>
           <Link
             href="/dashboard/preventive-maintenance"
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="inline-flex items-center justify-center px-4 py-3 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 touch-target min-h-[44px] text-sm sm:text-base"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -481,24 +483,24 @@ export default function EditPreventiveMaintenancePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="flex-1">
           <button
             onClick={() => handleNavigation(`/dashboard/preventive-maintenance/${pmId}`)}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-2"
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-2 text-sm sm:text-base touch-target min-h-[44px]"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Details
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Edit Maintenance</h1>
-          <p className="text-gray-600">ID: {pmId}</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Edit Maintenance</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">ID: {pmId}</p>
         </div>
         
         <div className="flex items-center space-x-3">
           {isDirty && (
-            <span className="text-sm text-orange-600 flex items-center">
+            <span className="text-xs sm:text-sm text-orange-600 flex items-center">
               <Clock className="h-4 w-4 mr-1" />
               Unsaved changes
             </span>
@@ -508,15 +510,15 @@ export default function EditPreventiveMaintenancePage() {
 
       {/* Error Display */}
       {(contextError || errors.general) && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start">
-            <AlertCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
-            <div>
-              <p className="text-red-700 font-medium">{contextError || errors.general}</p>
-              <p className="text-red-600 text-sm mt-2">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="flex items-start gap-2 sm:gap-3">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-red-700 font-medium text-sm sm:text-base break-words">{contextError || errors.general}</p>
+              <p className="text-red-600 text-xs sm:text-sm mt-2">
                 Troubleshooting:
               </p>
-              <ul className="text-red-600 text-sm mt-1 ml-4 list-disc space-y-1">
+              <ul className="text-red-600 text-xs sm:text-sm mt-1 ml-4 list-disc space-y-1">
                 <li>Check if the PM ID exists in the database</li>
                 <li>Verify the PM ID is correct (should start with "PM")</li>
                 <li>Make sure you have permission to edit this record</li>
@@ -528,47 +530,47 @@ export default function EditPreventiveMaintenancePage() {
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+        <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6">
           {/* Basic Information */}
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Basic Information</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                   Title *
                 </label>
                 <input
                   type="text"
                   value={formState.pmtitle}
                   onChange={(e) => handleInputChange('pmtitle', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  className={`w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.pmtitle ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Enter maintenance title"
                 />
                 {errors.pmtitle && (
-                  <p className="mt-1 text-sm text-red-600">{errors.pmtitle}</p>
+                  <p className="mt-1 text-xs sm:text-sm text-red-600">{errors.pmtitle}</p>
                 )}
               </div>
 
               {/* Scheduled Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                   Scheduled Date *
                 </label>
                 <input
                   type="datetime-local"
                   value={formState.scheduled_date}
                   onChange={(e) => handleInputChange('scheduled_date', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  className={`w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target ${
                     errors.scheduled_date ? 'border-red-300' : 'border-gray-300'
                   }`}
                 />
                 {errors.scheduled_date && (
-                  <p className="mt-1 text-sm text-red-600">{errors.scheduled_date}</p>
+                  <p className="mt-1 text-xs sm:text-sm text-red-600">{errors.scheduled_date}</p>
                 )}
               </div>
 
@@ -628,14 +630,14 @@ export default function EditPreventiveMaintenancePage() {
 
               {/* Completed Date */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                   Completed Date
                 </label>
                 <input
                   type="datetime-local"
                   value={formState.completed_date}
                   onChange={(e) => handleInputChange('completed_date', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target"
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   Leave empty if not completed yet
@@ -644,9 +646,9 @@ export default function EditPreventiveMaintenancePage() {
 
               {/* Maintenance Task Template */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  Maintenance Task Template
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2 flex items-center gap-2">
+                  <Settings className="h-4 w-4 flex-shrink-0" />
+                  <span className="flex-1">Maintenance Task Template</span>
                   {loadingMaintenanceTasks && <span className="text-xs text-gray-500">(Loading...)</span>}
                 </label>
                 <select
@@ -655,7 +657,7 @@ export default function EditPreventiveMaintenancePage() {
                     const value = e.target.value;
                     handleInputChange('procedure_template', value === '' ? '' : Number(value));
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target"
                 >
                   <option value="">No Template (Optional)</option>
                   {availableMaintenanceTasks.map((task) => (
@@ -671,15 +673,15 @@ export default function EditPreventiveMaintenancePage() {
             </div>
 
             {/* Notes */}
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="mt-4 sm:mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                 Notes
               </label>
               <textarea
                 value={formState.notes}
                 onChange={(e) => handleInputChange('notes', e.target.value)}
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
                 placeholder="Enter maintenance notes..."
               />
             </div>
@@ -712,13 +714,13 @@ export default function EditPreventiveMaintenancePage() {
           )}
 
           {/* Image Upload */}
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Images</h2>
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Images</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Before Image */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                   Before Image
                 </label>
                 
@@ -727,7 +729,7 @@ export default function EditPreventiveMaintenancePage() {
                     <PreviewImage
                       src={formState.before_image_preview}
                       alt="Before maintenance"
-                      className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                      className="w-full h-40 sm:h-48 object-cover rounded-lg border border-gray-300"
                       width={400}
                       height={192}
                       onLoad={() => console.log('[EDIT FORM] Before image loaded successfully')}
@@ -739,17 +741,18 @@ export default function EditPreventiveMaintenancePage() {
                     <button
                       type="button"
                       onClick={() => removeImage('before')}
-                      className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                      className="absolute top-2 right-2 p-2 sm:p-1 bg-red-600 text-white rounded-full hover:bg-red-700 touch-target min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
+                      aria-label="Remove before image"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
                 ) : (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
+                    <ImageIcon className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
                     <div className="mt-2">
-                      <label className="cursor-pointer">
-                        <span className="text-blue-600 hover:text-blue-700">Upload image</span>
+                      <label className="cursor-pointer touch-feedback">
+                        <span className="text-blue-600 hover:text-blue-700 text-sm sm:text-base inline-block py-2 px-4 rounded-md hover:bg-blue-50 touch-target min-h-[44px] flex items-center justify-center">Upload image</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -765,7 +768,7 @@ export default function EditPreventiveMaintenancePage() {
 
               {/* After Image */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                   After Image
                 </label>
                 
@@ -774,7 +777,7 @@ export default function EditPreventiveMaintenancePage() {
                     <PreviewImage
                       src={formState.after_image_preview}
                       alt="After maintenance"
-                      className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                      className="w-full h-40 sm:h-48 object-cover rounded-lg border border-gray-300"
                       width={400}
                       height={192}
                       onLoad={() => console.log('[EDIT FORM] After image loaded successfully')}
@@ -786,17 +789,18 @@ export default function EditPreventiveMaintenancePage() {
                     <button
                       type="button"
                       onClick={() => removeImage('after')}
-                      className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                      className="absolute top-2 right-2 p-2 sm:p-1 bg-red-600 text-white rounded-full hover:bg-red-700 touch-target min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center"
+                      aria-label="Remove after image"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   </div>
                 ) : (
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
+                    <ImageIcon className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
                     <div className="mt-2">
-                      <label className="cursor-pointer">
-                        <span className="text-blue-600 hover:text-blue-700">Upload image</span>
+                      <label className="cursor-pointer touch-feedback">
+                        <span className="text-blue-600 hover:text-blue-700 text-sm sm:text-base inline-block py-2 px-4 rounded-md hover:bg-blue-50 touch-target min-h-[44px] flex items-center justify-center">Upload image</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -813,20 +817,20 @@ export default function EditPreventiveMaintenancePage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row justify-between gap-4 pt-6 border-t border-gray-200">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={() => handleNavigation('/dashboard/preventive-maintenance')}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 touch-target min-h-[44px]"
             >
               Cancel
             </button>
 
-            <div className="flex space-x-3">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => handleNavigation(`/dashboard/preventive-maintenance/${pmId}`)}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 touch-target min-h-[44px]"
               >
                 View Details
               </button>
@@ -834,7 +838,7 @@ export default function EditPreventiveMaintenancePage() {
               <button
                 type="submit"
                 disabled={isSubmitting || !isDirty}
-                className={`flex items-center px-6 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                className={`flex items-center justify-center w-full sm:w-auto px-6 py-3 sm:py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-target min-h-[44px] ${
                   isSubmitting || !isDirty
                     ? 'bg-gray-400 text-white cursor-not-allowed'
                     : 'bg-blue-600 text-white hover:bg-blue-700'

@@ -52,7 +52,8 @@ from .models import (
     MaintenanceTaskImage,
     MaintenanceChecklist,
     MaintenanceHistory,
-    MaintenanceSchedule
+    MaintenanceSchedule,
+    UtilityConsumption
 )
 
 # Custom User Admin to show Google OAuth information
@@ -1941,3 +1942,47 @@ class MaintenanceScheduleAdmin(admin.ModelAdmin):
             'fields': ('total_occurrences',)
         }),
     )
+
+
+@admin.register(UtilityConsumption)
+class UtilityConsumptionAdmin(admin.ModelAdmin):
+    list_display = [
+        'id',
+        'property',
+        'month',
+        'year',
+        'totalkwh',
+        'onpeakkwh',
+        'offpeakkwh',
+        'totalelectricity',
+        'water',
+        'nightsale',
+        'created_by',
+        'created_at',
+        'updated_at'
+    ]
+    list_filter = ['year', 'month', 'property', 'created_at']
+    search_fields = ['property__name', 'property__property_id', 'created_by__username']
+    readonly_fields = ['created_at', 'updated_at']
+    raw_id_fields = ['property', 'created_by']
+    
+    fieldsets = (
+        ('Property', {
+            'fields': ('property',)
+        }),
+        ('Period', {
+            'fields': ('month', 'year')
+        }),
+        ('Electricity Consumption', {
+            'fields': ('totalkwh', 'onpeakkwh', 'offpeakkwh', 'totalelectricity')
+        }),
+        ('Other Utilities', {
+            'fields': ('water', 'nightsale')
+        }),
+        ('Metadata', {
+            'fields': ('created_by', 'created_at', 'updated_at')
+        }),
+    )
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('property', 'created_by')

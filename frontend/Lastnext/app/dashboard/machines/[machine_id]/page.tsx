@@ -30,7 +30,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useUser } from '@/app/lib/stores/mainStore';
-import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 import dynamic from 'next/dynamic';
 
 // Dynamically import QRCode to avoid SSR issues
@@ -410,7 +409,6 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
                 </div>
                 {machine.name}
               </h1>
-              <HeaderPropertyList />
             </div>
             <p className="text-gray-600 mt-1 font-mono text-sm">ID: {machine.machine_id}</p>
           </div>
@@ -679,9 +677,12 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
                               <Hash className="h-4 w-4 text-gray-500 flex-shrink-0" />
                               <div>
                                 <p className="text-xs text-gray-500">PM ID</p>
-                                <p className="font-mono text-sm text-gray-900">
+                                <Link 
+                                  href={`/dashboard/preventive-maintenance/${record.pm_id}`}
+                                  className="font-mono text-sm text-gray-900 hover:text-blue-600 hover:underline transition-colors"
+                                >
                                   {record.pm_id}
-                                </p>
+                                </Link>
                               </div>
                             </div>
                           )}

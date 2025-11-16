@@ -1479,3 +1479,115 @@ class MaintenanceSchedule(models.Model):
     
     def __str__(self):
         return f"Schedule for {self.maintenance.pm_id}"
+
+
+class UtilityConsumption(models.Model):
+    """
+    Model for tracking utility consumption data including electricity and water
+    """
+    MONTH_CHOICES = [
+        (1, 'January'),
+        (2, 'February'),
+        (3, 'March'),
+        (4, 'April'),
+        (5, 'May'),
+        (6, 'June'),
+        (7, 'July'),
+        (8, 'August'),
+        (9, 'September'),
+        (10, 'October'),
+        (11, 'November'),
+        (12, 'December'),
+    ]
+    
+    id = models.AutoField(primary_key=True)
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='utility_consumptions',
+        null=True,
+        blank=True,
+        help_text="Property associated with this utility consumption record"
+    )
+    month = models.IntegerField(
+        choices=MONTH_CHOICES,
+        help_text="Month of consumption (1-12)"
+    )
+    year = models.IntegerField(
+        help_text="Year of consumption",
+        default=timezone.now().year
+    )
+    
+    # Electricity fields
+    totalkwh = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Total kWh consumption"
+    )
+    onpeakkwh = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="On-peak kWh consumption"
+    )
+    offpeakkwh = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Off-peak kWh consumption"
+    )
+    totalelectricity = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Total electricity cost"
+    )
+    
+    # Water field
+    water = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Water consumption (in cubic meters or units)"
+    )
+    
+    # Night sale field
+    nightsale = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Night sale revenue or consumption"
+    )
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_utility_consumptions',
+        help_text="User who created this record"
+    )
+    
+    class Meta:
+        ordering = ['-year', '-month', 'property']
+        verbose_name = 'Utility Consumption'
+        verbose_name_plural = 'Utility Consumptions'
+        unique_together = [['property', 'month', 'year']]
+        indexes = [
+            models.Index(fields=['property', 'month', 'year']),
+            models.Index(fields=['year', 'month']),
+        ]
+    
+    def __str__(self):
+        property_name = self.property.name if self.property else 'No Property'
+        return f"{property_name} - {self.get_month_display()} {self.year}"

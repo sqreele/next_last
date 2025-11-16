@@ -23,7 +23,8 @@ import {
   Activity,
   FileText,
   Filter,
-  Wrench
+  Wrench,
+  Zap
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -63,6 +64,7 @@ const navItems = [
   { href: '/dashboard/preventive-maintenance', label: 'PM List', icon:Activity },
   { href: '/dashboard/maintenance-tasks', label: 'Maintenance Tasks', icon: Settings },
   { href: '/dashboard/machines', label: 'Machines', icon: Wrench },
+  { href: '/dashboard/utility-consumption', label: 'Utility Consumption', icon: Zap },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

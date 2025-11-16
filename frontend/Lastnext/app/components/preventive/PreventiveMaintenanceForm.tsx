@@ -943,12 +943,17 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   }
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-6">
+    <div className="bg-white shadow-md rounded-lg p-3 sm:p-4 md:p-6">
       {(error || submitError) && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          <div className="flex justify-between">
-            <p className="whitespace-pre-wrap">{error || submitError}</p>
-            <button onClick={clearError} className="text-red-700" type="button" aria-label="Close error message">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4">
+          <div className="flex justify-between items-start gap-2">
+            <p className="whitespace-pre-wrap text-sm sm:text-base flex-1">{error || submitError}</p>
+            <button 
+              onClick={clearError} 
+              className="text-red-700 hover:text-red-900 text-xl sm:text-2xl leading-none min-w-[32px] min-h-[32px] flex items-center justify-center touch-target" 
+              type="button" 
+              aria-label="Close error message"
+            >
               ×
             </button>
           </div>
@@ -994,10 +999,20 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               }
             }, [pmId, selectedProperty, values.property_id, setFieldValue]);
 
+            // Auto-select machine when machineId prop is provided
+            React.useEffect(() => {
+              if (machineId && !pmId && availableMachines.length > 0) {
+                const machineExists = availableMachines.some(m => m.machine_id === machineId);
+                if (machineExists && !values.selected_machine_ids.includes(machineId)) {
+                  setFieldValue('selected_machine_ids', [machineId], false);
+                }
+              }
+            }, [machineId, pmId, availableMachines, values.selected_machine_ids, setFieldValue]);
+
             return (
-            <Form aria-label="Preventive Maintenance Form">
+            <Form aria-label="Preventive Maintenance Form" className="space-y-4 sm:space-y-6">
               {!values.property_id && !pmId && (
-                <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                <div className="mb-4 sm:mb-6 rounded-md border border-amber-200 bg-amber-50 p-3 sm:p-4 text-xs sm:text-sm text-amber-800">
                   Please select a property using the header dropdown before creating preventive maintenance tasks.
                 </div>
               )}
@@ -1008,50 +1023,50 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               <Field type="hidden" name="assigned_to" />
 
             {/* Maintenance Title */}
-            <div className="mb-6">
-              <label htmlFor="pmtitle" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="mb-4 sm:mb-6">
+              <label htmlFor="pmtitle" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                 Maintenance Title <span className="text-red-500">*</span>
               </label>
               <Field
                 type="text"
                 id="pmtitle"
                 name="pmtitle"
-                className={`w-full p-2 border rounded-md ${
+                className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.pmtitle && touched.pmtitle ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter maintenance title"
               />
-              {errors.pmtitle && touched.pmtitle && <p className="mt-1 text-sm text-red-500">{errors.pmtitle}</p>}
+              {errors.pmtitle && touched.pmtitle && <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.pmtitle}</p>}
             </div>
 
             {/* Scheduled Date */}
-            <div className="mb-6">
-              <label htmlFor="scheduled_date" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="mb-4 sm:mb-6">
+              <label htmlFor="scheduled_date" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                 Scheduled Date & Time <span className="text-red-500">*</span>
               </label>
               <Field
                 type="datetime-local"
                 id="scheduled_date"
                 name="scheduled_date"
-                className={`w-full p-2 border rounded-md ${
+                className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                   errors.scheduled_date && touched.scheduled_date ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
               {errors.scheduled_date && touched.scheduled_date && (
-                <p className="mt-1 text-sm text-red-500">{errors.scheduled_date}</p>
+                <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.scheduled_date}</p>
               )}
             </div>
 
             {/* Completed Date */}
-            <div className="mb-6">
-              <label htmlFor="completed_date" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="mb-4 sm:mb-6">
+              <label htmlFor="completed_date" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                 Completed Date & Time
               </label>
               <Field
                 type="datetime-local"
                 id="completed_date"
                 name="completed_date"
-                className="w-full p-2 border border-gray-300 rounded-md"
+                className="w-full p-2.5 sm:p-3 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -1104,8 +1119,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             )}
 
             {/* Notes */}
-            <div className="mb-6">
-              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="mb-4 sm:mb-6">
+              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                 Notes
               </label>
               <Field
@@ -1113,7 +1128,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 id="notes"
                 name="notes"
                 rows={4}
-                className="w-full p-2 border border-gray-300 rounded-md"
+                className="w-full p-2.5 sm:p-3 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
                 placeholder="Enter any notes for this maintenance task"
               />
             </div>
@@ -1136,12 +1151,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             )}
 
             {/* Machines Selection */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Machines {loadingMachines && <span className="text-xs text-gray-500">(Loading...)</span>}
               </label>
               <div
-                className={`border rounded-md p-4 max-h-60 overflow-y-auto bg-white ${
+                className={`border rounded-md p-3 sm:p-4 max-h-60 overflow-y-auto bg-white scroll-momentum ${
                   errors.selected_machine_ids && touched.selected_machine_ids ? 'border-red-500' : 'border-gray-300'
                 }`}
                 role="group"
@@ -1154,19 +1169,29 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                     <p className="ml-2 text-sm text-gray-500">Loading machines...</p>
                   </div>
-                ) : availableMachines.length > 0 ? (
-                  <div className="space-y-3">
-                    {availableMachines.map((machineItem) => (
+                ) : (() => {
+                  // Filter machines to show only the specified machine if machineId prop is provided
+                  const machinesToShow = machineId 
+                    ? availableMachines.filter(m => m.machine_id === machineId)
+                    : availableMachines;
+                  
+                  return machinesToShow.length > 0 ? (
+                  <div className="space-y-2 sm:space-y-3">
+                    {machinesToShow.map((machineItem) => {
+                      const isPreSelected = !!machineId && machineItem.machine_id === machineId;
+                      return (
                       <div key={machineItem.machine_id} className="relative">
-                        <label className="flex items-center cursor-pointer">
+                        <label className={`flex items-start sm:items-center gap-2 sm:gap-3 py-2 ${isPreSelected ? 'cursor-default' : 'cursor-pointer touch-feedback'}`}>
                           <Field name="selected_machine_ids">
                             {({ field: { value: selectedMachinesValue }, form: { setFieldValue: setMachineFieldValue } }: any) => (
                               <input
                                 type="checkbox"
-                                className="h-4 w-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                                className="h-5 w-5 sm:h-4 sm:w-4 mt-0.5 sm:mt-0 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
                                 id={`machine-${machineItem.machine_id}`}
                                 checked={selectedMachinesValue.includes(machineItem.machine_id)}
+                                disabled={isPreSelected}
                                 onChange={(e) => {
+                                  if (isPreSelected) return; // Prevent unchecking if pre-selected
                                   const currentSelection = selectedMachinesValue || [];
                                   if (e.target.checked) {
                                     setMachineFieldValue('selected_machine_ids', [
@@ -1183,30 +1208,42 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                               />
                             )}
                           </Field>
-                          <span className="ml-3 text-sm text-gray-700 flex-1">
-                            {machineItem.name} ({machineItem.machine_id})
+                          <span className={`text-sm sm:text-base flex-1 break-words ${isPreSelected ? 'text-gray-900 font-medium' : 'text-gray-700'}`}>
+                            <span className="block sm:inline">{machineItem.name}</span>
+                            <span className="block sm:inline text-xs sm:text-sm text-gray-500 font-mono">({machineItem.machine_id})</span>
+                            {isPreSelected && <span className="block sm:inline ml-0 sm:ml-2 mt-1 sm:mt-0 text-xs text-blue-600">(Pre-selected)</span>}
                           </span>
                         </label>
                         {values.selected_machine_ids.includes(machineItem.machine_id) && (
                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-full"></div>
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-gray-500 mb-3">No machines available for this property.</p>
-                    {values.property_id && !error && (
-                      <button
-                        type="button"
-                        onClick={() => fetchAvailableMachines(values.property_id ?? undefined)}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      >
-                        Refresh Machines
-                      </button>
-                    )}
-                  </div>
-                )}
+                  ) : (
+                    <div className="text-center py-6">
+                      {machineId ? (
+                        <p className="text-sm text-gray-500 mb-3">
+                          Machine {machineId} not found for this property.
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-sm text-gray-500 mb-3">No machines available for this property.</p>
+                          {values.property_id && !error && (
+                            <button
+                              type="button"
+                              onClick={() => fetchAvailableMachines(values.property_id ?? undefined)}
+                              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            >
+                              Refresh Machines
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               {errors.selected_machine_ids && touched.selected_machine_ids && (
                 <p className="mt-1 text-sm text-red-500">{errors.selected_machine_ids}</p>
@@ -1214,8 +1251,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             </div>
 
             {/* Maintenance Task Template Selection */}
-            <div className="mb-6">
-              <label htmlFor="procedure_template" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className="mb-4 sm:mb-6">
+              <label htmlFor="procedure_template" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                 Maintenance Task Template (Optional)
                 {loadingMaintenanceTasks && <span className="text-xs text-gray-500 ml-2">(Loading...)</span>}
               </label>
@@ -1223,7 +1260,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 as="select"
                 id="procedure_template"
                 name="procedure_template"
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2.5 sm:p-3 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 touch-target"
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                   const taskId = e.target.value ? Number(e.target.value) : '';
                   setFieldValue('procedure_template', taskId);
@@ -1356,9 +1393,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             )}
 
             {/* Image Uploads */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Before Image</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">Before Image</label>
                 <FileUpload
                   onFileSelect={(files) => handleFileSelection(files, 'before', setFieldValue)}
                   maxFiles={1}
@@ -1391,7 +1428,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">After Image</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">After Image</label>
                 <FileUpload
                   onFileSelect={(files) => handleFileSelection(files, 'after', setFieldValue)}
                   maxFiles={1}
@@ -1426,41 +1463,41 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap justify-between mt-8 gap-4">
-              {onCancel && (
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="px-6 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors"
-                  disabled={isSubmitting || isLoading}
-                >
-                  Cancel
-                </button>
-              )}
-              <div className="flex space-x-4">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-between mt-6 sm:mt-8 gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+                {onCancel && (
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-gray-100 text-gray-700 font-medium rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors touch-target min-h-[44px]"
+                    disabled={isSubmitting || isLoading}
+                  >
+                    Cancel
+                  </button>
+                )}
                 {isImageUploading && (
-                  <div className="flex items-center space-x-2 text-blue-600">
+                  <div className="flex items-center justify-center sm:justify-start space-x-2 text-blue-600 py-2">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
                     <span className="text-sm">Uploading images...</span>
                   </div>
                 )}
-                <button
-                  type="submit"
-                  className={`px-6 py-2.5 ${
-                    isSubmitting || isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                  } text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors`}
-                  disabled={isSubmitting || isLoading}
-                >
-                  {isSubmitting || isLoading ? (
-                    <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      <span>{pmId || actualInitialData ? 'Updating...' : 'Creating...'}</span>
-                    </div>
-                  ) : (
-                    <span>{pmId || actualInitialData ? 'Update Maintenance' : 'Create Maintenance'}</span>
-                  )}
-                </button>
               </div>
+              <button
+                type="submit"
+                className={`w-full sm:w-auto px-6 py-3 sm:py-2.5 ${
+                  isSubmitting || isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                } text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors touch-target min-h-[44px]`}
+                disabled={isSubmitting || isLoading}
+              >
+                {isSubmitting || isLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <span>{pmId || actualInitialData ? 'Updating...' : 'Creating...'}</span>
+                  </div>
+                ) : (
+                  <span>{pmId || actualInitialData ? 'Update Maintenance' : 'Create Maintenance'}</span>
+                )}
+              </button>
             </div>
           </Form>
         );

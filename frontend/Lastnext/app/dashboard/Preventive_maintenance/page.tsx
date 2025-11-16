@@ -10,7 +10,6 @@ import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import Link from 'next/link';
 import { Wrench, AlertTriangle, Building } from 'lucide-react';
-import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 
 export default function PreventiveMaintenancePage() {
   const { selectedPropertyId: selectedProperty, userProfile } = useUser();
@@ -61,10 +60,9 @@ export default function PreventiveMaintenancePage() {
           </div>
           <h1 className="text-xl font-semibold text-amber-800 mb-2 text-center">Select a Property</h1>
           <p className="text-amber-700 mb-6 text-center">
-            Please select a property to view its preventive maintenance dashboard.
+            Please select a property from the header above to view its preventive maintenance dashboard.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <HeaderPropertyList />
             <Link href="/dashboard">
               <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100">
                 Go to Dashboard
@@ -108,15 +106,14 @@ export default function PreventiveMaintenancePage() {
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Preventive Maintenance</h1>
-          <div className="flex items-center mt-2 gap-3">
-            <HeaderPropertyList />
-            {selectedProperty && (
+          {selectedProperty && (
+            <div className="flex items-center mt-2 gap-3">
               <Badge variant="outline" className="text-sm font-normal flex items-center gap-1.5">
                 <Building className="h-3.5 w-3.5" />
                 {getPropertyName()}
               </Badge>
-            )}
-          </div>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <Button asChild variant="outline" className="flex items-center gap-1.5">

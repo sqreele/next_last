@@ -14,7 +14,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
 import math
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg
-from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure
+from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure, UtilityConsumption
 from django.urls import reverse
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .serializers import (
@@ -24,7 +24,8 @@ from .serializers import (
     PreventiveMaintenanceDetailSerializer, PropertyPMStatusSerializer,
     MachineSerializer, MachineListSerializer, MachineDetailSerializer,
     MachineCreateSerializer, MachineUpdateSerializer, MachinePreventiveMaintenanceSerializer,
-    MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer
+    MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer,
+    UtilityConsumptionSerializer, UtilityConsumptionListSerializer
 )
 from PIL import Image
 from io import BytesIO
@@ -2374,3 +2375,71 @@ def update_user_profile(request):
             {'error': 'Failed to update user profile'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+# Utility Consumption ViewSet
+class UtilityConsumptionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing utility consumption records.
+    Tracks electricity (total, on-peak, off-peak), water, and night sale data.
+    """
+    queryset = UtilityConsumption.objects.all()
+    permission_classes = [IsAuthenticated]
+    pagination_class = MaintenancePagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['property', 'month', 'year']
+    search_fields = ['property__name']
+    ordering_fields = ['year', 'month', 'created_at', 'updated_at']
+    ordering = ['-year', '-month']
+    
+    def get_queryset(self):
+        """
+        Return utility consumption records filtered by user's accessible properties.
+        """
+        user = self.request.user
+        queryset = UtilityConsumption.objects.select_related('property', 'created_by').all()
+        
+        # Filter by property if user is not staff
+        if not (user.is_staff or user.is_superuser):
+            # Get properties the user has access to
+            user_properties = Property.objects.filter(users=user)
+            queryset = queryset.filter(property__in=user_properties)
+        
+        # Filter by property_id if provided
+        property_id = self.request.query_params.get('property_id')
+        if property_id:
+            queryset = queryset.filter(property__property_id=property_id)
+        
+        # Filter by year if provided
+        year = self.request.query_params.get('year')
+        if year:
+            try:
+                queryset = queryset.filter(year=int(year))
+            except ValueError:
+                pass
+        
+        # Filter by month if provided
+        month = self.request.query_params.get('month')
+        if month:
+            try:
+                queryset = queryset.filter(month=int(month))
+            except ValueError:
+                pass
+        
+        return queryset.distinct()
+    
+    def get_serializer_class(self):
+        """
+        Return appropriate serializer class based on action
+        """
+        if self.action == 'list':
+            return UtilityConsumptionListSerializer
+        return UtilityConsumptionSerializer
+    
+    def perform_create(self, serializer):
+        """Add the current user as the creator when creating a record"""
+        serializer.save(created_by=self.request.user)
+    
+    def perform_update(self, serializer):
+        """Update the updated_at timestamp when updating a record"""
+        serializer.save()

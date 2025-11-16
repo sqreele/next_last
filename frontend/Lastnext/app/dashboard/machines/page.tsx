@@ -20,7 +20,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
-import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 
 interface Machine {
   machine_id: string;
@@ -188,12 +187,11 @@ export default function MachinesListPage() {
               <Wrench className="h-8 w-8 text-blue-600" />
               Machines
             </h1>
-            <HeaderPropertyList />
           </div>
-            <p className="text-gray-600 mt-1">
-              {totalCount} machine{totalCount !== 1 ? 's' : ''} total
-              {searchTerm && ` (${filteredMachines.length} filtered)`}
-            </p>
+          <p className="text-gray-600 mt-1">
+            {totalCount} machine{totalCount !== 1 ? 's' : ''} total
+            {searchTerm && ` (${filteredMachines.length} filtered)`}
+          </p>
         </div>
       </div>
 

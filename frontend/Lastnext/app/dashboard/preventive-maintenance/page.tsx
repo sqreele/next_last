@@ -25,7 +25,6 @@ import EmptyState from '@/app/components/preventive/list/EmptyState';
 import ErrorDisplay from '@/app/components/preventive/list/ErrorDisplay';
 import Link from 'next/link';
 import { Filter, Plus, FileText, CheckCircle2, AlertTriangle, XCircle, Building } from 'lucide-react';
-import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 
 // Import utility functions
 import {
@@ -445,17 +444,14 @@ function PreventiveMaintenanceListPageContent() {
         onDebugMachine={handleDebugMachine}
       />
 
-      {/* Property Selection Header */}
-      <div className="container mx-auto px-4 mb-4">
-        <div className="flex items-center gap-3">
-          <HeaderPropertyList />
-          {selectedProperty && (
-            <div className="text-sm text-gray-600">
-              {matchingPMItems.length} verified • {mismatchedPMItems.length} at different property
-            </div>
-          )}
+      {/* Property Verification Info */}
+      {selectedProperty && (
+        <div className="container mx-auto px-4 mb-4">
+          <div className="text-sm text-gray-600">
+            {matchingPMItems.length} verified • {mismatchedPMItems.length} at different property
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Property Verification Alert */}
       {selectedProperty && mismatchedPMItems.length > 0 && (

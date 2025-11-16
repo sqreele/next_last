@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage
+from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage, UtilityConsumption
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -1311,3 +1311,76 @@ class MaintenanceTaskImageListSerializer(serializers.ModelSerializer):
         if obj.image_url and request:
             return request.build_absolute_uri(obj.image_url.url)
         return None
+
+# Utility Consumption Serializers
+class UtilityConsumptionSerializer(serializers.ModelSerializer):
+    """Serializer for Utility Consumption records"""
+    property_name = serializers.CharField(source='property.name', read_only=True)
+    property_id = serializers.CharField(source='property.property_id', read_only=True)
+    month_display = serializers.CharField(source='get_month_display', read_only=True)
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    
+    class Meta:
+        model = UtilityConsumption
+        fields = [
+            'id',
+            'property',
+            'property_id',
+            'property_name',
+            'month',
+            'month_display',
+            'year',
+            'totalkwh',
+            'onpeakkwh',
+            'offpeakkwh',
+            'totalelectricity',
+            'water',
+            'nightsale',
+            'created_at',
+            'updated_at',
+            'created_by',
+            'created_by_username'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def validate(self, data):
+        """Validate that property is provided"""
+        if not data.get('property'):
+            raise serializers.ValidationError({
+                'property': 'Property must be provided.'
+            })
+        
+        # Validate month range
+        month = data.get('month')
+        if month and (month < 1 or month > 12):
+            raise serializers.ValidationError({
+                'month': 'Month must be between 1 and 12.'
+            })
+        
+        return data
+
+
+class UtilityConsumptionListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for listing utility consumption records"""
+    property_name = serializers.CharField(source='property.name', read_only=True)
+    property_id = serializers.CharField(source='property.property_id', read_only=True)
+    month_display = serializers.CharField(source='get_month_display', read_only=True)
+    
+    class Meta:
+        model = UtilityConsumption
+        fields = [
+            'id',
+            'property_id',
+            'property_name',
+            'month',
+            'month_display',
+            'year',
+            'totalkwh',
+            'onpeakkwh',
+            'offpeakkwh',
+            'totalelectricity',
+            'water',
+            'nightsale',
+            'created_at',
+            'updated_at'
+        ]

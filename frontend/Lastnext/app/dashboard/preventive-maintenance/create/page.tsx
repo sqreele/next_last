@@ -73,12 +73,12 @@ function CreatePageContent() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Create Preventive Maintenance</h1>
+    <div className="max-w-4xl mx-auto py-4 px-3 sm:py-6 sm:px-4 md:py-8 md:px-6 lg:px-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Create Preventive Maintenance</h1>
         <Link 
           href="/dashboard/preventive-maintenance" 
-          className="bg-gray-100 py-2 px-4 rounded-md text-gray-700 hover:bg-gray-200"
+          className="inline-flex items-center justify-center bg-gray-100 py-2 px-4 rounded-md text-gray-700 hover:bg-gray-200 text-sm sm:text-base transition-colors min-h-[44px] touch-target"
         >
           Back to List
         </Link>

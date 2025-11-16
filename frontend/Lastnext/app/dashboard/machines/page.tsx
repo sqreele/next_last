@@ -12,16 +12,12 @@ import { Button } from '@/app/components/ui/button';
 import {
   Wrench,
   Search,
-  Building,
   MapPin,
   Calendar,
   FileText,
   Loader2,
   ChevronLeft,
   ChevronRight,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
@@ -147,25 +143,6 @@ export default function MachinesListPage() {
     }
   };
 
-  // Verify equipment location against selected property
-  const verifyMachineProperty = (machine: Machine): { matches: boolean; message: string } => {
-    if (!selectedProperty) {
-      return { matches: true, message: 'No property selected' };
-    }
-    
-    const machinePropertyId = machine.property?.property_id;
-    const matches = machinePropertyId === selectedProperty;
-    
-    if (matches) {
-      return { matches: true, message: `Equipment is at ${machine.property?.name || 'selected property'}` };
-    } else {
-      return { 
-        matches: false, 
-        message: `Equipment is at ${machine.property?.name || 'different property'}, not the selected property` 
-      };
-    }
-  };
-
   const filteredMachines = machines.filter((machine) => {
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -174,17 +151,6 @@ export default function MachinesListPage() {
       machine.location?.toLowerCase().includes(searchLower) ||
       machine.category?.toLowerCase().includes(searchLower)
     );
-  });
-
-  // Count machines matching selected property
-  const matchingMachines = filteredMachines.filter(m => {
-    if (!selectedProperty) return true;
-    return m.property?.property_id === selectedProperty;
-  });
-
-  const mismatchedMachines = filteredMachines.filter(m => {
-    if (!selectedProperty) return false;
-    return m.property?.property_id !== selectedProperty;
   });
 
   if (status === 'loading' || loading) {
@@ -224,56 +190,12 @@ export default function MachinesListPage() {
             </h1>
             <HeaderPropertyList />
           </div>
-          <p className="text-gray-600 mt-1">
-            {totalCount} machine{totalCount !== 1 ? 's' : ''} total
-            {searchTerm && ` (${filteredMachines.length} filtered)`}
-            {selectedProperty && (
-              <span className="ml-2">
-                • {matchingMachines.length} at selected property
-                {mismatchedMachines.length > 0 && (
-                  <span className="text-orange-600"> • {mismatchedMachines.length} at different property</span>
-                )}
-              </span>
-            )}
-          </p>
+            <p className="text-gray-600 mt-1">
+              {totalCount} machine{totalCount !== 1 ? 's' : ''} total
+              {searchTerm && ` (${filteredMachines.length} filtered)`}
+            </p>
         </div>
       </div>
-
-      {/* Property Verification Alert */}
-      {selectedProperty && mismatchedMachines.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-orange-900 mb-1">Location Verification</h3>
-                <p className="text-sm text-orange-800">
-                  {mismatchedMachines.length} equipment item{mismatchedMachines.length !== 1 ? 's' : ''} {mismatchedMachines.length === 1 ? 'is' : 'are'} located at a different property than the selected one.
-                </p>
-                <p className="text-xs text-orange-700 mt-2">
-                  These items will still be displayed but may not belong to the selected property.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Property Match Confirmation */}
-      {selectedProperty && mismatchedMachines.length === 0 && matchingMachines.length > 0 && (
-        <Card className="border-green-200 bg-green-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-green-900">
-                  ✓ All displayed equipment is verified to be at the selected property location.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Search */}
       <Card>
@@ -339,30 +261,6 @@ export default function MachinesListPage() {
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
                       <span className="truncate">{machine.location}</span>
-                    </div>
-                  )}
-
-                  {machine.property && (
-                    <div className="flex items-center justify-between gap-2 text-sm">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Building className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                        <span className="truncate">{machine.property.name}</span>
-                      </div>
-                      {selectedProperty && (
-                        <div className="flex-shrink-0">
-                          {verifyMachineProperty(machine).matches ? (
-                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300 flex items-center gap-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Verified
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-300 flex items-center gap-1">
-                              <XCircle className="h-3 w-3" />
-                              Different
-                            </Badge>
-                          )}
-                        </div>
-                      )}
                     </div>
                   )}
 

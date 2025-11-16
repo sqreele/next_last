@@ -18,6 +18,40 @@ export interface Machine {
   procedure?: string;
 }
 
+type MachineApiPayload = Machine[] | {
+  results?: Machine[];
+  data?: Machine[];
+  items?: Machine[];
+  count?: number;
+  total?: number;
+  total_count?: number;
+  [key: string]: any;
+};
+
+const normalizeMachineResponse = (payload: MachineApiPayload): Machine[] => {
+  if (!payload) {
+    return [];
+  }
+
+    if (Array.isArray(payload)) {
+    return payload;
+  }
+
+    if (Array.isArray(payload.results)) {
+    return payload.results;
+  }
+
+    if (Array.isArray(payload.data)) {
+    return payload.data;
+  }
+
+    if (Array.isArray(payload.items)) {
+    return payload.items;
+  }
+
+  return [];
+};
+
 export default class MachineService {
   private baseUrl: string = '/api/v1/machines';
 
@@ -35,12 +69,16 @@ export default class MachineService {
         };
         console.log('✅ Using access token for machines API request');
         
-        const response = await apiClient.get<Machine[]>(this.baseUrl, { 
+        const response = await apiClient.get<MachineApiPayload>(this.baseUrl, { 
           params,
           headers
         });
-        console.log('✅ Machines received via direct API:', response.data);
-        return { success: true, data: response.data };
+          const machines = normalizeMachineResponse(response.data);
+        console.log('✅ Machines received via direct API:', {
+          rawCount: Array.isArray(response.data) ? response.data.length : response.data?.count,
+          normalizedCount: machines.length,
+        });
+        return { success: true, data: machines };
       } else {
         // Use Next.js API proxy to include auth automatically
         console.log('🔄 Using Next.js API proxy for machines request');
@@ -58,13 +96,17 @@ export default class MachineService {
           throw new Error(`Failed to fetch machines: ${res.status} - ${errorText}`);
         }
         
-        const data = await res.json();
-        console.log('✅ Machines received via proxy:', data);
-        return { success: true, data };
+        const data: MachineApiPayload = await res.json();
+        const machines = normalizeMachineResponse(data);
+        console.log('✅ Machines received via proxy:', {
+          rawCount: Array.isArray(data) ? data.length : data?.count,
+          normalizedCount: machines.length,
+        });
+        return { success: true, data: machines };
       }
     } catch (error: any) {
-      console.error('Service error fetching machines:', error);
-      throw handleApiError(error);
+        console.error('Service error fetching machines:', error);
+        throw handleApiError(error);
     }
   }
 }

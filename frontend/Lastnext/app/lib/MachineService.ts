@@ -25,31 +25,80 @@ type MachineApiPayload = Machine[] | {
   count?: number;
   total?: number;
   total_count?: number;
+  next?: string | null;
+  previous?: string | null;
+  links?: {
+    next?: string | null;
+  };
   [key: string]: any;
 };
+
+const DEFAULT_MACHINE_PAGE_SIZE = 200;
 
 const normalizeMachineResponse = (payload: MachineApiPayload): Machine[] => {
   if (!payload) {
     return [];
   }
 
-    if (Array.isArray(payload)) {
+  if (Array.isArray(payload)) {
     return payload;
   }
 
-    if (Array.isArray(payload.results)) {
+  if (Array.isArray(payload.results)) {
     return payload.results;
   }
 
-    if (Array.isArray(payload.data)) {
+  if (Array.isArray(payload.data)) {
     return payload.data;
   }
 
-    if (Array.isArray(payload.items)) {
+  if (Array.isArray(payload.items)) {
     return payload.items;
   }
 
   return [];
+};
+
+const extractNextLink = (payload: MachineApiPayload): string | null => {
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    if (typeof payload.next === 'string') {
+      return payload.next;
+    }
+    if (payload.next === null) {
+      return null;
+    }
+    if (payload.links?.next) {
+      return payload.links.next;
+    }
+  }
+  return null;
+};
+
+const parseNextParams = (nextUrl: string): Record<string, string> => {
+  try {
+    const safeBase = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
+    const parsedUrl = new URL(nextUrl, safeBase);
+    const entries: Record<string, string> = {};
+    parsedUrl.searchParams.forEach((value, key) => {
+      entries[key] = value;
+    });
+    return entries;
+  } catch (error) {
+    console.warn('Failed to parse next pagination url for machines:', nextUrl, error);
+    return {};
+  }
+};
+
+const buildQueryString = (params?: Record<string, string>): string => {
+  if (!params) return '';
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      searchParams.set(key, value);
+    }
+  });
+  const qs = searchParams.toString();
+  return qs ? `?${qs}` : '';
 };
 
 export default class MachineService {
@@ -59,35 +108,39 @@ export default class MachineService {
 
   async getMachines(propertyId?: string | undefined, accessToken?: string): Promise<ServiceResponse<Machine[]>> {
     try {
-      const params = propertyId ? { property_id: propertyId } : {};
-      console.log('Fetching machines with params:', params);
-      
-      if (accessToken) {
-        // Use direct backend call with provided token
-        const headers: Record<string, string> = {
-          Authorization: `Bearer ${accessToken}`,
-        };
-        console.log('✅ Using access token for machines API request');
-        
-        const response = await apiClient.get<MachineApiPayload>(this.baseUrl, { 
-          params,
-          headers
-        });
-          const machines = normalizeMachineResponse(response.data);
-        console.log('✅ Machines received via direct API:', {
-          rawCount: Array.isArray(response.data) ? response.data.length : response.data?.count,
-          normalizedCount: machines.length,
-        });
-        return { success: true, data: machines };
-      } else {
-        // Use Next.js API proxy to include auth automatically
-        console.log('🔄 Using Next.js API proxy for machines request');
-        
-        const queryString = propertyId ? `?property_id=${propertyId}` : '';
-        const url = `/api/machines/${queryString}`;
-        
-        console.log('🔍 Fetching from Next.js API:', url);
-        const res = await fetch(url, { credentials: 'include' });
+      const initialParams: Record<string, string> = {
+        ...(propertyId ? { property_id: propertyId } : {}),
+        page_size: String(DEFAULT_MACHINE_PAGE_SIZE),
+      };
+      console.log('Fetching machines with params:', initialParams);
+
+      const useProxy = !accessToken;
+      if (!useProxy && !accessToken) {
+        throw new Error('Access token required for direct machine request is missing.');
+      }
+      const accumulatedMachines: Machine[] = [];
+
+      const fetchPage = async (
+        params?: Record<string, string>,
+        urlOverride?: string
+      ): Promise<MachineApiPayload> => {
+        if (!useProxy) {
+          const authToken = accessToken as string;
+          const headers: Record<string, string> = {
+            Authorization: `Bearer ${authToken}`,
+          };
+          const response = await apiClient.get<MachineApiPayload>(urlOverride || this.baseUrl, { 
+            params,
+            headers
+          });
+          return response.data;
+        }
+
+        const queryString = buildQueryString(params);
+        const targetUrl = `${urlOverride || '/api/machines/'}${queryString}`;
+
+        console.log('🔍 Fetching from Next.js API:', targetUrl);
+        const res = await fetch(targetUrl, { credentials: 'include' });
         
         if (!res.ok) {
           console.error('❌ Next.js API failed:', res.status, res.statusText);
@@ -96,14 +149,47 @@ export default class MachineService {
           throw new Error(`Failed to fetch machines: ${res.status} - ${errorText}`);
         }
         
-        const data: MachineApiPayload = await res.json();
-        const machines = normalizeMachineResponse(data);
-        console.log('✅ Machines received via proxy:', {
-          rawCount: Array.isArray(data) ? data.length : data?.count,
-          normalizedCount: machines.length,
-        });
-        return { success: true, data: machines };
+        return res.json();
+      };
+
+      let nextUrl: string | undefined;
+      let params: Record<string, string> | undefined = initialParams;
+      let pageCounter = 0;
+
+      while (true) {
+        pageCounter += 1;
+        if (pageCounter > 50) {
+          console.warn('⚠️ MachineService pagination limit reached. Stopping to prevent infinite loop.');
+          break;
+        }
+
+        const payload = await fetchPage(params, nextUrl);
+        const machines = normalizeMachineResponse(payload);
+        accumulatedMachines.push(...machines);
+
+        const next = extractNextLink(payload);
+        if (!next) {
+          break;
+        }
+
+        if (useProxy) {
+          params = parseNextParams(next);
+          if (!params.page_size) {
+            params.page_size = String(DEFAULT_MACHINE_PAGE_SIZE);
+          }
+          nextUrl = undefined;
+        } else {
+          params = undefined;
+          nextUrl = next;
+        }
       }
+
+      console.log('✅ Machines retrieved (combined pages):', {
+        total: accumulatedMachines.length,
+        pagesFetched: pageCounter,
+      });
+
+      return { success: true, data: accumulatedMachines };
     } catch (error: any) {
         console.error('Service error fetching machines:', error);
         throw handleApiError(error);

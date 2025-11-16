@@ -23,13 +23,10 @@ export async function GET(request: NextRequest) {
 
     // Get query parameters
     const { searchParams } = new URL(request.url);
-    const propertyId = searchParams.get('property_id');
+    const queryString = searchParams.toString();
     
     // Build the API URL
-    let apiUrl = `${API_CONFIG.baseUrl}/api/v1/machines/`;
-    if (propertyId) {
-      apiUrl += `?property_id=${propertyId}`;
-    }
+    const apiUrl = `${API_CONFIG.baseUrl}/api/v1/machines/${queryString ? `?${queryString}` : ''}`;
     
     console.log('🔍 Machines API calling:', apiUrl);
     console.log('🔍 Machines API headers:', {

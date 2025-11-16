@@ -87,7 +87,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const {
     properties: userProperties,
   } = useProperties();
-  const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setContextSelectedProperty } = useUser();
+  const { selectedPropertyId: selectedProperty } = useUser();
   const hasProperties = userProperties && userProperties.length > 0;
 
   const [fetchedInitialData, setFetchedInitialData] = useState<PreventiveMaintenance | null>(null);
@@ -972,7 +972,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           return handleSubmit(values, formikHelpers);
         }}
       >
-        {({ values, errors, touched, isSubmitting, setFieldValue }) => {
+          {({ values, errors, touched, isSubmitting, setFieldValue }) => {
           // Debug form values changes
           React.useEffect(() => {
             console.log('[Formik] Form values changed:', {
@@ -985,39 +985,24 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             });
           }, [values.scheduled_date, values.completed_date]);
 
-          return (
-          <Form aria-label="Preventive Maintenance Form">
-            <div className="mb-6">
-              <label htmlFor="property_id" className="block text-sm font-medium text-gray-700 mb-1">
-                Property <span className="text-red-500">*</span>
-              </label>
-              <Field
-                as="select"
-                id="property_id"
-                name="property_id"
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                  const newPropertyId = e.target.value || '';
-                  setFieldValue('property_id', newPropertyId);
-                  if (newPropertyId && setContextSelectedProperty) {
-                    setContextSelectedProperty(newPropertyId);
-                  }
-                  setFieldValue('selected_machine_ids', []);
-                }}
-                className={`w-full p-2 border rounded-md ${
-                  errors.property_id && touched.property_id ? 'border-red-500' : 'border-gray-300'
-                }`}
-              >
-                <option value="">Select a Property</option>
-                {userProperties?.map((property) => (
-                  <option key={property.property_id} value={property.property_id}>
-                    {property.name}
-                  </option>
-                ))}
-              </Field>
-              {errors.property_id && touched.property_id && (
-                <p className="mt-1 text-sm text-red-500">{errors.property_id}</p>
+            React.useEffect(() => {
+              if (pmId) return;
+              const nextPropertyId = selectedProperty || '';
+              const currentValue = values.property_id || '';
+              if (nextPropertyId !== currentValue) {
+                setFieldValue('property_id', nextPropertyId, false);
+              }
+            }, [pmId, selectedProperty, values.property_id, setFieldValue]);
+
+            return (
+            <Form aria-label="Preventive Maintenance Form">
+              {!values.property_id && !pmId && (
+                <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  Please select a property using the header dropdown before creating preventive maintenance tasks.
+                </div>
               )}
-            </div>
+
+              <Field type="hidden" name="property_id" />
 
               {/* Assigned User - Hidden, auto-assigned to current user */}
               <Field type="hidden" name="assigned_to" />

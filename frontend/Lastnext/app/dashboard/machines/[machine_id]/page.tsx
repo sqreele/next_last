@@ -27,7 +27,7 @@ import {
   XCircle
 } from 'lucide-react';
 import Link from 'next/link';
-import { useAuthStore } from '@/app/lib/stores/useAuthStore';
+import { useUser } from '@/app/lib/stores/mainStore';
 import HeaderPropertyList from '@/app/components/jobs/HeaderPropertyList';
 import dynamic from 'next/dynamic';
 
@@ -112,7 +112,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
   const unwrappedParams = use(params);
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { selectedProperty } = useAuthStore();
+  const { selectedPropertyId: selectedProperty } = useUser();
   const [machine, setMachine] = useState<Machine | null>(null);
   const [pmHistory, setPMHistory] = useState<PMHistory[]>([]);
   const [loading, setLoading] = useState(true);

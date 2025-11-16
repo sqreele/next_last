@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/app/lib/session.client';
-import { useAuthStore } from '@/app/lib/stores/useAuthStore';
+import { useUser } from '@/app/lib/stores/mainStore';
 import apiClient from '@/app/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Input } from '@/app/components/ui/input';
@@ -46,7 +46,7 @@ interface Machine {
 export default function MachinesListPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { selectedProperty } = useAuthStore();
+  const { selectedPropertyId: selectedProperty } = useUser();
   const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

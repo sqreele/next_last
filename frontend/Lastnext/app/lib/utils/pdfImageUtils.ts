@@ -178,9 +178,18 @@ export function getSupportedImageFromJob(job: any): string | null {
   for (let rawUrl of candidates) {
     if (!rawUrl) continue;
     const resolvedUrl = getProductionImageUrl(rawUrl);
+
+    // Allow supported data URLs directly
+    if (resolvedUrl.startsWith('data:')) {
+      const isSupportedData = /data:image\/(jpeg|jpg|png|gif)/i.test(resolvedUrl);
+      if (isSupportedData) return resolvedUrl;
+      // Otherwise continue to next candidate
+      continue;
+    }
+
     const extension = getImageExtension(resolvedUrl);
-    
-    // Check if it's a supported format for PDF
+
+    // Return directly if extension is supported by @react-pdf/renderer
     if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
       try { pdfDebug.imageResolve({ sourceUrl: rawUrl, resolvedUrl, note: 'selected-supported', extension } as any); } catch {}
       return resolvedUrl;

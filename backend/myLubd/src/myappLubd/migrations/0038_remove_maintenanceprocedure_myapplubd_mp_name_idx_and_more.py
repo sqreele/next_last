@@ -53,6 +53,25 @@ def remove_fields_if_exists(apps, schema_editor):
             cursor.execute("ALTER TABLE myappLubd_maintenanceprocedure DROP COLUMN before_image_jpeg_path")
 
 
+def remove_indexes_if_exist(apps, schema_editor):
+    """Remove indexes only if they exist"""
+    with schema_editor.connection.cursor() as cursor:
+        indexes_to_remove = [
+            'myappLubd_mp_name_idx',
+            'myappLubd_mp_difficulty_idx',
+            'myappLubd_mp_created_idx',
+            'myappLubd_u_room_id_bbb8a0_idx',
+        ]
+        
+        for index_name in indexes_to_remove:
+            cursor.execute("""
+                SELECT 1 FROM pg_indexes 
+                WHERE indexname = %s
+            """, [index_name])
+            if cursor.fetchone():
+                cursor.execute(f"DROP INDEX IF EXISTS {index_name}")
+
+
 def reverse_rename_index_if_exists(apps, schema_editor):
     """Reverse rename index only if it exists"""
     with schema_editor.connection.cursor() as cursor:
@@ -74,21 +93,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_name_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_difficulty_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_created_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='utilityconsumption',
-            name='myappLubd_u_room_id_bbb8a0_idx',
+        migrations.RunPython(
+            remove_indexes_if_exist,
+            reverse_code=migrations.RunPython.noop,
         ),
         migrations.RunPython(
             rename_index_if_exists,

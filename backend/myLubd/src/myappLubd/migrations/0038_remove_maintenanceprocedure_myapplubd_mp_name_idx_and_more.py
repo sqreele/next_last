@@ -53,6 +53,70 @@ def remove_fields_if_exists(apps, schema_editor):
             cursor.execute("ALTER TABLE myappLubd_maintenanceprocedure DROP COLUMN before_image_jpeg_path")
 
 
+def _get_existing_index_names(schema_editor):
+    """Return set of existing index names for current schema"""
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT indexname FROM pg_indexes 
+            WHERE schemaname = current_schema()
+        """)
+        return {row[0] for row in cursor.fetchall()}
+
+
+def _column_exists(schema_editor, table_name, column_name):
+    """Return True if given column exists on table"""
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = current_schema()
+              AND table_name = %s
+              AND column_name = %s
+        """, [table_name, column_name])
+        return cursor.fetchone() is not None
+
+
+def drop_indexes_if_exist(apps, schema_editor):
+    """Drop legacy indexes only if they exist to avoid migration failures"""
+    index_names = [
+        'myappLubd_mp_name_idx',
+        'myappLubd_mp_difficulty_idx',
+        'myappLubd_mp_created_idx',
+        'myappLubd_u_room_id_bbb8a0_idx',
+    ]
+    quote = schema_editor.connection.ops.quote_name
+    with schema_editor.connection.cursor() as cursor:
+        for index_name in index_names:
+            cursor.execute(f'DROP INDEX IF EXISTS {quote(index_name)}')
+
+
+def recreate_indexes_if_missing(apps, schema_editor):
+    """
+    Recreate indexes when rolling back, but only if their columns exist
+    (room was removed earlier, so we skip that index if the column is gone)
+    """
+    MaintenanceProcedure = apps.get_model('myappLubd', 'MaintenanceProcedure')
+    UtilityConsumption = apps.get_model('myappLubd', 'UtilityConsumption')
+    maintenance_indexes = [
+        models.Index(fields=['name'], name='myappLubd_mp_name_idx'),
+        models.Index(fields=['difficulty_level'], name='myappLubd_mp_difficulty_idx'),
+        models.Index(fields=['created_at'], name='myappLubd_mp_created_idx'),
+    ]
+    existing_indexes = _get_existing_index_names(schema_editor)
+
+    for index in maintenance_indexes:
+        if index.name in existing_indexes:
+            continue
+        schema_editor.add_index(MaintenanceProcedure, index)
+
+    utility_table = UtilityConsumption._meta.db_table
+    if _column_exists(schema_editor, utility_table, 'room_id'):
+        if 'myappLubd_u_room_id_bbb8a0_idx' not in existing_indexes:
+            schema_editor.add_index(
+                UtilityConsumption,
+                models.Index(fields=['room', 'month', 'year'], name='myappLubd_u_room_id_bbb8a0_idx'),
+            )
+
+
 def reverse_rename_index_if_exists(apps, schema_editor):
     """Reverse rename index only if it exists"""
     with schema_editor.connection.cursor() as cursor:
@@ -74,21 +138,31 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_name_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_difficulty_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_created_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='utilityconsumption',
-            name='myappLubd_u_room_id_bbb8a0_idx',
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    drop_indexes_if_exist,
+                    reverse_code=recreate_indexes_if_missing,
+                ),
+            ],
+            state_operations=[
+                migrations.RemoveIndex(
+                    model_name='maintenanceprocedure',
+                    name='myappLubd_mp_name_idx',
+                ),
+                migrations.RemoveIndex(
+                    model_name='maintenanceprocedure',
+                    name='myappLubd_mp_difficulty_idx',
+                ),
+                migrations.RemoveIndex(
+                    model_name='maintenanceprocedure',
+                    name='myappLubd_mp_created_idx',
+                ),
+                migrations.RemoveIndex(
+                    model_name='utilityconsumption',
+                    name='myappLubd_u_room_id_bbb8a0_idx',
+                ),
+            ],
         ),
         migrations.RunPython(
             rename_index_if_exists,

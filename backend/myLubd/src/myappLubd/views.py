@@ -45,6 +45,7 @@ from django.conf import settings
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_http_methods
 from .cache import cache_result, CacheManager
+from .services import NotificationService
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -2443,3 +2444,145 @@ class UtilityConsumptionViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """Update the updated_at timestamp when updating a record"""
         serializer.save()
+
+
+# Notification API Endpoints
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_overdue_notifications(request):
+    """
+    Get overdue maintenance tasks for the authenticated user.
+    
+    Returns a list of preventive maintenance tasks that are past their scheduled date
+    and not yet completed. Results are filtered based on user's property access.
+    
+    Query Parameters:
+        - None
+    
+    Returns:
+        - List of overdue preventive maintenance tasks with pagination
+    """
+    try:
+        user = request.user
+        overdue_tasks = NotificationService.get_overdue_maintenance(user)
+        
+        # Serialize the results
+        serializer = PreventiveMaintenanceListSerializer(
+            overdue_tasks, 
+            many=True, 
+            context={'request': request}
+        )
+        
+        return Response({
+            'count': len(overdue_tasks),
+            'results': serializer.data
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        logger.error(f"Error fetching overdue notifications: {str(e)}")
+        return Response(
+            {'error': 'Failed to fetch overdue notifications'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_upcoming_notifications(request):
+    """
+    Get upcoming maintenance alerts for the authenticated user.
+    
+    Returns a list of preventive maintenance tasks that are due within the next N days
+    and not yet completed. Results are filtered based on user's property access.
+    
+    Query Parameters:
+        - days (int, optional): Number of days to look ahead. Default is 7.
+    
+    Returns:
+        - List of upcoming preventive maintenance tasks with pagination
+    """
+    try:
+        user = request.user
+        
+        # Get days parameter from query string, default to 7
+        days_param = request.query_params.get('days', '7')
+        try:
+            days = int(days_param)
+            if days < 1:
+                days = 7
+        except ValueError:
+            days = 7
+        
+        upcoming_tasks = NotificationService.get_upcoming_alerts(user, days=days)
+        
+        # Serialize the results
+        serializer = PreventiveMaintenanceListSerializer(
+            upcoming_tasks, 
+            many=True, 
+            context={'request': request}
+        )
+        
+        return Response({
+            'count': len(upcoming_tasks),
+            'days': days,
+            'results': serializer.data
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        logger.error(f"Error fetching upcoming notifications: {str(e)}")
+        return Response(
+            {'error': 'Failed to fetch upcoming notifications'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_all_notifications(request):
+    """
+    Get all notifications (overdue + upcoming) for the authenticated user.
+    
+    Returns a combined list of overdue and upcoming preventive maintenance tasks.
+    Results are filtered based on user's property access.
+    
+    Query Parameters:
+        - days (int, optional): Number of days to look ahead for upcoming tasks. Default is 7.
+    
+    Returns:
+        - Combined list of overdue and upcoming preventive maintenance tasks
+    """
+    try:
+        user = request.user
+        
+        # Get days parameter from query string, default to 7
+        days_param = request.query_params.get('days', '7')
+        try:
+            days = int(days_param)
+            if days < 1:
+                days = 7
+        except ValueError:
+            days = 7
+        
+        # Get both overdue and upcoming tasks
+        overdue_tasks = NotificationService.get_overdue_maintenance(user)
+        upcoming_tasks = NotificationService.get_upcoming_alerts(user, days=days)
+        
+        # Combine and serialize
+        all_tasks = list(overdue_tasks) + list(upcoming_tasks)
+        serializer = PreventiveMaintenanceListSerializer(
+            all_tasks, 
+            many=True, 
+            context={'request': request}
+        )
+        
+        return Response({
+            'overdue_count': len(overdue_tasks),
+            'upcoming_count': len(upcoming_tasks),
+            'total_count': len(all_tasks),
+            'days': days,
+            'results': serializer.data
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        logger.error(f"Error fetching all notifications: {str(e)}")
+        return Response(
+            {'error': 'Failed to fetch notifications'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

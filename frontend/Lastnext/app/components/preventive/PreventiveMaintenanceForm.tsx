@@ -26,6 +26,7 @@ import { preventiveMaintenanceService,
 import TopicService from '@/app/lib/TopicService';
 import MachineService from '@/app/lib/MachineService';
 import { fetchAllMaintenanceProcedures, type MaintenanceProcedureTemplate } from '@/app/lib/maintenanceProcedures';
+import apiClient from '@/app/lib/api-client';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 interface PreventiveMaintenanceFormProps {
@@ -56,6 +57,7 @@ interface FormValues {
 type MaintenanceTaskOption = {
   id: number;
   name: string;
+  group_id?: string | null;
   category?: string;
   frequency: string;
   difficulty_level: string;
@@ -514,15 +516,132 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     }
   }, []);
 
-  // Fetch available maintenance tasks (templates)
-  const fetchAvailableMaintenanceTasks = useCallback(async () => {
+  // Fetch available maintenance tasks (templates) - filtered by selected machines
+  const fetchAvailableMaintenanceTasks = useCallback(async (machineIds?: string[]) => {
+    console.log('[PreventiveMaintenanceForm] ===== fetchAvailableMaintenanceTasks CALLED =====');
+    console.log('[PreventiveMaintenanceForm] machineIds parameter:', machineIds);
+    console.log('[PreventiveMaintenanceForm] machineIds type:', typeof machineIds);
+    console.log('[PreventiveMaintenanceForm] machineIds is array?', Array.isArray(machineIds));
+    console.log('[PreventiveMaintenanceForm] machineIds length:', machineIds?.length);
+    
     setLoadingMaintenanceTasks(true);
     try {
-      const tasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
+      let tasks: MaintenanceProcedureTemplate[] = [];
+      
+      if (machineIds && machineIds.length > 0) {
+        console.log('[PreventiveMaintenanceForm] ✓ Processing', machineIds.length, 'machine(s) for filtering:', machineIds);
+        // Fetch procedures for each selected machine
+        const allProcedureIds = new Set<number>();
+        const machineGroupIds = new Set<string>();
+        
+        // Fetch machine details to get their maintenance procedures and group_id
+        for (const machineId of machineIds) {
+          try {
+            console.log(`[PreventiveMaintenanceForm] Fetching machine ${machineId}...`);
+            const response = await apiClient.get(`/api/v1/machines/${machineId}/`);
+            const machine = response.data as any;
+            
+            console.log(`[PreventiveMaintenanceForm] Machine ${machineId} full response:`, JSON.stringify(machine, null, 2));
+            console.log(`[PreventiveMaintenanceForm] Machine ${machineId} details:`, {
+              group_id: machine.group_id,
+              group_id_type: typeof machine.group_id,
+              group_id_value: machine.group_id,
+              group_id_is_null: machine.group_id === null,
+              group_id_is_undefined: machine.group_id === undefined,
+              group_id_is_empty_string: machine.group_id === '',
+              has_maintenance_procedures: !!machine.maintenance_procedures,
+              maintenance_procedures_count: machine.maintenance_procedures?.length || 0,
+              all_keys: Object.keys(machine)
+            });
+            
+            // Collect machine's group_id if it exists (check for null, undefined, and empty string)
+            if (machine.group_id !== null && machine.group_id !== undefined && machine.group_id !== '') {
+              machineGroupIds.add(machine.group_id);
+              console.log(`[PreventiveMaintenanceForm] ✓ Machine ${machineId} has group_id: "${machine.group_id}" (added to filter)`);
+            } else {
+              console.log(`[PreventiveMaintenanceForm] ✗ Machine ${machineId} has NO group_id (value: ${machine.group_id}, type: ${typeof machine.group_id})`);
+            }
+            
+            // Check if machine has maintenance_procedures field
+            if (machine.maintenance_procedures && Array.isArray(machine.maintenance_procedures)) {
+              machine.maintenance_procedures.forEach((proc: any) => {
+                if (proc.id) {
+                  allProcedureIds.add(proc.id);
+                }
+              });
+              console.log(`[PreventiveMaintenanceForm] Machine ${machineId} has ${machine.maintenance_procedures.length} linked procedures`);
+            }
+          } catch (err) {
+            console.error(`[PreventiveMaintenanceForm] Failed to fetch machine ${machineId}:`, err);
+          }
+        }
+        
+        console.log(`[PreventiveMaintenanceForm] Collected group_ids:`, Array.from(machineGroupIds), `(count: ${machineGroupIds.size})`);
+        console.log(`[PreventiveMaintenanceForm] Collected procedure_ids:`, Array.from(allProcedureIds), `(count: ${allProcedureIds.size})`);
+        
+        // Fetch all available tasks
+        const allTasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
+        console.log(`[PreventiveMaintenanceForm] Total available tasks: ${allTasks.length}`);
+        
+        // Log all tasks to show their group_ids for debugging
+        const taskGroupIds = allTasks.map(t => ({ id: t.id, name: t.name, group_id: t.group_id }));
+        console.log(`[PreventiveMaintenanceForm] All tasks with group_ids:`, taskGroupIds);
+        
+        // Filter tasks based on:
+        // 1. If machine has group_id, ONLY show tasks with matching group_id (strict match: machine.group_id === task.group_id)
+        // 2. Otherwise, show tasks linked to the machine via maintenance_procedures
+        // 3. If no group_id and no linked procedures, show all tasks (fallback)
+        if (machineGroupIds.size > 0) {
+          // Machine has group_id: ONLY show tasks with matching group_id (strict equality)
+          // Normalize both values to strings for comparison to handle number/string differences
+          const normalizedMachineGroupIds = Array.from(machineGroupIds).map(id => String(id));
+          
+          console.log(`[PreventiveMaintenanceForm] Filtering by group_id. Looking for:`, normalizedMachineGroupIds);
+          console.log(`[PreventiveMaintenanceForm] Sample task group_ids:`, allTasks.slice(0, 5).map(t => ({ id: t.id, name: t.name, group_id: t.group_id, group_id_type: typeof t.group_id })));
+          
+          tasks = allTasks.filter(task => {
+            if (!task.group_id) {
+              return false;
+            }
+            // Strict equality: task.group_id must exactly match machine.group_id
+            const normalizedTaskGroupId = String(task.group_id);
+            const matches = normalizedMachineGroupIds.includes(normalizedTaskGroupId);
+            if (matches) {
+              console.log(`[PreventiveMaintenanceForm] ✓ Task "${task.name}" (id: ${task.id}) matches - group_id: "${task.group_id}"`);
+            }
+            return matches;
+          });
+          
+          console.log(`[PreventiveMaintenanceForm] Filtered tasks by group_id (strict match):`, {
+            matching_tasks: tasks.length,
+            machine_group_ids: Array.from(machineGroupIds).join(', '),
+            normalized_machine_group_ids: normalizedMachineGroupIds.join(', '),
+            total_available: allTasks.length,
+            filtered_task_group_ids: [...new Set(tasks.map(t => t.group_id))].join(', '),
+            filtered_task_names: tasks.map(t => t.name).join(', ')
+          });
+        } else if (allProcedureIds.size > 0) {
+          // No group_id on machines, filter by linked procedures
+          tasks = allTasks.filter(task => allProcedureIds.has(task.id));
+          console.log(`[PreventiveMaintenanceForm] Filtered ${tasks.length} tasks for ${machineIds.length} machine(s) by linked procedures`);
+        } else {
+          // No group_id and no linked procedures - show all tasks as fallback
+          tasks = allTasks;
+          console.log(`[PreventiveMaintenanceForm] No group_id or linked procedures found, showing all ${tasks.length} tasks`);
+        }
+      } else {
+        // No machines selected, show all tasks
+        tasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
+        console.log(`[PreventiveMaintenanceForm] No machines selected, showing all ${tasks.length} tasks`);
+      }
+      
+      console.log(`[PreventiveMaintenanceForm] Final tasks to display: ${tasks.length}`);
+      
       setAvailableMaintenanceTasks(
         tasks.map<MaintenanceTaskOption>((task: MaintenanceProcedureTemplate) => ({
           id: task.id,
           name: task.name,
+          group_id: task.group_id ?? undefined,
           category: task.category ?? undefined,
           frequency: task.frequency || 'N/A',
           difficulty_level: task.difficulty_level || 'N/A',
@@ -546,9 +665,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     }
   }, [selectedProperty, fetchAvailableMachines]);
 
-  // Fetch maintenance tasks on mount
+  // Fetch maintenance tasks when machines are selected or on mount
   useEffect(() => {
     if (accessToken) {
+      // Initial load - fetch all tasks if no machines selected yet
       fetchAvailableMaintenanceTasks();
     }
   }, [accessToken, fetchAvailableMaintenanceTasks]);
@@ -1001,13 +1121,51 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
             // Auto-select machine when machineId prop is provided
             React.useEffect(() => {
-              if (machineId && !pmId && availableMachines.length > 0) {
+              if (machineId && !pmId && availableMachines.length > 0 && !loadingMachines) {
                 const machineExists = availableMachines.some(m => m.machine_id === machineId);
-                if (machineExists && !values.selected_machine_ids.includes(machineId)) {
+                const isAlreadySelected = values.selected_machine_ids.includes(machineId);
+                
+                console.log('[PreventiveMaintenanceForm] Machine selection check:', {
+                  machineId,
+                  machineExists,
+                  isAlreadySelected,
+                  availableMachinesCount: availableMachines.length,
+                  currentSelected: values.selected_machine_ids,
+                  propertyId: values.property_id
+                });
+                
+                if (machineExists && !isAlreadySelected) {
+                  console.log('[PreventiveMaintenanceForm] Auto-selecting machine from query param:', machineId);
                   setFieldValue('selected_machine_ids', [machineId], false);
+                } else if (!machineExists) {
+                  console.warn('[PreventiveMaintenanceForm] Machine not found in available machines:', {
+                    machineId,
+                    availableMachineIds: availableMachines.map(m => m.machine_id),
+                    selectedProperty: values.property_id
+                  });
                 }
+              } else if (machineId && !pmId && availableMachines.length === 0 && !loadingMachines && values.property_id) {
+                console.log('[PreventiveMaintenanceForm] Waiting for machines to load for property:', values.property_id);
               }
-            }, [machineId, pmId, availableMachines, values.selected_machine_ids, setFieldValue]);
+            }, [machineId, pmId, availableMachines, loadingMachines, values.selected_machine_ids, values.property_id, setFieldValue]);
+
+            // Refetch maintenance tasks when selected machines change
+            React.useEffect(() => {
+              console.log('[PreventiveMaintenanceForm] useEffect triggered:', {
+                pmId,
+                selected_machine_ids: values.selected_machine_ids,
+                length: values.selected_machine_ids.length
+              });
+              
+              if (!pmId && values.selected_machine_ids.length > 0) {
+                console.log('[PreventiveMaintenanceForm] Selected machines changed, refetching tasks:', values.selected_machine_ids);
+                fetchAvailableMaintenanceTasks(values.selected_machine_ids);
+              } else if (!pmId && values.selected_machine_ids.length === 0) {
+                // No machines selected, show all tasks
+                console.log('[PreventiveMaintenanceForm] No machines selected, showing all tasks');
+                fetchAvailableMaintenanceTasks();
+              }
+            }, [values.selected_machine_ids, pmId, fetchAvailableMaintenanceTasks]);
 
             return (
             <Form aria-label="Preventive Maintenance Form" className="space-y-4 sm:space-y-6">
@@ -1255,12 +1413,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               <label htmlFor="procedure_template" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                 Maintenance Task Template (Optional)
                 {loadingMaintenanceTasks && <span className="text-xs text-gray-500 ml-2">(Loading...)</span>}
+                {!loadingMaintenanceTasks && availableMaintenanceTasks.length === 0 && (
+                  <span className="text-xs text-amber-600 ml-2">(No tasks available)</span>
+                )}
               </label>
               <Field
                 as="select"
                 id="procedure_template"
                 name="procedure_template"
                 className="w-full p-2.5 sm:p-3 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 touch-target"
+                disabled={loadingMaintenanceTasks}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                   const taskId = e.target.value ? Number(e.target.value) : '';
                   setFieldValue('procedure_template', taskId);
@@ -1278,6 +1440,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 <option value="">No template (Custom)</option>
                 {loadingMaintenanceTasks ? (
                   <option disabled>Loading tasks...</option>
+                ) : availableMaintenanceTasks.length === 0 ? (
+                  <option disabled>No tasks available</option>
                 ) : (
                   availableMaintenanceTasks.map((task) => (
                     <option key={task.id} value={task.id}>
@@ -1287,8 +1451,17 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 )}
               </Field>
               <p className="mt-1 text-xs text-gray-500">
-                Select a task template to use as a reference for this maintenance
+                {loadingMaintenanceTasks 
+                  ? 'Loading available task templates...'
+                  : availableMaintenanceTasks.length === 0
+                  ? 'No task templates available. You can still create a custom maintenance task.'
+                  : 'Select a task template to use as a reference for this maintenance'}
               </p>
+              {!loadingMaintenanceTasks && availableMaintenanceTasks.length === 0 && values.selected_machine_ids && values.selected_machine_ids.length > 0 && (
+                <p className="mt-1 text-xs text-amber-600">
+                  No tasks match the selected machine(s). Tasks are filtered by machine group_id or linked procedures.
+                </p>
+              )}
             </div>
 
             {/* Topics Selection - HIDDEN (Topics are now optional) */}

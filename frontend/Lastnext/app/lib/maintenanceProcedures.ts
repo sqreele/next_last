@@ -3,6 +3,7 @@ import apiClient from './api-client';
 export interface MaintenanceProcedureTemplate {
   id: number;
   name: string;
+  group_id?: string | null;
   description?: string;
   category?: string | null;
   frequency?: string | null;

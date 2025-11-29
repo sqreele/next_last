@@ -964,6 +964,12 @@ class Machine(models.Model):
     serial_number = models.CharField(max_length=100, blank=True, null=True, unique=True, help_text="Serial number")
     description = models.TextField(blank=True, null=True)
     location = models.CharField(max_length=200, blank=True, null=True)
+    group_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Task group ID for this machine (e.g., 'PUMP_MAINTENANCE', 'HVAC_CHECK'). This can also be inherited from linked maintenance procedures."
+    )
     
     # Relationship with Property
     property = models.ForeignKey(
@@ -1004,6 +1010,7 @@ class Machine(models.Model):
             models.Index(fields=['status']),  # Filter by status
             models.Index(fields=['property']),  # FK to Property
             models.Index(fields=['location']),  # Search by location
+            models.Index(fields=['group_id']),  # Filter by task group
             models.Index(fields=['status', 'property']),  # Composite for filtering
             models.Index(fields=['category', 'status']),  # Equipment type and status
             models.Index(fields=['last_maintenance_date']),  # For maintenance tracking
@@ -1037,6 +1044,12 @@ class MaintenanceProcedure(models.Model):
     # Equipment field removed - tasks are now generic templates
     
     name = models.CharField(max_length=200, help_text="Task name/title")
+    group_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Group ID to group related maintenance tasks together (e.g., 'PUMP_MAINTENANCE', 'HVAC_CHECK')"
+    )
     category = models.CharField(
         max_length=100, 
         blank=True, 
@@ -1096,6 +1109,14 @@ class MaintenanceProcedure(models.Model):
         help_text="Skill level required for this procedure"
     )
     
+    # Many-to-many relationship with Machine (Equipment)
+    machines = models.ManyToManyField(
+        'Machine',
+        related_name='maintenance_procedures',
+        blank=True,
+        help_text="Machines (Equipment) that use this maintenance procedure template"
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -1111,6 +1132,7 @@ class MaintenanceProcedure(models.Model):
             models.Index(fields=['name']),  # For search
             models.Index(fields=['difficulty_level']),  # For filtering
             models.Index(fields=['created_at']),  # For sorting
+            models.Index(fields=['group_id']),  # Filter by task group
         ]
     
     def __str__(self):

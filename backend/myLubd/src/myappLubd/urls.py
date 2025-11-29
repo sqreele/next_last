@@ -67,6 +67,11 @@ urlpatterns = [
     # Property preventive maintenance
     path('api/v1/properties/<str:property_id>/is-preventivemaintenance/', views.property_is_preventivemaintenance, name='property_is_preventivemaintenance'),
     
+    # Notification endpoints
+    path('api/v1/notifications/overdue/', views.get_overdue_notifications, name='get_overdue_notifications'),
+    path('api/v1/notifications/upcoming/', views.get_upcoming_notifications, name='get_upcoming_notifications'),
+    path('api/v1/notifications/all/', views.get_all_notifications, name='get_all_notifications'),
+    
     # Debug endpoints
     path('api/v1/debug/rooms/', views.debug_rooms, name='debug_rooms'),
     path('api/v1/test/rooms/all/', views.test_rooms_all, name='test_rooms_all'),

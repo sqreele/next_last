@@ -472,13 +472,13 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
               {machine?.machine_id && getMachineUrl() ? (
                 <QRCode
                   value={getMachineUrl()}
-                  size={200}
+                  size={100}
                   level="H"
                   fgColor="#1f2937"
                   bgColor="#ffffff"
                 />
               ) : (
-                <div className="w-[200px] h-[200px] flex items-center justify-center text-gray-400">
+                <div className="w-[100px] h-[100px] flex items-center justify-center text-gray-400">
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
               )}

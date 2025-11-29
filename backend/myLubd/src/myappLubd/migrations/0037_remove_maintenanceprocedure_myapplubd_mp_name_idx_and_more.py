@@ -3,6 +3,11 @@
 from django.db import migrations
 
 
+def noop(apps, schema_editor):
+    """No-op function - all operations were already completed in migration 0036"""
+    pass
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,41 +15,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_name_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_difficulty_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_created_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='utilityconsumption',
-            name='myappLubd_u_room_id_bbb8a0_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='maintenanceprocedure',
-            new_name='myappLubd_m_categor_14f487_idx',
-            old_name='myappLubd_mp_category_idx',
-        ),
-        migrations.RemoveField(
-            model_name='maintenanceprocedure',
-            name='after_image',
-        ),
-        migrations.RemoveField(
-            model_name='maintenanceprocedure',
-            name='after_image_jpeg_path',
-        ),
-        migrations.RemoveField(
-            model_name='maintenanceprocedure',
-            name='before_image',
-        ),
-        migrations.RemoveField(
-            model_name='maintenanceprocedure',
-            name='before_image_jpeg_path',
+        migrations.RunPython(
+            noop,
+            reverse_code=migrations.RunPython.noop,
         ),
     ]

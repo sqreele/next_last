@@ -253,23 +253,26 @@ class MachineAdmin(admin.ModelAdmin):
         'serial_number',
         'property_link', 
         'location', 
-        'status', 
+        'status',
+        'group_id',
         'installation_date', 
         'last_maintenance_date',
         'next_maintenance_date',
-        'task_count'
+        'task_count',
+        'procedure_count',
+        'get_group_ids'
     ]
-    list_filter = ['status', 'category', 'brand', 'property', 'created_at', 'installation_date']
-    search_fields = ['machine_id', 'name', 'brand', 'serial_number', 'description', 'location']
-    readonly_fields = ['created_at', 'updated_at', 'next_maintenance_date', 'qr_code_preview']  # Removed machine_id - now editable
+    list_filter = ['status', 'category', 'brand', 'property', 'group_id', 'created_at', 'installation_date']
+    search_fields = ['machine_id', 'name', 'brand', 'serial_number', 'description', 'location', 'group_id']
+    readonly_fields = ['created_at', 'updated_at', 'next_maintenance_date', 'qr_code_preview', 'maintenance_procedures_display', 'get_group_ids']  # Removed machine_id - now editable
     filter_horizontal = ['preventive_maintenances']
     
     fieldsets = (
         ('Equipment Information', {
-            'fields': ('machine_id', 'name', 'brand', 'category', 'serial_number', 'description', 'location', 'status')
+            'fields': ('machine_id', 'name', 'brand', 'category', 'serial_number', 'description', 'location', 'status', 'group_id')
         }),
         ('Property & Maintenance', {
-            'fields': ('property', 'preventive_maintenances', 'installation_date', 'last_maintenance_date')
+            'fields': ('property', 'preventive_maintenances', 'maintenance_procedures_display', 'get_group_ids', 'installation_date', 'last_maintenance_date')
         }),
         ('QR Code', {
             'fields': ('qr_code_preview',),
@@ -286,6 +289,53 @@ class MachineAdmin(admin.ModelAdmin):
         # maintenance_tasks relationship removed - equipment no longer linked to task templates
         return 0
     task_count.short_description = 'Tasks'
+
+    def procedure_count(self, obj):
+        """Display the number of maintenance procedure templates assigned to this machine"""
+        try:
+            return obj.maintenance_procedures.count()
+        except AttributeError:
+            return 0
+    procedure_count.short_description = 'Procedure Templates'
+
+    def get_group_ids(self, obj):
+        """Display unique group_id values from machine's own group_id and related maintenance procedures"""
+        group_ids = set()
+        
+        # Add machine's own group_id if it exists
+        if obj.group_id:
+            group_ids.add(obj.group_id)
+        
+        # Add group_ids from related maintenance procedures
+        try:
+            procedure_group_ids = obj.maintenance_procedures.values_list('group_id', flat=True).distinct()
+            for gid in procedure_group_ids:
+                if gid:  # Filter out None values
+                    group_ids.add(gid)
+        except AttributeError:
+            pass
+        
+        if group_ids:
+            # Format as badges for better visibility
+            badges = [format_html('<span style="background-color: #e3f2fd; color: #1976d2; padding: 2px 8px; border-radius: 3px; font-size: 11px; margin-right: 4px; display: inline-block;">{}</span>', gid) for gid in sorted(group_ids)]
+            return format_html(''.join(badges))
+        return format_html('<span style="color: #999;">No task groups</span>')
+    get_group_ids.short_description = 'All Task Groups'
+
+    def maintenance_procedures_display(self, obj):
+        """Display linked maintenance procedures as read-only"""
+        if obj.pk:
+            procedures = obj.maintenance_procedures.all()
+            if procedures.exists():
+                from django.urls import reverse
+                links = []
+                for proc in procedures:
+                    url = reverse("admin:myappLubd_maintenanceprocedure_change", args=[proc.pk])
+                    links.append(format_html('<a href="{}">{}</a>', url, proc.name))
+                return format_html('<br>'.join(links))
+            return 'No maintenance procedures assigned'
+        return 'Save the machine first to assign maintenance procedures'
+    maintenance_procedures_display.short_description = 'Maintenance Procedures'
 
     def property_link(self, obj):
         if obj.property:
@@ -306,7 +356,7 @@ class MachineAdmin(admin.ModelAdmin):
     next_maintenance_date.short_description = 'Next Maintenance'
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('property').prefetch_related('preventive_maintenances')
+        return super().get_queryset(request).select_related('property').prefetch_related('preventive_maintenances', 'maintenance_procedures')
 
     def get_machine_url(self, obj):
         """Generate the frontend URL for this machine"""
@@ -1824,17 +1874,22 @@ class SessionAdmin(admin.ModelAdmin):
 
 @admin.register(MaintenanceProcedure)
 class MaintenanceProcedureAdmin(admin.ModelAdmin):
-    list_display = ['name', 'category', 'frequency', 'responsible_department', 'estimated_duration', 'difficulty_level', 'created_at']
-    list_filter = ['category', 'frequency', 'responsible_department', 'difficulty_level', 'created_at']
-    search_fields = ['name', 'category', 'description']
+    list_display = ['name', 'group_id', 'category', 'frequency', 'responsible_department', 'estimated_duration', 'difficulty_level', 'machine_count', 'created_at']
+    list_filter = ['group_id', 'category', 'frequency', 'responsible_department', 'difficulty_level', 'created_at']
+    search_fields = ['name', 'group_id', 'category', 'description']
     readonly_fields = ['created_at', 'updated_at']
+    filter_horizontal = ['machines']
     
     fieldsets = (
         ('Task Information', {
-            'fields': ('name', 'category', 'description', 'frequency', 'estimated_duration')
+            'fields': ('name', 'group_id', 'category', 'description', 'frequency', 'estimated_duration')
         }),
         ('Responsibility', {
             'fields': ('responsible_department', 'difficulty_level')
+        }),
+        ('Related Machines', {
+            'fields': ('machines',),
+            'description': 'Select the machines (equipment) that use this maintenance procedure template'
         }),
         ('Additional Details', {
             'fields': ('required_tools', 'safety_notes')
@@ -1849,6 +1904,18 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
             'fields': ('created_at', 'updated_at')
         }),
     )
+
+    def machine_count(self, obj):
+        """Display the number of machines using this procedure"""
+        try:
+            return obj.machines.count()
+        except AttributeError:
+            return 0
+    machine_count.short_description = 'Machines'
+    machine_count.admin_order_field = 'machines__count'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('machines')
 
 
 @admin.register(MaintenanceTaskImage)

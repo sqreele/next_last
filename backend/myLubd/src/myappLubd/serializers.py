@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, FieldDoesNotExist
 from django.db import transaction
 from django.utils import timezone
 from django.core.validators import FileExtensionValidator
@@ -436,7 +436,7 @@ class MachineSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'machine_id', 'name', 'brand', 'category', 'serial_number',
             'description', 'location', 'property', 'property_name',
-            'status', 'installation_date', 'last_maintenance_date', 'task_count',
+            'status', 'group_id', 'installation_date', 'last_maintenance_date', 'task_count',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'machine_id', 'created_at', 'updated_at']
@@ -560,6 +560,7 @@ class MachineDetailSerializer(serializers.ModelSerializer):
     )
     preventive_maintenances = PreventiveMaintenanceListSerializer(many=True, read_only=True)
     maintenance_tasks = serializers.SerializerMethodField()
+    maintenance_procedures = serializers.SerializerMethodField()
     days_since_last_maintenance = serializers.SerializerMethodField()
     next_maintenance_date = serializers.SerializerMethodField()
     
@@ -568,17 +569,40 @@ class MachineDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'machine_id', 'name', 'brand', 'category', 'serial_number',
             'description', 'location', 'property', 'property_id',
-            'status', 'installation_date', 'last_maintenance_date', 
-            'preventive_maintenances', 'maintenance_tasks',
+            'status', 'group_id', 'installation_date', 'last_maintenance_date', 
+            'preventive_maintenances', 'maintenance_tasks', 'maintenance_procedures',
             'days_since_last_maintenance', 'next_maintenance_date', 
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'machine_id', 'created_at', 'updated_at']
     
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Note: maintenance_procedures relationship should now exist after adding ManyToManyField
+        # Keep the field in the serializer
+    
     def get_maintenance_tasks(self, obj):
         """Get detailed info about maintenance tasks (ER diagram relationship)"""
         # maintenance_tasks relationship removed - equipment no longer linked to task templates
         return []
+    
+    def get_maintenance_procedures(self, obj):
+        """Get maintenance procedures assigned to this machine"""
+        procedures = obj.maintenance_procedures.all()
+        return [
+            {
+                'id': proc.id,
+                'name': proc.name,
+                'group_id': proc.group_id,
+                'category': proc.category,
+                'frequency': proc.frequency,
+                'estimated_duration': proc.estimated_duration,
+                'responsible_department': proc.responsible_department,
+                'difficulty_level': proc.difficulty_level,
+                'created_at': proc.created_at.isoformat() if proc.created_at else None,
+            }
+            for proc in procedures
+        ]
     
     def get_days_since_last_maintenance(self, obj):
         """Calculate days since last maintenance"""
@@ -1201,7 +1225,7 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
     class Meta:
         model = MaintenanceProcedure
         fields = [
-            'id', 'name', 'category', 'description', 'frequency', 'estimated_duration', 
+            'id', 'name', 'group_id', 'category', 'description', 'frequency', 'estimated_duration', 
             'responsible_department', 'required_tools', 'safety_notes', 
             'difficulty_level', 'created_at', 'updated_at'
         ]
@@ -1259,7 +1283,7 @@ class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
     class Meta:
         model = MaintenanceProcedure
         fields = [
-            'id', 'name', 'category', 'frequency', 'estimated_duration',
+            'id', 'name', 'group_id', 'category', 'frequency', 'estimated_duration',
             'responsible_department', 'difficulty_level',
             'schedule_count', 'created_at'
         ]

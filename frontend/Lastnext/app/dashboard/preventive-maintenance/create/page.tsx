@@ -20,12 +20,19 @@ function CreatePageContent() {
   const queryPropertyId = useMemo(() => searchParams.get('property_id'), [searchParams]);
 
   useEffect(() => {
-    if (!queryPropertyId || queryPropertyId === selectedPropertyId) {
+    if (!queryPropertyId) {
+      return;
+    }
+
+    // If property is already set correctly, no need to change
+    if (queryPropertyId === selectedPropertyId) {
+      console.log('[PreventiveMaintenanceCreate] Property already set:', queryPropertyId);
       return;
     }
 
     // Wait until the user's accessible properties are loaded before attempting to sync
     if (!properties || properties.length === 0) {
+      console.log('[PreventiveMaintenanceCreate] Waiting for properties to load...');
       return;
     }
 
@@ -34,11 +41,12 @@ function CreatePageContent() {
     );
 
     if (hasAccessToProperty) {
+      console.log('[PreventiveMaintenanceCreate] Setting property from query param:', queryPropertyId);
       setSelectedPropertyId(queryPropertyId);
     } else {
       console.warn(
         '[PreventiveMaintenanceCreate] Query property is not in the user property list',
-        { queryPropertyId }
+        { queryPropertyId, availableProperties: properties.map(p => p.property_id) }
       );
     }
   }, [properties, queryPropertyId, selectedPropertyId, setSelectedPropertyId]);
@@ -97,6 +105,7 @@ function CreatePageContent() {
           <PreventiveMaintenanceForm
             onSuccessAction={handleSuccess}
             machineId={queryMachineId}
+            key={`${queryMachineId}-${selectedPropertyId}`}
           />
         )}
     </div>

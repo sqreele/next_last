@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/app/lib/session.client';
 import { useUser } from '@/app/lib/stores/mainStore';
@@ -18,8 +18,18 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  LayoutGrid,
+  List,
+  Filter,
 } from 'lucide-react';
 import Link from 'next/link';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 
 interface Machine {
   machine_id: string;
@@ -29,10 +39,11 @@ interface Machine {
   serial_number?: string;
   location?: string;
   category?: string;
-  property: {
+  property?: {
     property_id: string;
     name: string;
   };
+  property_name?: string; // API returns this as a string
   installation_date?: string;
   pm_count?: number; // Count of PM records
   last_maintenance?: string; // Last PM date
@@ -49,6 +60,8 @@ export default function MachinesListPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [totalCount, setTotalCount] = useState(0);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -92,6 +105,13 @@ export default function MachinesListPage() {
       } else if (response.data && 'results' in response.data) {
         machinesData = response.data.results || [];
         total = response.data.count || 0;
+      }
+      
+      // Debug: Log first machine to check property_name
+      if (machinesData.length > 0) {
+        console.log('First machine data:', machinesData[0]);
+        console.log('Property name:', machinesData[0].property_name);
+        console.log('Property object:', machinesData[0].property);
       }
       
       setTotalCount(total);
@@ -142,14 +162,28 @@ export default function MachinesListPage() {
     }
   };
 
+  // Extract unique categories from machines
+  const categories = useMemo(() => {
+    const uniqueCategories = new Set<string>();
+    machines.forEach((machine) => {
+      if (machine.category) {
+        uniqueCategories.add(machine.category);
+      }
+    });
+    return Array.from(uniqueCategories).sort();
+  }, [machines]);
+
   const filteredMachines = machines.filter((machine) => {
     const searchLower = searchTerm.toLowerCase();
-    return (
+    const matchesSearch =
       machine.name?.toLowerCase().includes(searchLower) ||
       machine.machine_id?.toLowerCase().includes(searchLower) ||
       machine.location?.toLowerCase().includes(searchLower) ||
-      machine.category?.toLowerCase().includes(searchLower)
-    );
+      machine.category?.toLowerCase().includes(searchLower);
+    
+    const matchesCategory = selectedCategory === 'all' || machine.category === selectedCategory;
+    
+    return matchesSearch && matchesCategory;
   });
 
   if (status === 'loading' || loading) {
@@ -190,39 +224,80 @@ export default function MachinesListPage() {
           </div>
           <p className="text-gray-600 mt-1">
             {totalCount} machine{totalCount !== 1 ? 's' : ''} total
-            {searchTerm && ` (${filteredMachines.length} filtered)`}
+            {(searchTerm || selectedCategory !== 'all') && ` (${filteredMachines.length} filtered)`}
           </p>
         </div>
       </div>
 
-      {/* Search */}
+      {/* Search and Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search by name, ID, location, or category..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search by name, ID, location, or category..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            {/* Category Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-gray-400" />
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* View Toggle */}
+            <div className="flex items-center gap-2 border rounded-md p-1">
+              <Button
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                className="h-9 px-3"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="h-9 px-3"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Machines Grid */}
+      {/* Machines Grid/List */}
       {filteredMachines.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Wrench className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Machines Found</h3>
             <p className="text-gray-600">
-              {searchTerm ? 'Try adjusting your search criteria' : 'No machines available for this property'}
+              {(searchTerm || selectedCategory !== 'all') ? 'Try adjusting your search or filter criteria' : 'No machines available for this property'}
             </p>
           </CardContent>
         </Card>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredMachines.map((machine) => (
             <Link
@@ -285,10 +360,108 @@ export default function MachinesListPage() {
             </Link>
           ))}
         </div>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Machine
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      PM Records
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Last Maintenance
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Property
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredMachines.map((machine) => (
+                    <tr
+                      key={machine.machine_id}
+                      onClick={() => router.push(`/dashboard/machines/${machine.machine_id}`)}
+                      className="hover:bg-blue-50 transition-colors cursor-pointer"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                            <Wrench className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {machine.name}
+                            </div>
+                            <div className="text-xs text-gray-500 font-mono">
+                              {machine.machine_id}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {machine.category ? (
+                          <Badge variant="secondary" className="text-xs">
+                            {machine.category}
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {machine.location ? (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <MapPin className="h-4 w-4 text-gray-400" />
+                            <span>{machine.location}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2 text-sm">
+                          <FileText className="h-4 w-4 text-purple-500" />
+                          <span className="font-semibold text-gray-900">
+                            {machine.pm_count || 0}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {machine.last_maintenance ? (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Calendar className="h-4 w-4 text-gray-400" />
+                            <span>{new Date(machine.last_maintenance).toLocaleDateString()}</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm text-gray-600">
+                          {machine.property_name || machine.property?.name || '—'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Pagination */}
-      {!searchTerm && filteredMachines.length > 0 && totalPages > 1 && (
+      {(!searchTerm && selectedCategory === 'all') && filteredMachines.length > 0 && totalPages > 1 && (
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">

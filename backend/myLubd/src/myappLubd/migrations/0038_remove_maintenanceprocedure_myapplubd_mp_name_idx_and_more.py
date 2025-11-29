@@ -3,6 +3,24 @@
 from django.db import migrations, models
 
 
+def remove_indexes_if_exist(apps, schema_editor):
+    """Drop legacy indexes only if they are still present in the database"""
+    indexes = [
+        'myappLubd_mp_name_idx',
+        'myappLubd_mp_difficulty_idx',
+        'myappLubd_mp_created_idx',
+        'myappLubd_u_room_id_bbb8a0_idx',
+    ]
+    with schema_editor.connection.cursor() as cursor:
+        for index_name in indexes:
+            cursor.execute("""
+                SELECT 1 FROM pg_indexes 
+                WHERE indexname = %s
+            """, [index_name])
+            if cursor.fetchone():
+                cursor.execute(f'DROP INDEX IF EXISTS "{index_name}"')
+
+
 def rename_index_if_exists(apps, schema_editor):
     """Rename index only if it exists"""
     with schema_editor.connection.cursor() as cursor:
@@ -74,21 +92,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_name_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_difficulty_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_created_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='utilityconsumption',
-            name='myappLubd_u_room_id_bbb8a0_idx',
+        migrations.RunPython(
+            remove_indexes_if_exist,
+            reverse_code=migrations.RunPython.noop,
         ),
         migrations.RunPython(
             rename_index_if_exists,

@@ -3,6 +3,48 @@
 from django.db import migrations, models
 
 
+class SafeRemoveIndex(migrations.RemoveIndex):
+    """Remove an index if it exists without failing when state is desynced."""
+
+    def __init__(self, model_name, name, fields):
+        super().__init__(model_name=model_name, name=name)
+        self.fields = fields
+
+    def _drop_index_if_exists(self, schema_editor):
+        schema_editor.execute(
+            f"DROP INDEX IF EXISTS {schema_editor.quote_name(self.name)}"
+        )
+
+    def state_forwards(self, app_label, state):
+        model_state = state.models[app_label, self.model_name_lower]
+        indexes = model_state.options.get('indexes', [])
+        filtered = [idx for idx in indexes if getattr(idx, 'name', None) != self.name]
+        model_state.options['indexes'] = filtered
+
+    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+        model_state = from_state.models[app_label, self.model_name_lower]
+        try:
+            model_state.get_index_by_name(self.name)
+        except ValueError:
+            # State does not know about the index – drop it directly if it exists.
+            self._drop_index_if_exists(schema_editor)
+            return
+
+        try:
+            super().database_forwards(app_label, schema_editor, from_state, to_state)
+        except ValueError:
+            # Fall back to raw SQL if Django still cannot resolve the index
+            self._drop_index_if_exists(schema_editor)
+
+    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+        model = to_state.apps.get_model(app_label, self.model_name)
+        index = models.Index(fields=list(self.fields), name=self.name)
+        schema_editor.add_index(model, index)
+
+    def describe(self):
+        return f"Safely remove index {self.name} on {self.model_name}"
+
+
 def rename_index_if_exists(apps, schema_editor):
     """Rename index only if it exists"""
     with schema_editor.connection.cursor() as cursor:
@@ -74,21 +116,25 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveIndex(
+        SafeRemoveIndex(
             model_name='maintenanceprocedure',
             name='myappLubd_mp_name_idx',
+            fields=['name'],
         ),
-        migrations.RemoveIndex(
+        SafeRemoveIndex(
             model_name='maintenanceprocedure',
             name='myappLubd_mp_difficulty_idx',
+            fields=['difficulty_level'],
         ),
-        migrations.RemoveIndex(
+        SafeRemoveIndex(
             model_name='maintenanceprocedure',
             name='myappLubd_mp_created_idx',
+            fields=['created_at'],
         ),
-        migrations.RemoveIndex(
+        SafeRemoveIndex(
             model_name='utilityconsumption',
             name='myappLubd_u_room_id_bbb8a0_idx',
+            fields=['room', 'month', 'year'],
         ),
         migrations.RunPython(
             rename_index_if_exists,

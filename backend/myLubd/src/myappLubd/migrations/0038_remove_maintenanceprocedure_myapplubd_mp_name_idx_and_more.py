@@ -3,6 +3,28 @@
 from django.db import migrations, models
 
 
+def remove_indexes_if_exist(apps, schema_editor):
+    """Remove indexes only if they exist."""
+    indexes_to_remove = [
+        'myappLubd_mp_name_idx',
+        'myappLubd_mp_difficulty_idx',
+        'myappLubd_mp_created_idx',
+        'myappLubd_u_room_id_bbb8a0_idx',
+    ]
+
+    with schema_editor.connection.cursor() as cursor:
+        for index_name in indexes_to_remove:
+            cursor.execute(
+                """
+                SELECT 1 FROM pg_indexes 
+                WHERE indexname = %s
+                """,
+                [index_name],
+            )
+            if cursor.fetchone():
+                cursor.execute(f'DROP INDEX IF EXISTS "{index_name}"')
+
+
 def rename_index_if_exists(apps, schema_editor):
     """Rename index only if it exists"""
     with schema_editor.connection.cursor() as cursor:

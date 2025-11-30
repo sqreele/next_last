@@ -65,10 +65,11 @@ class Migration(migrations.Migration):
                 # These fields were removed from database in migrations 0036/0038 via RunPython
                 # We need to remove them from Django's state here
                 # RemoveFieldStateOnly uses .pop() with None default, so it's safe if already removed
-                RemoveFieldStateOnly('maintenanceprocedure', 'after_image'),
-                RemoveFieldStateOnly('maintenanceprocedure', 'after_image_jpeg_path'),
-                RemoveFieldStateOnly('maintenanceprocedure', 'before_image'),
-                RemoveFieldStateOnly('maintenanceprocedure', 'before_image_jpeg_path'),
+              RemoveFieldStateOnly('preventivemaintenance', 'after_image'),
+              RemoveFieldStateOnly('preventivemaintenance', 'after_image_jpeg_path'),
+              RemoveFieldStateOnly('preventivemaintenance', 'before_image'),
+              RemoveFieldStateOnly('preventivemaintenance', 'before_image_jpeg_path'),
+
             ],
         ),
     ]

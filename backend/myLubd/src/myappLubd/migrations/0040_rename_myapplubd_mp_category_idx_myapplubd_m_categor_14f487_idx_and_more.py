@@ -16,19 +16,25 @@ class RemoveFieldStateOnly(Operation):
     def __init__(self, model_name, name):
         self.model_name = model_name
         self.name = name
+        # Store as attributes that Django's migration system expects
+        self.model_name_lower = model_name.lower()
 
     def state_forwards(self, app_label, state):
-        model_key = (app_label, self.model_name.lower())
+        model_key = (app_label, self.model_name_lower)
         model_state = state.models.get(model_key)
         if not model_state:
             return
-        # Safely remove field if it exists - use pop with None default to avoid KeyError
+        # Safely remove field if it exists - check first to avoid KeyError
         # This handles cases where the field was already removed by a previous migration
         if self.name in model_state.fields:
             model_state.fields.pop(self.name)
 
     def database_forwards(self, app_label, schema_editor, from_state, to_state):
         # Database already handled in earlier migrations; nothing to do here.
+        pass
+
+    def database_backwards(self, app_label, schema_editor, from_state, to_state):
+        # Not reversible
         pass
 
     def describe(self):

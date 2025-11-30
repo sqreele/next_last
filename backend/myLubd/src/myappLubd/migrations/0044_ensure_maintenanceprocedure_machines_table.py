@@ -19,28 +19,29 @@ def ensure_table_exists(apps, schema_editor):
         
         if not table_exists:
             # Create the table if it doesn't exist
+            # Note: PostgreSQL is case-sensitive, so we need to quote table names
             cursor.execute("""
-                CREATE TABLE myappLubd_maintenanceprocedure_machines (
+                CREATE TABLE "myappLubd_maintenanceprocedure_machines" (
                     id SERIAL PRIMARY KEY,
                     maintenanceprocedure_id INTEGER NOT NULL 
-                        REFERENCES myappLubd_maintenanceprocedure(id) 
+                        REFERENCES "myappLubd_maintenanceprocedure"(id) 
                         ON DELETE CASCADE,
                     machine_id INTEGER NOT NULL 
-                        REFERENCES myappLubd_machine(id) 
+                        REFERENCES "myappLubd_machine"(id) 
                         ON DELETE CASCADE,
                     UNIQUE(maintenanceprocedure_id, machine_id)
                 );
                 CREATE INDEX myapplubd_maintenanceprocedure_machines_maintenanceprocedure_id_idx 
-                    ON myappLubd_maintenanceprocedure_machines(maintenanceprocedure_id);
+                    ON "myappLubd_maintenanceprocedure_machines"(maintenanceprocedure_id);
                 CREATE INDEX myapplubd_maintenanceprocedure_machines_machine_id_idx 
-                    ON myappLubd_maintenanceprocedure_machines(machine_id);
+                    ON "myappLubd_maintenanceprocedure_machines"(machine_id);
             """)
 
 
 def reverse_ensure_table_exists(apps, schema_editor):
     """Remove the table if needed (for reverse migration)"""
     with connection.cursor() as cursor:
-        cursor.execute("DROP TABLE IF EXISTS myappLubd_maintenanceprocedure_machines CASCADE;")
+        cursor.execute('DROP TABLE IF EXISTS "myappLubd_maintenanceprocedure_machines" CASCADE;')
 
 
 class Migration(migrations.Migration):

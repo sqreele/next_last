@@ -6,6 +6,7 @@ User = get_user_model()
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError, FieldDoesNotExist
 from django.db import transaction
+from django.db.utils import ProgrammingError
 from django.utils import timezone
 from django.core.validators import FileExtensionValidator
 import math
@@ -588,21 +589,35 @@ class MachineDetailSerializer(serializers.ModelSerializer):
     
     def get_maintenance_procedures(self, obj):
         """Get maintenance procedures assigned to this machine"""
-        procedures = obj.maintenance_procedures.all()
-        return [
-            {
-                'id': proc.id,
-                'name': proc.name,
-                'group_id': proc.group_id,
-                'category': proc.category,
-                'frequency': proc.frequency,
-                'estimated_duration': proc.estimated_duration,
-                'responsible_department': proc.responsible_department,
-                'difficulty_level': proc.difficulty_level,
-                'created_at': proc.created_at.isoformat() if proc.created_at else None,
-            }
-            for proc in procedures
-        ]
+        try:
+            # Check if the many-to-many relationship exists (migration 0038 applied)
+            if not hasattr(obj, 'maintenance_procedures'):
+                return []
+            
+            procedures = obj.maintenance_procedures.all()
+            return [
+                {
+                    'id': proc.id,
+                    'name': proc.name,
+                    'group_id': proc.group_id,
+                    'category': proc.category,
+                    'frequency': proc.frequency,
+                    'estimated_duration': proc.estimated_duration,
+                    'responsible_department': proc.responsible_department,
+                    'difficulty_level': proc.difficulty_level,
+                    'created_at': proc.created_at.isoformat() if proc.created_at else None,
+                }
+                for proc in procedures
+            ]
+        except (ProgrammingError, AttributeError) as e:
+            # Handle case where migration hasn't been applied yet (table doesn't exist)
+            # ProgrammingError: relation "myappLubd_maintenanceprocedure_machines" does not exist
+            # Log the error but don't crash the API
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Could not fetch maintenance_procedures for machine {obj.id}: {e}. "
+                          f"Migration 0038 may not have been applied yet.")
+            return []
     
     def get_days_since_last_maintenance(self, obj):
         """Calculate days since last maintenance"""

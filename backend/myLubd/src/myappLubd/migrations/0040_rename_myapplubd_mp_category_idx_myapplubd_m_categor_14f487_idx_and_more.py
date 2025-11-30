@@ -13,6 +13,8 @@ class Migration(migrations.Migration):
         # These operations were already handled conditionally in migration 0038
         # We use SeparateDatabaseAndState to update Django's migration state
         # without actually running the database operations again
+        # Note: Field removals (after_image, before_image, etc.) were handled by RunPython
+        # in migrations 0036 and 0038, so we don't need to remove them from state here
         migrations.SeparateDatabaseAndState(
             database_operations=[],
             state_operations=[
@@ -20,22 +22,6 @@ class Migration(migrations.Migration):
                     model_name='maintenanceprocedure',
                     new_name='myappLubd_m_categor_14f487_idx',
                     old_name='myappLubd_mp_category_idx',
-                ),
-                migrations.RemoveField(
-                    model_name='maintenanceprocedure',
-                    name='after_image',
-                ),
-                migrations.RemoveField(
-                    model_name='maintenanceprocedure',
-                    name='after_image_jpeg_path',
-                ),
-                migrations.RemoveField(
-                    model_name='maintenanceprocedure',
-                    name='before_image',
-                ),
-                migrations.RemoveField(
-                    model_name='maintenanceprocedure',
-                    name='before_image_jpeg_path',
                 ),
             ],
         ),

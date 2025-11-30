@@ -13,6 +13,8 @@ class Migration(migrations.Migration):
         # These operations were already handled conditionally by RunPython in migrations 0036 and 0038
         # We use SeparateDatabaseAndState to update Django's migration state
         # without actually running the database operations again
+        # Note: Field removals (after_image, before_image, etc.) were already handled in migration 0040
+        # using RemoveFieldStateOnly, so we only need to handle index removals here
         migrations.SeparateDatabaseAndState(
             database_operations=[],
             state_operations=[
@@ -31,22 +33,6 @@ class Migration(migrations.Migration):
                 migrations.RemoveIndex(
                     model_name='utilityconsumption',
                     name='myappLubd_u_room_id_bbb8a0_idx',
-                ),
-                migrations.RemoveField(
-                    model_name='maintenanceprocedure',
-                    name='after_image',
-                ),
-                migrations.RemoveField(
-                    model_name='maintenanceprocedure',
-                    name='after_image_jpeg_path',
-                ),
-                migrations.RemoveField(
-                    model_name='maintenanceprocedure',
-                    name='before_image',
-                ),
-                migrations.RemoveField(
-                    model_name='maintenanceprocedure',
-                    name='before_image_jpeg_path',
                 ),
             ],
         ),

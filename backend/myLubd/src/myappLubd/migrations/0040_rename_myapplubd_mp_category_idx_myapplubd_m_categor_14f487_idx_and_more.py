@@ -22,7 +22,10 @@ class RemoveFieldStateOnly(Operation):
         model_state = state.models.get(model_key)
         if not model_state:
             return
-        model_state.fields.pop(self.name, None)
+        # Safely remove field if it exists - use pop with None default to avoid KeyError
+        # This handles cases where the field was already removed by a previous migration
+        if self.name in model_state.fields:
+            model_state.fields.pop(self.name)
 
     def database_forwards(self, app_label, schema_editor, from_state, to_state):
         # Database already handled in earlier migrations; nothing to do here.
@@ -43,7 +46,8 @@ class Migration(migrations.Migration):
         # We use SeparateDatabaseAndState to update Django's migration state
         # without actually running the database operations again
         # Note: Field removals (after_image, before_image, etc.) were handled by RunPython
-        # in migrations 0036 and 0038, so we don't need to remove them from state here
+        # in migrations 0036 and 0038, so we use RemoveFieldStateOnly to sync Django's state
+        # RemoveFieldStateOnly safely handles cases where fields may already be removed
         migrations.SeparateDatabaseAndState(
             database_operations=[],
             state_operations=[
@@ -52,6 +56,9 @@ class Migration(migrations.Migration):
                     new_name='myappLubd_m_categor_14f487_idx',
                     old_name='myappLubd_mp_category_idx',
                 ),
+                # These fields were removed from database in migrations 0036/0038 via RunPython
+                # We need to remove them from Django's state here
+                # RemoveFieldStateOnly uses .pop() with None default, so it's safe if already removed
                 RemoveFieldStateOnly('maintenanceprocedure', 'after_image'),
                 RemoveFieldStateOnly('maintenanceprocedure', 'after_image_jpeg_path'),
                 RemoveFieldStateOnly('maintenanceprocedure', 'before_image'),

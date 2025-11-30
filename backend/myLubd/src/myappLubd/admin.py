@@ -294,7 +294,11 @@ class MachineAdmin(admin.ModelAdmin):
         """Display the number of maintenance procedure templates assigned to this machine"""
         try:
             return obj.maintenance_procedures.count()
-        except AttributeError:
+        except (AttributeError, Exception) as e:
+            # Handle case where migration hasn't been applied or table doesn't exist
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Could not count maintenance_procedures for machine {obj.id}: {e}")
             return 0
     procedure_count.short_description = 'Procedure Templates'
 
@@ -312,7 +316,11 @@ class MachineAdmin(admin.ModelAdmin):
             for gid in procedure_group_ids:
                 if gid:  # Filter out None values
                     group_ids.add(gid)
-        except AttributeError:
+        except (AttributeError, Exception) as e:
+            # Handle case where migration hasn't been applied or table doesn't exist
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Could not fetch maintenance_procedures group_ids for machine {obj.id}: {e}")
             pass
         
         if group_ids:
@@ -325,15 +333,22 @@ class MachineAdmin(admin.ModelAdmin):
     def maintenance_procedures_display(self, obj):
         """Display linked maintenance procedures as read-only"""
         if obj.pk:
-            procedures = obj.maintenance_procedures.all()
-            if procedures.exists():
-                from django.urls import reverse
-                links = []
-                for proc in procedures:
-                    url = reverse("admin:myappLubd_maintenanceprocedure_change", args=[proc.pk])
-                    links.append(format_html('<a href="{}">{}</a>', url, proc.name))
-                return format_html('<br>'.join(links))
-            return 'No maintenance procedures assigned'
+            try:
+                procedures = obj.maintenance_procedures.all()
+                if procedures.exists():
+                    from django.urls import reverse
+                    links = []
+                    for proc in procedures:
+                        url = reverse("admin:myappLubd_maintenanceprocedure_change", args=[proc.pk])
+                        links.append(format_html('<a href="{}">{}</a>', url, proc.name))
+                    return format_html('<br>'.join(links))
+                return 'No maintenance procedures assigned'
+            except Exception as e:
+                # Handle case where migration hasn't been applied or table doesn't exist
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"Could not fetch maintenance_procedures for machine {obj.id}: {e}")
+                return format_html('<span style="color: orange;">Error loading procedures</span>')
         return 'Save the machine first to assign maintenance procedures'
     maintenance_procedures_display.short_description = 'Maintenance Procedures'
 
@@ -356,7 +371,15 @@ class MachineAdmin(admin.ModelAdmin):
     next_maintenance_date.short_description = 'Next Maintenance'
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('property').prefetch_related('preventive_maintenances', 'maintenance_procedures')
+        """Get queryset with optimizations, handling potential migration issues"""
+        try:
+            return super().get_queryset(request).select_related('property').prefetch_related('preventive_maintenances', 'maintenance_procedures')
+        except Exception as e:
+            # Fallback if maintenance_procedures relationship doesn't exist yet
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Could not prefetch maintenance_procedures in MachineAdmin: {e}")
+            return super().get_queryset(request).select_related('property').prefetch_related('preventive_maintenances')
 
     def get_machine_url(self, obj):
         """Generate the frontend URL for this machine"""
@@ -1878,44 +1901,88 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
     list_filter = ['group_id', 'category', 'frequency', 'responsible_department', 'difficulty_level', 'created_at']
     search_fields = ['name', 'group_id', 'category', 'description']
     readonly_fields = ['created_at', 'updated_at']
-    filter_horizontal = ['machines']
     
-    fieldsets = (
-        ('Task Information', {
-            'fields': ('name', 'group_id', 'category', 'description', 'frequency', 'estimated_duration')
-        }),
-        ('Responsibility', {
-            'fields': ('responsible_department', 'difficulty_level')
-        }),
-        ('Related Machines', {
-            'fields': ('machines',),
-            'description': 'Select the machines (equipment) that use this maintenance procedure template'
-        }),
-        ('Additional Details', {
-            'fields': ('required_tools', 'safety_notes')
-        }),
-        ('Advanced', {
-            'classes': ('collapse',),
-            'fields': ('steps',),
-            'description': 'Advanced: JSON step data (for API use only)'
-        }),
-        ('Timestamps', {
-            'classes': ('collapse',),
-            'fields': ('created_at', 'updated_at')
-        }),
-    )
+    def _machines_field_accessible(self):
+        """Check if machines field/table is accessible"""
+        try:
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'myappLubd_maintenanceprocedure_machines'
+                    );
+                """)
+                return cursor.fetchone()[0]
+        except Exception:
+            return False
+    
+    def __init__(self, *args, **kwargs):
+        """Initialize admin with safe filter_horizontal setting"""
+        super().__init__(*args, **kwargs)
+        if self._machines_field_accessible():
+            self.filter_horizontal = ['machines']
+        else:
+            self.filter_horizontal = []
+    
+    filter_horizontal = []  # Will be set in __init__ if table exists
+    
+    def get_fieldsets(self, request, obj=None):
+        """Get fieldsets, conditionally including machines field"""
+        fieldsets = [
+            ('Task Information', {
+                'fields': ('name', 'group_id', 'category', 'description', 'frequency', 'estimated_duration')
+            }),
+            ('Responsibility', {
+                'fields': ('responsible_department', 'difficulty_level')
+            }),
+            ('Additional Details', {
+                'fields': ('required_tools', 'safety_notes')
+            }),
+            ('Advanced', {
+                'classes': ('collapse',),
+                'fields': ('steps',),
+                'description': 'Advanced: JSON step data (for API use only)'
+            }),
+            ('Timestamps', {
+                'classes': ('collapse',),
+                'fields': ('created_at', 'updated_at')
+            }),
+        ]
+        
+        # Only add machines fieldset if the relationship is accessible
+        if self._machines_field_accessible():
+            fieldsets.insert(2, ('Related Machines', {
+                'fields': ('machines',),
+                'description': 'Select the machines (equipment) that use this maintenance procedure template'
+            }))
+        
+        return fieldsets
 
     def machine_count(self, obj):
         """Display the number of machines using this procedure"""
         try:
             return obj.machines.count()
-        except AttributeError:
+        except (AttributeError, Exception) as e:
+            # Handle case where migration hasn't been applied or table doesn't exist
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Could not count machines for maintenance procedure {obj.id}: {e}")
             return 0
     machine_count.short_description = 'Machines'
     machine_count.admin_order_field = 'machines__count'
 
     def get_queryset(self, request):
-        return super().get_queryset(request).prefetch_related('machines')
+        """Get queryset with optimizations, handling potential migration issues"""
+        try:
+            return super().get_queryset(request).prefetch_related('machines')
+        except Exception as e:
+            # Fallback if machines relationship doesn't exist yet
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Could not prefetch machines in MaintenanceProcedureAdmin: {e}")
+            return super().get_queryset(request)
 
 
 @admin.register(MaintenanceTaskImage)

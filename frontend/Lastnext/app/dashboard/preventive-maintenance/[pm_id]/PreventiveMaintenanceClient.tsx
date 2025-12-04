@@ -870,29 +870,25 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             </span>
           </div>
 
-          {includeDetails && (
-            <>
-              {(maintenanceData as any).job_description && (
-                <div className="mb-4">
-                  <span className="font-medium text-gray-600">Description:</span>
-                  <p className="text-gray-700 mt-1">{(maintenanceData as any).job_description}</p>
-                </div>
-              )}
+          {(maintenanceData as any).job_description && (
+            <div className="mb-4">
+              <span className="font-medium text-gray-600">Description:</span>
+              <p className="text-gray-700 mt-1">{(maintenanceData as any).job_description}</p>
+            </div>
+          )}
 
-              {maintenanceData.notes && (
-                <div className="mb-4">
-                  <span className="font-medium text-gray-600">Notes:</span>
-                  <p className="text-gray-700 mt-1">{maintenanceData.notes}</p>
-                </div>
-              )}
+          {maintenanceData.notes && (
+            <div className="mb-4">
+              <span className="font-medium text-gray-600">Notes:</span>
+              <p className="text-gray-700 mt-1">{maintenanceData.notes}</p>
+            </div>
+          )}
 
-              {maintenanceData.procedure && (
-                <div className="mb-4">
-                  <span className="font-medium text-gray-600">Procedure:</span>
-                  <p className="text-gray-700 mt-1 whitespace-pre-wrap">{maintenanceData.procedure}</p>
-                </div>
-              )}
-            </>
+          {maintenanceData.procedure && (
+            <div className="mb-4">
+              <span className="font-medium text-gray-600">Procedure:</span>
+              <p className="text-gray-700 mt-1 whitespace-pre-wrap">{maintenanceData.procedure}</p>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-4 text-sm mb-4">
@@ -938,7 +934,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             </div>
           )}
 
-          {includeImages && (beforeImageUrl || afterImageUrl) && (
+          {(beforeImageUrl || afterImageUrl) && (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <h3 className="font-medium text-gray-700 mb-4 flex items-center">
                 <Camera className="h-4 w-4 mr-2" />

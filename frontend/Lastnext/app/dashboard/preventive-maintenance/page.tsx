@@ -589,13 +589,6 @@ function PreventiveMaintenanceListPageContent() {
             New Maintenance
           </Link>
           
-          <Link
-            href="/dashboard/preventive-maintenance/pdf"
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Generate PDF
-          </Link>
         </div>
       </div>
 

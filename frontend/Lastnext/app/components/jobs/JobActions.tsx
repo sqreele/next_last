@@ -5,15 +5,8 @@ import { useRouter } from "next/navigation";
 import { Plus, FileDown, Filter, SortAsc, SortDesc, Building, Calendar, DoorOpen, Settings } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
-import JobPDFConfig from "@/app/components/jobs/JobPDFConfig";
 import { useUser } from "@/app/lib/stores/mainStore";
 import { useSession } from "@/app/lib/session.client";
-import { JobPDFService } from "@/app/lib/services/JobPDFService";
-import { JobPDFConfig as JobPDFConfigType } from "@/app/components/jobs/JobPDFConfig";
-import { generatePdfWithRetry, downloadPdf } from "@/app/lib/pdfUtils";
-import { generatePdfBlob } from "@/app/lib/pdfRenderer";
-import JobsPDFDocument from "@/app/components/document/JobsPDFGenerator";
-import { enrichJobsWithPdfImages } from "@/app/lib/utils/pdfImageUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,14 +48,12 @@ export default function JobActions({
   properties = [],
 }: JobActionsProps) {
   const router = useRouter();
-  const [isGenerating, setIsGenerating] = useState(false);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomSearch, setRoomSearch] = useState<string>("");
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
   const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setSelectedProperty } = useUser();
   const { data: session } = useSession();
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
-  const [isPDFConfigOpen, setIsPDFConfigOpen] = useState(false);
   const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>({});
   const [isRoomFilterOpen, setIsRoomFilterOpen] = useState(false);
 
@@ -275,97 +266,6 @@ export default function JobActions({
     setIsCustomDateOpen(false);
   };
 
-  const handlePDFConfig = async (config: JobPDFConfigType) => {
-    if (!jobs.length) {
-      alert("No jobs available to generate a PDF.");
-      return;
-    }
-
-    try {
-      setIsGenerating(true);
-      const propertyName = getPropertyName(selectedProperty);
-
-      await JobPDFService.generateAndDownloadPDF({
-        jobs,
-        filter: currentTab,
-        selectedProperty,
-        propertyName,
-        config,
-      });
-    } catch (error: any) {
-      console.error("Error generating PDF:", error);
-      
-      let errorMessage = 'Failed to generate PDF. ';
-      if (error?.message?.includes('Font')) {
-        errorMessage += 'Font loading error. ';
-      } else if (error?.message?.includes('%PDF')) {
-        errorMessage += 'Invalid PDF format. ';
-      } else {
-        errorMessage += error?.message || 'Unknown error. ';
-      }
-      errorMessage += ' Please try again later.';
-      
-      alert(errorMessage);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleGeneratePDF = async () => {
-    console.log('PDF Generation Debug:', {
-      jobsCount: jobs.length,
-      jobs: jobs.map(j => ({ id: j.job_id, property_id: j.property_id, status: j.status })),
-      selectedProperty,
-      currentTab,
-      properties: properties.map(p => ({ id: p.property_id, name: p.name }))
-    });
-
-    if (!jobs.length) {
-      alert("No jobs available to generate a PDF.");
-      return;
-    }
-
-    try {
-      setIsGenerating(true);
-      const propertyName = getPropertyName(selectedProperty);
-
-      const blob = await generatePdfWithRetry(async () => {
-        const jobsWithImages = await enrichJobsWithPdfImages(jobs);
-        const pdfDocument = (
-          <JobsPDFDocument
-            jobs={jobsWithImages}
-            filter={currentTab}
-            selectedProperty={selectedProperty}
-            propertyName={propertyName}
-            includeImages={true}
-            includeDetails={true}
-            applyPropertyFilter={false}
-          />
-        );
-        return await generatePdfBlob(pdfDocument);
-      });
-
-      const date = format(new Date(), "yyyy-MM-dd");
-      const filename = `jobs-report-${date}.pdf`;
-      await downloadPdf(blob, filename);
-    } catch (error: any) {
-      console.error("Error generating PDF:", error);
-      
-      let errorMessage = 'Failed to generate PDF. ';
-      if (error?.message?.includes('Font')) {
-        errorMessage += 'Font loading error. ';
-      } else if (error?.message?.includes('%PDF')) {
-        errorMessage += 'Invalid PDF format. ';
-      } else {
-        errorMessage += error?.message || 'Unknown error. ';
-      }
-      errorMessage += ' Please try again later.';
-      
-      alert(errorMessage);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const exportCount = jobs.length;
 
@@ -557,28 +457,6 @@ export default function JobActions({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsPDFConfigOpen(true)}
-          disabled={exportCount === 0}
-          className={buttonClass}
-        >
-          <Settings className="h-4 w-4" />
-          Configure
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleGeneratePDF}
-          disabled={isGenerating || exportCount === 0}
-          className={buttonClass}
-        >
-          <FileDown className="h-4 w-4" />
-          {isGenerating ? "Generating..." : `Export (${exportCount})`}
-        </Button>
-        
         <CreateJobButton onJobCreated={handleRefresh} propertyId={selectedProperty ?? ""} />
 
       </div>
@@ -688,11 +566,6 @@ export default function JobActions({
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-gray-200 my-1" />
 
-            <DropdownMenuItem onClick={handleGeneratePDF} disabled={isGenerating || exportCount === 0} className={menuItemClass}>
-              <FileDown className="h-4 w-4" />
-              {isGenerating ? "Generating..." : `Export PDF (${exportCount})`}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-gray-200 my-1" />
 
             <DropdownMenuItem onClick={handleRefresh} className={menuItemClass}>
               <Plus className="h-4 w-4" /> Create Job
@@ -732,17 +605,6 @@ export default function JobActions({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* PDF Configuration Dialog */}
-      <JobPDFConfig
-        isOpen={isPDFConfigOpen}
-        onClose={() => setIsPDFConfigOpen(false)}
-        onGenerate={handlePDFConfig}
-        jobCount={jobs.length}
-        selectedProperty={selectedProperty}
-        propertyName={getPropertyName(selectedProperty)}
-      />
-
 
     </div>
   );

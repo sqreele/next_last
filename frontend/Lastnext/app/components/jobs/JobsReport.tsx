@@ -21,10 +21,6 @@ import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
 import { Job, TabValue, JobStatus, JobPriority, STATUS_COLORS } from '@/app/lib/types';
 import { fetchAllJobsForProperty } from '@/app/lib/data.server';
-import JobsPDFDocument from '@/app/components/document/JobsPDFGenerator';
-import { enrichJobsWithPdfImages } from '@/app/lib/utils/pdfImageUtils';
-import { generatePdfWithRetry, downloadPdf } from '@/app/lib/pdfUtils';
-import { generatePdfBlob } from '@/app/lib/pdfRenderer';
 import { format } from 'date-fns';
 import { jobsToCSV, downloadCSV } from '@/app/lib/utils/csv-export';
 
@@ -61,7 +57,6 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
   const { userProfile, selectedPropertyId: selectedProperty } = useUser();
   const { properties: userProperties } = useProperties();
   
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingCsv, setIsGeneratingCsv] = useState(false);
   const [reportJobs, setReportJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
@@ -231,44 +226,6 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
     }
   }, [selectedProperty, jobs.length, session?.user?.accessToken]);
 
-  // Generate PDF report
-  const handleGeneratePDF = async () => {
-    if (!reportJobs.length) {
-      alert('No jobs available to generate a report.');
-      return;
-    }
-
-    try {
-      setIsGenerating(true);
-      const propertyName = currentProperty?.name || `Property ${selectedProperty}`;
-      
-      const blob = await generatePdfWithRetry(async () => {
-        const jobsWithImages = await enrichJobsWithPdfImages(reportJobs);
-        const pdfDocument = (
-          <JobsPDFDocument
-            jobs={jobsWithImages}
-            filter={filter}
-            selectedProperty={selectedProperty}
-            propertyName={propertyName}
-            includeImages={true}
-            includeDetails={true}
-            includeStatistics={true}
-            reportTitle={`${propertyName} - Jobs Report`}
-          />
-        );
-        return await generatePdfBlob(pdfDocument);
-      });
-
-      const date = format(new Date(), 'yyyy-MM-dd');
-      const filename = `${propertyName?.replace(/\s+/g, '-')}-jobs-report-${date}.pdf`;
-      await downloadPdf(blob, filename);
-    } catch (error: any) {
-      console.error('Error generating PDF:', error);
-      alert(`Failed to generate PDF: ${error.message || 'Unknown error'}`);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   // Generate CSV export
   const handleGenerateCSV = async () => {
@@ -415,22 +372,6 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
                 )}
               </Button>
               <Button 
-                onClick={handleGeneratePDF} 
-                disabled={isGenerating || reportJobs.length === 0}
-                className="flex items-center gap-2"
-              >
-                {isGenerating ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    Download PDF
-                  </>
-                )}
-              </Button>
             </div>
           </div>
         </CardHeader>

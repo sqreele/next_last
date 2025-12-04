@@ -52,9 +52,6 @@ interface Session {
 import { Button } from "@/app/components/ui/button";
 import Link from "next/link";
 import { Download } from "lucide-react";
-import { generatePdfWithRetry, downloadPdf } from "@/app/lib/pdfUtils";
-import { generatePdfBlob } from "@/app/lib/pdfRenderer";
-import ChartDashboardPDF from "@/app/components/document/ChartDashboardPDF";
 import html2canvas from "html2canvas";
 import { jobsApi } from "@/app/lib/api/jobsApi";
 
@@ -85,11 +82,15 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   const [filteredJobs, setFilteredJobs] = useState<Job[]>(initialJobs);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [chartImages, setChartImages] = useState<{
     pieChart?: string;
     barChart?: string;
   }>({});
+  
+  // Job comparison states
+  const [comparisonJobYear1, setComparisonJobYear1] = useState<number>(new Date().getFullYear() - 1);
+  const [comparisonJobYear2, setComparisonJobYear2] = useState<number>(new Date().getFullYear());
+  const [comparisonJobMonth, setComparisonJobMonth] = useState<number>(new Date().getMonth() + 1);
 
   // Backend stats (server authoritative counts)
   const [backendStats, setBackendStats] = useState<{
@@ -225,78 +226,6 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     }
   };
 
-  // PDF Export function
-  const handleExportPDF = async () => {
-    if (!filteredJobs.length) {
-      alert('No data available to export.');
-      return;
-    }
-
-    try {
-      setIsGeneratingPDF(true);
-      
-      // Capture charts as images
-      const [pieChartImage, barChartImage, topicChartImage, roomChartImage] = await Promise.all([
-        captureChartAsImage('pie-chart-container'),
-        captureChartAsImage('bar-chart-container'),
-        captureChartAsImage('topic-chart-container').catch(() => null),
-        captureChartAsImage('room-chart-container').catch(() => null)
-      ]);
-
-      // If chart images are too small or empty, don't use them
-      const usePieChartImage = pieChartImage && pieChartImage.length > 1000;
-      const useBarChartImage = barChartImage && barChartImage.length > 1000;
-      const useTopicChartImage = topicChartImage && topicChartImage.length > 1000;
-      const useRoomChartImage = roomChartImage && roomChartImage.length > 1000;
-      
-      // Get current property name
-      const currentProperty = userProperties.find(p => p.property_id === effectiveProperty);
-      const propertyName = currentProperty?.name || `Property ${effectiveProperty}`;
-      
-      // Create PDF document with chart images
-      const pdfDocument = (
-        <ChartDashboardPDF
-          jobs={filteredJobs}
-          selectedProperty={effectiveProperty}
-          propertyName={propertyName}
-          jobStats={jobStats}
-          jobsByMonth={jobsByMonth}
-          jobsByUser={jobsByUser}
-          chartImages={{
-            pieChart: usePieChartImage ? pieChartImage : null,
-            barChart: useBarChartImage ? barChartImage : null,
-            topicChart: useTopicChartImage ? topicChartImage : null,
-            roomChart: useRoomChartImage ? roomChartImage : null
-          }}
-          jobsByTopic={jobsByTopic.map(({ topic, count, percentage }) => ({ topic, count, percentage }))}
-          jobsByRoom={jobsByRoom.map(({ room, count, percentage }) => ({ room, count, percentage }))}
-        />
-      );
-      
-      // Check if we have valid chart data
-      const validJobStats = jobStats.filter(stat => {
-        const percentage = parseFloat(stat.percentage);
-        return percentage > 0 && stat.value > 0;
-      });
-      
-      // Generate PDF blob
-      const blob = await generatePdfWithRetry(async () => {
-        return await generatePdfBlob(pdfDocument);
-      });
-      
-      // Download PDF
-      const date = new Date().toISOString().split('T')[0];
-      const filename = `${propertyName.replace(/\s+/g, '-')}-chart-dashboard-${date}.pdf`;
-      await downloadPdf(blob, filename);
-      
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      logger.error('Failed to generate PDF', error);
-      alert(`Failed to generate PDF: ${errorMessage}`);
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-  };
 
   // Load jobs when necessary
   useEffect(() => {
@@ -741,6 +670,80 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     return result;
   }, [filteredJobs]);
 
+  // Get available years from jobs data (must be before early returns)
+  const availableJobYears = useMemo(() => {
+    const years = new Set<number>();
+    filteredJobs.forEach(job => {
+      if (job.created_at) {
+        const year = new Date(job.created_at).getFullYear();
+        years.add(year);
+      }
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [filteredJobs]);
+
+  // Prepare job comparison data: Same month across selected years (must be before early returns)
+  const jobComparisonData = useMemo(() => {
+    // Filter jobs for year 1 and selected month
+    const year1Jobs = filteredJobs.filter(job => {
+      if (!job.created_at) return false;
+      const jobDate = new Date(job.created_at);
+      return jobDate.getFullYear() === comparisonJobYear1 && jobDate.getMonth() + 1 === comparisonJobMonth;
+    });
+
+    // Filter jobs for year 2 and selected month
+    const year2Jobs = filteredJobs.filter(job => {
+      if (!job.created_at) return false;
+      const jobDate = new Date(job.created_at);
+      return jobDate.getFullYear() === comparisonJobYear2 && jobDate.getMonth() + 1 === comparisonJobMonth;
+    });
+
+    // Count jobs by status for each year
+    const countByStatus = (jobs: Job[]) => {
+      const counts = {
+        total: jobs.length,
+        completed: 0,
+        pending: 0,
+        in_progress: 0,
+        waiting_sparepart: 0,
+        cancelled: 0,
+      };
+      
+      jobs.forEach(job => {
+        if (counts.hasOwnProperty(job.status)) {
+          counts[job.status as keyof typeof counts]++;
+        }
+      });
+      
+      return counts;
+    };
+
+    const year1Counts = countByStatus(year1Jobs);
+    const year2Counts = countByStatus(year2Jobs);
+
+    const monthName = new Date(2000, comparisonJobMonth - 1).toLocaleString('default', { month: 'long' });
+
+    return [
+      {
+        month: `${monthName} ${comparisonJobYear1}`,
+        total: year1Counts.total,
+        completed: year1Counts.completed,
+        pending: year1Counts.pending,
+        in_progress: year1Counts.in_progress,
+        waiting_sparepart: year1Counts.waiting_sparepart,
+        cancelled: year1Counts.cancelled,
+      },
+      {
+        month: `${monthName} ${comparisonJobYear2}`,
+        total: year2Counts.total,
+        completed: year2Counts.completed,
+        pending: year2Counts.pending,
+        in_progress: year2Counts.in_progress,
+        waiting_sparepart: year2Counts.waiting_sparepart,
+        cancelled: year2Counts.cancelled,
+      },
+    ];
+  }, [filteredJobs, comparisonJobYear1, comparisonJobYear2, comparisonJobMonth]);
 
   // Loading state
   if (status === "loading" || isLoading) {
@@ -824,27 +827,6 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
               : `Showing ${filteredJobs.length}`}
           </p>
         </div>
-        <Button
-          onClick={handleExportPDF}
-          disabled={isGeneratingPDF || filteredJobs.length === 0}
-          className="flex items-center gap-2 w-full sm:w-auto"
-          variant="outline"
-          size="sm"
-        >
-          {isGeneratingPDF ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              <span className="hidden sm:inline">Generating...</span>
-              <span className="sm:hidden">Generating</span>
-            </>
-          ) : (
-            <>
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Export PDF</span>
-              <span className="sm:hidden">Export</span>
-            </>
-          )}
-        </Button>
       </div>
 
       <div className="space-y-4">
@@ -1159,6 +1141,130 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
             </div>
           </CardContent>
         </Card>
+
+        {/* Job Comparison Chart: Same Month Across Selected Years */}
+        {jobComparisonData.length > 0 && availableJobYears.length > 0 && (
+          <Card className="w-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg sm:text-xl">
+                Job Comparison: Same Month Across Years ({comparisonJobYear1} vs {comparisonJobYear2})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {/* Year and Month Selection */}
+              <div className="mb-4 flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Compare Year 1
+                  </label>
+                  <select
+                    value={comparisonJobYear1}
+                    onChange={(e) => setComparisonJobYear1(parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {availableJobYears.length > 0 ? (
+                      availableJobYears.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))
+                    ) : (
+                      <option value={comparisonJobYear1}>{comparisonJobYear1}</option>
+                    )}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Compare Year 2
+                  </label>
+                  <select
+                    value={comparisonJobYear2}
+                    onChange={(e) => setComparisonJobYear2(parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {availableJobYears.length > 0 ? (
+                      availableJobYears.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))
+                    ) : (
+                      <option value={comparisonJobYear2}>{comparisonJobYear2}</option>
+                    )}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Month
+                  </label>
+                  <select
+                    value={comparisonJobMonth}
+                    onChange={(e) => setComparisonJobMonth(parseInt(e.target.value))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(month => (
+                      <option key={month} value={month}>
+                        {new Date(2000, month - 1).toLocaleString('default', { month: 'long' })}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="h-[300px] sm:h-[350px] md:h-[400px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={jobComparisonData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: isMobile ? 10 : 12 }}
+                      angle={isMobile ? -45 : -30}
+                      textAnchor="end"
+                      height={isMobile ? 80 : 60}
+                    />
+                    <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+                    <Tooltip />
+                    <Legend 
+                      wrapperStyle={{ fontSize: isMobile ? 10 : 12 }}
+                    />
+                    <Bar 
+                      dataKey="total" 
+                      fill="#8884d8" 
+                      name="Total Jobs"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar 
+                      dataKey="completed" 
+                      fill={STATUS_COLORS.completed} 
+                      name="Completed"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar 
+                      dataKey="pending" 
+                      fill={STATUS_COLORS.pending} 
+                      name="Pending"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar 
+                      dataKey="in_progress" 
+                      fill={STATUS_COLORS.in_progress} 
+                      name="In Progress"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar 
+                      dataKey="waiting_sparepart" 
+                      fill={STATUS_COLORS.waiting_sparepart} 
+                      name="Waiting Parts"
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar 
+                      dataKey="cancelled" 
+                      fill={STATUS_COLORS.cancelled} 
+                      name="Cancelled"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

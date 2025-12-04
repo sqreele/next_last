@@ -128,7 +128,7 @@ export default function JobsReportPage() {
               </div>
               <div>
                 <p className="font-medium text-gray-700">Comprehensive Reporting</p>
-                <p>Generate detailed PDF reports with statistics, charts, and job details specific to your selected property.</p>
+                <p>Generate detailed reports with statistics, charts, and job details specific to your selected property.</p>
               </div>
             </div>
           </div>

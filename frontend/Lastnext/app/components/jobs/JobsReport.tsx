@@ -371,7 +371,6 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
                   </>
                 )}
               </Button>
-              <Button 
             </div>
           </div>
         </CardHeader>

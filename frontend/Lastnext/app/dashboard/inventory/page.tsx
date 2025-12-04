@@ -984,7 +984,7 @@ export default function InventoryPage() {
               setSelectedPmId('');
               setSelectedItem(null);
             }}>Cancel</Button>
-            <Button onClick={handleUse} disabled={!useQuantity || parseInt(useQuantity) <= 0 || (selectedItem && parseInt(useQuantity) > selectedItem.quantity)}>
+            <Button onClick={handleUse} disabled={!useQuantity || parseInt(useQuantity) <= 0 || (selectedItem ? parseInt(useQuantity) > selectedItem.quantity : false)}>
               Use
             </Button>
           </DialogFooter>

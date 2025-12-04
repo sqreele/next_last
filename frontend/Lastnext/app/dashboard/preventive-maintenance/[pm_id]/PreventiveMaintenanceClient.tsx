@@ -2,7 +2,7 @@
 
 'use client';
 import { preventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
-import { useState, useRef, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from "@/app/lib/session.client";
@@ -843,7 +843,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
       </div>
 
       {/* A4 PDF Content (Hidden on screen, visible when printing) */}
-      <div id="pdf-content" ref={printRef} className="hidden print:block">
+      <div id="pdf-content" className="hidden print:block">
         {/* A4 Paper Container */}
         <div className="a4-page bg-white mx-auto" style={{ width: '210mm', minHeight: '297mm', padding: '20mm', boxSizing: 'border-box' }}>
         {/* Header */}

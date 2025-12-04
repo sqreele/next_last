@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage, UtilityConsumption
+from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage, UtilityConsumption, Inventory
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -1423,3 +1423,203 @@ class UtilityConsumptionListSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
+
+
+class InventorySerializer(serializers.ModelSerializer):
+    """Serializer for Inventory items"""
+    property_name = serializers.CharField(source='property.name', read_only=True)
+    property_id = serializers.CharField(source='property.property_id', read_only=True)
+    room_name = serializers.CharField(source='room.name', read_only=True)
+    room_id = serializers.CharField(source='room.room_id', read_only=True)
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    image_url = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Inventory
+        fields = [
+            'id',
+            'item_id',
+            'name',
+            'description',
+            'category',
+            'category_display',
+            'quantity',
+            'min_quantity',
+            'max_quantity',
+            'unit',
+            'unit_price',
+            'location',
+            'supplier',
+            'supplier_contact',
+            'status',
+            'status_display',
+            'property',
+            'property_id',
+            'property_name',
+            'room',
+            'room_id',
+            'room_name',
+            'image',
+            'image_url',
+            'last_restocked',
+            'expiry_date',
+            'notes',
+            'created_at',
+            'updated_at',
+            'created_by',
+            'created_by_username'
+        ]
+        read_only_fields = ['id', 'item_id', 'created_at', 'updated_at']
+    
+    def get_image_url(self, obj):
+        """Get the image URL"""
+        if obj.image and hasattr(obj.image, 'url'):
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+    
+    def validate(self, data):
+        """Validate inventory data"""
+        quantity = data.get('quantity', self.instance.quantity if self.instance else 0)
+        min_quantity = data.get('min_quantity', self.instance.min_quantity if self.instance else 0)
+        
+        if quantity < 0:
+            raise serializers.ValidationError({'quantity': 'Quantity cannot be negative'})
+        
+        if min_quantity < 0:
+            raise serializers.ValidationError({'min_quantity': 'Minimum quantity cannot be negative'})
+        
+        max_quantity = data.get('max_quantity', self.instance.max_quantity if self.instance else None)
+        if max_quantity is not None and max_quantity < min_quantity:
+            raise serializers.ValidationError({
+                'max_quantity': 'Maximum quantity must be greater than or equal to minimum quantity'
+            })
+        
+        return data
+
+
+class InventoryListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for listing inventory items"""
+    property_name = serializers.CharField(source='property.name', read_only=True)
+    property_id = serializers.CharField(source='property.property_id', read_only=True)
+    room_name = serializers.CharField(source='room.name', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    job_id = serializers.CharField(source='job.job_id', read_only=True)
+    job_description = serializers.CharField(source='job.description', read_only=True)
+    pm_id = serializers.CharField(source='preventive_maintenance.pm_id', read_only=True)
+    pm_title = serializers.CharField(source='preventive_maintenance.pmtitle', read_only=True)
+    image_url = serializers.SerializerMethodField()
+    last_job_by_user = serializers.SerializerMethodField()
+    last_pm_by_user = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Inventory
+        fields = [
+            'id',
+            'item_id',
+            'name',
+            'category',
+            'category_display',
+            'quantity',
+            'min_quantity',
+            'unit',
+            'status',
+            'status_display',
+            'property_id',
+            'property_name',
+            'room_name',
+            'location',
+            'job_id',
+            'job_description',
+            'pm_id',
+            'pm_title',
+            'image_url',
+            'last_job_by_user',
+            'last_pm_by_user',
+            'created_at',
+            'updated_at'
+        ]
+    
+    def get_image_url(self, obj):
+        """Get the image URL"""
+        if obj.image and hasattr(obj.image, 'url'):
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None
+    
+    def get_last_job_by_user(self, obj):
+        """Get the last job that used this inventory item by the current user"""
+        request = self.context.get('request')
+        if not request or not request.user:
+            return None
+        
+        user = request.user
+        # Check if this inventory item is linked to a job by the current user
+        if obj.job and obj.job.user == user:
+            return {
+                'job_id': obj.job.job_id,
+                'description': obj.job.description[:50] + '...' if len(obj.job.description) > 50 else obj.job.description,
+                'full_description': obj.job.description
+            }
+        
+        # Find the most recent inventory item with same item_id linked to a job by this user
+        from .models import Inventory
+        last_inventory = Inventory.objects.filter(
+            job__user=user,
+            item_id=obj.item_id
+        ).exclude(job__isnull=True).select_related('job').order_by('-updated_at').first()
+        
+        if last_inventory and last_inventory.job:
+            return {
+                'job_id': last_inventory.job.job_id,
+                'description': last_inventory.job.description[:50] + '...' if len(last_inventory.job.description) > 50 else last_inventory.job.description,
+                'full_description': last_inventory.job.description
+            }
+        
+        return None
+    
+    def get_last_pm_by_user(self, obj):
+        """Get the last PM that used this inventory item by the current user"""
+        request = self.context.get('request')
+        if not request or not request.user:
+            return None
+        
+        user = request.user
+        # Check if this inventory item is linked to a PM assigned to or created by the current user
+        if obj.preventive_maintenance:
+            pm = obj.preventive_maintenance
+            if pm.assigned_to == user or pm.created_by == user:
+                return {
+                    'pm_id': pm.pm_id,
+                    'title': pm.pmtitle[:50] + '...' if len(pm.pmtitle) > 50 else pm.pmtitle,
+                    'full_title': pm.pmtitle
+                }
+        
+        # Find the most recent inventory item with same item_id linked to a PM by this user
+        from .models import Inventory
+        from django.db.models import Q
+        last_inventory = Inventory.objects.filter(
+            preventive_maintenance__isnull=False
+        ).filter(
+            Q(preventive_maintenance__assigned_to=user) | 
+            Q(preventive_maintenance__created_by=user)
+        ).filter(
+            item_id=obj.item_id
+        ).select_related('preventive_maintenance').order_by('-updated_at').first()
+        
+        if last_inventory and last_inventory.preventive_maintenance:
+            pm = last_inventory.preventive_maintenance
+            return {
+                'pm_id': pm.pm_id,
+                'title': pm.pmtitle[:50] + '...' if len(pm.pmtitle) > 50 else pm.pmtitle,
+                'full_title': pm.pmtitle
+            }
+        
+        return None

@@ -30,6 +30,7 @@ admin.site.register(User, CustomUserAdmin)
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
+from django.db import models
 from datetime import timedelta
 from django.http import HttpResponse
 from django.urls import reverse, path
@@ -53,7 +54,8 @@ from .models import (
     MaintenanceChecklist,
     MaintenanceHistory,
     MaintenanceSchedule,
-    UtilityConsumption
+    UtilityConsumption,
+    Inventory
 )
 
 # Custom User Admin to show Google OAuth information
@@ -482,7 +484,59 @@ class MachineAdmin(admin.ModelAdmin):
         except Exception as e:
             return HttpResponse(f"Error generating QR code: {str(e)}", status=500)
 
-    actions = ['schedule_maintenance', 'download_qr_codes']
+    actions = ['schedule_maintenance', 'download_qr_codes', 'export_machines_csv']
+
+    def export_machines_csv(self, request, queryset):
+        """Export selected/filtered machines to CSV"""
+        qs = queryset.select_related('property').prefetch_related('preventive_maintenances', 'maintenance_procedures').order_by('machine_id')
+        
+        filename = f"machines_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')  # BOM for Excel UTF-8 compatibility
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'Machine ID',
+            'Name',
+            'Brand',
+            'Category',
+            'Serial Number',
+            'Description',
+            'Location',
+            'Status',
+            'Group ID',
+            'Property',
+            'Property ID',
+            'Installation Date',
+            'Last Maintenance Date',
+            'Next Maintenance Date',
+            'Created At',
+            'Updated At',
+        ])
+        
+        for machine in qs:
+            writer.writerow([
+                machine.machine_id or '',
+                machine.name or '',
+                machine.brand or '',
+                machine.category or '',
+                machine.serial_number or '',
+                machine.description or '',
+                machine.location or '',
+                machine.get_status_display() if hasattr(machine, 'get_status_display') else machine.status or '',
+                machine.group_id or '',
+                machine.property.name if machine.property else '',
+                machine.property.property_id if machine.property else '',
+                machine.installation_date.strftime('%Y-%m-%d') if machine.installation_date else '',
+                machine.last_maintenance_date.strftime('%Y-%m-%d %H:%M:%S') if machine.last_maintenance_date else '',
+                machine.get_next_maintenance_date().strftime('%Y-%m-%d %H:%M:%S') if machine.get_next_maintenance_date() else '',
+                machine.created_at.strftime('%Y-%m-%d %H:%M:%S') if machine.created_at else '',
+                machine.updated_at.strftime('%Y-%m-%d %H:%M:%S') if machine.updated_at else '',
+            ])
+        
+        return response
+    export_machines_csv.short_description = "Export selected/filtered machines to CSV"
 
     def schedule_maintenance(self, request, queryset):
         # This would ideally redirect to a custom view for scheduling maintenance
@@ -656,10 +710,10 @@ class JobImageTopicFilter(admin.SimpleListFilter):
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
     form = JobAdminForm
-    list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_user_display', 'user_id', 'get_properties_display', 'get_timestamps_display', 'is_preventivemaintenance']
+    list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_user_display', 'user_id', 'get_properties_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
     list_filter = ['status', 'priority', 'is_defective', 'created_at', 'updated_at', 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
     search_fields = ['job_id', 'description', 'user__username', 'updated_by__username', 'topics__title']
-    readonly_fields = ['job_id', 'updated_by']
+    readonly_fields = ['job_id', 'updated_by', 'inventory_items_display']
     filter_horizontal = ['rooms', 'topics']
     inlines = [JobImageInline]
     fieldsets = (
@@ -671,6 +725,10 @@ class JobAdmin(admin.ModelAdmin):
         }),
         ('Related Items', {
             'fields': ('rooms', 'topics')
+        }),
+        ('Inventory Used', {
+            'fields': ('inventory_items_display',),
+            'description': 'Inventory items linked to this job'
         }),
         ('Timestamps (Editable)', {
             'fields': ('created_at', 'updated_at', 'completed_at'),
@@ -750,6 +808,32 @@ class JobAdmin(admin.ModelAdmin):
         
         super().save_model(request, obj, form, change)
 
+    def get_inventory_items_display(self, obj):
+        """Display inventory items used in this job"""
+        inventory_items = obj.inventory_items.all()
+        if not inventory_items.exists():
+            return format_html('<span style="color: #999;">No inventory items</span>')
+        
+        items_list = []
+        for item in inventory_items:
+            link = reverse("admin:myappLubd_inventory_change", args=[item.id])
+            items_list.append(
+                format_html(
+                    '<a href="{}">{} - {} (Qty: {})</a>',
+                    link,
+                    item.item_id,
+                    item.name,
+                    item.quantity
+                )
+            )
+        return format_html('<br>'.join(items_list))
+    get_inventory_items_display.short_description = 'Inventory Used'
+    
+    def inventory_items_display(self, obj):
+        """Display inventory items in detail view"""
+        return self.get_inventory_items_display(obj)
+    inventory_items_display.short_description = 'Inventory Items Used'
+    
     def get_priority_display_colored(self, obj):
         priority_colors = {
             'low': 'green',
@@ -1457,6 +1541,40 @@ class JobImageAdmin(admin.ModelAdmin):
         if not obj.pk and not obj.uploaded_by_id:
             obj.uploaded_by = request.user
         super().save_model(request, obj, form, change)
+    
+    actions = ['export_jobimages_csv']
+    
+    def export_jobimages_csv(self, request, queryset):
+        """Export selected/filtered job images to CSV"""
+        qs = queryset.select_related('job', 'uploaded_by').order_by('uploaded_at')
+        
+        filename = f"job_images_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'ID',
+            'Job ID',
+            'Image URL',
+            'Uploaded By',
+            'Uploaded By Email',
+            'Uploaded At',
+        ])
+        
+        for img in qs:
+            writer.writerow([
+                img.id,
+                img.job.job_id if img.job else '',
+                img.image.url if img.image and hasattr(img.image, 'url') else '',
+                img.uploaded_by.username if img.uploaded_by else '',
+                img.uploaded_by.email if img.uploaded_by else '',
+                img.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') if img.uploaded_at else '',
+            ])
+        
+        return response
+    export_jobimages_csv.short_description = "Export selected/filtered job images to CSV"
 
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
@@ -1482,6 +1600,43 @@ class PropertyAdmin(admin.ModelAdmin):
     def get_users_count(self, obj):
         return obj.users.count()
     get_users_count.short_description = 'Assigned Users'
+    
+    actions = ['export_properties_csv']
+    
+    def export_properties_csv(self, request, queryset):
+        """Export selected/filtered properties to CSV"""
+        qs = queryset.prefetch_related('users').order_by('property_id')
+        
+        filename = f"properties_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'Property ID',
+            'Name',
+            'Description',
+            'Is Preventive Maintenance',
+            'Assigned Users',
+            'User Count',
+            'Created At',
+        ])
+        
+        for prop in qs:
+            users = ", ".join([f"{u.username} ({u.email})" for u in prop.users.all()])
+            writer.writerow([
+                prop.property_id or '',
+                prop.name or '',
+                prop.description or '',
+                'Yes' if prop.is_preventivemaintenance else 'No',
+                users,
+                prop.users.count(),
+                prop.created_at.strftime('%Y-%m-%d %H:%M:%S') if prop.created_at else '',
+            ])
+        
+        return response
+    export_properties_csv.short_description = "Export selected/filtered properties to CSV"
 
 class HasPreventiveMaintenanceFilter(admin.SimpleListFilter):
     title = 'has preventive maintenance job'
@@ -1507,7 +1662,7 @@ class RoomAdmin(admin.ModelAdmin):
     search_fields = ['name', 'room_type', 'properties__name']
     filter_horizontal = ['properties']
     readonly_fields = ['room_id', 'created_at']
-    actions = ['activate_rooms', 'deactivate_rooms']
+    actions = ['activate_rooms', 'deactivate_rooms', 'export_rooms_csv']
 
     def get_properties_display(self, obj):
         return ", ".join([f"{prop.property_id} - {prop.name}" for prop in obj.properties.all()])
@@ -1522,6 +1677,39 @@ class RoomAdmin(admin.ModelAdmin):
         updated_count = queryset.update(is_active=False)
         self.message_user(request, f"{updated_count} rooms have been deactivated.")
     deactivate_rooms.short_description = "Deactivate selected rooms"
+    
+    def export_rooms_csv(self, request, queryset):
+        """Export selected/filtered rooms to CSV"""
+        qs = queryset.prefetch_related('properties').order_by('room_id')
+        
+        filename = f"rooms_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'Room ID',
+            'Name',
+            'Room Type',
+            'Is Active',
+            'Properties',
+            'Created At',
+        ])
+        
+        for room in qs:
+            properties = ", ".join([f"{p.property_id} - {p.name}" for p in room.properties.all()])
+            writer.writerow([
+                room.room_id or '',
+                room.name or '',
+                room.room_type or '',
+                'Yes' if room.is_active else 'No',
+                properties,
+                room.created_at.strftime('%Y-%m-%d %H:%M:%S') if room.created_at else '',
+            ])
+        
+        return response
+    export_rooms_csv.short_description = "Export selected/filtered rooms to CSV"
 
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
@@ -1532,6 +1720,36 @@ class TopicAdmin(admin.ModelAdmin):
     def get_jobs_count(self, obj):
         return obj.jobs.count()
     get_jobs_count.short_description = 'Associated Jobs'
+    
+    actions = ['export_topics_csv']
+    
+    def export_topics_csv(self, request, queryset):
+        """Export selected/filtered topics to CSV"""
+        qs = queryset.prefetch_related('jobs').order_by('title')
+        
+        filename = f"topics_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'ID',
+            'Title',
+            'Description',
+            'Associated Jobs Count',
+        ])
+        
+        for topic in qs:
+            writer.writerow([
+                topic.id,
+                topic.title or '',
+                topic.description or '',
+                topic.jobs.count(),
+            ])
+        
+        return response
+    export_topics_csv.short_description = "Export selected/filtered topics to CSV"
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
@@ -1602,6 +1820,49 @@ class UserProfileAdmin(admin.ModelAdmin):
             return ", ".join([f"{prop.property_id} - {prop.name}" for prop in obj.properties.all()])
         return "No Properties"
     get_properties_display.short_description = 'Properties (ID - Name)'
+    
+    actions = ['export_userprofiles_csv']
+    
+    def export_userprofiles_csv(self, request, queryset):
+        """Export selected/filtered user profiles to CSV"""
+        qs = queryset.select_related('user').prefetch_related('properties').order_by('user__username')
+        
+        filename = f"user_profiles_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'User',
+            'Username',
+            'Email',
+            'Positions',
+            'User Property Name',
+            'User Property ID',
+            'Properties',
+            'Google ID',
+            'Email Verified',
+            'Login Provider',
+        ])
+        
+        for profile in qs:
+            properties = ", ".join([f"{p.property_id} - {p.name}" for p in profile.properties.all()])
+            writer.writerow([
+                profile.user.username if profile.user else '',
+                profile.user.username if profile.user else '',
+                profile.user.email if profile.user else '',
+                profile.positions or '',
+                profile.user.property_name if profile.user else '',
+                profile.user.property_id if profile.user else '',
+                properties,
+                profile.google_id or '',
+                'Yes' if profile.email_verified else 'No',
+                profile.login_provider or '',
+            ])
+        
+        return response
+    export_userprofiles_csv.short_description = "Export selected/filtered user profiles to CSV"
 
 @admin.register(PreventiveMaintenance)
 class PreventiveMaintenanceAdmin(admin.ModelAdmin):
@@ -1618,6 +1879,7 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
         'created_by_user',
         'get_machines_display',
         'get_properties_display',
+        'get_inventory_items_display',
         'get_task_template_display',
     )
     list_filter = (
@@ -1630,7 +1892,7 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
     search_fields = ('pm_id', 'notes', 'pmtitle', 'topics__title')
     date_hierarchy = 'scheduled_date'
     filter_horizontal = ['topics']
-    readonly_fields = ('pm_id', 'next_due_date', 'before_image_preview', 'after_image_preview')
+    readonly_fields = ('pm_id', 'next_due_date', 'before_image_preview', 'after_image_preview', 'inventory_items_display')
     fieldsets = (
         ('Identification', {
             'fields': ('pm_id', 'pmtitle', 'created_by', 'assigned_to')
@@ -1652,6 +1914,10 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
         }),
         ('Related Items', {
             'fields': ('topics',)
+        }),
+        ('Inventory Used', {
+            'fields': ('inventory_items_display',),
+            'description': 'Inventory items linked to this preventive maintenance'
         }),
     )
     actions = ['mark_completed', 'export_pm_csv']
@@ -1871,6 +2137,32 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
         return "No template"
     get_task_template_display.short_description = 'Task Template'
     get_task_template_display.admin_order_field = 'procedure_template'
+    
+    def get_inventory_items_display(self, obj):
+        """Display inventory items used in this PM"""
+        inventory_items = obj.inventory_items.all()
+        if not inventory_items.exists():
+            return format_html('<span style="color: #999;">No inventory items</span>')
+        
+        items_list = []
+        for item in inventory_items:
+            link = reverse("admin:myappLubd_inventory_change", args=[item.id])
+            items_list.append(
+                format_html(
+                    '<a href="{}">{} - {} (Qty: {})</a>',
+                    link,
+                    item.item_id,
+                    item.name,
+                    item.quantity
+                )
+            )
+        return format_html('<br>'.join(items_list))
+    get_inventory_items_display.short_description = 'Inventory Used'
+    
+    def inventory_items_display(self, obj):
+        """Display inventory items in detail view"""
+        return self.get_inventory_items_display(obj)
+    inventory_items_display.short_description = 'Inventory Items Used'
 
 @admin.register(Session)
 class SessionAdmin(admin.ModelAdmin):
@@ -1893,6 +2185,44 @@ class SessionAdmin(admin.ModelAdmin):
         return obj.is_expired()
     is_expired_status.boolean = True
     is_expired_status.short_description = 'Is Expired'
+    
+    actions = ['export_sessions_csv']
+    
+    def export_sessions_csv(self, request, queryset):
+        """Export selected/filtered sessions to CSV"""
+        qs = queryset.select_related('user').order_by('-created_at')
+        
+        filename = f"sessions_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'ID',
+            'User',
+            'Username',
+            'Email',
+            'Session Token (First 20 chars)',
+            'Expires At',
+            'Is Expired',
+            'Created At',
+        ])
+        
+        for session in qs:
+            writer.writerow([
+                session.id,
+                session.user.username if session.user else '',
+                session.user.username if session.user else '',
+                session.user.email if session.user else '',
+                session.session_token[:20] + '...' if session.session_token else '',
+                session.expires_at.strftime('%Y-%m-%d %H:%M:%S') if session.expires_at else '',
+                'Yes' if session.is_expired() else 'No',
+                session.created_at.strftime('%Y-%m-%d %H:%M:%S') if session.created_at else '',
+            ])
+        
+        return response
+    export_sessions_csv.short_description = "Export selected/filtered sessions to CSV"
 
 
 @admin.register(MaintenanceProcedure)
@@ -1983,6 +2313,68 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
             logger = logging.getLogger(__name__)
             logger.warning(f"Could not prefetch machines in MaintenanceProcedureAdmin: {e}")
             return super().get_queryset(request)
+    
+    actions = ['export_maintenance_procedures_csv']
+    
+    def export_maintenance_procedures_csv(self, request, queryset):
+        """Export selected/filtered maintenance procedures to CSV"""
+        try:
+            qs = queryset.prefetch_related('machines').order_by('name')
+        except Exception:
+            qs = queryset.order_by('name')
+        
+        filename = f"maintenance_procedures_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'ID',
+            'Name',
+            'Group ID',
+            'Category',
+            'Description',
+            'Frequency',
+            'Estimated Duration',
+            'Responsible Department',
+            'Difficulty Level',
+            'Required Tools',
+            'Safety Notes',
+            'Machines',
+            'Machine Count',
+            'Created At',
+            'Updated At',
+        ])
+        
+        for proc in qs:
+            try:
+                machines = ", ".join([f"{m.name} ({m.machine_id})" for m in proc.machines.all()])
+                machine_count = proc.machines.count()
+            except Exception:
+                machines = ''
+                machine_count = 0
+            
+            writer.writerow([
+                proc.id,
+                proc.name or '',
+                proc.group_id or '',
+                proc.category or '',
+                proc.description or '',
+                proc.frequency or '',
+                proc.estimated_duration or '',
+                proc.responsible_department or '',
+                proc.difficulty_level or '',
+                proc.required_tools or '',
+                proc.safety_notes or '',
+                machines,
+                machine_count,
+                proc.created_at.strftime('%Y-%m-%d %H:%M:%S') if proc.created_at else '',
+                proc.updated_at.strftime('%Y-%m-%d %H:%M:%S') if proc.updated_at else '',
+            ])
+        
+        return response
+    export_maintenance_procedures_csv.short_description = "Export selected/filtered maintenance procedures to CSV"
 
 
 @admin.register(MaintenanceTaskImage)
@@ -2021,6 +2413,46 @@ class MaintenanceTaskImageAdmin(admin.ModelAdmin):
             )
         return "No image"
     image_preview_large.short_description = 'Image Preview'
+    
+    actions = ['export_maintenance_task_images_csv']
+    
+    def export_maintenance_task_images_csv(self, request, queryset):
+        """Export selected/filtered maintenance task images to CSV"""
+        qs = queryset.select_related('task', 'uploaded_by').order_by('uploaded_at')
+        
+        filename = f"maintenance_task_images_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'ID',
+            'Task',
+            'Task Name',
+            'Image Type',
+            'Image URL',
+            'JPEG Path',
+            'Uploaded By',
+            'Uploaded By Email',
+            'Uploaded At',
+        ])
+        
+        for img in qs:
+            writer.writerow([
+                img.id,
+                str(img.task) if img.task else '',
+                img.task.name if img.task else '',
+                img.image_type or '',
+                img.image_url.url if img.image_url and hasattr(img.image_url, 'url') else '',
+                img.jpeg_path or '',
+                img.uploaded_by.username if img.uploaded_by else '',
+                img.uploaded_by.email if img.uploaded_by else '',
+                img.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') if img.uploaded_at else '',
+            ])
+        
+        return response
+    export_maintenance_task_images_csv.short_description = "Export selected/filtered maintenance task images to CSV"
 
 
 @admin.register(MaintenanceChecklist)
@@ -2038,6 +2470,48 @@ class MaintenanceChecklistAdmin(admin.ModelAdmin):
             'fields': ('is_completed', 'completed_by', 'completed_at')
         }),
     )
+    
+    actions = ['export_maintenance_checklists_csv']
+    
+    def export_maintenance_checklists_csv(self, request, queryset):
+        """Export selected/filtered maintenance checklists to CSV"""
+        qs = queryset.select_related('maintenance', 'completed_by').order_by('order')
+        
+        filename = f"maintenance_checklists_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'ID',
+            'Maintenance PM ID',
+            'Maintenance Title',
+            'Item',
+            'Description',
+            'Order',
+            'Is Completed',
+            'Completed By',
+            'Completed By Email',
+            'Completed At',
+        ])
+        
+        for checklist in qs:
+            writer.writerow([
+                checklist.id,
+                checklist.maintenance.pm_id if checklist.maintenance else '',
+                checklist.maintenance.pmtitle if checklist.maintenance else '',
+                checklist.item or '',
+                checklist.description or '',
+                checklist.order or 0,
+                'Yes' if checklist.is_completed else 'No',
+                checklist.completed_by.username if checklist.completed_by else '',
+                checklist.completed_by.email if checklist.completed_by else '',
+                checklist.completed_at.strftime('%Y-%m-%d %H:%M:%S') if checklist.completed_at else '',
+            ])
+        
+        return response
+    export_maintenance_checklists_csv.short_description = "Export selected/filtered maintenance checklists to CSV"
 
 
 @admin.register(MaintenanceHistory)
@@ -2055,6 +2529,44 @@ class MaintenanceHistoryAdmin(admin.ModelAdmin):
             'fields': ('performed_by', 'timestamp')
         }),
     )
+    
+    actions = ['export_maintenance_history_csv']
+    
+    def export_maintenance_history_csv(self, request, queryset):
+        """Export selected/filtered maintenance history to CSV"""
+        qs = queryset.select_related('maintenance', 'performed_by').order_by('-timestamp')
+        
+        filename = f"maintenance_history_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'ID',
+            'Maintenance PM ID',
+            'Maintenance Title',
+            'Action',
+            'Notes',
+            'Performed By',
+            'Performed By Email',
+            'Timestamp',
+        ])
+        
+        for history in qs:
+            writer.writerow([
+                history.id,
+                history.maintenance.pm_id if history.maintenance else '',
+                history.maintenance.pmtitle if history.maintenance else '',
+                history.action or '',
+                history.notes or '',
+                history.performed_by.username if history.performed_by else '',
+                history.performed_by.email if history.performed_by else '',
+                history.timestamp.strftime('%Y-%m-%d %H:%M:%S') if history.timestamp else '',
+            ])
+        
+        return response
+    export_maintenance_history_csv.short_description = "Export selected/filtered maintenance history to CSV"
 
 
 @admin.register(MaintenanceSchedule)
@@ -2076,6 +2588,46 @@ class MaintenanceScheduleAdmin(admin.ModelAdmin):
             'fields': ('total_occurrences',)
         }),
     )
+    
+    actions = ['export_maintenance_schedules_csv']
+    
+    def export_maintenance_schedules_csv(self, request, queryset):
+        """Export selected/filtered maintenance schedules to CSV"""
+        qs = queryset.select_related('maintenance').order_by('next_occurrence')
+        
+        filename = f"maintenance_schedules_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'ID',
+            'Maintenance PM ID',
+            'Maintenance Title',
+            'Is Recurring',
+            'Next Occurrence',
+            'Last Occurrence',
+            'Recurrence Pattern',
+            'Is Active',
+            'Total Occurrences',
+        ])
+        
+        for schedule in qs:
+            writer.writerow([
+                schedule.id,
+                schedule.maintenance.pm_id if schedule.maintenance else '',
+                schedule.maintenance.pmtitle if schedule.maintenance else '',
+                'Yes' if schedule.is_recurring else 'No',
+                schedule.next_occurrence.strftime('%Y-%m-%d %H:%M:%S') if schedule.next_occurrence else '',
+                schedule.last_occurrence.strftime('%Y-%m-%d %H:%M:%S') if schedule.last_occurrence else '',
+                schedule.recurrence_pattern or '',
+                'Yes' if schedule.is_active else 'No',
+                schedule.total_occurrences or 0,
+            ])
+        
+        return response
+    export_maintenance_schedules_csv.short_description = "Export selected/filtered maintenance schedules to CSV"
 
 
 @admin.register(UtilityConsumption)
@@ -2120,3 +2672,526 @@ class UtilityConsumptionAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('property', 'created_by')
+    
+    actions = ['export_utility_consumption_csv']
+    
+    def export_utility_consumption_csv(self, request, queryset):
+        """Export selected/filtered utility consumption records to CSV"""
+        qs = queryset.select_related('property', 'created_by').order_by('-year', '-month')
+        
+        filename = f"utility_consumption_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'ID',
+            'Property',
+            'Property ID',
+            'Month',
+            'Year',
+            'Total kWh',
+            'On Peak kWh',
+            'Off Peak kWh',
+            'Total Electricity',
+            'Water',
+            'Night Sale',
+            'Created By',
+            'Created By Email',
+            'Created At',
+            'Updated At',
+        ])
+        
+        for consumption in qs:
+            writer.writerow([
+                consumption.id,
+                consumption.property.name if consumption.property else '',
+                consumption.property.property_id if consumption.property else '',
+                consumption.get_month_display() if hasattr(consumption, 'get_month_display') else consumption.month,
+                consumption.year or '',
+                consumption.totalkwh or 0,
+                consumption.onpeakkwh or 0,
+                consumption.offpeakkwh or 0,
+                consumption.totalelectricity or 0,
+                consumption.water or 0,
+                consumption.nightsale or 0,
+                consumption.created_by.username if consumption.created_by else '',
+                consumption.created_by.email if consumption.created_by else '',
+                consumption.created_at.strftime('%Y-%m-%d %H:%M:%S') if consumption.created_at else '',
+                consumption.updated_at.strftime('%Y-%m-%d %H:%M:%S') if consumption.updated_at else '',
+            ])
+        
+        return response
+    export_utility_consumption_csv.short_description = "Export selected/filtered utility consumption to CSV"
+
+
+@admin.register(Inventory)
+class InventoryAdmin(admin.ModelAdmin):
+    list_display = [
+        'image_preview',
+        'item_id',
+        'name',
+        'category',
+        'quantity',
+        'unit',
+        'min_quantity',
+        'status',
+        'property_link',
+        'room_link',
+        'last_job_by_user',
+        'last_pm_by_user',
+        'job_link',
+        'pm_link',
+        'location',
+        'unit_price',
+        'last_restocked',
+        'expiry_date',
+        'created_by',
+        'created_at',
+        'updated_at'
+    ]
+    list_filter = [
+        'status',
+        'category',
+        'property',
+        'room',
+        'job',
+        'preventive_maintenance',
+        'created_at',
+        'updated_at',
+        'last_restocked',
+        'expiry_date'
+    ]
+    search_fields = [
+        'item_id',
+        'name',
+        'description',
+        'location',
+        'supplier',
+        'supplier_contact',
+        'property__name',
+        'property__property_id',
+        'room__name',
+        'room__room_id',
+        'job__job_id',
+        'preventive_maintenance__pm_id'
+    ]
+    readonly_fields = [
+        'item_id',
+        'created_at',
+        'updated_at',
+        'status_display',
+        'qr_code_preview',
+        'image_preview_large'
+    ]
+    raw_id_fields = ['property', 'room', 'job', 'preventive_maintenance', 'created_by']
+    
+    fieldsets = (
+        ('Item Information', {
+            'fields': ('item_id', 'name', 'description', 'category', 'status', 'status_display')
+        }),
+        ('Item Image', {
+            'fields': ('image', 'image_preview_large'),
+            'description': 'Upload an image of the inventory item'
+        }),
+        ('Quantity & Pricing', {
+            'fields': ('quantity', 'min_quantity', 'max_quantity', 'unit', 'unit_price')
+        }),
+        ('Location & Storage', {
+            'fields': ('property', 'room', 'location', 'expiry_date')
+        }),
+        ('Related Jobs & Maintenance', {
+            'fields': ('job', 'preventive_maintenance'),
+            'description': 'Link this inventory item to a specific job or preventive maintenance task'
+        }),
+        ('Supplier Information', {
+            'fields': ('supplier', 'supplier_contact', 'last_restocked')
+        }),
+        ('Additional Notes', {
+            'fields': ('notes',)
+        }),
+        ('QR Code', {
+            'fields': ('qr_code_preview',),
+            'description': 'QR code for quick access to this inventory item\'s details page'
+        }),
+        ('Metadata', {
+            'fields': ('created_by', 'created_at', 'updated_at')
+        }),
+    )
+    
+    def property_link(self, obj):
+        if obj.property:
+            from django.urls import reverse
+            link = reverse("admin:myappLubd_property_change", args=[obj.property.id])
+            return format_html('<a href="{}">{}</a>', link, obj.property.name)
+        return "No Property"
+    property_link.short_description = 'Property'
+    property_link.admin_order_field = 'property'
+    
+    def room_link(self, obj):
+        if obj.room:
+            from django.urls import reverse
+            link = reverse("admin:myappLubd_room_change", args=[obj.room.id])
+            return format_html('<a href="{}">{}</a>', link, obj.room.name)
+        return "No Room"
+    room_link.short_description = 'Room'
+    room_link.admin_order_field = 'room'
+    
+    def image_preview(self, obj):
+        """Display small image preview in list view"""
+        if obj.image and hasattr(obj.image, 'url'):
+            return format_html(
+                '<img src="{}" style="max-width: 50px; max-height: 50px; object-fit: cover; border-radius: 4px;" />',
+                obj.image.url
+            )
+        return format_html('<span style="color: #999;">No Image</span>')
+    image_preview.short_description = 'Image'
+    
+    def image_preview_large(self, obj):
+        """Display larger image preview in detail view"""
+        if obj.image and hasattr(obj.image, 'url'):
+            return format_html(
+                '<img src="{}" style="max-width: 400px; max-height: 400px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />',
+                obj.image.url
+            )
+        return format_html('<p style="color: #999;">No image uploaded</p>')
+    image_preview_large.short_description = 'Image Preview'
+    
+    def job_link(self, obj):
+        if obj.job:
+            from django.urls import reverse
+            link = reverse("admin:myappLubd_job_change", args=[obj.job.id])
+            return format_html('<a href="{}">{}</a>', link, obj.job.job_id)
+        return "No Job"
+    job_link.short_description = 'Job'
+    job_link.admin_order_field = 'job'
+    
+    def pm_link(self, obj):
+        if obj.preventive_maintenance:
+            from django.urls import reverse
+            link = reverse("admin:myappLubd_preventivemaintenance_change", args=[obj.preventive_maintenance.id])
+            return format_html('<a href="{}">{}</a>', link, obj.preventive_maintenance.pm_id)
+        return "No PM"
+    pm_link.short_description = 'Preventive Maintenance'
+    pm_link.admin_order_field = 'preventive_maintenance'
+    
+    def last_job_by_user(self, obj):
+        """Show the last job that used this inventory item, filtered by current user"""
+        if not hasattr(self, '_request_user'):
+            return "N/A"
+        
+        user = self._request_user
+        if not user:
+            return "N/A"
+        
+        # Get the most recent inventory item linked to a job by this user
+        # Check if this inventory item is linked to a job by the current user
+        if obj.job and obj.job.user == user:
+            job = obj.job
+            from django.urls import reverse
+            link = reverse("admin:myappLubd_job_change", args=[job.id])
+            job_name = job.description[:30] + "..." if len(job.description) > 30 else job.description
+            return format_html(
+                '<a href="{}" title="{}">{} ({})</a>',
+                link,
+                job.description,
+                job.job_id,
+                job_name
+            )
+        
+        # If not directly linked, find the most recent job by this user that uses this inventory
+        # Since inventory can be linked to jobs, we check related inventory items
+        from .models import Inventory
+        last_inventory = Inventory.objects.filter(
+            job__user=user,
+            item_id=obj.item_id
+        ).exclude(job__isnull=True).select_related('job').order_by('-updated_at').first()
+        
+        if last_inventory and last_inventory.job:
+            from django.urls import reverse
+            link = reverse("admin:myappLubd_job_change", args=[last_inventory.job.id])
+            job_name = last_inventory.job.description[:30] + "..." if len(last_inventory.job.description) > 30 else last_inventory.job.description
+            return format_html(
+                '<a href="{}" title="{}">{} ({})</a>',
+                link,
+                last_inventory.job.description,
+                last_inventory.job.job_id,
+                job_name
+            )
+        
+        return "No job"
+    last_job_by_user.short_description = 'Last Job (My User)'
+    
+    def last_pm_by_user(self, obj):
+        """Show the last PM that used this inventory item, filtered by current user"""
+        if not hasattr(self, '_request_user'):
+            return "N/A"
+        
+        user = self._request_user
+        if not user:
+            return "N/A"
+        
+        # Get the most recent inventory item linked to a PM by this user
+        # Check if this inventory item is linked to a PM assigned to or created by the current user
+        if obj.preventive_maintenance:
+            pm = obj.preventive_maintenance
+            if pm.assigned_to == user or pm.created_by == user:
+                from django.urls import reverse
+                link = reverse("admin:myappLubd_preventivemaintenance_change", args=[pm.id])
+                pm_title = pm.pmtitle[:30] + "..." if len(pm.pmtitle) > 30 else pm.pmtitle
+                return format_html(
+                    '<a href="{}" title="{}">{} ({})</a>',
+                    link,
+                    pm.pmtitle,
+                    pm.pm_id,
+                    pm_title
+                )
+        
+        # If not directly linked, find the most recent PM by this user that uses this inventory
+        from .models import Inventory
+        last_inventory = Inventory.objects.filter(
+            preventive_maintenance__isnull=False
+        ).filter(
+            Q(preventive_maintenance__assigned_to=user) | 
+            Q(preventive_maintenance__created_by=user)
+        ).filter(
+            item_id=obj.item_id
+        ).select_related('preventive_maintenance').order_by('-updated_at').first()
+        
+        if last_inventory and last_inventory.preventive_maintenance:
+            pm = last_inventory.preventive_maintenance
+            from django.urls import reverse
+            link = reverse("admin:myappLubd_preventivemaintenance_change", args=[pm.id])
+            pm_title = pm.pmtitle[:30] + "..." if len(pm.pmtitle) > 30 else pm.pmtitle
+            return format_html(
+                '<a href="{}" title="{}">{} ({})</a>',
+                link,
+                pm.pmtitle,
+                pm.pm_id,
+                pm_title
+            )
+        
+        return "No PM"
+    last_pm_by_user.short_description = 'Last PM (My User)'
+    
+    def status_display(self, obj):
+        """Display status with color coding"""
+        status_colors = {
+            'available': 'green',
+            'low_stock': 'orange',
+            'out_of_stock': 'red',
+            'reserved': 'blue',
+            'maintenance': 'purple'
+        }
+        color = status_colors.get(obj.status, 'black')
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.get_status_display()
+        )
+    status_display.short_description = 'Status'
+    
+    def get_queryset(self, request):
+        # Store request user for use in list_display methods
+        self._request_user = request.user
+        return super().get_queryset(request).select_related(
+            'property', 'room', 'job', 'preventive_maintenance', 'created_by',
+            'job__user', 'preventive_maintenance__assigned_to', 'preventive_maintenance__created_by'
+        )
+    
+    def get_inventory_url(self, obj):
+        """Generate the frontend URL for this inventory item"""
+        if not obj or not obj.item_id:
+            return ''
+        frontend_url = getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:3000')
+        # Link to inventory page with search parameter for item_id
+        return f"{frontend_url}/dashboard/inventory?search={obj.item_id}"
+    
+    def qr_code_preview(self, obj):
+        """Display QR code preview in admin"""
+        if not obj or not obj.item_id:
+            return format_html('<p style="color: #999;">Save the inventory item first to generate QR code</p>')
+        
+        try:
+            inventory_url = self.get_inventory_url(obj)
+            if not inventory_url:
+                return format_html('<p style="color: #999;">Unable to generate QR code</p>')
+            
+            # Generate QR code
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_H,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(inventory_url)
+            qr.make(fit=True)
+            
+            # Create image
+            img = qr.make_image(fill_color="black", back_color="white")
+            
+            # Convert to base64 for display
+            buffer = BytesIO()
+            img.save(buffer, format='PNG')
+            img_str = base64.b64encode(buffer.getvalue()).decode()
+            
+            # Generate download link
+            download_url = reverse('admin:inventory_qr_code_download', args=[obj.pk])
+            
+            return format_html(
+                '<div style="text-align: center; padding: 20px;">'
+                '<img src="data:image/png;base64,{}" style="max-width: 200px; border: 2px solid #ddd; padding: 10px; background: white;" /><br/>'
+                '<p style="margin-top: 10px; font-size: 11px; color: #666; word-break: break-all;">{}</p>'
+                '<a href="{}" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #417690; color: white; text-decoration: none; border-radius: 4px;">Download QR Code</a>'
+                '</div>',
+                img_str,
+                inventory_url,
+                download_url
+            )
+        except Exception as e:
+            return format_html('<p style="color: red;">Error generating QR code: {}</p>', str(e))
+    qr_code_preview.short_description = 'QR Code'
+    
+    def get_urls(self):
+        """Add custom URL for QR code download"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:object_id>/qr-code/download/',
+                self.admin_site.admin_view(self.download_qr_code),
+                name='inventory_qr_code_download',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def download_qr_code(self, request, object_id):
+        """Download QR code as PNG file"""
+        try:
+            inventory = Inventory.objects.get(pk=object_id)
+            inventory_url = self.get_inventory_url(inventory)
+            
+            if not inventory_url:
+                return HttpResponse("Unable to generate QR code: Invalid inventory URL", status=400)
+            
+            # Generate QR code
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_H,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(inventory_url)
+            qr.make(fit=True)
+            
+            # Create image
+            img = qr.make_image(fill_color="black", back_color="white")
+            
+            # Save to BytesIO
+            buffer = BytesIO()
+            img.save(buffer, format='PNG')
+            buffer.seek(0)
+            
+            # Create HTTP response
+            response = HttpResponse(buffer.getvalue(), content_type='image/png')
+            response['Content-Disposition'] = f'attachment; filename="inventory-{inventory.item_id}-qr-code.png"'
+            return response
+            
+        except Inventory.DoesNotExist:
+            return HttpResponse("Inventory item not found", status=404)
+        except Exception as e:
+            return HttpResponse(f"Error generating QR code: {str(e)}", status=500)
+    
+    def save_model(self, request, obj, form, change):
+        if not obj.pk and not obj.created_by_id:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    actions = ['mark_as_available', 'mark_as_low_stock', 'mark_as_out_of_stock', 'export_inventory_csv']
+    
+    def export_inventory_csv(self, request, queryset):
+        """Export selected/filtered inventory items to CSV"""
+        qs = queryset.select_related('property', 'room', 'job', 'preventive_maintenance', 'created_by').order_by('item_id')
+        
+        filename = f"inventory_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'Item ID',
+            'Name',
+            'Description',
+            'Category',
+            'Quantity',
+            'Min Quantity',
+            'Max Quantity',
+            'Unit',
+            'Unit Price',
+            'Status',
+            'Property',
+            'Property ID',
+            'Room',
+            'Room ID',
+            'Job ID',
+            'PM ID',
+            'Location',
+            'Supplier',
+            'Supplier Contact',
+            'Last Restocked',
+            'Expiry Date',
+            'Notes',
+            'Created By',
+            'Created By Email',
+            'Created At',
+            'Updated At',
+        ])
+        
+        for item in qs:
+            writer.writerow([
+                item.item_id or '',
+                item.name or '',
+                item.description or '',
+                item.get_category_display() if hasattr(item, 'get_category_display') else item.category or '',
+                item.quantity or 0,
+                item.min_quantity or 0,
+                item.max_quantity or 0,
+                item.unit or '',
+                item.unit_price or 0,
+                item.get_status_display() if hasattr(item, 'get_status_display') else item.status or '',
+                item.property.name if item.property else '',
+                item.property.property_id if item.property else '',
+                item.room.name if item.room else '',
+                item.room.room_id if item.room else '',
+                item.job.job_id if item.job else '',
+                item.preventive_maintenance.pm_id if item.preventive_maintenance else '',
+                item.location or '',
+                item.supplier or '',
+                item.supplier_contact or '',
+                item.last_restocked.strftime('%Y-%m-%d %H:%M:%S') if item.last_restocked else '',
+                item.expiry_date.strftime('%Y-%m-%d') if item.expiry_date else '',
+                item.notes or '',
+                item.created_by.username if item.created_by else '',
+                item.created_by.email if item.created_by else '',
+                item.created_at.strftime('%Y-%m-%d %H:%M:%S') if item.created_at else '',
+                item.updated_at.strftime('%Y-%m-%d %H:%M:%S') if item.updated_at else '',
+            ])
+        
+        return response
+    export_inventory_csv.short_description = "Export selected/filtered inventory items to CSV"
+    
+    def mark_as_available(self, request, queryset):
+        updated_count = queryset.update(status='available')
+        self.message_user(request, f"{updated_count} inventory items marked as available.")
+    mark_as_available.short_description = "Mark selected items as available"
+    
+    def mark_as_low_stock(self, request, queryset):
+        updated_count = queryset.update(status='low_stock')
+        self.message_user(request, f"{updated_count} inventory items marked as low stock.")
+    mark_as_low_stock.short_description = "Mark selected items as low stock"
+    
+    def mark_as_out_of_stock(self, request, queryset):
+        updated_count = queryset.update(status='out_of_stock')
+        self.message_user(request, f"{updated_count} inventory items marked as out of stock.")
+    mark_as_out_of_stock.short_description = "Mark selected items as out of stock"

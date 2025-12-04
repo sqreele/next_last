@@ -1613,3 +1613,210 @@ class UtilityConsumption(models.Model):
     def __str__(self):
         property_name = self.property.name if self.property else 'No Property'
         return f"{property_name} - {self.get_month_display()} {self.year}"
+
+
+class Inventory(models.Model):
+    """
+    Model for tracking inventory items for maintenance engineers
+    """
+    STATUS_CHOICES = [
+        ('available', 'Available'),
+        ('low_stock', 'Low Stock'),
+        ('out_of_stock', 'Out of Stock'),
+        ('reserved', 'Reserved'),
+        ('maintenance', 'Under Maintenance'),
+    ]
+    
+    CATEGORY_CHOICES = [
+        ('tools', 'Tools'),
+        ('parts', 'Parts'),
+        ('supplies', 'Supplies'),
+        ('equipment', 'Equipment'),
+        ('consumables', 'Consumables'),
+        ('safety', 'Safety Equipment'),
+        ('other', 'Other'),
+    ]
+    
+    id = models.AutoField(primary_key=True)
+    item_id = models.CharField(
+        max_length=50,
+        unique=True,
+        blank=True,
+        editable=False,
+        help_text="Unique identifier for the inventory item"
+    )
+    name = models.CharField(
+        max_length=255,
+        help_text="Name of the inventory item"
+    )
+    description = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Description of the item"
+    )
+    category = models.CharField(
+        max_length=50,
+        choices=CATEGORY_CHOICES,
+        default='other',
+        help_text="Category of the inventory item"
+    )
+    quantity = models.PositiveIntegerField(
+        default=0,
+        help_text="Current quantity in stock"
+    )
+    min_quantity = models.PositiveIntegerField(
+        default=0,
+        help_text="Minimum quantity threshold for low stock alerts"
+    )
+    max_quantity = models.PositiveIntegerField(
+        default=0,
+        null=True,
+        blank=True,
+        help_text="Maximum quantity capacity"
+    )
+    unit = models.CharField(
+        max_length=50,
+        default='pcs',
+        help_text="Unit of measurement (e.g., pcs, kg, liters)"
+    )
+    unit_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Unit price of the item"
+    )
+    location = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Storage location of the item"
+    )
+    supplier = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Supplier or vendor name"
+    )
+    supplier_contact = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Supplier contact information"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='available',
+        help_text="Current status of the item"
+    )
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='inventory_items',
+        null=True,
+        blank=True,
+        help_text="Property associated with this inventory item"
+    )
+    room = models.ForeignKey(
+        Room,
+        on_delete=models.SET_NULL,
+        related_name='inventory_items',
+        null=True,
+        blank=True,
+        help_text="Room where the item is stored"
+    )
+    job = models.ForeignKey(
+        'Job',
+        on_delete=models.SET_NULL,
+        related_name='inventory_items',
+        null=True,
+        blank=True,
+        help_text="Job associated with this inventory item usage"
+    )
+    preventive_maintenance = models.ForeignKey(
+        'PreventiveMaintenance',
+        on_delete=models.SET_NULL,
+        related_name='inventory_items',
+        null=True,
+        blank=True,
+        help_text="Preventive maintenance task associated with this inventory item usage"
+    )
+    last_restocked = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date when item was last restocked"
+    )
+    expiry_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Expiry date if applicable"
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Additional notes about the item"
+    )
+    image = models.ImageField(
+        upload_to='inventory_images/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif'])],
+        null=True,
+        blank=True,
+        help_text="Image of the inventory item"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name='created_inventory_items',
+        null=True,
+        blank=True,
+        help_text="User who created this inventory item"
+    )
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Inventory Item'
+        verbose_name_plural = 'Inventory Items'
+        indexes = [
+            models.Index(fields=['item_id']),
+            models.Index(fields=['category', 'status']),
+            models.Index(fields=['property', 'status']),
+            models.Index(fields=['status']),
+            models.Index(fields=['job']),
+            models.Index(fields=['preventive_maintenance']),
+        ]
+    
+    def save(self, *args, **kwargs):
+        """Auto-generate item_id if not provided"""
+        if not self.item_id:
+            # Generate item_id: INV-YYYYMMDD-XXXX format
+            date_str = timezone.now().strftime('%Y%m%d')
+            last_item = Inventory.objects.filter(
+                item_id__startswith=f'INV-{date_str}'
+            ).order_by('-item_id').first()
+            
+            if last_item and last_item.item_id:
+                try:
+                    last_num = int(last_item.item_id.split('-')[-1])
+                    next_num = last_num + 1
+                except (ValueError, IndexError):
+                    next_num = 1
+            else:
+                next_num = 1
+            
+            self.item_id = f'INV-{date_str}-{next_num:04d}'
+        
+        # Auto-update status based on quantity
+        if self.quantity <= 0:
+            self.status = 'out_of_stock'
+        elif self.quantity <= self.min_quantity:
+            self.status = 'low_stock'
+        elif self.status == 'out_of_stock' and self.quantity > 0:
+            self.status = 'available'
+        
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return f"{self.item_id} - {self.name} ({self.quantity} {self.unit})"

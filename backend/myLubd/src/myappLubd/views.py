@@ -14,7 +14,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
 import math
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg
-from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure, UtilityConsumption
+from django.db import models
+from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory
 from django.urls import reverse
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .serializers import (
@@ -25,7 +26,8 @@ from .serializers import (
     MachineSerializer, MachineListSerializer, MachineDetailSerializer,
     MachineCreateSerializer, MachineUpdateSerializer, MachinePreventiveMaintenanceSerializer,
     MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer,
-    UtilityConsumptionSerializer, UtilityConsumptionListSerializer
+    UtilityConsumptionSerializer, UtilityConsumptionListSerializer,
+    InventorySerializer, InventoryListSerializer
 )
 from PIL import Image
 from io import BytesIO
@@ -2444,6 +2446,209 @@ class UtilityConsumptionViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """Update the updated_at timestamp when updating a record"""
         serializer.save()
+
+
+class InventoryViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing inventory items for maintenance engineers.
+    Tracks tools, parts, supplies, equipment, and consumables.
+    """
+    queryset = Inventory.objects.all()
+    permission_classes = [IsAuthenticated]
+    pagination_class = MaintenancePagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['property', 'room', 'category', 'status']
+    search_fields = ['name', 'item_id', 'description', 'location', 'supplier']
+    ordering_fields = ['name', 'quantity', 'created_at', 'updated_at', 'category', 'status']
+    ordering = ['-created_at']
+    lookup_field = 'item_id'
+    
+    def get_queryset(self):
+        """
+        Return inventory items filtered by user's accessible properties.
+        """
+        user = self.request.user
+        queryset = Inventory.objects.select_related(
+            'property', 'room', 'created_by', 'job', 'preventive_maintenance',
+            'job__user', 'preventive_maintenance__assigned_to', 'preventive_maintenance__created_by'
+        ).all()
+        
+        # Filter by property if user is not staff
+        if not (user.is_staff or user.is_superuser):
+            # Get properties the user has access to
+            user_properties = Property.objects.filter(users=user)
+            queryset = queryset.filter(property__in=user_properties)
+        
+        # Filter by property_id if provided
+        property_id = self.request.query_params.get('property_id')
+        if property_id:
+            queryset = queryset.filter(property__property_id=property_id)
+        
+        # Filter by category if provided
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category=category)
+        
+        # Filter by status if provided
+        status = self.request.query_params.get('status')
+        if status:
+            queryset = queryset.filter(status=status)
+        
+        # Filter by room_id if provided
+        room_id = self.request.query_params.get('room_id')
+        if room_id:
+            queryset = queryset.filter(room__room_id=room_id)
+        
+        # Filter low stock items
+        low_stock = self.request.query_params.get('low_stock')
+        if low_stock and low_stock.lower() == 'true':
+            queryset = queryset.filter(quantity__lte=F('min_quantity'))
+        
+        return queryset.distinct()
+    
+    def get_object(self):
+        """
+        Override to support case-insensitive item_id lookup.
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        item_id = self.kwargs[lookup_url_kwarg]
+        
+        # Try case-insensitive lookup using iexact
+        obj = queryset.filter(item_id__iexact=item_id).first()
+        
+        if obj is None:
+            from django.http import Http404
+            raise Http404(f"No Inventory matches the given query with item_id: {item_id}")
+        
+        self.check_object_permissions(self.request, obj)
+        return obj
+    
+    def get_serializer_class(self):
+        """
+        Return appropriate serializer class based on action
+        """
+        if self.action == 'list':
+            return InventoryListSerializer
+        return InventorySerializer
+    
+    def get_serializer_context(self):
+        """Add request to serializer context"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+    
+    def perform_create(self, serializer):
+        """Add the current user as the creator when creating an inventory item"""
+        serializer.save(created_by=self.request.user)
+    
+    @action(detail=True, methods=['post'])
+    def restock(self, request, item_id=None):
+        """
+        Restock an inventory item by adding quantity.
+        Expects: {'quantity': <number>}
+        """
+        inventory = self.get_object()
+        quantity_to_add = request.data.get('quantity', 0)
+        
+        try:
+            quantity_to_add = int(quantity_to_add)
+            if quantity_to_add <= 0:
+                return Response(
+                    {'error': 'Quantity must be greater than 0'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            inventory.quantity += quantity_to_add
+            inventory.last_restocked = timezone.now()
+            inventory.save()
+            
+            serializer = self.get_serializer(inventory)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ValueError:
+            return Response(
+                {'error': 'Invalid quantity value'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=True, methods=['post'])
+    def use(self, request, item_id=None):
+        """
+        Use/consume an inventory item by subtracting quantity.
+        Expects: {'quantity': <number>, 'job_id': <optional>, 'pm_id': <optional>}
+        """
+        inventory = self.get_object()
+        quantity_to_use = request.data.get('quantity', 0)
+        job_id = request.data.get('job_id')
+        pm_id = request.data.get('pm_id')
+        
+        try:
+            quantity_to_use = int(quantity_to_use)
+            if quantity_to_use <= 0:
+                return Response(
+                    {'error': 'Quantity must be greater than 0'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if inventory.quantity < quantity_to_use:
+                return Response(
+                    {'error': f'Insufficient stock. Available: {inventory.quantity}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Link to job or PM if provided
+            if job_id:
+                from .models import Job
+                try:
+                    job = Job.objects.get(job_id=job_id, user=request.user)
+                    inventory.job = job
+                except Job.DoesNotExist:
+                    return Response(
+                        {'error': f'Job with ID {job_id} not found or not accessible'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+            
+            if pm_id:
+                from .models import PreventiveMaintenance
+                pm = PreventiveMaintenance.objects.filter(
+                    pm_id=pm_id
+                ).filter(
+                    Q(assigned_to=request.user) | Q(created_by=request.user)
+                ).first()
+                if pm:
+                    inventory.preventive_maintenance = pm
+                else:
+                    return Response(
+                        {'error': f'PM with ID {pm_id} not found or not accessible'},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+            
+            inventory.quantity -= quantity_to_use
+            inventory.save()
+            
+            serializer = self.get_serializer(inventory)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ValueError:
+            return Response(
+                {'error': 'Invalid quantity value'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=False, methods=['get'])
+    def low_stock(self, request):
+        """
+        Get all inventory items that are low in stock.
+        """
+        queryset = self.get_queryset()
+        low_stock_items = queryset.filter(quantity__lte=F('min_quantity'))
+        
+        page = self.paginate_queryset(low_stock_items)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(low_stock_items, many=True)
+        return Response(serializer.data)
 
 
 # Notification API Endpoints

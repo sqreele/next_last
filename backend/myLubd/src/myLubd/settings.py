@@ -29,6 +29,29 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-default-secret-key')
 DEBUG = os.getenv('DEBUG', 'True') in ('True', '1', 'true', 'yes')
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+# Production Security Settings
+if not DEBUG:
+    # SSL/HTTPS Settings
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    
+    # Cookie Security
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    
+    # Content Security
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
+else:
+    # Development settings
+    SECURE_SSL_REDIRECT = False
+    SECURE_HSTS_SECONDS = 0
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+
 # Hosts and Security Settings
 _default_allowed_hosts = [
     'localhost',
@@ -316,17 +339,13 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# CSRF Configuration
+# CSRF Configuration (already set above in Production Security Settings)
 if DEBUG:
-    # In development, disable CSRF for easier testing
-    CSRF_COOKIE_SECURE = False
+    # In development, additional CSRF settings
     CSRF_COOKIE_HTTPONLY = False
     CSRF_USE_SESSIONS = False
-    # Optionally disable CSRF middleware entirely in development
-    # MIDDLEWARE = [m for m in MIDDLEWARE if m != 'django.middleware.csrf.CsrfViewMiddleware']
 else:
-    # Production CSRF settings
-    CSRF_COOKIE_SECURE = True
+    # Production CSRF settings (CSRF_COOKIE_SECURE already set above)
     CSRF_COOKIE_HTTPONLY = True
     CSRF_USE_SESSIONS = True
 

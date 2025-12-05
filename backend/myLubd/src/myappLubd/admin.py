@@ -2832,7 +2832,7 @@ class InventoryAdmin(admin.ModelAdmin):
     def room_link(self, obj):
         if obj.room:
             from django.urls import reverse
-            link = reverse("admin:myappLubd_room_change", args=[obj.room.id])
+            link = reverse("admin:myappLubd_room_change", args=[obj.room.pk])
             return format_html('<a href="{}">{}</a>', link, obj.room.name)
         return "No Room"
     room_link.short_description = 'Room'

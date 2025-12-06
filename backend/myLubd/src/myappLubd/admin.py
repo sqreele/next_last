@@ -2831,12 +2831,18 @@ class InventoryAdmin(admin.ModelAdmin):
     
     def room_link(self, obj):
         if obj.room:
-            from django.urls import reverse
-            link = reverse("admin:myappLubd_room_change", args=[obj.room.id])
-            return format_html('<a href="{}">{}</a>', link, obj.room.name)
+            try:
+                from django.urls import reverse
+                # Room model uses room_id as primary key, not id
+                room_pk = obj.room.room_id
+                if room_pk:
+                    link = reverse("admin:myappLubd_room_change", args=[room_pk])
+                    return format_html('<a href="{}">{}</a>', link, obj.room.name)
+            except (AttributeError, ValueError, TypeError):
+                pass
         return "No Room"
     room_link.short_description = 'Room'
-    room_link.admin_order_field = 'room'
+    room_link.admin_order_field = 'room__room_id'
     
     def image_preview(self, obj):
         """Display small image preview in list view"""

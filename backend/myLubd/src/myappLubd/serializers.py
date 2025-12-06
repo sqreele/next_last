@@ -33,7 +33,7 @@ class UserSummarySerializer(serializers.ModelSerializer):
 class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
-        fields = '__all__'
+        fields = ['room_id', 'name', 'room_type', 'is_active', 'created_at', 'properties']
 
 
 class RoomSummarySerializer(serializers.ModelSerializer):

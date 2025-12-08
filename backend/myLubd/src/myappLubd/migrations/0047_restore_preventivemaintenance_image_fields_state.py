@@ -1,7 +1,9 @@
 # Generated manually to fix migration state mismatch
-# Migration 0040 removed after_image, before_image, etc. from Django's state for preventivemaintenance
-# However, these fields still exist in the model and database.
-# This migration adds them back to Django's migration state without touching the database.
+# NOTE: Migration 0040 was originally trying to remove after_image, before_image, etc. from preventivemaintenance,
+# but this was incorrect - those fields were never removed from preventivemaintenance (only from maintenanceprocedure).
+# Migration 0040 has been fixed to not remove these fields.
+# This migration is kept for backward compatibility but is now effectively a no-op since the fields
+# were never removed from preventivemaintenance in the first place.
 
 from django.db import migrations, models
 from django.db.migrations.operations.base import Operation

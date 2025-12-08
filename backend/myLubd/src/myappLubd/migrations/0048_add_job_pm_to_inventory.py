@@ -4,6 +4,117 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
+def add_fields_if_not_exist(apps, schema_editor):
+    """Add job_id and preventive_maintenance_id columns only if they don't exist"""
+    db_alias = schema_editor.connection.alias
+    with schema_editor.connection.cursor() as cursor:
+        table_name = 'myappLubd_inventory'
+        
+        # Check and add job_id column
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                AND table_name = %s 
+                AND column_name = 'job_id'
+            )
+        """, [table_name])
+        job_exists = cursor.fetchone()[0]
+        
+        if not job_exists:
+            # Add column first
+            cursor.execute(f"""
+                ALTER TABLE "{table_name}" 
+                ADD COLUMN "job_id" BIGINT NULL
+            """)
+            # Check if foreign key constraint already exists
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints 
+                    WHERE table_schema = 'public' 
+                    AND table_name = %s 
+                    AND constraint_name LIKE '%%job_id%%'
+                )
+            """, [table_name])
+            fk_exists = cursor.fetchone()[0]
+            if not fk_exists:
+                cursor.execute(f"""
+                    ALTER TABLE "{table_name}" 
+                    ADD CONSTRAINT "{table_name}_job_id_fkey" 
+                    FOREIGN KEY ("job_id") REFERENCES "myappLubd_job"("id") 
+                    ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED
+                """)
+            print("Added column: job_id")
+        else:
+            print("Column job_id already exists, skipping")
+        
+        # Check and add preventive_maintenance_id column
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                AND table_name = %s 
+                AND column_name = 'preventive_maintenance_id'
+            )
+        """, [table_name])
+        pm_exists = cursor.fetchone()[0]
+        
+        if not pm_exists:
+            # Add column first
+            cursor.execute(f"""
+                ALTER TABLE "{table_name}" 
+                ADD COLUMN "preventive_maintenance_id" BIGINT NULL
+            """)
+            # Check if foreign key constraint already exists
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.table_constraints 
+                    WHERE table_schema = 'public' 
+                    AND table_name = %s 
+                    AND constraint_name LIKE '%%preventive_maintenance_id%%'
+                )
+            """, [table_name])
+            fk_exists = cursor.fetchone()[0]
+            if not fk_exists:
+                cursor.execute(f"""
+                    ALTER TABLE "{table_name}" 
+                    ADD CONSTRAINT "{table_name}_preventive_maintenance_id_fkey" 
+                    FOREIGN KEY ("preventive_maintenance_id") REFERENCES "myappLubd_preventivemaintenance"("id") 
+                    ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED
+                """)
+            print("Added column: preventive_maintenance_id")
+        else:
+            print("Column preventive_maintenance_id already exists, skipping")
+
+
+def add_indexes_if_not_exist(apps, schema_editor):
+    """Add indexes only if they don't exist"""
+    db_alias = schema_editor.connection.alias
+    with schema_editor.connection.cursor() as cursor:
+        indexes = [
+            ('myappLubd_i_job_id_50f920_idx', 'job_id'),
+            ('myappLubd_i_prevent_37662d_idx', 'preventive_maintenance_id'),
+        ]
+        
+        for index_name, column_name in indexes:
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_indexes 
+                    WHERE indexname = %s
+                )
+            """, [index_name])
+            exists = cursor.fetchone()[0]
+            
+            if not exists:
+                cursor.execute(f"""
+                    CREATE INDEX "{index_name}" 
+                    ON myappLubd_inventory ("{column_name}")
+                """)
+                print(f"Created index: {index_name}")
+            else:
+                print(f"Index {index_name} already exists, skipping")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -11,22 +122,36 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='inventory',
-            name='job',
-            field=models.ForeignKey(blank=True, help_text='Job associated with this inventory item usage', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='inventory_items', to='myappLubd.job'),
-        ),
-        migrations.AddField(
-            model_name='inventory',
-            name='preventive_maintenance',
-            field=models.ForeignKey(blank=True, help_text='Preventive maintenance task associated with this inventory item usage', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='inventory_items', to='myappLubd.preventivemaintenance'),
-        ),
-        migrations.AddIndex(
-            model_name='inventory',
-            index=models.Index(fields=['job'], name='myappLubd_i_job_id_50f920_idx'),
-        ),
-        migrations.AddIndex(
-            model_name='inventory',
-            index=models.Index(fields=['preventive_maintenance'], name='myappLubd_i_prevent_37662d_idx'),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    add_fields_if_not_exist,
+                    reverse_code=migrations.RunPython.noop,
+                ),
+                migrations.RunPython(
+                    add_indexes_if_not_exist,
+                    reverse_code=migrations.RunPython.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='inventory',
+                    name='job',
+                    field=models.ForeignKey(blank=True, help_text='Job associated with this inventory item usage', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='inventory_items', to='myappLubd.job'),
+                ),
+                migrations.AddField(
+                    model_name='inventory',
+                    name='preventive_maintenance',
+                    field=models.ForeignKey(blank=True, help_text='Preventive maintenance task associated with this inventory item usage', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='inventory_items', to='myappLubd.preventivemaintenance'),
+                ),
+                migrations.AddIndex(
+                    model_name='inventory',
+                    index=models.Index(fields=['job'], name='myappLubd_i_job_id_50f920_idx'),
+                ),
+                migrations.AddIndex(
+                    model_name='inventory',
+                    index=models.Index(fields=['preventive_maintenance'], name='myappLubd_i_prevent_37662d_idx'),
+                ),
+            ],
         ),
     ]

@@ -12,22 +12,53 @@ Migration 0040 has been fixed to:
 
 ## If You're Still Getting the Error
 
-The error might occur if migration 0040 was already applied with the old (incorrect) version. In this case, you need to fake migration 0040:
+The error occurs when Django tries to build the migration state. This happens if migration 0040 was already applied with the old (incorrect) version. Here's how to fix it:
+
+### Step 1: Check Migration Status
 
 ```bash
-# Check which migrations are applied
 docker-compose -f docker-compose.dev.yml exec backend python manage.py showmigrations myappLubd
+```
 
-# If migration 0040 shows as applied [X], you need to:
-# 1. Mark it as unapplied (fake reverse)
+### Step 2: If Migration 0040 is Applied [X]
+
+If migration 0040 shows as `[X]` (applied), you need to reset it:
+
+```bash
+# Option A: Fake unapply migration 0040 (go back to 0039)
 docker-compose -f docker-compose.dev.yml exec backend python manage.py migrate myappLubd 0039 --fake
 
-# 2. Then fake apply the fixed version
+# Then fake apply the fixed version
 docker-compose -f docker-compose.dev.yml exec backend python manage.py migrate myappLubd 0040 --fake
 
-# 3. Continue with remaining migrations
+# Continue with remaining migrations
 docker-compose -f docker-compose.dev.yml exec backend python manage.py migrate
 ```
+
+### Step 3: If Migration 0040 is NOT Applied [ ]
+
+If migration 0040 shows as `[ ]` (not applied), try:
+
+```bash
+# Try to apply migration 0040
+docker-compose -f docker-compose.dev.yml exec backend python manage.py migrate myappLubd 0040
+
+# If that fails with the same error, fake it:
+docker-compose -f docker-compose.dev.yml exec backend python manage.py migrate myappLubd 0040 --fake
+
+# Then continue
+docker-compose -f docker-compose.dev.yml exec backend python manage.py migrate
+```
+
+### Alternative: Use the Diagnostic Script
+
+Run the diagnostic script to get specific recommendations:
+
+```bash
+docker-compose -f docker-compose.dev.yml exec backend python fix_migration_state.py
+```
+
+This will check the current state and provide specific fix instructions.
 
 ## Alternative: If Migration 0040 Shows as Not Applied
 

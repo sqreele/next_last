@@ -3,7 +3,37 @@
 from django.conf import settings
 import django.core.validators
 from django.db import migrations, models
+from django.db.migrations.operations.models import CreateModel
 import django.db.models.deletion
+
+
+class CreateModelIfNotExists(CreateModel):
+    """CreateModel that checks if table exists before creating"""
+    
+    def database_forwards(self, app_label, schema_editor, from_state, to_state):
+        # Construct table name (Django's default format: app_label_modelname)
+        # Check options for custom db_table first
+        table_name = self.options.get('db_table')
+        if not table_name:
+            # Use Django's default: app_label + model name (lowercase)
+            table_name = f"{app_label}_{self.name.lower()}"
+        
+        # Check if table exists
+        with schema_editor.connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT 1 FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = %s
+                )
+            """, [table_name])
+            exists = cursor.fetchone()[0]
+            
+            if not exists:
+                # Table doesn't exist, create it normally
+                super().database_forwards(app_label, schema_editor, from_state, to_state)
+            else:
+                print(f"Table {table_name} already exists, skipping creation")
 
 
 class Migration(migrations.Migration):
@@ -13,7 +43,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.CreateModel(
+        CreateModelIfNotExists(
             name='Inventory',
             fields=[
                 ('id', models.AutoField(primary_key=True, serialize=False)),

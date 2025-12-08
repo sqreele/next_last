@@ -4,6 +4,35 @@ import django.core.validators
 from django.db import migrations, models
 
 
+def add_image_column_if_not_exists(apps, schema_editor):
+    """Add image column only if it doesn't exist"""
+    db_alias = schema_editor.connection.alias
+    with schema_editor.connection.cursor() as cursor:
+        table_name = 'myappLubd_inventory'
+        column_name = 'image'
+        
+        # Check if column exists
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                AND table_name = %s 
+                AND column_name = %s
+            )
+        """, [table_name, column_name])
+        exists = cursor.fetchone()[0]
+        
+        if not exists:
+            # Add the column (VARCHAR(100) for ImageField in PostgreSQL)
+            cursor.execute(f"""
+                ALTER TABLE "{table_name}" 
+                ADD COLUMN "{column_name}" VARCHAR(100) NULL
+            """)
+            print(f"Added column: {column_name}")
+        else:
+            print(f"Column {column_name} already exists, skipping")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -11,9 +40,19 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='inventory',
-            name='image',
-            field=models.ImageField(blank=True, help_text='Image of the inventory item', null=True, upload_to='inventory_images/%Y/%m/', validators=[django.core.validators.FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif'])]),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    add_image_column_if_not_exists,
+                    reverse_code=migrations.RunPython.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='inventory',
+                    name='image',
+                    field=models.ImageField(blank=True, help_text='Image of the inventory item', null=True, upload_to='inventory_images/%Y/%m/', validators=[django.core.validators.FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif'])]),
+                ),
+            ],
         ),
     ]

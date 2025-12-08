@@ -3,6 +3,32 @@
 from django.db import migrations, models
 
 
+def add_index_if_not_exists(apps, schema_editor):
+    """Add index only if it doesn't exist"""
+    db_alias = schema_editor.connection.alias
+    with schema_editor.connection.cursor() as cursor:
+        index_name = 'myappLubd_m_group_i_d77154_idx'
+        
+        # Check if index exists
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM pg_indexes 
+                WHERE indexname = %s
+            )
+        """, [index_name])
+        exists = cursor.fetchone()[0]
+        
+        if not exists:
+            # Add the index
+            cursor.execute(f"""
+                CREATE INDEX "{index_name}" 
+                ON myappLubd_machine (group_id)
+            """)
+            print(f"Created index: {index_name}")
+        else:
+            print(f"Index {index_name} already exists, skipping")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,8 +36,18 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddIndex(
-            model_name='machine',
-            index=models.Index(fields=['group_id'], name='myappLubd_m_group_i_d77154_idx'),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    add_index_if_not_exists,
+                    reverse_code=migrations.RunPython.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.AddIndex(
+                    model_name='machine',
+                    index=models.Index(fields=['group_id'], name='myappLubd_m_group_i_d77154_idx'),
+                ),
+            ],
         ),
     ]

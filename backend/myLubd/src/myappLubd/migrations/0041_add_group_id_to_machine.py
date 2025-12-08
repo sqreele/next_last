@@ -3,6 +3,35 @@
 from django.db import migrations, models
 
 
+def add_group_id_if_not_exists(apps, schema_editor):
+    """Add group_id column only if it doesn't exist"""
+    db_alias = schema_editor.connection.alias
+    with schema_editor.connection.cursor() as cursor:
+        table_name = 'myappLubd_machine'
+        column_name = 'group_id'
+        
+        # Check if column exists
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                AND table_name = %s 
+                AND column_name = %s
+            )
+        """, [table_name, column_name])
+        exists = cursor.fetchone()[0]
+        
+        if not exists:
+            # Add the column
+            cursor.execute(f"""
+                ALTER TABLE "{table_name}" 
+                ADD COLUMN "{column_name}" VARCHAR(100) NULL
+            """)
+            print(f"Added column: {column_name}")
+        else:
+            print(f"Column {column_name} already exists, skipping")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,9 +39,19 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='machine',
-            name='group_id',
-            field=models.CharField(blank=True, help_text="Task group ID for this machine (e.g., 'PUMP_MAINTENANCE', 'HVAC_CHECK'). This can also be inherited from linked maintenance procedures.", max_length=100, null=True),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(
+                    add_group_id_if_not_exists,
+                    reverse_code=migrations.RunPython.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='machine',
+                    name='group_id',
+                    field=models.CharField(blank=True, help_text="Task group ID for this machine (e.g., 'PUMP_MAINTENANCE', 'HVAC_CHECK'). This can also be inherited from linked maintenance procedures.", max_length=100, null=True),
+                ),
+            ],
         ),
     ]

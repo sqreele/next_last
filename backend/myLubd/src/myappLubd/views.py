@@ -351,7 +351,14 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         if 'completed_date' not in request.data:
             request.data['completed_date'] = timezone.now().isoformat()
 
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        # Explicitly use PreventiveMaintenanceCompleteSerializer for complete action
+        serializer_class = self.get_serializer_class()
+        print(f"=== DEBUG: complete action ===")
+        print(f"Serializer class: {serializer_class.__name__}")
+        print(f"Request data: {request.data}")
+        print(f"Scheduled date: {instance.scheduled_date}")
+        
+        serializer = serializer_class(instance, data=request.data, partial=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
         completed_date = serializer.validated_data.get('completed_date') or timezone.now()
@@ -1320,6 +1327,35 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=['patch', 'put'])
+    def update_email_notifications(self, request):
+        """Update email notifications setting for current user"""
+        try:
+            profile, created = UserProfile.objects.get_or_create(user=request.user)
+            email_notifications_enabled = request.data.get('email_notifications_enabled')
+            
+            if email_notifications_enabled is None:
+                return Response(
+                    {'error': 'email_notifications_enabled field is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            profile.email_notifications_enabled = bool(email_notifications_enabled)
+            profile.save()
+            
+            serializer = self.get_serializer(profile)
+            return Response({
+                'message': 'Email notifications setting updated successfully',
+                'email_notifications_enabled': profile.email_notifications_enabled,
+                'profile': serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Error updating email notifications: {e}", exc_info=True)
+            return Response(
+                {'error': 'Failed to update email notifications setting'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
     @action(detail=True, methods=['post'])
     def add_property(self, request, pk=None):
         profile = self.get_object()

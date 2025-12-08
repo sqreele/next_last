@@ -825,6 +825,12 @@ class UserProfile(models.Model):
     reset_password_token = models.CharField(max_length=128, blank=True, null=True)
     reset_password_expires_at = models.DateTimeField(null=True, blank=True)
     reset_password_used = models.BooleanField(default=False)
+    
+    # Email notification preferences
+    email_notifications_enabled = models.BooleanField(
+        default=True,
+        help_text="If False, user will not receive email notifications (summary emails, etc.)"
+    )
 
     class Meta:
         indexes = [

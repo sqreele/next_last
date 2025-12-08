@@ -215,11 +215,42 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
     console.log('Submitting for pmId:', pmId);
     console.log('Completion data:', completionData);
     
+    // Validate completion date is within 15 days of scheduled date
+    if (selectedMaintenance?.scheduled_date) {
+      const scheduledDate = new Date(selectedMaintenance.scheduled_date);
+      const completionDate = completedDate ? new Date(completedDate) : new Date();
+      
+      const daysDiff = Math.floor((completionDate.getTime() - scheduledDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff < -15 || daysDiff > 15) {
+        const scheduledDateStr = scheduledDate.toLocaleDateString();
+        const completionDateStr = completionDate.toLocaleDateString();
+        setSuccessMessage(null);
+        // Use the error from context if available, otherwise set a local error
+        if (error) {
+          // Error will be set by the context
+        } else {
+          // We need to show error - but the component uses context error
+          // Let's add a local error state or use alert
+          alert(
+            `Completion date must be within 15 days before or after the scheduled date (${scheduledDateStr}). ` +
+            `Your completion date (${completionDateStr}) is ${Math.abs(daysDiff)} days away.`
+          );
+        }
+        return;
+      }
+    }
+    
     setIsSubmitting(true);
     clearError();
     
     try {
-      const result = await completeMaintenance(pmId, completionData);
+      const submitData: CompletePreventiveMaintenanceData = {
+        ...completionData,
+        completed_date: completedDate ? new Date(completedDate).toISOString() : new Date().toISOString()
+      };
+      
+      const result = await completeMaintenance(pmId, submitData);
       
       if (result) {
         setSuccessMessage('Maintenance task completed successfully!');

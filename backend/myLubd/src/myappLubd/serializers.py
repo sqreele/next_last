@@ -9,6 +9,7 @@ from django.db import transaction
 from django.db.utils import ProgrammingError
 from django.utils import timezone
 from django.core.validators import FileExtensionValidator
+from datetime import timedelta
 import math
 
 # User serializer for basic user data
@@ -138,6 +139,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'profile_property_name',
             'profile_property_id',
             'created_at',
+            'email_notifications_enabled',
         ]
         read_only_fields = ['id', 'username', 'email', 'first_name', 'last_name', 'created_at']
 
@@ -883,10 +885,42 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
         scheduled_date = data.get('scheduled_date')
         completed_date = data.get('completed_date')
         
-        if scheduled_date and completed_date and completed_date < scheduled_date:
-            raise serializers.ValidationError({
-                'completed_date': 'Completion date cannot be earlier than scheduled date'
-            })
+        # Only validate completed_date if it's actually provided (not None/empty)
+        # For new records, completed_date should be None/not provided
+        if scheduled_date and completed_date is not None:
+            # Handle both datetime objects and string dates
+            if isinstance(completed_date, str) and completed_date.strip() == '':
+                # Empty string - treat as not provided
+                completed_date = None
+            elif completed_date:
+                # Allow completion within 15 days before or after scheduled date
+                from datetime import timedelta
+                from django.utils import timezone as tz
+                
+                # Ensure dates are timezone-aware for comparison
+                if tz.is_naive(scheduled_date):
+                    scheduled_date = tz.make_aware(scheduled_date)
+                if isinstance(completed_date, str):
+                    from django.utils.dateparse import parse_datetime
+                    parsed_date = parse_datetime(completed_date)
+                    if parsed_date:
+                        if tz.is_naive(parsed_date):
+                            completed_date = tz.make_aware(parsed_date)
+                        else:
+                            completed_date = parsed_date
+                    else:
+                        completed_date = None
+                elif tz.is_naive(completed_date):
+                    completed_date = tz.make_aware(completed_date)
+                
+                if completed_date:
+                    date_diff = (completed_date - scheduled_date).days
+                    # Allow completion within 15 days before or after scheduled date
+                    if date_diff < -15 or date_diff > 15:
+                        raise serializers.ValidationError({
+                            'completed_date': f'Completion date must be within 15 days before or after the scheduled date ({scheduled_date.strftime("%Y-%m-%d")}). '
+                                            f'Your completion date ({completed_date.strftime("%Y-%m-%d")}) is {abs(date_diff)} days away.'
+                        })
         
         machine_ids = data.get('machine_ids', [])
         if machine_ids:
@@ -952,6 +986,41 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         print(f"=== DEBUG: to_internal_value ===")
         print(f"Input data: {data}")
+        print(f"Input data type: {type(data)}")
+        print(f"Input data keys: {data.keys() if hasattr(data, 'keys') else 'N/A'}")
+        
+        # Remove empty image fields that are not files
+        # Django ImageField expects either a file or the field to be absent
+        if hasattr(data, 'get'):
+            # Handle QueryDict or dict-like objects
+            before_image = data.get('before_image')
+            after_image = data.get('after_image')
+            
+            # If before_image/after_image exist but are not files (empty strings, etc.), remove them
+            if before_image is not None and not hasattr(before_image, 'read'):
+                # Not a file object - remove it
+                if hasattr(data, '_mutable'):
+                    # QueryDict - create a copy and remove the key
+                    data = data.copy()
+                    data.pop('before_image', None)
+                    print(f"Removed invalid before_image from data")
+                elif isinstance(data, dict):
+                    # Regular dict - remove the key
+                    data = {k: v for k, v in data.items() if k != 'before_image' or hasattr(v, 'read')}
+                    print(f"Removed invalid before_image from dict")
+            
+            if after_image is not None and not hasattr(after_image, 'read'):
+                # Not a file object - remove it
+                if hasattr(data, '_mutable'):
+                    # QueryDict - create a copy and remove the key
+                    data = data.copy()
+                    data.pop('after_image', None)
+                    print(f"Removed invalid after_image from data")
+                elif isinstance(data, dict):
+                    # Regular dict - remove the key
+                    data = {k: v for k, v in data.items() if k != 'after_image' or hasattr(v, 'read')}
+                    print(f"Removed invalid after_image from dict")
+        
         result = super().to_internal_value(data)
         print(f"Result: {result}")
         return result
@@ -980,6 +1049,91 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         print(f"validated_data: {validated_data}")
         print(f"pmtitle in validated_data: {validated_data.get('pmtitle')}")
         print(f"procedure_template in validated_data: {validated_data.get('procedure_template')}")
+        
+        topic_ids = validated_data.pop('topic_ids', [])
+        machine_ids = validated_data.pop('machine_ids', [])
+        
+        # Auto-calculate scheduled_date based on frequency if procedure_template is provided
+        procedure_template = validated_data.get('procedure_template')
+        scheduled_date = validated_data.get('scheduled_date')
+        frequency = validated_data.get('frequency')
+        
+        # Ensure frequency is set (default to 'monthly' if not provided)
+        if not frequency:
+            frequency = 'monthly'
+            validated_data['frequency'] = frequency
+        
+        # If procedure_template is provided, use its frequency
+        if procedure_template:
+            template_frequency = getattr(procedure_template, 'frequency', None)
+            if template_frequency:
+                # Use template frequency (prefer template frequency over form frequency)
+                frequency = template_frequency
+                validated_data['frequency'] = frequency
+            
+            # Calculate next schedule based on frequency if scheduled_date is not provided or invalid
+            # Check if scheduled_date is None, empty string, or not a valid datetime
+            needs_scheduled_date = False
+            if not scheduled_date:
+                needs_scheduled_date = True
+            elif isinstance(scheduled_date, str) and not scheduled_date.strip():
+                needs_scheduled_date = True
+            
+            if needs_scheduled_date and frequency:
+                now = timezone.now()
+                if frequency == 'daily':
+                    next_schedule = now + timedelta(days=1)
+                elif frequency == 'weekly':
+                    next_schedule = now + timedelta(weeks=1)
+                elif frequency == 'monthly':
+                    # Add one month
+                    month = now.month + 1
+                    year = now.year
+                    if month > 12:
+                        month = 1
+                        year += 1
+                    # Handle different month lengths
+                    day = min(now.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 
+                                         31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month-1])
+                    next_schedule = now.replace(year=year, month=month, day=day)
+                elif frequency == 'quarterly':
+                    # Add three months
+                    month = now.month + 3
+                    year = now.year
+                    if month > 12:
+                        month -= 12
+                        year += 1
+                    day = min(now.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 
+                                         31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month-1])
+                    next_schedule = now.replace(year=year, month=month, day=day)
+                elif frequency == 'semi_annual':
+                    # Add six months
+                    month = now.month + 6
+                    year = now.year
+                    if month > 12:
+                        month -= 12
+                        year += 1
+                    day = min(now.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 
+                                         31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month-1])
+                    next_schedule = now.replace(year=year, month=month, day=day)
+                elif frequency == 'annual':
+                    # Add one year
+                    next_schedule = now.replace(year=now.year + 1)
+                elif frequency == 'custom' and procedure_template.custom_days:
+                    next_schedule = now + timedelta(days=procedure_template.custom_days)
+                else:
+                    # Default to monthly if frequency is not recognized
+                    month = now.month + 1
+                    year = now.year
+                    if month > 12:
+                        month = 1
+                        year += 1
+                    day = min(now.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 
+                                         31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month-1])
+                    next_schedule = now.replace(year=year, month=month, day=day)
+                
+                validated_data['scheduled_date'] = next_schedule
+                print(f"Auto-calculated scheduled_date based on frequency '{frequency}': {next_schedule}")
         
         topic_ids = validated_data.pop('topic_ids', [])
         machine_ids = validated_data.pop('machine_ids', [])
@@ -1042,19 +1196,36 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         scheduled_date = data.get('scheduled_date')
         completed_date = data.get('completed_date')
 
-        if scheduled_date and completed_date and completed_date < scheduled_date:
-            raise serializers.ValidationError({
-                'completed_date': 'Completion date cannot be earlier than scheduled date'
-            })
+        # Only validate completed_date if it's actually provided (not None/empty)
+        # For new records, completed_date should be None/not provided
+        if scheduled_date and completed_date is not None:
+            # Handle both datetime objects and string dates
+            if isinstance(completed_date, str) and completed_date.strip() == '':
+                # Empty string - treat as not provided
+                completed_date = None
+            elif completed_date and completed_date < scheduled_date:
+                raise serializers.ValidationError({
+                    'completed_date': 'Completion date cannot be earlier than scheduled date'
+                })
 
         machine_ids = data.get('machine_ids', [])
-        if machine_ids:
-            machines = Machine.objects.filter(machine_id__in=machine_ids)
-            if len(machines) != len(machine_ids):
-                raise serializers.ValidationError("One or more machine_ids are invalid.")
-            property_ids = set(machine.property.property_id for machine in machines)
-            if len(property_ids) > 1:
-                raise serializers.ValidationError("All machines must belong to the same property.")
+        # Require at least one machine
+        if not machine_ids or len(machine_ids) == 0:
+            raise serializers.ValidationError({
+                'machine_ids': 'At least one machine is required.'
+            })
+        
+        # Validate machine_ids exist and belong to the same property
+        machines = Machine.objects.filter(machine_id__in=machine_ids)
+        if len(machines) != len(machine_ids):
+            raise serializers.ValidationError({
+                'machine_ids': 'One or more machine_ids are invalid.'
+            })
+        property_ids = set(machine.property.property_id for machine in machines)
+        if len(property_ids) > 1:
+            raise serializers.ValidationError({
+                'machine_ids': 'All machines must belong to the same property.'
+            })
         
         return data
 
@@ -1092,10 +1263,49 @@ class PreventiveMaintenanceCompleteSerializer(serializers.ModelSerializer):
         scheduled_date = self.instance.scheduled_date if self.instance else None
         completed_date = data.get('completed_date')
 
-        if scheduled_date and completed_date and completed_date < scheduled_date:
-            raise serializers.ValidationError({
-                'completed_date': 'Completion date cannot be earlier than scheduled date'
-            })
+        # If no completed_date provided, use current time
+        if completed_date is None:
+            from django.utils import timezone
+            completed_date = timezone.now()
+            data['completed_date'] = completed_date
+
+        # Ensure completed_date is a datetime object (handle ISO string conversion)
+        if isinstance(completed_date, str):
+            from django.utils.dateparse import parse_datetime
+            from django.utils import timezone
+            parsed_date = parse_datetime(completed_date)
+            if parsed_date:
+                # Make timezone-aware if it's naive
+                if timezone.is_naive(parsed_date):
+                    completed_date = timezone.make_aware(parsed_date)
+                else:
+                    completed_date = parsed_date
+                data['completed_date'] = completed_date
+            else:
+                # If parsing fails, use current time
+                completed_date = timezone.now()
+                data['completed_date'] = completed_date
+
+        # Validate that completion date is within 15 days before or after scheduled date
+        if scheduled_date and completed_date:
+            from datetime import timedelta
+            
+            # Ensure scheduled_date is timezone-aware for comparison
+            from django.utils import timezone as tz
+            if tz.is_naive(scheduled_date):
+                scheduled_date = tz.make_aware(scheduled_date)
+            if tz.is_naive(completed_date):
+                completed_date = tz.make_aware(completed_date)
+            
+            # Calculate the difference in days
+            date_diff = (completed_date - scheduled_date).days
+            
+            # Allow completion within 15 days before or after scheduled date
+            if date_diff < -15 or date_diff > 15:
+                raise serializers.ValidationError({
+                    'completed_date': f'Completion date must be within 15 days before or after the scheduled date ({scheduled_date.strftime("%Y-%m-%d")}). '
+                                    f'Your completion date ({completed_date.strftime("%Y-%m-%d")}) is {abs(date_diff)} days away.'
+                })
 
         machine_ids = data.get('machine_ids', [])
         if machine_ids:

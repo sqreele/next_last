@@ -131,6 +131,16 @@ apiClient.interceptors.request.use(
         return config;
     }
 
+    // CRITICAL: Check if this is a FormData request
+    const isFormData = config.data instanceof FormData;
+    
+    // If FormData, remove Content-Type header to let browser set it with boundary
+    if (isFormData) {
+      delete config.headers['Content-Type'];
+      delete config.headers['content-type'];
+      console.log("[RequestInterceptor] FormData detected - removed Content-Type header to let browser set boundary");
+    }
+
     // For Auth0, we need to get the current access token from the session
     // and add it to the request headers
     try {
@@ -157,8 +167,8 @@ apiClient.interceptors.request.use(
       console.warn("[RequestInterceptor] Error getting session data:", error);
     }
     
-    // Add CSRF token for non-GET/HEAD/OPTIONS requests
-    if (config.method && typeof config.method === 'string' && !['GET', 'HEAD', 'OPTIONS'].includes(config.method.toUpperCase())) {
+    // Add CSRF token for non-GET/HEAD/OPTIONS requests (but not for FormData)
+    if (!isFormData && config.method && typeof config.method === 'string' && !['GET', 'HEAD', 'OPTIONS'].includes(config.method.toUpperCase())) {
       try {
         const csrfHeaders = await getCsrfHeaders();
         Object.assign(config.headers, csrfHeaders);

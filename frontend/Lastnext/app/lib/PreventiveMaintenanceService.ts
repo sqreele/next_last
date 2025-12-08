@@ -410,13 +410,26 @@ class PreventiveMaintenanceService {
     console.log('=== CREATE PREVENTIVE MAINTENANCE ===');
     console.log('Input data:', {
       ...data,
-      before_image: data.before_image
+      before_image: data.before_image instanceof File
         ? { name: data.before_image.name, size: data.before_image.size, type: data.before_image.type }
-        : undefined,
-      after_image: data.after_image
+        : (data.before_image === undefined ? 'undefined' : (data.before_image === null ? 'null' : typeof data.before_image)),
+      after_image: data.after_image instanceof File
         ? { name: data.after_image.name, size: data.after_image.size, type: data.after_image.type }
-        : undefined,
+        : (data.after_image === undefined ? 'undefined' : (data.after_image === null ? 'null' : typeof data.after_image)),
+      machine_ids_type: typeof data.machine_ids,
+      machine_ids_isArray: Array.isArray(data.machine_ids),
+      machine_ids_length: data.machine_ids?.length,
     });
+
+    // Validate machine_ids is an array before proceeding
+    if (!Array.isArray(data.machine_ids) || data.machine_ids.length === 0) {
+      console.error('ERROR: machine_ids must be a non-empty array:', {
+        machine_ids: data.machine_ids,
+        type: typeof data.machine_ids,
+        isArray: Array.isArray(data.machine_ids),
+      });
+      throw new Error('At least one machine is required. machine_ids must be an array.');
+    }
 
     try {
       const formData = new FormData();
@@ -426,8 +439,22 @@ class PreventiveMaintenanceService {
           formData.append('pmtitle', data.pmtitle.trim());
         }
         formData.append('scheduled_date', data.scheduled_date);
-        if (data.completed_date) {
+        // Only append completed_date if it's provided, not empty, and not undefined/null
+        // For new records (no pmId), completed_date should always be undefined and not sent
+        if (data.completed_date !== undefined && 
+            data.completed_date !== null && 
+            data.completed_date !== '' &&
+            (typeof data.completed_date !== 'string' || data.completed_date.trim() !== '')) {
           formData.append('completed_date', data.completed_date);
+          console.log('✅ Adding completed_date to FormData:', data.completed_date);
+        } else {
+          console.log('⏭️ Skipping completed_date (not provided, empty, or undefined):', {
+            value: data.completed_date,
+            type: typeof data.completed_date,
+            isUndefined: data.completed_date === undefined,
+            isNull: data.completed_date === null,
+            isEmpty: data.completed_date === ''
+          });
         }
         formData.append('frequency', data.frequency);
         if (data.custom_days != null) {
@@ -453,38 +480,96 @@ class PreventiveMaintenanceService {
         }
       
       // Add array fields - FIXED: removed [] from field names
-      if (data.topic_ids?.length) {
-        data.topic_ids.forEach((id) => formData.append('topic_ids', String(id)));
+      // Ensure we're working with arrays, not strings
+      if (data.topic_ids && Array.isArray(data.topic_ids) && data.topic_ids.length > 0) {
+        data.topic_ids.forEach((id) => {
+          formData.append('topic_ids', String(id));
+        });
+        console.log(`Added ${data.topic_ids.length} topic_ids to FormData`);
       }
       
-      if (data.machine_ids?.length) {
-        data.machine_ids.forEach((id) => formData.append('machine_ids', id));
+      // CRITICAL: Ensure machine_ids is an array and append each ID individually
+      if (data.machine_ids && Array.isArray(data.machine_ids) && data.machine_ids.length > 0) {
+        data.machine_ids.forEach((id) => {
+          // Ensure ID is converted to string
+          formData.append('machine_ids', String(id));
+        });
+        console.log(`Added ${data.machine_ids.length} machine_ids to FormData:`, data.machine_ids);
+      } else {
+        console.error('ERROR: machine_ids is missing or not an array:', {
+          machine_ids: data.machine_ids,
+          type: typeof data.machine_ids,
+          isArray: Array.isArray(data.machine_ids),
+          length: data.machine_ids?.length
+        });
+        // This should not happen as form validation requires at least one machine
+        throw new Error('At least one machine is required. machine_ids must be an array.');
       }
       
       // Note: property_id is not sent to backend - it's determined by the machines assigned
       // if (data.property_id) formData.append('property_id', data.property_id);
 
       // Add image files directly to the initial request
-      if (data.before_image instanceof File) {
-        formData.append('before_image', data.before_image);
-        console.log(`Adding before image: ${data.before_image.name} (${data.before_image.size} bytes)`);
+      // CRITICAL: Only append if it's actually a File object with size > 0
+      // Do NOT append empty strings, null, undefined, or empty objects
+      // Backend will reject non-file data for these fields
+      if (data.before_image !== undefined && data.before_image !== null) {
+        if (data.before_image instanceof File && data.before_image.size > 0) {
+          formData.append('before_image', data.before_image);
+          console.log(`✅ Adding before image: ${data.before_image.name} (${data.before_image.size} bytes)`);
+        } else {
+          console.warn('⚠️ Skipping before_image - not a valid file:', {
+            isFile: data.before_image instanceof File,
+            type: typeof data.before_image,
+            value: data.before_image,
+            isObject: typeof data.before_image === 'object' && data.before_image !== null,
+            isEmptyObject: typeof data.before_image === 'object' && Object.keys(data.before_image).length === 0
+          });
+          // DO NOT append anything - backend will reject non-file data
+        }
       }
       
-      if (data.after_image instanceof File) {
-        formData.append('after_image', data.after_image);
-        console.log(`Adding after image: ${data.after_image.name} (${data.after_image.size} bytes)`);
+      if (data.after_image !== undefined && data.after_image !== null) {
+        if (data.after_image instanceof File && data.after_image.size > 0) {
+          formData.append('after_image', data.after_image);
+          console.log(`✅ Adding after image: ${data.after_image.name} (${data.after_image.size} bytes)`);
+        } else {
+          console.warn('⚠️ Skipping after_image - not a valid file:', {
+            isFile: data.after_image instanceof File,
+            type: typeof data.after_image,
+            value: data.after_image,
+            isObject: typeof data.after_image === 'object' && data.after_image !== null,
+            isEmptyObject: typeof data.after_image === 'object' && Object.keys(data.after_image).length === 0
+          });
+          // DO NOT append anything - backend will reject non-file data
+        }
       }
 
       console.log('FormData entries (create):');
+      const formDataEntries: Array<[string, any]> = [];
       for (const [key, value] of formData.entries()) {
-        console.log(`  ${key}: ${value instanceof File ? `${value.name} (${value.size} bytes)` : value}`);
+        const displayValue = value instanceof File 
+          ? `File: ${value.name} (${value.size} bytes, ${value.type})`
+          : typeof value === 'object' && value !== null
+          ? `Object: ${JSON.stringify(value)}`
+          : value;
+        console.log(`  ${key}: ${displayValue}`);
+        formDataEntries.push([key, displayValue]);
       }
+      console.log('FormData summary:', {
+        totalEntries: formDataEntries.length,
+        hasBeforeImage: formDataEntries.some(([key]) => key === 'before_image'),
+        hasAfterImage: formDataEntries.some(([key]) => key === 'after_image'),
+        machineIdsCount: formDataEntries.filter(([key]) => key === 'machine_ids').length,
+        topicIdsCount: formDataEntries.filter(([key]) => key === 'topic_ids').length,
+      });
 
+      // CRITICAL: Don't set Content-Type header - let axios/browser set it automatically with boundary
+      // The apiClient interceptor will detect FormData and remove Content-Type header
+      // apiClient interceptor will add Authorization header automatically
       const createResponse = await apiClient.post<any>(`${this.baseUrl}/`, formData, {
-        headers: { 
-          'Content-Type': 'multipart/form-data',
-          ...this.getAuthHeaders()
-        },
+        // Don't set headers here - let interceptor handle it
+        // FormData will be detected and Content-Type will be removed automatically
       });
 
       const responseData = createResponse.data;

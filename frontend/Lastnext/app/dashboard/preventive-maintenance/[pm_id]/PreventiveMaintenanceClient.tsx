@@ -91,10 +91,29 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
     setError(null);
 
     try {
+      // Validate that completion date is within 15 days before or after scheduled date
+      const scheduledDate = maintenanceData.scheduled_date ? new Date(maintenanceData.scheduled_date) : null;
+      const completedDate = new Date();
+      
+      if (scheduledDate) {
+        const daysDiff = Math.floor((completedDate.getTime() - scheduledDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysDiff < -15 || daysDiff > 15) {
+          const scheduledDateStr = scheduledDate.toLocaleDateString();
+          const completedDateStr = completedDate.toLocaleDateString();
+          setError(
+            `Completion date must be within 15 days before or after the scheduled date (${scheduledDateStr}). ` +
+            `Your completion date (${completedDateStr}) is ${Math.abs(daysDiff)} days away.`
+          );
+          setIsCompleting(false);
+          return;
+        }
+      }
+
       const response = await preventiveMaintenanceService.completePreventiveMaintenance(
         maintenanceData.pm_id,
         {
-          completed_date: new Date().toISOString()
+          completed_date: completedDate.toISOString()
         }
       );
 

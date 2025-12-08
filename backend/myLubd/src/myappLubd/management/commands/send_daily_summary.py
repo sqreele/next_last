@@ -178,6 +178,18 @@ class Command(BaseCommand):
             default=None,
             help="Filter jobs by specific property ID",
         )
+        parser.add_argument(
+            "--exclude-emails",
+            dest="exclude_emails",
+            default=None,
+            help="Comma-separated list of email addresses to exclude from sending",
+        )
+        parser.add_argument(
+            "--exclude-user-ids",
+            dest="exclude_user_ids",
+            default=None,
+            help="Comma-separated list of user IDs to exclude from sending",
+        )
 
     def handle(self, *args, **options):
         try:
@@ -373,6 +385,29 @@ class Command(BaseCommand):
                         .exclude(email__isnull=True)
                         .exclude(email__exact="")
                     )
+                
+                # Exclude users with email notifications disabled
+                users_qs = users_qs.filter(
+                    Q(profile__email_notifications_enabled=True) | Q(profile__isnull=True)
+                )
+                
+                # Exclude specific emails if provided
+                exclude_emails = options.get("exclude_emails")
+                if exclude_emails:
+                    email_list = [e.strip() for e in exclude_emails.split(",") if e.strip()]
+                    if email_list:
+                        users_qs = users_qs.exclude(email__in=email_list)
+                
+                # Exclude specific user IDs if provided
+                exclude_user_ids = options.get("exclude_user_ids")
+                if exclude_user_ids:
+                    try:
+                        user_id_list = [int(uid.strip()) for uid in exclude_user_ids.split(",") if uid.strip()]
+                        if user_id_list:
+                            users_qs = users_qs.exclude(id__in=user_id_list)
+                    except ValueError:
+                        logger.warning(f"Invalid user IDs in --exclude-user-ids: {exclude_user_ids}")
+                
                 recipients = list(users_qs.values_list("email", flat=True))
 
                 if not recipients:

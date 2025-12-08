@@ -51,6 +51,18 @@ class Command(BaseCommand):
             dest="include_staff",
             help="Include staff users in email recipients (by default, only property-assigned users receive emails)",
         )
+        parser.add_argument(
+            "--exclude-emails",
+            dest="exclude_emails",
+            default=None,
+            help="Comma-separated list of email addresses to exclude from sending",
+        )
+        parser.add_argument(
+            "--exclude-user-ids",
+            dest="exclude_user_ids",
+            default=None,
+            help="Comma-separated list of user IDs to exclude from sending",
+        )
 
     def get_property_job_statistics(self, property_id, days=7):
         """Calculate job statistics for a specific property."""
@@ -132,27 +144,51 @@ class Command(BaseCommand):
             'days': days,
         }
 
-    def get_property_users(self, property_id, strict_mode=True):
+    def get_property_users(self, property_id, strict_mode=True, exclude_emails=None, exclude_user_ids=None):
         """Get users who have access to this property.
         
         Args:
             property_id: The property ID to filter users by
             strict_mode: If True, only users assigned to this property receive emails.
                         If False, staff users also receive emails (default: True)
+            exclude_emails: List of email addresses to exclude
+            exclude_user_ids: List of user IDs to exclude
         """
         User = get_user_model()
         if strict_mode:
             # Only users explicitly assigned to this property
-            return User.objects.filter(
+            users_qs = User.objects.filter(
                 is_active=True,
                 profile__properties__id=property_id
             ).exclude(email__isnull=True).exclude(email__exact="")
         else:
             # Include staff users (legacy behavior)
-            return User.objects.filter(
+            users_qs = User.objects.filter(
                 Q(is_active=True) & 
                 (Q(profile__properties__id=property_id) | Q(is_staff=True))
             ).exclude(email__isnull=True).exclude(email__exact="")
+        
+        # Exclude users with email notifications disabled
+        users_qs = users_qs.filter(
+            Q(profile__email_notifications_enabled=True) | Q(profile__isnull=True)
+        )
+        
+        # Exclude specific emails if provided
+        if exclude_emails:
+            email_list = [e.strip() for e in exclude_emails.split(",") if e.strip()]
+            if email_list:
+                users_qs = users_qs.exclude(email__in=email_list)
+        
+        # Exclude specific user IDs if provided
+        if exclude_user_ids:
+            try:
+                user_id_list = [int(uid.strip()) for uid in exclude_user_ids.split(",") if uid.strip()]
+                if user_id_list:
+                    users_qs = users_qs.exclude(id__in=user_id_list)
+            except ValueError:
+                logger.warning(f"Invalid user IDs in --exclude-user-ids: {exclude_user_ids}")
+        
+        return users_qs
 
     def handle(self, *args, **options):
         try:
@@ -160,6 +196,8 @@ class Command(BaseCommand):
             days = options.get('days', 7)
             include_staff = options.get('include_staff', False)
             strict_mode = not include_staff  # strict_mode is True unless --include-staff is specified
+            exclude_emails = options.get('exclude_emails')
+            exclude_user_ids = options.get('exclude_user_ids')
             
             if options.get('all_properties'):
                 # Send summary for all properties
@@ -168,7 +206,12 @@ class Command(BaseCommand):
                 
                 for property_obj in properties:
                     stats = self.get_property_job_statistics(property_obj.id, days)
-                    users = self.get_property_users(property_obj.id, strict_mode=strict_mode)
+                    users = self.get_property_users(
+                        property_obj.id, 
+                        strict_mode=strict_mode,
+                        exclude_emails=exclude_emails,
+                        exclude_user_ids=exclude_user_ids
+                    )
                     
                     if users.exists():
                         success = self.send_property_summary_email(stats, users, now)
@@ -187,9 +230,21 @@ class Command(BaseCommand):
                 # Determine recipients
                 explicit_to = options.get("to_email")
                 if explicit_to:
+                    # Check if explicit email should be excluded
+                    if exclude_emails:
+                        email_list = [e.strip() for e in exclude_emails.split(",") if e.strip()]
+                        if explicit_to in email_list:
+                            logger.info(f"Explicit email {explicit_to} is in exclude list, skipping")
+                            self.stdout.write(self.style.WARNING(f"Email {explicit_to} is excluded"))
+                            return
                     users = [explicit_to]
                 else:
-                    user_objects = self.get_property_users(property_id, strict_mode=strict_mode)
+                    user_objects = self.get_property_users(
+                        property_id, 
+                        strict_mode=strict_mode,
+                        exclude_emails=exclude_emails,
+                        exclude_user_ids=exclude_user_ids
+                    )
                     users = list(user_objects.values_list("email", flat=True))
                     
                     if not users:

@@ -22,6 +22,7 @@ import { PreviewImage } from '@/app/components/ui/UniversalImage';
 import { preventiveMaintenanceService, 
   type CreatePreventiveMaintenanceData,
   type UpdatePreventiveMaintenanceData,
+  setPreventiveMaintenanceServiceToken,
 } from '@/app/lib/PreventiveMaintenanceService';
 import TopicService from '@/app/lib/TopicService';
 import MachineService from '@/app/lib/MachineService';
@@ -62,6 +63,7 @@ type MaintenanceTaskOption = {
   frequency: string;
   difficulty_level: string;
   responsible_department?: string;
+  custom_days?: number | null;
 };
 
 const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
@@ -77,15 +79,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const accessToken = auth0AccessToken || session?.user?.accessToken || null;
   const user = session?.user || auth0User || null;
   
-  // Debug: Log user info
-  React.useEffect(() => {
-    console.log('[PreventiveMaintenanceForm] User info:', {
-      hasUser: !!user,
-      userId: user?.id,
-      userIdType: typeof user?.id,
-      username: user?.username
-    });
-  }, [user]);
   const {
     properties: userProperties,
   } = useProperties();
@@ -109,6 +102,42 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const [loadingTopics, setLoadingTopics] = useState<boolean>(true);
   const [loadingMachines, setLoadingMachines] = useState<boolean>(true);
   const [loadingMaintenanceTasks, setLoadingMaintenanceTasks] = useState<boolean>(true);
+  const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false);
+  const [debugLogs, setDebugLogs] = useState<Array<{timestamp: string, level: string, message: string, data?: any}>>([]);
+
+  // Debug logging function - defined early so it can be used in useEffect hooks
+  const addDebugLog = useCallback((level: 'info' | 'warn' | 'error' | 'success', message: string, data?: any) => {
+    const timestamp = new Date().toISOString();
+    setDebugLogs(prev => [...prev, { timestamp, level, message, data }]);
+    console.log(`[DEBUG ${level.toUpperCase()}] ${message}`, data || '');
+  }, []);
+
+  // Debug: Log user info
+  React.useEffect(() => {
+    const userInfo = {
+      hasUser: !!user,
+      userId: user?.id,
+      userIdType: typeof user?.id,
+      username: user?.username
+    };
+    console.log('[PreventiveMaintenanceForm] User info:', userInfo);
+    addDebugLog('info', 'Component initialized - User info', userInfo);
+  }, [user, addDebugLog]);
+
+  // Set access token on service when available
+  React.useEffect(() => {
+    if (accessToken) {
+      console.log('[PreventiveMaintenanceForm] Setting access token on service');
+      addDebugLog('info', 'Access token set on service', {
+        hasToken: !!accessToken,
+        tokenLength: accessToken.length,
+        tokenPreview: accessToken.substring(0, 20) + '...'
+      });
+      setPreventiveMaintenanceServiceToken(accessToken);
+    } else {
+      addDebugLog('warn', 'No access token available');
+    }
+  }, [accessToken, addDebugLog]);
 
   const formatDateForInput = useCallback((date: Date): string => {
     // Use local methods to match the user's timezone for datetime-local inputs
@@ -120,6 +149,71 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     const result = `${year}-${month}-${day}T${hours}:${minutes}`;
     console.log('[formatDateForInput] Input Date:', date, 'Output:', result);
     return result;
+  }, []);
+
+  // Helper function to calculate next scheduled date based on frequency
+  const calculateNextScheduledDate = useCallback((frequency: string, customDays?: number): Date => {
+    const now = new Date();
+    let nextDate: Date;
+
+    switch (frequency) {
+      case 'daily':
+        nextDate = new Date(now);
+        nextDate.setDate(nextDate.getDate() + 1);
+        break;
+      case 'weekly':
+        nextDate = new Date(now);
+        nextDate.setDate(nextDate.getDate() + 7);
+        break;
+      case 'monthly':
+        nextDate = new Date(now);
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        // Handle month overflow (e.g., Jan 31 + 1 month = Feb 28/29)
+        if (nextDate.getDate() !== now.getDate()) {
+          nextDate.setDate(0); // Set to last day of previous month
+        }
+        break;
+      case 'quarterly':
+        nextDate = new Date(now);
+        nextDate.setMonth(nextDate.getMonth() + 3);
+        if (nextDate.getDate() !== now.getDate()) {
+          nextDate.setDate(0);
+        }
+        break;
+      case 'semi_annual':
+        nextDate = new Date(now);
+        nextDate.setMonth(nextDate.getMonth() + 6);
+        if (nextDate.getDate() !== now.getDate()) {
+          nextDate.setDate(0);
+        }
+        break;
+      case 'annual':
+        nextDate = new Date(now);
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+        // Handle leap year edge case (Feb 29)
+        if (nextDate.getDate() !== now.getDate()) {
+          nextDate.setDate(0);
+        }
+        break;
+      case 'custom':
+        if (customDays) {
+          nextDate = new Date(now);
+          nextDate.setDate(nextDate.getDate() + customDays);
+        } else {
+          nextDate = new Date(now);
+          nextDate.setMonth(nextDate.getMonth() + 1);
+        }
+        break;
+      default:
+        // Default to monthly
+        nextDate = new Date(now);
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        if (nextDate.getDate() !== now.getDate()) {
+          nextDate.setDate(0);
+        }
+    }
+
+    return nextDate;
   }, []);
 
   // Helper function to convert datetime-local values to ISO 8601 format
@@ -292,7 +386,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       }
     }
     
-    if (values.completed_date) {
+    // Only validate completed_date if it's provided (for edit mode)
+    // For new records, completed_date should be empty
+    if (values.completed_date && values.completed_date.trim() !== '') {
       try {
         const completedDate = new Date(values.completed_date);
         if (isNaN(completedDate.getTime())) {
@@ -309,6 +405,11 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       }
     }
     
+    // For new records, ensure completed_date is empty
+    if (!pmId && values.completed_date && values.completed_date.trim() !== '') {
+      errors.completed_date = 'Completed date should be empty for new maintenance records';
+    }
+    
     // Frequency validation removed - field is hidden, defaults to 'monthly'
     // if (!values.frequency) errors.frequency = 'Frequency is required';
     // if (values.frequency === 'custom' && (!values.custom_days || values.custom_days < 1)) {
@@ -321,9 +422,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     if (!values.selected_machine_ids || values.selected_machine_ids.length === 0) {
       errors.selected_machine_ids = 'At least one machine must be selected';
     }
-    if (!values.assigned_to) {
-      errors.assigned_to = 'Assigned user is required';
-    }
+    // assigned_to is optional - defaults to current user if not provided
+    // if (!values.assigned_to) {
+    //   errors.assigned_to = 'Assigned user is required';
+    // }
     // Topics are now optional
     // if (!values.selected_topics || values.selected_topics.length === 0) {
     //   errors.selected_topics = 'At least one topic must be selected';
@@ -646,6 +748,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           frequency: task.frequency || 'N/A',
           difficulty_level: task.difficulty_level || 'N/A',
           responsible_department: task.responsible_department ?? undefined,
+          custom_days: (task as any).custom_days ?? undefined, // Include custom_days if available from API
         }))
       );
     } catch (err: any) {
@@ -690,7 +793,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         }
       }
     };
-
     loadData();
     return () => {
       mounted = false;
@@ -822,6 +924,20 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     const { setSubmitting, resetForm } = formikHelpers;
     let isMounted = true;
 
+    addDebugLog('info', 'Form submission started', {
+      formValues: {
+        ...values,
+        scheduled_date: values.scheduled_date,
+        scheduled_date_type: typeof values.scheduled_date,
+        completed_date: values.completed_date,
+        completed_date_type: typeof values.completed_date,
+      },
+      hasAccessToken: !!accessToken,
+      hasUser: !!user,
+      userId: user?.id,
+      selectedProperty: values.property_id,
+    });
+
     console.log('[FORM] handleSubmit called with values:', {
       ...values,
       scheduled_date: values.scheduled_date,
@@ -844,8 +960,18 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     }
 
     try {
-      // Validate dates before submission
-      if (values.completed_date && values.scheduled_date) {
+      // Validate dates before submission (only for edit mode)
+      // For new records, completed_date should be empty
+      if (!pmId && values.completed_date && values.completed_date.trim() !== '') {
+        setSubmitError('Completed date should be empty when creating new maintenance records');
+        setIsLoading(false);
+        setIsImageUploading(false);
+        setSubmitting(false);
+        return;
+      }
+      
+      // Validate completed_date is after scheduled_date (only when editing)
+      if (pmId && values.completed_date && values.completed_date.trim() !== '' && values.scheduled_date) {
         const scheduledDate = new Date(values.scheduled_date);
         const completedDate = new Date(values.completed_date);
         
@@ -869,7 +995,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
       // Prepare ISO 8601 strings for dates
       const scheduledDateISO = convertToISO8601(values.scheduled_date);
-      const completedDateISO = values.completed_date
+      // For new records, always set completed_date to undefined (don't send it)
+      // Only include completed_date when editing existing records
+      const completedDateISO = (pmId && values.completed_date && values.completed_date.trim() !== '')
         ? convertToISO8601(values.completed_date)
         : undefined;
 
@@ -884,12 +1012,27 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       });
 
       // Debug assigned_to before conversion
+      // Note: user.id from Auth0 is an OAuth2 string (e.g., 'google-oauth2_...')
+      // Backend expects numeric database primary key, so we only send it if it's numeric
+      const assignedToValue = values.assigned_to;
+      const assignedToNumber = assignedToValue && !isNaN(Number(assignedToValue)) && Number(assignedToValue) > 0 
+        ? Number(assignedToValue) 
+        : undefined;
+      
       console.log('[FORM] assigned_to debug:', {
-        raw: values.assigned_to,
-        type: typeof values.assigned_to,
-        isEmpty: values.assigned_to === '',
-        isNaN: isNaN(Number(values.assigned_to)),
-        converted: values.assigned_to ? Number(values.assigned_to) : undefined
+        raw: assignedToValue,
+        type: typeof assignedToValue,
+        isEmpty: assignedToValue === '',
+        isNumeric: assignedToNumber !== undefined,
+        converted: assignedToNumber,
+        note: assignedToNumber === undefined ? 'Will not send assigned_to - backend will use created_by' : 'Will send assigned_to'
+      });
+
+      addDebugLog('info', 'Processing assigned_to field', {
+        rawValue: assignedToValue,
+        isNumeric: assignedToNumber !== undefined,
+        finalValue: assignedToNumber,
+        willSend: assignedToNumber !== undefined
       });
 
       const dataForService: CreatePreventiveMaintenanceData = {
@@ -899,14 +1042,26 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         custom_days: values.frequency === 'custom' && values.custom_days ? Number(values.custom_days) : undefined,
         notes: values.notes?.trim() || '',
         // Note: property_id is not sent to backend - it's determined by the machines assigned
-        topic_ids: values.selected_topics && values.selected_topics.length > 0 ? values.selected_topics : [],
-        machine_ids: values.selected_machine_ids && values.selected_machine_ids.length > 0 ? values.selected_machine_ids : [],
+        topic_ids: Array.isArray(values.selected_topics) && values.selected_topics.length > 0 ? values.selected_topics : [],
+        // CRITICAL: Ensure machine_ids is always an array of strings
+        machine_ids: Array.isArray(values.selected_machine_ids) && values.selected_machine_ids.length > 0 
+          ? values.selected_machine_ids.map(id => String(id)) // Explicitly convert to strings
+          : [],
         completed_date: completedDateISO,
-        before_image: hasBeforeImageFile ? values.before_image_file! : undefined,
-        after_image: hasAfterImageFile ? values.after_image_file! : undefined,
+        // CRITICAL: Only include images if they are actual File objects with size > 0
+        // Do NOT send null, undefined, empty objects, or empty files
+        // Backend will reject non-file data for ImageField
+        before_image: (values.before_image_file instanceof File && values.before_image_file.size > 0) 
+          ? values.before_image_file 
+          : undefined,
+        after_image: (values.after_image_file instanceof File && values.after_image_file.size > 0) 
+          ? values.after_image_file 
+          : undefined,
         procedure: values.procedure?.trim() || '',
         procedure_template: values.procedure_template !== '' ? Number(values.procedure_template) : undefined,
-          assigned_to: values.assigned_to && !isNaN(Number(values.assigned_to)) ? Number(values.assigned_to) : undefined,
+        // Only send assigned_to if it's a valid numeric ID
+        // If not provided, backend will automatically use created_by (from request.user)
+        assigned_to: assignedToNumber,
       };
 
       console.log('[FORM] handleSubmit - Data prepared for service:', JSON.stringify(dataForService, (key, value) => {
@@ -962,7 +1117,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       });
 
       // Validate required fields
+      addDebugLog('info', 'Validating required fields', {
+        hasScheduledDate: !!dataForService.scheduled_date,
+        scheduledDate: dataForService.scheduled_date,
+        hasMachineIds: !!dataForService.machine_ids && dataForService.machine_ids.length > 0,
+        machineIdsCount: dataForService.machine_ids?.length || 0,
+        machineIds: dataForService.machine_ids,
+      });
+
       if (!dataForService.scheduled_date) {
+        addDebugLog('error', 'Validation failed: Scheduled date is required');
         throw new Error('Scheduled date is required');
       }
       // Frequency validation removed - defaults to 'monthly' if not provided
@@ -978,26 +1142,87 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       //   throw new Error('At least one topic is required');
       // }
       if (!dataForService.machine_ids || dataForService.machine_ids.length === 0) {
+        addDebugLog('error', 'Validation failed: At least one machine is required');
         throw new Error('At least one machine is required');
       }
+
+      addDebugLog('success', 'All validations passed');
 
       const maintenanceIdToUpdate = pmId || (actualInitialData?.pm_id ?? null);
       let response: ServiceResponse<PreventiveMaintenance>;
 
-      if (maintenanceIdToUpdate) {
-        response = await preventiveMaintenanceService.updatePreventiveMaintenance(
-          maintenanceIdToUpdate,
-          dataForService as UpdatePreventiveMaintenanceData
-        );
-      } else {
-        response = await preventiveMaintenanceService.createPreventiveMaintenance(dataForService);
+      addDebugLog('info', 'Preparing API call', {
+        isUpdate: !!maintenanceIdToUpdate,
+        maintenanceId: maintenanceIdToUpdate,
+        hasAccessToken: !!accessToken,
+        accessTokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none',
+        dataSummary: {
+          pmtitle: dataForService.pmtitle,
+          scheduled_date: dataForService.scheduled_date,
+          machine_ids_count: dataForService.machine_ids.length,
+          topic_ids_count: dataForService.topic_ids.length,
+          has_before_image: !!dataForService.before_image,
+          has_after_image: !!dataForService.after_image,
+          procedure_template: dataForService.procedure_template,
+        }
+      });
+
+      console.log('[FORM] About to call service:', {
+        isUpdate: !!maintenanceIdToUpdate,
+        maintenanceId: maintenanceIdToUpdate,
+        hasAccessToken: !!accessToken,
+        dataForService: {
+          ...dataForService,
+          before_image: dataForService.before_image ? 'File present' : 'No file',
+          after_image: dataForService.after_image ? 'File present' : 'No file',
+        }
+      });
+
+      try {
+        if (maintenanceIdToUpdate) {
+          addDebugLog('info', 'Calling updatePreventiveMaintenance API');
+          console.log('[FORM] Calling updatePreventiveMaintenance');
+          response = await preventiveMaintenanceService.updatePreventiveMaintenance(
+            maintenanceIdToUpdate,
+            dataForService as UpdatePreventiveMaintenanceData
+          );
+        } else {
+          addDebugLog('info', 'Calling createPreventiveMaintenance API');
+          console.log('[FORM] Calling createPreventiveMaintenance');
+          response = await preventiveMaintenanceService.createPreventiveMaintenance(dataForService);
+        }
+      } catch (apiError: any) {
+        addDebugLog('error', 'API call failed', {
+          errorType: apiError.constructor?.name,
+          errorMessage: apiError.message,
+          hasResponse: !!apiError.response,
+          status: apiError.response?.status,
+          responseData: apiError.response?.data,
+        });
+        // Re-throw to be caught by outer catch block
+        throw apiError;
       }
 
       if (!isMounted) return;
 
+      addDebugLog('info', 'API call completed', {
+        success: response.success,
+        hasData: !!response.data,
+        message: response.message,
+        responseData: response.data ? {
+          pm_id: response.data.pm_id,
+          pmtitle: response.data.pmtitle,
+          scheduled_date: response.data.scheduled_date,
+        } : null,
+      });
+
       console.log('[FORM] handleSubmit - Service response:', response);
 
       if (response.success && response.data) {
+        addDebugLog('success', 'Form submission successful', {
+          pm_id: response.data.pm_id,
+          pmtitle: response.data.pmtitle,
+        });
         toast.success(maintenanceIdToUpdate ? 'Maintenance record updated successfully' : 'Maintenance record created successfully');
         if (onSuccessAction) {
           onSuccessAction(response.data);
@@ -1018,31 +1243,66 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     } catch (error: any) {
       if (!isMounted) return;
       
-      console.error('[FORM] handleSubmit - Error submitting form:', error);
-      console.error('[FORM] Error response details:', {
+      // Log comprehensive error details
+      const errorDetails = {
+        message: error.message,
+        name: error.name,
+        type: error.constructor?.name,
+        hasResponse: !!error.response,
         status: error.response?.status,
         statusText: error.response?.statusText,
-        data: error.response?.data,
-        headers: error.response?.headers
-      });
+        responseData: error.response?.data,
+        code: error.code,
+        stack: error.stack?.substring(0, 500), // Limit stack trace length
+      };
       
+      addDebugLog('error', 'Form submission failed', errorDetails);
+      
+      console.error('[FORM] handleSubmit - Error submitting form:', error);
+      console.error('[FORM] Error details:', errorDetails);
+      
+      // Handle different error types
       let errorMessage = 'An unexpected error occurred.';
-      if (error.response?.data) {
+      
+      // Check if it's a network error
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorMessage = 'Request timed out. Please check your internet connection and try again.';
+      } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+        errorMessage = 'Network error. Please check your internet connection and try again.';
+      } else if (error.response?.data) {
+        // HTTP error response from backend
         const responseData = error.response.data;
         console.log('[FORM] Backend error response data:', responseData);
         
-        if (typeof responseData === 'string') errorMessage = responseData;
-        else if (responseData.detail) errorMessage = responseData.detail;
-        else if (responseData.message) errorMessage = responseData.message;
-        else if (typeof responseData === 'object') {
+        if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        } else if (responseData.detail) {
+          errorMessage = responseData.detail;
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (typeof responseData === 'object') {
           const fieldErrors = Object.entries(responseData)
-            .map(([field, errs]) => `${field}: ${(Array.isArray(errs) ? errs.join(', ') : errs)}`)
+            .filter(([key]) => key !== 'detail' && key !== 'message')
+            .map(([field, errs]) => {
+              const errorText = Array.isArray(errs) ? errs.join(', ') : String(errs);
+              return `${field}: ${errorText}`;
+            })
             .join('; ');
-          if (fieldErrors) errorMessage = `Validation errors: ${fieldErrors}`;
+          if (fieldErrors) {
+            errorMessage = `Validation errors: ${fieldErrors}`;
+          } else if (responseData.detail) {
+            errorMessage = responseData.detail;
+          }
         }
       } else if (error.message) {
+        // Use error message if available
         errorMessage = error.message;
+      } else if (error.toString) {
+        // Fallback to string representation
+        errorMessage = error.toString();
       }
+      
+      addDebugLog('error', 'Final error message', { errorMessage });
       setSubmitError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -1064,6 +1324,58 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   return (
     <div className="bg-white shadow-md rounded-lg p-3 sm:p-4 md:p-6">
+      {/* Debug Panel Toggle */}
+      <div className="mb-4 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowDebugPanel(!showDebugPanel)}
+          className="px-3 py-1.5 text-xs bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700 font-mono"
+        >
+          {showDebugPanel ? '▼ Hide Debug' : '▶ Show Debug'}
+        </button>
+      </div>
+
+      {/* Debug Panel */}
+      {showDebugPanel && (
+        <div className="mb-4 p-4 bg-gray-900 text-green-400 rounded-md font-mono text-xs max-h-96 overflow-y-auto">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-sm font-bold text-white">Debug Logs</h3>
+            <button
+              type="button"
+              onClick={() => setDebugLogs([])}
+              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs"
+            >
+              Clear
+            </button>
+          </div>
+          {debugLogs.length === 0 ? (
+            <p className="text-gray-500">No debug logs yet. Submit the form to see logs.</p>
+          ) : (
+            <div className="space-y-1">
+              {debugLogs.map((log, index) => (
+                <div key={index} className={`border-l-2 pl-2 ${
+                  log.level === 'error' ? 'border-red-500 text-red-400' :
+                  log.level === 'warn' ? 'border-yellow-500 text-yellow-400' :
+                  log.level === 'success' ? 'border-green-500 text-green-400' :
+                  'border-blue-500 text-blue-400'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    <span className="text-gray-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                    <span className="font-bold">[{log.level.toUpperCase()}]</span>
+                    <span>{log.message}</span>
+                  </div>
+                  {log.data && (
+                    <pre className="mt-1 ml-4 text-xs overflow-x-auto bg-gray-800 p-2 rounded">
+                      {JSON.stringify(log.data, null, 2)}
+                    </pre>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {(error || submitError) && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4">
           <div className="flex justify-between items-start gap-2">
@@ -1082,10 +1394,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
       <Formik
         initialValues={getInitialValues()}
-        validate={validateForm}
+        validate={(values) => {
+          const errors = validateForm(values);
+          if (Object.keys(errors).length > 0) {
+            addDebugLog('warn', 'Form validation errors', { errors, values });
+          }
+          return errors;
+        }}
         enableReinitialize
         onSubmit={(values, formikHelpers) => {
-          console.log('[Formik] onSubmit called with values:', {
+          addDebugLog('info', 'Formik onSubmit triggered', {
             ...values,
             scheduled_date: values.scheduled_date,
             scheduled_date_type: typeof values.scheduled_date,
@@ -1215,18 +1533,23 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               )}
             </div>
 
-            {/* Completed Date */}
-            <div className="mb-4 sm:mb-6">
-              <label htmlFor="completed_date" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-                Completed Date & Time
-              </label>
-              <Field
-                type="datetime-local"
-                id="completed_date"
-                name="completed_date"
-                className="w-full p-2.5 sm:p-3 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            {/* Completed Date - Only show when editing existing records */}
+            {pmId && (
+              <div className="mb-4 sm:mb-6">
+                <label htmlFor="completed_date" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                  Completed Date & Time
+                </label>
+                <Field
+                  type="datetime-local"
+                  id="completed_date"
+                  name="completed_date"
+                  className="w-full p-2.5 sm:p-3 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {errors.completed_date && touched.completed_date && (
+                  <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.completed_date}</p>
+                )}
+              </div>
+            )}
 
             {/* Maintenance Frequency - HIDDEN (defaults to 'monthly') */}
             {false && (
@@ -1427,12 +1750,29 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   const taskId = e.target.value ? Number(e.target.value) : '';
                   setFieldValue('procedure_template', taskId);
                   
-                  // If a task is selected, optionally populate procedure field
+                  // If a task is selected, optionally populate procedure field and auto-calculate scheduled_date
                   if (taskId) {
                     const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(taskId));
-                    if (selectedTask && !values.pmtitle) {
+                    if (selectedTask) {
                       // Auto-populate title if empty
-                      setFieldValue('pmtitle', selectedTask.name);
+                      if (!values.pmtitle) {
+                        setFieldValue('pmtitle', selectedTask.name);
+                      }
+                      
+                      // Auto-calculate scheduled_date based on template frequency
+                      if (selectedTask.frequency && selectedTask.frequency !== 'N/A') {
+                        const nextDate = calculateNextScheduledDate(
+                          selectedTask.frequency,
+                          selectedTask.frequency === 'custom' ? (selectedTask.custom_days ?? undefined) : undefined
+                        );
+                        const formattedDate = formatDateForInput(nextDate);
+                        setFieldValue('scheduled_date', formattedDate);
+                        setFieldValue('frequency', selectedTask.frequency as FrequencyType);
+                        if (selectedTask.frequency === 'custom' && selectedTask.custom_days) {
+                          setFieldValue('custom_days', selectedTask.custom_days);
+                        }
+                        console.log(`[Template Selection] Auto-calculated scheduled_date for ${selectedTask.frequency} frequency:`, formattedDate);
+                      }
                     }
                   }
                 }}
@@ -1464,22 +1804,20 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               )}
             </div>
 
-            {/* Topics Selection - HIDDEN (Topics are now optional) */}
-            {false && (
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            {/* Topics Selection */}
+            <div className="mb-4 sm:mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
                 Topics (Optional){' '}
                 {loadingTopics && <span className="text-xs text-gray-500">(Loading...)</span>}
               </label>
               <div
-                className={`border rounded-md p-4 max-h-60 overflow-y-auto bg-white ${
+                className={`border rounded-md p-3 sm:p-4 max-h-60 overflow-y-auto ${
                   errors.selected_topics && touched.selected_topics ? 'border-red-500' : 'border-gray-300'
                 }`}
-                role="group"
                 aria-label="Select topics"
               >
                 {loadingTopics ? (
-                  <div className="flex justify-center items-center h-24">
+                  <div className="flex items-center justify-center py-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
                     <p className="ml-2 text-sm text-gray-500">Loading topics...</p>
                   </div>
@@ -1563,7 +1901,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 </div>
               )}
             </div>
-            )}
 
             {/* Image Uploads */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">

@@ -26,6 +26,8 @@ class RemoveFieldStateOnly(Operation):
             return
         # Safely remove field if it exists - check first to avoid KeyError
         # This handles cases where the field was already removed by a previous migration
+        # or restored by a later migration (like 0047)
+        # Use .pop() with None default to safely handle missing fields
         if self.name in model_state.fields:
             model_state.fields.pop(self.name)
 

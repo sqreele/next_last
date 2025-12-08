@@ -18,39 +18,24 @@ def rename_index_if_exists(apps, schema_editor):
 
 
 def remove_fields_if_exists(apps, schema_editor):
-    """Remove fields only if they exist"""
+    """Remove fields only if they exist (DB level)"""
     with schema_editor.connection.cursor() as cursor:
-        # Check and remove after_image
-        cursor.execute("""
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_name='myappLubd_maintenanceprocedure' AND column_name='after_image'
-        """)
-        if cursor.fetchone():
-            cursor.execute("ALTER TABLE myappLubd_maintenanceprocedure DROP COLUMN after_image")
-        
-        # Check and remove after_image_jpeg_path
-        cursor.execute("""
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_name='myappLubd_maintenanceprocedure' AND column_name='after_image_jpeg_path'
-        """)
-        if cursor.fetchone():
-            cursor.execute("ALTER TABLE myappLubd_maintenanceprocedure DROP COLUMN after_image_jpeg_path")
-        
-        # Check and remove before_image
-        cursor.execute("""
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_name='myappLubd_maintenanceprocedure' AND column_name='before_image'
-        """)
-        if cursor.fetchone():
-            cursor.execute("ALTER TABLE myappLubd_maintenanceprocedure DROP COLUMN before_image")
-        
-        # Check and remove before_image_jpeg_path
-        cursor.execute("""
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_name='myappLubd_maintenanceprocedure' AND column_name='before_image_jpeg_path'
-        """)
-        if cursor.fetchone():
-            cursor.execute("ALTER TABLE myappLubd_maintenanceprocedure DROP COLUMN before_image_jpeg_path")
+        columns = [
+            'after_image',
+            'after_image_jpeg_path',
+            'before_image',
+            'before_image_jpeg_path',
+        ]
+        for col in columns:
+            cursor.execute(f"""
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name='myappLubd_maintenanceprocedure' 
+                AND column_name='{col}'
+            """)
+            if cursor.fetchone():
+                cursor.execute(
+                    f"ALTER TABLE myappLubd_maintenanceprocedure DROP COLUMN {col}"
+                )
 
 
 def remove_indexes_if_exist(apps, schema_editor):
@@ -93,21 +78,49 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # 1) Remove indexes (DB-level)
         migrations.RunPython(
             remove_indexes_if_exist,
             reverse_code=migrations.RunPython.noop,
         ),
+        # 2) Rename index if exists
         migrations.RunPython(
             rename_index_if_exists,
             reverse_code=reverse_rename_index_if_exists,
         ),
+        # 3) Remove fields from DB
         migrations.RunPython(
             remove_fields_if_exists,
             reverse_code=migrations.RunPython.noop,
         ),
+
+        # 4) 🔥 Remove fields from Django migration state (important!)
+        migrations.RemoveField(
+            model_name='maintenanceprocedure',
+            name='after_image',
+        ),
+        migrations.RemoveField(
+            model_name='maintenanceprocedure',
+            name='before_image',
+        ),
+        migrations.RemoveField(
+            model_name='maintenanceprocedure',
+            name='after_image_jpeg_path',
+        ),
+        migrations.RemoveField(
+            model_name='maintenanceprocedure',
+            name='before_image_jpeg_path',
+        ),
+
+        # 5) Add new field machines
         migrations.AddField(
             model_name='maintenanceprocedure',
             name='machines',
-            field=models.ManyToManyField(blank=True, help_text='Machines (Equipment) that use this maintenance procedure template', related_name='maintenance_procedures', to='myappLubd.machine'),
+            field=models.ManyToManyField(
+                blank=True,
+                help_text='Machines (Equipment) that use this maintenance procedure template',
+                related_name='maintenance_procedures',
+                to='myappLubd.machine'
+            ),
         ),
     ]

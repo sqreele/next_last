@@ -167,11 +167,19 @@ apiClient.interceptors.request.use(
       console.warn("[RequestInterceptor] Error getting session data:", error);
     }
     
-    // Add CSRF token for non-GET/HEAD/OPTIONS requests (but not for FormData)
-    if (!isFormData && config.method && typeof config.method === 'string' && !['GET', 'HEAD', 'OPTIONS'].includes(config.method.toUpperCase())) {
+    // Add CSRF token for non-GET/HEAD/OPTIONS requests, even for multipart submissions
+    const method = typeof config.method === 'string' ? config.method.toUpperCase() : undefined;
+    const requiresCsrf = !!method && !['GET', 'HEAD', 'OPTIONS'].includes(method);
+    if (requiresCsrf) {
       try {
         const csrfHeaders = await getCsrfHeaders();
-        Object.assign(config.headers, csrfHeaders);
+        if (Object.keys(csrfHeaders).length) {
+          config.headers = config.headers || {};
+          Object.assign(config.headers, csrfHeaders);
+          console.log("[RequestInterceptor] Added CSRF headers to request");
+        } else {
+          console.warn("[RequestInterceptor] CSRF headers unavailable for request");
+        }
       } catch (csrfError) {
         console.warn("[RequestInterceptor] Failed to add CSRF headers:", csrfError);
       }

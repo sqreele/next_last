@@ -80,6 +80,7 @@ const initialValues: FormValues = {
 
 const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }) => {
   const { data: session } = useSession();
+  const isSubmittingRef = React.useRef(false); // Prevent double submission
   const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setSelectedProperty, userProfile } = useUser();
   const { addJob } = useJobs();
   
@@ -133,34 +134,49 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   };
 
   const handleSubmit = async (values: FormValues, { resetForm, setSubmitting }: { resetForm: () => void; setSubmitting: (isSubmitting: boolean) => void }) => {
-    if (!session?.user) {
-      setError('Please login first');
-      await signIn();
+    // Prevent double submission
+    if (isSubmittingRef.current) {
+      console.log('⚠️ Submission already in progress, ignoring duplicate submit');
       return;
     }
 
-    if (!selectedProperty) {
-      setError('Please select a property');
-      setSubmitting(false);
-      return;
-    }
-
-    if (!values.room || !values.room.room_id) {
-      setError('Please select a valid room');
-      setSubmitting(false);
-      return;
-    }
-
-    const fileError = validateFiles(values.files);
-    if (fileError) {
-      setError(fileError);
-      setSubmitting(false);
-      return;
-    }
-
+    // Set submitting state immediately to prevent double submission
+    isSubmittingRef.current = true;
+    setSubmitting(true);
     setError(null);
 
     try {
+      if (!session?.user) {
+        setError('Please login first');
+        await signIn();
+        isSubmittingRef.current = false;
+        setSubmitting(false);
+        return;
+      }
+
+      if (!selectedProperty) {
+        setError('Please select a property');
+        isSubmittingRef.current = false;
+        setSubmitting(false);
+        return;
+      }
+
+      if (!values.room || !values.room.room_id) {
+        setError('Please select a valid room');
+        isSubmittingRef.current = false;
+        setSubmitting(false);
+        return;
+      }
+
+      const fileError = validateFiles(values.files);
+      if (fileError) {
+        setError(fileError);
+        isSubmittingRef.current = false;
+        setSubmitting(false);
+        return;
+      }
+
+      // All validations passed, proceed with submission
       const formData = new FormData();
       formData.append('description', values.description.trim());
       formData.append('status', values.status);
@@ -183,13 +199,17 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
       const response = await axios.post(`/api/jobs/`, formData, { withCredentials: true });
 
+      // Success - reset form and redirect
       resetForm();
       triggerJobCreation();
       if (onJobCreated) onJobCreated();
       router.push('/dashboard/myJobs');
+      
+      // Note: Don't reset isSubmittingRef here because we're navigating away
     } catch (error) {
       console.error('Submission error:', error);
       setError('Failed to create job. Please try again.');
+      isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };

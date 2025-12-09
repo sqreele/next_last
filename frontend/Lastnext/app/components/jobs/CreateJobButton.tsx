@@ -170,21 +170,31 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
   };
 
   const handleSubmit = async (values: FormValues, { resetForm }: { resetForm: () => void }) => {
-    if (!session?.user) { /* ... auth check ... */
+    // Prevent double submission
+    if (isSubmitting) {
+      console.log('⚠️ Submission already in progress, ignoring duplicate submit');
+      return;
+    }
+
+    // Set submitting state immediately to prevent double submission
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      if (!session?.user) {
         setError('Please log in to create a job');
         setOpen(false);
         await signIn(); // Redirect to sign in
+        setIsSubmitting(false);
         return;
-    }
-    if (!propertyId) { // Add check for propertyId
+      }
+      if (!propertyId) {
         setError('Cannot create job: Property context is missing.');
+        setIsSubmitting(false);
         return;
-    }
+      }
 
-    setError(null);
-    setIsSubmitting(true);
-
-    try {
+      // All validations passed, proceed with submission
       const formData = new FormData();
       // --- 3. Add property_id to the payload ---
       const payload = {
@@ -242,6 +252,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
       // Use detailed error message if available from backend
       setError(axios.isAxiosError(error) ? error.response?.data?.detail || JSON.stringify(error.response?.data) || error.message : 'An unexpected error occurred');
     } finally {
+      // Always reset submitting state, even on error
       setIsSubmitting(false);
     }
   };

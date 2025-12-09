@@ -419,9 +419,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     //   errors.custom_days = 'Custom days cannot exceed 365';
     // }
     if (!values.property_id) errors.property_id = 'Property is required';
-    if (!values.selected_machine_ids || values.selected_machine_ids.length === 0) {
-      errors.selected_machine_ids = 'At least one machine must be selected';
-    }
+    // Machines are now optional - maintenance tasks can exist without specific machine assignments
+    // if (!values.selected_machine_ids || values.selected_machine_ids.length === 0) {
+    //   errors.selected_machine_ids = 'At least one machine must be selected';
+    // }
     // assigned_to is optional - defaults to current user if not provided
     // if (!values.assigned_to) {
     //   errors.assigned_to = 'Assigned user is required';
@@ -936,6 +937,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       hasUser: !!user,
       userId: user?.id,
       selectedProperty: values.property_id,
+      machineId_prop: machineId,
+      pmId_prop: pmId,
     });
 
     console.log('[FORM] handleSubmit called with values:', {
@@ -945,7 +948,13 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       scheduled_date_length: values.scheduled_date?.length,
       completed_date: values.completed_date,
       completed_date_type: typeof values.completed_date,
-      completed_date_length: values.completed_date?.length
+      completed_date_length: values.completed_date?.length,
+      machineId_prop: machineId,
+      pmId_prop: pmId,
+      selected_machine_ids: values.selected_machine_ids,
+      selected_machine_ids_type: typeof values.selected_machine_ids,
+      selected_machine_ids_isArray: Array.isArray(values.selected_machine_ids),
+      selected_machine_ids_length: values.selected_machine_ids?.length,
     });
 
     clearError();
@@ -1035,6 +1044,36 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         willSend: assignedToNumber !== undefined
       });
 
+      // Ensure machineId from prop is included if provided (defensive check)
+      let finalMachineIds = Array.isArray(values.selected_machine_ids) && values.selected_machine_ids.length > 0 
+        ? values.selected_machine_ids.map(id => String(id))
+        : [];
+      
+      // CRITICAL: If machineId prop was provided but not in selected_machine_ids, add it
+      // This ensures the machine is always included when creating from machine detail page
+      if (machineId && !pmId) {
+        const machineIdStr = String(machineId);
+        if (!finalMachineIds.includes(machineIdStr)) {
+          console.warn('[PreventiveMaintenanceForm] ⚠️ machineId prop not in selected_machine_ids, adding it:', {
+            machineId,
+            machineIdStr,
+            currentSelected: values.selected_machine_ids,
+            finalMachineIdsBefore: finalMachineIds
+          });
+          finalMachineIds = [machineIdStr, ...finalMachineIds];
+        } else {
+          console.log('[PreventiveMaintenanceForm] ✅ machineId already in selected_machine_ids:', machineId);
+        }
+      }
+      
+      console.log('[PreventiveMaintenanceForm] Final machine_ids being sent:', {
+        machineId,
+        pmId,
+        valuesSelected: values.selected_machine_ids,
+        finalMachineIds,
+        finalMachineIdsLength: finalMachineIds.length
+      });
+
       const dataForService: CreatePreventiveMaintenanceData = {
         pmtitle: values.pmtitle.trim() || 'Untitled Maintenance',
         scheduled_date: scheduledDateISO,
@@ -1044,9 +1083,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         // Note: property_id is not sent to backend - it's determined by the machines assigned
         topic_ids: Array.isArray(values.selected_topics) && values.selected_topics.length > 0 ? values.selected_topics : [],
         // CRITICAL: Ensure machine_ids is always an array of strings
-        machine_ids: Array.isArray(values.selected_machine_ids) && values.selected_machine_ids.length > 0 
-          ? values.selected_machine_ids.map(id => String(id)) // Explicitly convert to strings
-          : [],
+        machine_ids: finalMachineIds,
         completed_date: completedDateISO,
         // CRITICAL: Only include images if they are actual File objects with size > 0
         // Do NOT send null, undefined, empty objects, or empty files
@@ -1141,10 +1178,11 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       // if (!dataForService.topic_ids || dataForService.topic_ids.length === 0) {
       //   throw new Error('At least one topic is required');
       // }
-      if (!dataForService.machine_ids || dataForService.machine_ids.length === 0) {
-        addDebugLog('error', 'Validation failed: At least one machine is required');
-        throw new Error('At least one machine is required');
-      }
+      // Machines are now optional - maintenance tasks can exist without specific machine assignments
+      // if (!dataForService.machine_ids || dataForService.machine_ids.length === 0) {
+      //   addDebugLog('error', 'Validation failed: At least one machine is required');
+      //   throw new Error('At least one machine is required');
+      // }
 
       addDebugLog('success', 'All validations passed');
 
@@ -1189,6 +1227,20 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         } else {
           addDebugLog('info', 'Calling createPreventiveMaintenance API');
           console.log('[FORM] Calling createPreventiveMaintenance');
+          // FINAL CHECK: Ensure machineId is included if prop was provided
+          if (machineId && !pmId && (!dataForService.machine_ids || dataForService.machine_ids.length === 0)) {
+            const machineIdStr = String(machineId);
+            console.error('[PreventiveMaintenanceForm] 🚨 CRITICAL: machineId prop provided but machine_ids is empty! Adding it now:', machineIdStr);
+            dataForService.machine_ids = [machineIdStr];
+          }
+          
+          console.log('[PreventiveMaintenanceForm] 🚀 About to call API with final data:', {
+            machine_ids: dataForService.machine_ids,
+            machine_ids_length: dataForService.machine_ids?.length,
+            machineId_prop: machineId,
+            pmId_prop: pmId
+          });
+          
           response = await preventiveMaintenanceService.createPreventiveMaintenance(dataForService);
         }
       } catch (apiError: any) {
@@ -1424,9 +1476,13 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               scheduled_date_length: values.scheduled_date?.length,
               completed_date: values.completed_date,
               completed_date_type: typeof values.completed_date,
-              completed_date_length: values.completed_date?.length
+              completed_date_length: values.completed_date?.length,
+              selected_machine_ids: values.selected_machine_ids,
+              selected_machine_ids_length: values.selected_machine_ids?.length,
+              machineId_prop: machineId,
+              pmId_prop: pmId
             });
-          }, [values.scheduled_date, values.completed_date]);
+          }, [values.scheduled_date, values.completed_date, values.selected_machine_ids, machineId, pmId]);
 
             React.useEffect(() => {
               if (pmId) return;
@@ -1439,31 +1495,68 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
             // Auto-select machine when machineId prop is provided
             React.useEffect(() => {
-              if (machineId && !pmId && availableMachines.length > 0 && !loadingMachines) {
-                const machineExists = availableMachines.some(m => m.machine_id === machineId);
-                const isAlreadySelected = values.selected_machine_ids.includes(machineId);
-                
-                console.log('[PreventiveMaintenanceForm] Machine selection check:', {
-                  machineId,
-                  machineExists,
-                  isAlreadySelected,
-                  availableMachinesCount: availableMachines.length,
-                  currentSelected: values.selected_machine_ids,
-                  propertyId: values.property_id
+              if (!machineId || pmId) return; // Only for new records with machineId prop
+              
+              const machineIdStr = String(machineId);
+              const isAlreadySelected = values.selected_machine_ids.includes(machineIdStr);
+              
+              // Wait for machines to finish loading before auto-selecting
+              if (loadingMachines) {
+                console.log('[PreventiveMaintenanceForm] ⏳ Waiting for machines to load before auto-selecting:', {
+                  machineId: machineIdStr,
+                  loadingMachines
                 });
+                return;
+              }
+              
+              // If machines are loaded, validate and select the machine
+              if (availableMachines.length > 0) {
+                const machineExists = availableMachines.some(m => m.machine_id === machineIdStr);
                 
-                if (machineExists && !isAlreadySelected) {
-                  console.log('[PreventiveMaintenanceForm] Auto-selecting machine from query param:', machineId);
-                  setFieldValue('selected_machine_ids', [machineId], false);
-                } else if (!machineExists) {
-                  console.warn('[PreventiveMaintenanceForm] Machine not found in available machines:', {
+                if (machineExists) {
+                  // Machine exists - select it if not already selected
+                  if (!isAlreadySelected) {
+                    console.log('[PreventiveMaintenanceForm] ✅ Auto-selecting machine from prop:', {
+                      machineId,
+                      machineIdStr,
+                      currentSelected: values.selected_machine_ids,
+                      availableMachinesCount: availableMachines.length
+                    });
+                    
+                    const newMachineIds = [machineIdStr, ...values.selected_machine_ids.filter(id => id !== machineIdStr)];
+                    setFieldValue('selected_machine_ids', newMachineIds, false);
+                  } else {
+                    console.log('[PreventiveMaintenanceForm] ✅ Machine already selected:', machineIdStr);
+                  }
+                } else {
+                  // Machine doesn't exist in available machines - show warning
+                  console.warn('[PreventiveMaintenanceForm] ⚠️ Machine not found in available machines:', {
                     machineId,
+                    machineIdStr,
                     availableMachineIds: availableMachines.map(m => m.machine_id),
-                    selectedProperty: values.property_id
+                    selectedProperty: values.property_id,
+                    availableMachinesCount: availableMachines.length
                   });
+                  
+                  // Still try to select it (might be valid but not loaded yet, or might be from different property)
+                  if (!isAlreadySelected) {
+                    console.log('[PreventiveMaintenanceForm] ⚠️ Machine not in available list, but selecting anyway:', machineIdStr);
+                    const newMachineIds = [machineIdStr, ...values.selected_machine_ids.filter(id => id !== machineIdStr)];
+                    setFieldValue('selected_machine_ids', newMachineIds, false);
+                  }
                 }
-              } else if (machineId && !pmId && availableMachines.length === 0 && !loadingMachines && values.property_id) {
-                console.log('[PreventiveMaintenanceForm] Waiting for machines to load for property:', values.property_id);
+              } else if (values.property_id) {
+                // Property is set but no machines loaded - might be loading or empty
+                // Still try to select the machine ID (will be validated on submit)
+                if (!isAlreadySelected) {
+                  console.log('[PreventiveMaintenanceForm] ⚠️ No machines loaded yet, but selecting machine ID anyway:', {
+                    machineId: machineIdStr,
+                    property_id: values.property_id,
+                    note: 'Will be validated when machines load or on submit'
+                  });
+                  const newMachineIds = [machineIdStr, ...values.selected_machine_ids.filter(id => id !== machineIdStr)];
+                  setFieldValue('selected_machine_ids', newMachineIds, false);
+                }
               }
             }, [machineId, pmId, availableMachines, loadingMachines, values.selected_machine_ids, values.property_id, setFieldValue]);
 
@@ -1634,7 +1727,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             {/* Machines Selection */}
             <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Machines {loadingMachines && <span className="text-xs text-gray-500">(Loading...)</span>}
+                Machines (Optional) {loadingMachines && <span className="text-xs text-gray-500">(Loading...)</span>}
               </label>
               <div
                 className={`border rounded-md p-3 sm:p-4 max-h-60 overflow-y-auto bg-white scroll-momentum ${

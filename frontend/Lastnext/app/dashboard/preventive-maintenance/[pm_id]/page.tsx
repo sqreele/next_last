@@ -96,6 +96,13 @@ async function getPreventiveMaintenance(pmId: string): Promise<PreventiveMainten
       assigned_to_details: data.assigned_to_details,
       has_assigned_to_details: !!data.assigned_to_details
     });
+    console.log("[SERVER_FETCH] machines fields:", {
+      machines: data.machines,
+      machines_type: typeof data.machines,
+      machines_is_array: Array.isArray(data.machines),
+      machines_length: Array.isArray(data.machines) ? data.machines.length : 'N/A',
+      has_machines: data.machines && Array.isArray(data.machines) && data.machines.length > 0
+    });
     return data as PreventiveMaintenance;
   } catch (error) {
     console.error(`[SERVER_FETCH] Exception while fetching maintenance data for ${pmId}:`, error);

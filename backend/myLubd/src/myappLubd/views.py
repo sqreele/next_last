@@ -40,6 +40,7 @@ import logging
 import json
 import uuid
 from datetime import timedelta
+from calendar import monthrange
 from django.http import JsonResponse, HttpResponseRedirect
 import os
 from django.http import HttpResponse, Http404
@@ -416,29 +417,86 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         completed_date = serializer.validated_data.get('completed_date') or timezone.now()
-        next_due_date = self._calculate_next_due_date(instance, completed_date)
-
-        serializer.save(next_due_date=next_due_date, updated_by=request.user)
+        # Calculate next scheduled date based on completion date and frequency
+        next_scheduled_date = self._calculate_next_due_date(instance, completed_date)
+        
+        logger.info(f"[PM Complete] Completing PM {instance.pm_id}: completed_date={completed_date}, next_scheduled_date={next_scheduled_date}")
+        
+        # Save completion data first
+        serializer.save(updated_by=request.user)
+        
+        # Update scheduled_date and next_due_date directly on the instance for the next occurrence
+        instance.scheduled_date = next_scheduled_date
+        instance.next_due_date = next_scheduled_date
+        instance.save(update_fields=['scheduled_date', 'next_due_date', 'updated_at'])
+        
+        logger.info(f"[PM Complete] PM {instance.pm_id} completed. Next scheduled date: {instance.scheduled_date}, next_due_date: {instance.next_due_date}")
         return Response(
             PreventiveMaintenanceDetailSerializer(instance, context={'request': request}).data
         )
 
     def _calculate_next_due_date(self, instance, reference_date):
         """
-        Calculate the next due date based on the maintenance frequency
+        Calculate the next scheduled date based on the maintenance frequency and completion date.
+        Uses calendar-aware calculations for monthly/quarterly/annual frequencies.
         """
-        frequency_map = {
-            'daily': timedelta(days=1),
-            'weekly': timedelta(weeks=1),
-            'biweekly': timedelta(weeks=2),
-            'monthly': timedelta(days=30),
-            'quarterly': timedelta(days=90),
-            'biannually': timedelta(days=182),
-            'annually': timedelta(days=365)
-        }
-        if instance.frequency == 'custom' and instance.custom_days:
-            return reference_date + timedelta(days=instance.custom_days)
-        return reference_date + frequency_map.get(instance.frequency, timedelta(days=30))
+        frequency = instance.frequency
+        logger.info(f"[PM Complete] Calculating next due date for PM {instance.pm_id}: frequency={frequency}, reference_date={reference_date}")
+        
+        if frequency == 'custom' and instance.custom_days:
+            next_date = reference_date + timedelta(days=instance.custom_days)
+            logger.info(f"[PM Complete] Custom frequency: {instance.custom_days} days -> next_date={next_date}")
+            return next_date
+        
+        if frequency == 'daily':
+            next_date = reference_date + timedelta(days=1)
+        elif frequency == 'weekly':
+            next_date = reference_date + timedelta(weeks=1)
+        elif frequency == 'biweekly':
+            next_date = reference_date + timedelta(weeks=2)
+        elif frequency == 'monthly':
+            # Add one calendar month
+            month = reference_date.month + 1
+            year = reference_date.year
+            if month > 12:
+                month = 1
+                year += 1
+            # Handle different month lengths (e.g., Jan 31 -> Feb 28/29)
+            day = min(reference_date.day, monthrange(year, month)[1])
+            next_date = reference_date.replace(year=year, month=month, day=day)
+        elif frequency == 'quarterly':
+            # Add three calendar months
+            month = reference_date.month + 3
+            year = reference_date.year
+            if month > 12:
+                month -= 12
+                year += 1
+            day = min(reference_date.day, monthrange(year, month)[1])
+            next_date = reference_date.replace(year=year, month=month, day=day)
+        elif frequency == 'semi_annual':
+            # Add six calendar months
+            month = reference_date.month + 6
+            year = reference_date.year
+            if month > 12:
+                month -= 12
+                year += 1
+            day = min(reference_date.day, monthrange(year, month)[1])
+            next_date = reference_date.replace(year=year, month=month, day=day)
+        elif frequency == 'annual':
+            # Add one calendar year
+            next_date = reference_date.replace(year=reference_date.year + 1)
+        else:
+            # Default to monthly if frequency not recognized
+            month = reference_date.month + 1
+            year = reference_date.year
+            if month > 12:
+                month = 1
+                year += 1
+            day = min(reference_date.day, monthrange(year, month)[1])
+            next_date = reference_date.replace(year=year, month=month, day=day)
+        
+        logger.info(f"[PM Complete] Calculated next scheduled date: {next_date} (from {reference_date} with frequency {frequency})")
+        return next_date
 
     @action(detail=True, methods=['post'])
     def upload_images(self, request, pm_id=None):

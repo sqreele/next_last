@@ -421,15 +421,22 @@ class PreventiveMaintenanceService {
       machine_ids_length: data.machine_ids?.length,
     });
 
-    // Validate machine_ids is an array before proceeding
-    if (!Array.isArray(data.machine_ids) || data.machine_ids.length === 0) {
-      console.error('ERROR: machine_ids must be a non-empty array:', {
+    // Validate machine_ids is an array (but allow empty array - machines are optional)
+    if (!Array.isArray(data.machine_ids)) {
+      console.error('ERROR: machine_ids must be an array:', {
         machine_ids: data.machine_ids,
         type: typeof data.machine_ids,
         isArray: Array.isArray(data.machine_ids),
       });
-      throw new Error('At least one machine is required. machine_ids must be an array.');
+      throw new Error('machine_ids must be an array.');
     }
+    
+    // Log machine_ids for debugging
+    console.log('[PreventiveMaintenanceService] machine_ids being sent:', {
+      machine_ids: data.machine_ids,
+      length: data.machine_ids.length,
+      isEmpty: data.machine_ids.length === 0,
+    });
 
     try {
       const formData = new FormData();

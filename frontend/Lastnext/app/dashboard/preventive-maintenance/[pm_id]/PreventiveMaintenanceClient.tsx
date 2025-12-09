@@ -2,7 +2,7 @@
 
 'use client';
 import { preventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from "@/app/lib/session.client";
@@ -37,14 +37,6 @@ interface PreventiveMaintenanceClientProps {
 }
 
 export default function PreventiveMaintenanceClient({ maintenanceData }: PreventiveMaintenanceClientProps) {
-  // Debug: Log procedure_template data
-  console.log('[CLIENT] Received maintenanceData procedure_template:', {
-    procedure_template: maintenanceData.procedure_template,
-    procedure_template_id: maintenanceData.procedure_template_id,
-    procedure_template_name: maintenanceData.procedure_template_name,
-    has_template: !!(maintenanceData.procedure_template_id || maintenanceData.procedure_template)
-  });
-  
   const { data: session, status } = useSession();  
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -118,6 +110,27 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
       );
 
       if (response.success) {
+        // Get the updated data from response
+        const updatedData = response.data;
+        const nextScheduledDate = updatedData?.scheduled_date || updatedData?.next_due_date;
+        
+        // Show success message with next scheduled date
+        if (nextScheduledDate) {
+          const nextDate = new Date(nextScheduledDate);
+          const formattedDate = nextDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          // Show success message
+          alert(`✅ Maintenance task completed successfully!\n\nNext scheduled maintenance: ${formattedDate}`);
+        } else {
+          alert('✅ Maintenance task completed successfully!');
+        }
+        
         router.refresh();
       } else {
         throw new Error(response.message || 'Failed to complete maintenance record');
@@ -132,26 +145,18 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
   // Image URL functions
   const getBeforeImageUrl = (): string | null => {
-    console.log('🔍 Debug - maintenanceData.before_image_url:', maintenanceData.before_image_url);
     if (maintenanceData.before_image_url) {
       const fixedUrl = fixImageUrl(maintenanceData.before_image_url);
-      console.log('🔍 Debug - fixed before image URL:', fixedUrl);
-      console.log('🔍 Debug - URL starts with http:', fixedUrl?.startsWith('http'));
       return fixedUrl;
     }
-    console.log('🔍 Debug - No before_image_url found');
     return null;
   };
 
   const getAfterImageUrl = (): string | null => {
-    console.log('🔍 Debug - maintenanceData.after_image_url:', maintenanceData.after_image_url);
     if (maintenanceData.after_image_url) {
       const fixedUrl = fixImageUrl(maintenanceData.after_image_url);
-      console.log('🔍 Debug - fixed after image URL:', fixedUrl);
-      console.log('🔍 Debug - URL starts with http:', fixedUrl?.startsWith('http'));
       return fixedUrl;
     }
-    console.log('🔍 Debug - No after_image_url found');
     return null;
   };
 
@@ -174,74 +179,93 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
     before_image_url: maintenanceData.before_image_url,
     after_image_url: maintenanceData.after_image_url
   });
+  console.log('🔍 Debug - Machines field:', {
+    machines: maintenanceData.machines,
+    machines_type: typeof maintenanceData.machines,
+    is_array: Array.isArray(maintenanceData.machines),
+    length: maintenanceData.machines?.length,
+    is_null: maintenanceData.machines === null,
+    is_undefined: maintenanceData.machines === undefined
+  });
 
   const beforeImageUrl = getBeforeImageUrl();
   const afterImageUrl = getAfterImageUrl();
   
-  // Debug assigned user data
-  console.log('🔍 [CLIENT] Debug assigned_to data:', {
-    assigned_to: maintenanceData.assigned_to,
-    assigned_to_type: typeof maintenanceData.assigned_to,
-    assigned_to_details: maintenanceData.assigned_to_details,
-    has_assigned_to_details: !!maintenanceData.assigned_to_details
-  });
-  
   const assignedUserInfo = useMemo(() => {
-    console.log('🔍 [CLIENT] Computing assignedUserInfo...');
-    
     if (maintenanceData.assigned_to_details) {
-      console.log('✅ [CLIENT] Has assigned_to_details:', maintenanceData.assigned_to_details);
       const details = maintenanceData.assigned_to_details;
       const combinedName = [
         details.full_name,
         [details.first_name, details.last_name].filter(Boolean).join(' ').trim(),
         details.username,
       ].find((value) => value && value.length > 0);
-      const result = {
+      return {
         display: combinedName || `User #${details.id}`,
         email: details.email,
       };
-      console.log('✅ [CLIENT] Returning user info from details:', result);
-      return result;
     }
 
     const assignee = maintenanceData.assigned_to as any;
     if (assignee && typeof assignee === 'object') {
-      console.log('✅ [CLIENT] Has assigned_to object:', assignee);
       const combinedName = [
         assignee.full_name,
         [assignee.first_name, assignee.last_name].filter(Boolean).join(' ').trim(),
         assignee.username,
       ].find((value: string | undefined) => value && value.length > 0);
-      const result = {
+      return {
         display: combinedName || (assignee.id ? `User #${assignee.id}` : 'Assigned User'),
         email: assignee.email,
       };
-      console.log('✅ [CLIENT] Returning user info from object:', result);
-      return result;
     }
 
     if (typeof maintenanceData.assigned_to === 'number' || typeof maintenanceData.assigned_to === 'string') {
-      console.log('⚠️ [CLIENT] Has assigned_to as primitive:', maintenanceData.assigned_to);
-      const result = {
+      return {
         display: `User #${maintenanceData.assigned_to}`,
         email: undefined,
       };
-      console.log('⚠️ [CLIENT] Returning user info from ID:', result);
-      return result;
     }
 
-    console.log('❌ [CLIENT] No assigned_to data found, returning null');
     return null;
   }, [maintenanceData.assigned_to, maintenanceData.assigned_to_details]);
   
-  // Additional debugging
-  console.log('🔍 Final image URLs:', {
-    beforeImageUrl,
-    afterImageUrl,
-    beforeImageUrlType: typeof beforeImageUrl,
-    afterImageUrlType: typeof afterImageUrl
-  });
+  // Debug logging in useEffect to avoid hydration issues
+  useEffect(() => {
+    console.log('[CLIENT] Received maintenanceData procedure_template:', {
+      procedure_template: maintenanceData.procedure_template,
+      procedure_template_id: maintenanceData.procedure_template_id,
+      procedure_template_name: maintenanceData.procedure_template_name,
+      has_template: !!(maintenanceData.procedure_template_id || maintenanceData.procedure_template)
+    });
+    console.log('🔍 Debug - Full maintenance data:', maintenanceData);
+    console.log('🔍 Debug - Image fields:', {
+      before_image_url: maintenanceData.before_image_url,
+      after_image_url: maintenanceData.after_image_url
+    });
+    console.log('🔍 Debug - Machines field:', {
+      machines: maintenanceData.machines,
+      machines_type: typeof maintenanceData.machines,
+      is_array: Array.isArray(maintenanceData.machines),
+      length: maintenanceData.machines?.length,
+      is_null: maintenanceData.machines === null,
+      is_undefined: maintenanceData.machines === undefined
+    });
+    console.log('🔍 [CLIENT] Debug assigned_to data:', {
+      assigned_to: maintenanceData.assigned_to,
+      assigned_to_type: typeof maintenanceData.assigned_to,
+      assigned_to_details: maintenanceData.assigned_to_details,
+      has_assigned_to_details: !!maintenanceData.assigned_to_details,
+      assignedUserInfo_result: assignedUserInfo
+    });
+    if (!assignedUserInfo) {
+      console.warn('⚠️ [CLIENT] No assigned user info found. Check if assigned_to or assigned_to_details is populated in API response.');
+    }
+    console.log('🔍 Final image URLs:', {
+      beforeImageUrl,
+      afterImageUrl,
+      beforeImageUrlType: typeof beforeImageUrl,
+      afterImageUrlType: typeof afterImageUrl
+    });
+  }, [maintenanceData, beforeImageUrl, afterImageUrl, assignedUserInfo]);
   
   // Helper function to format dates
   const formatDate = (dateString: string | null | undefined) => {
@@ -302,17 +326,35 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
     return `${month} ${day}, ${year}`;
   };
   
-  // Status functions
-  const getTaskStatus = () => {
-    return determinePMStatus ? determinePMStatus(maintenanceData) : 
-           (maintenanceData.completed_date ? 'completed' : 
-            (new Date(maintenanceData.scheduled_date) < new Date() ? 'overdue' : 'pending'));
-  };
+  // Status functions - use useState/useEffect to avoid hydration issues with Date.now()
+  // Initialize with a safe default that won't cause hydration mismatch
+  const [isOverdue, setIsOverdue] = useState(false);
+  const [taskStatus, setTaskStatus] = useState<'completed' | 'pending' | 'overdue'>('pending');
 
-  const isOverdue = !maintenanceData.completed_date && 
-    new Date(maintenanceData.scheduled_date) < new Date();
+  // Calculate status only on client side to avoid hydration issues
+  useEffect(() => {
+    if (maintenanceData.completed_date) {
+      setIsOverdue(false);
+      setTaskStatus('completed');
+      return;
+    }
+
+    const scheduledDate = new Date(maintenanceData.scheduled_date);
+    const now = new Date();
+    const overdue = scheduledDate < now;
+    setIsOverdue(overdue);
     
-  const getStatusText = () => {
+    if (determinePMStatus) {
+      const status = determinePMStatus(maintenanceData);
+      setTaskStatus(status as 'completed' | 'pending' | 'overdue');
+    } else {
+      setTaskStatus(overdue ? 'overdue' : 'pending');
+    }
+  }, [maintenanceData.completed_date, maintenanceData.scheduled_date, maintenanceData]);
+
+  const getTaskStatus = taskStatus;
+    
+  const statusInfo = useMemo(() => {
     if (maintenanceData.completed_date) {
       return { text: 'Completed', color: 'bg-green-100 text-green-800' };
     } else if (isOverdue) {
@@ -320,29 +362,51 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
     } else {
       return { text: 'Scheduled', color: 'bg-yellow-100 text-yellow-800' };
     }
-  };
-  
-  const statusInfo = getStatusText();
+  }, [maintenanceData.completed_date, isOverdue]);
 
   // Get status color for PDF
-  const getStatusColor = () => {
-    const status = getTaskStatus();
-    switch (status) {
+  const getStatusColor = useMemo(() => {
+    switch (getTaskStatus) {
       case 'completed': return 'text-green-600';
       case 'pending': return 'text-yellow-600';
       case 'overdue': return 'text-red-600';
       default: return 'text-gray-600';
     }
-  };
+  }, [getTaskStatus]);
 
   // Render machine list
   const renderMachines = () => {
-    if (!maintenanceData.machines || maintenanceData.machines.length === 0) {
+    // More robust check for empty machines
+    const machines = maintenanceData.machines;
+    const hasMachines = machines && Array.isArray(machines) && machines.length > 0;
+    
+    // Debug logging to help diagnose machine assignment issues
+    console.log('[PreventiveMaintenanceClient] Machine check:', {
+      pm_id: maintenanceData.pm_id,
+      machines_raw: machines,
+      machines_type: typeof machines,
+      is_array: Array.isArray(machines),
+      length: Array.isArray(machines) ? machines.length : 'N/A',
+      hasMachines,
+      machines_data: machines
+    });
+    
+    if (!hasMachines) {
       return (
         <div className="text-center py-8">
           <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">No machines assigned</p>
-          <p className="text-gray-400 text-sm">This maintenance task is not associated with any specific machines</p>
+          <p className="text-gray-400 text-sm mb-4">
+            This maintenance task is not associated with any specific machines. 
+            Machines are optional but help track which equipment this maintenance applies to.
+          </p>
+          <Link
+            href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+          >
+            <Settings className="h-4 w-4" />
+            Add Machines to This Task
+          </Link>
         </div>
       );
     }
@@ -728,7 +792,11 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       alt="Before Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       style={{ width: '100%', height: '100%' }}
-                      onLoad={() => console.log('✅ Before image loaded successfully from:', beforeImageUrl)}
+                      onLoad={() => {
+                        if (process.env.NODE_ENV === 'development') {
+                          console.log('✅ Before image loaded successfully from:', beforeImageUrl);
+                        }
+                      }}
                       onError={(e) => {
                         console.error('❌ Before image failed to load');
                         console.error('   URL:', beforeImageUrl);
@@ -773,7 +841,11 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       alt="After Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       style={{ width: '100%', height: '100%' }}
-                      onLoad={() => console.log('✅ After image loaded successfully from:', afterImageUrl)}
+                      onLoad={() => {
+                        if (process.env.NODE_ENV === 'development') {
+                          console.log('✅ After image loaded successfully from:', afterImageUrl);
+                        }
+                      }}
                       onError={(e) => {
                         console.error('❌ After image failed to load');
                         console.error('   URL:', afterImageUrl);
@@ -884,8 +956,8 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
               </h2>
               <p className="text-sm text-gray-600">ID: {maintenanceData.pm_id}</p>
             </div>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor()}`}>
-              {getTaskStatus().toUpperCase()}
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor}`}>
+              {getTaskStatus.toUpperCase()}
             </span>
           </div>
 

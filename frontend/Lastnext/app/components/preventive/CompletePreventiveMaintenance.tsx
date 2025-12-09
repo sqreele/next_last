@@ -253,7 +253,16 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
       const result = await completeMaintenance(pmId, submitData);
       
       if (result) {
-        setSuccessMessage('Maintenance task completed successfully!');
+        // Get next scheduled date from the result
+        const nextScheduledDate = result.scheduled_date || result.next_due_date;
+        
+        if (nextScheduledDate) {
+          const nextDate = new Date(nextScheduledDate);
+          const formattedDate = formatDate(nextScheduledDate);
+          setSuccessMessage(`Maintenance task completed successfully!\n\nNext scheduled maintenance: ${formattedDate}`);
+        } else {
+          setSuccessMessage('Maintenance task completed successfully!');
+        }
         
         // Redirect after a short delay
         setTimeout(() => {
@@ -520,9 +529,15 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
         {/* Success Message */}
         {successMessage && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mx-4 md:mx-0 mb-4 md:mb-6">
-            <div className="flex items-center">
-              <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-              <span className="text-sm md:text-base">{successMessage}</span>
+            <div className="flex items-start">
+              <CheckCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                {successMessage.split('\n\n').map((line, index) => (
+                  <p key={index} className={`text-sm md:text-base ${index > 0 ? 'mt-2 font-semibold' : ''}`}>
+                    {line}
+                  </p>
+                ))}
+              </div>
             </div>
           </div>
         )}

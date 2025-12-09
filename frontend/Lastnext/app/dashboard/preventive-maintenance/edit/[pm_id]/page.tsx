@@ -175,7 +175,14 @@ export default function EditPreventiveMaintenancePage() {
 
   // Debug: Monitor form state changes
   useEffect(() => {
-    console.log('[EDIT FORM] Form state changed:', formState);
+    console.log('[EDIT FORM] Form state changed:', {
+      ...formState,
+      machine_ids_detail: {
+        count: formState.machine_ids.length,
+        ids: formState.machine_ids,
+        note: formState.machine_ids.length === 0 ? 'No machines assigned' : `${formState.machine_ids.length} machine(s) assigned`
+      }
+    });
   }, [formState]);
 
   // Populate form with existing data
@@ -208,7 +215,18 @@ export default function EditPreventiveMaintenancePage() {
       before_image_url: data.before_image_url,
       after_image_url: data.after_image_url,
       has_before_image: !!data.before_image_url,
-      has_after_image: !!data.after_image_url
+      has_after_image: !!data.after_image_url,
+      machines: data.machines,
+      machines_type: typeof data.machines,
+      machines_is_array: Array.isArray(data.machines),
+      machines_length: Array.isArray(data.machines) ? data.machines.length : 'N/A',
+      machines_details: Array.isArray(data.machines) ? data.machines.map((m, idx) => ({
+        index: idx,
+        machine: m,
+        machine_type: typeof m,
+        machine_id: typeof m === 'object' ? m.machine_id : m,
+        machine_name: typeof m === 'object' ? m.name : 'N/A'
+      })) : 'N/A'
     });
 
     // Fix image URLs before setting them
@@ -222,6 +240,27 @@ export default function EditPreventiveMaintenancePage() {
       fixed_after_url: fixedAfterImageUrl
     });
 
+    // Extract machine IDs with detailed logging
+    const extractedMachineIds = data.machines 
+      ? data.machines.map(m => {
+          const machineId = typeof m === 'object' ? m.machine_id : m;
+          console.log('[EDIT FORM] Extracting machine ID:', {
+            machine_object: m,
+            machine_type: typeof m,
+            extracted_id: machineId,
+            machine_name: typeof m === 'object' ? m.name : 'N/A'
+          });
+          return machineId;
+        })
+      : [];
+    
+    console.log('[EDIT FORM] Machine IDs extraction result:', {
+      original_machines: data.machines,
+      extracted_machine_ids: extractedMachineIds,
+      count: extractedMachineIds.length,
+      note: extractedMachineIds.length === 0 ? 'No machines assigned to this maintenance task' : `${extractedMachineIds.length} machine(s) found`
+    });
+
     setFormState({
       pmtitle: data.pmtitle || '',
       scheduled_date: convertToDateTimeLocal(data.scheduled_date),
@@ -231,7 +270,7 @@ export default function EditPreventiveMaintenancePage() {
       completed_date: convertToDateTimeLocal(data.completed_date),
       topic_ids: data.topics ? data.topics.map(t => typeof t === 'object' ? t.id : t) : [],
       procedure_template: data.procedure_template || data.procedure_template_id || '',
-      machine_ids: data.machines ? data.machines.map(m => typeof m === 'object' ? m.machine_id : m) : [],
+      machine_ids: extractedMachineIds,
       before_image_file: null,
       after_image_file: null,
       before_image_preview: fixedBeforeImageUrl,

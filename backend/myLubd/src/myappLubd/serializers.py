@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage, UtilityConsumption, Inventory
 from django.contrib.auth import get_user_model
+import logging
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 from django.contrib.auth.password_validation import validate_password
@@ -835,10 +838,34 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
     
     def get_property_id(self, obj):
         machines = obj.machines.all()
+        logger.debug(f"[PreventiveMaintenanceDetailSerializer] get_property_id for PM {obj.pm_id}: {machines.count()} machines")
         if machines:
             # All machines must belong to the same property, so return the first one
             return machines.first().property.property_id
         return None
+    
+    def to_representation(self, instance):
+        """Override to add debug logging for machines"""
+        # Debug: Log machine information BEFORE serialization
+        machines_queryset = instance.machines.all()
+        machine_count = machines_queryset.count()
+        machine_ids = list(machines_queryset.values_list('machine_id', flat=True))
+        
+        # Use print for immediate visibility in docker logs
+        print(f"[PreventiveMaintenanceDetailSerializer] ===== SERIALIZING PM {instance.pm_id} =====")
+        print(f"[PreventiveMaintenanceDetailSerializer] Machine count from DB: {machine_count}")
+        print(f"[PreventiveMaintenanceDetailSerializer] Machine IDs from DB: {machine_ids}")
+        print(f"[PreventiveMaintenanceDetailSerializer] Machine queryset type: {type(machines_queryset)}")
+        
+        logger.info(f"[PreventiveMaintenanceDetailSerializer] Serializing PM {instance.pm_id}: {machine_count} machines, IDs: {machine_ids}")
+        
+        representation = super().to_representation(instance)
+        
+        print(f"[PreventiveMaintenanceDetailSerializer] Machines in representation: {representation.get('machines', [])}")
+        print(f"[PreventiveMaintenanceDetailSerializer] Representation machines count: {len(representation.get('machines', []))}")
+        print(f"[PreventiveMaintenanceDetailSerializer] ===== END SERIALIZATION =====")
+        
+        return representation
 
     def create(self, validated_data):
         print(f"[PreventiveMaintenanceDetailSerializer] CREATE - validated_data: {validated_data}")
@@ -989,6 +1016,46 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         print(f"Input data type: {type(data)}")
         print(f"Input data keys: {data.keys() if hasattr(data, 'keys') else 'N/A'}")
         
+        # CRITICAL: Handle FormData/QueryDict for machine_ids and topic_ids
+        # When FormData has multiple values for the same key, QueryDict.get() returns only the last value
+        # We need to use getlist() to get all values and convert QueryDict to a regular dict
+        if hasattr(data, 'getlist'):
+            # This is a QueryDict (from FormData)
+            machine_ids_raw = data.getlist('machine_ids')
+            topic_ids_raw = data.getlist('topic_ids')
+            
+            print(f"[to_internal_value] QueryDict detected - machine_ids from getlist(): {machine_ids_raw}")
+            print(f"[to_internal_value] QueryDict detected - topic_ids from getlist(): {topic_ids_raw}")
+            
+            # Convert QueryDict to a regular dict, preserving lists for array fields
+            # Use items() but handle list fields specially
+            data_dict = {}
+            for key in data.keys():
+                # For list fields, use getlist() to preserve all values
+                if key in ['machine_ids', 'topic_ids']:
+                    values = data.getlist(key)
+                    if values:
+                        data_dict[key] = values
+                    else:
+                        data_dict[key] = []
+                else:
+                    # For other fields, get the value (or list if multiple)
+                    value = data.get(key)
+                    if value is not None:
+                        data_dict[key] = value
+            
+            # CRITICAL: Always set machine_ids and topic_ids from getlist() results
+            # This ensures we preserve all values even if the dict conversion loses them
+            data_dict['machine_ids'] = machine_ids_raw if machine_ids_raw else []
+            data_dict['topic_ids'] = topic_ids_raw if topic_ids_raw else []
+            
+            logger.info(f"[to_internal_value] Converted QueryDict. machine_ids: {data_dict.get('machine_ids')}, topic_ids: {data_dict.get('topic_ids')}")
+            print(f"[to_internal_value] Converted QueryDict to dict. machine_ids: {data_dict.get('machine_ids')}, topic_ids: {data_dict.get('topic_ids')}")
+            print(f"[to_internal_value] machine_ids type: {type(data_dict.get('machine_ids'))}, length: {len(data_dict.get('machine_ids', []))}")
+            
+            # Replace data with the dict version
+            data = data_dict
+        
         # Remove empty image fields that are not files
         # Django ImageField expects either a file or the field to be absent
         if hasattr(data, 'get'):
@@ -1001,7 +1068,8 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                 # Not a file object - remove it
                 if hasattr(data, '_mutable'):
                     # QueryDict - create a copy and remove the key
-                    data = data.copy()
+                    if not isinstance(data, dict):
+                        data = data.copy()
                     data.pop('before_image', None)
                     print(f"Removed invalid before_image from data")
                 elif isinstance(data, dict):
@@ -1013,7 +1081,8 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                 # Not a file object - remove it
                 if hasattr(data, '_mutable'):
                     # QueryDict - create a copy and remove the key
-                    data = data.copy()
+                    if not isinstance(data, dict):
+                        data = data.copy()
                     data.pop('after_image', None)
                     print(f"Removed invalid after_image from data")
                 elif isinstance(data, dict):
@@ -1022,7 +1091,27 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                     print(f"Removed invalid after_image from dict")
         
         result = super().to_internal_value(data)
-        print(f"Result: {result}")
+        
+        # CRITICAL: Ensure machine_ids is preserved after parent serializer processing
+        if isinstance(result, dict):
+            result_machine_ids = result.get('machine_ids')
+            result_topic_ids = result.get('topic_ids')
+            
+            logger.info(f"[to_internal_value] Result machine_ids: {result_machine_ids} (type: {type(result_machine_ids)})")
+            print(f"[to_internal_value] Result machine_ids: {result_machine_ids} (type: {type(result_machine_ids)})")
+            print(f"[to_internal_value] Result topic_ids: {result_topic_ids} (type: {type(result_topic_ids)})")
+            
+            # If machine_ids was lost or is empty but we had it in input data, restore it
+            if isinstance(data, dict) and 'machine_ids' in data:
+                input_machine_ids = data.get('machine_ids', [])
+                if input_machine_ids and (not result_machine_ids or (isinstance(result_machine_ids, list) and len(result_machine_ids) == 0)):
+                    logger.warning(f"[to_internal_value] ⚠️ machine_ids lost! Restoring: {input_machine_ids}")
+                    print(f"[to_internal_value] ⚠️ machine_ids lost in processing! Restoring from input: {input_machine_ids}")
+                    result['machine_ids'] = input_machine_ids if isinstance(input_machine_ids, list) else [input_machine_ids]
+        else:
+            logger.warning(f"[to_internal_value] Result is not a dict: {type(result)}")
+            print(f"[to_internal_value] Result is not a dict: {type(result)}")
+        
         return result
 
     def get_before_image_url(self, obj):
@@ -1050,8 +1139,32 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         print(f"pmtitle in validated_data: {validated_data.get('pmtitle')}")
         print(f"procedure_template in validated_data: {validated_data.get('procedure_template')}")
         
+        # CRITICAL: Pop topic_ids and machine_ids ONCE at the beginning
+        # These are ManyToMany relationships that need to be set after instance creation
         topic_ids = validated_data.pop('topic_ids', [])
         machine_ids = validated_data.pop('machine_ids', [])
+        
+        # Ensure machine_ids is a list (handle case where it might be a string or single value)
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] BEFORE PROCESSING - machine_ids: {machine_ids}, type: {type(machine_ids)}, is_list: {isinstance(machine_ids, list)}")
+        if machine_ids and not isinstance(machine_ids, list):
+            machine_ids = [machine_ids] if machine_ids else []
+        # Filter out empty strings and None values
+        if isinstance(machine_ids, list):
+            original_count = len(machine_ids)
+            machine_ids = [str(mid).strip() for mid in machine_ids if mid and str(mid).strip()]
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] AFTER FILTERING - machine_ids: {machine_ids}, original_count: {original_count}, filtered_count: {len(machine_ids)}")
+        else:
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids is NOT a list after conversion: {machine_ids}, type: {type(machine_ids)}")
+        
+        # Ensure topic_ids is a list
+        if topic_ids and not isinstance(topic_ids, list):
+            topic_ids = [topic_ids] if topic_ids else []
+        # Filter out None values and ensure integers
+        if isinstance(topic_ids, list):
+            topic_ids = [int(tid) for tid in topic_ids if tid is not None]
+        
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] Popped machine_ids: {machine_ids} (type: {type(machine_ids)}, length: {len(machine_ids) if isinstance(machine_ids, list) else 'N/A'})")
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] Popped topic_ids: {topic_ids} (type: {type(topic_ids)}, length: {len(topic_ids) if isinstance(topic_ids, list) else 'N/A'})")
         
         # Auto-calculate scheduled_date based on frequency if procedure_template is provided
         procedure_template = validated_data.get('procedure_template')
@@ -1135,20 +1248,75 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                 validated_data['scheduled_date'] = next_schedule
                 print(f"Auto-calculated scheduled_date based on frequency '{frequency}': {next_schedule}")
         
-        topic_ids = validated_data.pop('topic_ids', [])
-        machine_ids = validated_data.pop('machine_ids', [])
-        
-        print(f"After popping arrays - validated_data: {validated_data}")
+        print(f"After processing - validated_data keys: {list(validated_data.keys())}")
         
         instance = super().create(validated_data)
         print(f"Created instance: {instance}")
         print(f"Instance pmtitle: {instance.pmtitle}")
         print(f"Instance procedure_template: {instance.procedure_template}")
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] ===== INSTANCE CREATED, NOW SETTING RELATIONSHIPS =====")
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids variable exists: {'machine_ids' in locals()}")
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids value: {machine_ids if 'machine_ids' in locals() else 'NOT IN LOCALS'}")
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids type: {type(machine_ids) if 'machine_ids' in locals() else 'N/A'}")
+        
+        # Set ManyToMany relationships after instance creation
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] ===== SETTING RELATIONSHIPS =====")
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] topic_ids check: {topic_ids}, bool: {bool(topic_ids)}, len: {len(topic_ids) if isinstance(topic_ids, list) else 'N/A'}")
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids check: {machine_ids}, bool: {bool(machine_ids)}, len: {len(machine_ids) if isinstance(machine_ids, list) else 'N/A'}")
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids repr: {repr(machine_ids)}")
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids == []: {machine_ids == []}")
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids is None: {machine_ids is None}")
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] len(machine_ids) if list: {len(machine_ids) if isinstance(machine_ids, list) else 'NOT A LIST'}")
         
         if topic_ids:
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Setting {len(topic_ids)} topics")
             instance.topics.set(topic_ids)
-        if machine_ids:
-            instance.machines.set(Machine.objects.filter(machine_id__in=machine_ids))
+        else:
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] No topics to set")
+            
+        # CRITICAL: Check machine_ids more explicitly
+        has_machines = machine_ids and len(machine_ids) > 0 if isinstance(machine_ids, list) else bool(machine_ids)
+        print(f"[PreventiveMaintenanceCreateUpdateSerializer] has_machines check: {has_machines}")
+        
+        if has_machines:
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] ===== ENTERING MACHINE SETTING BLOCK =====")
+            logger.info(f"[PreventiveMaintenanceCreateUpdateSerializer] Setting {len(machine_ids)} machines: {machine_ids}")
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Setting {len(machine_ids)} machines: {machine_ids}")
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Machine IDs type: {type(machine_ids)}, values: {machine_ids}")
+            
+            # Query machines by machine_id
+            machines = Machine.objects.filter(machine_id__in=machine_ids)
+            found_count = machines.count()
+            found_ids = list(machines.values_list('machine_id', flat=True))
+            
+            logger.info(f"[PreventiveMaintenanceCreateUpdateSerializer] Found {found_count} machines: {found_ids}")
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Found {found_count} machines in database")
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Found machine IDs: {found_ids}")
+            
+            if found_count == 0:
+                logger.warning(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ No machines found for IDs: {machine_ids}")
+                print(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ WARNING: No machines found for IDs: {machine_ids}")
+            
+            # Set the machines relationship
+            instance.machines.set(machines)
+            
+            # Refresh instance to ensure machines are loaded
+            instance.refresh_from_db()
+            
+            # Verify machines were set
+            final_machine_count = instance.machines.count()
+            final_machine_ids = list(instance.machines.values_list('machine_id', flat=True))
+            
+            logger.info(f"[PreventiveMaintenanceCreateUpdateSerializer] ✅ Machines set. Count: {final_machine_count}, IDs: {final_machine_ids}")
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] ✅ Machines set. Instance now has {final_machine_count} machines")
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Final machine IDs: {final_machine_ids}")
+            
+            if final_machine_count == 0 and found_count > 0:
+                logger.error(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ ERROR: Machines found but not set!")
+                print(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ ERROR: Machines were found but not set! This is a bug.")
+        else:
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ No machine_ids provided - machines will be empty")
+            print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids value: {machine_ids}, type: {type(machine_ids)}")
         
         print(f"Final instance pmtitle: {instance.pmtitle}")
         return instance
@@ -1242,8 +1410,10 @@ class PreventiveMaintenanceCompleteSerializer(serializers.ModelSerializer):
     class Meta:
         model = PreventiveMaintenance
         fields = [
-            'completed_date', 'after_image', 'notes', 'machine_ids', 'machines', 'property_id'
+            'completed_date', 'after_image', 'notes', 'machine_ids', 'machines', 'property_id',
+            'scheduled_date', 'next_due_date'  # Allow updating scheduled_date for next occurrence
         ]
+        read_only_fields = ['next_due_date']  # Will be set by the view
 
     def get_property_id(self, obj):
         machines = obj.machines.all()

@@ -53,8 +53,8 @@ python manage.py collectstatic --no-input
     echo "GMAIL_CLIENT_ID=${GMAIL_CLIENT_ID}"
     echo "GMAIL_CLIENT_SECRET=${GMAIL_CLIENT_SECRET}"
     echo "GMAIL_REFRESH_TOKEN=${GMAIL_REFRESH_TOKEN}"
-    # Schedule: run daily at 23:00 Asia/Bangkok
-    echo "0 23 * * * cd /app/src && /usr/local/bin/python manage.py send_daily_summary >> /var/log/cron.log 2>&1"
+    # Schedule: run daily at 23:00 Asia/Bangkok (must include user column for /etc/cron.d)
+    echo "0 23 * * * root cd /app/src && /usr/local/bin/python manage.py send_daily_summary >> /var/log/cron.log 2>&1"
 } > /etc/cron.d/daily_summary
 chmod 0644 /etc/cron.d/daily_summary
 

@@ -212,19 +212,73 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             return PreventiveMaintenanceCompleteSerializer
         return self.serializer_class
 
+    def _extract_machine_ids_from_request(self):
+        """
+        Normalize machine_ids coming from the request into a clean list of strings.
+        Handles QueryDicts (getlist), regular dicts, and single values.
+        """
+        data = self.request.data
+
+        def _normalize(value):
+            if value is None:
+                return []
+            if isinstance(value, (list, tuple, set)):
+                return [str(item).strip() for item in value if str(item).strip()]
+            string_value = str(value).strip()
+            return [string_value] if string_value else []
+
+        if hasattr(data, "getlist"):
+            machine_ids = data.getlist("machine_ids")
+            return _normalize(machine_ids)
+
+        if isinstance(data, dict):
+            return _normalize(data.get("machine_ids"))
+
+        return []
+
+    def _log_machine_id_state(self, action, instance=None):
+        machine_ids = self._extract_machine_ids_from_request()
+        user = getattr(self.request, "user", None)
+        username = getattr(user, "username", "anonymous")
+        property_hint = self.request.data.get("property_id") if isinstance(self.request.data, dict) else None
+
+        log_payload = {
+            "user": username,
+            "action": action,
+            "machine_ids_received": machine_ids,
+            "machine_id_count": len(machine_ids),
+            "property_hint": property_hint,
+            "request_keys": list(self.request.data.keys()) if hasattr(self.request.data, "keys") else "unavailable",
+        }
+
+        if instance is not None:
+            linked_ids = list(instance.machines.values_list("machine_id", flat=True))
+            log_payload.update(
+                {
+                    "instance_pm_id": instance.pm_id,
+                    "instance_machine_count": len(linked_ids),
+                    "instance_machine_ids": linked_ids,
+                }
+            )
+
+        if machine_ids:
+            logger.info("[PM MACHINE TRACE] %s", log_payload)
+        else:
+            logger.warning("[PM MACHINE TRACE] Missing machine_ids in request", extra={"machine_trace": log_payload})
+
     def perform_create(self, serializer):
-        """Add the current user as the creator when creating a record"""
-        print(f"=== DEBUG: perform_create ===")
-        print(f"Serializer class: {serializer.__class__.__name__}")
-        print(f"Request data: {self.request.data}")
-        print(f"Request FILES: {self.request.FILES}")
+        """Add the current user as the creator when creating a record, logging machine associations"""
+        self._log_machine_id_state(action="create_start")
         instance = serializer.save(created_by=self.request.user)
-        print(f"Created instance pmtitle: {instance.pmtitle}")
+        self._log_machine_id_state(action="create_complete", instance=instance)
         return instance
 
     def perform_update(self, serializer):
-        """Add the current user as the updater when updating a record"""
-        serializer.save(updated_by=self.request.user)
+        """Add the current user as the updater when updating a record, logging machine associations"""
+        self._log_machine_id_state(action="update_start")
+        instance = serializer.save(updated_by=self.request.user)
+        self._log_machine_id_state(action="update_complete", instance=instance)
+        return instance
 
     @action(detail=False, methods=['get'])
     def stats(self, request):

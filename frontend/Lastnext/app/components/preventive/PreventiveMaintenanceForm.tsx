@@ -627,6 +627,24 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     console.log('[PreventiveMaintenanceForm] machineIds is array?', Array.isArray(machineIds));
     console.log('[PreventiveMaintenanceForm] machineIds length:', machineIds?.length);
     
+    const normalizeGroupId = (value: unknown): string | null => {
+      if (value === null || value === undefined) {
+        return null;
+      }
+      const normalized = String(value).trim().toLowerCase();
+      return normalized.length > 0 ? normalized : null;
+    };
+
+    const mergeTemplatesById = (templates: MaintenanceProcedureTemplate[]): MaintenanceProcedureTemplate[] => {
+      const uniqueTemplates = new Map<number, MaintenanceProcedureTemplate>();
+      templates.forEach((template) => {
+        if (template && typeof template.id === 'number' && !uniqueTemplates.has(template.id)) {
+          uniqueTemplates.set(template.id, template);
+        }
+      });
+      return Array.from(uniqueTemplates.values());
+    };
+
     setLoadingMaintenanceTasks(true);
     try {
       let tasks: MaintenanceProcedureTemplate[] = [];
@@ -635,7 +653,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         console.log('[PreventiveMaintenanceForm] ✓ Processing', machineIds.length, 'machine(s) for filtering:', machineIds);
         // Fetch procedures for each selected machine
         const allProcedureIds = new Set<number>();
-        const machineGroupIds = new Set<string>();
+        const machineGroupIdsRaw = new Set<string>();
+        const machineGroupIdsNormalized = new Set<string>();
         
         // Fetch machine details to get their maintenance procedures and group_id
         for (const machineId of machineIds) {
@@ -658,9 +677,11 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             });
             
             // Collect machine's group_id if it exists (check for null, undefined, and empty string)
-            if (machine.group_id !== null && machine.group_id !== undefined && machine.group_id !== '') {
-              machineGroupIds.add(machine.group_id);
-              console.log(`[PreventiveMaintenanceForm] ✓ Machine ${machineId} has group_id: "${machine.group_id}" (added to filter)`);
+            const normalizedMachineGroupId = normalizeGroupId(machine.group_id);
+            if (normalizedMachineGroupId) {
+              machineGroupIdsRaw.add(String(machine.group_id));
+              machineGroupIdsNormalized.add(normalizedMachineGroupId);
+              console.log(`[PreventiveMaintenanceForm] ✓ Machine ${machineId} has group_id: "${machine.group_id}" (normalized: "${normalizedMachineGroupId}")`);
             } else {
               console.log(`[PreventiveMaintenanceForm] ✗ Machine ${machineId} has NO group_id (value: ${machine.group_id}, type: ${typeof machine.group_id})`);
             }
@@ -679,7 +700,11 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           }
         }
         
-        console.log(`[PreventiveMaintenanceForm] Collected group_ids:`, Array.from(machineGroupIds), `(count: ${machineGroupIds.size})`);
+        console.log(`[PreventiveMaintenanceForm] Collected group_ids:`, {
+          raw: Array.from(machineGroupIdsRaw),
+          normalized: Array.from(machineGroupIdsNormalized),
+          count: machineGroupIdsNormalized.size,
+        });
         console.log(`[PreventiveMaintenanceForm] Collected procedure_ids:`, Array.from(allProcedureIds), `(count: ${allProcedureIds.size})`);
         
         // Fetch all available tasks
@@ -694,43 +719,41 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         // 1. If machine has group_id, ONLY show tasks with matching group_id (strict match: machine.group_id === task.group_id)
         // 2. Otherwise, show tasks linked to the machine via maintenance_procedures
         // 3. If no group_id and no linked procedures, show all tasks (fallback)
-        if (machineGroupIds.size > 0) {
-          // Machine has group_id: ONLY show tasks with matching group_id (strict equality)
-          // Normalize both values to strings for comparison to handle number/string differences
-          const normalizedMachineGroupIds = Array.from(machineGroupIds).map(id => String(id));
-          
-          console.log(`[PreventiveMaintenanceForm] Filtering by group_id. Looking for:`, normalizedMachineGroupIds);
-          console.log(`[PreventiveMaintenanceForm] Sample task group_ids:`, allTasks.slice(0, 5).map(t => ({ id: t.id, name: t.name, group_id: t.group_id, group_id_type: typeof t.group_id })));
-          
-          tasks = allTasks.filter(task => {
-            if (!task.group_id) {
-              return false;
-            }
-            // Strict equality: task.group_id must exactly match machine.group_id
-            const normalizedTaskGroupId = String(task.group_id);
-            const matches = normalizedMachineGroupIds.includes(normalizedTaskGroupId);
-            if (matches) {
-              console.log(`[PreventiveMaintenanceForm] ✓ Task "${task.name}" (id: ${task.id}) matches - group_id: "${task.group_id}"`);
-            }
-            return matches;
+        const tasksMatchedByGroupId = machineGroupIdsNormalized.size > 0
+          ? allTasks.filter(task => {
+              const normalizedTaskGroupId = normalizeGroupId(task.group_id);
+              const matches = normalizedTaskGroupId ? machineGroupIdsNormalized.has(normalizedTaskGroupId) : false;
+              if (matches) {
+                console.log(`[PreventiveMaintenanceForm] ✓ Task "${task.name}" (id: ${task.id}) matches group_id "${task.group_id}" (normalized "${normalizedTaskGroupId}")`);
+              }
+              return matches;
+            })
+          : [];
+
+        const tasksMatchedByProcedures = allProcedureIds.size > 0
+          ? allTasks.filter(task => allProcedureIds.has(task.id))
+          : [];
+
+        const combinedMatches = mergeTemplatesById([...tasksMatchedByGroupId, ...tasksMatchedByProcedures]);
+
+        if (combinedMatches.length > 0) {
+          tasks = combinedMatches;
+          console.log(`[PreventiveMaintenanceForm] Filtered tasks by machine linkage`, {
+            viaGroupId: tasksMatchedByGroupId.length,
+            viaProcedures: tasksMatchedByProcedures.length,
+            combined: combinedMatches.length,
+            machine_group_ids_raw: Array.from(machineGroupIdsRaw),
+            machine_group_ids_normalized: Array.from(machineGroupIdsNormalized),
+            linked_procedure_ids: Array.from(allProcedureIds),
           });
-          
-          console.log(`[PreventiveMaintenanceForm] Filtered tasks by group_id (strict match):`, {
-            matching_tasks: tasks.length,
-            machine_group_ids: Array.from(machineGroupIds).join(', '),
-            normalized_machine_group_ids: normalizedMachineGroupIds.join(', '),
-            total_available: allTasks.length,
-            filtered_task_group_ids: [...new Set(tasks.map(t => t.group_id))].join(', '),
-            filtered_task_names: tasks.map(t => t.name).join(', ')
-          });
-        } else if (allProcedureIds.size > 0) {
-          // No group_id on machines, filter by linked procedures
-          tasks = allTasks.filter(task => allProcedureIds.has(task.id));
-          console.log(`[PreventiveMaintenanceForm] Filtered ${tasks.length} tasks for ${machineIds.length} machine(s) by linked procedures`);
-        } else {
-          // No group_id and no linked procedures - show all tasks as fallback
+        } else if (machineGroupIdsNormalized.size === 0 && allProcedureIds.size === 0) {
+          // No filtering clues available - show everything
           tasks = allTasks;
           console.log(`[PreventiveMaintenanceForm] No group_id or linked procedures found, showing all ${tasks.length} tasks`);
+        } else {
+          // Filtering clues existed but nothing matched
+          tasks = [];
+          console.warn('[PreventiveMaintenanceForm] ⚠️ No maintenance templates matched the selected machines via group_id or linked procedures.');
         }
       } else {
         // No machines selected, show all tasks

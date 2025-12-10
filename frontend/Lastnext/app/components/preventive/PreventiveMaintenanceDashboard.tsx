@@ -661,14 +661,14 @@ export default function PreventiveMaintenanceDashboard() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <Link 
-                            href={`/preventive-maintenance/${item.pm_id}`}
+                            href={`/dashboard/preventive-maintenance/${item.pm_id}`}
                             className="text-blue-600 hover:text-blue-900"
                           >
                             View
                           </Link>
                           {status !== 'completed' && (
                             <Link 
-                              href={`/preventive-maintenance/${item.pm_id}/edit?complete=true`}
+                              href={`/dashboard/preventive-maintenance/${item.pm_id}/edit?complete=true`}
                               className="text-green-600 hover:text-green-900"
                             >
                               Complete

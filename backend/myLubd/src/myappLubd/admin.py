@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from django.utils import timezone
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth import get_user_model
@@ -2743,8 +2743,8 @@ class InventoryAdmin(admin.ModelAdmin):
         'room_link',
         'last_job_by_user',
         'last_pm_by_user',
-        'job_link',
-        'pm_link',
+        'job_links',
+        'pm_links',
         'location',
         'unit_price',
         'last_restocked',
@@ -2758,8 +2758,8 @@ class InventoryAdmin(admin.ModelAdmin):
         'category',
         'property',
         'room',
-        'job',
-        'preventive_maintenance',
+        ('jobs', admin.RelatedOnlyFieldListFilter),
+        ('preventive_maintenances', admin.RelatedOnlyFieldListFilter),
         'created_at',
         'updated_at',
         'last_restocked',
@@ -2776,8 +2776,8 @@ class InventoryAdmin(admin.ModelAdmin):
         'property__property_id',
         'room__name',
         'room__room_id',
-        'job__job_id',
-        'preventive_maintenance__pm_id'
+        'jobs__job_id',
+        'preventive_maintenances__pm_id'
     ]
     readonly_fields = [
         'item_id',
@@ -2787,7 +2787,8 @@ class InventoryAdmin(admin.ModelAdmin):
         'qr_code_preview',
         'image_preview_large'
     ]
-    raw_id_fields = ['property', 'room', 'job', 'preventive_maintenance', 'created_by']
+    raw_id_fields = ['property', 'room', 'created_by']
+    filter_horizontal = ['jobs', 'preventive_maintenances']
     
     fieldsets = (
         ('Item Information', {
@@ -2804,8 +2805,8 @@ class InventoryAdmin(admin.ModelAdmin):
             'fields': ('property', 'room', 'location', 'expiry_date')
         }),
         ('Related Jobs & Maintenance', {
-            'fields': ('job', 'preventive_maintenance'),
-            'description': 'Link this inventory item to a specific job or preventive maintenance task'
+            'fields': ('jobs', 'preventive_maintenances'),
+            'description': 'Link this inventory item to jobs or preventive maintenance tasks'
         }),
         ('Supplier Information', {
             'fields': ('supplier', 'supplier_contact', 'last_restocked')
@@ -2866,23 +2867,51 @@ class InventoryAdmin(admin.ModelAdmin):
         return format_html('<p style="color: #999;">No image uploaded</p>')
     image_preview_large.short_description = 'Image Preview'
     
-    def job_link(self, obj):
-        if obj.job:
-            from django.urls import reverse
-            link = reverse("admin:myappLubd_job_change", args=[obj.job.id])
-            return format_html('<a href="{}">{}</a>', link, obj.job.job_id)
-        return "No Job"
-    job_link.short_description = 'Job'
-    job_link.admin_order_field = 'job'
+    def job_links(self, obj):
+        jobs = obj.jobs.all()
+        total_jobs = jobs.count()
+        if total_jobs == 0:
+            return "No Jobs"
+        
+        display_jobs = list(jobs[:3])
+        links = [
+            format_html(
+                '<a href="{}">{}</a>',
+                reverse("admin:myappLubd_job_change", args=[job.id]),
+                job.job_id
+            )
+            for job in display_jobs
+        ]
+        
+        remaining = total_jobs - len(display_jobs)
+        if remaining > 0:
+            links.append(format_html('<span style="color:#999;">+{} more</span>', remaining))
+        
+        return format_html_join(', ', '{}', ((link,) for link in links))
+    job_links.short_description = 'Jobs'
     
-    def pm_link(self, obj):
-        if obj.preventive_maintenance:
-            from django.urls import reverse
-            link = reverse("admin:myappLubd_preventivemaintenance_change", args=[obj.preventive_maintenance.id])
-            return format_html('<a href="{}">{}</a>', link, obj.preventive_maintenance.pm_id)
-        return "No PM"
-    pm_link.short_description = 'Preventive Maintenance'
-    pm_link.admin_order_field = 'preventive_maintenance'
+    def pm_links(self, obj):
+        pms = obj.preventive_maintenances.all()
+        total_pms = pms.count()
+        if total_pms == 0:
+            return "No PMs"
+        
+        display_pms = list(pms[:3])
+        links = [
+            format_html(
+                '<a href="{}">{}</a>',
+                reverse("admin:myappLubd_preventivemaintenance_change", args=[pm.id]),
+                pm.pm_id
+            )
+            for pm in display_pms
+        ]
+        
+        remaining = total_pms - len(display_pms)
+        if remaining > 0:
+            links.append(format_html('<span style="color:#999;">+{} more</span>', remaining))
+        
+        return format_html_join(', ', '{}', ((link,) for link in links))
+    pm_links.short_description = 'Preventive Maintenance'
     
     def last_job_by_user(self, obj):
         """Show the last job that used this inventory item, filtered by current user"""
@@ -2893,40 +2922,45 @@ class InventoryAdmin(admin.ModelAdmin):
         if not user:
             return "N/A"
         
-        # Get the most recent inventory item linked to a job by this user
-        # Check if this inventory item is linked to a job by the current user
-        if obj.job and obj.job.user == user:
-            job = obj.job
-            from django.urls import reverse
-            link = reverse("admin:myappLubd_job_change", args=[job.id])
-            job_name = job.description[:30] + "..." if len(job.description) > 30 else job.description
+        user_job = obj.jobs.filter(user=user).order_by('-updated_at').first()
+        if user_job:
+            link = reverse("admin:myappLubd_job_change", args=[user_job.id])
+            job_name = user_job.description[:30] + "..." if len(user_job.description) > 30 else user_job.description
             return format_html(
                 '<a href="{}" title="{}">{} ({})</a>',
                 link,
-                job.description,
-                job.job_id,
+                user_job.description,
+                user_job.job_id,
                 job_name
             )
         
-        # If not directly linked, find the most recent job by this user that uses this inventory
-        # Since inventory can be linked to jobs, we check related inventory items
         from .models import Inventory
-        last_inventory = Inventory.objects.filter(
-            job__user=user,
-            item_id=obj.item_id
-        ).exclude(job__isnull=True).select_related('job').order_by('-updated_at').first()
-        
-        if last_inventory and last_inventory.job:
-            from django.urls import reverse
-            link = reverse("admin:myappLubd_job_change", args=[last_inventory.job.id])
-            job_name = last_inventory.job.description[:30] + "..." if len(last_inventory.job.description) > 30 else last_inventory.job.description
-            return format_html(
-                '<a href="{}" title="{}">{} ({})</a>',
-                link,
-                last_inventory.job.description,
-                last_inventory.job.job_id,
-                job_name
+        last_inventory = (
+            Inventory.objects.filter(
+                jobs__user=user,
+                item_id=obj.item_id
             )
+            .order_by('-updated_at')
+            .prefetch_related('jobs')
+            .first()
+        )
+        
+        if last_inventory:
+            related_job = (
+                last_inventory.jobs.filter(user=user)
+                .order_by('-updated_at')
+                .first()
+            )
+            if related_job:
+                link = reverse("admin:myappLubd_job_change", args=[related_job.id])
+                job_name = related_job.description[:30] + "..." if len(related_job.description) > 30 else related_job.description
+                return format_html(
+                    '<a href="{}" title="{}">{} ({})</a>',
+                    link,
+                    related_job.description,
+                    related_job.job_id,
+                    job_name
+                )
         
         return "No job"
     last_job_by_user.short_description = 'Last Job (My User)'
@@ -2940,36 +2974,11 @@ class InventoryAdmin(admin.ModelAdmin):
         if not user:
             return "N/A"
         
-        # Get the most recent inventory item linked to a PM by this user
-        # Check if this inventory item is linked to a PM assigned to or created by the current user
-        if obj.preventive_maintenance:
-            pm = obj.preventive_maintenance
-            if pm.assigned_to == user or pm.created_by == user:
-                from django.urls import reverse
-                link = reverse("admin:myappLubd_preventivemaintenance_change", args=[pm.id])
-                pm_title = pm.pmtitle[:30] + "..." if len(pm.pmtitle) > 30 else pm.pmtitle
-                return format_html(
-                    '<a href="{}" title="{}">{} ({})</a>',
-                    link,
-                    pm.pmtitle,
-                    pm.pm_id,
-                    pm_title
-                )
-        
-        # If not directly linked, find the most recent PM by this user that uses this inventory
-        from .models import Inventory
-        last_inventory = Inventory.objects.filter(
-            preventive_maintenance__isnull=False
-        ).filter(
-            Q(preventive_maintenance__assigned_to=user) | 
-            Q(preventive_maintenance__created_by=user)
-        ).filter(
-            item_id=obj.item_id
-        ).select_related('preventive_maintenance').order_by('-updated_at').first()
-        
-        if last_inventory and last_inventory.preventive_maintenance:
-            pm = last_inventory.preventive_maintenance
-            from django.urls import reverse
+        pm_qs = obj.preventive_maintenances.filter(
+            Q(assigned_to=user) | Q(created_by=user)
+        ).order_by('-updated_at')
+        pm = pm_qs.first()
+        if pm:
             link = reverse("admin:myappLubd_preventivemaintenance_change", args=[pm.id])
             pm_title = pm.pmtitle[:30] + "..." if len(pm.pmtitle) > 30 else pm.pmtitle
             return format_html(
@@ -2979,6 +2988,40 @@ class InventoryAdmin(admin.ModelAdmin):
                 pm.pm_id,
                 pm_title
             )
+        
+        from .models import Inventory
+        last_inventory = (
+            Inventory.objects.filter(
+                preventive_maintenances__isnull=False,
+                item_id=obj.item_id
+            )
+            .filter(
+                Q(preventive_maintenances__assigned_to=user) |
+                Q(preventive_maintenances__created_by=user)
+            )
+            .order_by('-updated_at')
+            .prefetch_related('preventive_maintenances')
+            .first()
+        )
+        
+        if last_inventory:
+            pm = (
+                last_inventory.preventive_maintenances.filter(
+                    Q(assigned_to=user) | Q(created_by=user)
+                )
+                .order_by('-updated_at')
+                .first()
+            )
+            if pm:
+                link = reverse("admin:myappLubd_preventivemaintenance_change", args=[pm.id])
+                pm_title = pm.pmtitle[:30] + "..." if len(pm.pmtitle) > 30 else pm.pmtitle
+                return format_html(
+                    '<a href="{}" title="{}">{} ({})</a>',
+                    link,
+                    pm.pmtitle,
+                    pm.pm_id,
+                    pm_title
+                )
         
         return "No PM"
     last_pm_by_user.short_description = 'Last PM (My User)'
@@ -3003,9 +3046,15 @@ class InventoryAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         # Store request user for use in list_display methods
         self._request_user = request.user
-        return super().get_queryset(request).select_related(
-            'property', 'room', 'job', 'preventive_maintenance', 'created_by',
-            'job__user', 'preventive_maintenance__assigned_to', 'preventive_maintenance__created_by'
+        return (
+            super()
+            .get_queryset(request)
+            .select_related('property', 'room', 'created_by')
+            .prefetch_related(
+                'jobs__user',
+                'preventive_maintenances__assigned_to',
+                'preventive_maintenances__created_by'
+            )
         )
     
     def get_inventory_url(self, obj):
@@ -3119,7 +3168,7 @@ class InventoryAdmin(admin.ModelAdmin):
     
     def export_inventory_csv(self, request, queryset):
         """Export selected/filtered inventory items to CSV"""
-        qs = queryset.select_related('property', 'room', 'job', 'preventive_maintenance', 'created_by').order_by('item_id')
+        qs = queryset.select_related('property', 'room', 'created_by').prefetch_related('jobs', 'preventive_maintenances').order_by('item_id')
         
         filename = f"inventory_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
         response = HttpResponse(content_type='text/csv; charset=utf-8')
@@ -3172,8 +3221,8 @@ class InventoryAdmin(admin.ModelAdmin):
                 item.property.property_id if item.property else '',
                 item.room.name if item.room else '',
                 item.room.room_id if item.room else '',
-                item.job.job_id if item.job else '',
-                item.preventive_maintenance.pm_id if item.preventive_maintenance else '',
+                ', '.join(item.jobs.values_list('job_id', flat=True)),
+                ', '.join(item.preventive_maintenances.values_list('pm_id', flat=True)),
                 item.location or '',
                 item.supplier or '',
                 item.supplier_contact or '',

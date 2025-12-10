@@ -1732,21 +1732,17 @@ class Inventory(models.Model):
         blank=True,
         help_text="Room where the item is stored"
     )
-    job = models.ForeignKey(
+    jobs = models.ManyToManyField(
         'Job',
-        on_delete=models.SET_NULL,
         related_name='inventory_items',
-        null=True,
         blank=True,
-        help_text="Job associated with this inventory item usage"
+        help_text="Jobs where this inventory item was used"
     )
-    preventive_maintenance = models.ForeignKey(
+    preventive_maintenances = models.ManyToManyField(
         'PreventiveMaintenance',
-        on_delete=models.SET_NULL,
         related_name='inventory_items',
-        null=True,
         blank=True,
-        help_text="Preventive maintenance task associated with this inventory item usage"
+        help_text="Preventive maintenance tasks where this inventory item was used"
     )
     last_restocked = models.DateTimeField(
         null=True,
@@ -1790,8 +1786,6 @@ class Inventory(models.Model):
             models.Index(fields=['category', 'status']),
             models.Index(fields=['property', 'status']),
             models.Index(fields=['status']),
-            models.Index(fields=['job']),
-            models.Index(fields=['preventive_maintenance']),
         ]
     
     def save(self, *args, **kwargs):

@@ -9,6 +9,7 @@ User = get_user_model()
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError, FieldDoesNotExist
 from django.db import transaction
+from django.db.models import Q
 from django.db.utils import ProgrammingError
 from django.utils import timezone
 from django.core.validators import FileExtensionValidator
@@ -1815,6 +1816,10 @@ class InventorySerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     image_url = serializers.SerializerMethodField()
+    job_ids = serializers.SerializerMethodField()
+    pm_ids = serializers.SerializerMethodField()
+    jobs_detail = serializers.SerializerMethodField()
+    preventive_maintenances_detail = serializers.SerializerMethodField()
     
     class Meta:
         model = Inventory
@@ -1843,6 +1848,10 @@ class InventorySerializer(serializers.ModelSerializer):
             'room_name',
             'image',
             'image_url',
+            'job_ids',
+            'pm_ids',
+            'jobs_detail',
+            'preventive_maintenances_detail',
             'last_restocked',
             'expiry_date',
             'notes',
@@ -1861,6 +1870,45 @@ class InventorySerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.image.url)
             return obj.image.url
         return None
+    
+    def get_job_ids(self, obj):
+        """Return all related job IDs"""
+        return list(obj.jobs.values_list('job_id', flat=True))
+    
+    def get_pm_ids(self, obj):
+        """Return all related preventive maintenance IDs"""
+        return list(obj.preventive_maintenances.values_list('pm_id', flat=True))
+    
+    def get_jobs_detail(self, obj):
+        """Return detailed information about related jobs"""
+        jobs = obj.jobs.all()
+        return [
+            {
+                'id': job.id,
+                'job_id': job.job_id,
+                'description': job.description,
+                'status': job.status,
+                'user_id': job.user_id,
+                'updated_at': job.updated_at,
+            }
+            for job in jobs
+        ]
+    
+    def get_preventive_maintenances_detail(self, obj):
+        """Return detailed information about related preventive maintenance tasks"""
+        pms = obj.preventive_maintenances.all()
+        return [
+            {
+                'id': pm.id,
+                'pm_id': pm.pm_id,
+                'title': pm.pmtitle,
+                'status': pm.status,
+                'assigned_to_id': pm.assigned_to_id,
+                'created_by_id': pm.created_by_id,
+                'updated_at': pm.updated_at,
+            }
+            for pm in pms
+        ]
     
     def validate(self, data):
         """Validate inventory data"""
@@ -1889,10 +1937,14 @@ class InventoryListSerializer(serializers.ModelSerializer):
     room_name = serializers.CharField(source='room.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
-    job_id = serializers.CharField(source='job.job_id', read_only=True)
-    job_description = serializers.CharField(source='job.description', read_only=True)
-    pm_id = serializers.CharField(source='preventive_maintenance.pm_id', read_only=True)
-    pm_title = serializers.CharField(source='preventive_maintenance.pmtitle', read_only=True)
+    job_id = serializers.SerializerMethodField()
+    job_description = serializers.SerializerMethodField()
+    pm_id = serializers.SerializerMethodField()
+    pm_title = serializers.SerializerMethodField()
+    job_ids = serializers.SerializerMethodField()
+    pm_ids = serializers.SerializerMethodField()
+    jobs_detail = serializers.SerializerMethodField()
+    preventive_maintenances_detail = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
     last_job_by_user = serializers.SerializerMethodField()
     last_pm_by_user = serializers.SerializerMethodField()
@@ -1918,6 +1970,10 @@ class InventoryListSerializer(serializers.ModelSerializer):
             'job_description',
             'pm_id',
             'pm_title',
+            'job_ids',
+            'pm_ids',
+            'jobs_detail',
+            'preventive_maintenances_detail',
             'image_url',
             'last_job_by_user',
             'last_pm_by_user',
@@ -1934,6 +1990,56 @@ class InventoryListSerializer(serializers.ModelSerializer):
             return obj.image.url
         return None
     
+    def _get_primary_job(self, obj):
+        return obj.jobs.all().first()
+    
+    def _get_primary_pm(self, obj):
+        return obj.preventive_maintenances.all().first()
+    
+    def get_job_id(self, obj):
+        job = self._get_primary_job(obj)
+        return job.job_id if job else None
+    
+    def get_job_description(self, obj):
+        job = self._get_primary_job(obj)
+        return job.description if job else None
+    
+    def get_pm_id(self, obj):
+        pm = self._get_primary_pm(obj)
+        return pm.pm_id if pm else None
+    
+    def get_pm_title(self, obj):
+        pm = self._get_primary_pm(obj)
+        return pm.pmtitle if pm else None
+    
+    def get_job_ids(self, obj):
+        return list(obj.jobs.values_list('job_id', flat=True))
+    
+    def get_pm_ids(self, obj):
+        return list(obj.preventive_maintenances.values_list('pm_id', flat=True))
+    
+    def get_jobs_detail(self, obj):
+        jobs = obj.jobs.all()[:5]
+        return [
+            {
+                'job_id': job.job_id,
+                'description': job.description,
+                'status': job.status,
+            }
+            for job in jobs
+        ]
+    
+    def get_preventive_maintenances_detail(self, obj):
+        pms = obj.preventive_maintenances.all()[:5]
+        return [
+            {
+                'pm_id': pm.pm_id,
+                'title': pm.pmtitle,
+                'status': pm.status,
+            }
+            for pm in pms
+        ]
+    
     def get_last_job_by_user(self, obj):
         """Get the last job that used this inventory item by the current user"""
         request = self.context.get('request')
@@ -1941,27 +2047,37 @@ class InventoryListSerializer(serializers.ModelSerializer):
             return None
         
         user = request.user
-        # Check if this inventory item is linked to a job by the current user
-        if obj.job and obj.job.user == user:
+        user_job = obj.jobs.filter(user=user).order_by('-updated_at').first()
+        if user_job:
             return {
-                'job_id': obj.job.job_id,
-                'description': obj.job.description[:50] + '...' if len(obj.job.description) > 50 else obj.job.description,
-                'full_description': obj.job.description
+                'job_id': user_job.job_id,
+                'description': user_job.description[:50] + '...' if len(user_job.description) > 50 else user_job.description,
+                'full_description': user_job.description
             }
         
-        # Find the most recent inventory item with same item_id linked to a job by this user
         from .models import Inventory
-        last_inventory = Inventory.objects.filter(
-            job__user=user,
-            item_id=obj.item_id
-        ).exclude(job__isnull=True).select_related('job').order_by('-updated_at').first()
+        last_inventory = (
+            Inventory.objects.filter(
+                jobs__user=user,
+                item_id=obj.item_id
+            )
+            .order_by('-updated_at')
+            .prefetch_related('jobs')
+            .first()
+        )
         
-        if last_inventory and last_inventory.job:
-            return {
-                'job_id': last_inventory.job.job_id,
-                'description': last_inventory.job.description[:50] + '...' if len(last_inventory.job.description) > 50 else last_inventory.job.description,
-                'full_description': last_inventory.job.description
-            }
+        if last_inventory:
+            related_job = (
+                last_inventory.jobs.filter(user=user)
+                .order_by('-updated_at')
+                .first()
+            )
+            if related_job:
+                return {
+                    'job_id': related_job.job_id,
+                    'description': related_job.description[:50] + '...' if len(related_job.description) > 50 else related_job.description,
+                    'full_description': related_job.description
+                }
         
         return None
     
@@ -1972,34 +2088,44 @@ class InventoryListSerializer(serializers.ModelSerializer):
             return None
         
         user = request.user
-        # Check if this inventory item is linked to a PM assigned to or created by the current user
-        if obj.preventive_maintenance:
-            pm = obj.preventive_maintenance
-            if pm.assigned_to == user or pm.created_by == user:
-                return {
-                    'pm_id': pm.pm_id,
-                    'title': pm.pmtitle[:50] + '...' if len(pm.pmtitle) > 50 else pm.pmtitle,
-                    'full_title': pm.pmtitle
-                }
-        
-        # Find the most recent inventory item with same item_id linked to a PM by this user
-        from .models import Inventory
-        from django.db.models import Q
-        last_inventory = Inventory.objects.filter(
-            preventive_maintenance__isnull=False
-        ).filter(
-            Q(preventive_maintenance__assigned_to=user) | 
-            Q(preventive_maintenance__created_by=user)
-        ).filter(
-            item_id=obj.item_id
-        ).select_related('preventive_maintenance').order_by('-updated_at').first()
-        
-        if last_inventory and last_inventory.preventive_maintenance:
-            pm = last_inventory.preventive_maintenance
+        pm = obj.preventive_maintenances.filter(
+            Q(assigned_to=user) | Q(created_by=user)
+        ).order_by('-updated_at').first()
+        if pm:
             return {
                 'pm_id': pm.pm_id,
                 'title': pm.pmtitle[:50] + '...' if len(pm.pmtitle) > 50 else pm.pmtitle,
                 'full_title': pm.pmtitle
             }
+        
+        from .models import Inventory
+        last_inventory = (
+            Inventory.objects.filter(
+                preventive_maintenances__isnull=False,
+                item_id=obj.item_id
+            )
+            .filter(
+                Q(preventive_maintenances__assigned_to=user) |
+                Q(preventive_maintenances__created_by=user)
+            )
+            .order_by('-updated_at')
+            .prefetch_related('preventive_maintenances')
+            .first()
+        )
+        
+        if last_inventory:
+            pm = (
+                last_inventory.preventive_maintenances.filter(
+                    Q(assigned_to=user) | Q(created_by=user)
+                )
+                .order_by('-updated_at')
+                .first()
+            )
+            if pm:
+                return {
+                    'pm_id': pm.pm_id,
+                    'title': pm.pmtitle[:50] + '...' if len(pm.pmtitle) > 50 else pm.pmtitle,
+                    'full_title': pm.pmtitle
+                }
         
         return None

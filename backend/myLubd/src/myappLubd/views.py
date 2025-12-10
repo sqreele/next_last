@@ -2605,7 +2605,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = MaintenancePagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['property', 'room', 'category', 'status']
+    filterset_fields = ['property', 'room', 'category', 'status', 'jobs', 'preventive_maintenances']
     search_fields = ['name', 'item_id', 'description', 'location', 'supplier']
     ordering_fields = ['name', 'quantity', 'created_at', 'updated_at', 'category', 'status']
     ordering = ['-created_at']
@@ -2616,10 +2616,15 @@ class InventoryViewSet(viewsets.ModelViewSet):
         Return inventory items filtered by user's accessible properties.
         """
         user = self.request.user
-        queryset = Inventory.objects.select_related(
-            'property', 'room', 'created_by', 'job', 'preventive_maintenance',
-            'job__user', 'preventive_maintenance__assigned_to', 'preventive_maintenance__created_by'
-        ).all()
+        queryset = (
+            Inventory.objects.select_related('property', 'room', 'created_by')
+            .prefetch_related(
+                'jobs__user',
+                'preventive_maintenances__assigned_to',
+                'preventive_maintenances__created_by'
+            )
+            .all()
+        )
         
         # Filter by property if user is not staff
         if not (user.is_staff or user.is_superuser):
@@ -2651,6 +2656,14 @@ class InventoryViewSet(viewsets.ModelViewSet):
         low_stock = self.request.query_params.get('low_stock')
         if low_stock and low_stock.lower() == 'true':
             queryset = queryset.filter(quantity__lte=F('min_quantity'))
+        
+        job_id = self.request.query_params.get('job_id')
+        if job_id:
+            queryset = queryset.filter(jobs__job_id__iexact=job_id)
+        
+        pm_id = self.request.query_params.get('pm_id')
+        if pm_id:
+            queryset = queryset.filter(preventive_maintenances__pm_id__iexact=pm_id)
         
         return queryset.distinct()
     
@@ -2724,6 +2737,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
         """
         Use/consume an inventory item by subtracting quantity.
         Expects: {'quantity': <number>, 'job_id': <optional>, 'pm_id': <optional>}
+        Job/PM identifiers will be added to the item's relationship history.
         """
         inventory = self.get_object()
         quantity_to_use = request.data.get('quantity', 0)
@@ -2749,7 +2763,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
                 from .models import Job
                 try:
                     job = Job.objects.get(job_id=job_id, user=request.user)
-                    inventory.job = job
+                    inventory.jobs.add(job)
                 except Job.DoesNotExist:
                     return Response(
                         {'error': f'Job with ID {job_id} not found or not accessible'},
@@ -2764,7 +2778,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
                     Q(assigned_to=request.user) | Q(created_by=request.user)
                 ).first()
                 if pm:
-                    inventory.preventive_maintenance = pm
+                    inventory.preventive_maintenances.add(pm)
                 else:
                     return Response(
                         {'error': f'PM with ID {pm_id} not found or not accessible'},

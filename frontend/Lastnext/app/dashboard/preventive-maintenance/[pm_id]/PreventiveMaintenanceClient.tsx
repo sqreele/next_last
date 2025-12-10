@@ -378,7 +378,8 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   const renderMachines = () => {
     // More robust check for empty machines
     const machines = maintenanceData.machines;
-    const hasMachines = machines && Array.isArray(machines) && machines.length > 0;
+    const machinesList = Array.isArray(machines) ? machines : null;
+    const hasMachines = !!machinesList && machinesList.length > 0;
     
     // Debug logging to help diagnose machine assignment issues
     console.log('[PreventiveMaintenanceClient] Machine check:', {
@@ -391,7 +392,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
       machines_data: machines
     });
     
-    if (!hasMachines) {
+    if (!machinesList || machinesList.length === 0) {
       return (
         <div className="text-center py-8">
           <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-3" />
@@ -413,7 +414,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {maintenanceData.machines.map((machine, index) => {
+        {machinesList.map((machine, index) => {
           const machineId = typeof machine === 'object' ? machine.machine_id : machine;
           const machineName = typeof machine === 'object' ? machine.name : null;
           

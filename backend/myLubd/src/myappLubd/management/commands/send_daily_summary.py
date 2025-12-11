@@ -388,7 +388,7 @@ class Command(BaseCommand):
                 
                 # Exclude users with email notifications disabled
                 users_qs = users_qs.filter(
-                    Q(profile__email_notifications_enabled=True) | Q(profile__isnull=True)
+                    Q(userprofile__email_notifications_enabled=True) | Q(userprofile__isnull=True)
                 )
                 
                 # Exclude specific emails if provided

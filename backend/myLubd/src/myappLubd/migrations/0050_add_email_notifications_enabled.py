@@ -10,10 +10,30 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='userprofile',
-            name='email_notifications_enabled',
-            field=models.BooleanField(default=True, help_text='If False, user will not receive email notifications (summary emails, etc.)'),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddField(
+                    model_name='userprofile',
+                    name='email_notifications_enabled',
+                    field=models.BooleanField(
+                        default=True,
+                        help_text='If False, user will not receive email notifications (summary emails, etc.)',
+                    ),
+                ),
+            ],
+            database_operations=[
+                migrations.RunSQL(
+                    sql=(
+                        "ALTER TABLE myappLubd_userprofile "
+                        "ADD COLUMN IF NOT EXISTS email_notifications_enabled "
+                        "BOOLEAN NOT NULL DEFAULT TRUE;"
+                    ),
+                    reverse_sql=(
+                        "ALTER TABLE myappLubd_userprofile "
+                        "DROP COLUMN IF EXISTS email_notifications_enabled;"
+                    ),
+                ),
+            ],
         ),
     ]
 

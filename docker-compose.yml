@@ -48,8 +48,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-    ports:
-      - "3000:3000"
+    # ✅ SECURITY FIX: Use 'expose' instead of 'ports' to prevent Docker from bypassing UFW
+    # Traffic should flow through Nginx only (ports 80/443)
+    expose:
+      - "3000"
     depends_on:
       - backend
       - db
@@ -61,11 +63,14 @@ services:
     image: redis:7-alpine
     container_name: redis-cache
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    # ✅ SECURITY FIX: Use 'expose' instead of 'ports' to prevent external access
+    # Redis should only be accessible within the Docker network
+    expose:
+      - "6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    # ✅ SECURITY: Added requirepass for additional protection (set REDIS_PASSWORD in .env)
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -160,10 +165,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    ports:
-      - "5432:5432"
+    # ✅ SECURITY FIX: Removed 'ports' to prevent Docker from bypassing UFW
+    # PostgreSQL should ONLY be accessible within the Docker network
+    # Use 'docker exec -it db psql' for direct database access when needed
     expose:
-      - "5432" 
+      - "5432"
     networks:
       - app-network
 

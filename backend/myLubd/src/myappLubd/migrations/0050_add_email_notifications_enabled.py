@@ -3,10 +3,95 @@
 from django.db import migrations, models
 
 
+def add_email_notifications_column(apps, schema_editor):
+    """Add email_notifications_enabled column if the table exists and column doesn't exist"""
+    with schema_editor.connection.cursor() as cursor:
+        # First check if the userprofile table exists (case-insensitive check)
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND LOWER(table_name) = 'myapplubd_userprofile'
+            )
+        """)
+        table_exists = cursor.fetchone()[0]
+        
+        if not table_exists:
+            print("Table myappLubd_userprofile does not exist yet, skipping column addition")
+            return
+        
+        # Get the actual table name (respecting case)
+        cursor.execute("""
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND LOWER(table_name) = 'myapplubd_userprofile'
+        """)
+        result = cursor.fetchone()
+        actual_table_name = result[0] if result else 'myappLubd_userprofile'
+        
+        # Check if column already exists
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                AND LOWER(table_name) = 'myapplubd_userprofile'
+                AND column_name = 'email_notifications_enabled'
+            )
+        """)
+        column_exists = cursor.fetchone()[0]
+        
+        if column_exists:
+            print("Column email_notifications_enabled already exists, skipping")
+            return
+        
+        # Add the column
+        cursor.execute(f"""
+            ALTER TABLE "{actual_table_name}"
+            ADD COLUMN email_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE
+        """)
+        print(f"Added column email_notifications_enabled to {actual_table_name}")
+
+
+def remove_email_notifications_column(apps, schema_editor):
+    """Remove email_notifications_enabled column if it exists"""
+    with schema_editor.connection.cursor() as cursor:
+        # Check if table exists
+        cursor.execute("""
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND LOWER(table_name) = 'myapplubd_userprofile'
+        """)
+        result = cursor.fetchone()
+        
+        if not result:
+            return
+        
+        actual_table_name = result[0]
+        
+        # Check if column exists before dropping
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                AND LOWER(table_name) = 'myapplubd_userprofile'
+                AND column_name = 'email_notifications_enabled'
+            )
+        """)
+        column_exists = cursor.fetchone()[0]
+        
+        if column_exists:
+            cursor.execute(f"""
+                ALTER TABLE "{actual_table_name}"
+                DROP COLUMN email_notifications_enabled
+            """)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
         ('myappLubd', '0049_add_image_to_inventory'),
+        # Ensure UserProfile table exists (created in 0001_initial)
+        ('myappLubd', '0001_initial'),
     ]
 
     operations = [
@@ -22,16 +107,9 @@ class Migration(migrations.Migration):
                 ),
             ],
             database_operations=[
-                migrations.RunSQL(
-                    sql=(
-                        "ALTER TABLE myappLubd_userprofile "
-                        "ADD COLUMN IF NOT EXISTS email_notifications_enabled "
-                        "BOOLEAN NOT NULL DEFAULT TRUE;"
-                    ),
-                    reverse_sql=(
-                        "ALTER TABLE myappLubd_userprofile "
-                        "DROP COLUMN IF EXISTS email_notifications_enabled;"
-                    ),
+                migrations.RunPython(
+                    add_email_notifications_column,
+                    reverse_code=remove_email_notifications_column,
                 ),
             ],
         ),

@@ -24,12 +24,12 @@ class Migration(migrations.Migration):
             database_operations=[
                 migrations.RunSQL(
                     sql=(
-                        "ALTER TABLE myappLubd_userprofile "
+                        'ALTER TABLE "myappLubd_userprofile" '
                         "ADD COLUMN IF NOT EXISTS email_notifications_enabled "
                         "BOOLEAN NOT NULL DEFAULT TRUE;"
                     ),
                     reverse_sql=(
-                        "ALTER TABLE myappLubd_userprofile "
+                        'ALTER TABLE "myappLubd_userprofile" '
                         "DROP COLUMN IF EXISTS email_notifications_enabled;"
                     ),
                 ),

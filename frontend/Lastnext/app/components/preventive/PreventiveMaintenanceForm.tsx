@@ -1667,6 +1667,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               </div>
             )}
 
+
             {/* Maintenance Frequency - HIDDEN (defaults to 'monthly') */}
             {false && (
             <>
@@ -1866,30 +1867,68 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   const taskId = e.target.value ? Number(e.target.value) : '';
                   setFieldValue('procedure_template', taskId);
                   
-                  // If a task is selected, optionally populate procedure field and auto-calculate scheduled_date
+                  // If a task is selected, auto-populate fields based on template
                   if (taskId) {
                     const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(taskId));
                     if (selectedTask) {
+                      console.log(`[Template Selection] Selected template:`, {
+                        id: selectedTask.id,
+                        name: selectedTask.name,
+                        frequency: selectedTask.frequency,
+                        custom_days: selectedTask.custom_days
+                      });
+                      
                       // Auto-populate title if empty
-                      if (!values.pmtitle) {
+                      if (!values.pmtitle || values.pmtitle.trim() === '') {
                         setFieldValue('pmtitle', selectedTask.name);
+                        console.log(`[Template Selection] Auto-filled title: ${selectedTask.name}`);
                       }
                       
-                      // Auto-calculate scheduled_date based on template frequency
-                      if (selectedTask.frequency && selectedTask.frequency !== 'N/A') {
-                        const nextDate = calculateNextScheduledDate(
-                          selectedTask.frequency,
-                          selectedTask.frequency === 'custom' ? (selectedTask.custom_days ?? undefined) : undefined
-                        );
-                        const formattedDate = formatDateForInput(nextDate);
-                        setFieldValue('scheduled_date', formattedDate);
-                        setFieldValue('frequency', selectedTask.frequency as FrequencyType);
-                        if (selectedTask.frequency === 'custom' && selectedTask.custom_days) {
-                          setFieldValue('custom_days', selectedTask.custom_days);
+                      // CRITICAL: Auto-set frequency and calculate scheduled_date based on template frequency
+                      if (selectedTask.frequency && selectedTask.frequency.trim() !== '' && selectedTask.frequency !== 'N/A') {
+                        const templateFrequency = selectedTask.frequency.toLowerCase().trim();
+                        const validFrequencies: FrequencyType[] = ['daily', 'weekly', 'monthly', 'quarterly', 'semi_annual', 'annual', 'custom'];
+                        
+                        if (validFrequencies.includes(templateFrequency as FrequencyType)) {
+                          // Set frequency from template
+                          setFieldValue('frequency', templateFrequency as FrequencyType);
+                          console.log(`[Template Selection] Set frequency to: ${templateFrequency}`);
+                          
+                          // Calculate next scheduled date based on template frequency
+                          const customDays = templateFrequency === 'custom' ? (selectedTask.custom_days ?? undefined) : undefined;
+                          const nextDate = calculateNextScheduledDate(templateFrequency, customDays);
+                          const formattedDate = formatDateForInput(nextDate);
+                          
+                          // Always update scheduled_date when template is selected
+                          setFieldValue('scheduled_date', formattedDate);
+                          console.log(`[Template Selection] Calculated scheduled_date for ${templateFrequency} frequency:`, {
+                            nextDate: nextDate.toISOString(),
+                            formattedDate: formattedDate,
+                            customDays: customDays
+                          });
+                          
+                          // Set custom_days if frequency is custom
+                          if (templateFrequency === 'custom' && selectedTask.custom_days) {
+                            setFieldValue('custom_days', selectedTask.custom_days);
+                            console.log(`[Template Selection] Set custom_days to: ${selectedTask.custom_days}`);
+                          } else if (templateFrequency !== 'custom') {
+                            // Clear custom_days if not custom frequency
+                            setFieldValue('custom_days', '');
+                          }
+                        } else {
+                          console.warn(`[Template Selection] Invalid frequency "${selectedTask.frequency}" from template, using default`);
                         }
-                        console.log(`[Template Selection] Auto-calculated scheduled_date for ${selectedTask.frequency} frequency:`, formattedDate);
+                      } else {
+                        console.warn(`[Template Selection] Template has no valid frequency, keeping current values`);
                       }
+                    } else {
+                      console.warn(`[Template Selection] Template with ID ${taskId} not found in available tasks`);
                     }
+                  } else {
+                    // Template deselected - reset to defaults
+                    console.log(`[Template Selection] Template deselected, resetting to defaults`);
+                    setFieldValue('frequency', 'monthly');
+                    setFieldValue('custom_days', '');
                   }
                 }}
               >
@@ -1920,103 +1959,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               )}
             </div>
 
-            {/* Topics Selection */}
-            <div className="mb-4 sm:mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-                Topics (Optional){' '}
-                {loadingTopics && <span className="text-xs text-gray-500">(Loading...)</span>}
-              </label>
-              <div
-                className={`border rounded-md p-3 sm:p-4 max-h-60 overflow-y-auto ${
-                  errors.selected_topics && touched.selected_topics ? 'border-red-500' : 'border-gray-300'
-                }`}
-                aria-label="Select topics"
-              >
-                {loadingTopics ? (
-                  <div className="flex items-center justify-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                    <p className="ml-2 text-sm text-gray-500">Loading topics...</p>
-                  </div>
-                ) : availableTopics.length > 0 ? (
-                  <div className="space-y-3">
-                    {availableTopics.map((topic) => (
-                      <div key={topic.id} className="relative">
-                        <label className="flex items-center cursor-pointer">
-                          <Field name="selected_topics">
-                            {({ field: { value: selectedTopicsValue }, form: { setFieldValue: setTopicFieldValue } }: any) => (
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                                id={`topic-${topic.id}`}
-                                checked={selectedTopicsValue.includes(topic.id)}
-                                onChange={(e) => {
-                                  const currentSelection = selectedTopicsValue || [];
-                                  if (e.target.checked) {
-                                    setTopicFieldValue('selected_topics', [...currentSelection, topic.id]);
-                                  } else {
-                                    setTopicFieldValue('selected_topics', currentSelection.filter((id: number) => id !== topic.id));
-                                  }
-                                }}
-                              />
-                            )}
-                          </Field>
-                          <span className="ml-3 text-sm text-gray-700 flex-1">{topic.title}</span>
-                        </label>
-                        {values.selected_topics.includes(topic.id) && (
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 rounded-full"></div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-gray-500 mb-3">No topics available.</p>
-                    {!error && (
-                      <button
-                        type="button"
-                        onClick={fetchAvailableTopics}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      >
-                        Refresh Topics
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-              {errors.selected_topics && touched.selected_topics && (
-                <p className="mt-1 text-sm text-red-500">{errors.selected_topics}</p>
-              )}
-              {values.selected_topics.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-sm text-gray-600 mb-2">
-                    {values.selected_topics.length} topic{values.selected_topics.length > 1 ? 's' : ''} selected:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {values.selected_topics.map((topicId) => {
-                      const topic = availableTopics.find((t) => t.id === topicId);
-                      return topic ? (
-                        <span
-                          key={topic.id}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
-                        >
-                          {topic.title}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFieldValue('selected_topics', values.selected_topics.filter((id) => id !== topic.id));
-                            }}
-                            className="ml-1 text-blue-600 hover:text-blue-800"
-                            aria-label={`Remove ${topic.title}`}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
 
             {/* Image Uploads */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">

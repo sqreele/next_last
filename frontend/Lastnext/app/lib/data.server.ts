@@ -20,11 +20,41 @@ export class ServerApiError extends Error {
   }
 }
 
+// Retry configuration for network failures
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second base delay
+const REQUEST_TIMEOUT = 30000; // 30 seconds timeout
+
+// Helper function to delay execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Check if error is retryable (network errors, timeouts, 5xx errors)
+function isRetryableError(error: any, status?: number): boolean {
+  // Network errors (fetch failed, ECONNREFUSED, etc.)
+  if (error instanceof TypeError && error.message.includes('fetch failed')) {
+    return true;
+  }
+  // Timeout errors
+  if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('timeout'))) {
+    return true;
+  }
+  // Server errors (5xx) are retryable
+  if (status && status >= 500 && status < 600) {
+    return true;
+  }
+  // Gateway errors (502, 503, 504)
+  if (status && [502, 503, 504].includes(status)) {
+    return true;
+  }
+  return false;
+}
+
 export async function fetchWithToken<T>(
   url: string,
   token?: string,
   method: string = "GET",
-  body?: any
+  body?: any,
+  retries: number = MAX_RETRIES
 ): Promise<T> {
   // Production mode: Always make real API calls
 
@@ -69,11 +99,23 @@ export async function fetchWithToken<T>(
 
   logger.api(method, absoluteUrl, undefined, {
     hasAuth: !!headers["Authorization"],
-    method
+    method,
+    retriesLeft: retries
   });
 
+  // Create AbortController for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, REQUEST_TIMEOUT);
+
   try {
-    const response = await fetch(absoluteUrl, options);
+    const response = await fetch(absoluteUrl, {
+      ...options,
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
     const responseText = await response.text();
 
     logger.debug('API Response', {
@@ -96,13 +138,21 @@ export async function fetchWithToken<T>(
         }
       }
       
-      // Handle authentication errors specifically
+      // Handle authentication errors specifically (not retryable)
       if (response.status === 401) {
         if (!token) {
           errorMessage = "Authentication required - no access token provided";
         } else {
           errorMessage = "Authentication failed - invalid or expired token";
         }
+        throw new ServerApiError(errorMessage, response.status, errorData);
+      }
+      
+      // Retry on retryable errors
+      if (isRetryableError(null, response.status) && retries > 0) {
+        logger.warn(`Retrying request due to ${response.status} error (${retries} attempts left)`);
+        await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
+        return fetchWithToken<T>(url, token, method, body, retries - 1);
       }
       
       throw new ServerApiError(errorMessage, response.status, errorData);
@@ -125,6 +175,25 @@ export async function fetchWithToken<T>(
       );
     }
   } catch (error) {
+    clearTimeout(timeoutId);
+    
+    // Handle timeout errors
+    if (error instanceof Error && error.name === 'AbortError') {
+      if (retries > 0) {
+        logger.warn(`Request timeout, retrying (${retries} attempts left)`);
+        await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
+        return fetchWithToken<T>(url, token, method, body, retries - 1);
+      }
+      throw new ServerApiError("Request timeout", 408);
+    }
+    
+    // Retry on network errors
+    if (isRetryableError(error) && retries > 0) {
+      logger.warn(`Network error, retrying (${retries} attempts left):`, error instanceof Error ? error.message : String(error));
+      await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
+      return fetchWithToken<T>(url, token, method, body, retries - 1);
+    }
+    
     logger.error(`Error during ${method} request to ${absoluteUrl}`, error);
     if (error instanceof ServerApiError) {
       throw error;

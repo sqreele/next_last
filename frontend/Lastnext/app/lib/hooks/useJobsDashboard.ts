@@ -106,6 +106,23 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
   const realTimeUnsubscribeRef = useRef<(() => void) | null>(null);
   
+  // Rate limiting refs to prevent excessive calls
+  const isLoadingRef = useRef(false);
+  const lastCallTimeRef = useRef<number>(0);
+  const MIN_CALL_INTERVAL = 2000; // Minimum 2 seconds between calls
+  
+  // Refs to store current state values for use in callbacks without dependencies
+  const stateRef = useRef(state);
+  const filtersRef = useRef(state.filters);
+  const paginationRef = useRef(state.pagination);
+  
+  // Update refs when state changes
+  useEffect(() => {
+    stateRef.current = state;
+    filtersRef.current = state.filters;
+    paginationRef.current = state.pagination;
+  }, [state]);
+  
   // Get selected property from main store
   const selectedPropertyId = useMainStore(state => state.selectedPropertyId);
 
@@ -118,6 +135,23 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   // Refresh jobs data with pagination
   const refreshJobs = useCallback(async (loadMore: boolean = false) => {
     if (!isAuthenticated || !accessToken) return;
+    
+    // Prevent concurrent calls
+    if (isLoadingRef.current) {
+      console.log('useJobsDashboard: Already loading, skipping duplicate call');
+      return;
+    }
+    
+    // Prevent excessive calls (rate limiting)
+    const now = Date.now();
+    const timeSinceLastCall = now - lastCallTimeRef.current;
+    if (timeSinceLastCall < MIN_CALL_INTERVAL) {
+      console.log(`useJobsDashboard: Rate limiting - ${timeSinceLastCall}ms since last call`);
+      return;
+    }
+    
+    isLoadingRef.current = true;
+    lastCallTimeRef.current = now;
 
     try {
       setState(prev => ({ 
@@ -126,8 +160,12 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         error: null 
       }));
       
+      // Use refs to get current values without dependencies
+      const currentPagination = paginationRef.current;
+      const currentFilters = filtersRef.current;
+      
       // Calculate the page to load
-      const pageToLoad = loadMore ? state.pagination.page + 1 : 1;
+      const pageToLoad = loadMore ? currentPagination.page + 1 : 1;
       
       // Invalidate cache if not loading more
       if (!loadMore) {
@@ -137,12 +175,12 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
 
       // Include selected property in filters (use correct backend key: property_id)
       const filtersWithProperty = {
-        ...state.filters,
-        property_id: selectedPropertyId || (state.filters as any).property_id
-      } as typeof state.filters & { property_id?: string | null };
+        ...currentFilters,
+        property_id: selectedPropertyId || (currentFilters as any).property_id
+      } as typeof currentFilters & { property_id?: string | null };
 
       const [jobsResponse, properties, stats] = await Promise.all([
-        jobsApi.getJobs(accessToken, filtersWithProperty, pageToLoad, state.pagination.pageSize),
+        jobsApi.getJobs(accessToken, filtersWithProperty, pageToLoad, currentPagination.pageSize),
         jobsApi.getProperties(accessToken),
         jobsApi.getJobStats(accessToken, filtersWithProperty)
       ]);
@@ -178,8 +216,10 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
           error: 'Failed to refresh jobs'
         }));
       }
+    } finally {
+      isLoadingRef.current = false;
     }
-  }, [isAuthenticated, accessToken, state.filters, state.pagination.page, state.pagination.pageSize, selectedPropertyId]);
+  }, [isAuthenticated, accessToken, selectedPropertyId]);
 
   // Update job status
   const updateJobStatus = useCallback(async (jobId: string, status: string) => {
@@ -440,17 +480,33 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     [state.jobs.length, state.pagination.total]
   );
 
-  // Effects
+  // Store refreshJobs in a ref to avoid dependency loops
+  const refreshJobsRef = useRef(refreshJobs);
   useEffect(() => {
-    if (isAuthenticated) {
-      refreshJobs(false);
+    refreshJobsRef.current = refreshJobs;
+  }, [refreshJobs]);
+
+  // Effects - use refs to prevent dependency loops
+  useEffect(() => {
+    if (isAuthenticated && !isLoadingRef.current) {
+      const timeoutId = setTimeout(() => {
+        refreshJobsRef.current(false);
+      }, 100);
+      return () => clearTimeout(timeoutId);
     }
   }, [isAuthenticated]);
 
+  // Debounce filter changes to prevent excessive calls
   useEffect(() => {
-    if (isAuthenticated) {
-      refreshJobs(false);
-    }
+    if (!isAuthenticated) return;
+    
+    const timeoutId = setTimeout(() => {
+      if (!isLoadingRef.current) {
+        refreshJobsRef.current(false);
+      }
+    }, 300); // 300ms debounce for filter changes
+    
+    return () => clearTimeout(timeoutId);
   }, [isAuthenticated, state.filters]);
   
   // Apply server-side filters when selected tab changes to ensure we load
@@ -503,15 +559,21 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     }
     // If filters didn't change (e.g., re-clicking same tab), still ensure we refresh
     // to avoid cases where the list is stale after updates.
-    if (!filtersChanged) {
-      refreshJobs(false);
+    if (!filtersChanged && !isLoadingRef.current) {
+      const timeoutId = setTimeout(() => {
+        refreshJobsRef.current(false);
+      }, 100);
+      return () => clearTimeout(timeoutId);
     }
-  }, [isAuthenticated, state.selectedTab]);
+  }, [isAuthenticated, state.selectedTab, state.filters, updateFilters]);
   
   // Refresh when selected property changes
   useEffect(() => {
-    if (isAuthenticated && selectedPropertyId !== undefined) {
-      refreshJobs(false);
+    if (isAuthenticated && selectedPropertyId !== undefined && !isLoadingRef.current) {
+      const timeoutId = setTimeout(() => {
+        refreshJobsRef.current(false);
+      }, 100);
+      return () => clearTimeout(timeoutId);
     }
   }, [isAuthenticated, selectedPropertyId]);
 

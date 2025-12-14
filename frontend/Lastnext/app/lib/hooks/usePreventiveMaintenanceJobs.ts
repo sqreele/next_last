@@ -298,11 +298,19 @@ export function usePreventiveMaintenanceJobs({
     }
   }, [propertyId, limit, autoLoad, initialJobs, isPM, cacheKey, checkPropertyPMStatus, setJobs, setLoading, setError, setLastLoadTime, createAuthConfig]);
 
+  // Store loadJobs in a ref to avoid dependency loops
+  const loadJobsRef = useRef(loadJobs);
+  useEffect(() => {
+    loadJobsRef.current = loadJobs;
+  }, [loadJobs]);
+
   useEffect(() => {
     if (autoLoad) {
       debug(`Auto-loading jobs (initialJobs=${initialJobs.length})`);
       if (initialJobs.length === 0) {
-        loadJobs();
+        if (!isLoadingRef.current) {
+          loadJobsRef.current();
+        }
       } else {
         setJobs(initialJobs);
         const now = new Date();
@@ -310,7 +318,7 @@ export function usePreventiveMaintenanceJobs({
         lastLoadTimeRef.current = now;
       }
     }
-  }, [autoLoad, initialJobs, loadJobs, setJobs, setLastLoadTime]);
+  }, [autoLoad, initialJobs.length, setJobs, setLastLoadTime]);
 
   const updateJob = useCallback((updatedJob: Job) => {
     debug(`Updating job ${updatedJob.job_id}`);

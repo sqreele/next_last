@@ -169,13 +169,19 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
     sessionStatus,
   ]);
 
+  // Store refreshJobs in a ref to avoid including it in dependencies
+  const refreshJobsRef = useRef(refreshJobs);
+  useEffect(() => {
+    refreshJobsRef.current = refreshJobs;
+  }, [refreshJobs]);
+
   // Effect runs only when essential dependencies change, not on every filter change
   useEffect(() => {
     // Only fetch if authenticated and user data is available
     if (sessionStatus === 'authenticated' && session?.user?.id && session?.user?.accessToken) {
       // Use a small delay to batch rapid changes and prevent excessive calls
       const timeoutId = setTimeout(() => {
-        refreshJobs();
+        refreshJobsRef.current();
       }, 100);
       return () => clearTimeout(timeoutId);
     } else if (sessionStatus === 'unauthenticated') {
@@ -183,13 +189,12 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       setError(null);
       setIsLoading(false);
     }
-    // Depend on stable values - refreshJobs is stable due to useCallback with stable deps
+    // Depend on stable values - refreshJobs is accessed via ref to prevent dependency loops
   }, [
     sessionStatus,
     session?.user?.id,
     session?.user?.accessToken,
     activePropertyId,
-    refreshJobs, // Safe to include now because we have guards in refreshJobs
   ]);
 
   // Local state modifiers (addJob, updateJob, removeJob) remain the same as your provided code

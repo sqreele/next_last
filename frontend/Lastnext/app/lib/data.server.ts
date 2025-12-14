@@ -21,9 +21,9 @@ export class ServerApiError extends Error {
 }
 
 // Retry configuration for network failures
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 2; // Reduced from 3 to prevent excessive CPU usage
 const RETRY_DELAY = 1000; // 1 second base delay
-const REQUEST_TIMEOUT = 30000; // 30 seconds timeout
+const REQUEST_TIMEOUT = 20000; // 20 seconds timeout (reduced from 30)
 
 // Helper function to delay execution
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

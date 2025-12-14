@@ -1,7 +1,7 @@
 // @/app/lib/hooks/useJobsData.js
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSession } from "@/app/lib/session.client";
 // Import specific functions needed from the updated data.server.ts
 import { fetchAllJobsForProperty, fetchAllMyJobs } from "@/app/lib/data.server";
@@ -41,12 +41,35 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  
+  // Refs to prevent infinite loops and excessive calls
+  const isLoadingRef = useRef(false);
+  const lastCallTimeRef = useRef<number>(0);
+  const MIN_CALL_INTERVAL = 2000; // Minimum 2 seconds between calls
 
   const activePropertyId = options?.propertyId !== undefined ? options.propertyId : null;
 
   const refreshJobs = useCallback(async (showToast = false): Promise<boolean> => {
+    // Prevent concurrent calls
+    if (isLoadingRef.current) {
+      console.log('useJobsData: Already loading, skipping duplicate call');
+      return false;
+    }
+    
+    // Prevent excessive calls (rate limiting)
+    const now = Date.now();
+    const timeSinceLastCall = now - lastCallTimeRef.current;
+    if (timeSinceLastCall < MIN_CALL_INTERVAL) {
+      console.log(`useJobsData: Rate limiting - ${timeSinceLastCall}ms since last call`);
+      return false;
+    }
+    
+    isLoadingRef.current = true;
+    lastCallTimeRef.current = now;
+    
     if (sessionStatus === 'loading') {
         setIsLoading(true);
+        isLoadingRef.current = false;
         return false;
     }
     // Assuming api-client handles auth, we just need session to be loaded for user details
@@ -54,6 +77,7 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       setJobs([]);
       setError("Not authenticated. Please sign in.");
       setIsLoading(false);
+      isLoadingRef.current = false;
       return false;
     }
     // Need user details for client-side filtering
@@ -61,9 +85,9 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
         setJobs([]);
         setError("User details not available in session.");
         setIsLoading(false);
+        isLoadingRef.current = false;
         return false;
     }
-
 
     setIsLoading(true);
     setError(null);
@@ -132,27 +156,41 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       return false; // Failure
     } finally {
       setIsLoading(false);
+      isLoadingRef.current = false;
     }
     // Dependencies: activePropertyId and user session details used for filtering
+    // Note: We intentionally exclude options?.filters from deps to prevent excessive re-renders
+    // Filters are accessed directly from options inside the function
   }, [
     activePropertyId,
     session?.user?.id,
     session?.user?.username,
+    session?.user?.accessToken,
     sessionStatus,
-    // include filters used in query string to avoid stale closures
-    options?.filters?.room_id,
-    options?.filters?.room_name,
-    options?.filters?.status,
-    options?.filters?.is_preventivemaintenance,
-    options?.filters?.search,
-    options?.filters?.user_id,
-    options?.filters?.property_id,
   ]);
 
-  // Effect runs when refreshJobs identity changes
+  // Effect runs only when essential dependencies change, not on every filter change
   useEffect(() => {
-    refreshJobs();
-  }, [refreshJobs]);
+    // Only fetch if authenticated and user data is available
+    if (sessionStatus === 'authenticated' && session?.user?.id && session?.user?.accessToken) {
+      // Use a small delay to batch rapid changes and prevent excessive calls
+      const timeoutId = setTimeout(() => {
+        refreshJobs();
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    } else if (sessionStatus === 'unauthenticated') {
+      setJobs([]);
+      setError(null);
+      setIsLoading(false);
+    }
+    // Depend on stable values - refreshJobs is stable due to useCallback with stable deps
+  }, [
+    sessionStatus,
+    session?.user?.id,
+    session?.user?.accessToken,
+    activePropertyId,
+    refreshJobs, // Safe to include now because we have guards in refreshJobs
+  ]);
 
   // Local state modifiers (addJob, updateJob, removeJob) remain the same as your provided code
   const addJob = useCallback((newJob: Job) => {

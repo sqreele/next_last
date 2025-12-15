@@ -222,7 +222,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   }, [isAuthenticated, accessToken, selectedPropertyId]);
 
   // Store refreshJobs in a ref early to avoid dependency loops
-  const refreshJobsRef = useRef<typeof refreshJobs>(() => {});
+  const refreshJobsRef = useRef<typeof refreshJobs>(async () => {});
   useEffect(() => {
     refreshJobsRef.current = refreshJobs;
   }, [refreshJobs]);

@@ -26,7 +26,7 @@ except Exception:
 
 # Security
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-default-secret-key')
-DEBUG = os.getenv('DEBUG', 'True') in ('True', '1', 'true', 'yes')
+DEBUG = os.getenv('DEBUG', 'False') in ('True', '1', 'true', 'yes')
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Production Security Settings

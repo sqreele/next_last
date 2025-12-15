@@ -76,9 +76,15 @@ export const ROUTES = {
   resetPassword: '/auth/reset-password',
 } as const;
 
-// ✅ Add debug configuration (NODE_ENV is still available at runtime)
+// ✅ Debug configuration
+// Keep production logs quiet by default; enable explicitly via env.
+const IS_DEV = process.env.NODE_ENV === 'development';
+const DEBUG_API_CALLS = process.env.DEBUG_API_CALLS === 'true';
+const DEBUG_AUTH = process.env.DEBUG_AUTH === 'true';
+const DEBUG_SESSIONS = process.env.DEBUG_SESSIONS === 'true';
+
 export const DEBUG_CONFIG = {
-  logApiCalls: process.env.NODE_ENV === 'development',
-  logAuth: true, // Always log auth for now
-  logSessions: true,
+  logApiCalls: IS_DEV || DEBUG_API_CALLS,
+  logAuth: IS_DEV || DEBUG_AUTH,
+  logSessions: IS_DEV || DEBUG_SESSIONS,
 };

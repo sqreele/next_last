@@ -4,6 +4,40 @@ import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
 import { getErrorMessage } from '@/app/lib/utils/error-utils';
 
+type CacheEntry = {
+  expiresAt: number;
+  data: unknown;
+};
+
+// Small per-user/per-property cache to prevent accidental request storms
+// from hammering Auth/session parsing + backend calls.
+const ROOMS_CACHE_TTL_MS = 30_000; // 30s
+const ROOMS_CACHE_MAX_ENTRIES = 200;
+const roomsCache = new Map<string, CacheEntry>();
+
+function makeCacheKey(userId: string | undefined, propertyId: string | null) {
+  return `${userId || 'anon'}:${propertyId || 'all'}`;
+}
+
+function cacheGet(key: string): unknown | null {
+  const entry = roomsCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    roomsCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function cacheSet(key: string, data: unknown) {
+  // Basic eviction: delete the oldest entry when size cap exceeded
+  if (roomsCache.size >= ROOMS_CACHE_MAX_ENTRIES) {
+    const oldestKey = roomsCache.keys().next().value as string | undefined;
+    if (oldestKey) roomsCache.delete(oldestKey);
+  }
+  roomsCache.set(key, { data, expiresAt: Date.now() + ROOMS_CACHE_TTL_MS });
+}
+
 export async function GET(request: NextRequest) {
   try {
     if (DEBUG_CONFIG.logApiCalls) {
@@ -28,7 +62,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (!session?.user?.accessToken) {
-      console.log('❌ No access token in rooms API session');
+      if (DEBUG_CONFIG.logSessions) {
+        console.log('❌ No access token in rooms API session');
+      }
       return NextResponse.json({ 
         error: 'Unauthorized',
         debug: DEBUG_CONFIG.logSessions ? {
@@ -43,6 +79,17 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const propertyId = searchParams.get('property');
+
+    // Fast-path: serve cached rooms for this user + property (short TTL)
+    const cacheKey = makeCacheKey(session.user.id, propertyId);
+    const cached = cacheGet(cacheKey);
+    if (cached !== null) {
+      const res = NextResponse.json(cached);
+      // Allow private caching in the browser/CDN, but never shared.
+      res.headers.set('Cache-Control', 'private, max-age=30');
+      res.headers.set('X-Rooms-Cache', 'HIT');
+      return res;
+    }
     
     // ✅ Use the config for API URL construction
     const apiUrl = propertyId
@@ -88,8 +135,12 @@ export async function GET(request: NextRequest) {
     if (DEBUG_CONFIG.logApiCalls) {
       console.log('✅ Rooms fetched successfully:', Array.isArray(rooms) ? rooms.length : 'Not an array');
     }
-    
-    return NextResponse.json(rooms);
+
+    cacheSet(cacheKey, rooms);
+    const res = NextResponse.json(rooms);
+    res.headers.set('Cache-Control', 'private, max-age=30');
+    res.headers.set('X-Rooms-Cache', 'MISS');
+    return res;
 
   } catch (error) {
     console.error('❌ Error in rooms API:', error);

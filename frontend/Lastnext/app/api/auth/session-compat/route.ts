@@ -3,6 +3,7 @@ import { getCompatServerSession } from '@/app/lib/auth0/server-session';
 import { fetchProperties } from '@/app/lib/data.server';
 import { updateUserProfile } from '@/app/lib/data.server';
 import { Property } from '@/app/lib/types';
+import { DEBUG_CONFIG } from '@/app/lib/config';
 
 export async function GET() {
   try {
@@ -13,35 +14,39 @@ export async function GET() {
     }
 
     // Debug: Log session structure
-    console.log('🔍 Session structure:', {
-      hasUser: !!session.user,
-      username: session.user.username,
-      hasAccessToken: !!session.user.accessToken,
-      hasRefreshToken: !!session.user.refreshToken,
-      userKeys: Object.keys(session.user)
-    });
+    if (DEBUG_CONFIG.logSessions) {
+      console.log('🔍 Session structure:', {
+        hasUser: !!session.user,
+        username: session.user.username,
+        hasAccessToken: !!session.user.accessToken,
+        hasRefreshToken: !!session.user.refreshToken,
+        userKeys: Object.keys(session.user)
+      });
+    }
 
     // Fetch properties for the user if they have an access token
     let properties: Property[] = [];
     if (session.user.accessToken) {
       try {
-        console.log('🔍 Fetching properties for session user:', session.user.username);
+        if (DEBUG_CONFIG.logApiCalls) {
+          console.log('🔍 Fetching properties for session user:', session.user.username);
+        }
         properties = await fetchProperties(session.user.accessToken);
-        console.log('✅ Properties fetched for session:', properties.length);
+        if (DEBUG_CONFIG.logApiCalls) {
+          console.log('✅ Properties fetched for session:', properties.length);
+        }
       } catch (error) {
         console.error('❌ Error fetching properties for session:', error);
         // Continue with empty properties if fetch fails
       }
-    } else {
+    } else if (DEBUG_CONFIG.logSessions) {
       console.log('⚠️ No access token in session, cannot fetch properties');
-      // For now, return empty properties array
-      properties = [];
     }
 
     // Update user profile with Auth0 data if available
     // Note: Profile updates should be done explicitly, not automatically
     // This prevents issues with session cookie access and unnecessary updates
-    if (session.user.auth0_profile) {
+    if (session.user.auth0_profile && DEBUG_CONFIG.logAuth) {
       console.log('ℹ️ Auth0 profile data available for user:', session.user.username);
       console.log('ℹ️ Profile updates should be done explicitly via edit profile page');
     }
@@ -55,11 +60,13 @@ export async function GET() {
       }
     };
 
-    console.log('🔍 Session response with properties:', {
-      userId: updatedSession.user.id,
-      username: updatedSession.user.username,
-      propertiesCount: updatedSession.user.properties.length
-    });
+    if (DEBUG_CONFIG.logSessions) {
+      console.log('🔍 Session response with properties:', {
+        userId: updatedSession.user.id,
+        username: updatedSession.user.username,
+        propertiesCount: updatedSession.user.properties.length
+      });
+    }
 
     return NextResponse.json(updatedSession ?? { user: undefined }, { 
       headers: { 'Cache-Control': 'no-store' } 

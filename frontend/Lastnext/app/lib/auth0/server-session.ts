@@ -12,7 +12,10 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('auth0_session');
     if (!sessionCookie?.value) {
-      console.log('❌ No auth0_session cookie found');
+      // Only log in development - this happens frequently for unauthenticated requests
+      if (process.env.NODE_ENV === 'development') {
+        console.log('❌ No auth0_session cookie found');
+      }
       return null;
     }
 
@@ -21,17 +24,24 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
       
       // Validate that we have a proper session with user and access token
       if (!parsed?.user || !parsed.user.accessToken) {
-        console.log('❌ Invalid session data - missing user or access token');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('❌ Invalid session data - missing user or access token');
+        }
         return null;
       }
       
       // Check if the access token has expired
       if (parsed.user.accessTokenExpires && Date.now() > parsed.user.accessTokenExpires) {
-        console.log('❌ Access token has expired');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('❌ Access token has expired');
+        }
         return null;
       }
       
-      console.log('✅ Valid session found for user:', parsed.user.username);
+      // Only log in development to avoid flooding production logs
+      if (process.env.NODE_ENV === 'development') {
+        console.log('✅ Valid session found for user:', parsed.user.username);
+      }
       return parsed as CompatSession;
     } catch (e) {
       console.error('❌ Failed to parse auth0_session cookie:', e);

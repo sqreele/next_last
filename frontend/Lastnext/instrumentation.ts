@@ -2,24 +2,63 @@
 // Next.js instrumentation file for global error handling and startup tasks
 // This file runs once when the Node.js server starts
 
-// Known harmless error patterns that should be ignored
+// Error codes that should not crash the process (network errors, transient issues)
+const NON_FATAL_ERROR_CODES = new Set([
+  'ETIMEDOUT',      // Connection timeout
+  'ECONNREFUSED',   // Connection refused
+  'ECONNRESET',     // Connection reset
+  'ENOTFOUND',      // DNS lookup failed
+  'ENETUNREACH',    // Network unreachable
+  'EHOSTUNREACH',   // Host unreachable
+  'EPIPE',          // Broken pipe
+  'EAI_AGAIN',      // DNS lookup timeout
+]);
+
+// Known harmless error patterns that should be ignored (path-based)
 const IGNORED_ERROR_PATTERNS = [
   // Device file access errors (like /dev/lrt) that don't affect functionality
   { code: 'EACCES', pathPrefix: '/dev/' },
   { code: 'ENOENT', pathPrefix: '/dev/' },
+  // Double-slash paths that appear to be malformed (like //lrt)
+  { code: 'EACCES', pathPrefix: '//' },
+  { code: 'ENOENT', pathPrefix: '//' },
+];
+
+// Additional patterns to match specific known harmless paths
+const IGNORED_PATH_PATTERNS = [
+  /^\/+lrt$/i,  // Matches /lrt, //lrt, etc.
+  /^\/dev\//,   // Matches /dev/* paths
 ];
 
 function shouldIgnoreError(error: NodeJS.ErrnoException): boolean {
   const errorCode = error.code;
   const errorPath = error.path;
   
-  if (!errorCode || !errorPath) {
-    return false;
+  // Check if this is a non-fatal network error
+  if (errorCode && NON_FATAL_ERROR_CODES.has(errorCode)) {
+    return true;
   }
   
-  return IGNORED_ERROR_PATTERNS.some(
-    pattern => pattern.code === errorCode && errorPath.startsWith(pattern.pathPrefix)
-  );
+  // Check path-based patterns
+  if (errorPath) {
+    // Check if path matches any known harmless path patterns
+    const isIgnoredPath = IGNORED_PATH_PATTERNS.some(pattern => pattern.test(errorPath));
+    if (isIgnoredPath) {
+      return true;
+    }
+    
+    // Check if error matches known harmless error patterns
+    if (errorCode) {
+      const matchesPattern = IGNORED_ERROR_PATTERNS.some(
+        pattern => pattern.code === errorCode && errorPath.startsWith(pattern.pathPrefix)
+      );
+      if (matchesPattern) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
 }
 
 export async function register() {

@@ -3,6 +3,9 @@ import { devtools, persist } from 'zustand/middleware';
 import { UserProfile, Property, Job, JobStatus, JobPriority } from '../types';
 import { logger } from '../utils/logger';
 
+// Only enable devtools in development and on client-side
+const isDevtoolsEnabled = typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
+
 // User & Auth State
 interface UserState {
   userProfile: UserProfile | null;
@@ -127,136 +130,142 @@ const initialState = {
   maintenanceError: null,
 };
 
-// Create Store
+// Persist middleware configuration
+const persistConfig = {
+  name: 'main-store',
+  partialize: (state: MainStore) => ({
+    userProfile: state.userProfile,
+    selectedPropertyId: state.selectedPropertyId,
+    properties: state.properties,
+    // Don't persist sensitive data like tokens
+  })
+};
+
+// Store implementation
+const storeImplementation = (set: any, get: any) => ({
+  ...initialState,
+  
+  // User Actions
+  setUserProfile: (profile: UserProfile | null) => set({ userProfile: profile, isAuthenticated: !!profile }),
+  setSelectedPropertyId: (propertyId: string | null) => {
+    // ✅ SECURITY: Validate property access before setting
+    if (propertyId === null) {
+      set({ selectedPropertyId: null });
+      return;
+    }
+    
+    const state = get();
+    const userProps = state.properties;
+    
+    // Verify user has access to this property
+    const hasAccess = userProps.some((p: Property) => p.property_id === propertyId);
+    if (!hasAccess) {
+      logger.warn('Security: Attempted to select unauthorized property', {
+        propertyId,
+        userProperties: userProps.map((p: Property) => p.property_id)
+      });
+      // Don't set the unauthorized property
+      return;
+    }
+    
+    set({ selectedPropertyId: propertyId });
+  },
+  setAuthTokens: (access: string, refresh: string) => set({ accessToken: access, refreshToken: refresh }),
+  logout: () => set({ 
+    userProfile: null, 
+    isAuthenticated: false, 
+    accessToken: null, 
+    refreshToken: null,
+    selectedPropertyId: null 
+  }),
+  
+  // Property Actions
+  setProperties: (properties: Property[]) => set({ properties }),
+  setSelectedPropertyData: (property: Property | null) => set({ selectedPropertyData: property }),
+  setPropertyLoading: (loading: boolean) => set({ propertyLoading: loading }),
+  setPropertyError: (error: string | null) => set({ propertyError: error }),
+  
+  // Job Actions
+  setJobs: (jobs: Job[]) => set({ jobs, filteredJobs: jobs }),
+  addJob: (job: Job) => set((state: MainStore) => ({ 
+    jobs: [...state.jobs, job],
+    filteredJobs: [...state.filteredJobs, job]
+  })),
+  updateJob: (id: number, updates: Partial<Job>) => set((state: MainStore) => ({
+    jobs: state.jobs.map(job => job.id === id ? { ...job, ...updates } : job),
+    filteredJobs: state.filteredJobs.map(job => job.id === id ? { ...job, ...updates } : job)
+  })),
+  deleteJob: (id: number) => set((state: MainStore) => ({
+    jobs: state.jobs.filter(job => job.id !== id),
+    filteredJobs: state.filteredJobs.filter(job => job.id !== id)
+  })),
+  setJobLoading: (loading: boolean) => set({ jobLoading: loading }),
+  setJobError: (error: string | null) => set({ jobError: error }),
+  
+  // Filter Actions
+  setStatusFilter: (status: JobStatus | 'all') => set({ status }),
+  setPriorityFilter: (priority: JobPriority | 'all') => set({ priority }),
+  setPropertyFilter: (propertyId: string | null) => set({ propertyId }),
+  setDateRangeFilter: (dateRange: { start: Date | null; end: Date | null }) => set({ dateRange }),
+  setSearchQuery: (searchQuery: string) => set({ searchQuery }),
+  clearFilters: () => set({
+    status: 'all',
+    priority: 'all',
+    propertyId: null,
+    dateRange: { start: null, end: null },
+    searchQuery: ''
+  }),
+  
+  // Preventive Maintenance Actions
+  setMaintenanceItems: (items: any[]) => set({ maintenanceItems: items }),
+  setMaintenanceLoading: (loading: boolean) => set({ maintenanceLoading: loading }),
+  setMaintenanceError: (error: string | null) => set({ maintenanceError: error }),
+  
+  // Computed Values
+  getFilteredJobs: () => {
+    const state = get();
+    let filtered = state.jobs;
+    
+    if (state.status !== 'all') {
+      filtered = filtered.filter((job: Job) => job.status === state.status);
+    }
+    
+    if (state.priority !== 'all') {
+      filtered = filtered.filter((job: Job) => job.priority === state.priority);
+    }
+    
+    if (state.propertyId) {
+      filtered = filtered.filter((job: Job) => 
+        job.property_id === state.propertyId || 
+        job.properties?.some((p: string) => p === state.propertyId)
+      );
+    }
+    
+    if (state.searchQuery) {
+      filtered = filtered.filter((job: Job) => 
+        job.description.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
+        job.job_id.toLowerCase().includes(state.searchQuery.toLowerCase())
+      );
+    }
+    
+    return filtered;
+  },
+  
+  getJobsByStatus: (status: JobStatus) => get().jobs.filter((job: Job) => job.status === status),
+  getJobsByProperty: (propertyId: string) => get().jobs.filter((job: Job) => 
+    job.property_id === propertyId || 
+    job.properties?.some((p: string) => p === propertyId)
+  ),
+});
+
+// Create Store with conditional devtools (disabled in production/server to prevent /dev/lrt errors)
 export const useMainStore = create<MainStore>()(
-  devtools(
-    persist(
-      (set, get) => ({
-        ...initialState,
-        
-        // User Actions
-        setUserProfile: (profile) => set({ userProfile: profile, isAuthenticated: !!profile }),
-        setSelectedPropertyId: (propertyId) => {
-          // ✅ SECURITY: Validate property access before setting
-          if (propertyId === null) {
-            set({ selectedPropertyId: null });
-            return;
-          }
-          
-          const state = get();
-          const userProps = state.properties;
-          
-          // Verify user has access to this property
-          const hasAccess = userProps.some((p) => p.property_id === propertyId);
-          if (!hasAccess) {
-            logger.warn('Security: Attempted to select unauthorized property', {
-              propertyId,
-              userProperties: userProps.map(p => p.property_id)
-            });
-            // Don't set the unauthorized property
-            return;
-          }
-          
-          set({ selectedPropertyId: propertyId });
-        },
-        setAuthTokens: (access, refresh) => set({ accessToken: access, refreshToken: refresh }),
-        logout: () => set({ 
-          userProfile: null, 
-          isAuthenticated: false, 
-          accessToken: null, 
-          refreshToken: null,
-          selectedPropertyId: null 
-        }),
-        
-        // Property Actions
-        setProperties: (properties) => set({ properties }),
-        setSelectedPropertyData: (property) => set({ selectedPropertyData: property }),
-        setPropertyLoading: (loading) => set({ propertyLoading: loading }),
-        setPropertyError: (error) => set({ propertyError: error }),
-        
-        // Job Actions
-        setJobs: (jobs) => set({ jobs, filteredJobs: jobs }),
-        addJob: (job) => set((state) => ({ 
-          jobs: [...state.jobs, job],
-          filteredJobs: [...state.filteredJobs, job]
-        })),
-        updateJob: (id, updates) => set((state) => ({
-          jobs: state.jobs.map(job => job.id === id ? { ...job, ...updates } : job),
-          filteredJobs: state.filteredJobs.map(job => job.id === id ? { ...job, ...updates } : job)
-        })),
-        deleteJob: (id) => set((state) => ({
-          jobs: state.jobs.filter(job => job.id !== id),
-          filteredJobs: state.filteredJobs.filter(job => job.id !== id)
-        })),
-        setJobLoading: (loading) => set({ jobLoading: loading }),
-        setJobError: (error) => set({ jobError: error }),
-        
-        // Filter Actions
-        setStatusFilter: (status) => set({ status }),
-        setPriorityFilter: (priority) => set({ priority }),
-        setPropertyFilter: (propertyId) => set({ propertyId }),
-        setDateRangeFilter: (dateRange) => set({ dateRange }),
-        setSearchQuery: (searchQuery) => set({ searchQuery }),
-        clearFilters: () => set({
-          status: 'all',
-          priority: 'all',
-          propertyId: null,
-          dateRange: { start: null, end: null },
-          searchQuery: ''
-        }),
-        
-        // Preventive Maintenance Actions
-        setMaintenanceItems: (items) => set({ maintenanceItems: items }),
-        setMaintenanceLoading: (loading) => set({ maintenanceLoading: loading }),
-        setMaintenanceError: (error) => set({ maintenanceError: error }),
-        
-        // Computed Values
-        getFilteredJobs: () => {
-          const state = get();
-          let filtered = state.jobs;
-          
-          if (state.status !== 'all') {
-            filtered = filtered.filter(job => job.status === state.status);
-          }
-          
-          if (state.priority !== 'all') {
-            filtered = filtered.filter(job => job.priority === state.priority);
-          }
-          
-          if (state.propertyId) {
-            filtered = filtered.filter(job => 
-              job.property_id === state.propertyId || 
-              job.properties?.some(p => p === state.propertyId)
-            );
-          }
-          
-          if (state.searchQuery) {
-            filtered = filtered.filter(job => 
-              job.description.toLowerCase().includes(state.searchQuery.toLowerCase()) ||
-              job.job_id.toLowerCase().includes(state.searchQuery.toLowerCase())
-            );
-          }
-          
-          return filtered;
-        },
-        
-        getJobsByStatus: (status) => get().jobs.filter(job => job.status === status),
-        getJobsByProperty: (propertyId) => get().jobs.filter(job => 
-          job.property_id === propertyId || 
-          job.properties?.some(p => p === propertyId)
-        ),
-      }),
-      {
-        name: 'main-store',
-        partialize: (state) => ({
-          userProfile: state.userProfile,
-          selectedPropertyId: state.selectedPropertyId,
-          properties: state.properties,
-          // Don't persist sensitive data like tokens
-        })
-      }
-    )
-  )
+  isDevtoolsEnabled
+    ? devtools(
+        persist(storeImplementation, persistConfig),
+        { name: 'MainStore', enabled: true }
+      )
+    : persist(storeImplementation, persistConfig)
 );
 
 // Selector functions - defined outside to prevent recreation

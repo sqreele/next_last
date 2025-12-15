@@ -2,8 +2,6 @@
 "use client";
 
 import * as React from "react";
-/// <reference types="react" />
-/// <reference types="react-dom" />
 import { useSession } from "@/app/lib/session.client";
 import { useRouter } from "next/navigation";
 import {

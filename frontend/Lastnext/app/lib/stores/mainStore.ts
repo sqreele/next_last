@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { create, type StateCreator } from 'zustand';
+import { devtools, persist, type PersistOptions } from 'zustand/middleware';
 import { UserProfile, Property, Job, JobStatus, JobPriority } from '../types';
 import { logger } from '../utils/logger';
 
@@ -95,8 +95,17 @@ interface MainStore extends
   getJobsByProperty: (propertyId: string) => Job[];
 }
 
+type MainStoreState =
+  UserState &
+  PropertyState &
+  JobState &
+  FilterState &
+  PreventiveMaintenanceState;
+
+type MainStorePersistedState = Pick<MainStore, 'userProfile' | 'selectedPropertyId' | 'properties'>;
+
 // Initial State
-const initialState = {
+const initialState: MainStoreState = {
   // User
   userProfile: null,
   selectedPropertyId: null,
@@ -131,7 +140,7 @@ const initialState = {
 };
 
 // Persist middleware configuration
-const persistConfig = {
+const persistConfig: PersistOptions<MainStore, MainStorePersistedState> = {
   name: 'main-store',
   partialize: (state: MainStore) => ({
     userProfile: state.userProfile,
@@ -142,7 +151,7 @@ const persistConfig = {
 };
 
 // Store implementation
-const storeImplementation = (set: any, get: any) => ({
+const storeImplementation: StateCreator<MainStore, [], []> = (set, get) => ({
   ...initialState,
   
   // User Actions
@@ -268,14 +277,12 @@ const storeImplementation = (set: any, get: any) => ({
   ),
 });
 
-// Create Store with conditional devtools (disabled in production/server to prevent /dev/lrt errors)
+// Create Store (devtools is always wrapped, but disabled outside client dev)
 export const useMainStore = create<MainStore>()(
-  isDevtoolsEnabled
-    ? devtools(
-        persist(storeImplementation, persistConfig),
-        { name: 'MainStore', enabled: true }
-      )
-    : persist(storeImplementation, persistConfig)
+  devtools(persist(storeImplementation, persistConfig), {
+    name: 'MainStore',
+    enabled: isDevtoolsEnabled,
+  })
 );
 
 // Selector functions - defined outside to prevent recreation

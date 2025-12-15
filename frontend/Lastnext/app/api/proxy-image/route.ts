@@ -2,6 +2,51 @@ import sharp from 'sharp';
 
 export const dynamic = 'force-dynamic';
 
+// Allowed URL patterns for SSRF protection
+const ALLOWED_URL_PATTERNS = [
+  // Production domains
+  /^https:\/\/pcms\.live\//,
+  /^https:\/\/www\.pcms\.live\//,
+  // Development/Docker
+  /^http:\/\/localhost(:\d+)?\//,
+  /^http:\/\/127\.0\.0\.1(:\d+)?\//,
+  /^http:\/\/backend(:\d+)?\//,
+  /^http:\/\/django-backend(:\d+)?\//,
+  // Google OAuth profile images
+  /^https:\/\/lh[3-6]\.googleusercontent\.com\//,
+];
+
+function isAllowedUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    // Block private/internal networks
+    const hostname = parsed.hostname.toLowerCase();
+    
+    // Block internal IPs
+    if (
+      hostname === '0.0.0.0' ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('172.') ||
+      hostname.startsWith('192.168.') ||
+      hostname === '169.254.169.254' || // AWS metadata
+      hostname.includes('metadata') ||
+      hostname.includes('internal')
+    ) {
+      return false;
+    }
+    
+    // Only allow HTTP/HTTPS
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return false;
+    }
+    
+    // Check against allowed patterns
+    return ALLOWED_URL_PATTERNS.some(pattern => pattern.test(url));
+  } catch {
+    return false;
+  }
+}
+
 function isSupportedByReactPdf(contentType: string | null): boolean {
   if (!contentType) return false;
   const ct = contentType.toLowerCase();
@@ -18,6 +63,12 @@ export async function GET(request: Request) {
 
     if (!targetUrl) {
       return new Response('Missing url', { status: 400 });
+    }
+
+    // SSRF Protection: Validate URL against allowlist
+    if (!isAllowedUrl(targetUrl)) {
+      console.warn(`[proxy-image] Blocked request to untrusted URL: ${targetUrl}`);
+      return new Response('URL not allowed', { status: 403 });
     }
 
     // Fetch the remote image

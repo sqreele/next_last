@@ -3,6 +3,72 @@
 from django.db import migrations
 
 
+def remove_indexes_if_exist(apps, schema_editor):
+    """Remove indexes only if they exist in the database"""
+    db_alias = schema_editor.connection.alias
+    with schema_editor.connection.cursor() as cursor:
+        indexes_to_remove = [
+            'myappLubd_mp_name_idx',
+            'myappLubd_mp_difficulty_idx',
+            'myappLubd_mp_created_idx',
+        ]
+        
+        for index_name in indexes_to_remove:
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT 1 FROM pg_indexes 
+                    WHERE indexname = %s
+                )
+            """, [index_name])
+            exists = cursor.fetchone()[0]
+            if exists:
+                cursor.execute(f'DROP INDEX IF EXISTS "{index_name}"')
+                print(f"Removed index: {index_name}")
+            else:
+                print(f"Index {index_name} does not exist, skipping removal")
+
+
+def rename_index_if_exists(apps, schema_editor):
+    """Rename index only if it exists"""
+    db_alias = schema_editor.connection.alias
+    with schema_editor.connection.cursor() as cursor:
+        old_name = 'myappLubd_mp_category_idx'
+        new_name = 'myappLubd_m_categor_14f487_idx'
+        
+        # Check if old index exists
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM pg_indexes 
+                WHERE indexname = %s
+            )
+        """, [old_name])
+        old_exists = cursor.fetchone()[0]
+        
+        # Check if new index exists
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM pg_indexes 
+                WHERE indexname = %s
+            )
+        """, [new_name])
+        new_exists = cursor.fetchone()[0]
+        
+        if old_exists and not new_exists:
+            # Old index exists, rename it
+            cursor.execute(f'ALTER INDEX "{old_name}" RENAME TO "{new_name}"')
+            print(f"Renamed index: {old_name} -> {new_name}")
+        elif not old_exists and not new_exists:
+            # Neither exists, create the new one
+            cursor.execute(f'''
+                CREATE INDEX IF NOT EXISTS "{new_name}" 
+                ON myappLubd_maintenanceprocedure (category)
+            ''')
+            print(f"Created index: {new_name}")
+        else:
+            # New index already exists or old doesn't exist, nothing to do
+            print(f"Index {new_name} already exists or {old_name} doesn't exist, skipping")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,21 +76,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_name_idx',
+        # Only handle database operations - skip state operations that may fail
+        # The state will be updated by later migrations (0036, 0037, 0038, 0043)
+        # that handle this more safely. This migration only handles the database.
+        migrations.RunPython(
+            remove_indexes_if_exist,
+            reverse_code=migrations.RunPython.noop,
         ),
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_difficulty_idx',
-        ),
-        migrations.RemoveIndex(
-            model_name='maintenanceprocedure',
-            name='myappLubd_mp_created_idx',
-        ),
-        migrations.RenameIndex(
-            model_name='maintenanceprocedure',
-            new_name='myappLubd_m_categor_14f487_idx',
-            old_name='myappLubd_mp_category_idx',
+        migrations.RunPython(
+            rename_index_if_exists,
+            reverse_code=migrations.RunPython.noop,
         ),
     ]

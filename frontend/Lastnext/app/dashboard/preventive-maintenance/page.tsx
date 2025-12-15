@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { logger } from '@/app/lib/utils/logger';
 import { useRouter } from 'next/navigation';
 import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMaintenanceActions';
 import { useFilterStore } from '@/app/lib/stores';
 import { useAuthStore } from '@/app/lib/stores/useAuthStore';
+import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 
 // Import types
@@ -69,7 +70,8 @@ function PreventiveMaintenanceListPageContent() {
     fetchMaintenanceItems,
     deleteMaintenance,
     clearError,
-    totalCount
+    totalCount,
+    filterParams: pmFilterParams
   } = usePreventiveMaintenanceActions();
   
   // Mock functions for backward compatibility
@@ -97,20 +99,25 @@ function PreventiveMaintenanceListPageContent() {
     end_date,
     machine_id,
     page,
-    page_size
+    page_size,
+    totalPages: Math.ceil(totalCount / (page_size || 10))
   });
 
-  // Manual data fetching if no data is present
+  // Manual data fetching if no data is present - preserve current pagination
   useEffect(() => {
     console.log('🔍 Component mounted, checking data...');
     console.log('🔍 Selected Property:', selectedProperty);
     if (maintenanceItems.length === 0 && !isLoading && !error) {
       console.log('🔍 No data found, manually fetching...');
-      fetchMaintenanceItems();
+      // Use current pagination params when fetching
+      fetchMaintenanceItems({
+        page: page || 1,
+        page_size: page_size || 10,
+      });
     }
-  }, [maintenanceItems.length, isLoading, error, selectedProperty, fetchMaintenanceItems]);
+  }, [maintenanceItems.length, isLoading, error, selectedProperty, fetchMaintenanceItems, page, page_size]);
 
-  // Re-fetch data when selectedProperty changes
+  // Re-fetch data when selectedProperty changes - preserve current pagination
   useEffect(() => {
     console.log('=== PREVENTIVE MAINTENANCE LIST - PROPERTY CHANGE DEBUG ===');
     console.log('[Property Change] Selected Property:', selectedProperty);
@@ -118,9 +125,15 @@ function PreventiveMaintenanceListPageContent() {
     
     if (selectedProperty !== null && selectedProperty !== undefined) {
       console.log('[Property Change] Fetching maintenance items for property:', selectedProperty);
-      fetchMaintenanceItems();
+      // Reset to page 1 when property changes, but preserve page_size
+      fetchMaintenanceItems({
+        page: 1, // Reset to first page when property changes
+        page_size: page_size || 10,
+      });
+      // Also update the filter store to reset page
+      setPage(1);
     }
-  }, [selectedProperty, fetchMaintenanceItems]);
+  }, [selectedProperty, fetchMaintenanceItems, page_size, setPage]);
 
   // UI state
   const [showFilters, setShowFilters] = useState(false);
@@ -203,29 +216,95 @@ function PreventiveMaintenanceListPageContent() {
     return { total: maintenanceItems.length, completed, overdue, pending };
   }, [maintenanceItems]);
 
-  // Optimized sync with debouncing
+  // Get setFilterParams from PM store
+  const { setFilterParams } = usePreventiveMaintenanceStore();
+
+  // Track if we're syncing to prevent loops
+  const isSyncingRef = useRef(false);
+
+  // Sync PM store filterParams back to useFilterStore when updated from backend response
+  // This ensures both stores stay in sync after backend responses
   useEffect(() => {
+    if (pmFilterParams.page !== undefined && pmFilterParams.page_size !== undefined) {
+      const pmPage = Number(pmFilterParams.page) || 1;
+      const pmPageSize = Number(pmFilterParams.page_size) || 10;
+      const currentPage = Number(page) || 1;
+      const currentPageSize = Number(page_size) || 10;
+      
+      // Only sync if different and we're not already syncing to avoid infinite loops
+      if (!isSyncingRef.current && (currentPage !== pmPage || currentPageSize !== pmPageSize)) {
+        isSyncingRef.current = true;
+        const syncTimer = setTimeout(() => {
+          console.log('📄 Syncing PM store pagination back to filter store:', {
+            filterStore: { page: currentPage, page_size: currentPageSize },
+            pmStore: { page: pmPage, page_size: pmPageSize }
+          });
+          setPage(pmPage);
+          setPageSize(pmPageSize);
+          // Reset sync flag after a delay to allow the main sync effect to run
+          setTimeout(() => {
+            isSyncingRef.current = false;
+          }, 500);
+        }, 100);
+        
+        return () => clearTimeout(syncTimer);
+      }
+    }
+  }, [pmFilterParams.page, pmFilterParams.page_size, page, page_size, setPage, setPageSize]);
+
+  // Sync filter store with PM store and fetch data when filters change
+  useEffect(() => {
+    // Skip if we're in the middle of syncing to prevent loops
+    if (isSyncingRef.current) {
+      return;
+    }
+
     const debounceTimer = setTimeout(() => {
-      const newParams = {
-        status: status || '',
-        frequency: frequency || '',
-        search: search || '',
-        start_date: start_date || '',
-        end_date: end_date || '',
-        machine_id: machine_id || '',
-        page: page || 1,
-        page_size: page_size || 10
+      // Ensure page and page_size are always numbers
+      const currentPage = Number(page) || 1;
+      const currentPageSize = Number(page_size) || 10;
+      
+      const newParams: Record<string, any> = {
+        // Always include page and page_size as numbers
+        page: currentPage,
+        page_size: currentPageSize,
       };
+      
+      // Only include non-empty filter values
+      if (status && status !== 'all') newParams.status = status;
+      if (frequency && frequency !== 'all') newParams.frequency = frequency;
+      if (search) newParams.search = search;
+      if (start_date) newParams.start_date = start_date;
+      if (end_date) newParams.end_date = end_date;
+      if (machine_id) newParams.machine_id = machine_id;
 
       console.log('Filter sync - current values:', { status, frequency, search, start_date, end_date, machine_id, page, page_size });
-      console.log('Filter sync - newParams:', newParams);
+      console.log('Filter sync - newParams (cleaned):', newParams);
+      console.log('📄 Pagination:', { page: currentPage, page_size: currentPageSize });
 
-      // Update the PM store filter params
-      // This will trigger a refresh of the maintenance items
+      // Check if params actually changed before updating and fetching
+      const currentPMParams = pmFilterParams;
+      const paramsChanged = 
+        currentPMParams.page !== currentPage ||
+        currentPMParams.page_size !== currentPageSize ||
+        (status && status !== 'all' && currentPMParams.status !== status) ||
+        (frequency && frequency !== 'all' && currentPMParams.frequency !== frequency) ||
+        (search && currentPMParams.search !== search) ||
+        (start_date && currentPMParams.start_date !== start_date) ||
+        (end_date && currentPMParams.end_date !== end_date) ||
+        (machine_id && currentPMParams.machine_id !== machine_id);
+
+      if (paramsChanged) {
+        // Update the PM store filter params
+        setFilterParams(newParams);
+        
+        // Trigger fetch with the updated params
+        fetchMaintenanceItems(newParams);
+      }
     }, 300);
 
     return () => clearTimeout(debounceTimer);
-  }, [status, frequency, search, start_date, end_date, machine_id, page, page_size]);
+  }, [status, frequency, search, start_date, end_date, machine_id, page, page_size, fetchMaintenanceItems, setFilterParams, pmFilterParams]);
 
   // Sorted and filtered data
   const sortedItems = useMemo(() => {
@@ -379,19 +458,51 @@ function PreventiveMaintenanceListPageContent() {
     setSelectedItems([]);
   }, [selectedItems, deleteMaintenance]);
 
-  // Refresh handler
+  // Refresh handler - preserves current page and filters
   const handleRefresh = useCallback(async () => {
-    console.log('Refreshing data...');
-    await fetchMaintenanceItems();
-  }, [fetchMaintenanceItems]);
+    console.log('Refreshing data...', { currentPage: page, pageSize: page_size });
+    // Refresh with current pagination and filter params
+    await fetchMaintenanceItems({
+      page: page || 1,
+      page_size: page_size || 10,
+      status: status === 'all' ? '' : status || '',
+      frequency: frequency === 'all' ? '' : frequency || '',
+      search: search || '',
+      start_date: start_date || '',
+      end_date: end_date || '',
+      machine_id: machine_id || '',
+    });
+  }, [fetchMaintenanceItems, page, page_size, status, frequency, search, start_date, end_date, machine_id]);
 
   // DEBUG handlers
   const handleDebugMachine = useCallback(async () => {
     await debugMachineFilter('M257E5AC03B');
   }, [debugMachineFilter]);
 
-  // Pagination
-  const totalPages = Math.ceil(totalCount / (page_size || 10));
+  // Pagination - calculate from totalCount and page_size
+  const totalPages = useMemo(() => {
+    if (!totalCount || totalCount === 0) return 1;
+    const currentPageSize = page_size || 10;
+    const calculated = Math.ceil(totalCount / currentPageSize);
+    console.log('📄 Calculating totalPages:', { totalCount, page_size: currentPageSize, calculated });
+    return calculated;
+  }, [totalCount, page_size]);
+
+  // Validate and fix current page if it exceeds totalPages
+  useEffect(() => {
+    if (totalPages > 0 && totalCount > 0) {
+      const currentPageNum = Number(page) || 1;
+      if (currentPageNum > totalPages) {
+        console.warn('📄 Current page exceeds totalPages, resetting to page 1:', {
+          currentPage: currentPageNum,
+          totalPages,
+          totalCount,
+          page_size
+        });
+        setPage(1);
+      }
+    }
+  }, [totalPages, totalCount, page, page_size, setPage]);
 
   // Active filters count
   const activeFiltersCount = useMemo(() => {
@@ -524,7 +635,7 @@ function PreventiveMaintenanceListPageContent() {
         )}
 
         {/* Main Content */}
-        {isLoading ? (
+        {isLoading && maintenanceItems.length === 0 ? (
           <LoadingState />
         ) : sortedItems.length === 0 ? (
           <EmptyState 
@@ -534,35 +645,84 @@ function PreventiveMaintenanceListPageContent() {
             getMachineNameById={getMachineNameById}
           />
         ) : (
-          <MaintenanceList
-            items={sortedItems}
-            selectedItems={selectedItems}
-            onSelectAll={handleSelectAll}
-            onSelectItem={handleSelectItem}
-            onSort={handleSortWrapper}
-            onDelete={setDeleteConfirm}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            formatDate={formatDate}
-            getMachineNames={getMachineNames}
-            getStatusInfo={getStatusInfo}
-            currentFilters={currentFilters}
-            verifyPMProperty={verifyPMProperty}
-            selectedProperty={selectedProperty}
-          />
+          <div className="relative">
+            {/* Show loading overlay when refreshing existing data */}
+            {isLoading && maintenanceItems.length > 0 && (
+              <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="text-sm text-gray-600">Refreshing...</span>
+                </div>
+              </div>
+            )}
+            <MaintenanceList
+              items={sortedItems}
+              selectedItems={selectedItems}
+              onSelectAll={handleSelectAll}
+              onSelectItem={handleSelectItem}
+              onSort={handleSortWrapper}
+              onDelete={setDeleteConfirm}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              formatDate={formatDate}
+              getMachineNames={getMachineNames}
+              getStatusInfo={getStatusInfo}
+              currentFilters={currentFilters}
+              verifyPMProperty={verifyPMProperty}
+              selectedProperty={selectedProperty}
+            />
+          </div>
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <Pagination
-            currentPage={page || 1}
-            totalPages={totalPages}
-            pageSize={page_size || 10}
-            totalCount={totalCount}
-            onPageChange={(page) => handleFilterChangeWrapper('page', page)}
-            onPageSizeChange={(size) => handleFilterChangeWrapper('pageSize', size)}
-          />
-        )}
+        {(() => {
+          const currentPageSize = page_size || 10;
+          const calculatedTotalPages = totalCount > 0 ? Math.ceil(totalCount / currentPageSize) : 0;
+          const currentPage = Number(page) || 1;
+          const shouldShowPagination = calculatedTotalPages > 1 && totalCount > 0;
+          
+          // Ensure current page is valid (useEffect above will fix it, but validate here too)
+          const validCurrentPage = calculatedTotalPages > 0 
+            ? Math.max(1, Math.min(currentPage, calculatedTotalPages))
+            : 1;
+          
+          console.log('📄 Pagination render check:', {
+            totalCount,
+            page_size: currentPageSize,
+            calculatedTotalPages,
+            shouldShow: shouldShowPagination,
+            currentPage: validCurrentPage,
+            originalPage: currentPage,
+            hasItems: maintenanceItems.length > 0
+          });
+          
+          if (shouldShowPagination) {
+            return (
+              <Pagination
+                currentPage={validCurrentPage}
+                totalPages={calculatedTotalPages}
+                pageSize={currentPageSize}
+                totalCount={totalCount}
+                onPageChange={(newPage) => {
+                  // Validate the new page before changing
+                  if (newPage < 1 || (calculatedTotalPages > 0 && newPage > calculatedTotalPages)) {
+                    console.warn('📄 Invalid page requested:', { newPage, calculatedTotalPages, totalCount });
+                    return;
+                  }
+                  console.log('📄 Page change requested:', newPage);
+                  handleFilterChangeWrapper('page', newPage);
+                }}
+                onPageSizeChange={(newSize) => {
+                  console.log('📄 Page size change requested:', newSize);
+                  // Reset to page 1 when changing page size
+                  handleFilterChangeWrapper('page', 1);
+                  handleFilterChangeWrapper('pageSize', newSize);
+                }}
+              />
+            );
+          }
+          return null;
+        })()}
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">

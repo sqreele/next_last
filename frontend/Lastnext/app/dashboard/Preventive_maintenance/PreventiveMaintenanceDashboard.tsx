@@ -233,25 +233,50 @@ export default function PreventiveMaintenanceDashboard({
 
   // Error state
   if (error) {
+    const isPermissionError = error.toLowerCase().includes('permission') || error.toLowerCase().includes('403');
+    
     return (
       <Card className="w-full border-red-200 bg-red-50">
         <CardHeader>
           <CardTitle className="text-red-700 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            Error Loading Data
+            {isPermissionError ? 'Access Denied' : 'Error Loading Data'}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <p className="text-red-600">{error}</p>
+          {isPermissionError && (
+            <div className="mt-4 p-3 bg-red-100 rounded-lg border border-red-200">
+              <p className="text-sm text-red-800 font-medium mb-2">What you can do:</p>
+              <ul className="text-sm text-red-700 list-disc list-inside space-y-1">
+                <li>Select a different property that you have access to</li>
+                <li>Contact your administrator to request access to this property</li>
+                <li>Check if your account has the necessary permissions</li>
+              </ul>
+            </div>
+          )}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex gap-2">
           <Button
             onClick={() => loadJobs(true)} // Force refresh
             variant="outline"
             className="border-red-300 text-red-700 hover:bg-red-100"
           >
+            <RefreshCw className="h-4 w-4 mr-2" />
             Retry
           </Button>
+          {isPermissionError && (
+            <Button
+              onClick={() => {
+                // Clear the error and try loading without property filter
+                window.location.href = '/dashboard/preventive-maintenance';
+              }}
+              variant="outline"
+              className="border-red-300 text-red-700 hover:bg-red-100"
+            >
+              Go to Main Page
+            </Button>
+          )}
         </CardFooter>
       </Card>
     );

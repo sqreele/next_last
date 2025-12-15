@@ -221,6 +221,12 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     }
   }, [isAuthenticated, accessToken, selectedPropertyId]);
 
+  // Store refreshJobs in a ref early to avoid dependency loops
+  const refreshJobsRef = useRef<typeof refreshJobs>(() => {});
+  useEffect(() => {
+    refreshJobsRef.current = refreshJobs;
+  }, [refreshJobs]);
+
   // Update job status
   const updateJobStatus = useCallback(async (jobId: string, status: string) => {
     if (!isAuthenticated || !accessToken) return;
@@ -304,13 +310,18 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
 
   // Set page and load more
   const setPage = useCallback((page: number) => {
-    if (page > state.pagination.page) {
-      // Load more data
-      refreshJobs(true);
-    } else {
-      setState(prev => ({ ...prev, pagination: { ...prev.pagination, page } }));
-    }
-  }, [state.pagination.page, refreshJobs]);
+    setState(prev => {
+      if (page > prev.pagination.page) {
+        // Load more data - use ref to avoid dependency
+        if (refreshJobsRef.current) {
+          refreshJobsRef.current(true);
+        }
+        return prev; // State update handled by refreshJobs
+      } else {
+        return { ...prev, pagination: { ...prev.pagination, page } };
+      }
+    });
+  }, []); // No dependencies - uses refs and functional setState
 
   // Set page size
   const setPageSize = useCallback((pageSize: number) => {
@@ -480,11 +491,6 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     [state.jobs.length, state.pagination.total]
   );
 
-  // Store refreshJobs in a ref to avoid dependency loops
-  const refreshJobsRef = useRef(refreshJobs);
-  useEffect(() => {
-    refreshJobsRef.current = refreshJobs;
-  }, [refreshJobs]);
 
   // Effects - use refs to prevent dependency loops
   useEffect(() => {

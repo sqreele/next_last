@@ -69,70 +69,19 @@ const UtilityConsumptionPage = () => {
     return () => window.removeEventListener('resize', updateIsMobile);
   }, []);
 
-  // Fetch utility consumption data (fetch all pages for complete totals)
-  // Also fetch all years for comparison dropdowns
+  // Fetch utility consumption data - ALWAYS fetch ALL years for comparison
+  // Filter is applied client-side for display, but all data is kept for year-over-year comparison
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const params: Record<string, string> = {
-          year: selectedYear.toString(),
-        };
-        
-        if (selectedPropertyId) {
-          params.property_id = selectedPropertyId;
-        }
-        
-        if (selectedMonth) {
-          params.month = selectedMonth.toString();
-        }
-        
-        // Fetch all pages to get complete data for totals
-        let allResults: UtilityConsumption[] = [];
-        let currentUrl: string | null = '/api/v1/utility-consumption/';
-        let isFirstPage = true;
-
-        while (currentUrl) {
-          // Only add params on first page, subsequent pages use the URL from 'next' which already has params
-          const requestParams = isFirstPage ? params : undefined;
-          const response: { data: UtilityConsumptionResponse } = await apiClient.get<UtilityConsumptionResponse>(currentUrl, {
-            params: requestParams,
-          });
-
-          if (response.data.results) {
-            allResults = [...allResults, ...response.data.results];
-          }
-
-          // Check if there's a next page
-          if (response.data.next) {
-            // Extract the path and query string from the next URL
-            // The API might return a full URL or relative path
-            if (response.data.next.startsWith('http')) {
-              // Full URL - extract path and query
-              try {
-                const urlObj: URL = new URL(response.data.next);
-                currentUrl = urlObj.pathname + urlObj.search;
-              } catch {
-                // Fallback: try regex extraction
-                const match: RegExpMatchArray | null = response.data.next.match(/\/api\/v1\/[^?]+(\?.*)?/);
-                currentUrl = match ? match[0] : null;
-              }
-            } else {
-              // Relative path - use directly
-              currentUrl = response.data.next;
-            }
-            isFirstPage = false;
-          } else {
-            currentUrl = null;
-          }
-        }
-
-        // Also fetch all years data for comparison dropdowns (without year/month filter)
+        // Always fetch ALL years data (without year/month filter) for comparison dropdowns and year-over-year charts
         const allYearsParams: Record<string, string> = {};
         if (selectedPropertyId) {
           allYearsParams.property_id = selectedPropertyId;
         }
+        // DO NOT filter by year or month here - we need all data for comparison
 
         let allYearsResults: UtilityConsumption[] = [];
         let allYearsUrl: string | null = '/api/v1/utility-consumption/';
@@ -166,18 +115,8 @@ const UtilityConsumptionPage = () => {
           }
         }
 
-        // Combine filtered data with all years data, removing duplicates
-        const combinedData = [...allResults];
-        const existingKeys = new Set(allResults.map(item => `${item.id}-${item.year}-${item.month}`));
-        allYearsResults.forEach(item => {
-          const key = `${item.id}-${item.year}-${item.month}`;
-          if (!existingKeys.has(key)) {
-            combinedData.push(item);
-            existingKeys.add(key);
-          }
-        });
-
-        setData(combinedData);
+        // Store ALL years data - filtering will be done client-side in useMemo
+        setData(allYearsResults);
       } catch (err: any) {
         console.error('Error fetching utility consumption:', err);
         setError(err.message || 'Failed to fetch utility consumption data');
@@ -189,16 +128,44 @@ const UtilityConsumptionPage = () => {
     if (session?.user) {
       fetchData();
     }
-  }, [session, selectedPropertyId, selectedYear, selectedMonth]);
+  }, [session, selectedPropertyId]); // Removed selectedYear and selectedMonth from dependencies - fetch all data once
 
-  // Get available years from data
+  // Get available years from data, plus ensure common years (current year, previous year) are always available
   const availableYears = useMemo(() => {
     const years = new Set<number>();
+    const currentYear = new Date().getFullYear();
+    const previousYear = currentYear - 1;
+    
+    // Add years from data
     data.forEach(item => years.add(item.year));
+    
+    // Always include current year and previous year (for comparison)
+    years.add(currentYear);
+    years.add(previousYear);
+    
+    // Also include next year if we're near end of year (for future planning)
+    const nextYear = currentYear + 1;
+    years.add(nextYear);
+    
     return Array.from(years).sort((a, b) => b - a);
   }, [data]);
 
-  // Prepare chart data grouped by month
+  // Filter data by selected year and month (client-side filtering)
+  const filteredData = useMemo(() => {
+    return data.filter(item => {
+      // Filter by selected year
+      if (item.year !== selectedYear) {
+        return false;
+      }
+      // Filter by selected month if a month is selected
+      if (selectedMonth !== null && item.month !== selectedMonth) {
+        return false;
+      }
+      return true;
+    });
+  }, [data, selectedYear, selectedMonth]);
+
+  // Prepare chart data grouped by month (using filtered data)
   const monthlyData = useMemo(() => {
     const grouped: Record<string, {
       month: string;
@@ -220,7 +187,7 @@ const UtilityConsumptionPage = () => {
       return isNaN(num) ? 0 : num;
     };
 
-    data.forEach(item => {
+    filteredData.forEach(item => {
       const key = `${item.year}-${item.month}`;
       if (!grouped[key]) {
         grouped[key] = {
@@ -257,13 +224,13 @@ const UtilityConsumptionPage = () => {
     }));
 
     return result.sort((a, b) => a.monthNum - b.monthNum);
-  }, [data]);
+  }, [filteredData]);
 
-  // Calculate totals - sum all months when "All Months" is selected
+  // Calculate totals - sum all months when "All Months" is selected (using filtered data)
   const totals = useMemo(() => {
     // Convert all values to numbers and sum them
     const sumField = (field: keyof UtilityConsumption): number => {
-      return data.reduce((sum, item) => {
+      return filteredData.reduce((sum, item) => {
         const value = item[field];
         // Handle null, undefined, or string values
         if (value === null || value === undefined || value === '') {
@@ -283,14 +250,10 @@ const UtilityConsumptionPage = () => {
       water: sumField('water'),
       nightsale: sumField('nightsale'),
     };
-  }, [data]);
+  }, [filteredData]);
 
-  // Prepare comparison data: Selected Year 1 Same Month vs Selected Year 2 Same Month
+  // Prepare comparison data: All Months - Year 1 vs Year 2
   const monthComparisonData = useMemo(() => {
-    // Use selected month if available, otherwise use current month
-    const currentDate = new Date();
-    const comparisonMonth = selectedMonth || (currentDate.getMonth() + 1); // 1-12
-
     // Helper to safely convert to number
     const toNumber = (value: any): number => {
       if (value === null || value === undefined || value === '') return 0;
@@ -298,17 +261,7 @@ const UtilityConsumptionPage = () => {
       return isNaN(num) ? 0 : num;
     };
 
-    // Get year 1 same month data
-    const year1MonthData = data.filter(
-      item => item.year === comparisonYear1 && item.month === comparisonMonth
-    );
-    
-    // Get year 2 same month data
-    const year2MonthData = data.filter(
-      item => item.year === comparisonYear2 && item.month === comparisonMonth
-    );
-
-    // Sum values for each month
+    // Sum values for a month's data
     const sumMonthData = (monthData: UtilityConsumption[]) => {
       return {
         totalkwh: monthData.reduce((sum, item) => sum + toNumber(item.totalkwh), 0),
@@ -320,32 +273,53 @@ const UtilityConsumptionPage = () => {
       };
     };
 
-    const year1Data = sumMonthData(year1MonthData);
-    const year2Data = sumMonthData(year2MonthData);
+    // Generate comparison data for all 12 months
+    const comparisonData: Array<{
+      month: string;
+      monthNum: number;
+      [`${comparisonYear1}_totalkwh`]: number;
+      [`${comparisonYear2}_totalkwh`]: number;
+      [`${comparisonYear1}_totalelectricity`]: number;
+      [`${comparisonYear2}_totalelectricity`]: number;
+      [`${comparisonYear1}_water`]: number;
+      [`${comparisonYear2}_water`]: number;
+      [`${comparisonYear1}_nightsale`]: number;
+      [`${comparisonYear2}_nightsale`]: number;
+    }> = [];
 
-    const monthName = new Date(2000, comparisonMonth - 1).toLocaleString('default', { month: 'long' });
+    // Process each month (1-12)
+    for (let monthNum = 1; monthNum <= 12; monthNum++) {
+      const monthName = new Date(2000, monthNum - 1).toLocaleString('default', { month: 'long' });
+      
+      // Get year 1 data for this month
+      const year1MonthData = data.filter(
+        item => item.year === comparisonYear1 && item.month === monthNum
+      );
+      
+      // Get year 2 data for this month
+      const year2MonthData = data.filter(
+        item => item.year === comparisonYear2 && item.month === monthNum
+      );
 
-    return [
-      {
-        month: `${monthName} ${comparisonYear1}`,
-        totalkwh: year1Data.totalkwh,
-        onpeakkwh: year1Data.onpeakkwh,
-        offpeakkwh: year1Data.offpeakkwh,
-        totalelectricity: year1Data.totalelectricity,
-        water: year1Data.water,
-        nightsale: year1Data.nightsale,
-      },
-      {
-        month: `${monthName} ${comparisonYear2}`,
-        totalkwh: year2Data.totalkwh,
-        onpeakkwh: year2Data.onpeakkwh,
-        offpeakkwh: year2Data.offpeakkwh,
-        totalelectricity: year2Data.totalelectricity,
-        water: year2Data.water,
-        nightsale: year2Data.nightsale,
-      },
-    ];
-  }, [data, comparisonYear1, comparisonYear2, selectedMonth]);
+      const year1Data = sumMonthData(year1MonthData);
+      const year2Data = sumMonthData(year2MonthData);
+
+      comparisonData.push({
+        month: monthName,
+        monthNum,
+        [`${comparisonYear1}_totalkwh`]: year1Data.totalkwh,
+        [`${comparisonYear2}_totalkwh`]: year2Data.totalkwh,
+        [`${comparisonYear1}_totalelectricity`]: year1Data.totalelectricity,
+        [`${comparisonYear2}_totalelectricity`]: year2Data.totalelectricity,
+        [`${comparisonYear1}_water`]: year1Data.water,
+        [`${comparisonYear2}_water`]: year2Data.water,
+        [`${comparisonYear1}_nightsale`]: year1Data.nightsale,
+        [`${comparisonYear2}_nightsale`]: year2Data.nightsale,
+      } as any);
+    }
+
+    return comparisonData;
+  }, [data, comparisonYear1, comparisonYear2]);
 
   // Format number without leading zeros
   const formatNumber = (num: number): string => {
@@ -693,12 +667,12 @@ const UtilityConsumptionPage = () => {
             </CardContent>
           </Card>
 
-          {/* Month Comparison Chart: Selected Year 1 Same Month vs Selected Year 2 Same Month */}
+          {/* Year-over-Year Comparison Chart: All Months */}
           {monthComparisonData.length > 0 && (
             <Card className="mb-4 sm:mb-6">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base sm:text-lg">
-                  Year-over-Year Comparison: Same Month ({comparisonYear1} vs {comparisonYear2})
+                  Year-over-Year Comparison: All Months ({comparisonYear1} vs {comparisonYear2})
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
@@ -741,55 +715,157 @@ const UtilityConsumptionPage = () => {
                     </select>
                   </div>
                 </div>
-                <div className="h-[300px] sm:h-[350px] md:h-[400px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthComparisonData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis 
-                        dataKey="month" 
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                        angle={isMobile ? -45 : -30}
-                        textAnchor="end"
-                        height={isMobile ? 80 : 60}
-                      />
-                      <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
-                      <Tooltip 
-                        formatter={(value: any, name: string) => {
-                          if (name.includes('Electricity') || name.includes('Cost')) {
-                            return `$${formatNumber(Number(value))}`;
-                          }
-                          return formatNumber(Number(value));
-                        }}
-                      />
-                      <Legend 
-                        wrapperStyle={{ fontSize: isMobile ? 10 : 12 }}
-                      />
-                      <Bar 
-                        dataKey="totalkwh" 
-                        fill="#8884d8" 
-                        name="Total kWh"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Bar 
-                        dataKey="totalelectricity" 
-                        fill="#82ca9d" 
-                        name="Electricity Cost ($)"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Bar 
-                        dataKey="water" 
-                        fill="#4CAF50" 
-                        name="Water"
-                        radius={[4, 4, 0, 0]}
-                      />
-                      <Bar 
-                        dataKey="nightsale" 
-                        fill="#FF9800" 
-                        name="Night Sale"
-                        radius={[4, 4, 0, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                
+                {/* Total kWh Comparison */}
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Total kWh</h3>
+                  <div className="h-[300px] sm:h-[350px] md:h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={monthComparisonData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="month" 
+                          tick={{ fontSize: isMobile ? 10 : 12 }}
+                          angle={isMobile ? -45 : -30}
+                          textAnchor="end"
+                          height={isMobile ? 80 : 60}
+                        />
+                        <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+                        <Tooltip 
+                          formatter={(value: any) => formatNumber(Number(value))}
+                        />
+                        <Legend 
+                          wrapperStyle={{ fontSize: isMobile ? 10 : 12 }}
+                        />
+                        <Bar 
+                          dataKey={`${comparisonYear1}_totalkwh`}
+                          fill="#8884d8" 
+                          name={`${comparisonYear1} Total kWh`}
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Bar 
+                          dataKey={`${comparisonYear2}_totalkwh`}
+                          fill="#82ca9d" 
+                          name={`${comparisonYear2} Total kWh`}
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Electricity Cost Comparison */}
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Electricity Cost</h3>
+                  <div className="h-[300px] sm:h-[350px] md:h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={monthComparisonData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="month" 
+                          tick={{ fontSize: isMobile ? 10 : 12 }}
+                          angle={isMobile ? -45 : -30}
+                          textAnchor="end"
+                          height={isMobile ? 80 : 60}
+                        />
+                        <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+                        <Tooltip 
+                          formatter={(value: any) => `$${formatNumber(Number(value))}`}
+                        />
+                        <Legend 
+                          wrapperStyle={{ fontSize: isMobile ? 10 : 12 }}
+                        />
+                        <Bar 
+                          dataKey={`${comparisonYear1}_totalelectricity`}
+                          fill="#8884d8" 
+                          name={`${comparisonYear1} Cost ($)`}
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Bar 
+                          dataKey={`${comparisonYear2}_totalelectricity`}
+                          fill="#82ca9d" 
+                          name={`${comparisonYear2} Cost ($)`}
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Water Comparison */}
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Water</h3>
+                  <div className="h-[300px] sm:h-[350px] md:h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={monthComparisonData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="month" 
+                          tick={{ fontSize: isMobile ? 10 : 12 }}
+                          angle={isMobile ? -45 : -30}
+                          textAnchor="end"
+                          height={isMobile ? 80 : 60}
+                        />
+                        <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+                        <Tooltip 
+                          formatter={(value: any) => formatNumber(Number(value))}
+                        />
+                        <Legend 
+                          wrapperStyle={{ fontSize: isMobile ? 10 : 12 }}
+                        />
+                        <Bar 
+                          dataKey={`${comparisonYear1}_water`}
+                          fill="#4CAF50" 
+                          name={`${comparisonYear1} Water`}
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Bar 
+                          dataKey={`${comparisonYear2}_water`}
+                          fill="#81C784" 
+                          name={`${comparisonYear2} Water`}
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Night Sale Comparison */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Night Sale</h3>
+                  <div className="h-[300px] sm:h-[350px] md:h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={monthComparisonData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="month" 
+                          tick={{ fontSize: isMobile ? 10 : 12 }}
+                          angle={isMobile ? -45 : -30}
+                          textAnchor="end"
+                          height={isMobile ? 80 : 60}
+                        />
+                        <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
+                        <Tooltip 
+                          formatter={(value: any) => formatNumber(Number(value))}
+                        />
+                        <Legend 
+                          wrapperStyle={{ fontSize: isMobile ? 10 : 12 }}
+                        />
+                        <Bar 
+                          dataKey={`${comparisonYear1}_nightsale`}
+                          fill="#FF9800" 
+                          name={`${comparisonYear1} Night Sale`}
+                          radius={[4, 4, 0, 0]}
+                        />
+                        <Bar 
+                          dataKey={`${comparisonYear2}_nightsale`}
+                          fill="#FFB74D" 
+                          name={`${comparisonYear2} Night Sale`}
+                          radius={[4, 4, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </CardContent>
             </Card>

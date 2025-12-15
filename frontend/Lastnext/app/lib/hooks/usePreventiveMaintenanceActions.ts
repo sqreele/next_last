@@ -98,7 +98,13 @@ export function usePreventiveMaintenanceActions() {
       return;
     }
 
-    setLoading(true);
+    // Get current items count to determine if we should show loading state
+    // Only show full loading state if we don't have existing data (initial load)
+    // This prevents data from disappearing during refresh
+    const hasExistingData = maintenanceItems.length > 0;
+    if (!hasExistingData) {
+      setLoading(true);
+    }
     clearStoreError();
 
     try {
@@ -128,30 +134,93 @@ export function usePreventiveMaintenanceActions() {
       if (response.success && response.data) {
         let items: any[];
         let total: number;
+        let totalPages: number | undefined;
+        let currentPage: number | undefined;
         
         if (Array.isArray(response.data)) {
           items = response.data;
           total = response.data.length;
+          totalPages = 1;
+          currentPage = 1;
         } else {
+          // Paginated response
           items = response.data.results || [];
           total = response.data.count || 0;
+          totalPages = response.data.total_pages;
+          currentPage = response.data.current_page;
+          
+          console.log('[PM Fetch] Paginated response:', {
+            items: items.length,
+            total,
+            totalPages,
+            currentPage,
+            pageSize: response.data.page_size
+          });
         }
         
         setMaintenanceItems(items);
         setTotalCount(total);
+        
+        console.log('[PM Fetch] Setting state:', {
+          itemsCount: items.length,
+          totalCount: total,
+          totalPages,
+          currentPage
+        });
+        
+        // Update filter params with current page if paginated (but don't trigger another fetch)
+        // This ensures the UI state matches the backend response
+        if (totalPages !== undefined && currentPage !== undefined && response.data.page_size) {
+          // Validate that currentPage doesn't exceed totalPages
+          const validCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
+          
+          if (validCurrentPage !== currentPage) {
+            console.warn('[PM Fetch] Backend returned invalid page, correcting:', {
+              returnedPage: currentPage,
+              totalPages,
+              validPage: validCurrentPage
+            });
+          }
+          
+          // Only update if different to avoid infinite loops
+          const currentFilterParams = filterParams;
+          if (currentFilterParams.page !== validCurrentPage || currentFilterParams.page_size !== response.data.page_size) {
+            console.log('[PM Fetch] Updating filter params to match response:', {
+              oldPage: currentFilterParams.page,
+              newPage: validCurrentPage,
+              oldPageSize: currentFilterParams.page_size,
+              newPageSize: response.data.page_size,
+              totalPages
+            });
+            setFilterParams({ 
+              page: validCurrentPage,
+              page_size: response.data.page_size
+            });
+            // Note: The page component's useEffect will sync this back to useFilterStore
+            // when it detects the change, but we don't want to trigger another fetch here
+          }
+        }
       } else {
         setError(response.message || 'Failed to fetch maintenance items');
-        setMaintenanceItems([]);
+        // Only clear items if we don't have existing data
+        // This prevents clearing data that was visible before the error
+        if (maintenanceItems.length === 0) {
+          setMaintenanceItems([]);
+        }
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching maintenance items';
       logger.error('Error fetching maintenance items', error);
       setError(errorMessage);
-      setMaintenanceItems([]);
+      // Only clear items on error if we don't have existing data
+      // This prevents clearing data that was visible before the error
+      if (maintenanceItems.length === 0) {
+        setMaintenanceItems([]);
+      }
     } finally {
       setLoading(false);
     }
-  }, [filterParams, selectedProperty, accessToken, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError]);
+  }, [filterParams, selectedProperty, accessToken, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError, maintenanceItems]);
 
   // Fetch statistics
   const fetchStatistics = useCallback(async () => {

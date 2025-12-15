@@ -57,10 +57,12 @@ User = get_user_model()
 class MaintenancePagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
+    page_query_param = 'page'  # Explicitly set page query param name
     max_page_size = 100
 
     def get_paginated_response(self, data):
         page_size = self.get_page_size(self.request) or self.page.paginator.per_page
+        logger.info(f"[Pagination] Page: {self.page.number}, Page Size: {page_size}, Total: {self.page.paginator.count}, Total Pages: {self.page.paginator.num_pages}")
         return Response({
             'count': self.page.paginator.count,
             'total_pages': self.page.paginator.num_pages,
@@ -94,6 +96,39 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     ordering_fields = ['scheduled_date', 'created_at', 'frequency']
     ordering = ['-scheduled_date']
     permission_classes = [IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        """
+        List preventive maintenance items with pagination.
+        Logs pagination parameters for debugging.
+        """
+        page_param = request.query_params.get('page')
+        page_size_param = request.query_params.get('page_size')
+        logger.info(f"[PM List] Pagination params - page: {page_param}, page_size: {page_size_param}")
+        logger.info(f"[PM List] All query params: {dict(request.query_params)}")
+        
+        queryset = self.filter_queryset(self.get_queryset())
+        logger.info(f"[PM List] Filtered queryset count: {queryset.count()}")
+        
+        # Apply pagination
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            logger.info(f"[PM List] Pagination applied - page size: {len(page)}")
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        # If pagination is not applied, return all results (shouldn't happen with page param)
+        logger.warning(f"[PM List] Pagination not applied - returning all {queryset.count()} results")
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'count': len(serializer.data),
+            'results': serializer.data,
+            'total_pages': 1,
+            'current_page': 1,
+            'page_size': len(serializer.data),
+            'next': None,
+            'previous': None,
+        })
 
     def get_object(self):
         """

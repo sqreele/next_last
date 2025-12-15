@@ -77,7 +77,7 @@ export const usePreventiveMaintenanceStore = create<PreventiveMaintenanceState>(
         page_size: 10,
       },
 
-      setMaintenanceItems: (items) => set({ maintenanceItems: items, totalCount: items.length }),
+      setMaintenanceItems: (items) => set({ maintenanceItems: items }), // Don't overwrite totalCount here
       setTopics: (topics) => set({ topics }),
       setMachines: (machines) => set({ machines }),
       setStatistics: (stats) => set({ statistics: stats }),
@@ -85,9 +85,20 @@ export const usePreventiveMaintenanceStore = create<PreventiveMaintenanceState>(
       setTotalCount: (count) => set({ totalCount: count }),
       setLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
-      setFilterParams: (params) => set((state) => ({ 
-        filterParams: { ...state.filterParams, ...params, page: 1 } 
-      })),
+      setFilterParams: (params) => set((state) => {
+        // Only reset page to 1 if filters other than page/page_size are changing
+        const isFilterChange = Object.keys(params).some(key => 
+          key !== 'page' && key !== 'page_size' && params[key] !== state.filterParams[key]
+        );
+        return { 
+          filterParams: { 
+            ...state.filterParams, 
+            ...params,
+            // Only reset page if filters changed (not if just page/page_size changed)
+            ...(isFilterChange && !params.page ? { page: 1 } : {})
+          } 
+        };
+      }),
       clearError: () => set({ error: null }),
       clear: () => set({
         maintenanceItems: [],

@@ -206,6 +206,21 @@ apiClient.interceptors.response.use(
       originalRequest._retry = 0;
     }
     
+    // Log network errors for debugging
+    if (!error.response) {
+      const baseUrl = originalRequest?.baseURL || 'unknown';
+      const url = originalRequest?.url || 'unknown';
+      const fullUrl = `${baseUrl}${url}`;
+      console.error("[ResponseInterceptor] Network error (no response):", {
+        code: error.code,
+        message: error.message,
+        url: fullUrl,
+        method: originalRequest?.method,
+        retry: originalRequest._retry,
+        config: originalRequest
+      });
+    }
+    
     // Check for timeout errors specifically
     if (error.code === 'ECONNABORTED' && originalRequest._retry < MAX_RETRIES) {
       console.log(`[ResponseInterceptor] Request timeout, attempt ${originalRequest._retry + 1}/${MAX_RETRIES}.`);
@@ -235,6 +250,7 @@ apiClient.interceptors.response.use(
     }
     
     // Network errors - retry with backoff for non-401 responses
+    // Only retry if we got a response (not a network error without response)
     if (error.response && [502, 503, 504].includes(error.response.status) && originalRequest._retry < MAX_RETRIES) {
       console.log(`[ResponseInterceptor] Network error ${error.response.status}, attempt ${originalRequest._retry + 1}/${MAX_RETRIES}.`);
       originalRequest._retry++;
@@ -265,6 +281,39 @@ export const handleApiError = (error: unknown): ApiError => {
     if (axiosError.code === 'ECONNABORTED') {
       message = 'Request timed out. The server took too long to respond.';
       return new ApiError(message, 408); // Using 408 Request Timeout
+    }
+
+    // Handle network errors (no response received)
+    if (!axiosError.response) {
+      // Network error - request never reached the server
+      const baseUrl = axiosError.config?.baseURL || 'unknown';
+      const url = axiosError.config?.url || 'unknown';
+      const fullUrl = `${baseUrl}${url}`;
+      
+      // Provide more helpful error messages based on error code
+      if (axiosError.code === 'ERR_NETWORK' || axiosError.message === 'Network Error') {
+        message = `Network Error: Unable to connect to ${fullUrl}. Please check if the backend server is running and accessible.`;
+      } else if (axiosError.code === 'ECONNREFUSED') {
+        message = `Connection Refused: Cannot connect to ${fullUrl}. The server may be down or unreachable.`;
+      } else if (axiosError.code) {
+        message = `Network Error (${axiosError.code}): ${axiosError.message}. URL: ${fullUrl}`;
+      } else {
+        message = `Network Error: ${axiosError.message}. Unable to reach ${fullUrl}`;
+      }
+      
+      console.error(`[handleApiError] Network Error (no response):`, {
+        code: axiosError.code,
+        message: axiosError.message,
+        url: fullUrl,
+        config: axiosError.config,
+        originalError: error
+      });
+      
+      return new ApiError(message, undefined, { 
+        networkError: true,
+        url: fullUrl,
+        code: axiosError.code || 'UNKNOWN'
+      });
     }
 
     if (errorData) {

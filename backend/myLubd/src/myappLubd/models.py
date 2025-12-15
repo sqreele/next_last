@@ -5,6 +5,7 @@ from django.utils.crypto import get_random_string
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.db.models import Q  # ✅ PERFORMANCE OPTIMIZATION: Import Q for partial indexes
+from django.db.utils import ProgrammingError
 from PIL import Image
 from io import BytesIO
 import os
@@ -413,15 +414,69 @@ class PreventiveMaintenance(models.Model):
         before_image_path = self.before_image.path if self.before_image and hasattr(self.before_image, 'path') else None
         after_image_path = self.after_image.path if self.after_image and hasattr(self.after_image, 'path') else None
         
-        # Call the parent delete method
-        super().delete(*args, **kwargs)
+        # Clear ManyToMany relationships before deletion to avoid errors if intermediate tables don't exist
+        # This handles the case where migration 0052 hasn't been run or the table was dropped
+        try:
+            # Clear inventory_items relationship if it exists
+            if hasattr(self, 'inventory_items'):
+                self.inventory_items.clear()
+        except ProgrammingError as e:
+            # If the intermediate table doesn't exist, ignore the error
+            # This can happen if migrations haven't been run
+            error_str = str(e)
+            if 'does not exist' not in error_str or 'inventory_preventive_maintenances' not in error_str:
+                # Re-raise if it's a different ProgrammingError
+                raise
+        
+        try:
+            # Call the parent delete method
+            super().delete(*args, **kwargs)
+        except ProgrammingError as e:
+            # Handle case where ManyToMany intermediate table doesn't exist
+            error_str = str(e)
+            if 'does not exist' in error_str and 'inventory_preventive_maintenances' in error_str:
+                # The intermediate table doesn't exist, which means the ManyToMany relationship
+                # was never properly set up (migration 0052 may not have been run).
+                # Delete the record directly using SQL with proper table name handling
+                pk = self.pk
+                from django.db import connection
+                
+                # Get table name from Django's model meta and quote it properly
+                # PostgreSQL is case-sensitive for quoted identifiers, so we need to handle this
+                table_name = self._meta.db_table
+                
+                # Try with lowercase first (PostgreSQL's default behavior for unquoted identifiers)
+                try:
+                    with connection.cursor() as cursor:
+                        # Use lowercase table name (PostgreSQL converts unquoted to lowercase)
+                        cursor.execute(
+                            'DELETE FROM {} WHERE id = %s'.format(table_name.lower()),
+                            [pk]
+                        )
+                except ProgrammingError:
+                    # If lowercase fails, try with quoted name (preserves exact case)
+                    table_name_quoted = connection.ops.quote_name(table_name)
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            'DELETE FROM {} WHERE id = %s'.format(table_name_quoted),
+                            [pk]
+                        )
+            else:
+                # Re-raise if it's a different ProgrammingError
+                raise
         
         # Delete image files after model is deleted
         if before_image_path and os.path.isfile(before_image_path):
-            os.remove(before_image_path)
+            try:
+                os.remove(before_image_path)
+            except OSError:
+                pass  # File may have already been deleted
             
         if after_image_path and os.path.isfile(after_image_path):
-            os.remove(after_image_path)
+            try:
+                os.remove(after_image_path)
+            except OSError:
+                pass  # File may have already been deleted
 
 
 def get_upload_path(instance, filename):

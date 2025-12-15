@@ -240,22 +240,90 @@ export function usePreventiveMaintenanceJobs({
         } else {
           debug(`Unexpected PM jobs response format:`, pmResponse);
         }
-      } catch (e) {
+      } catch (e: any) {
         debug(`PM jobs endpoint failed:`, e);
+        
+        // Handle 403 permission errors gracefully
+        if (e?.status === 403 || e?.response?.status === 403) {
+          const errorMessage = e?.message || e?.response?.data?.detail || 'You do not have permission to access this property';
+          debug(`403 Permission denied for property ${propertyId}:`, errorMessage);
+          
+          // Set a user-friendly error message
+          setError(`Permission denied: ${errorMessage}. Please select a different property or contact your administrator.`);
+          
+          // Try fallback without property_id if property_id was included
+          if (propertyId && params.property_id) {
+            debug(`Retrying without property_id filter due to 403 error`);
+            const fallbackParams = { ...params };
+            delete fallbackParams.property_id;
+            try {
+              const fallbackUrl = `/api/v1/preventive-maintenance/jobs${Object.keys(fallbackParams).length ? `?${toQuery(fallbackParams)}` : ''}`;
+              debug(`Retrying PM jobs endpoint without property filter: ${fallbackUrl}`);
+              const fallbackResponse = await fetchData<{ jobs: Job[]; count: number }>(fallbackUrl, createAuthConfig());
+              if (fallbackResponse && Array.isArray(fallbackResponse.jobs)) {
+                // Filter jobs client-side to only show accessible ones
+                fetchedJobs = fallbackResponse.jobs.filter((job: Job) => {
+                  // Only include jobs if we can't determine property or if it matches
+                  return !propertyId || job.property_id === propertyId;
+                });
+                debug(`Received ${fetchedJobs.length} jobs from fallback (filtered)`);
+                // Clear the error since we got some data
+                setError(null);
+              }
+            } catch (fallbackError) {
+              debug(`Fallback also failed:`, fallbackError);
+            }
+          }
+        }
       }
 
       // 2) Fallback to generic jobs endpoint with is_preventivemaintenance=true
       if (!fetchedJobs) {
-        const fallbackParams = { ...params, is_preventivemaintenance: 'true' };
-        const fallbackUrl = `/api/v1/jobs${Object.keys(fallbackParams).length ? `?${toQuery(fallbackParams)}` : ''}`;
-        debug(`Falling back to jobs endpoint: ${fallbackUrl}`);
-        const response = await fetchData<Job[]>(fallbackUrl, createAuthConfig());
-        if (response && Array.isArray(response)) {
-          fetchedJobs = response;
-          debug(`Received ${response.length} jobs from fallback jobs endpoint`);
-        } else {
-          debug(`Unexpected fallback jobs response format:`, response);
-          fetchedJobs = [];
+        try {
+          const fallbackParams = { ...params, is_preventivemaintenance: 'true' };
+          const fallbackUrl = `/api/v1/jobs${Object.keys(fallbackParams).length ? `?${toQuery(fallbackParams)}` : ''}`;
+          debug(`Falling back to jobs endpoint: ${fallbackUrl}`);
+          const response = await fetchData<Job[]>(fallbackUrl, createAuthConfig());
+          if (response && Array.isArray(response)) {
+            fetchedJobs = response;
+            debug(`Received ${response.length} jobs from fallback jobs endpoint`);
+          } else {
+            debug(`Unexpected fallback jobs response format:`, response);
+            fetchedJobs = [];
+          }
+        } catch (fallbackError: any) {
+          debug(`Fallback jobs endpoint also failed:`, fallbackError);
+          
+          // Handle 403 in fallback too
+          if (fallbackError?.status === 403 || fallbackError?.response?.status === 403) {
+            const errorMessage = fallbackError?.message || fallbackError?.response?.data?.detail || 'You do not have permission to access this property';
+            setError(`Permission denied: ${errorMessage}. Please select a different property or contact your administrator.`);
+            
+            // Try without property_id if it was included
+            if (propertyId && params.property_id) {
+              const noPropertyParams = { ...params, is_preventivemaintenance: 'true' };
+              delete noPropertyParams.property_id;
+              try {
+                const noPropertyUrl = `/api/v1/jobs${Object.keys(noPropertyParams).length ? `?${toQuery(noPropertyParams)}` : ''}`;
+                debug(`Retrying fallback without property filter: ${noPropertyUrl}`);
+                const noPropertyResponse = await fetchData<Job[]>(noPropertyUrl, createAuthConfig());
+                if (noPropertyResponse && Array.isArray(noPropertyResponse)) {
+                  fetchedJobs = noPropertyResponse.filter((job: Job) => {
+                    return !propertyId || job.property_id === propertyId;
+                  });
+                  debug(`Received ${fetchedJobs.length} jobs from fallback without property filter`);
+                  setError(null);
+                }
+              } catch (finalError) {
+                debug(`Final fallback attempt failed:`, finalError);
+                fetchedJobs = [];
+              }
+            } else {
+              fetchedJobs = [];
+            }
+          } else {
+            fetchedJobs = [];
+          }
         }
       }
 

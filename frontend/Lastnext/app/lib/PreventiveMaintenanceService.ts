@@ -64,10 +64,13 @@ export interface UploadImagesData {
   after_image?: File;
 }
 
-// Add interface for paginated response
+// Add interface for paginated response - matches backend MaintenancePagination response
 interface PaginatedMaintenanceResponse {
   results: PreventiveMaintenance[];
   count: number;
+  total_pages: number;
+  current_page: number;
+  page_size: number;
   next?: string | null;
   previous?: string | null;
 }
@@ -175,8 +178,32 @@ class PreventiveMaintenanceService {
       console.log('=== FETCHING PREVENTIVE MAINTENANCE ===');
       console.log('Input params:', params);
       
-      // Create clean params object
-      const cleanParams = { ...params };
+      // Create clean params object - remove empty strings and undefined values
+      const cleanParams: Record<string, any> = {};
+      
+      // Always ensure page and page_size are set (required for Django pagination)
+      cleanParams.page = params?.page ? parseInt(String(params.page), 10) : 1;
+      cleanParams.page_size = params?.page_size ? parseInt(String(params.page_size), 10) : 10;
+      
+      // Include other non-empty filter params
+      if (params) {
+        Object.keys(params).forEach(key => {
+          // Skip page and page_size as we've already handled them
+          if (key === 'page' || key === 'page_size') return;
+          
+          const value = params[key];
+          // Only include non-empty, non-null, non-undefined values
+          if (value !== null && value !== undefined && value !== '') {
+            cleanParams[key] = value;
+          }
+        });
+      }
+      
+      // Log pagination params specifically
+      console.log('📄 Pagination params:', { 
+        page: cleanParams.page, 
+        page_size: cleanParams.page_size 
+      });
       
       // Log the machine_id specifically
       if (cleanParams.machine_id) {

@@ -3,6 +3,30 @@ set -e
 
 echo "🚀 Setting up Next.js application..."
 
+# Fail-fast if a known bad process/binary is present.
+# If you ever see this triggered, treat it as a potential compromise and rebuild the image with --no-cache
+# and rotate any secrets available to this container.
+security_guard() {
+    # Look for the suspicious process names (seen as children of next-server in the wild).
+    if ps 2>/dev/null | grep -E '(linuxsys|ssl_client)' >/dev/null 2>&1; then
+        echo "❌ SECURITY ALERT: suspicious process detected (linuxsys/ssl_client). Refusing to start." >&2
+        ps 2>/dev/null | grep -E '(linuxsys|ssl_client)' >&2 || true
+        # Best effort cleanup
+        pkill -9 linuxsys 2>/dev/null || true
+        pkill -9 ssl_client 2>/dev/null || true
+        rm -f ./linuxsys ./ssl_client /app/linuxsys /app/ssl_client 2>/dev/null || true
+        exit 1
+    fi
+
+    # Look for the suspicious binaries in the working dir (the process is often launched as ./linuxsys).
+    if [ -f "./linuxsys" ] || [ -f "/app/linuxsys" ]; then
+        echo "❌ SECURITY ALERT: suspicious binary found at ./linuxsys or /app/linuxsys. Refusing to start." >&2
+        ls -la ./linuxsys /app/linuxsys 2>/dev/null >&2 || true
+        rm -f ./linuxsys /app/linuxsys 2>/dev/null || true
+        exit 1
+    fi
+}
+
 # Function to check if database is ready
 check_database() {
     echo "🔍 Checking database connectivity..."
@@ -41,39 +65,12 @@ run_migrations() {
     echo "🔄 Database migrations not needed (using direct database connection)..."
 }
 
-# Function to create health check endpoint
-create_health_check() {
-    echo "🏥 Setting up health check..."
-    
-    # Create api directory if it doesn't exist
-    mkdir -p ./pages/api 2>/dev/null || mkdir -p ./app/api/health 2>/dev/null || true
-    
-    # Create a simple health check if it doesn't exist
-    if [ ! -f "./pages/api/health.js" ] && [ ! -f "./app/api/health/route.js" ]; then
-        echo "Creating health check endpoint..."
-        if [ -d "./pages/api" ]; then
-            cat > ./pages/api/health.js << 'EOF'
-export default function handler(req, res) {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-}
-EOF
-        elif [ -d "./app/api" ]; then
-            mkdir -p ./app/api/health
-            cat > ./app/api/health/route.js << 'EOF'
-export async function GET() {
-    return Response.json({ status: 'ok', timestamp: new Date().toISOString() });
-}
-EOF
-        fi
-    fi
-}
-
 # Main setup process
 main() {
     echo "🔧 Starting application setup..."
-    
-    # Create health check endpoint
-    create_health_check
+
+    # Fail fast if we detect known suspicious binaries/processes.
+    security_guard
     
     # Check if we should skip database setup
     if [ "$SKIP_DB_SETUP" = "true" ]; then

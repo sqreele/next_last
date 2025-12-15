@@ -146,7 +146,6 @@ const nextConfig = {
       const existingExternals = config.externals;
 
       const browserOnlyLibs = [
-        '@react-pdf/renderer',
         'jspdf',
         'html2canvas',
         'canvas',
@@ -221,11 +220,6 @@ const nextConfig = {
               name: 'recharts',
               priority: 30,
             },
-            reactPdf: {
-              test: /[\\/]node_modules[\\/](@react-pdf|react-pdf)[\\/]/,
-              name: 'react-pdf',
-              priority: 30,
-            },
             radix: {
               test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
               name: 'radix-ui',
@@ -236,7 +230,7 @@ const nextConfig = {
       };
     }
     
-    // Handle @react-pdf/renderer for client-side rendering
+    // Handle client-side rendering fallbacks
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -248,7 +242,7 @@ const nextConfig = {
       };
     }
     
-    // Ensure proper module resolution for @react-pdf/renderer
+    // Ensure proper module resolution
     config.resolve.extensions = [...(config.resolve.extensions || []), '.js', '.jsx', '.ts', '.tsx'];
     
     return config;

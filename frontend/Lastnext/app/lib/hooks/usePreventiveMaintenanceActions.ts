@@ -184,39 +184,41 @@ export function usePreventiveMaintenanceActions() {
         
         // Update filter params with current page if paginated (but don't trigger another fetch)
         // This ensures the UI state matches the backend response
-        // Check if response is paginated (not an array)
-        const isPaginatedResponse = !Array.isArray(response.data) && 'page_size' in response.data;
-        
-        if (totalPages !== undefined && currentPage !== undefined && isPaginatedResponse) {
-          const paginatedData = response.data as { page_size: number };
+        // Check if response is paginated (not an array) and has page_size property
+        if (totalPages !== undefined && currentPage !== undefined && !Array.isArray(response.data)) {
+          // Type guard: check if it's a paginated response
+          const paginatedData = response.data as { page_size?: number };
           
-          // Validate that currentPage doesn't exceed totalPages
-          const validCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
-          
-          if (validCurrentPage !== currentPage) {
-            console.warn('[PM Fetch] Backend returned invalid page, correcting:', {
-              returnedPage: currentPage,
-              totalPages,
-              validPage: validCurrentPage
-            });
-          }
-          
-          // Only update if different to avoid infinite loops
-          const currentFilterParams = filterParams;
-          if (currentFilterParams.page !== validCurrentPage || currentFilterParams.page_size !== paginatedData.page_size) {
-            console.log('[PM Fetch] Updating filter params to match response:', {
-              oldPage: currentFilterParams.page,
-              newPage: validCurrentPage,
-              oldPageSize: currentFilterParams.page_size,
-              newPageSize: paginatedData.page_size,
-              totalPages
-            });
-            setFilterParams({ 
-              page: validCurrentPage,
-              page_size: paginatedData.page_size
-            });
-            // Note: The page component's useEffect will sync this back to useFilterStore
-            // when it detects the change, but we don't want to trigger another fetch here
+          // Only proceed if page_size exists
+          if (paginatedData.page_size !== undefined) {
+            // Validate that currentPage doesn't exceed totalPages
+            const validCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
+            
+            if (validCurrentPage !== currentPage) {
+              console.warn('[PM Fetch] Backend returned invalid page, correcting:', {
+                returnedPage: currentPage,
+                totalPages,
+                validPage: validCurrentPage
+              });
+            }
+            
+            // Only update if different to avoid infinite loops
+            const currentFilterParams = filterParams;
+            if (currentFilterParams.page !== validCurrentPage || currentFilterParams.page_size !== paginatedData.page_size) {
+              console.log('[PM Fetch] Updating filter params to match response:', {
+                oldPage: currentFilterParams.page,
+                newPage: validCurrentPage,
+                oldPageSize: currentFilterParams.page_size,
+                newPageSize: paginatedData.page_size,
+                totalPages
+              });
+              setFilterParams({ 
+                page: validCurrentPage,
+                page_size: paginatedData.page_size
+              });
+              // Note: The page component's useEffect will sync this back to useFilterStore
+              // when it detects the change, but we don't want to trigger another fetch here
+            }
           }
         }
       } else {

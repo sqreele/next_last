@@ -237,7 +237,12 @@ const storeImplementation = (set: any, get: any) => ({
     if (state.propertyId) {
       filtered = filtered.filter((job: Job) => 
         job.property_id === state.propertyId || 
-        job.properties?.some((p: string) => p === state.propertyId)
+        job.properties?.some((p) => {
+          if (typeof p === 'string' || typeof p === 'number') {
+            return String(p) === state.propertyId;
+          }
+          return String(p.property_id) === state.propertyId || String(p.id) === state.propertyId;
+        })
       );
     }
     
@@ -254,7 +259,12 @@ const storeImplementation = (set: any, get: any) => ({
   getJobsByStatus: (status: JobStatus) => get().jobs.filter((job: Job) => job.status === status),
   getJobsByProperty: (propertyId: string) => get().jobs.filter((job: Job) => 
     job.property_id === propertyId || 
-    job.properties?.some((p: string) => p === propertyId)
+    job.properties?.some((p) => {
+      if (typeof p === 'string' || typeof p === 'number') {
+        return String(p) === propertyId;
+      }
+      return String(p.property_id) === propertyId || String(p.id) === propertyId;
+    })
   ),
 });
 

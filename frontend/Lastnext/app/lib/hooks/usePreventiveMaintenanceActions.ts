@@ -11,6 +11,7 @@ import { createPreventiveMaintenanceService } from '@/app/lib/PreventiveMaintena
 import { fetchTopics } from '@/app/lib/data.server';
 import MachineService from '@/app/lib/MachineService';
 import type { SearchParams, DashboardStats } from '@/app/lib/stores/usePreventiveMaintenanceStore';
+import type { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { logger } from '@/app/lib/utils/logger';
 
 export function usePreventiveMaintenanceActions() {
@@ -127,7 +128,9 @@ export function usePreventiveMaintenanceActions() {
       
       console.log('[PM Fetch] API Response:', {
         success: response.success,
-        count: Array.isArray(response.data) ? response.data.length : response.data?.count,
+        count: Array.isArray(response.data) 
+          ? response.data.length 
+          : (response.data as { count?: number })?.count,
         hasData: !!response.data
       });
       
@@ -143,18 +146,29 @@ export function usePreventiveMaintenanceActions() {
           totalPages = 1;
           currentPage = 1;
         } else {
-          // Paginated response
-          items = response.data.results || [];
-          total = response.data.count || 0;
-          totalPages = response.data.total_pages;
-          currentPage = response.data.current_page;
+          // Paginated response - TypeScript now knows this is PaginatedMaintenanceResponse
+          // Import the type from PreventiveMaintenanceService or define it locally
+          type PaginatedResponse = {
+            results?: PreventiveMaintenance[];
+            count?: number;
+            total_pages?: number;
+            current_page?: number;
+            page_size?: number;
+          };
+          
+          const paginatedResponse = response.data as PaginatedResponse;
+          
+          items = paginatedResponse.results || [];
+          total = paginatedResponse.count || 0;
+          totalPages = paginatedResponse.total_pages;
+          currentPage = paginatedResponse.current_page;
           
           console.log('[PM Fetch] Paginated response:', {
             items: items.length,
             total,
             totalPages,
             currentPage,
-            pageSize: response.data.page_size
+            pageSize: paginatedResponse.page_size
           });
         }
         
@@ -170,7 +184,12 @@ export function usePreventiveMaintenanceActions() {
         
         // Update filter params with current page if paginated (but don't trigger another fetch)
         // This ensures the UI state matches the backend response
-        if (totalPages !== undefined && currentPage !== undefined && response.data.page_size) {
+        // Check if response is paginated (not an array)
+        const isPaginatedResponse = !Array.isArray(response.data) && 'page_size' in response.data;
+        
+        if (totalPages !== undefined && currentPage !== undefined && isPaginatedResponse) {
+          const paginatedData = response.data as { page_size: number };
+          
           // Validate that currentPage doesn't exceed totalPages
           const validCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
           
@@ -184,17 +203,17 @@ export function usePreventiveMaintenanceActions() {
           
           // Only update if different to avoid infinite loops
           const currentFilterParams = filterParams;
-          if (currentFilterParams.page !== validCurrentPage || currentFilterParams.page_size !== response.data.page_size) {
+          if (currentFilterParams.page !== validCurrentPage || currentFilterParams.page_size !== paginatedData.page_size) {
             console.log('[PM Fetch] Updating filter params to match response:', {
               oldPage: currentFilterParams.page,
               newPage: validCurrentPage,
               oldPageSize: currentFilterParams.page_size,
-              newPageSize: response.data.page_size,
+              newPageSize: paginatedData.page_size,
               totalPages
             });
             setFilterParams({ 
               page: validCurrentPage,
-              page_size: response.data.page_size
+              page_size: paginatedData.page_size
             });
             // Note: The page component's useEffect will sync this back to useFilterStore
             // when it detects the change, but we don't want to trigger another fetch here

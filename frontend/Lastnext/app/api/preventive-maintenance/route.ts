@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
-import { API_CONFIG } from '@/app/lib/config';
+import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
 
 export async function GET(request: NextRequest) {
   try {
     // Get session to verify authentication
     const session = await getServerSession();
     
-    console.log('🔍 Preventive Maintenance API Debug:', {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      hasAccessToken: !!session?.user?.accessToken,
-      userId: session?.user?.id,
-      username: session?.user?.username,
-      accessTokenLength: session?.user?.accessToken?.length
-    });
+    if (DEBUG_CONFIG.logSessions) {
+      console.log('🔍 Preventive Maintenance API Debug:', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        hasAccessToken: !!session?.user?.accessToken,
+        userId: session?.user?.id,
+        username: session?.user?.username,
+        accessTokenLength: session?.user?.accessToken?.length
+      });
+    }
     
     if (!session?.user?.accessToken) {
       console.log('❌ No access token in preventive maintenance session');
@@ -28,12 +30,14 @@ export async function GET(request: NextRequest) {
     // Build the API URL
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/preventive-maintenance/${queryString ? `?${queryString}` : ''}`;
     
-    console.log('🔍 Preventive Maintenance API calling:', apiUrl);
-    console.log('🔍 Preventive Maintenance API headers:', {
-      hasAuth: !!session.user.accessToken,
-      authLength: session.user.accessToken?.length,
-      contentType: 'application/json'
-    });
+    if (DEBUG_CONFIG.logApiCalls) {
+      console.log('🔍 Preventive Maintenance API calling:', apiUrl);
+      console.log('🔍 Preventive Maintenance API headers:', {
+        hasAuth: !!session.user.accessToken,
+        authLength: session.user.accessToken?.length,
+        contentType: 'application/json'
+      });
+    }
 
     // Fetch preventive maintenance from the external API
     const response = await fetch(apiUrl, {
@@ -68,14 +72,16 @@ export async function POST(request: NextRequest) {
     // Get session to verify authentication
     const session = await getServerSession();
     
-    console.log('🔍 Preventive Maintenance POST API Debug:', {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      hasAccessToken: !!session?.user?.accessToken,
-      userId: session?.user?.id,
-      username: session?.user?.username,
-      accessTokenLength: session?.user?.accessToken?.length
-    });
+    if (DEBUG_CONFIG.logSessions) {
+      console.log('🔍 Preventive Maintenance POST API Debug:', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        hasAccessToken: !!session?.user?.accessToken,
+        userId: session?.user?.id,
+        username: session?.user?.username,
+        accessTokenLength: session?.user?.accessToken?.length
+      });
+    }
     
     if (!session?.user?.accessToken) {
       console.log('❌ No access token in preventive maintenance POST session');
@@ -85,18 +91,22 @@ export async function POST(request: NextRequest) {
     // Build the API URL
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/preventive-maintenance/`;
     
-    console.log('🔍 Preventive Maintenance POST API calling:', apiUrl);
+    if (DEBUG_CONFIG.logApiCalls) {
+      console.log('🔍 Preventive Maintenance POST API calling:', apiUrl);
+    }
     
     // Get the form data from the request
     const formData = await request.formData();
     
     // Log form data entries for debugging
-    console.log('🔍 FormData entries:');
-    for (const [key, value] of formData.entries()) {
-      if (value instanceof File) {
-        console.log(`  ${key}: File - ${value.name} (${value.size} bytes, ${value.type})`);
-      } else {
-        console.log(`  ${key}: ${value}`);
+    if (DEBUG_CONFIG.logApiCalls) {
+      console.log('🔍 FormData entries:');
+      for (const [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: File - ${value.name} (${value.size} bytes, ${value.type})`);
+        } else {
+          console.log(`  ${key}: ${value}`);
+        }
       }
     }
 
@@ -128,7 +138,9 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log('✅ Preventive maintenance created successfully:', data);
+    if (DEBUG_CONFIG.logApiCalls) {
+      console.log('✅ Preventive maintenance created successfully:', data);
+    }
     return NextResponse.json(data);
 
   } catch (error: any) {

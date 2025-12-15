@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
-import { API_CONFIG } from '@/app/lib/config';
+import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
 
 export async function POST(
   request: NextRequest,
@@ -12,14 +12,16 @@ export async function POST(
     
     const { pm_id } = await params;
     
-    console.log('🔍 Complete Preventive Maintenance API Debug:', {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      hasAccessToken: !!session?.user?.accessToken,
-      userId: session?.user?.id,
-      username: session?.user?.username,
-      pm_id: pm_id
-    });
+    if (DEBUG_CONFIG.logSessions) {
+      console.log('🔍 Complete Preventive Maintenance API Debug:', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        hasAccessToken: !!session?.user?.accessToken,
+        userId: session?.user?.id,
+        username: session?.user?.username,
+        pm_id: pm_id
+      });
+    }
     
     if (!session?.user?.accessToken) {
       console.log('❌ No access token in complete preventive maintenance session');
@@ -32,12 +34,14 @@ export async function POST(
     // Build the API URL
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/preventive-maintenance/${pm_id}/complete/`;
     
-    console.log('🔍 Complete Preventive Maintenance API calling:', apiUrl);
-    console.log('🔍 Complete Preventive Maintenance API headers:', {
-      hasAuth: !!session.user.accessToken,
-      authLength: session.user.accessToken?.length,
-      contentType: 'application/json'
-    });
+    if (DEBUG_CONFIG.logApiCalls) {
+      console.log('🔍 Complete Preventive Maintenance API calling:', apiUrl);
+      console.log('🔍 Complete Preventive Maintenance API headers:', {
+        hasAuth: !!session.user.accessToken,
+        authLength: session.user.accessToken?.length,
+        contentType: 'application/json'
+      });
+    }
 
     // Forward the request to the Django backend
     const response = await fetch(apiUrl, {

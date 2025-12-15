@@ -274,18 +274,8 @@ const UtilityConsumptionPage = () => {
     };
 
     // Generate comparison data for all 12 months
-    const comparisonData: Array<{
-      month: string;
-      monthNum: number;
-      [`${comparisonYear1}_totalkwh`]: number;
-      [`${comparisonYear2}_totalkwh`]: number;
-      [`${comparisonYear1}_totalelectricity`]: number;
-      [`${comparisonYear2}_totalelectricity`]: number;
-      [`${comparisonYear1}_water`]: number;
-      [`${comparisonYear2}_water`]: number;
-      [`${comparisonYear1}_nightsale`]: number;
-      [`${comparisonYear2}_nightsale`]: number;
-    }> = [];
+    // Use Record type to allow dynamic keys
+    const comparisonData: Array<Record<string, string | number>> = [];
 
     // Process each month (1-12)
     for (let monthNum = 1; monthNum <= 12; monthNum++) {
@@ -315,7 +305,7 @@ const UtilityConsumptionPage = () => {
         [`${comparisonYear2}_water`]: year2Data.water,
         [`${comparisonYear1}_nightsale`]: year1Data.nightsale,
         [`${comparisonYear2}_nightsale`]: year2Data.nightsale,
-      } as any);
+      });
     }
 
     return comparisonData;

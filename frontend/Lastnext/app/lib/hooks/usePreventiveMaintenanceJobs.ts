@@ -301,8 +301,9 @@ export function usePreventiveMaintenanceJobs({
             
             // Try without property_id if it was included
             if (propertyId && params.property_id) {
-              const noPropertyParams = { ...params, is_preventivemaintenance: 'true' };
-              delete noPropertyParams.property_id;
+              // Use destructuring to exclude property_id instead of delete
+              const { property_id: _, ...paramsWithoutProperty } = params;
+              const noPropertyParams = { ...paramsWithoutProperty, is_preventivemaintenance: 'true' };
               try {
                 const noPropertyUrl = `/api/v1/jobs${Object.keys(noPropertyParams).length ? `?${toQuery(noPropertyParams)}` : ''}`;
                 debug(`Retrying fallback without property filter: ${noPropertyUrl}`);

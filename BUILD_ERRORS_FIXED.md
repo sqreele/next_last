@@ -57,6 +57,35 @@ if (totalPages !== undefined && currentPage !== undefined && !Array.isArray(resp
 
 ---
 
+### 3. ✅ Fixed: `usePreventiveMaintenanceJobs.ts:305` - property_id Delete Error
+
+**Error:**
+```
+Type error: Property 'property_id' does not exist on type '{ is_preventivemaintenance: string; }'.
+  303 |             if (propertyId && params.property_id) {
+  304 |               const noPropertyParams = { ...params, is_preventivemaintenance: 'true' };
+> 305 |               delete noPropertyParams.property_id;
+      |                                       ^
+```
+
+**File:** `frontend/Lastnext/app/lib/hooks/usePreventiveMaintenanceJobs.ts:305`
+
+**Fix Applied:**
+```typescript
+// Before (❌ Error)
+const noPropertyParams = { ...params, is_preventivemaintenance: 'true' };
+delete noPropertyParams.property_id;
+
+// After (✅ Fixed)
+// Use destructuring to exclude property_id instead of delete
+const { property_id: _, ...paramsWithoutProperty } = params;
+const noPropertyParams = { ...paramsWithoutProperty, is_preventivemaintenance: 'true' };
+```
+
+**Reason:** TypeScript was inferring the object literal type without `property_id`, making the `delete` operation unsafe. Using destructuring explicitly excludes `property_id` and maintains proper typing.
+
+---
+
 ## Verification
 
 ### TypeScript Linter Check
@@ -67,8 +96,9 @@ if (totalPages !== undefined && currentPage !== undefined && !Array.isArray(resp
 ### Files Verified
 1. ✅ `useJobsDashboard.ts` - useRef fix verified
 2. ✅ `usePreventiveMaintenanceActions.ts` - page_size access fix verified
-3. ✅ `utility-consumption/page.tsx` - Record type fix verified
-4. ✅ `preventive-maintenance/page.tsx` - All fixes verified
+3. ✅ `usePreventiveMaintenanceJobs.ts` - property_id delete fix verified
+4. ✅ `utility-consumption/page.tsx` - Record type fix verified
+5. ✅ `preventive-maintenance/page.tsx` - All fixes verified
 
 ## Expected Build Result
 

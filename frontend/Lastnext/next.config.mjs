@@ -94,6 +94,8 @@ const nextConfig = {
     serverActions: {},
     // Disabled optimizePackageImports to avoid build-time TypeError in Next 15.5+
     // optimizePackageImports: ['lucide-react', 'recharts', '@radix-ui/react-icons'],
+    // Enable instrumentation for global error handling
+    instrumentationHook: true,
   },
   
   // ✅ PERFORMANCE: Enable React compiler optimizations

@@ -40,8 +40,6 @@ import User from '@/app/dashboard/user';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/app/components/ui/sheet';
 import { Input } from '@/app/components/ui/input';
 import { cn } from '@/app/lib/utils/cn';
-import { PropertyDebug } from '@/app/components/debug/PropertyDebug';
-import { ResponsiveDebug } from '@/app/components/debug/ResponsiveDebug';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -105,16 +103,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </main>
           
-          {/* Debug Component - Hidden on mobile */}
-          <div className="mobile:hidden">
-            <PropertyDebug />
-          </div>
-          
           {/* Mobile Bottom Navigation */}
           <BottomNav />
-          
-          {/* Responsive Debug Tool */}
-          <ResponsiveDebug />
         </div>
       </div>
   );

@@ -67,6 +67,7 @@ export default function PreventiveMaintenanceDashboard({
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [timeRangeFilter, setTimeRangeFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -88,7 +89,7 @@ export default function PreventiveMaintenanceDashboard({
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, priorityFilter, timeRangeFilter, activeTab]);
+  }, [statusFilter, priorityFilter, timeRangeFilter, monthFilter, activeTab]);
 
   const stats = getStats();
 
@@ -96,6 +97,31 @@ export default function PreventiveMaintenanceDashboard({
   const currentDate = new Date();
   const currentMonth = currentDate.toLocaleString('default', { month: 'long' });
   const currentYear = currentDate.getFullYear();
+
+  // Generate available months from jobs for the month filter
+  const availableMonths = useMemo(() => {
+    const monthsSet = new Map<string, { year: number; month: number; label: string }>();
+    
+    jobs.forEach(job => {
+      const date = new Date(job.created_at);
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const key = `${year}-${month}`;
+      
+      if (!monthsSet.has(key)) {
+        const label = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+        monthsSet.set(key, { year, month, label });
+      }
+    });
+    
+    // Sort by year and month descending (newest first)
+    return Array.from(monthsSet.entries())
+      .sort((a, b) => {
+        if (b[1].year !== a[1].year) return b[1].year - a[1].year;
+        return b[1].month - a[1].month;
+      })
+      .map(([key, value]) => ({ key, ...value }));
+  }, [jobs]);
 
   // Apply filters to the jobs
   const filteredJobs = useMemo(() => {
@@ -108,6 +134,15 @@ export default function PreventiveMaintenanceDashboard({
       // Filter by priority
       if (priorityFilter !== 'all' && job.priority !== priorityFilter) {
         return false;
+      }
+      
+      // Filter by specific month
+      if (monthFilter !== 'all') {
+        const jobDate = new Date(job.created_at);
+        const [filterYear, filterMonth] = monthFilter.split('-').map(Number);
+        if (jobDate.getFullYear() !== filterYear || jobDate.getMonth() !== filterMonth) {
+          return false;
+        }
       }
       
       // Filter by time range
@@ -133,7 +168,7 @@ export default function PreventiveMaintenanceDashboard({
       
       return true;
     });
-  }, [jobs, statusFilter, priorityFilter, timeRangeFilter]);
+  }, [jobs, statusFilter, priorityFilter, timeRangeFilter, monthFilter]);
 
   // Group jobs by status for tab filtering
   const jobsByStatus = useMemo(() => ({
@@ -156,6 +191,7 @@ export default function PreventiveMaintenanceDashboard({
     setStatusFilter('all');
     setPriorityFilter('all');
     setTimeRangeFilter('all');
+    setMonthFilter('all');
   };
 
   // Get available statuses and priorities from jobs
@@ -302,7 +338,7 @@ export default function PreventiveMaintenanceDashboard({
           
           {/* Filters panel */}
           {showFilters && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg border grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Status</label>
                 <Select 
@@ -344,6 +380,26 @@ export default function PreventiveMaintenanceDashboard({
               </div>
               
               <div>
+                <label className="text-sm font-medium mb-1.5 block">Month</label>
+                <Select 
+                  value={monthFilter} 
+                  onValueChange={setMonthFilter}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Months</SelectItem>
+                    {availableMonths.map(({ key, label }) => (
+                      <SelectItem key={key} value={key}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
                 <label className="text-sm font-medium mb-1.5 block">Time Range</label>
                 <Select 
                   value={timeRangeFilter} 
@@ -361,7 +417,7 @@ export default function PreventiveMaintenanceDashboard({
                 </Select>
               </div>
               
-              <div className="md:col-span-3 flex justify-end">
+              <div className="md:col-span-4 flex justify-end">
                 <Button 
                   variant="ghost" 
                   size="sm" 

@@ -599,13 +599,19 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   }, [filteredJobs, detailedUsers, session?.user]);
 
   // ✅ PERFORMANCE OPTIMIZATION: Memoized jobs by topic data (top 10)
+  // Excludes Preventive Maintenance jobs to show only regular maintenance jobs
   const jobsByTopic = useMemo(() => {
     if (filteredJobs.length === 0) return [];
+
+    // Filter out Preventive Maintenance jobs
+    const nonPMJobs = filteredJobs.filter(job => !job.is_preventivemaintenance);
+    
+    if (nonPMJobs.length === 0) return [];
 
     // Count jobs per topic
     const topicCounts = new Map<string, number>();
     
-    for (const job of filteredJobs) {
+    for (const job of nonPMJobs) {
       if (Array.isArray(job.topics) && job.topics.length > 0) {
         for (const topic of job.topics) {
           if (topic && topic.title) {
@@ -616,7 +622,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       }
     }
 
-    const total = filteredJobs.length;
+    const total = nonPMJobs.length;
 
     // Convert to array and sort by count (descending)
     const result = Array.from(topicCounts.entries())
@@ -1030,11 +1036,12 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           </Card>
         )}
 
-        {/* Best Topics Chart - Top 10 */}
+        {/* Best Topics Chart - Top 10 (Excludes PM Jobs) */}
         {jobsByTopic && jobsByTopic.length > 0 && (
           <Card className="w-full">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg sm:text-xl">Best Topics - Top 10</CardTitle>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">Excludes Preventive Maintenance Jobs</p>
             </CardHeader>
             <CardContent className="pt-0">
               <div id="topic-chart-container" className="h-[240px] sm:h-[280px] lg:h-[320px]">

@@ -87,7 +87,7 @@ export const usePreventiveMaintenanceStore = create<PreventiveMaintenanceState>(
       setError: (error) => set({ error }),
       setFilterParams: (params) => set((state) => {
         // Only reset page to 1 if filters other than page/page_size are changing
-        const isFilterChange = Object.keys(params).some(key => 
+        const isFilterChange = (Object.keys(params) as Array<keyof SearchParams>).some(key => 
           key !== 'page' && key !== 'page_size' && params[key] !== state.filterParams[key]
         );
         return { 

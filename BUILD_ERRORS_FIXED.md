@@ -86,6 +86,37 @@ const noPropertyParams = { ...paramsWithoutProperty, is_preventivemaintenance: '
 
 ---
 
+### 4. ✅ Fixed: `usePreventiveMaintenanceStore.ts:91` - Index Signature Error
+
+**Error:**
+```
+Type error: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type 'Partial<SearchParams>'.
+  No index signature with a parameter of type 'string' was found on type 'Partial<SearchParams>'.
+
+  90 |         const isFilterChange = Object.keys(params).some(key => 
+> 91 |           key !== 'page' && key !== 'page_size' && params[key] !== state.filterParams[key]
+      |                                                    ^
+```
+
+**File:** `frontend/Lastnext/app/lib/stores/usePreventiveMaintenanceStore.ts:91`
+
+**Fix Applied:**
+```typescript
+// Before (❌ Error)
+const isFilterChange = Object.keys(params).some(key => 
+  key !== 'page' && key !== 'page_size' && params[key] !== state.filterParams[key]
+);
+
+// After (✅ Fixed)
+const isFilterChange = (Object.keys(params) as Array<keyof SearchParams>).some(key => 
+  key !== 'page' && key !== 'page_size' && params[key] !== state.filterParams[key]
+);
+```
+
+**Reason:** TypeScript couldn't verify that `key` (a string) is a valid key of `SearchParams`. Casting `Object.keys(params)` to `Array<keyof SearchParams>` ensures type safety when indexing into `params` and `state.filterParams`.
+
+---
+
 ## Verification
 
 ### TypeScript Linter Check
@@ -97,8 +128,9 @@ const noPropertyParams = { ...paramsWithoutProperty, is_preventivemaintenance: '
 1. ✅ `useJobsDashboard.ts` - useRef fix verified
 2. ✅ `usePreventiveMaintenanceActions.ts` - page_size access fix verified
 3. ✅ `usePreventiveMaintenanceJobs.ts` - property_id delete fix verified
-4. ✅ `utility-consumption/page.tsx` - Record type fix verified
-5. ✅ `preventive-maintenance/page.tsx` - All fixes verified
+4. ✅ `usePreventiveMaintenanceStore.ts` - index signature fix verified
+5. ✅ `utility-consumption/page.tsx` - Record type fix verified
+6. ✅ `preventive-maintenance/page.tsx` - All fixes verified
 
 ## Expected Build Result
 

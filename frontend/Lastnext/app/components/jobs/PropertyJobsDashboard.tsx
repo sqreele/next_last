@@ -638,6 +638,56 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     return result;
   }, [filteredJobs]);
 
+  // ✅ PERFORMANCE OPTIMIZATION: Memoized jobs by topic data for current month (top 10)
+  // Excludes Preventive Maintenance jobs and filters by current month
+  const jobsByTopicThisMonth = useMemo(() => {
+    if (filteredJobs.length === 0) return { data: [], monthName: '' };
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    // Filter out Preventive Maintenance jobs and filter by current month
+    const thisMonthJobs = filteredJobs.filter(job => {
+      if (job.is_preventivemaintenance) return false;
+      if (!job.created_at) return false;
+      const jobDate = new Date(job.created_at);
+      return jobDate.getMonth() === currentMonth && jobDate.getFullYear() === currentYear;
+    });
+    
+    if (thisMonthJobs.length === 0) return { data: [], monthName };
+
+    // Count jobs per topic
+    const topicCounts = new Map<string, number>();
+    
+    for (const job of thisMonthJobs) {
+      if (Array.isArray(job.topics) && job.topics.length > 0) {
+        for (const topic of job.topics) {
+          if (topic && topic.title) {
+            const topicTitle = topic.title;
+            topicCounts.set(topicTitle, (topicCounts.get(topicTitle) || 0) + 1);
+          }
+        }
+      }
+    }
+
+    const total = thisMonthJobs.length;
+
+    // Convert to array and sort by count (descending)
+    const result = Array.from(topicCounts.entries())
+      .map(([title, count]) => ({
+        title,
+        topic: title,
+        count,
+        percentage: total > 0 ? ((count / total) * 100).toFixed(1) : '0.0',
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10
+
+    return { data: result, monthName, totalJobs: total };
+  }, [filteredJobs]);
+
   // ✅ PERFORMANCE OPTIMIZATION: Memoized jobs by room data (top 10)
   const jobsByRoom = useMemo(() => {
     if (filteredJobs.length === 0) return [];
@@ -930,6 +980,81 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
             </div>
           </CardContent>
         </Card>
+
+        {/* Best Topics This Month Chart */}
+        {jobsByTopicThisMonth.data && jobsByTopicThisMonth.data.length > 0 && (
+          <Card className="w-full border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-white">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🏆</span>
+                <CardTitle className="text-lg sm:text-xl text-blue-800">Best Topics This Month</CardTitle>
+              </div>
+              <p className="text-xs sm:text-sm text-blue-600 mt-1">
+                Top maintenance topics for {jobsByTopicThisMonth.monthName} ({jobsByTopicThisMonth.totalJobs} jobs)
+              </p>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div id="topic-this-month-chart-container" className="h-[280px] sm:h-[320px] lg:h-[360px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={jobsByTopicThisMonth.data} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" tick={{ fontSize: isMobile ? 8 : 10 }} />
+                    <YAxis 
+                      type="category" 
+                      dataKey="title" 
+                      tick={{ fontSize: isMobile ? 8 : 9 }} 
+                      width={isMobile ? 120 : 150}
+                    />
+                    <Tooltip 
+                      formatter={(value: number, name: string, props: { payload?: { percentage?: string } }) => [
+                        `${value} jobs (${props.payload?.percentage || '0'}%)`,
+                        'Job Count'
+                      ]}
+                    />
+                    <Bar 
+                      dataKey="count" 
+                      fill="#3b82f6" 
+                      name="Jobs"
+                      radius={[0, 4, 4, 0]}
+                    >
+                      {jobsByTopicThisMonth.data.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={index === 0 ? '#f59e0b' : index === 1 ? '#94a3b8' : index === 2 ? '#cd7f32' : '#3b82f6'} 
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Top 3 Highlight */}
+              {jobsByTopicThisMonth.data.length >= 1 && (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {jobsByTopicThisMonth.data.slice(0, 3).map((topic, index) => (
+                    <div 
+                      key={topic.title}
+                      className={`p-3 rounded-lg text-center ${
+                        index === 0 ? 'bg-amber-100 border border-amber-300' :
+                        index === 1 ? 'bg-gray-100 border border-gray-300' :
+                        'bg-orange-50 border border-orange-200'
+                      }`}
+                    >
+                      <span className="text-lg sm:text-xl">
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                      </span>
+                      <p className="font-semibold text-sm sm:text-base truncate mt-1" title={topic.title}>
+                        {topic.title}
+                      </p>
+                      <p className="text-xs sm:text-sm text-gray-600">
+                        {topic.count} jobs ({topic.percentage}%)
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Jobs per User Chart */}
         {jobsByUser && jobsByUser.length > 0 && (

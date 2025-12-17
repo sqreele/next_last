@@ -1,0 +1,278 @@
+{% load string_filters %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Jobs Requiring Attention{% if property_name %} - {{ property_name }}{% endif %}</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f5f7fb;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f5f7fb;">
+      <tr>
+        <td align="center" style="padding:24px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:720px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e6e8ee;">
+            
+            <!-- Header -->
+            <tr>
+              <td style="padding:24px 24px 16px 24px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#ffffff;">
+                <h1 style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:20px;line-height:28px;font-weight:700;">
+                  ⚠️ Action Required: {{ stats.total }} Jobs Need Attention
+                </h1>
+                <p style="margin:8px 0 0 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:13px;opacity:0.9;">
+                  {{ date_str }} {{ time_str }} &middot; {{ timezone_label }}
+                </p>
+                {% if property_name %}
+                <p style="margin:4px 0 0 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;opacity:0.8;">
+                  {{ property_name }} (ID: {{ property_id }})
+                </p>
+                {% endif %}
+              </td>
+            </tr>
+            
+            <!-- Summary Stats -->
+            <tr>
+              <td style="padding:24px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:Inter,Segoe UI,Arial,sans-serif;color:#1f2532;">
+                  
+                  <!-- Status Overview Cards -->
+                  <tr>
+                    <td style="padding:0 0 16px 0;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <!-- Total Jobs -->
+                          <td style="width:25%;padding-right:8px;">
+                            <div style="background:#f0f4ff;border:1px solid #dbe4ff;border-radius:10px;padding:12px;text-align:center;">
+                              <div style="font-size:11px;color:#5b6b8b;text-transform:uppercase;letter-spacing:0.4px;">Total</div>
+                              <div style="font-size:24px;line-height:30px;font-weight:700;color:#2a3a5e;">{{ stats.total }}</div>
+                            </div>
+                          </td>
+                          <!-- Pending -->
+                          <td style="width:25%;padding:0 4px;">
+                            <div style="background:#e3f2fd;border:1px solid #90caf9;border-radius:10px;padding:12px;text-align:center;">
+                              <div style="font-size:11px;color:#1565c0;text-transform:uppercase;letter-spacing:0.4px;">Pending</div>
+                              <div style="font-size:24px;line-height:30px;font-weight:700;color:#1976d2;">{{ stats.pending }}</div>
+                            </div>
+                          </td>
+                          <!-- In Progress -->
+                          <td style="width:25%;padding:0 4px;">
+                            <div style="background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;padding:12px;text-align:center;">
+                              <div style="font-size:11px;color:#e65100;text-transform:uppercase;letter-spacing:0.4px;">In Progress</div>
+                              <div style="font-size:24px;line-height:30px;font-weight:700;color:#f57c00;">{{ stats.in_progress }}</div>
+                            </div>
+                          </td>
+                          <!-- Waiting Sparepart -->
+                          <td style="width:25%;padding-left:8px;">
+                            <div style="background:#fce4ec;border:1px solid #f48fb1;border-radius:10px;padding:12px;text-align:center;">
+                              <div style="font-size:10px;color:#ad1457;text-transform:uppercase;letter-spacing:0.3px;">Waiting Part</div>
+                              <div style="font-size:24px;line-height:30px;font-weight:700;color:#c2185b;">{{ stats.waiting_sparepart }}</div>
+                            </div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  
+                  <!-- Priority & Defective Summary -->
+                  <tr>
+                    <td style="padding:0 0 20px 0;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td style="width:50%;padding-right:6px;">
+                            <div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:8px;padding:10px 12px;">
+                              <span style="font-size:12px;color:#c62828;font-weight:600;">🔴 High Priority: {{ stats.high_priority }}</span>
+                            </div>
+                          </td>
+                          <td style="width:50%;padding-left:6px;">
+                            <div style="background:#fff8e1;border:1px solid #ffecb3;border-radius:8px;padding:10px 12px;">
+                              <span style="font-size:12px;color:#f57f17;font-weight:600;">⚠️ Defective Items: {{ stats.defective }}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  
+                  <!-- Jobs List Header -->
+                  <tr>
+                    <td style="padding-bottom:12px;">
+                      <h2 style="margin:0;font-size:16px;line-height:24px;font-weight:700;color:#2a3a5e;border-bottom:2px solid #e5e7eb;padding-bottom:8px;">
+                        📋 Job Details
+                      </h2>
+                    </td>
+                  </tr>
+                  
+                  <!-- Job Cards -->
+                  {% for job_data in job_details %}
+                  <tr>
+                    <td style="padding-bottom:16px;">
+                      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;">
+                        
+                        <!-- Job Header -->
+                        <tr>
+                          <td style="background:#f8fafc;padding:12px 16px;border-bottom:1px solid #e5e7eb;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                              <tr>
+                                <td>
+                                  <span style="font-size:14px;font-weight:700;color:#1e293b;">{{ job_data.job_id }}</span>
+                                  {% if job_data.is_defective %}
+                                  <span style="display:inline-block;margin-left:8px;padding:2px 8px;background:#fef2f2;color:#dc2626;font-size:10px;font-weight:600;border-radius:4px;text-transform:uppercase;">Defective</span>
+                                  {% endif %}
+                                </td>
+                                <td align="right">
+                                  <!-- Status Badge -->
+                                  <span style="display:inline-block;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;background:{{ job_data.status_info.bg }};color:{{ job_data.status_info.color }};">
+                                    {{ job_data.status_info.label }}
+                                  </span>
+                                  <!-- Priority Badge -->
+                                  <span style="display:inline-block;margin-left:4px;padding:4px 10px;border-radius:4px;font-size:11px;font-weight:600;background:{{ job_data.priority_info.bg }};color:{{ job_data.priority_info.color }};">
+                                    {{ job_data.priority|title }}
+                                  </span>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                        
+                        <!-- Job Details -->
+                        <tr>
+                          <td style="padding:16px;">
+                            <!-- Description -->
+                            <div style="margin-bottom:12px;">
+                              <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px;">Description</div>
+                              <div style="font-size:13px;color:#374151;line-height:1.5;">{{ job_data.description }}</div>
+                            </div>
+                            
+                            {% if job_data.remarks %}
+                            <!-- Remarks -->
+                            <div style="margin-bottom:12px;">
+                              <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px;">Remarks</div>
+                              <div style="font-size:13px;color:#374151;line-height:1.5;background:#f9fafb;padding:8px 12px;border-radius:6px;border-left:3px solid #d1d5db;">{{ job_data.remarks }}</div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Meta Info -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+                              <tr>
+                                <td style="width:50%;vertical-align:top;padding-right:8px;">
+                                  {% if job_data.rooms %}
+                                  <div style="margin-bottom:8px;">
+                                    <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px;">📍 Rooms</div>
+                                    <div style="font-size:12px;color:#374151;">
+                                      {% for room in job_data.rooms %}
+                                      <span style="display:inline-block;padding:2px 6px;margin:2px;border-radius:3px;font-size:11px;background:#e0f2fe;color:#0369a1;">{{ room }}</span>
+                                      {% endfor %}
+                                    </div>
+                                  </div>
+                                  {% endif %}
+                                  
+                                  {% if job_data.topics %}
+                                  <div style="margin-bottom:8px;">
+                                    <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px;">🏷️ Topics</div>
+                                    <div style="font-size:12px;color:#374151;">
+                                      {% for topic in job_data.topics %}
+                                      <span style="display:inline-block;padding:2px 6px;margin:2px;border-radius:3px;font-size:11px;background:#f3e8ff;color:#7c3aed;">{{ topic }}</span>
+                                      {% endfor %}
+                                    </div>
+                                  </div>
+                                  {% endif %}
+                                </td>
+                                <td style="width:50%;vertical-align:top;padding-left:8px;">
+                                  <div style="margin-bottom:8px;">
+                                    <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px;">👤 Created By</div>
+                                    <div style="font-size:12px;color:#374151;">{{ job_data.user_name }}</div>
+                                  </div>
+                                  <div style="margin-bottom:8px;">
+                                    <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px;">📅 Created</div>
+                                    <div style="font-size:12px;color:#374151;">{{ job_data.created_at|date:"M d, Y H:i" }}</div>
+                                  </div>
+                                  <div>
+                                    <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px;">🔄 Updated</div>
+                                    <div style="font-size:12px;color:#374151;">{{ job_data.updated_at|date:"M d, Y H:i" }}</div>
+                                  </div>
+                                </td>
+                              </tr>
+                            </table>
+                            
+                            {% if job_data.properties %}
+                            <div style="margin-bottom:12px;">
+                              <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:4px;">🏢 Properties</div>
+                              <div style="font-size:12px;color:#374151;">
+                                {% for prop in job_data.properties %}
+                                <span style="display:inline-block;padding:2px 6px;margin:2px;border-radius:3px;font-size:11px;background:#ecfdf5;color:#059669;">{{ prop }}</span>
+                                {% endfor %}
+                              </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Images Section -->
+                            {% if job_data.has_images %}
+                            <div style="margin-top:16px;border-top:1px solid #e5e7eb;padding-top:16px;">
+                              <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:8px;">📷 Attached Images ({{ job_data.image_count }})</div>
+                              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                  {% for image in job_data.images %}
+                                  <td style="width:33%;padding:4px;vertical-align:top;">
+                                    <div style="border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+                                      <img src="{{ image.url }}" alt="Job Image" style="width:100%;height:auto;max-height:150px;object-fit:cover;display:block;" />
+                                      <div style="padding:4px 8px;background:#f9fafb;font-size:10px;color:#6b7280;">
+                                        {{ image.uploaded_at|date:"M d, H:i" }}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  {% endfor %}
+                                </tr>
+                              </table>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- View Job Link -->
+                            <div style="margin-top:16px;text-align:center;">
+                              <a href="{{ base_url }}/dashboard/jobs/{{ job_data.job.id }}" style="display:inline-block;padding:10px 24px;background:#4f46e5;color:#ffffff;font-size:13px;font-weight:600;text-decoration:none;border-radius:6px;">
+                                View Job Details →
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td style="padding:24px;text-align:center;">
+                      <div style="font-size:14px;color:#6b7280;">No jobs requiring attention at this time.</div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                  
+                </table>
+              </td>
+            </tr>
+            
+            <!-- Footer -->
+            <tr>
+              <td style="padding:16px 24px;background:#fafbff;border-top:1px solid #eef0f6;">
+                <p style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;color:#6b7280;">
+                  {% if property_name %}
+                  Property: {{ property_name }} (ID: {{ property_id }})<br>
+                  {% endif %}
+                  This email summarizes jobs that are <strong>Pending</strong>, <strong>In Progress</strong>, or <strong>Waiting for Sparepart</strong>.<br>
+                  Visit <a href="{{ base_url }}/dashboard" style="color:#4f46e5;text-decoration:none;">your dashboard</a> to take action on these jobs.
+                </p>
+              </td>
+            </tr>
+            
+            <!-- Brand Footer -->
+            <tr>
+              <td style="padding:12px 24px;background:#1e293b;text-align:center;">
+                <p style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:11px;color:#94a3b8;">
+                  &copy; {{ date_str|slice:":4" }} {{ brand_name }}. All rights reserved.
+                </p>
+              </td>
+            </tr>
+            
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

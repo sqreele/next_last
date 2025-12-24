@@ -2738,6 +2738,7 @@ class InventoryAdmin(admin.ModelAdmin):
         'quantity',
         'unit',
         'min_quantity',
+        'max_quantity',
         'status',
         'property_link',
         'room_link',
@@ -2751,7 +2752,8 @@ class InventoryAdmin(admin.ModelAdmin):
         'expiry_date',
         'created_by',
         'created_at',
-        'updated_at'
+        'updated_at',
+        'updated_by'
     ]
     list_filter = [
         'status',
@@ -2819,7 +2821,7 @@ class InventoryAdmin(admin.ModelAdmin):
             'description': 'QR code for quick access to this inventory item\'s details page'
         }),
         ('Metadata', {
-            'fields': ('created_by', 'created_at', 'updated_at')
+            'fields': ('created_by', 'created_at', 'updated_at', 'updated_by')
         }),
     )
     
@@ -3049,7 +3051,7 @@ class InventoryAdmin(admin.ModelAdmin):
         return (
             super()
             .get_queryset(request)
-            .select_related('property', 'room', 'created_by')
+            .select_related('property', 'room', 'created_by', 'updated_by')
             .prefetch_related(
                 'jobs__user',
                 'preventive_maintenances__assigned_to',
@@ -3162,9 +3164,11 @@ class InventoryAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         if not obj.pk and not obj.created_by_id:
             obj.created_by = request.user
+        # Always set updated_by when saving (both create and update)
+        obj.updated_by = request.user
         super().save_model(request, obj, form, change)
     
-    actions = ['mark_as_available', 'mark_as_low_stock', 'mark_as_out_of_stock', 'export_inventory_csv']
+    actions = ['mark_as_available', 'mark_as_low_stock', 'mark_as_out_of_stock', 'export_inventory_csv', 'export_inventory_pdf']
     
     def export_inventory_csv(self, request, queryset):
         """Export selected/filtered inventory items to CSV"""
@@ -3203,6 +3207,8 @@ class InventoryAdmin(admin.ModelAdmin):
             'Created By Email',
             'Created At',
             'Updated At',
+            'Updated By',
+            'Updated By Email',
         ])
         
         for item in qs:
@@ -3233,6 +3239,8 @@ class InventoryAdmin(admin.ModelAdmin):
                 item.created_by.email if item.created_by else '',
                 item.created_at.strftime('%Y-%m-%d %H:%M:%S') if item.created_at else '',
                 item.updated_at.strftime('%Y-%m-%d %H:%M:%S') if item.updated_at else '',
+                item.updated_by.username if item.updated_by else '',
+                item.updated_by.email if item.updated_by else '',
             ])
         
         return response
@@ -3252,3 +3260,286 @@ class InventoryAdmin(admin.ModelAdmin):
         updated_count = queryset.update(status='out_of_stock')
         self.message_user(request, f"{updated_count} inventory items marked as out of stock.")
     mark_as_out_of_stock.short_description = "Mark selected items as out of stock"
+    
+    def export_inventory_pdf(self, request, queryset):
+        """Export selected/filtered inventory items to PDF with image, dates, quantities, status, and update info."""
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, PageBreak
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import inch
+            from reportlab.lib import colors
+            from reportlab.pdfbase import pdfmetrics
+            from reportlab.pdfbase.ttfonts import TTFont
+        except ImportError:
+            self.message_user(request, 'ReportLab is required for PDF export. Install with: pip install reportlab', level='error')
+            return None
+
+        import os
+        from django.conf import settings
+        from xml.sax.saxutils import escape as xml_escape
+
+        # Prefetch related data
+        qs = queryset.select_related('property', 'room', 'created_by', 'updated_by').order_by('item_id')
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=48, bottomMargin=36)
+        styles = getSampleStyleSheet()
+
+        # Thai font registration
+        thai_regular = None
+        thai_bold = None
+
+        def register_thai_fonts():
+            nonlocal thai_regular, thai_bold
+            if thai_regular and thai_bold:
+                return
+            base_dir = getattr(settings, 'BASE_DIR', '')
+            candidates = [
+                (os.path.join(getattr(settings, 'STATIC_ROOT', ''), 'fonts', 'Sarabun-Regular.ttf'),
+                 os.path.join(getattr(settings, 'STATIC_ROOT', ''), 'fonts', 'Sarabun-Bold.ttf'),
+                 'Sarabun-Regular', 'Sarabun-Bold'),
+                ('/app/static/fonts/Sarabun-Regular.ttf', '/app/static/fonts/Sarabun-Bold.ttf',
+                 'Sarabun-Regular', 'Sarabun-Bold'),
+                ('/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf',
+                 '/usr/share/fonts/truetype/noto/NotoSansThai-Bold.ttf',
+                 'NotoSansThai-Regular', 'NotoSansThai-Bold'),
+            ]
+            for reg, bold, reg_name, bold_name in candidates:
+                try:
+                    if reg and bold and os.path.isfile(reg) and os.path.isfile(bold):
+                        from reportlab.pdfbase.pdfmetrics import getRegisteredFontNames
+                        registered_fonts = getRegisteredFontNames()
+                        if reg_name not in registered_fonts:
+                            pdfmetrics.registerFont(TTFont(reg_name, reg))
+                        if bold_name not in registered_fonts:
+                            pdfmetrics.registerFont(TTFont(bold_name, bold))
+                        thai_regular, thai_bold = reg_name, bold_name
+                        break
+                except Exception:
+                    continue
+
+        register_thai_fonts()
+
+        # Add Thai-capable styles
+        if thai_regular and thai_bold:
+            styles.add(ParagraphStyle(name='ThaiTitle', parent=styles['Title'], fontName=thai_bold))
+            styles.add(ParagraphStyle(name='ThaiNormal', parent=styles['Normal'], fontName=thai_regular, fontSize=9, leading=11))
+            styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontName=thai_regular, fontSize=8, leading=10))
+            styles.add(ParagraphStyle(name='ThaiBold', parent=styles['Normal'], fontName=thai_bold, fontSize=9, leading=11))
+        else:
+            styles.add(ParagraphStyle(name='ThaiTitle', parent=styles['Title']))
+            styles.add(ParagraphStyle(name='ThaiNormal', parent=styles['Normal'], fontSize=9, leading=11))
+            styles.add(ParagraphStyle(name='ThaiSmall', parent=styles['Normal'], fontSize=8, leading=10))
+            styles.add(ParagraphStyle(name='ThaiBold', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, leading=11))
+
+        story = []
+
+        def _escape_text(text):
+            return xml_escape(text or '')
+
+        # Layout helpers
+        page_width, _page_height = A4
+        usable_width = page_width - doc.leftMargin - doc.rightMargin
+
+        # Header
+        now_display = timezone.now().strftime('%Y-%m-%d %H:%M')
+        story.append(Paragraph("Part Inventory Report", styles['ThaiTitle']))
+        story.append(Paragraph(f"Generated: {now_display}", styles['ThaiNormal']))
+        story.append(Spacer(1, 12))
+
+        # Statistics
+        total_items = qs.count()
+        available_count = qs.filter(status='available').count()
+        low_stock_count = qs.filter(status='low_stock').count()
+        out_of_stock_count = qs.filter(status='out_of_stock').count()
+
+        stat_data = [
+            [
+                Paragraph(f"<b>{total_items}</b><br/><font size='8'>Total Items</font>", styles['ThaiSmall']),
+                Paragraph(f"<b>{available_count}</b><br/><font size='8'>Available</font>", styles['ThaiSmall']),
+                Paragraph(f"<b>{low_stock_count}</b><br/><font size='8'>Low Stock</font>", styles['ThaiSmall']),
+                Paragraph(f"<b>{out_of_stock_count}</b><br/><font size='8'>Out of Stock</font>", styles['ThaiSmall']),
+            ]
+        ]
+        stat_widths = [usable_width * 0.25] * 4
+        stat_table = Table(stat_data, colWidths=stat_widths)
+        stat_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.94, 0.96, 0.98)),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.Color(0.06, 0.09, 0.16)),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+        ]))
+        story.append(stat_table)
+        story.append(Spacer(1, 15))
+
+        # Status colors
+        status_bg_map = {
+            'available': colors.Color(0.09, 0.64, 0.29, alpha=0.15),
+            'low_stock': colors.Color(0.92, 0.35, 0.05, alpha=0.15),
+            'out_of_stock': colors.Color(0.86, 0.15, 0.15, alpha=0.15),
+            'reserved': colors.Color(0.15, 0.39, 0.92, alpha=0.15),
+            'maintenance': colors.Color(0.49, 0.23, 0.93, alpha=0.15),
+        }
+        status_text_map = {
+            'available': colors.Color(0.09, 0.64, 0.29),
+            'low_stock': colors.Color(0.92, 0.35, 0.05),
+            'out_of_stock': colors.Color(0.86, 0.15, 0.15),
+            'reserved': colors.Color(0.15, 0.39, 0.92),
+            'maintenance': colors.Color(0.49, 0.23, 0.93),
+        }
+
+        # Column widths: image 18%, info 50%, status/dates 32%
+        col_widths = [usable_width * 0.18, usable_width * 0.50, usable_width * 0.32]
+
+        def _get_image_path(item):
+            """Get the image path for an inventory item."""
+            if item.image and hasattr(item.image, 'path'):
+                if os.path.isfile(item.image.path):
+                    return item.image.path
+            return None
+
+        # Render each inventory item as a card
+        for idx, item in enumerate(qs):
+            # Image cell
+            img_width = col_widths[0] - 12
+            img_height = 70
+            img_path = _get_image_path(item)
+            if img_path:
+                try:
+                    image_cell = RLImage(img_path, width=img_width, height=img_height)
+                except Exception:
+                    image_cell = Table([[Paragraph('No Image', styles['ThaiSmall'])]], colWidths=[img_width], rowHeights=[img_height])
+                    image_cell.setStyle(TableStyle([
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.95, 0.96, 0.97)),
+                    ]))
+            else:
+                image_cell = Table([[Paragraph('No Image', styles['ThaiSmall'])]], colWidths=[img_width], rowHeights=[img_height])
+                image_cell.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.95, 0.96, 0.97)),
+                ]))
+
+            # Info column
+            name_str = item.name or 'N/A'
+            category_str = item.get_category_display() if hasattr(item, 'get_category_display') else (item.category or 'N/A')
+            quantity_str = f"{item.quantity or 0} {item.unit or 'pcs'}"
+            min_qty_str = str(item.min_quantity or 0)
+            max_qty_str = str(item.max_quantity or 0)
+            location_str = item.location or 'N/A'
+            property_str = item.property.name if item.property else 'N/A'
+
+            info_rows = [
+                [Paragraph(f"<font color='#6b7280' size='7'><b>Item ID:</b></font>", styles['ThaiSmall'])],
+                [Paragraph(f"{_escape_text(str(item.item_id))}", styles['ThaiNormal'])],
+                [Spacer(1, 2)],
+                [Paragraph(f"<font color='#6b7280' size='7'><b>Name:</b></font>", styles['ThaiSmall'])],
+                [Paragraph(f"{_escape_text(name_str)}", styles['ThaiNormal'])],
+                [Spacer(1, 2)],
+                [Paragraph(f"<font color='#6b7280' size='7'><b>Category:</b></font>", styles['ThaiSmall'])],
+                [Paragraph(f"{_escape_text(category_str)}", styles['ThaiNormal'])],
+                [Spacer(1, 2)],
+                [Paragraph(f"<font color='#6b7280' size='7'><b>Quantity:</b></font> {_escape_text(quantity_str)} &nbsp; <b>Min:</b> {_escape_text(min_qty_str)} &nbsp; <b>Max:</b> {_escape_text(max_qty_str)}", styles['ThaiSmall'])],
+                [Spacer(1, 2)],
+                [Paragraph(f"<font color='#6b7280' size='7'><b>Property:</b></font> {_escape_text(property_str)}", styles['ThaiSmall'])],
+                [Paragraph(f"<font color='#6b7280' size='7'><b>Location:</b></font> {_escape_text(location_str)}", styles['ThaiSmall'])],
+            ]
+
+            info_table = Table(info_rows, colWidths=[col_widths[1] - 12])
+            info_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+
+            # Status/dates column
+            status_key = (item.status or '').lower()
+            status_label = item.get_status_display().upper() if hasattr(item, 'get_status_display') else (item.status or 'UNKNOWN').upper()
+
+            # Status badge
+            status_badge_para = Paragraph(
+                f"<font color='{status_text_map.get(status_key, colors.grey).hexval()}'><b>{_escape_text(status_label)}</b></font>",
+                styles['ThaiSmall']
+            )
+            status_badge = Table([[status_badge_para]], colWidths=[col_widths[2] - 16])
+            status_badge.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), status_bg_map.get(status_key, colors.Color(0.96, 0.96, 0.96))),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ]))
+
+            # Date formatting
+            created_txt = item.created_at.strftime('%m/%d/%Y %H:%M') if item.created_at else 'N/A'
+            updated_txt = item.updated_at.strftime('%m/%d/%Y %H:%M') if item.updated_at else 'N/A'
+            created_by_str = item.created_by.get_full_name() or item.created_by.username if item.created_by else 'N/A'
+            updated_by_str = item.updated_by.get_full_name() or item.updated_by.username if item.updated_by else 'N/A'
+
+            status_rows = [
+                [status_badge],
+                [Spacer(1, 6)],
+                [Paragraph(f"<font color='#6b7280' size='7'><b>Date Created:</b></font>", styles['ThaiSmall'])],
+                [Paragraph(f"<font size='8'>{_escape_text(created_txt)}</font>", styles['ThaiNormal'])],
+                [Spacer(1, 3)],
+                [Paragraph(f"<font color='#6b7280' size='7'><b>Created By:</b></font>", styles['ThaiSmall'])],
+                [Paragraph(f"<font size='8'>{_escape_text(created_by_str)}</font>", styles['ThaiNormal'])],
+                [Spacer(1, 3)],
+                [Paragraph(f"<font color='#6b7280' size='7'><b>Last Updated:</b></font>", styles['ThaiSmall'])],
+                [Paragraph(f"<font size='8'>{_escape_text(updated_txt)}</font>", styles['ThaiNormal'])],
+                [Spacer(1, 3)],
+                [Paragraph(f"<font color='#6b7280' size='7'><b>Updated By:</b></font>", styles['ThaiSmall'])],
+                [Paragraph(f"<font size='8'>{_escape_text(updated_by_str)}</font>", styles['ThaiNormal'])],
+            ]
+
+            status_table = Table(status_rows, colWidths=[col_widths[2] - 12])
+            status_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 0),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ]))
+
+            # Create the main card row
+            card_data = [[image_cell, info_table, status_table]]
+            card_table = Table(card_data, colWidths=col_widths)
+            card_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.99, 0.99, 0.99)),
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.Color(0.85, 0.85, 0.85)),
+            ]))
+
+            story.append(card_table)
+            story.append(Spacer(1, 8))
+
+            # Page break every 4 items to avoid overflow
+            if (idx + 1) % 4 == 0 and (idx + 1) < total_items:
+                story.append(PageBreak())
+
+        # Build PDF
+        doc.build(story)
+
+        buffer.seek(0)
+        filename = f"inventory_{timezone.now().strftime('%Y_%m_%d_%H%M')}.pdf"
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    export_inventory_pdf.short_description = "Export selected/filtered inventory items to PDF"

@@ -1831,6 +1831,14 @@ class Inventory(models.Model):
         blank=True,
         help_text="User who created this inventory item"
     )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name='updated_inventory_items',
+        null=True,
+        blank=True,
+        help_text="User who last updated this inventory item"
+    )
     
     class Meta:
         ordering = ['-created_at']

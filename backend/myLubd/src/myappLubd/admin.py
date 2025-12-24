@@ -3416,8 +3416,24 @@ class InventoryAdmin(admin.ModelAdmin):
                     return img_path
             return None
 
+        def _get_user_display_name(user):
+            """Get the display name for a user, preferring full name over username"""
+            if not user:
+                return None
+            # Try to get full name first
+            full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+            if full_name:
+                return full_name
+            # Fallback to username only if it doesn't look like an OAuth2 ID
+            if user.username and not user.username.startswith(('google-oauth2_', 'auth0|')):
+                return user.username
+            # If username is an OAuth2 ID and we have email, use email prefix
+            if user.email:
+                return user.email.split('@')[0]
+            return user.username
+
         def _get_last_update_user(item):
-            """Get the username of the last user who updated this item via Job, PM, or created_by"""
+            """Get the display name of the last user who updated this item via Job, PM, or created_by"""
             last_user = None
             last_time = None
             
@@ -3426,7 +3442,7 @@ class InventoryAdmin(admin.ModelAdmin):
             if last_job:
                 job_user = last_job.updated_by or last_job.user
                 if job_user:
-                    last_user = job_user.username
+                    last_user = _get_user_display_name(job_user)
                     last_time = last_job.updated_at
             
             # Check PMs
@@ -3434,11 +3450,11 @@ class InventoryAdmin(admin.ModelAdmin):
             if last_pm:
                 pm_user = last_pm.assigned_to or last_pm.created_by
                 if pm_user and (last_time is None or (last_pm.updated_at and last_pm.updated_at > last_time)):
-                    last_user = pm_user.username
+                    last_user = _get_user_display_name(pm_user)
             
             # Fallback to the inventory item's created_by if no job/PM user found
             if not last_user and item.created_by:
-                last_user = item.created_by.username
+                last_user = _get_user_display_name(item.created_by)
             
             return last_user or 'N/A'
 

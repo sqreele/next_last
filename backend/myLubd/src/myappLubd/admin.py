@@ -8,6 +8,7 @@ User = get_user_model()
 
 # Custom User Admin
 class CustomUserAdmin(BaseUserAdmin):
+    list_per_page = 25
     list_display = BaseUserAdmin.list_display + ('property_name', 'property_id')
     list_filter = BaseUserAdmin.list_filter + ('property_name',)
     search_fields = BaseUserAdmin.search_fields + ('property_name', 'property_id')
@@ -66,6 +67,7 @@ class UserProfileInline(admin.StackedInline):
     fields = ['positions', 'profile_image', 'property_name', 'property_id', 'google_id', 'email_verified', 'login_provider']
 
 class UserAdmin(BaseUserAdmin):
+    list_per_page = 25
     inlines = (UserProfileInline,)
     list_display = ['username', 'email', 'first_name', 'last_name', 'property_name', 'get_property_id_display', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
     list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined', 'property_name']
@@ -247,6 +249,7 @@ admin.site.register(User, UserAdmin)
 # Add this new admin class for Machine
 @admin.register(Machine)
 class MachineAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = [
         'machine_id', 
         'name', 
@@ -709,6 +712,7 @@ class JobImageTopicFilter(admin.SimpleListFilter):
 # ModelAdmins
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
+    list_per_page = 25
     form = JobAdminForm
     list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_user_display', 'user_id', 'get_properties_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
     list_filter = ['status', 'priority', 'is_defective', 'created_at', 'updated_at', 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
@@ -1510,6 +1514,7 @@ class JobAdmin(admin.ModelAdmin):
 
 @admin.register(JobImage)
 class JobImageAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ('image_preview', 'job_link', 'uploaded_by', 'uploaded_at')
     list_filter = (
         'uploaded_at',
@@ -1578,6 +1583,7 @@ class JobImageAdmin(admin.ModelAdmin):
 
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ['property_id', 'name', 'created_at', 'get_users_count', 'is_preventivemaintenance']
     search_fields = ['property_id', 'name', 'description']
     list_filter = ['created_at', 'is_preventivemaintenance']
@@ -1657,6 +1663,7 @@ class HasPreventiveMaintenanceFilter(admin.SimpleListFilter):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ['room_id', 'name', 'room_type', 'is_active', 'created_at', 'get_properties_display']
     list_filter = ['room_type', 'is_active', 'created_at', HasPreventiveMaintenanceFilter]
     search_fields = ['name', 'room_type', 'properties__name']
@@ -1713,6 +1720,7 @@ class RoomAdmin(admin.ModelAdmin):
 
 @admin.register(Topic)
 class TopicAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ['title', 'get_jobs_count']
     search_fields = ['title', 'description']
     list_filter = [HasPreventiveMaintenanceFilter]
@@ -1753,6 +1761,7 @@ class TopicAdmin(admin.ModelAdmin):
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ['user_link', 'positions', 'user_property_name', 'user_property_id', 'get_properties_display', 'email_notifications_enabled', 'profile_image_preview']
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'positions', 'properties__name', 'properties__property_id']
     list_filter = ['email_notifications_enabled', 'properties']
@@ -1868,6 +1877,7 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(PreventiveMaintenance)
 class PreventiveMaintenanceAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = (
         'pm_id',
         'pmtitle',
@@ -2168,6 +2178,7 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
 
 @admin.register(Session)
 class SessionAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ('user', 'session_token_short', 'expires_at', 'created_at', 'is_expired_status')
     search_fields = ('user__username', 'session_token')
     list_filter = ('expires_at', 'created_at')
@@ -2229,6 +2240,7 @@ class SessionAdmin(admin.ModelAdmin):
 
 @admin.register(MaintenanceProcedure)
 class MaintenanceProcedureAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ['name', 'group_id', 'category', 'frequency', 'responsible_department', 'estimated_duration', 'difficulty_level', 'machine_count', 'created_at']
     list_filter = ['group_id', 'category', 'frequency', 'responsible_department', 'difficulty_level', 'created_at']
     search_fields = ['name', 'group_id', 'category', 'description']
@@ -2381,6 +2393,7 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
 
 @admin.register(MaintenanceTaskImage)
 class MaintenanceTaskImageAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ['id', 'task', 'image_type', 'image_preview', 'uploaded_by', 'uploaded_at']
     list_filter = ['image_type', 'uploaded_at', 'task']
     search_fields = ['task__name', 'task__equipment__name']
@@ -2459,6 +2472,7 @@ class MaintenanceTaskImageAdmin(admin.ModelAdmin):
 
 @admin.register(MaintenanceChecklist)
 class MaintenanceChecklistAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ['maintenance', 'item', 'is_completed', 'completed_by', 'completed_at', 'order']
     list_filter = ['is_completed', 'completed_at', 'order']
     search_fields = ['item', 'maintenance__pm_id', 'maintenance__pmtitle']
@@ -2518,6 +2532,7 @@ class MaintenanceChecklistAdmin(admin.ModelAdmin):
 
 @admin.register(MaintenanceHistory)
 class MaintenanceHistoryAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ['maintenance', 'action', 'performed_by', 'timestamp']
     list_filter = ['action', 'timestamp', 'performed_by']
     search_fields = ['maintenance__pm_id', 'action', 'notes', 'performed_by__username']
@@ -2573,6 +2588,7 @@ class MaintenanceHistoryAdmin(admin.ModelAdmin):
 
 @admin.register(MaintenanceSchedule)
 class MaintenanceScheduleAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = ['maintenance', 'is_recurring', 'next_occurrence', 'last_occurrence', 'total_occurrences', 'is_active']
     list_filter = ['is_recurring', 'is_active', 'next_occurrence', 'last_occurrence']
     search_fields = ['maintenance__pm_id', 'maintenance__pmtitle']
@@ -2634,6 +2650,7 @@ class MaintenanceScheduleAdmin(admin.ModelAdmin):
 
 @admin.register(UtilityConsumption)
 class UtilityConsumptionAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = [
         'id',
         'property',
@@ -2730,6 +2747,7 @@ class UtilityConsumptionAdmin(admin.ModelAdmin):
 
 @admin.register(Inventory)
 class InventoryAdmin(admin.ModelAdmin):
+    list_per_page = 25
     list_display = [
         'image_preview',
         'item_id',

@@ -128,6 +128,8 @@ export default function InventoryPage() {
   const [rooms, setRooms] = useState<Array<{room_id: string; roomname: string}>>([]);
   const [jobsForFilter, setJobsForFilter] = useState<Array<{job_id: string; description: string}>>([]);
   const [pmsForFilter, setPmsForFilter] = useState<Array<{pm_id: string; pmtitle: string}>>([]);
+  const [categoryOptions, setCategoryOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [statusOptions, setStatusOptions] = useState<Array<{value: string; label: string}>>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showRestockDialog, setShowRestockDialog] = useState(false);
   const [showUseDialog, setShowUseDialog] = useState(false);
@@ -151,6 +153,42 @@ export default function InventoryPage() {
       fetchInventory();
     }
   }, [status, selectedProperty, page, pageSize, selectedCategory, selectedStatus, selectedRoom, lowStockOnly, selectedJobFilter, selectedPmFilter, searchTerm]);
+
+  // Fetch filter options (categories, statuses) from backend
+  useEffect(() => {
+    const fetchInventoryFilterOptions = async () => {
+      if (status !== 'authenticated') return;
+      
+      try {
+        const response = await apiClient.get('/api/v1/inventory/filter_options/');
+        if (response.data) {
+          setCategoryOptions(response.data.categories || []);
+          setStatusOptions(response.data.statuses || []);
+        }
+      } catch (err: any) {
+        console.error('Error fetching inventory filter options:', err);
+        // Fallback to default options if API fails
+        setCategoryOptions([
+          { value: 'tools', label: 'Tools' },
+          { value: 'parts', label: 'Parts' },
+          { value: 'supplies', label: 'Supplies' },
+          { value: 'equipment', label: 'Equipment' },
+          { value: 'consumables', label: 'Consumables' },
+          { value: 'safety', label: 'Safety Equipment' },
+          { value: 'other', label: 'Other' },
+        ]);
+        setStatusOptions([
+          { value: 'available', label: 'Available' },
+          { value: 'low_stock', label: 'Low Stock' },
+          { value: 'out_of_stock', label: 'Out of Stock' },
+          { value: 'reserved', label: 'Reserved' },
+          { value: 'maintenance', label: 'Under Maintenance' },
+        ]);
+      }
+    };
+
+    fetchInventoryFilterOptions();
+  }, [status]);
 
   // Fetch rooms, jobs, and PMs for filters when property changes or on load
   useEffect(() => {
@@ -460,13 +498,11 @@ export default function InventoryPage() {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="tools">Tools</SelectItem>
-                      <SelectItem value="parts">Parts</SelectItem>
-                      <SelectItem value="supplies">Supplies</SelectItem>
-                      <SelectItem value="equipment">Equipment</SelectItem>
-                      <SelectItem value="consumables">Consumables</SelectItem>
-                      <SelectItem value="safety">Safety Equipment</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      {categoryOptions.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -564,13 +600,11 @@ export default function InventoryPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="tools">Tools</SelectItem>
-                  <SelectItem value="parts">Parts</SelectItem>
-                  <SelectItem value="supplies">Supplies</SelectItem>
-                  <SelectItem value="equipment">Equipment</SelectItem>
-                  <SelectItem value="consumables">Consumables</SelectItem>
-                  <SelectItem value="safety">Safety Equipment</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  {categoryOptions.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -584,11 +618,11 @@ export default function InventoryPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="available">Available</SelectItem>
-                  <SelectItem value="low_stock">Low Stock</SelectItem>
-                  <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                  <SelectItem value="reserved">Reserved</SelectItem>
-                  <SelectItem value="maintenance">Under Maintenance</SelectItem>
+                  {statusOptions.map((stat) => (
+                    <SelectItem key={stat.value} value={stat.value}>
+                      {stat.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 

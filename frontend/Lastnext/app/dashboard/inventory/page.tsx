@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/app/lib/session.client';
 import { useUser } from '@/app/lib/stores/mainStore';
@@ -13,7 +13,6 @@ import {
   Package,
   Search,
   MapPin,
-  Calendar,
   Loader2,
   ChevronLeft,
   ChevronRight,
@@ -27,7 +26,6 @@ import {
   Clock,
   ShoppingCart,
 } from 'lucide-react';
-import Link from 'next/link';
 import {
   Select,
   SelectContent,
@@ -123,6 +121,15 @@ export default function InventoryPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [selectedRoom, setSelectedRoom] = useState<string>('all');
+  const [lowStockOnly, setLowStockOnly] = useState<boolean>(false);
+  const [selectedJobFilter, setSelectedJobFilter] = useState<string>('all');
+  const [selectedPmFilter, setSelectedPmFilter] = useState<string>('all');
+  const [rooms, setRooms] = useState<Array<{room_id: string; roomname: string}>>([]);
+  const [jobsForFilter, setJobsForFilter] = useState<Array<{job_id: string; description: string}>>([]);
+  const [pmsForFilter, setPmsForFilter] = useState<Array<{pm_id: string; pmtitle: string}>>([]);
+  const [categoryOptions, setCategoryOptions] = useState<Array<{value: string; label: string}>>([]);
+  const [statusOptions, setStatusOptions] = useState<Array<{value: string; label: string}>>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showRestockDialog, setShowRestockDialog] = useState(false);
   const [showUseDialog, setShowUseDialog] = useState(false);
@@ -145,12 +152,99 @@ export default function InventoryPage() {
     if (status === 'authenticated') {
       fetchInventory();
     }
-  }, [status, selectedProperty, page, pageSize, selectedCategory, selectedStatus, searchTerm]);
+  }, [status, selectedProperty, page, pageSize, selectedCategory, selectedStatus, selectedRoom, lowStockOnly, selectedJobFilter, selectedPmFilter, searchTerm]);
+
+  // Fetch filter options (categories, statuses) from backend
+  useEffect(() => {
+    const fetchInventoryFilterOptions = async () => {
+      if (status !== 'authenticated') return;
+      
+      try {
+        const response = await apiClient.get('/api/v1/inventory/filter_options/');
+        if (response.data) {
+          setCategoryOptions(response.data.categories || []);
+          setStatusOptions(response.data.statuses || []);
+        }
+      } catch (err: any) {
+        console.error('Error fetching inventory filter options:', err);
+        // Fallback to default options if API fails
+        setCategoryOptions([
+          { value: 'tools', label: 'Tools' },
+          { value: 'parts', label: 'Parts' },
+          { value: 'supplies', label: 'Supplies' },
+          { value: 'equipment', label: 'Equipment' },
+          { value: 'consumables', label: 'Consumables' },
+          { value: 'safety', label: 'Safety Equipment' },
+          { value: 'other', label: 'Other' },
+        ]);
+        setStatusOptions([
+          { value: 'available', label: 'Available' },
+          { value: 'low_stock', label: 'Low Stock' },
+          { value: 'out_of_stock', label: 'Out of Stock' },
+          { value: 'reserved', label: 'Reserved' },
+          { value: 'maintenance', label: 'Under Maintenance' },
+        ]);
+      }
+    };
+
+    fetchInventoryFilterOptions();
+  }, [status]);
+
+  // Fetch rooms, jobs, and PMs for filters when property changes or on load
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      if (status !== 'authenticated') return;
+      
+      try {
+        // Fetch rooms for the selected property
+        const roomParams: any = { page_size: 100 };
+        if (selectedProperty) {
+          roomParams.property_id = selectedProperty;
+        }
+        const roomsResponse = await apiClient.get('/api/v1/rooms/', { params: roomParams });
+        const roomsData = Array.isArray(roomsResponse.data) 
+          ? roomsResponse.data 
+          : (roomsResponse.data?.results || []);
+        setRooms(roomsData.map((room: any) => ({
+          room_id: room.room_id,
+          roomname: room.roomname || room.room_id
+        })));
+
+        // Fetch jobs for filter
+        const jobsResponse = await apiClient.get('/api/v1/jobs/', {
+          params: { page_size: 100, ordering: '-updated_at' }
+        });
+        const jobsData = Array.isArray(jobsResponse.data) 
+          ? jobsResponse.data 
+          : (jobsResponse.data?.results || []);
+        setJobsForFilter(jobsData.map((job: any) => ({
+          job_id: job.job_id,
+          description: job.description || ''
+        })));
+
+        // Fetch PMs for filter
+        const pmResponse = await apiClient.get('/api/v1/preventive-maintenance/', {
+          params: { page_size: 100, ordering: '-updated_at' }
+        });
+        const pmData = Array.isArray(pmResponse.data)
+          ? pmResponse.data
+          : (pmResponse.data?.results || []);
+        setPmsForFilter(pmData.map((pm: any) => ({
+          pm_id: pm.pm_id,
+          pmtitle: pm.pmtitle || ''
+        })));
+      } catch (err: any) {
+        console.error('Error fetching filter options:', err);
+      }
+    };
+
+    fetchFilterOptions();
+  }, [status, selectedProperty]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [selectedProperty, selectedCategory, selectedStatus, searchTerm]);
+  }, [selectedProperty, selectedCategory, selectedStatus, selectedRoom, lowStockOnly, selectedJobFilter, selectedPmFilter, searchTerm]);
 
   // Fetch user's jobs and PMs when use dialog opens
   useEffect(() => {
@@ -219,6 +313,18 @@ export default function InventoryPage() {
       if (selectedStatus !== 'all') {
         params.status = selectedStatus;
       }
+      if (selectedRoom !== 'all') {
+        params.room_id = selectedRoom;
+      }
+      if (lowStockOnly) {
+        params.low_stock = 'true';
+      }
+      if (selectedJobFilter !== 'all') {
+        params.job_id = selectedJobFilter;
+      }
+      if (selectedPmFilter !== 'all') {
+        params.pm_id = selectedPmFilter;
+      }
       // Send search term to backend for proper pagination
       if (searchTerm) {
         params.search = searchTerm;
@@ -253,17 +359,6 @@ export default function InventoryPage() {
       setLoading(false);
     }
   };
-
-  // Extract unique categories from inventory
-  const categories = useMemo(() => {
-    const uniqueCategories = new Set<string>();
-    inventory.forEach((item) => {
-      if (item.category) {
-        uniqueCategories.add(item.category);
-      }
-    });
-    return Array.from(uniqueCategories).sort();
-  }, [inventory]);
 
   // No need for client-side filtering - backend handles it via search param
   // Keep filteredInventory for backward compatibility but use inventory directly
@@ -373,7 +468,7 @@ export default function InventoryPage() {
                 ({lowStockCount} low/out of stock)
               </span>
             )}
-            {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all') && ` (${filteredInventory.length} filtered)`}
+            {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRoom !== 'all' || lowStockOnly || selectedJobFilter !== 'all' || selectedPmFilter !== 'all') && ` (${filteredInventory.length} filtered)`}
           </p>
         </div>
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -403,13 +498,11 @@ export default function InventoryPage() {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="tools">Tools</SelectItem>
-                      <SelectItem value="parts">Parts</SelectItem>
-                      <SelectItem value="supplies">Supplies</SelectItem>
-                      <SelectItem value="equipment">Equipment</SelectItem>
-                      <SelectItem value="consumables">Consumables</SelectItem>
-                      <SelectItem value="safety">Safety Equipment</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      {categoryOptions.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -457,78 +550,171 @@ export default function InventoryPage() {
       {/* Search and Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search by name, ID, location, supplier..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-4">
+            {/* First Row: Search and View Toggle */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Search */}
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search by name, ID, location, supplier..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              {/* View Toggle */}
+              <div className="flex items-center gap-2 border rounded-md p-1">
+                <Button
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="h-9 px-3"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="h-9 px-3"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             
-            {/* Category Filter */}
-            <div className="flex items-center gap-2">
+            {/* Second Row: All Filters */}
+            <div className="flex flex-wrap items-center gap-3">
               <Filter className="h-5 w-5 text-gray-400" />
+              
+              {/* Category Filter */}
               <Select value={selectedCategory} onValueChange={(value) => {
                 setSelectedCategory(value);
                 setPage(1);
-                fetchInventory();
               }}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[150px]">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  {categoryOptions.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value}>
+                      {cat.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
 
-            {/* Status Filter */}
-            <Select value={selectedStatus} onValueChange={(value) => {
-              setSelectedStatus(value);
-              setPage(1);
-              fetchInventory();
-            }}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="available">Available</SelectItem>
-                <SelectItem value="low_stock">Low Stock</SelectItem>
-                <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-                <SelectItem value="reserved">Reserved</SelectItem>
-                <SelectItem value="maintenance">Under Maintenance</SelectItem>
-              </SelectContent>
-            </Select>
+              {/* Status Filter */}
+              <Select value={selectedStatus} onValueChange={(value) => {
+                setSelectedStatus(value);
+                setPage(1);
+              }}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  {statusOptions.map((stat) => (
+                    <SelectItem key={stat.value} value={stat.value}>
+                      {stat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            {/* View Toggle */}
-            <div className="flex items-center gap-2 border rounded-md p-1">
+              {/* Room Filter */}
+              <Select value={selectedRoom} onValueChange={(value) => {
+                setSelectedRoom(value);
+                setPage(1);
+              }}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="All Rooms" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Rooms</SelectItem>
+                  {rooms.map((room) => (
+                    <SelectItem key={room.room_id} value={room.room_id}>
+                      {room.roomname}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Job Filter */}
+              <Select value={selectedJobFilter} onValueChange={(value) => {
+                setSelectedJobFilter(value);
+                setPage(1);
+              }}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Jobs" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Jobs</SelectItem>
+                  {jobsForFilter.map((job) => (
+                    <SelectItem key={job.job_id} value={job.job_id}>
+                      {job.job_id} - {job.description?.substring(0, 30) || 'No desc'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* PM Filter */}
+              <Select value={selectedPmFilter} onValueChange={(value) => {
+                setSelectedPmFilter(value);
+                setPage(1);
+              }}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All PMs" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All PMs</SelectItem>
+                  {pmsForFilter.map((pm) => (
+                    <SelectItem key={pm.pm_id} value={pm.pm_id}>
+                      {pm.pm_id} - {pm.pmtitle?.substring(0, 30) || 'No title'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Low Stock Toggle */}
               <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                variant={lowStockOnly ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setViewMode('grid')}
-                className="h-9 px-3"
+                onClick={() => {
+                  setLowStockOnly(!lowStockOnly);
+                  setPage(1);
+                }}
+                className={`gap-2 ${lowStockOnly ? 'bg-yellow-600 hover:bg-yellow-700' : ''}`}
               >
-                <LayoutGrid className="h-4 w-4" />
+                <AlertTriangle className="h-4 w-4" />
+                Low Stock Only
               </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="h-9 px-3"
-              >
-                <List className="h-4 w-4" />
-              </Button>
+
+              {/* Clear Filters */}
+              {(selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRoom !== 'all' || lowStockOnly || selectedJobFilter !== 'all' || selectedPmFilter !== 'all' || searchTerm) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setSelectedStatus('all');
+                    setSelectedRoom('all');
+                    setLowStockOnly(false);
+                    setSelectedJobFilter('all');
+                    setSelectedPmFilter('all');
+                    setSearchTerm('');
+                    setPage(1);
+                  }}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Clear Filters
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
@@ -541,7 +727,7 @@ export default function InventoryPage() {
             <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Inventory Items Found</h3>
             <p className="text-gray-600">
-              {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all') 
+              {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRoom !== 'all' || lowStockOnly || selectedJobFilter !== 'all' || selectedPmFilter !== 'all') 
                 ? 'Try adjusting your search or filter criteria' 
                 : 'No inventory items available for this property'}
             </p>

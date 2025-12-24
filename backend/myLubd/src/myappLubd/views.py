@@ -2846,6 +2846,26 @@ class InventoryViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(low_stock_items, many=True)
         return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def filter_options(self, request):
+        """
+        Get available filter options for inventory items.
+        Returns categories and statuses from the model choices.
+        """
+        categories = [
+            {'value': choice[0], 'label': choice[1]}
+            for choice in Inventory.CATEGORY_CHOICES
+        ]
+        statuses = [
+            {'value': choice[0], 'label': choice[1]}
+            for choice in Inventory.STATUS_CHOICES
+        ]
+        
+        return Response({
+            'categories': categories,
+            'statuses': statuses
+        })
 
 
 # Notification API Endpoints

@@ -59,6 +59,41 @@ from .models import (
     Inventory
 )
 
+# Custom Date Joined Month Filter for Admin
+class DateJoinedMonthFilter(admin.SimpleListFilter):
+    title = 'date joined (month)'
+    parameter_name = 'date_joined_month'
+
+    def lookups(self, request, model_admin):
+        # Generate lookups for the last 12 months using standard library
+        from datetime import datetime
+        
+        lookups = []
+        current_date = datetime.now()
+        
+        for i in range(12):
+            # Calculate month offset
+            year = current_date.year
+            month = current_date.month - i
+            while month <= 0:
+                month += 12
+                year -= 1
+            
+            month_key = f'{year}-{month:02d}'
+            month_label = datetime(year, month, 1).strftime('%B %Y')
+            lookups.append((month_key, month_label))
+        
+        return lookups
+
+    def queryset(self, request, queryset):
+        if self.value():
+            year, month = self.value().split('-')
+            return queryset.filter(
+                date_joined__year=int(year),
+                date_joined__month=int(month)
+            )
+        return queryset
+
 # Custom User Admin to show Google OAuth information
 class UserProfileInline(admin.StackedInline):
     model = UserProfile

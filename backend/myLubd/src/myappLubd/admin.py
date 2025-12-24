@@ -70,7 +70,7 @@ class UserAdmin(BaseUserAdmin):
     list_per_page = 25
     inlines = (UserProfileInline,)
     list_display = ['username', 'email', 'first_name', 'last_name', 'property_name', 'get_property_id_display', 'get_google_info', 'is_staff', 'is_active', 'jobs_this_month', 'date_joined']
-    list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined', 'property_name']
+    list_filter = ['is_staff', 'is_superuser', 'is_active', 'groups', 'date_joined', DateJoinedMonthFilter, 'property_name']
     search_fields = ['username', 'first_name', 'last_name', 'email', 'property_name', 'property_id']
     actions = ['export_users_csv', 'export_users_pdf']
     
@@ -267,7 +267,7 @@ class MachineAdmin(admin.ModelAdmin):
         'procedure_count',
         'get_group_ids'
     ]
-    list_filter = ['status', 'category', 'brand', 'property', 'group_id', 'created_at', 'installation_date']
+    list_filter = ['status', 'category', 'brand', 'property', 'group_id', 'created_at', CreatedAtMonthFilter, 'installation_date', InstallationDateMonthFilter]
     search_fields = ['machine_id', 'name', 'brand', 'serial_number', 'description', 'location', 'group_id']
     readonly_fields = ['created_at', 'updated_at', 'next_maintenance_date', 'qr_code_preview', 'maintenance_procedures_display', 'get_group_ids']  # Removed machine_id - now editable
     filter_horizontal = ['preventive_maintenances']
@@ -709,13 +709,90 @@ class JobImageTopicFilter(admin.SimpleListFilter):
         if self.value():
             return queryset.filter(job__topics__id=self.value()).distinct()
         return queryset
+
+
+# ========================================
+# Month Filters - Filter by month for date fields
+# ========================================
+
+def create_month_filter(date_field, filter_title=None, param_name=None):
+    """
+    Factory function to create a month filter for any date field.
+    Usage: CreatedAtMonthFilter = create_month_filter('created_at', 'Created Month', 'created_month')
+    """
+    class MonthFilter(admin.SimpleListFilter):
+        title = filter_title or f'{date_field.replace("_", " ").title()} Month'
+        parameter_name = param_name or f'{date_field}_month'
+
+        def lookups(self, request, model_admin):
+            # Get distinct year-month combinations from the database
+            from django.db.models.functions import TruncMonth
+            from django.db.models import Count
+            
+            try:
+                # Get all distinct months from the date field
+                queryset = model_admin.get_queryset(request)
+                dates = (
+                    queryset
+                    .exclude(**{f'{date_field}__isnull': True})
+                    .annotate(month=TruncMonth(date_field))
+                    .values('month')
+                    .annotate(count=Count('id'))
+                    .order_by('-month')
+                )
+                
+                months = []
+                for entry in dates:
+                    if entry['month']:
+                        month_str = entry['month'].strftime('%Y-%m')
+                        month_display = entry['month'].strftime('%B %Y')
+                        months.append((month_str, f"{month_display} ({entry['count']})"))
+                
+                return months
+            except Exception:
+                return []
+
+        def queryset(self, request, queryset):
+            if self.value():
+                try:
+                    year, month = self.value().split('-')
+                    return queryset.filter(**{
+                        f'{date_field}__year': int(year),
+                        f'{date_field}__month': int(month)
+                    })
+                except (ValueError, TypeError):
+                    pass
+            return queryset
+    
+    return MonthFilter
+
+
+# Pre-defined month filters for common date fields
+CreatedAtMonthFilter = create_month_filter('created_at', 'Created Month', 'created_month')
+UpdatedAtMonthFilter = create_month_filter('updated_at', 'Updated Month', 'updated_month')
+UploadedAtMonthFilter = create_month_filter('uploaded_at', 'Uploaded Month', 'uploaded_month')
+ScheduledDateMonthFilter = create_month_filter('scheduled_date', 'Scheduled Month', 'scheduled_month')
+CompletedDateMonthFilter = create_month_filter('completed_date', 'Completed Month', 'completed_month')
+DueDateMonthFilter = create_month_filter('next_due_date', 'Due Date Month', 'due_month')
+LastRestockedMonthFilter = create_month_filter('last_restocked', 'Restocked Month', 'restocked_month')
+ExpiryDateMonthFilter = create_month_filter('expiry_date', 'Expiry Month', 'expiry_month')
+InstallationDateMonthFilter = create_month_filter('installation_date', 'Installation Month', 'installation_month')
+LastMaintenanceDateMonthFilter = create_month_filter('last_maintenance_date', 'Last Maintenance Month', 'last_maintenance_month')
+CompletedAtMonthFilter = create_month_filter('completed_at', 'Completed Month', 'completed_month')
+TimestampMonthFilter = create_month_filter('timestamp', 'Timestamp Month', 'timestamp_month')
+NextOccurrenceMonthFilter = create_month_filter('next_occurrence', 'Next Occurrence Month', 'next_occurrence_month')
+LastOccurrenceMonthFilter = create_month_filter('last_occurrence', 'Last Occurrence Month', 'last_occurrence_month')
+ExpiresAtMonthFilter = create_month_filter('expires_at', 'Expires Month', 'expires_month')
+DateJoinedMonthFilter = create_month_filter('date_joined', 'Joined Month', 'joined_month')
+
+
 # ModelAdmins
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
     list_per_page = 25
     form = JobAdminForm
     list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_user_display', 'user_id', 'get_properties_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
-    list_filter = ['status', 'priority', 'is_defective', 'created_at', 'updated_at', 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
+    list_filter = ['status', 'priority', 'is_defective', 'created_at', CreatedAtMonthFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
     search_fields = ['job_id', 'description', 'user__username', 'updated_by__username', 'topics__title']
     readonly_fields = ['job_id', 'updated_by', 'inventory_items_display']
     filter_horizontal = ['rooms', 'topics']
@@ -1518,6 +1595,7 @@ class JobImageAdmin(admin.ModelAdmin):
     list_display = ('image_preview', 'job_link', 'uploaded_by', 'uploaded_at')
     list_filter = (
         'uploaded_at',
+        UploadedAtMonthFilter,
         'uploaded_by',
         JobImagePropertyFilter,
         JobImageRoomFilter,
@@ -1586,7 +1664,7 @@ class PropertyAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_display = ['property_id', 'name', 'created_at', 'get_users_count', 'is_preventivemaintenance']
     search_fields = ['property_id', 'name', 'description']
-    list_filter = ['created_at', 'is_preventivemaintenance']
+    list_filter = ['created_at', CreatedAtMonthFilter, 'is_preventivemaintenance']
     filter_horizontal = ['users']
     readonly_fields = ['property_id', 'created_at']
     
@@ -1665,7 +1743,7 @@ class HasPreventiveMaintenanceFilter(admin.SimpleListFilter):
 class RoomAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_display = ['room_id', 'name', 'room_type', 'is_active', 'created_at', 'get_properties_display']
-    list_filter = ['room_type', 'is_active', 'created_at', HasPreventiveMaintenanceFilter]
+    list_filter = ['room_type', 'is_active', 'created_at', CreatedAtMonthFilter, HasPreventiveMaintenanceFilter]
     search_fields = ['name', 'room_type', 'properties__name']
     filter_horizontal = ['properties']
     readonly_fields = ['room_id', 'created_at']
@@ -1897,8 +1975,11 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
     list_filter = (
         # 'frequency',  # Removed - defaults to monthly
         ('completed_date', admin.EmptyFieldListFilter),
+        CompletedDateMonthFilter,
         'scheduled_date',
+        ScheduledDateMonthFilter,
         'next_due_date',
+        DueDateMonthFilter,
         'procedure_template',
     )
     search_fields = ('pm_id', 'notes', 'pmtitle', 'topics__title')
@@ -2181,7 +2262,7 @@ class SessionAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_display = ('user', 'session_token_short', 'expires_at', 'created_at', 'is_expired_status')
     search_fields = ('user__username', 'session_token')
-    list_filter = ('expires_at', 'created_at')
+    list_filter = ('expires_at', ExpiresAtMonthFilter, 'created_at', CreatedAtMonthFilter)
     readonly_fields = ('user', 'session_token', 'access_token', 'refresh_token', 'expires_at', 'created_at')
     raw_id_fields = ('user',)
 
@@ -2242,7 +2323,7 @@ class SessionAdmin(admin.ModelAdmin):
 class MaintenanceProcedureAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_display = ['name', 'group_id', 'category', 'frequency', 'responsible_department', 'estimated_duration', 'difficulty_level', 'machine_count', 'created_at']
-    list_filter = ['group_id', 'category', 'frequency', 'responsible_department', 'difficulty_level', 'created_at']
+    list_filter = ['group_id', 'category', 'frequency', 'responsible_department', 'difficulty_level', 'created_at', CreatedAtMonthFilter]
     search_fields = ['name', 'group_id', 'category', 'description']
     readonly_fields = ['created_at', 'updated_at']
     
@@ -2395,7 +2476,7 @@ class MaintenanceProcedureAdmin(admin.ModelAdmin):
 class MaintenanceTaskImageAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_display = ['id', 'task', 'image_type', 'image_preview', 'uploaded_by', 'uploaded_at']
-    list_filter = ['image_type', 'uploaded_at', 'task']
+    list_filter = ['image_type', 'uploaded_at', UploadedAtMonthFilter, 'task']
     search_fields = ['task__name', 'task__equipment__name']
     readonly_fields = ['uploaded_at', 'jpeg_path', 'image_preview_large']
     raw_id_fields = ['task', 'uploaded_by']
@@ -2474,7 +2555,7 @@ class MaintenanceTaskImageAdmin(admin.ModelAdmin):
 class MaintenanceChecklistAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_display = ['maintenance', 'item', 'is_completed', 'completed_by', 'completed_at', 'order']
-    list_filter = ['is_completed', 'completed_at', 'order']
+    list_filter = ['is_completed', 'completed_at', CompletedAtMonthFilter, 'order']
     search_fields = ['item', 'maintenance__pm_id', 'maintenance__pmtitle']
     readonly_fields = ['completed_at']
     
@@ -2534,7 +2615,7 @@ class MaintenanceChecklistAdmin(admin.ModelAdmin):
 class MaintenanceHistoryAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_display = ['maintenance', 'action', 'performed_by', 'timestamp']
-    list_filter = ['action', 'timestamp', 'performed_by']
+    list_filter = ['action', 'timestamp', TimestampMonthFilter, 'performed_by']
     search_fields = ['maintenance__pm_id', 'action', 'notes', 'performed_by__username']
     readonly_fields = ['timestamp']
     
@@ -2590,7 +2671,7 @@ class MaintenanceHistoryAdmin(admin.ModelAdmin):
 class MaintenanceScheduleAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_display = ['maintenance', 'is_recurring', 'next_occurrence', 'last_occurrence', 'total_occurrences', 'is_active']
-    list_filter = ['is_recurring', 'is_active', 'next_occurrence', 'last_occurrence']
+    list_filter = ['is_recurring', 'is_active', 'next_occurrence', NextOccurrenceMonthFilter, 'last_occurrence', LastOccurrenceMonthFilter]
     search_fields = ['maintenance__pm_id', 'maintenance__pmtitle']
     readonly_fields = ['total_occurrences']
     
@@ -2666,7 +2747,7 @@ class UtilityConsumptionAdmin(admin.ModelAdmin):
         'created_at',
         'updated_at'
     ]
-    list_filter = ['year', 'month', 'property', 'created_at']
+    list_filter = ['year', 'month', 'property', 'created_at', CreatedAtMonthFilter]
     search_fields = ['property__name', 'property__property_id', 'created_by__username']
     readonly_fields = ['created_at', 'updated_at']
     raw_id_fields = ['property', 'created_by']
@@ -2779,9 +2860,13 @@ class InventoryAdmin(admin.ModelAdmin):
         ('jobs', admin.RelatedOnlyFieldListFilter),
         ('preventive_maintenances', admin.RelatedOnlyFieldListFilter),
         'created_at',
+        CreatedAtMonthFilter,
         'updated_at',
+        UpdatedAtMonthFilter,
         'last_restocked',
-        'expiry_date'
+        LastRestockedMonthFilter,
+        'expiry_date',
+        ExpiryDateMonthFilter,
     ]
     search_fields = [
         'item_id',

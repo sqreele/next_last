@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Welcome to MaintenancePro</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f5f7fb;">
+    <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f5f7fb;">
+      <tr>
+        <td align="center" style="padding:24px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:640px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e6e8ee;">
+            <!-- Header -->
+            <tr>
+              <td style="padding:32px 24px 24px 24px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#ffffff;text-align:center;">
+                <div style="width:64px;height:64px;background:rgba(255,255,255,0.2);border-radius:50%;margin:0 auto 16px auto;display:flex;align-items:center;justify-content:center;">
+                  <span style="font-size:32px;">🎉</span>
+                </div>
+                <h1 style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:28px;line-height:36px;font-weight:700;">Welcome to MaintenancePro!</h1>
+                <p style="margin:12px 0 0 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:16px;opacity:0.9;">Your account has been successfully set up</p>
+              </td>
+            </tr>
+            
+            <!-- Content -->
+            <tr>
+              <td style="padding:32px 24px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-family:Inter,Segoe UI,Arial,sans-serif;color:#1f2532;">
+                  <!-- Greeting -->
+                  <tr>
+                    <td style="padding-bottom:24px;">
+                      <p style="margin:0;font-size:16px;line-height:24px;color:#374151;">
+                        Hi <strong>{{ username }}</strong>,
+                      </p>
+                      <p style="margin:12px 0 0 0;font-size:16px;line-height:24px;color:#374151;">
+                        Welcome to the MaintenancePro team! Your account has been created and configured with access to the following properties:
+                      </p>
+                    </td>
+                  </tr>
+                  
+                  <!-- User Info Box -->
+                  <tr>
+                    <td style="padding-bottom:24px;">
+                      <div style="background:#f0f4ff;border:1px solid #dbe4ff;border-radius:10px;padding:20px;">
+                        <h3 style="margin:0 0 12px 0;font-size:14px;color:#2563eb;text-transform:uppercase;letter-spacing:0.5px;">Your Account Details</h3>
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                          <tr>
+                            <td style="padding:6px 0;font-size:14px;color:#6b7280;width:120px;">Email:</td>
+                            <td style="padding:6px 0;font-size:14px;color:#1f2532;font-weight:600;">{{ email }}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding:6px 0;font-size:14px;color:#6b7280;">Username:</td>
+                            <td style="padding:6px 0;font-size:14px;color:#1f2532;font-weight:600;">{{ username }}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding:6px 0;font-size:14px;color:#6b7280;">Properties:</td>
+                            <td style="padding:6px 0;font-size:14px;color:#1f2532;font-weight:600;">{{ property_count }} assigned</td>
+                          </tr>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                  
+                  <!-- Properties List -->
+                  {% if properties %}
+                  <tr>
+                    <td style="padding-bottom:24px;">
+                      <h3 style="margin:0 0 12px 0;font-size:14px;font-weight:700;color:#2a3a5e;">Assigned Properties</h3>
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;">
+                        {% for property in properties %}
+                        <tr>
+                          <td style="padding:12px 16px;background:{% if forloop.counter|divisibleby:2 %}#f9fafb{% else %}#ffffff{% endif %};border:1px solid #e6e8ee;{% if forloop.first %}border-radius:8px 8px 0 0;{% endif %}{% if forloop.last %}border-radius:0 0 8px 8px;{% else %}border-bottom:0;{% endif %}">
+                            <div style="font-size:14px;font-weight:600;color:#1f2532;">{{ property.name }}</div>
+                            <div style="font-size:12px;color:#6b7280;margin-top:2px;">ID: {{ property.property_id }}</div>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </table>
+                    </td>
+                  </tr>
+                  {% endif %}
+                  
+                  <!-- Getting Started Section -->
+                  <tr>
+                    <td style="padding-bottom:24px;">
+                      <h3 style="margin:0 0 16px 0;font-size:14px;font-weight:700;color:#2a3a5e;">Getting Started</h3>
+                      <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                        <tr>
+                          <td style="padding:12px;background:#eefaf3;border:1px solid #c7efd8;border-radius:8px;margin-bottom:8px;">
+                            <table role="presentation" width="100%">
+                              <tr>
+                                <td width="40" valign="top">
+                                  <div style="width:32px;height:32px;background:#10b981;border-radius:50%;text-align:center;line-height:32px;color:#fff;font-weight:700;">1</div>
+                                </td>
+                                <td valign="top">
+                                  <div style="font-size:14px;font-weight:600;color:#1f2532;">Log into your dashboard</div>
+                                  <div style="font-size:13px;color:#6b7280;margin-top:2px;">Access your personalized maintenance dashboard</div>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                        <tr><td style="height:8px;"></td></tr>
+                        <tr>
+                          <td style="padding:12px;background:#f0f4ff;border:1px solid #dbe4ff;border-radius:8px;margin-bottom:8px;">
+                            <table role="presentation" width="100%">
+                              <tr>
+                                <td width="40" valign="top">
+                                  <div style="width:32px;height:32px;background:#2563eb;border-radius:50%;text-align:center;line-height:32px;color:#fff;font-weight:700;">2</div>
+                                </td>
+                                <td valign="top">
+                                  <div style="font-size:14px;font-weight:600;color:#1f2532;">View your assigned jobs</div>
+                                  <div style="font-size:13px;color:#6b7280;margin-top:2px;">Check pending maintenance tasks and updates</div>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                        <tr><td style="height:8px;"></td></tr>
+                        <tr>
+                          <td style="padding:12px;background:#fef3e2;border:1px solid #f6d55c;border-radius:8px;">
+                            <table role="presentation" width="100%">
+                              <tr>
+                                <td width="40" valign="top">
+                                  <div style="width:32px;height:32px;background:#f59e0b;border-radius:50%;text-align:center;line-height:32px;color:#fff;font-weight:700;">3</div>
+                                </td>
+                                <td valign="top">
+                                  <div style="font-size:14px;font-weight:600;color:#1f2532;">Start managing maintenance</div>
+                                  <div style="font-size:13px;color:#6b7280;margin-top:2px;">Create jobs, schedule preventive maintenance, and more</div>
+                                </td>
+                              </tr>
+                            </table>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  
+                  <!-- CTA Button -->
+                  <tr>
+                    <td style="padding-bottom:24px;text-align:center;">
+                      <a href="{{ dashboard_url }}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;border-radius:8px;">
+                        Go to Dashboard
+                      </a>
+                    </td>
+                  </tr>
+                  
+                  <!-- Help Section -->
+                  <tr>
+                    <td>
+                      <div style="background:#f9fafb;border:1px solid #e6e8ee;border-radius:8px;padding:16px;text-align:center;">
+                        <p style="margin:0;font-size:14px;color:#6b7280;">
+                          Need help? Contact your administrator or visit our help center.
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            
+            <!-- Footer -->
+            <tr>
+              <td style="padding:16px 24px;background:#fafbff;border-top:1px solid #eef0f6;">
+                <p style="margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:12px;color:#6b7280;text-align:center;">
+                  You received this email because you just created an account on MaintenancePro.<br>
+                  Visit <a href="{{ base_url }}" style="color:#4f46e5;text-decoration:none;">{{ base_url }}</a> to access your dashboard.
+                </p>
+              </td>
+            </tr>
+          </table>
+          <div style="padding:12px 0 0 0;font-family:Inter,Segoe UI,Arial,sans-serif;font-size:11px;color:#98a2b3;text-align:center;">
+            &copy; {{ year }} MaintenancePro. All rights reserved.
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+

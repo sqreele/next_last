@@ -1,15 +1,18 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
-import { Building, ArrowRight, Shield, Users, Wrench } from 'lucide-react';
+import { Building, ArrowRight, Shield, Users, Wrench, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Alert, AlertDescription } from '@/app/components/ui/alert';
 import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const message = searchParams.get('message');
   
   // Check if user is already authenticated
   const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({ 
@@ -49,6 +52,16 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">
       <div className="w-full max-w-4xl">
+        {/* Success message from onboarding */}
+        {message === 'onboarding_complete' && (
+          <Alert className="mb-6 max-w-md mx-auto bg-green-50 border-green-200">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <AlertDescription className="text-green-800 ml-2">
+              <strong>Account setup complete!</strong> Please sign in to access your dashboard with your new permissions.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <div className="p-4 bg-blue-100 rounded-full">

@@ -238,8 +238,59 @@ export async function GET(request: NextRequest) {
         note: 'Properties will be fetched by session-compat API'
       });
 
-      // Redirect to dashboard with session cookie
-      const response = NextResponse.redirect(`${baseUrl}/dashboard`);
+      // Check if user is new by querying the backend for their properties
+      let isNewUser = true;
+      let userProperties: any[] = [];
+      
+      try {
+        const backendUrl = process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
+        console.log('🔍 Checking if user is new by fetching properties from backend...');
+        
+        const propertiesResponse = await fetch(`${backendUrl}/api/v1/properties/`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${tokens.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (propertiesResponse.ok) {
+          userProperties = await propertiesResponse.json();
+          console.log('🔍 User properties response:', {
+            count: Array.isArray(userProperties) ? userProperties.length : 0,
+            isArray: Array.isArray(userProperties)
+          });
+          
+          // User is NOT new if they have properties assigned
+          isNewUser = !Array.isArray(userProperties) || userProperties.length === 0;
+        } else {
+          console.log('🔍 Failed to fetch properties, treating as new user');
+          isNewUser = true;
+        }
+      } catch (propertiesError) {
+        console.error('🔍 Error checking user properties:', propertiesError);
+        // If we can't check, assume new user for safety
+        isNewUser = true;
+      }
+
+      console.log('🔍 User status:', {
+        isNewUser,
+        propertiesCount: userProperties.length
+      });
+
+      // Determine redirect destination
+      let redirectUrl = `${baseUrl}/dashboard`;
+      
+      if (isNewUser) {
+        // New user - redirect to onboarding
+        redirectUrl = `${baseUrl}/auth/onboarding`;
+        console.log('🔍 New user detected - redirecting to onboarding');
+      } else {
+        console.log('🔍 Existing user with properties - redirecting to dashboard');
+      }
+
+      // Redirect with session cookie
+      const response = NextResponse.redirect(redirectUrl);
       
       // Set session cookie
       response.cookies.set('auth0_session', JSON.stringify(sessionData), {

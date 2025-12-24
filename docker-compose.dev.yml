@@ -41,7 +41,7 @@ services:
       dockerfile: Dockerfile
     container_name: django-backend-dev
     volumes:
-      - ./backend/myLubd/src:/app/src
+      - ./backend/myLubd/src:/app
       - media_volume_dev:/app/media
       - static_volume_dev:/app/static
     environment:
@@ -63,6 +63,21 @@ services:
       - AUTH0_ISSUER_BASE_URL=https://pcms.ca.auth0.com
       - AUTH0_CLIENT_ID=H5QKkdL5wsGPvdY6FEFGVmuBQCKKzSV7
       - AUTH0_CLIENT_SECRET=CMxpx4HmEMsTohty_ID6oP9iG9kJEXp8h4lEyeZlcont7hbpQddg1WIAznIhnlfH
+      # Email configuration (configure with your SMTP credentials)
+      - EMAIL_HOST=smtp.gmail.com
+      - EMAIL_PORT=587
+      - EMAIL_USE_TLS=True
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-no-reply@pcms.live}
+      - EMAIL_REQUIRE_AUTH=True
+      # Gmail API (optional, for sending via Gmail API instead of SMTP)
+      - GMAIL_CLIENT_ID=${GMAIL_CLIENT_ID:-}
+      - GMAIL_CLIENT_SECRET=${GMAIL_CLIENT_SECRET:-}
+      - GMAIL_REFRESH_TOKEN=${GMAIL_REFRESH_TOKEN:-}
+      # Admin notification emails (comma-separated)
+      - ADMIN_NOTIFICATION_EMAILS=${ADMIN_NOTIFICATION_EMAILS:-}
+      - APP_BASE_URL=http://localhost:3000
     ports:
       - "8000:8000"
     depends_on:

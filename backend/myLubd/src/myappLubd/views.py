@@ -1629,6 +1629,155 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+    @action(detail=True, methods=['post'])
+    def add_user(self, request, property_id=None):
+        """
+        Add the current authenticated user to this property.
+        Used during onboarding for new users.
+        """
+        logger.info(f"add_user called for property_id: {property_id} by user: {request.user.username}")
+        try:
+            property_obj = Property.objects.get(property_id=property_id)
+            
+            # Add the current user to the property
+            if not property_obj.users.filter(id=request.user.id).exists():
+                property_obj.users.add(request.user)
+                logger.info(f"Added user {request.user.username} to property {property_id}")
+                
+                # Also update the UserProfile if it exists
+                try:
+                    from .models import UserProfile
+                    profile, created = UserProfile.objects.get_or_create(user=request.user)
+                    if not profile.properties.filter(id=property_obj.id).exists():
+                        profile.properties.add(property_obj)
+                        logger.info(f"Added property {property_id} to user profile")
+                except Exception as profile_error:
+                    logger.warning(f"Could not update user profile: {profile_error}")
+                
+                return Response({
+                    'success': True,
+                    'message': f'User {request.user.username} added to property {property_obj.name}',
+                    'property_id': property_obj.property_id,
+                    'property_name': property_obj.name
+                })
+            else:
+                logger.info(f"User {request.user.username} already has access to property {property_id}")
+                return Response({
+                    'success': True,
+                    'message': f'User already has access to property {property_obj.name}',
+                    'property_id': property_obj.property_id,
+                    'property_name': property_obj.name
+                })
+                
+        except Property.DoesNotExist:
+            logger.error(f"Property {property_id} not found")
+            return Response(
+                {"detail": f"Property with ID {property_id} not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=False, methods=['post'])
+    def assign_properties(self, request):
+        """
+        Assign multiple properties to the current user.
+        Used during onboarding for new users.
+        
+        Expected payload: { "property_ids": [1, 2, 3] }
+        """
+        logger.info(f"assign_properties called by user: {request.user.username}")
+        property_ids = request.data.get('property_ids', [])
+        
+        if not property_ids:
+            return Response(
+                {"error": "property_ids is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        assigned = []
+        errors = []
+        
+        for prop_id in property_ids:
+            try:
+                # Try to find property by id (integer) or property_id (string)
+                if isinstance(prop_id, int):
+                    property_obj = Property.objects.get(id=prop_id)
+                else:
+                    property_obj = Property.objects.get(property_id=prop_id)
+                
+                # Add user to property
+                if not property_obj.users.filter(id=request.user.id).exists():
+                    property_obj.users.add(request.user)
+                    logger.info(f"Added user {request.user.username} to property {property_obj.property_id}")
+                    
+                    # Also update UserProfile
+                    try:
+                        from .models import UserProfile
+                        profile, created = UserProfile.objects.get_or_create(user=request.user)
+                        if not profile.properties.filter(id=property_obj.id).exists():
+                            profile.properties.add(property_obj)
+                    except Exception as e:
+                        logger.warning(f"Could not update user profile: {e}")
+                
+                assigned.append({
+                    'id': property_obj.id,
+                    'property_id': property_obj.property_id,
+                    'name': property_obj.name
+                })
+            except Property.DoesNotExist:
+                errors.append({'id': prop_id, 'error': 'Property not found'})
+            except Exception as e:
+                errors.append({'id': prop_id, 'error': str(e)})
+        
+        logger.info(f"assign_properties result: {len(assigned)} assigned, {len(errors)} errors")
+        
+        # Send welcome email to new user if properties were assigned successfully
+        if assigned and request.user.email:
+            try:
+                from .email_utils import send_welcome_email, send_new_user_notification_to_admin
+                
+                # Send welcome email to the new user
+                email_sent = send_welcome_email(
+                    user_email=request.user.email,
+                    username=request.user.get_full_name() or request.user.username,
+                    properties=assigned
+                )
+                
+                if email_sent:
+                    logger.info(f"Welcome email sent to new user: {request.user.email}")
+                else:
+                    logger.warning(f"Failed to send welcome email to: {request.user.email}")
+                
+                # Also notify admins about the new user
+                send_new_user_notification_to_admin(
+                    new_user_email=request.user.email,
+                    new_username=request.user.get_full_name() or request.user.username,
+                    properties=assigned
+                )
+                
+            except Exception as email_error:
+                logger.error(f"Error sending welcome email: {email_error}")
+                # Don't fail the request if email fails
+        
+        return Response({
+            'success': len(errors) == 0,
+            'assigned': assigned,
+            'errors': errors,
+            'message': f'Assigned {len(assigned)} properties to user {request.user.username}',
+            'email_sent': bool(assigned and request.user.email)
+        })
+
+    @action(detail=False, methods=['get'])
+    def all(self, request):
+        """
+        Get ALL properties in the system.
+        Used for onboarding to show new users all available properties.
+        Only accessible to authenticated users.
+        """
+        logger.info(f"all properties requested by user: {request.user.username}")
+        properties = Property.objects.all()
+        serializer = PropertySerializer(properties, many=True, context={'request': request})
+        return Response(serializer.data)
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer

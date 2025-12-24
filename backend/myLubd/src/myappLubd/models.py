@@ -1866,9 +1866,9 @@ class Inventory(models.Model):
         # Auto-update status based on quantity
         if self.quantity <= 0:
             self.status = 'out_of_stock'
-        elif self.quantity <= self.min_quantity:
+        elif self.quantity < self.min_quantity:
             self.status = 'low_stock'
-        elif self.status == 'out_of_stock' and self.quantity > 0:
+        elif self.status in ('out_of_stock', 'low_stock') and self.quantity >= self.min_quantity:
             self.status = 'available'
         
         super().save(*args, **kwargs)

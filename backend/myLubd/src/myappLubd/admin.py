@@ -3205,6 +3205,7 @@ class InventoryAdmin(admin.ModelAdmin):
         # Prefetch related data to avoid N+1 queries
         qs = queryset.select_related('property', 'room', 'created_by').prefetch_related(
             'jobs__user',
+            'jobs__updated_by',
             'preventive_maintenances__assigned_to',
             'preventive_maintenances__created_by'
         ).order_by('item_id')
@@ -3416,22 +3417,28 @@ class InventoryAdmin(admin.ModelAdmin):
             return None
 
         def _get_last_update_user(item):
-            """Get the username of the last user who updated this item via Job or PM"""
+            """Get the username of the last user who updated this item via Job, PM, or created_by"""
             last_user = None
             last_time = None
             
-            # Check jobs
-            last_job = item.jobs.select_related('user').order_by('-updated_at').first()
-            if last_job and last_job.user:
-                last_user = last_job.user.username
-                last_time = last_job.updated_at
+            # Check jobs - prefer updated_by, fallback to user
+            last_job = item.jobs.order_by('-updated_at').first()
+            if last_job:
+                job_user = last_job.updated_by or last_job.user
+                if job_user:
+                    last_user = job_user.username
+                    last_time = last_job.updated_at
             
             # Check PMs
-            last_pm = item.preventive_maintenances.select_related('assigned_to', 'created_by').order_by('-updated_at').first()
+            last_pm = item.preventive_maintenances.order_by('-updated_at').first()
             if last_pm:
                 pm_user = last_pm.assigned_to or last_pm.created_by
                 if pm_user and (last_time is None or (last_pm.updated_at and last_pm.updated_at > last_time)):
                     last_user = pm_user.username
+            
+            # Fallback to the inventory item's created_by if no job/PM user found
+            if not last_user and item.created_by:
+                last_user = item.created_by.username
             
             return last_user or 'N/A'
 

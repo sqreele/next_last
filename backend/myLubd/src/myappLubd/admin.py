@@ -3873,6 +3873,7 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         'custom_text_2',
         'custom_text_3',
         'notes',
+        'supplier',
         'topic__title',
         'property__name',
         'created_by__username',
@@ -3916,8 +3917,11 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
             ),
             'description': 'Upload up to 4 images with optional captions.'
         }),
-        ('Property & Dates', {
-            'fields': ('property', 'report_date', 'due_date', 'completed_date')
+        ('Property & Supplier', {
+            'fields': ('property', 'supplier')
+        }),
+        ('Dates', {
+            'fields': ('report_date', 'due_date', 'completed_date')
         }),
         ('Additional Notes', {
             'fields': ('notes',),

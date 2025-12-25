@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
 import { Building, ArrowRight, Shield, Users, Wrench, CheckCircle2 } from 'lucide-react';
@@ -9,7 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
 import Link from 'next/link';
 
-export default function LoginPage() {
+// Loading fallback component
+function LoginLoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="text-center space-y-4">
+        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+        <p className="text-lg font-medium text-gray-600">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+// Main login content component that uses useSearchParams
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const message = searchParams.get('message');
@@ -153,5 +166,14 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+// Default export wraps LoginContent in Suspense boundary for useSearchParams
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginLoadingFallback />}>
+      <LoginContent />
+    </Suspense>
   );
 }

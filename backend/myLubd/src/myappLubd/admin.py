@@ -2866,7 +2866,7 @@ class UtilityConsumptionAdmin(admin.ModelAdmin):
 
 @admin.register(Inventory)
 class InventoryAdmin(admin.ModelAdmin):
-    list_per_page = 25
+    list_per_page = 27
     list_display = [
         'image_preview',
         'item_id',

@@ -4357,7 +4357,7 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
     export_reports_pdf.short_description = "Export selected reports to PDF (summary)"
     
     def export_single_report_pdf(self, request, queryset):
-        """Export a single detailed report to PDF - SINGLE PAGE layout with up to 15 images in a grid"""
+        """Export a single detailed report to PDF - SINGLE PAGE layout with up to 15 images in a compact grid"""
         if queryset.count() > 1:
             self.message_user(request, 'Please select only one report for detailed PDF export.', level='warning')
             return None
@@ -4381,33 +4381,34 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
-            rightMargin=0.5*cm,
-            leftMargin=0.5*cm,
-            topMargin=0.5*cm,
-            bottomMargin=0.5*cm
+            rightMargin=0.4*cm,
+            leftMargin=0.4*cm,
+            topMargin=0.4*cm,
+            bottomMargin=0.3*cm
         )
         
         # A4 size: 210mm x 297mm = 595 x 842 points
-        page_width = A4[0] - 1*cm  # Available width after margins
+        page_width = A4[0] - 0.8*cm  # Available width after margins
         
         styles = getSampleStyleSheet()
         
-        # Compact styles for single-page layout
+        # Ultra-compact styles for single-page layout with 15 images
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Title'],
-            fontSize=14,
-            spaceAfter=2,
+            fontSize=12,
+            spaceAfter=1,
             spaceBefore=0,
             textColor=colors.darkblue,
-            alignment=TA_CENTER
+            alignment=TA_CENTER,
+            leading=14
         )
         
         subtitle_style = ParagraphStyle(
             'Subtitle',
             parent=styles['Normal'],
-            fontSize=10,
-            spaceAfter=4,
+            fontSize=8,
+            spaceAfter=2,
             textColor=colors.grey,
             alignment=TA_CENTER
         )
@@ -4415,9 +4416,9 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         header_style = ParagraphStyle(
             'Header',
             parent=styles['Heading2'],
-            fontSize=9,
-            spaceAfter=2,
-            spaceBefore=4,
+            fontSize=8,
+            spaceAfter=1,
+            spaceBefore=2,
             textColor=colors.darkblue,
             fontName='Helvetica-Bold'
         )
@@ -4425,91 +4426,73 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         value_style = ParagraphStyle(
             'Value',
             parent=styles['Normal'],
-            fontSize=8,
-            spaceAfter=2,
-            leading=10
+            fontSize=7,
+            spaceAfter=1,
+            leading=9
         )
         
         caption_style = ParagraphStyle(
             'Caption',
             parent=styles['Normal'],
-            fontSize=6,
+            fontSize=5,
             alignment=TA_CENTER,
             textColor=colors.grey,
             spaceAfter=0,
             spaceBefore=0,
-            leading=7
+            leading=6
         )
         
         story = []
         
-        # Compact Title with report ID
-        story.append(Paragraph(f"Workspace Report: {report.title}", title_style))
-        story.append(Paragraph(f"{report.report_id}", subtitle_style))
+        # Compact Title with report ID on same line
+        title_text = report.title[:50] + '...' if len(report.title or '') > 50 else (report.title or 'Untitled')
+        story.append(Paragraph(f"Workspace Report: {title_text} ({report.report_id})", title_style))
         
-        # Compact info table - all key info in 2 rows
-        info_data = [
-            [
-                Paragraph('<b>Status:</b>', value_style), 
-                Paragraph(report.get_status_display(), value_style),
-                Paragraph('<b>Priority:</b>', value_style), 
-                Paragraph(report.get_priority_display(), value_style),
-                Paragraph('<b>Property:</b>', value_style), 
-                Paragraph(report.property.name if report.property else 'N/A', value_style),
-            ],
-            [
-                Paragraph('<b>Topic:</b>', value_style), 
-                Paragraph(report.get_topic_display(), value_style),
-                Paragraph('<b>Date:</b>', value_style), 
-                Paragraph(report.report_date.strftime('%Y-%m-%d') if report.report_date else 'N/A', value_style),
-                Paragraph('<b>Supplier:</b>', value_style), 
-                Paragraph(report.supplier or 'N/A', value_style),
-            ],
-        ]
+        # Single-row compact info table with all key info
+        info_data = [[
+            Paragraph(f"<b>Status:</b> {report.get_status_display()}", value_style),
+            Paragraph(f"<b>Priority:</b> {report.get_priority_display()}", value_style),
+            Paragraph(f"<b>Property:</b> {report.property.name[:15] if report.property else 'N/A'}", value_style),
+            Paragraph(f"<b>Topic:</b> {report.get_topic_display()[:15]}", value_style),
+            Paragraph(f"<b>Date:</b> {report.report_date.strftime('%Y-%m-%d') if report.report_date else 'N/A'}", value_style),
+        ]]
         
-        col_width = page_width / 6
-        info_table = Table(info_data, colWidths=[col_width * 0.6, col_width * 1.4, col_width * 0.6, col_width * 1.4, col_width * 0.6, col_width * 1.4])
+        col_w = page_width / 5
+        info_table = Table(info_data, colWidths=[col_w] * 5)
         info_table.setStyle(TableStyle([
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+            ('TOPPADDING', (0, 0), (-1, -1), 1),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.97, 0.97, 0.99)),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.96, 0.96, 0.98)),
             ('BOX', (0, 0), (-1, -1), 0.5, colors.lightgrey),
         ]))
         story.append(info_table)
-        story.append(Spacer(1, 4))
         
-        # Description (truncated if too long)
+        # Description (very truncated for single page)
         if report.description:
-            desc_text = report.description[:300] + '...' if len(report.description) > 300 else report.description
-            story.append(Paragraph(f"<b>Description:</b> {desc_text}", value_style))
-        
-        # Custom fields (very compact)
-        custom_text_parts = []
-        for i in range(1, 4):
-            label = getattr(report, f'custom_text_{i}_label', f'Custom {i}')
-            content = getattr(report, f'custom_text_{i}', None)
-            if content:
-                truncated = content[:100] + '...' if len(content) > 100 else content
-                custom_text_parts.append(f"<b>{label}:</b> {truncated}")
-        
-        if custom_text_parts:
-            story.append(Paragraph(" | ".join(custom_text_parts), value_style))
+            desc_text = report.description[:150] + '...' if len(report.description) > 150 else report.description
+            story.append(Paragraph(f"<b>Desc:</b> {desc_text}", value_style))
         
         # Images Section - Grid layout (5 columns x 3 rows = 15 images on single page)
         images = report.get_images()
         if images:
-            story.append(Spacer(1, 6))
+            story.append(Spacer(1, 3))
             story.append(Paragraph("Report Images", header_style))
             
-            # Calculate grid dimensions for single page
-            # Available height after header: approximately 650 points
-            # Each image cell: width = page_width/5, height = auto (maintain aspect ratio)
+            # Optimized grid dimensions for 15 images on single A4 page
+            # A4 height: 842pt, margins: ~20pt, header: ~80pt, footer: ~15pt
+            # Available for images: ~727pt
+            # 3 rows of images + 3 rows of captions = 6 rows
             num_cols = 5
-            cell_width = (page_width - 10) / num_cols  # Small gap between cells
-            cell_img_width = cell_width - 4  # Padding inside cell
-            cell_img_height = 110  # Fixed height for uniformity in grid
+            cell_width = (page_width - 6) / num_cols  # Minimal gap between cells
+            cell_img_width = cell_width - 2  # Minimal padding inside cell
+            
+            # Calculate optimal image height based on available space
+            # Each row: image_height + 2pt padding + 10pt caption = image_height + 12pt
+            # 3 rows * (image_height + 12) should fit in ~650pt (conservative)
+            # So image_height = (650 / 3) - 12 = ~205pt max
+            cell_img_height = 195  # Optimized: larger images for better readability
             
             # Build image grid data
             image_grid = []
@@ -4519,10 +4502,10 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
             
             for idx, img_data in enumerate(images[:15]):  # Max 15 images
                 image_field = img_data['image']
-                caption = img_data['caption'] or f'Image {idx + 1}'
-                # Truncate caption to fit
-                if len(caption) > 20:
-                    caption = caption[:17] + '...'
+                caption = img_data['caption'] or f'#{idx + 1}'
+                # Shorter caption for compact layout
+                if len(caption) > 15:
+                    caption = caption[:12] + '...'
                 
                 img_cell = None
                 if image_field and hasattr(image_field, 'path'):
@@ -4538,19 +4521,21 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
                             img_w, img_h = pil_img.size
                             aspect = img_w / img_h
                             
-                            # Calculate display dimensions to fit in cell
+                            # Calculate display dimensions to fit in cell (max fit)
                             if aspect > 1:  # Landscape
+                                display_width = min(cell_img_width, cell_img_height * aspect)
+                                display_height = display_width / aspect
+                            else:  # Portrait or square
+                                display_height = min(cell_img_height, cell_img_width / aspect)
+                                display_width = display_height * aspect
+                            
+                            # Ensure we don't exceed cell bounds
+                            if display_width > cell_img_width:
                                 display_width = cell_img_width
                                 display_height = display_width / aspect
-                                if display_height > cell_img_height:
-                                    display_height = cell_img_height
-                                    display_width = display_height * aspect
-                            else:  # Portrait or square
+                            if display_height > cell_img_height:
                                 display_height = cell_img_height
                                 display_width = display_height * aspect
-                                if display_width > cell_img_width:
-                                    display_width = cell_img_width
-                                    display_height = display_width / aspect
                             
                             img_cell = RLImage(img_path, width=display_width, height=display_height)
                             pil_img.close()
@@ -4586,13 +4571,13 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
                 grid_data.append(cap_row)
             
             if grid_data:
-                # Define row heights: image rows are taller, caption rows are short
+                # Define row heights: image rows taller, caption rows minimal
                 row_heights = []
                 for i in range(len(grid_data)):
                     if i % 2 == 0:  # Image row
-                        row_heights.append(cell_img_height + 4)
+                        row_heights.append(cell_img_height + 2)
                     else:  # Caption row
-                        row_heights.append(12)
+                        row_heights.append(10)
                 
                 grid_table = Table(
                     grid_data, 
@@ -4602,23 +4587,25 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
                 grid_table.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                     ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 2),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),
-                    ('TOPPADDING', (0, 0), (-1, -1), 2),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 1),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 1),
+                    ('TOPPADDING', (0, 0), (-1, -1), 1),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
                     ('BOX', (0, 0), (-1, -1), 0.5, colors.lightgrey),
-                    ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.Color(0.9, 0.9, 0.9)),
+                    ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.Color(0.92, 0.92, 0.92)),
                 ]))
                 story.append(grid_table)
         
-        # Compact footer
-        story.append(Spacer(1, 4))
-        footer_text = f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}"
+        # Minimal footer
+        story.append(Spacer(1, 2))
+        footer_parts = [f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}"]
         if report.completed_date:
-            footer_text += f" | Completed: {report.completed_date.strftime('%Y-%m-%d')}"
+            footer_parts.append(f"Completed: {report.completed_date.strftime('%Y-%m-%d')}")
         if report.created_by:
-            footer_text += f" | By: {report.created_by.username}"
-        story.append(Paragraph(footer_text, ParagraphStyle('Footer', parent=styles['Normal'], fontSize=7, textColor=colors.grey, alignment=TA_CENTER)))
+            footer_parts.append(f"By: {report.created_by.username}")
+        if report.supplier:
+            footer_parts.append(f"Supplier: {report.supplier[:20]}")
+        story.append(Paragraph(" | ".join(footer_parts), ParagraphStyle('Footer', parent=styles['Normal'], fontSize=6, textColor=colors.grey, alignment=TA_CENTER)))
         
         doc.build(story)
         buffer.seek(0)
@@ -4627,7 +4614,7 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
-    export_single_report_pdf.short_description = "Export single report to PDF (1 page with images)"
+    export_single_report_pdf.short_description = "Export single report to PDF (1 page with 15 images)"
     
     # ========================================
     # Custom URLs for additional functionality

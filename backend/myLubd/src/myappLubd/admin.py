@@ -1,3 +1,4 @@
+import os
 from django.contrib import admin
 from django.utils.html import format_html, format_html_join
 from django.utils import timezone
@@ -56,7 +57,8 @@ from .models import (
     MaintenanceHistory,
     MaintenanceSchedule,
     UtilityConsumption,
-    Inventory
+    Inventory,
+    WorkspaceReport
 )
 
 # Custom Date Joined Month Filter for Admin
@@ -3818,3 +3820,705 @@ class InventoryAdmin(admin.ModelAdmin):
         updated_count = queryset.update(status='out_of_stock')
         self.message_user(request, f"{updated_count} inventory items marked as out of stock.")
     mark_as_out_of_stock.short_description = "Mark selected items as out of stock"
+
+
+# ========================================
+# Workspace Report Admin
+# ========================================
+
+# Create month filters for WorkspaceReport
+ReportDateMonthFilter = create_month_filter('report_date', 'Report Month', 'report_month')
+DueDateMonthFilter = create_month_filter('due_date', 'Due Month', 'due_date_month')
+CompletedDateMonthFilter = create_month_filter('completed_date', 'Completed Month', 'completed_date_month')
+
+
+@admin.register(WorkspaceReport)
+class WorkspaceReportAdmin(admin.ModelAdmin):
+    """Admin interface for managing Workspace Reports with PDF export functionality"""
+    list_per_page = 25
+    list_display = [
+        'report_id',
+        'title',
+        'get_topic_display_admin',
+        'get_status_display_colored',
+        'get_priority_display_colored',
+        'property_link',
+        'report_date',
+        'due_date',
+        'get_images_count',
+        'created_by_link',
+        'created_at',
+    ]
+    list_filter = [
+        'status',
+        'priority',
+        'property',
+        'topic',
+        'report_date',
+        ReportDateMonthFilter,
+        'due_date',
+        DueDateMonthFilter,
+        'completed_date',
+        CompletedDateMonthFilter,
+        'created_at',
+        CreatedAtMonthFilter,
+        'created_by',
+    ]
+    search_fields = [
+        'report_id',
+        'title',
+        'description',
+        'custom_topic',
+        'custom_text_1',
+        'custom_text_2',
+        'custom_text_3',
+        'notes',
+        'topic__title',
+        'property__name',
+        'created_by__username',
+    ]
+    readonly_fields = [
+        'report_id',
+        'created_at',
+        'updated_at',
+        'image_1_preview',
+        'image_2_preview',
+        'image_3_preview',
+        'image_4_preview',
+    ]
+    autocomplete_fields = ['topic', 'property', 'created_by', 'updated_by']
+    date_hierarchy = 'report_date'
+    
+    fieldsets = (
+        ('Report Information', {
+            'fields': ('report_id', 'title', 'topic', 'custom_topic')
+        }),
+        ('Status & Priority', {
+            'fields': ('status', 'priority')
+        }),
+        ('Description', {
+            'fields': ('description',)
+        }),
+        ('Custom Fields', {
+            'fields': (
+                ('custom_text_1_label', 'custom_text_1'),
+                ('custom_text_2_label', 'custom_text_2'),
+                ('custom_text_3_label', 'custom_text_3'),
+            ),
+            'description': 'Customize the labels for each field. Use these for observations, recommendations, action items, etc.'
+        }),
+        ('Images', {
+            'fields': (
+                ('image_1', 'image_1_caption', 'image_1_preview'),
+                ('image_2', 'image_2_caption', 'image_2_preview'),
+                ('image_3', 'image_3_caption', 'image_3_preview'),
+                ('image_4', 'image_4_caption', 'image_4_preview'),
+            ),
+            'description': 'Upload up to 4 images with optional captions.'
+        }),
+        ('Property & Dates', {
+            'fields': ('property', 'report_date', 'due_date', 'completed_date')
+        }),
+        ('Additional Notes', {
+            'fields': ('notes',),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('created_by', 'updated_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = [
+        'export_reports_pdf',
+        'export_reports_csv',
+        'mark_as_completed',
+        'mark_as_approved',
+        'mark_as_pending_review',
+        'export_single_report_pdf',
+    ]
+    
+    # ========================================
+    # Display Methods
+    # ========================================
+    
+    def get_topic_display_admin(self, obj):
+        """Display topic name (custom or from Topic model)"""
+        if obj.custom_topic:
+            return format_html('<span style="color: #666; font-style: italic;">{}</span>', obj.custom_topic)
+        if obj.topic:
+            link = reverse("admin:myappLubd_topic_change", args=[obj.topic.id])
+            return format_html('<a href="{}">{}</a>', link, obj.topic.title)
+        return format_html('<span style="color: #999;">No Topic</span>')
+    get_topic_display_admin.short_description = 'Topic'
+    get_topic_display_admin.admin_order_field = 'topic__title'
+    
+    def get_status_display_colored(self, obj):
+        """Display status with color coding"""
+        status_colors = {
+            'draft': '#6c757d',           # grey
+            'pending_review': '#fd7e14',   # orange
+            'in_progress': '#0d6efd',      # blue
+            'approved': '#198754',         # green
+            'completed': '#20c997',        # teal
+            'rejected': '#dc3545',         # red
+            'archived': '#adb5bd',         # light grey
+        }
+        color = status_colors.get(obj.status, 'black')
+        return format_html(
+            '<span style="color: {}; font-weight: bold; padding: 2px 8px; border-radius: 3px; background-color: {}20;">{}</span>',
+            color, color, obj.get_status_display()
+        )
+    get_status_display_colored.short_description = 'Status'
+    get_status_display_colored.admin_order_field = 'status'
+    
+    def get_priority_display_colored(self, obj):
+        """Display priority with color coding"""
+        priority_colors = {
+            'low': '#198754',      # green
+            'medium': '#fd7e14',   # orange
+            'high': '#dc3545',     # red
+            'urgent': '#6f42c1',   # purple
+        }
+        color = priority_colors.get(obj.priority, 'black')
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color, obj.get_priority_display()
+        )
+    get_priority_display_colored.short_description = 'Priority'
+    get_priority_display_colored.admin_order_field = 'priority'
+    
+    def property_link(self, obj):
+        """Display property as link"""
+        if obj.property:
+            link = reverse("admin:myappLubd_property_change", args=[obj.property.id])
+            return format_html('<a href="{}">{}</a>', link, obj.property.name)
+        return format_html('<span style="color: #999;">No Property</span>')
+    property_link.short_description = 'Property'
+    property_link.admin_order_field = 'property__name'
+    
+    def created_by_link(self, obj):
+        """Display created by user as link"""
+        if obj.created_by:
+            link = reverse("admin:myappLubd_user_change", args=[obj.created_by.id])
+            return format_html('<a href="{}">{}</a>', link, obj.created_by.username)
+        return format_html('<span style="color: #999;">Unknown</span>')
+    created_by_link.short_description = 'Created By'
+    created_by_link.admin_order_field = 'created_by__username'
+    
+    def get_images_count(self, obj):
+        """Display count of uploaded images"""
+        count = sum(1 for i in range(1, 5) if getattr(obj, f'image_{i}', None))
+        if count > 0:
+            return format_html(
+                '<span style="color: #198754; font-weight: bold;">{} image{}</span>',
+                count, 's' if count > 1 else ''
+            )
+        return format_html('<span style="color: #999;">No images</span>')
+    get_images_count.short_description = 'Images'
+    
+    def image_1_preview(self, obj):
+        return self._get_image_preview(obj, 1)
+    image_1_preview.short_description = 'Preview 1'
+    
+    def image_2_preview(self, obj):
+        return self._get_image_preview(obj, 2)
+    image_2_preview.short_description = 'Preview 2'
+    
+    def image_3_preview(self, obj):
+        return self._get_image_preview(obj, 3)
+    image_3_preview.short_description = 'Preview 3'
+    
+    def image_4_preview(self, obj):
+        return self._get_image_preview(obj, 4)
+    image_4_preview.short_description = 'Preview 4'
+    
+    def _get_image_preview(self, obj, image_num):
+        """Helper method to generate image preview HTML"""
+        image = getattr(obj, f'image_{image_num}', None)
+        if image and hasattr(image, 'url'):
+            return format_html(
+                '<img src="{}" style="max-width: 150px; max-height: 150px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />',
+                image.url
+            )
+        return format_html('<span style="color: #999;">No image</span>')
+    
+    # ========================================
+    # Query Optimization
+    # ========================================
+    
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'topic', 'property', 'created_by', 'updated_by'
+        )
+    
+    # ========================================
+    # Save Methods
+    # ========================================
+    
+    def save_model(self, request, obj, form, change):
+        if not change:  # New object
+            if not obj.created_by:
+                obj.created_by = request.user
+        else:  # Existing object
+            obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+    
+    # ========================================
+    # Admin Actions
+    # ========================================
+    
+    def mark_as_completed(self, request, queryset):
+        updated_count = queryset.update(
+            status='completed',
+            completed_date=timezone.now().date()
+        )
+        self.message_user(request, f"{updated_count} report(s) marked as completed.")
+    mark_as_completed.short_description = "Mark selected reports as completed"
+    
+    def mark_as_approved(self, request, queryset):
+        updated_count = queryset.update(status='approved')
+        self.message_user(request, f"{updated_count} report(s) marked as approved.")
+    mark_as_approved.short_description = "Mark selected reports as approved"
+    
+    def mark_as_pending_review(self, request, queryset):
+        updated_count = queryset.update(status='pending_review')
+        self.message_user(request, f"{updated_count} report(s) marked as pending review.")
+    mark_as_pending_review.short_description = "Mark selected reports as pending review"
+    
+    def export_reports_csv(self, request, queryset):
+        """Export selected/filtered reports to CSV"""
+        qs = queryset.select_related('topic', 'property', 'created_by', 'updated_by').order_by('-report_date')
+        
+        filename = f"workspace_reports_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write('\ufeff')  # BOM for Excel UTF-8 compatibility
+        
+        writer = csv.writer(response)
+        writer.writerow([
+            'Report ID',
+            'Title',
+            'Topic',
+            'Custom Topic',
+            'Status',
+            'Priority',
+            'Property',
+            'Description',
+            'Custom Text 1 Label',
+            'Custom Text 1',
+            'Custom Text 2 Label',
+            'Custom Text 2',
+            'Custom Text 3 Label',
+            'Custom Text 3',
+            'Report Date',
+            'Due Date',
+            'Completed Date',
+            'Notes',
+            'Images Count',
+            'Created By',
+            'Created At',
+            'Updated By',
+            'Updated At',
+        ])
+        
+        for report in qs:
+            images_count = sum(1 for i in range(1, 5) if getattr(report, f'image_{i}', None))
+            writer.writerow([
+                report.report_id or '',
+                report.title or '',
+                report.topic.title if report.topic else '',
+                report.custom_topic or '',
+                report.get_status_display(),
+                report.get_priority_display(),
+                report.property.name if report.property else '',
+                report.description or '',
+                report.custom_text_1_label or '',
+                report.custom_text_1 or '',
+                report.custom_text_2_label or '',
+                report.custom_text_2 or '',
+                report.custom_text_3_label or '',
+                report.custom_text_3 or '',
+                report.report_date.strftime('%Y-%m-%d') if report.report_date else '',
+                report.due_date.strftime('%Y-%m-%d') if report.due_date else '',
+                report.completed_date.strftime('%Y-%m-%d') if report.completed_date else '',
+                report.notes or '',
+                images_count,
+                report.created_by.username if report.created_by else '',
+                report.created_at.strftime('%Y-%m-%d %H:%M:%S') if report.created_at else '',
+                report.updated_by.username if report.updated_by else '',
+                report.updated_at.strftime('%Y-%m-%d %H:%M:%S') if report.updated_at else '',
+            ])
+        
+        return response
+    export_reports_csv.short_description = "Export selected reports to CSV"
+    
+    def export_reports_pdf(self, request, queryset):
+        """Export selected/filtered reports to PDF (summary list)"""
+        try:
+            from reportlab.lib.pagesizes import A4, letter
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import inch, cm, mm
+            from reportlab.lib import colors
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as RLImage
+            from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+        except ImportError:
+            self.message_user(request, 'ReportLab is required for PDF export. Install with: pip install reportlab', level='error')
+            return None
+        
+        qs = queryset.select_related('topic', 'property', 'created_by').order_by('-report_date')
+        
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=1.5*cm,
+            leftMargin=1.5*cm,
+            topMargin=2*cm,
+            bottomMargin=2*cm
+        )
+        
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Title'],
+            fontSize=18,
+            spaceAfter=20,
+            textColor=colors.darkblue,
+            alignment=TA_CENTER
+        )
+        header_style = ParagraphStyle(
+            'Header',
+            parent=styles['Heading2'],
+            fontSize=12,
+            spaceAfter=10,
+            textColor=colors.darkblue
+        )
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=9,
+            spaceAfter=6
+        )
+        
+        story = []
+        
+        # Title
+        story.append(Paragraph("Workspace Reports Summary", title_style))
+        story.append(Paragraph(f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}", normal_style))
+        story.append(Spacer(1, 20))
+        
+        # Summary Statistics
+        total_count = qs.count()
+        status_counts = {}
+        for report in qs:
+            status = report.get_status_display()
+            status_counts[status] = status_counts.get(status, 0) + 1
+        
+        summary_data = [['Status', 'Count']]
+        for status, count in status_counts.items():
+            summary_data.append([status, str(count)])
+        summary_data.append(['Total', str(total_count)])
+        
+        summary_table = Table(summary_data, colWidths=[2*inch, 1*inch])
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.lightgrey),
+            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        story.append(summary_table)
+        story.append(Spacer(1, 30))
+        
+        # Reports table
+        story.append(Paragraph("Reports List", header_style))
+        
+        table_data = [['ID', 'Title', 'Topic', 'Status', 'Priority', 'Property', 'Date']]
+        for report in qs:
+            table_data.append([
+                report.report_id or '',
+                (report.title[:30] + '...') if len(report.title or '') > 30 else (report.title or ''),
+                (report.get_topic_display()[:20] + '...') if len(report.get_topic_display()) > 20 else report.get_topic_display(),
+                report.get_status_display(),
+                report.get_priority_display(),
+                (report.property.name[:15] + '...') if report.property and len(report.property.name) > 15 else (report.property.name if report.property else 'N/A'),
+                report.report_date.strftime('%Y-%m-%d') if report.report_date else '',
+            ])
+        
+        col_widths = [1.2*inch, 1.5*inch, 1*inch, 0.9*inch, 0.7*inch, 0.9*inch, 0.8*inch]
+        table = Table(table_data, colWidths=col_widths)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.Color(0.95, 0.95, 0.95)]),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        story.append(table)
+        
+        doc.build(story)
+        buffer.seek(0)
+        
+        filename = f"workspace_reports_{timezone.now().strftime('%Y_%m_%d')}.pdf"
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    export_reports_pdf.short_description = "Export selected reports to PDF (summary)"
+    
+    def export_single_report_pdf(self, request, queryset):
+        """Export a single detailed report to PDF with images"""
+        if queryset.count() > 1:
+            self.message_user(request, 'Please select only one report for detailed PDF export.', level='warning')
+            return None
+        
+        try:
+            from reportlab.lib.pagesizes import A4
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import inch, cm, mm
+            from reportlab.lib import colors
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as RLImage
+            from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+            from PIL import Image as PILImage
+        except ImportError:
+            self.message_user(request, 'ReportLab and Pillow are required for PDF export.', level='error')
+            return None
+        
+        report = queryset.first()
+        
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=2*cm,
+            leftMargin=2*cm,
+            topMargin=2*cm,
+            bottomMargin=2*cm
+        )
+        
+        styles = getSampleStyleSheet()
+        
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Title'],
+            fontSize=20,
+            spaceAfter=20,
+            textColor=colors.darkblue,
+            alignment=TA_CENTER
+        )
+        
+        header_style = ParagraphStyle(
+            'Header',
+            parent=styles['Heading2'],
+            fontSize=14,
+            spaceAfter=12,
+            spaceBefore=16,
+            textColor=colors.darkblue,
+            borderWidth=1,
+            borderColor=colors.lightgrey,
+            borderPadding=6,
+            backColor=colors.Color(0.95, 0.95, 0.98)
+        )
+        
+        label_style = ParagraphStyle(
+            'Label',
+            parent=styles['Normal'],
+            fontSize=10,
+            fontName='Helvetica-Bold',
+            textColor=colors.darkblue,
+            spaceAfter=4
+        )
+        
+        value_style = ParagraphStyle(
+            'Value',
+            parent=styles['Normal'],
+            fontSize=10,
+            spaceAfter=12,
+            leading=14
+        )
+        
+        caption_style = ParagraphStyle(
+            'Caption',
+            parent=styles['Normal'],
+            fontSize=9,
+            alignment=TA_CENTER,
+            textColor=colors.grey,
+            spaceAfter=10
+        )
+        
+        story = []
+        
+        # Title
+        story.append(Paragraph(f"Workspace Report", title_style))
+        story.append(Paragraph(f"<b>{report.report_id}</b>", ParagraphStyle('ID', parent=styles['Normal'], fontSize=12, alignment=TA_CENTER, textColor=colors.grey)))
+        story.append(Spacer(1, 20))
+        
+        # Report Title and Status
+        story.append(Paragraph(report.title, ParagraphStyle('ReportTitle', parent=styles['Heading1'], fontSize=16, textColor=colors.black)))
+        story.append(Spacer(1, 10))
+        
+        # Status and Priority row
+        status_color = {
+            'draft': '#6c757d',
+            'pending_review': '#fd7e14',
+            'in_progress': '#0d6efd',
+            'approved': '#198754',
+            'completed': '#20c997',
+            'rejected': '#dc3545',
+            'archived': '#adb5bd',
+        }.get(report.status, '#000000')
+        
+        priority_color = {
+            'low': '#198754',
+            'medium': '#fd7e14',
+            'high': '#dc3545',
+            'urgent': '#6f42c1',
+        }.get(report.priority, '#000000')
+        
+        info_data = [
+            ['Status:', report.get_status_display(), 'Priority:', report.get_priority_display()],
+            ['Topic:', report.get_topic_display(), 'Property:', report.property.name if report.property else 'N/A'],
+            ['Report Date:', report.report_date.strftime('%Y-%m-%d') if report.report_date else 'N/A', 'Due Date:', report.due_date.strftime('%Y-%m-%d') if report.due_date else 'N/A'],
+            ['Created By:', report.created_by.username if report.created_by else 'N/A', 'Created At:', report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else 'N/A'],
+        ]
+        
+        info_table = Table(info_data, colWidths=[1.5*inch, 2*inch, 1.5*inch, 2*inch])
+        info_table.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.darkblue),
+            ('TEXTCOLOR', (2, 0), (2, -1), colors.darkblue),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        story.append(info_table)
+        story.append(Spacer(1, 20))
+        
+        # Description
+        story.append(Paragraph("Description", header_style))
+        story.append(Paragraph(report.description or 'No description provided.', value_style))
+        
+        # Custom Text Fields
+        for i in range(1, 4):
+            label = getattr(report, f'custom_text_{i}_label', f'Custom Text {i}')
+            content = getattr(report, f'custom_text_{i}', None)
+            if content:
+                story.append(Paragraph(label, header_style))
+                story.append(Paragraph(content, value_style))
+        
+        # Notes
+        if report.notes:
+            story.append(Paragraph("Additional Notes", header_style))
+            story.append(Paragraph(report.notes, value_style))
+        
+        # Images Section
+        images = report.get_images()
+        if images:
+            story.append(PageBreak())
+            story.append(Paragraph("Images", header_style))
+            story.append(Spacer(1, 10))
+            
+            for img_data in images:
+                image_field = img_data['image']
+                caption = img_data['caption']
+                
+                if image_field and hasattr(image_field, 'path'):
+                    try:
+                        # Use JPEG path if available, otherwise use original
+                        jpeg_path = img_data.get('jpeg_path')
+                        if jpeg_path:
+                            img_path = os.path.join(settings.MEDIA_ROOT, jpeg_path)
+                        else:
+                            img_path = image_field.path
+                        
+                        if os.path.exists(img_path):
+                            # Calculate image size
+                            pil_img = PILImage.open(img_path)
+                            img_width, img_height = pil_img.size
+                            
+                            # Max dimensions for the PDF
+                            max_width = 5 * inch
+                            max_height = 4 * inch
+                            
+                            # Calculate aspect ratio
+                            aspect = img_width / img_height
+                            if img_width > img_height:
+                                display_width = min(max_width, img_width * 0.75)
+                                display_height = display_width / aspect
+                            else:
+                                display_height = min(max_height, img_height * 0.75)
+                                display_width = display_height * aspect
+                            
+                            # Ensure it fits
+                            if display_width > max_width:
+                                display_width = max_width
+                                display_height = display_width / aspect
+                            if display_height > max_height:
+                                display_height = max_height
+                                display_width = display_height * aspect
+                            
+                            rl_image = RLImage(img_path, width=display_width, height=display_height)
+                            
+                            # Center the image in a table
+                            img_table = Table([[rl_image]], colWidths=[doc.width])
+                            img_table.setStyle(TableStyle([
+                                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                            ]))
+                            story.append(img_table)
+                            story.append(Paragraph(caption, caption_style))
+                            story.append(Spacer(1, 15))
+                    except Exception as e:
+                        story.append(Paragraph(f"[Image could not be loaded: {caption}]", caption_style))
+        
+        # Footer info
+        story.append(Spacer(1, 30))
+        footer_text = f"Report generated on {timezone.now().strftime('%Y-%m-%d %H:%M')}"
+        if report.completed_date:
+            footer_text += f" | Completed on {report.completed_date.strftime('%Y-%m-%d')}"
+        story.append(Paragraph(footer_text, ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=colors.grey, alignment=TA_CENTER)))
+        
+        doc.build(story)
+        buffer.seek(0)
+        
+        filename = f"report_{report.report_id}_{timezone.now().strftime('%Y%m%d')}.pdf"
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    export_single_report_pdf.short_description = "Export single report to detailed PDF"
+    
+    # ========================================
+    # Custom URLs for additional functionality
+    # ========================================
+    
+    def get_urls(self):
+        """Add custom URLs for report operations"""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<int:object_id>/export-pdf/',
+                self.admin_site.admin_view(self.export_report_pdf_view),
+                name='workspacereport_export_pdf',
+            ),
+        ]
+        return custom_urls + urls
+    
+    def export_report_pdf_view(self, request, object_id):
+        """View to export a single report to PDF"""
+        try:
+            report = WorkspaceReport.objects.get(pk=object_id)
+            queryset = WorkspaceReport.objects.filter(pk=object_id)
+            return self.export_single_report_pdf(request, queryset)
+        except WorkspaceReport.DoesNotExist:
+            return HttpResponse("Report not found", status=404)
+        except Exception as e:
+            return HttpResponse(f"Error generating PDF: {str(e)}", status=500)

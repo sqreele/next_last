@@ -2048,11 +2048,188 @@ class WorkspaceReport(models.Model):
         help_text="Caption for Image 4"
     )
     
-    # JPEG paths for PDF generation
+    # Additional images (5-15) for single-page PDF grid layout
+    image_5 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 5",
+        help_text="Image 5 for the report"
+    )
+    image_5_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 5"
+    )
+    
+    image_6 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 6",
+        help_text="Image 6 for the report"
+    )
+    image_6_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 6"
+    )
+    
+    image_7 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 7",
+        help_text="Image 7 for the report"
+    )
+    image_7_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 7"
+    )
+    
+    image_8 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 8",
+        help_text="Image 8 for the report"
+    )
+    image_8_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 8"
+    )
+    
+    image_9 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 9",
+        help_text="Image 9 for the report"
+    )
+    image_9_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 9"
+    )
+    
+    image_10 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 10",
+        help_text="Image 10 for the report"
+    )
+    image_10_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 10"
+    )
+    
+    image_11 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 11",
+        help_text="Image 11 for the report"
+    )
+    image_11_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 11"
+    )
+    
+    image_12 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 12",
+        help_text="Image 12 for the report"
+    )
+    image_12_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 12"
+    )
+    
+    image_13 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 13",
+        help_text="Image 13 for the report"
+    )
+    image_13_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 13"
+    )
+    
+    image_14 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 14",
+        help_text="Image 14 for the report"
+    )
+    image_14_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 14"
+    )
+    
+    image_15 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 15",
+        help_text="Image 15 for the report"
+    )
+    image_15_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 15"
+    )
+    
+    # JPEG paths for PDF generation (all 15 images)
     image_1_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
     image_2_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
     image_3_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
     image_4_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_5_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_6_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_7_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_8_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_9_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_10_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_11_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_12_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_13_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_14_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_15_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
     
     # Relationships
     property = models.ForeignKey(
@@ -2155,8 +2332,8 @@ class WorkspaceReport(models.Model):
             
             self.report_id = f'RPT-{date_str}-{next_num:04d}'
         
-        # Process images and create JPEG versions for PDF
-        for i in range(1, 5):
+        # Process images and create JPEG versions for PDF (all 15 images)
+        for i in range(1, 16):
             image_field = getattr(self, f'image_{i}', None)
             if image_field and hasattr(self, f'_image_{i}_changed') and getattr(self, f'_image_{i}_changed'):
                 jpeg_path = self._process_image_to_jpeg(image_field)
@@ -2168,15 +2345,15 @@ class WorkspaceReport(models.Model):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Store original image paths to detect changes
-        for i in range(1, 5):
+        # Store original image paths to detect changes (all 15 images)
+        for i in range(1, 16):
             setattr(self, f'_original_image_{i}', getattr(self, f'image_{i}', None))
             setattr(self, f'_image_{i}_changed', False)
     
     def clean(self):
         super().clean()
-        # Mark images as changed if they differ from the original
-        for i in range(1, 5):
+        # Mark images as changed if they differ from the original (all 15 images)
+        for i in range(1, 16):
             original = getattr(self, f'_original_image_{i}', None)
             current = getattr(self, f'image_{i}', None)
             if current != original:
@@ -2231,9 +2408,9 @@ class WorkspaceReport(models.Model):
         return "No Topic"
     
     def get_images(self):
-        """Return a list of all images with their captions"""
+        """Return a list of all images with their captions (up to 15 images)"""
         images = []
-        for i in range(1, 5):
+        for i in range(1, 16):
             image = getattr(self, f'image_{i}', None)
             caption = getattr(self, f'image_{i}_caption', None) or f'Image {i}'
             if image:
@@ -2245,8 +2422,8 @@ class WorkspaceReport(models.Model):
         return images
     
     def delete(self, *args, **kwargs):
-        """Remove image files when model instance is deleted"""
-        for i in range(1, 5):
+        """Remove image files when model instance is deleted (all 15 images)"""
+        for i in range(1, 16):
             image_field = getattr(self, f'image_{i}', None)
             if image_field and hasattr(image_field, 'path') and os.path.isfile(image_field.path):
                 try:

@@ -3886,6 +3886,17 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         'image_2_preview',
         'image_3_preview',
         'image_4_preview',
+        'image_5_preview',
+        'image_6_preview',
+        'image_7_preview',
+        'image_8_preview',
+        'image_9_preview',
+        'image_10_preview',
+        'image_11_preview',
+        'image_12_preview',
+        'image_13_preview',
+        'image_14_preview',
+        'image_15_preview',
     ]
     autocomplete_fields = ['topic', 'property', 'created_by', 'updated_by']
     date_hierarchy = 'report_date'
@@ -3908,14 +3919,37 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
             ),
             'description': 'Customize the labels for each field. Use these for observations, recommendations, action items, etc.'
         }),
-        ('Images', {
+        ('Images (1-5)', {
             'fields': (
                 ('image_1', 'image_1_caption', 'image_1_preview'),
                 ('image_2', 'image_2_caption', 'image_2_preview'),
                 ('image_3', 'image_3_caption', 'image_3_preview'),
                 ('image_4', 'image_4_caption', 'image_4_preview'),
+                ('image_5', 'image_5_caption', 'image_5_preview'),
             ),
-            'description': 'Upload up to 4 images with optional captions.'
+            'description': 'Upload images 1-5 with optional captions for single-page PDF report.'
+        }),
+        ('Images (6-10)', {
+            'fields': (
+                ('image_6', 'image_6_caption', 'image_6_preview'),
+                ('image_7', 'image_7_caption', 'image_7_preview'),
+                ('image_8', 'image_8_caption', 'image_8_preview'),
+                ('image_9', 'image_9_caption', 'image_9_preview'),
+                ('image_10', 'image_10_caption', 'image_10_preview'),
+            ),
+            'classes': ('collapse',),
+            'description': 'Additional images 6-10.'
+        }),
+        ('Images (11-15)', {
+            'fields': (
+                ('image_11', 'image_11_caption', 'image_11_preview'),
+                ('image_12', 'image_12_caption', 'image_12_preview'),
+                ('image_13', 'image_13_caption', 'image_13_preview'),
+                ('image_14', 'image_14_caption', 'image_14_preview'),
+                ('image_15', 'image_15_caption', 'image_15_preview'),
+            ),
+            'classes': ('collapse',),
+            'description': 'Additional images 11-15.'
         }),
         ('Property & Supplier', {
             'fields': ('property', 'supplier')
@@ -4011,8 +4045,8 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
     created_by_link.admin_order_field = 'created_by__username'
     
     def get_images_count(self, obj):
-        """Display count of uploaded images"""
-        count = sum(1 for i in range(1, 5) if getattr(obj, f'image_{i}', None))
+        """Display count of uploaded images (up to 15)"""
+        count = sum(1 for i in range(1, 16) if getattr(obj, f'image_{i}', None))
         if count > 0:
             return format_html(
                 '<span style="color: #198754; font-weight: bold;">{} image{}</span>',
@@ -4036,6 +4070,50 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
     def image_4_preview(self, obj):
         return self._get_image_preview(obj, 4)
     image_4_preview.short_description = 'Preview 4'
+    
+    def image_5_preview(self, obj):
+        return self._get_image_preview(obj, 5)
+    image_5_preview.short_description = 'Preview 5'
+    
+    def image_6_preview(self, obj):
+        return self._get_image_preview(obj, 6)
+    image_6_preview.short_description = 'Preview 6'
+    
+    def image_7_preview(self, obj):
+        return self._get_image_preview(obj, 7)
+    image_7_preview.short_description = 'Preview 7'
+    
+    def image_8_preview(self, obj):
+        return self._get_image_preview(obj, 8)
+    image_8_preview.short_description = 'Preview 8'
+    
+    def image_9_preview(self, obj):
+        return self._get_image_preview(obj, 9)
+    image_9_preview.short_description = 'Preview 9'
+    
+    def image_10_preview(self, obj):
+        return self._get_image_preview(obj, 10)
+    image_10_preview.short_description = 'Preview 10'
+    
+    def image_11_preview(self, obj):
+        return self._get_image_preview(obj, 11)
+    image_11_preview.short_description = 'Preview 11'
+    
+    def image_12_preview(self, obj):
+        return self._get_image_preview(obj, 12)
+    image_12_preview.short_description = 'Preview 12'
+    
+    def image_13_preview(self, obj):
+        return self._get_image_preview(obj, 13)
+    image_13_preview.short_description = 'Preview 13'
+    
+    def image_14_preview(self, obj):
+        return self._get_image_preview(obj, 14)
+    image_14_preview.short_description = 'Preview 14'
+    
+    def image_15_preview(self, obj):
+        return self._get_image_preview(obj, 15)
+    image_15_preview.short_description = 'Preview 15'
     
     def _get_image_preview(self, obj, image_num):
         """Helper method to generate image preview HTML"""
@@ -4279,7 +4357,7 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
     export_reports_pdf.short_description = "Export selected reports to PDF (summary)"
     
     def export_single_report_pdf(self, request, queryset):
-        """Export a single detailed report to PDF with images"""
+        """Export a single detailed report to PDF - SINGLE PAGE layout with up to 15 images in a grid"""
         if queryset.count() > 1:
             self.message_user(request, 'Please select only one report for detailed PDF export.', level='warning')
             return None
@@ -4289,7 +4367,7 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
             from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             from reportlab.lib.units import inch, cm, mm
             from reportlab.lib import colors
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as RLImage
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
             from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
             from PIL import Image as PILImage
         except ImportError:
@@ -4299,145 +4377,156 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         report = queryset.first()
         
         buffer = BytesIO()
+        # Use minimal margins to maximize space for single-page layout
         doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
-            rightMargin=2*cm,
-            leftMargin=2*cm,
-            topMargin=2*cm,
-            bottomMargin=2*cm
+            rightMargin=0.5*cm,
+            leftMargin=0.5*cm,
+            topMargin=0.5*cm,
+            bottomMargin=0.5*cm
         )
+        
+        # A4 size: 210mm x 297mm = 595 x 842 points
+        page_width = A4[0] - 1*cm  # Available width after margins
         
         styles = getSampleStyleSheet()
         
+        # Compact styles for single-page layout
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Title'],
-            fontSize=20,
-            spaceAfter=20,
+            fontSize=14,
+            spaceAfter=2,
+            spaceBefore=0,
             textColor=colors.darkblue,
+            alignment=TA_CENTER
+        )
+        
+        subtitle_style = ParagraphStyle(
+            'Subtitle',
+            parent=styles['Normal'],
+            fontSize=10,
+            spaceAfter=4,
+            textColor=colors.grey,
             alignment=TA_CENTER
         )
         
         header_style = ParagraphStyle(
             'Header',
             parent=styles['Heading2'],
-            fontSize=14,
-            spaceAfter=12,
-            spaceBefore=16,
+            fontSize=9,
+            spaceAfter=2,
+            spaceBefore=4,
             textColor=colors.darkblue,
-            borderWidth=1,
-            borderColor=colors.lightgrey,
-            borderPadding=6,
-            backColor=colors.Color(0.95, 0.95, 0.98)
-        )
-        
-        label_style = ParagraphStyle(
-            'Label',
-            parent=styles['Normal'],
-            fontSize=10,
-            fontName='Helvetica-Bold',
-            textColor=colors.darkblue,
-            spaceAfter=4
+            fontName='Helvetica-Bold'
         )
         
         value_style = ParagraphStyle(
             'Value',
             parent=styles['Normal'],
-            fontSize=10,
-            spaceAfter=12,
-            leading=14
+            fontSize=8,
+            spaceAfter=2,
+            leading=10
         )
         
         caption_style = ParagraphStyle(
             'Caption',
             parent=styles['Normal'],
-            fontSize=9,
+            fontSize=6,
             alignment=TA_CENTER,
             textColor=colors.grey,
-            spaceAfter=10
+            spaceAfter=0,
+            spaceBefore=0,
+            leading=7
         )
         
         story = []
         
-        # Title
-        story.append(Paragraph(f"Workspace Report", title_style))
-        story.append(Paragraph(f"<b>{report.report_id}</b>", ParagraphStyle('ID', parent=styles['Normal'], fontSize=12, alignment=TA_CENTER, textColor=colors.grey)))
-        story.append(Spacer(1, 20))
+        # Compact Title with report ID
+        story.append(Paragraph(f"Workspace Report: {report.title}", title_style))
+        story.append(Paragraph(f"{report.report_id}", subtitle_style))
         
-        # Report Title and Status
-        story.append(Paragraph(report.title, ParagraphStyle('ReportTitle', parent=styles['Heading1'], fontSize=16, textColor=colors.black)))
-        story.append(Spacer(1, 10))
-        
-        # Status and Priority row
-        status_color = {
-            'draft': '#6c757d',
-            'pending_review': '#fd7e14',
-            'in_progress': '#0d6efd',
-            'approved': '#198754',
-            'completed': '#20c997',
-            'rejected': '#dc3545',
-            'archived': '#adb5bd',
-        }.get(report.status, '#000000')
-        
-        priority_color = {
-            'low': '#198754',
-            'medium': '#fd7e14',
-            'high': '#dc3545',
-            'urgent': '#6f42c1',
-        }.get(report.priority, '#000000')
-        
+        # Compact info table - all key info in 2 rows
         info_data = [
-            ['Status:', report.get_status_display(), 'Priority:', report.get_priority_display()],
-            ['Topic:', report.get_topic_display(), 'Property:', report.property.name if report.property else 'N/A'],
-            ['Report Date:', report.report_date.strftime('%Y-%m-%d') if report.report_date else 'N/A', 'Due Date:', report.due_date.strftime('%Y-%m-%d') if report.due_date else 'N/A'],
-            ['Created By:', report.created_by.username if report.created_by else 'N/A', 'Created At:', report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else 'N/A'],
+            [
+                Paragraph('<b>Status:</b>', value_style), 
+                Paragraph(report.get_status_display(), value_style),
+                Paragraph('<b>Priority:</b>', value_style), 
+                Paragraph(report.get_priority_display(), value_style),
+                Paragraph('<b>Property:</b>', value_style), 
+                Paragraph(report.property.name if report.property else 'N/A', value_style),
+            ],
+            [
+                Paragraph('<b>Topic:</b>', value_style), 
+                Paragraph(report.get_topic_display(), value_style),
+                Paragraph('<b>Date:</b>', value_style), 
+                Paragraph(report.report_date.strftime('%Y-%m-%d') if report.report_date else 'N/A', value_style),
+                Paragraph('<b>Supplier:</b>', value_style), 
+                Paragraph(report.supplier or 'N/A', value_style),
+            ],
         ]
         
-        info_table = Table(info_data, colWidths=[1.5*inch, 2*inch, 1.5*inch, 2*inch])
+        col_width = page_width / 6
+        info_table = Table(info_data, colWidths=[col_width * 0.6, col_width * 1.4, col_width * 0.6, col_width * 1.4, col_width * 0.6, col_width * 1.4])
         info_table.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-            ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.darkblue),
-            ('TEXTCOLOR', (2, 0), (2, -1), colors.darkblue),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.Color(0.97, 0.97, 0.99)),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.lightgrey),
         ]))
         story.append(info_table)
-        story.append(Spacer(1, 20))
+        story.append(Spacer(1, 4))
         
-        # Description
-        story.append(Paragraph("Description", header_style))
-        story.append(Paragraph(report.description or 'No description provided.', value_style))
+        # Description (truncated if too long)
+        if report.description:
+            desc_text = report.description[:300] + '...' if len(report.description) > 300 else report.description
+            story.append(Paragraph(f"<b>Description:</b> {desc_text}", value_style))
         
-        # Custom Text Fields
+        # Custom fields (very compact)
+        custom_text_parts = []
         for i in range(1, 4):
-            label = getattr(report, f'custom_text_{i}_label', f'Custom Text {i}')
+            label = getattr(report, f'custom_text_{i}_label', f'Custom {i}')
             content = getattr(report, f'custom_text_{i}', None)
             if content:
-                story.append(Paragraph(label, header_style))
-                story.append(Paragraph(content, value_style))
+                truncated = content[:100] + '...' if len(content) > 100 else content
+                custom_text_parts.append(f"<b>{label}:</b> {truncated}")
         
-        # Notes
-        if report.notes:
-            story.append(Paragraph("Additional Notes", header_style))
-            story.append(Paragraph(report.notes, value_style))
+        if custom_text_parts:
+            story.append(Paragraph(" | ".join(custom_text_parts), value_style))
         
-        # Images Section
+        # Images Section - Grid layout (5 columns x 3 rows = 15 images on single page)
         images = report.get_images()
         if images:
-            story.append(PageBreak())
-            story.append(Paragraph("Images", header_style))
-            story.append(Spacer(1, 10))
+            story.append(Spacer(1, 6))
+            story.append(Paragraph("Report Images", header_style))
             
-            for img_data in images:
+            # Calculate grid dimensions for single page
+            # Available height after header: approximately 650 points
+            # Each image cell: width = page_width/5, height = auto (maintain aspect ratio)
+            num_cols = 5
+            cell_width = (page_width - 10) / num_cols  # Small gap between cells
+            cell_img_width = cell_width - 4  # Padding inside cell
+            cell_img_height = 110  # Fixed height for uniformity in grid
+            
+            # Build image grid data
+            image_grid = []
+            image_captions = []
+            current_row = []
+            current_captions = []
+            
+            for idx, img_data in enumerate(images[:15]):  # Max 15 images
                 image_field = img_data['image']
-                caption = img_data['caption']
+                caption = img_data['caption'] or f'Image {idx + 1}'
+                # Truncate caption to fit
+                if len(caption) > 20:
+                    caption = caption[:17] + '...'
                 
+                img_cell = None
                 if image_field and hasattr(image_field, 'path'):
                     try:
-                        # Use JPEG path if available, otherwise use original
                         jpeg_path = img_data.get('jpeg_path')
                         if jpeg_path:
                             img_path = os.path.join(settings.MEDIA_ROOT, jpeg_path)
@@ -4445,60 +4534,100 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
                             img_path = image_field.path
                         
                         if os.path.exists(img_path):
-                            # Calculate image size
                             pil_img = PILImage.open(img_path)
-                            img_width, img_height = pil_img.size
+                            img_w, img_h = pil_img.size
+                            aspect = img_w / img_h
                             
-                            # Max dimensions for the PDF
-                            max_width = 5 * inch
-                            max_height = 4 * inch
-                            
-                            # Calculate aspect ratio
-                            aspect = img_width / img_height
-                            if img_width > img_height:
-                                display_width = min(max_width, img_width * 0.75)
+                            # Calculate display dimensions to fit in cell
+                            if aspect > 1:  # Landscape
+                                display_width = cell_img_width
                                 display_height = display_width / aspect
-                            else:
-                                display_height = min(max_height, img_height * 0.75)
+                                if display_height > cell_img_height:
+                                    display_height = cell_img_height
+                                    display_width = display_height * aspect
+                            else:  # Portrait or square
+                                display_height = cell_img_height
                                 display_width = display_height * aspect
+                                if display_width > cell_img_width:
+                                    display_width = cell_img_width
+                                    display_height = display_width / aspect
                             
-                            # Ensure it fits
-                            if display_width > max_width:
-                                display_width = max_width
-                                display_height = display_width / aspect
-                            if display_height > max_height:
-                                display_height = max_height
-                                display_width = display_height * aspect
-                            
-                            rl_image = RLImage(img_path, width=display_width, height=display_height)
-                            
-                            # Center the image in a table
-                            img_table = Table([[rl_image]], colWidths=[doc.width])
-                            img_table.setStyle(TableStyle([
-                                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                            ]))
-                            story.append(img_table)
-                            story.append(Paragraph(caption, caption_style))
-                            story.append(Spacer(1, 15))
+                            img_cell = RLImage(img_path, width=display_width, height=display_height)
+                            pil_img.close()
                     except Exception as e:
-                        story.append(Paragraph(f"[Image could not be loaded: {caption}]", caption_style))
+                        img_cell = Paragraph(f'[{idx + 1}]', caption_style)
+                
+                if img_cell is None:
+                    img_cell = Paragraph(f'[No Image {idx + 1}]', caption_style)
+                
+                current_row.append(img_cell)
+                current_captions.append(Paragraph(caption, caption_style))
+                
+                # Complete row when we have 5 images
+                if len(current_row) == num_cols:
+                    image_grid.append(current_row)
+                    image_captions.append(current_captions)
+                    current_row = []
+                    current_captions = []
+            
+            # Add remaining images in the last row
+            if current_row:
+                # Pad with empty cells to complete the row
+                while len(current_row) < num_cols:
+                    current_row.append('')
+                    current_captions.append('')
+                image_grid.append(current_row)
+                image_captions.append(current_captions)
+            
+            # Create alternating image and caption rows
+            grid_data = []
+            for i, (img_row, cap_row) in enumerate(zip(image_grid, image_captions)):
+                grid_data.append(img_row)
+                grid_data.append(cap_row)
+            
+            if grid_data:
+                # Define row heights: image rows are taller, caption rows are short
+                row_heights = []
+                for i in range(len(grid_data)):
+                    if i % 2 == 0:  # Image row
+                        row_heights.append(cell_img_height + 4)
+                    else:  # Caption row
+                        row_heights.append(12)
+                
+                grid_table = Table(
+                    grid_data, 
+                    colWidths=[cell_width] * num_cols,
+                    rowHeights=row_heights
+                )
+                grid_table.setStyle(TableStyle([
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+                    ('TOPPADDING', (0, 0), (-1, -1), 2),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+                    ('BOX', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+                    ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.Color(0.9, 0.9, 0.9)),
+                ]))
+                story.append(grid_table)
         
-        # Footer info
-        story.append(Spacer(1, 30))
-        footer_text = f"Report generated on {timezone.now().strftime('%Y-%m-%d %H:%M')}"
+        # Compact footer
+        story.append(Spacer(1, 4))
+        footer_text = f"Generated: {timezone.now().strftime('%Y-%m-%d %H:%M')}"
         if report.completed_date:
-            footer_text += f" | Completed on {report.completed_date.strftime('%Y-%m-%d')}"
-        story.append(Paragraph(footer_text, ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=colors.grey, alignment=TA_CENTER)))
+            footer_text += f" | Completed: {report.completed_date.strftime('%Y-%m-%d')}"
+        if report.created_by:
+            footer_text += f" | By: {report.created_by.username}"
+        story.append(Paragraph(footer_text, ParagraphStyle('Footer', parent=styles['Normal'], fontSize=7, textColor=colors.grey, alignment=TA_CENTER)))
         
         doc.build(story)
         buffer.seek(0)
         
-        filename = f"report_{report.report_id}_{timezone.now().strftime('%Y%m%d')}.pdf"
+        filename = f"report_{report.report_id}_{timezone.now().strftime('%Y%m%d')}_single.pdf"
         response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
-    export_single_report_pdf.short_description = "Export single report to detailed PDF"
+    export_single_report_pdf.short_description = "Export single report to PDF (1 page with images)"
     
     # ========================================
     # Custom URLs for additional functionality

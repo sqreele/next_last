@@ -3843,6 +3843,7 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         'get_status_display_colored',
         'get_priority_display_colored',
         'property_link',
+        'supplier',
         'report_date',
         'due_date',
         'get_images_count',
@@ -3873,6 +3874,8 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         'custom_text_2',
         'custom_text_3',
         'notes',
+        'supplier',
+        'supplier_contact',
         'topic__title',
         'property__name',
         'created_by__username',
@@ -3916,8 +3919,11 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
             ),
             'description': 'Upload up to 4 images with optional captions.'
         }),
-        ('Property & Dates', {
-            'fields': ('property', 'report_date', 'due_date', 'completed_date')
+        ('Property & Supplier', {
+            'fields': ('property', 'supplier', 'supplier_contact')
+        }),
+        ('Dates', {
+            'fields': ('report_date', 'due_date', 'completed_date')
         }),
         ('Additional Notes', {
             'fields': ('notes',),
@@ -4104,6 +4110,8 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
             'Status',
             'Priority',
             'Property',
+            'Supplier',
+            'Supplier Contact',
             'Description',
             'Custom Text 1 Label',
             'Custom Text 1',
@@ -4132,6 +4140,8 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
                 report.get_status_display(),
                 report.get_priority_display(),
                 report.property.name if report.property else '',
+                report.supplier or '',
+                report.supplier_contact or '',
                 report.description or '',
                 report.custom_text_1_label or '',
                 report.custom_text_1 or '',
@@ -4386,6 +4396,7 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         info_data = [
             ['Status:', report.get_status_display(), 'Priority:', report.get_priority_display()],
             ['Topic:', report.get_topic_display(), 'Property:', report.property.name if report.property else 'N/A'],
+            ['Supplier:', report.supplier or 'N/A', 'Contact:', report.supplier_contact or 'N/A'],
             ['Report Date:', report.report_date.strftime('%Y-%m-%d') if report.report_date else 'N/A', 'Due Date:', report.due_date.strftime('%Y-%m-%d') if report.due_date else 'N/A'],
             ['Created By:', report.created_by.username if report.created_by else 'N/A', 'Created At:', report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else 'N/A'],
         ]

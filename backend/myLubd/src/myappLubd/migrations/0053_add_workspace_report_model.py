@@ -200,6 +200,18 @@ class Migration(migrations.Migration):
                     related_name='workspace_reports',
                     to='myappLubd.property'
                 )),
+                ('supplier', models.CharField(
+                    blank=True,
+                    help_text='Supplier or vendor name associated with this report',
+                    max_length=255,
+                    null=True
+                )),
+                ('supplier_contact', models.CharField(
+                    blank=True,
+                    help_text='Supplier contact information (phone, email, etc.)',
+                    max_length=255,
+                    null=True
+                )),
                 ('topic', models.ForeignKey(
                     blank=True,
                     help_text='Topic/Subject of the report',

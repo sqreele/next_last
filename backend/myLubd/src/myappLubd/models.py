@@ -1875,3 +1875,385 @@ class Inventory(models.Model):
     
     def __str__(self):
         return f"{self.item_id} - {self.name} ({self.quantity} {self.unit})"
+
+
+class WorkspaceReport(models.Model):
+    """
+    Model for creating workspace reports with images, status, descriptions, 
+    topic selection, and custom text fields. Supports PDF export.
+    """
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('pending_review', 'Pending Review'),
+        ('in_progress', 'In Progress'),
+        ('approved', 'Approved'),
+        ('completed', 'Completed'),
+        ('rejected', 'Rejected'),
+        ('archived', 'Archived'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
+    ]
+    
+    # Maximum image dimensions
+    MAX_SIZE = (1200, 1200)
+    
+    id = models.AutoField(primary_key=True)
+    report_id = models.CharField(
+        max_length=50,
+        unique=True,
+        blank=True,
+        editable=False,
+        help_text="Unique identifier for the report (auto-generated)"
+    )
+    
+    # Topic/Subject
+    topic = models.ForeignKey(
+        Topic,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='workspace_reports',
+        help_text="Topic/Subject of the report"
+    )
+    custom_topic = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Custom topic if not selecting from predefined topics"
+    )
+    
+    # Main content
+    title = models.CharField(
+        max_length=255,
+        help_text="Report title"
+    )
+    description = models.TextField(
+        help_text="Detailed description of the report"
+    )
+    
+    # Custom text fields for flexible content
+    custom_text_1 = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Custom Text 1",
+        help_text="Additional custom text field (e.g., observations, findings)"
+    )
+    custom_text_2 = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Custom Text 2",
+        help_text="Additional custom text field (e.g., recommendations)"
+    )
+    custom_text_3 = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Custom Text 3",
+        help_text="Additional custom text field (e.g., action items)"
+    )
+    
+    # Custom field labels (so admin can customize the field names)
+    custom_text_1_label = models.CharField(
+        max_length=100,
+        default="Observations",
+        help_text="Label for Custom Text 1 field"
+    )
+    custom_text_2_label = models.CharField(
+        max_length=100,
+        default="Recommendations",
+        help_text="Label for Custom Text 2 field"
+    )
+    custom_text_3_label = models.CharField(
+        max_length=100,
+        default="Action Items",
+        help_text="Label for Custom Text 3 field"
+    )
+    
+    # Status and priority
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='draft',
+        help_text="Current status of the report"
+    )
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default='medium',
+        help_text="Priority level of the report"
+    )
+    
+    # Images
+    image_1 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 1",
+        help_text="Primary image for the report"
+    )
+    image_1_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 1"
+    )
+    
+    image_2 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 2",
+        help_text="Secondary image for the report"
+    )
+    image_2_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 2"
+    )
+    
+    image_3 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 3",
+        help_text="Third image for the report"
+    )
+    image_3_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 3"
+    )
+    
+    image_4 = models.ImageField(
+        upload_to='workspace_reports/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        verbose_name="Image 4",
+        help_text="Fourth image for the report"
+    )
+    image_4_caption = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Caption for Image 4"
+    )
+    
+    # JPEG paths for PDF generation
+    image_1_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_2_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_3_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    image_4_jpeg_path = models.CharField(max_length=500, null=True, blank=True)
+    
+    # Relationships
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='workspace_reports',
+        help_text="Property associated with this report"
+    )
+    
+    # Metadata
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_workspace_reports',
+        help_text="User who created this report"
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_workspace_reports',
+        help_text="User who last updated this report"
+    )
+    
+    # Date fields
+    report_date = models.DateField(
+        default=timezone.now,
+        help_text="Date of the report"
+    )
+    due_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Due date for any actions required"
+    )
+    completed_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date when report actions were completed"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Additional notes
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Additional notes or comments"
+    )
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Workspace Report'
+        verbose_name_plural = 'Workspace Reports'
+        indexes = [
+            models.Index(fields=['report_id']),
+            models.Index(fields=['status']),
+            models.Index(fields=['priority']),
+            models.Index(fields=['property']),
+            models.Index(fields=['topic']),
+            models.Index(fields=['created_by']),
+            models.Index(fields=['report_date']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['status', 'priority']),
+            models.Index(fields=['property', 'status']),
+        ]
+    
+    def __str__(self):
+        return f"{self.report_id} - {self.title}"
+    
+    def save(self, *args, **kwargs):
+        # Generate report_id if not set
+        if not self.report_id:
+            date_str = timezone.now().strftime('%Y%m%d')
+            last_report = WorkspaceReport.objects.filter(
+                report_id__startswith=f'RPT-{date_str}'
+            ).order_by('-report_id').first()
+            
+            if last_report and last_report.report_id:
+                try:
+                    last_num = int(last_report.report_id.split('-')[-1])
+                    next_num = last_num + 1
+                except (ValueError, IndexError):
+                    next_num = 1
+            else:
+                next_num = 1
+            
+            self.report_id = f'RPT-{date_str}-{next_num:04d}'
+        
+        # Process images and create JPEG versions for PDF
+        for i in range(1, 5):
+            image_field = getattr(self, f'image_{i}', None)
+            if image_field and hasattr(self, f'_image_{i}_changed') and getattr(self, f'_image_{i}_changed'):
+                jpeg_path = self._process_image_to_jpeg(image_field)
+                if jpeg_path:
+                    setattr(self, f'image_{i}_jpeg_path', jpeg_path)
+                setattr(self, f'_image_{i}_changed', False)
+        
+        super().save(*args, **kwargs)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Store original image paths to detect changes
+        for i in range(1, 5):
+            setattr(self, f'_original_image_{i}', getattr(self, f'image_{i}', None))
+            setattr(self, f'_image_{i}_changed', False)
+    
+    def clean(self):
+        super().clean()
+        # Mark images as changed if they differ from the original
+        for i in range(1, 5):
+            original = getattr(self, f'_original_image_{i}', None)
+            current = getattr(self, f'image_{i}', None)
+            if current != original:
+                setattr(self, f'_image_{i}_changed', True)
+    
+    def _process_image_to_jpeg(self, image_field, quality=85):
+        """Process image and create JPEG version for PDF generation"""
+        if not image_field:
+            return None
+        
+        try:
+            img = Image.open(image_field)
+            
+            # Resize if image is larger than MAX_SIZE
+            if img.width > self.MAX_SIZE[0] or img.height > self.MAX_SIZE[1]:
+                img.thumbnail(self.MAX_SIZE, Image.Resampling.LANCZOS)
+            
+            # Convert RGBA to RGB if necessary
+            if img.mode in ('RGBA', 'LA'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img, mask=img.getchannel('A'))
+                img = background
+            
+            # Convert to RGB if not already
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Generate JPEG path
+            image_path = Path(image_field.name)
+            jpeg_name = f'{image_path.stem}.jpg'
+            jpeg_path = str(image_path.parent / jpeg_name)
+            jpeg_full_path = os.path.join(settings.MEDIA_ROOT, jpeg_path)
+            
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(jpeg_full_path), exist_ok=True)
+            
+            # Save JPEG file
+            img.save(jpeg_full_path, 'JPEG', quality=quality, optimize=True)
+            
+            return jpeg_path
+            
+        except Exception as e:
+            logger.error(f"Error processing image for WorkspaceReport: {e}")
+            return None
+    
+    def get_topic_display(self):
+        """Return the topic name (custom or from Topic model)"""
+        if self.custom_topic:
+            return self.custom_topic
+        if self.topic:
+            return self.topic.title
+        return "No Topic"
+    
+    def get_images(self):
+        """Return a list of all images with their captions"""
+        images = []
+        for i in range(1, 5):
+            image = getattr(self, f'image_{i}', None)
+            caption = getattr(self, f'image_{i}_caption', None) or f'Image {i}'
+            if image:
+                images.append({
+                    'image': image,
+                    'caption': caption,
+                    'jpeg_path': getattr(self, f'image_{i}_jpeg_path', None)
+                })
+        return images
+    
+    def delete(self, *args, **kwargs):
+        """Remove image files when model instance is deleted"""
+        for i in range(1, 5):
+            image_field = getattr(self, f'image_{i}', None)
+            if image_field and hasattr(image_field, 'path') and os.path.isfile(image_field.path):
+                try:
+                    os.remove(image_field.path)
+                except OSError:
+                    pass
+            
+            # Remove JPEG version
+            jpeg_path = getattr(self, f'image_{i}_jpeg_path', None)
+            if jpeg_path:
+                jpeg_full_path = os.path.join(settings.MEDIA_ROOT, jpeg_path)
+                if os.path.isfile(jpeg_full_path):
+                    try:
+                        os.remove(jpeg_full_path)
+                    except OSError:
+                        pass
+        
+        super().delete(*args, **kwargs)

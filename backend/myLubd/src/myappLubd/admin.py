@@ -4434,12 +4434,13 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         caption_style = ParagraphStyle(
             'Caption',
             parent=styles['Normal'],
-            fontSize=5,
+            fontSize=7,
             alignment=TA_CENTER,
-            textColor=colors.grey,
+            textColor=colors.Color(0.3, 0.3, 0.3),
             spaceAfter=0,
             spaceBefore=0,
-            leading=6
+            leading=9,
+            wordWrap='CJK'  # Enable word wrapping for better text flow
         )
         
         story = []
@@ -4489,10 +4490,10 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
             cell_img_width = cell_width - 2  # Minimal padding inside cell
             
             # Calculate optimal image height based on available space
-            # Each row: image_height + 2pt padding + 10pt caption = image_height + 12pt
-            # 3 rows * (image_height + 12) should fit in ~650pt (conservative)
-            # So image_height = (650 / 3) - 12 = ~205pt max
-            cell_img_height = 195  # Optimized: larger images for better readability
+            # Each row: image_height + 2pt padding + 22pt caption (2 lines) = image_height + 24pt
+            # 3 rows * (image_height + 24) should fit in ~650pt (conservative)
+            # So image_height = (650 / 3) - 24 = ~193pt max
+            cell_img_height = 180  # Slightly reduced to allow more space for captions
             
             # Build image grid data
             image_grid = []
@@ -4503,9 +4504,9 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
             for idx, img_data in enumerate(images[:15]):  # Max 15 images
                 image_field = img_data['image']
                 caption = img_data['caption'] or f'#{idx + 1}'
-                # Shorter caption for compact layout
-                if len(caption) > 15:
-                    caption = caption[:12] + '...'
+                # Allow longer captions with word wrap (up to 40 chars for 2-line display)
+                if len(caption) > 40:
+                    caption = caption[:37] + '...'
                 
                 img_cell = None
                 if image_field and hasattr(image_field, 'path'):
@@ -4571,13 +4572,13 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
                 grid_data.append(cap_row)
             
             if grid_data:
-                # Define row heights: image rows taller, caption rows minimal
+                # Define row heights: image rows taller, caption rows with space for 2 lines
                 row_heights = []
                 for i in range(len(grid_data)):
                     if i % 2 == 0:  # Image row
                         row_heights.append(cell_img_height + 2)
-                    else:  # Caption row
-                        row_heights.append(10)
+                    else:  # Caption row - increased to fit 2 lines of text
+                        row_heights.append(22)
                 
                 grid_table = Table(
                     grid_data, 

@@ -2064,6 +2064,14 @@ class WorkspaceReport(models.Model):
         help_text="Property associated with this report"
     )
     
+    # Supplier information
+    supplier = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text="Supplier or vendor name"
+    )
+    
     # Metadata
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

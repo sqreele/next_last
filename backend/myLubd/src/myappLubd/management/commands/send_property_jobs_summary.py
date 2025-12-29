@@ -23,7 +23,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--property-id",
             dest="property_id",
-            required=True,
+            default=None,
             help="Property ID to filter jobs by",
         )
         parser.add_argument(
@@ -159,18 +159,18 @@ class Command(BaseCommand):
             # Only users explicitly assigned to this property
             users_qs = User.objects.filter(
                 is_active=True,
-                profile__properties__id=property_id
+                userprofile__properties__id=property_id
             ).exclude(email__isnull=True).exclude(email__exact="")
         else:
             # Include staff users (legacy behavior)
             users_qs = User.objects.filter(
                 Q(is_active=True) & 
-                (Q(profile__properties__id=property_id) | Q(is_staff=True))
+                (Q(userprofile__properties__id=property_id) | Q(is_staff=True))
             ).exclude(email__isnull=True).exclude(email__exact="")
         
         # Exclude users with email notifications disabled
         users_qs = users_qs.filter(
-            Q(profile__email_notifications_enabled=True) | Q(profile__isnull=True)
+            Q(userprofile__email_notifications_enabled=True) | Q(userprofile__isnull=True)
         )
         
         # Exclude specific emails if provided
@@ -225,6 +225,9 @@ class Command(BaseCommand):
             else:
                 # Send summary for specific property
                 property_id = options.get('property_id')
+                if not property_id:
+                    self.stdout.write(self.style.ERROR("Missing --property-id (or use --all-properties)"))
+                    return
                 stats = self.get_property_job_statistics(property_id, days)
                 
                 # Determine recipients

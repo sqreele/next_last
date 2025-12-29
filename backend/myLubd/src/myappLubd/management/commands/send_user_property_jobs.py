@@ -88,13 +88,21 @@ class Command(BaseCommand):
                 Q(properties__contains=[str(property_id)])
             )
         else:
-            # Get user's accessible properties
-            user_properties = Property.objects.filter(users=user).values_list('id', flat=True)
-            if user_properties:
+            # Get user's accessible properties (support both legacy + primary assignment paths)
+            # - Primary: UserProfile.properties (matches access control + other email commands)
+            # - Legacy: Property.users ManyToMany
+            user_property_ids = set(Property.objects.filter(users=user).values_list('id', flat=True))
+            try:
+                user_property_ids.update(user.userprofile.properties.values_list('id', flat=True))
+            except Exception:
+                # If userprofile is missing for any reason, fall back to legacy mapping only
+                pass
+
+            if user_property_ids:
                 jobs_query = jobs_query.filter(
-                    Q(property_id__in=user_properties) | 
-                    Q(rooms__properties__id__in=user_properties) |
-                    Q(properties__overlap=list(map(str, user_properties)))
+                    Q(property_id__in=user_property_ids) | 
+                    Q(rooms__properties__id__in=user_property_ids) |
+                    Q(properties__overlap=list(map(str, user_property_ids)))
                 )
             else:
                 # If user has no properties, return empty queryset
@@ -282,7 +290,7 @@ class Command(BaseCommand):
             
             # Exclude users with email notifications disabled
             users = users.filter(
-                Q(profile__email_notifications_enabled=True) | Q(profile__isnull=True)
+                Q(userprofile__email_notifications_enabled=True) | Q(userprofile__isnull=True)
             )
             
             # Exclude specific emails if provided

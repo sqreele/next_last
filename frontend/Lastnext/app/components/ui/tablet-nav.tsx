@@ -43,7 +43,7 @@ export function TabletNav({ className }: TabletNavProps) {
       <div className="flex items-center gap-4">
         <Link href="/dashboard" className="flex items-center gap-2">
           <Package2 className="h-8 w-8 text-blue-600" />
-          <span className="font-bold text-xl text-gray-800">PCMS.live</span>
+          <span className="font-bold text-xl text-gray-800">HotelEngPro</span>
         </Link>
       </div>
 

@@ -74,7 +74,7 @@ export default function LandingPage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-2">
               <Building className="w-8 h-8 text-blue-600" />
-              <span className="text-xl font-bold text-gray-900">MaintenancePro</span>
+              <span className="text-xl font-bold text-gray-900">HotelEngPro</span>
             </div>
             
             <div className="flex items-center space-x-4">
@@ -116,12 +116,12 @@ export default function LandingPage() {
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
               Streamline Your
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-                {" "}Maintenance{" "}
+                {" "}Hotel Engineering{" "}
               </span>
               Operations
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-              The complete facility management solution that helps you maintain properties, 
+              The complete hotel engineering and maintenance management solution that helps you maintain properties, 
               coordinate teams, and optimize costs with intelligent automation.
             </p>
           </div>
@@ -159,10 +159,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Everything You Need for Facility Management
+              Everything You Need for Hotel Engineering Management
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              From preventive maintenance to team coordination, we've got you covered 
+              From preventive maintenance to team coordination, HotelEngPro has you covered 
               with powerful tools and intuitive interfaces.
             </p>
           </div>
@@ -191,11 +191,11 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-6">
-                Transform Your Maintenance Operations
+                Transform Your Hotel Engineering Operations
               </h2>
               <p className="text-xl text-gray-600 mb-8">
-                Join thousands of facility managers who have revolutionized their 
-                maintenance processes with our platform.
+                Join thousands of hotel engineers who have revolutionized their 
+                maintenance processes with HotelEngPro.
               </p>
               
               <div className="space-y-4">
@@ -212,18 +212,18 @@ export default function LandingPage() {
               <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-8 text-white">
                 <div className="text-center">
                   <Star className="w-12 h-12 mx-auto mb-4" />
-                  <h3 className="text-2xl font-bold mb-2">Trusted by Industry Leaders</h3>
+                  <h3 className="text-2xl font-bold mb-2">Trusted by Hotel Industry Leaders</h3>
                   <p className="text-blue-100 mb-6">
-                    Join companies that trust us with their facility management
+                    Join hotels that trust HotelEngPro with their engineering management
                   </p>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="text-center">
                       <div className="text-2xl font-bold">500+</div>
-                      <div className="text-blue-100">Properties</div>
+                      <div className="text-blue-100">Hotels</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold">10K+</div>
-                      <div className="text-blue-100">Users</div>
+                      <div className="text-blue-100">Engineers</div>
                     </div>
                   </div>
                 </div>
@@ -240,8 +240,8 @@ export default function LandingPage() {
             Ready to Get Started?
           </h2>
           <p className="text-xl text-gray-300 mb-8">
-            Join thousands of facility managers who have already transformed 
-            their maintenance operations.
+            Join thousands of hotel engineers who have already transformed 
+            their maintenance operations with HotelEngPro.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -276,10 +276,10 @@ export default function LandingPage() {
             <div>
               <div className="flex items-center space-x-2 mb-4">
                 <Building className="w-6 h-6 text-blue-500" />
-                <span className="text-lg font-bold text-white">MaintenancePro</span>
+                <span className="text-lg font-bold text-white">HotelEngPro</span>
               </div>
               <p className="text-sm">
-                The complete facility management solution for modern businesses.
+                The complete hotel engineering and maintenance solution for modern hotels.
               </p>
             </div>
             
@@ -312,7 +312,7 @@ export default function LandingPage() {
           </div>
           
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
-            <p>&copy; 2024 MaintenancePro. All rights reserved.</p>
+            <p>&copy; 2024 HotelEngPro. All rights reserved.</p>
           </div>
         </div>
       </footer>

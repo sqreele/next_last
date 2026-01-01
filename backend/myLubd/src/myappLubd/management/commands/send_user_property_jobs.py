@@ -285,6 +285,12 @@ class Command(BaseCommand):
             # Get users to send emails to
             if user_id:
                 users = User.objects.filter(id=user_id, is_active=True).exclude(email__isnull=True).exclude(email__exact="")
+            elif property_id:
+                # Filter users by property assignment - only users assigned to this property receive emails
+                users = User.objects.filter(
+                    is_active=True,
+                    userprofile__properties__id=property_id
+                ).exclude(email__isnull=True).exclude(email__exact="")
             else:
                 users = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
             

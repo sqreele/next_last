@@ -82,10 +82,10 @@ function LoginContent() {
             </div>
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Welcome to MaintenancePro
+            Welcome to HotelEngPro
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            The complete facility management solution that helps you maintain properties, 
+            The complete hotel engineering and maintenance management solution that helps you maintain properties, 
             coordinate teams, and optimize costs with intelligent automation.
           </p>
         </div>
@@ -133,7 +133,7 @@ function LoginContent() {
               Sign in to your account
             </CardTitle>
             <p className="text-gray-600">
-              Access your maintenance dashboard and manage your facilities
+              Access your hotel engineering dashboard and manage your properties
             </p>
           </CardHeader>
           

@@ -9,12 +9,12 @@ import { Plus } from 'lucide-react';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Create Job - Maintenance & Job Management Dashboard',
-  description: 'Create a new maintenance job effortlessly. Assign tasks, set priorities, and upload images with our intuitive form.',
-  keywords: ['create job', 'maintenance task', 'job management', 'property maintenance', 'dashboard'],
+  title: 'Create Job - HotelEngPro',
+  description: 'Create a new hotel maintenance job effortlessly with HotelEngPro. Assign tasks, set priorities, and upload images with our intuitive form.',
+  keywords: ['HotelEngPro', 'create job', 'hotel maintenance', 'job management', 'property maintenance', 'hotel engineering'],
   openGraph: {
-    title: 'Create Job - Maintenance & Job Management Dashboard',
-    description: 'Add new maintenance tasks with ease using our Next.js-powered form.',
+    title: 'Create Job - HotelEngPro',
+    description: 'Add new hotel maintenance tasks with ease using HotelEngPro.',
     url: 'https://pcms.live/dashboard/createJob',
     type: 'website',
     images: [
@@ -22,14 +22,14 @@ export const metadata: Metadata = {
         url: 'https://pcms.live/og-create-job.jpg',
         width: 1200,
         height: 630,
-        alt: 'Create Job Page Preview',
+        alt: 'HotelEngPro - Create Job Page',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Create Job - Maintenance & Job Management Dashboard',
-    description: 'Effortlessly create maintenance jobs with our intuitive tool.',
+    title: 'Create Job - HotelEngPro',
+    description: 'Effortlessly create hotel maintenance jobs with HotelEngPro.',
     images: ['https://pcms.live/twitter-create-job.jpg'],
   },
 };

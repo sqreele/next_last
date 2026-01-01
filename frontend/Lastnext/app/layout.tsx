@@ -12,54 +12,54 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-// SEO-Optimized Metadata for Maintenance and Job Management Web App
+// SEO-Optimized Metadata for HotelEngPro - Hotel Engineering & Maintenance Management
 export const metadata: Metadata = {
   title: {
-    default: 'Maintenance & Job Management Dashboard',
-    template: '%s | Maintenance & Job Management Dashboard',
+    default: 'HotelEngPro - Hotel Engineering & Maintenance Dashboard',
+    template: '%s | HotelEngPro',
   },
-  description: 'Streamline property maintenance and job management with our Next.js-powered dashboard. Track, assign, and manage tasks efficiently using TypeScript, Tailwind CSS, and Auth0.',
+  description: 'HotelEngPro - Professional hotel engineering and maintenance management platform. Streamline property maintenance, track jobs, and manage tasks efficiently for hotels and hospitality.',
   keywords: [
-    'maintenance management',
-    'job management',
+    'HotelEngPro',
+    'hotel engineering',
+    'hotel maintenance',
     'property maintenance',
-    'task tracking',
-    'admin dashboard',
-    'nextjs',
-    'typescript',
-    'tailwind css',
-    'auth0',
+    'hospitality management',
     'facility management',
+    'job management',
+    'task tracking',
+    'hotel operations',
+    'maintenance dashboard',
   ],
   authors: [
     {
-      name: 'Your Name', // Replace with your actual name
+      name: 'HotelEngPro',
       url: 'https://pcms.live',
     },
   ],
-  creator: 'Your Name', // Replace with your actual name
+  creator: 'HotelEngPro',
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: 'https://pcms.live',
-    title: 'Maintenance & Job Management Dashboard',
-    description: 'Efficiently manage maintenance tasks and jobs with our modern admin dashboard built with Next.js, Postgres, Auth0, and Tailwind CSS. Perfect for property managers and facility teams.',
-    siteName: 'Maintenance & Job Management Dashboard',
+    title: 'HotelEngPro - Hotel Engineering & Maintenance Dashboard',
+    description: 'HotelEngPro - Professional hotel engineering and maintenance management. Efficiently manage maintenance tasks and jobs with our modern dashboard. Perfect for hotel engineers and facility teams.',
+    siteName: 'HotelEngPro',
     images: [
       {
-        url: 'https://pcms.live/og-image.jpg', // Replace with actual image URL
+        url: 'https://pcms.live/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'Maintenance & Job Management Dashboard Preview',
+        alt: 'HotelEngPro - Hotel Engineering & Maintenance Dashboard',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Maintenance & Job Management Dashboard',
-    description: 'A powerful tool for property maintenance and job management, built with Next.js, TypeScript, and Tailwind CSS. Track and manage tasks seamlessly.',
-    creator: '@yourtwitter', // Replace with your Twitter handle
-    images: ['https://pcms.live/twitter-image.jpg'], // Replace with actual image URL
+    title: 'HotelEngPro - Hotel Engineering & Maintenance Dashboard',
+    description: 'HotelEngPro - Professional hotel engineering and maintenance management. Track and manage hotel maintenance tasks seamlessly.',
+    creator: '@HotelEngPro',
+    images: ['https://pcms.live/twitter-image.jpg'],
   },
   robots: {
     index: true,
@@ -87,7 +87,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <meta name="theme-color" content="#1f2937" media="(prefers-color-scheme: dark)" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="PCMS.live" />
+        <meta name="apple-mobile-web-app-title" content="HotelEngPro" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="format-detection" content="telephone=no" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />

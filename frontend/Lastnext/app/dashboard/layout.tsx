@@ -132,7 +132,7 @@ function DesktopNav({ collapsed, toggleCollapse }: {
           <Package2 className="h-6 w-6 text-blue-600 group-hover:text-blue-700 transition-colors" />
           {!collapsed && (
             <span className="font-semibold text-lg text-gray-800 group-hover:text-blue-700 transition-colors">
-              PCMS.live
+              HotelEngPro
             </span>
           )}
         </Link>
@@ -219,7 +219,7 @@ function MobileHeader() {
           <MobileNav />
           <Link href="/dashboard" className="flex items-center gap-2">
             <Package2 className="h-6 w-6 text-blue-600" />
-            <span className="font-semibold text-gray-800">PCMS.live</span>
+            <span className="font-semibold text-gray-800">HotelEngPro</span>
           </Link>
         </div>
         <div className="flex items-center gap-3">
@@ -298,7 +298,7 @@ function MobileNav() {
         <div className="p-4 border-b border-gray-200">
           <Link href="/dashboard" className="flex items-center gap-2" onClick={() => setOpen(false)}>
             <Package2 className="h-5 w-5 text-blue-600" />
-            <span className="font-semibold text-gray-800">PCMS.live Admin</span>
+            <span className="font-semibold text-gray-800">HotelEngPro</span>
           </Link>
         </div>
         

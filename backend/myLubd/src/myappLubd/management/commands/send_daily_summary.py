@@ -377,7 +377,13 @@ class Command(BaseCommand):
                 recipients = [e for e in candidates if e]
             else:
                 User = get_user_model()
-                if options.get("all_users"):
+                if property_id:
+                    # Filter users by property assignment - only users assigned to this property receive emails
+                    users_qs = User.objects.filter(
+                        is_active=True,
+                        userprofile__properties__id=property_id
+                    ).exclude(email__isnull=True).exclude(email__exact="")
+                elif options.get("all_users"):
                     users_qs = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
                 else:
                     users_qs = (
@@ -419,6 +425,9 @@ class Command(BaseCommand):
                 logger.error("No recipient email addresses found.")
                 self.stdout.write(self.style.ERROR("No recipient email addresses found"))
                 return
+            
+            # Log recipient info for debugging
+            logger.info(f"Sending daily summary to {len(recipients)} recipients" + (f" for property {property_id}" if property_id else ""))
 
             sent_count = 0
             for to_email in recipients:

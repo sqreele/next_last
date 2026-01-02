@@ -34,6 +34,12 @@ class Command(BaseCommand):
             help="Send emails only for specific property ID",
         )
         parser.add_argument(
+            "--all-properties",
+            action="store_true",
+            dest="all_properties",
+            help="Send user job emails for all properties to their respective users",
+        )
+        parser.add_argument(
             "--user-id",
             dest="user_id",
             default=None,
@@ -81,11 +87,10 @@ class Command(BaseCommand):
         )
         
         # Apply property filter
+        # Jobs are related to properties through rooms.properties
         if property_id:
             jobs_query = jobs_query.filter(
-                Q(property_id=property_id) | 
-                Q(rooms__properties__id=property_id) |
-                Q(properties__contains=[str(property_id)])
+                rooms__properties__id=property_id
             )
         else:
             # Get user's accessible properties (support both legacy + primary assignment paths)
@@ -100,9 +105,7 @@ class Command(BaseCommand):
 
             if user_property_ids:
                 jobs_query = jobs_query.filter(
-                    Q(property_id__in=user_property_ids) | 
-                    Q(rooms__properties__id__in=user_property_ids) |
-                    Q(properties__overlap=list(map(str, user_property_ids)))
+                    rooms__properties__id__in=user_property_ids
                 )
             else:
                 # If user has no properties, return empty queryset
@@ -280,6 +283,11 @@ class Command(BaseCommand):
             priority_filter = options.get('priority')
             test_mode = options.get('test_mode', False)
             
+            # Handle --all-properties flag
+            if options.get('all_properties'):
+                self._handle_all_properties(options, now, days, status_filter, priority_filter, test_mode)
+                return
+            
             User = get_user_model()
             
             # Get users to send emails to
@@ -369,3 +377,80 @@ class Command(BaseCommand):
         except Exception as exc:
             logger.exception("Error while sending user property job emails: %s", exc)
             self.stdout.write(self.style.ERROR(f"Error: {exc}"))
+
+    def _handle_all_properties(self, options, now, days, status_filter, priority_filter, test_mode):
+        """Send user job emails for all properties to their respective users."""
+        User = get_user_model()
+        
+        properties = Property.objects.all()
+        total_sent = 0
+        total_properties = properties.count()
+        
+        exclude_emails = options.get('exclude_emails')
+        exclude_user_ids = options.get('exclude_user_ids')
+        
+        for property_obj in properties:
+            property_id = property_obj.id
+            
+            # Get users assigned to this property
+            users = User.objects.filter(
+                is_active=True,
+                userprofile__properties__id=property_id
+            ).exclude(email__isnull=True).exclude(email__exact="")
+            
+            # Exclude users with email notifications disabled
+            users = users.filter(
+                Q(userprofile__email_notifications_enabled=True) | Q(userprofile__isnull=True)
+            )
+            
+            # Apply exclusions
+            if exclude_emails:
+                email_list = [e.strip() for e in exclude_emails.split(",") if e.strip()]
+                if email_list:
+                    users = users.exclude(email__in=email_list)
+            
+            if exclude_user_ids:
+                try:
+                    user_id_list = [int(uid.strip()) for uid in exclude_user_ids.split(",") if uid.strip()]
+                    if user_id_list:
+                        users = users.exclude(id__in=user_id_list)
+                except ValueError:
+                    pass
+            
+            if not users.exists():
+                logger.info(f"No users assigned to property {property_obj.name}, skipping")
+                continue
+            
+            # Test mode - only first user per property
+            if test_mode:
+                users = users[:1]
+            
+            property_sent_count = 0
+            
+            for user in users:
+                # Get user's jobs for this property
+                jobs = self.get_user_property_jobs(user, property_id, days, status_filter, priority_filter)
+                
+                if not jobs.exists():
+                    logger.info(f"No jobs found for user {user.email} in property {property_obj.name}")
+                    continue
+                
+                # Get job statistics
+                stats = self.get_job_statistics(jobs)
+                
+                # Send email
+                success = self.send_user_job_email(user, property_obj, jobs, stats, days, now)
+                if success:
+                    property_sent_count += 1
+                
+                # In test mode, only send to first user per property
+                if test_mode:
+                    break
+            
+            if property_sent_count > 0:
+                total_sent += 1
+                logger.info(f"User job emails sent for property {property_obj.name} to {property_sent_count} users")
+        
+        self.stdout.write(
+            self.style.SUCCESS(f"User job emails sent for {total_sent}/{total_properties} properties")
+        )

@@ -179,6 +179,12 @@ class Command(BaseCommand):
             help="Filter jobs by specific property ID",
         )
         parser.add_argument(
+            "--all-properties",
+            action="store_true",
+            dest="all_properties",
+            help="Send daily summary for all properties to their respective users",
+        )
+        parser.add_argument(
             "--exclude-emails",
             dest="exclude_emails",
             default=None,
@@ -195,6 +201,11 @@ class Command(BaseCommand):
         try:
             # Use Asia/Bangkok timezone as configured
             now = timezone.localtime()
+            
+            # Handle --all-properties flag
+            if options.get('all_properties'):
+                self._handle_all_properties(options, now)
+                return
 
             # Define the 24-hour window for the day that just ended at 23:00
             # but since we run at 23:00, we summarize the current day 00:00 -> 23:00
@@ -205,11 +216,8 @@ class Command(BaseCommand):
             property_filter = Q()
             property_id = options.get('property_id')
             if property_id:
-                property_filter = Q(
-                    Q(property_id=property_id) | 
-                    Q(rooms__properties__id=property_id) |
-                    Q(properties__contains=[str(property_id)])
-                )
+                # Jobs are related to properties through rooms.properties
+                property_filter = Q(rooms__properties__id=property_id)
 
             # Aggregate Job status counts for today
             jobs_today = Job.objects.filter(created_at__range=(start_of_day, end_of_window)).filter(property_filter).distinct()
@@ -445,4 +453,144 @@ class Command(BaseCommand):
         except Exception as exc:
             logger.exception("Error while sending daily summary email: %s", exc)
             self.stdout.write(self.style.ERROR(f"Error: {exc}"))
+
+    def _handle_all_properties(self, options, now):
+        """Send daily summary for all properties to their respective users."""
+        from myappLubd.models import Property
+        
+        properties = Property.objects.all()
+        total_sent = 0
+        total_properties = properties.count()
+        
+        User = get_user_model()
+        exclude_emails = options.get('exclude_emails')
+        exclude_user_ids = options.get('exclude_user_ids')
+        
+        for property_obj in properties:
+            property_id = property_obj.id
+            
+            # Get users assigned to this property
+            users_qs = User.objects.filter(
+                is_active=True,
+                userprofile__properties__id=property_id
+            ).exclude(email__isnull=True).exclude(email__exact="")
+            
+            # Exclude users with email notifications disabled
+            users_qs = users_qs.filter(
+                Q(userprofile__email_notifications_enabled=True) | Q(userprofile__isnull=True)
+            )
+            
+            # Apply exclusions
+            if exclude_emails:
+                email_list = [e.strip() for e in exclude_emails.split(",") if e.strip()]
+                if email_list:
+                    users_qs = users_qs.exclude(email__in=email_list)
+            
+            if exclude_user_ids:
+                try:
+                    user_id_list = [int(uid.strip()) for uid in exclude_user_ids.split(",") if uid.strip()]
+                    if user_id_list:
+                        users_qs = users_qs.exclude(id__in=user_id_list)
+                except ValueError:
+                    pass
+            
+            recipients = list(users_qs.values_list("email", flat=True).distinct())
+            
+            if not recipients:
+                logger.info(f"No users assigned to property {property_obj.name}, skipping")
+                continue
+            
+            # Build property filter for this property
+            # Jobs are related to properties through rooms.properties
+            property_filter = Q(rooms__properties__id=property_id)
+            
+            # Get job statistics for this property
+            start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_of_window = now.replace(minute=59, second=59, microsecond=999999)
+            
+            jobs_today = Job.objects.filter(created_at__range=(start_of_day, end_of_window)).filter(property_filter).distinct()
+            total_created = jobs_today.count()
+            
+            if total_created == 0:
+                logger.info(f"No jobs today for property {property_obj.name}, skipping")
+                continue
+            
+            status_counts = {
+                status_key: jobs_today.filter(status=status_key).count()
+                for status_key, _ in Job.STATUS_CHOICES
+            }
+            
+            completed_today = Job.objects.filter(
+                completed_at__range=(start_of_day, end_of_window)
+            ).filter(property_filter).distinct().count()
+            
+            # Get monthly and topic stats
+            monthly_stats = self.get_daily_and_monthly_stats(now, property_filter)
+            topic_stats = self.get_topic_statistics(now, property_filter)
+            
+            # Build email
+            subject = f"Daily Maintenance Summary - {property_obj.name} - {now.strftime('%Y-%m-%d')}"
+            
+            # Plain-text body
+            lines = [
+                f"Date: {now.strftime('%Y-%m-%d')} (Asia/Bangkok)",
+                f"Property: {property_obj.name} (ID: {property_id})",
+                "",
+                f"TODAY'S SUMMARY:",
+                f"Total jobs created today: {total_created}",
+                f"Total jobs completed today: {completed_today}",
+                "",
+                "Breakdown by status:",
+            ]
+            for key, label in Job.STATUS_CHOICES:
+                lines.append(f"- {label}: {status_counts.get(key, 0)}")
+            
+            body = "\n".join(lines)
+            
+            # HTML body
+            status_list = [
+                {"label": label, "count": status_counts.get(key, 0)}
+                for key, label in Job.STATUS_CHOICES
+            ]
+            context = {
+                "date_str": now.strftime('%Y-%m-%d'),
+                "timezone_label": "Asia/Bangkok",
+                "total_created": total_created,
+                "completed_today": completed_today,
+                "status_list": status_list,
+                "brand_name": "PCMS",
+                "base_url": getattr(settings, "FRONTEND_BASE_URL", "https://pcms.live"),
+                "monthly_stats": monthly_stats,
+                "daily_stats": monthly_stats['daily_stats'],
+                "monthly_status_list": monthly_stats['monthly_status_list'],
+                "total_created_this_month": monthly_stats['total_created_this_month'],
+                "total_completed_this_month": monthly_stats['total_completed_this_month'],
+                "month_name": monthly_stats['month_name'],
+                "topic_stats": topic_stats,
+                "today_topics": topic_stats['today_topics'],
+                "monthly_topics": topic_stats['monthly_topics'],
+                "total_unique_topics_today": topic_stats['total_unique_topics_today'],
+                "total_unique_topics_month": topic_stats['total_unique_topics_month'],
+                "total_topic_assignments_today": topic_stats['total_topic_assignments_today'],
+                "total_topic_assignments_month": topic_stats['total_topic_assignments_month'],
+            }
+            html_body = render_to_string("emails/daily_summary.html", context)
+            
+            # Send to all property users
+            sent_count = 0
+            for to_email in recipients:
+                success = send_email(to_email=to_email, subject=subject, body=body, html_body=html_body)
+                if success:
+                    sent_count += 1
+                    logger.info(f"Daily summary sent to {to_email} for property {property_obj.name}")
+                else:
+                    logger.error(f"Failed to send daily summary to {to_email}")
+            
+            if sent_count > 0:
+                total_sent += 1
+                logger.info(f"Daily summary sent for property {property_obj.name} to {sent_count} users")
+        
+        self.stdout.write(
+            self.style.SUCCESS(f"Daily summaries sent for {total_sent}/{total_properties} properties")
+        )
 

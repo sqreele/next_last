@@ -532,7 +532,7 @@ const UtilityConsumptionPage = () => {
             <CardContent className="pt-0">
               <div className="h-[300px] sm:h-[350px] md:h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyData}>
+                  <LineChart data={monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="month" 
@@ -548,13 +548,16 @@ const UtilityConsumptionPage = () => {
                     <Legend 
                       wrapperStyle={{ fontSize: isMobile ? 10 : 12 }}
                     />
-                    <Bar 
-                      dataKey="totalelectricity" 
-                      fill="#8884d8" 
+                    <Line 
+                      type="monotone"
+                      dataKey="totalelectricity"
+                      stroke="#8884d8"
+                      strokeWidth={2}
                       name="Total Electricity Cost ($)"
-                      radius={[4, 4, 0, 0]}
+                      dot={{ r: isMobile ? 3 : 4 }}
+                      activeDot={{ r: isMobile ? 5 : 6 }}
                     />
-                  </BarChart>
+                  </LineChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
@@ -876,4 +879,3 @@ const UtilityConsumptionPage = () => {
 };
 
 export default UtilityConsumptionPage;
-

@@ -12,6 +12,7 @@ import {
   Line,
   BarChart,
   Bar,
+  ComposedChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -61,6 +62,7 @@ const UtilityConsumptionPage = () => {
   const [comparisonYear1, setComparisonYear1] = useState<number>(new Date().getFullYear() - 1);
   const [comparisonYear2, setComparisonYear2] = useState<number>(new Date().getFullYear());
   const [isMobile, setIsMobile] = useState(false);
+  const [electricityBudget, setElectricityBudget] = useState<number>(0);
 
   useEffect(() => {
     const updateIsMobile = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
@@ -225,6 +227,13 @@ const UtilityConsumptionPage = () => {
 
     return result.sort((a, b) => a.monthNum - b.monthNum);
   }, [filteredData]);
+
+  const monthlyCostWithBudget = useMemo(() => {
+    return monthlyData.map(item => ({
+      ...item,
+      electricityBudget,
+    }));
+  }, [monthlyData, electricityBudget]);
 
   // Calculate totals - sum all months when "All Months" is selected (using filtered data)
   const totals = useMemo(() => {
@@ -416,12 +425,26 @@ const UtilityConsumptionPage = () => {
                 ))}
               </select>
             </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Electricity Budget (Monthly)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={electricityBudget || ''}
+                onChange={(e) => setElectricityBudget(e.target.value ? Number(e.target.value) : 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter budget"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm sm:text-base font-medium text-gray-600">
@@ -455,6 +478,18 @@ const UtilityConsumptionPage = () => {
           <CardContent>
             <p className="text-xl sm:text-2xl font-bold text-gray-900">
               {formatNumber(totals.water)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm sm:text-base font-medium text-gray-600">
+              Electricity Budget
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl sm:text-2xl font-bold text-gray-900">
+              ${formatNumber(electricityBudget)}
             </p>
           </CardContent>
         </Card>
@@ -532,7 +567,7 @@ const UtilityConsumptionPage = () => {
             <CardContent className="pt-0">
               <div className="h-[300px] sm:h-[350px] md:h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthlyData}>
+                  <ComposedChart data={monthlyCostWithBudget}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="month" 
@@ -548,16 +583,31 @@ const UtilityConsumptionPage = () => {
                     <Legend 
                       wrapperStyle={{ fontSize: isMobile ? 10 : 12 }}
                     />
+                    <Bar
+                      dataKey="totalelectricity"
+                      fill="#8ecae6"
+                      name="Electricity Cost ($)"
+                      radius={[4, 4, 0, 0]}
+                    />
                     <Line 
                       type="monotone"
                       dataKey="totalelectricity"
-                      stroke="#8884d8"
+                      stroke="#1d4ed8"
                       strokeWidth={2}
-                      name="Total Electricity Cost ($)"
-                      dot={{ r: isMobile ? 3 : 4 }}
-                      activeDot={{ r: isMobile ? 5 : 6 }}
+                      name="Cost Trend"
+                      dot={false}
+                      activeDot={{ r: isMobile ? 4 : 5 }}
                     />
-                  </LineChart>
+                    <Line
+                      type="monotone"
+                      dataKey="electricityBudget"
+                      stroke="#f97316"
+                      strokeDasharray="6 4"
+                      strokeWidth={2}
+                      name="Budget ($)"
+                      dot={false}
+                    />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>

@@ -365,31 +365,32 @@ class CreatedAtBeforeYearFilter(admin.SimpleListFilter):
     parameter_name = 'created_before_year'
 
     def lookups(self, request, model_admin):
-        from django.db.models import Count
-        from django.db.models.functions import ExtractYear
-
         try:
-            queryset = model_admin.get_queryset(request)
-            years = (
-                queryset
-                .exclude(created_at__isnull=True)
-                .annotate(year=ExtractYear('created_at'))
-                .values('year')
-                .annotate(count=Count('id'))
-                .order_by('-year')
-            )
-            return [
-                (str(entry['year']), f"Before {entry['year']} ({entry['count']})")
-                for entry in years
-                if entry['year']
-            ]
+            queryset = model_admin.get_queryset(request).exclude(created_at__isnull=True)
+            years = queryset.dates('created_at', 'year', order='DESC')
+            lookups = []
+
+            for year_date in years:
+                year = year_date.year
+                start_of_year = timezone.datetime(year, 1, 1)
+                if settings.USE_TZ and timezone.is_naive(start_of_year):
+                    start_of_year = timezone.make_aware(start_of_year, timezone.get_current_timezone())
+                count = queryset.filter(created_at__lt=start_of_year).count()
+                if count:
+                    lookups.append((str(year), f"Before {year} ({count})"))
+
+            return lookups
         except Exception:
             return []
 
     def queryset(self, request, queryset):
         if self.value():
             try:
-                return queryset.filter(created_at__year__lt=int(self.value()))
+                year = int(self.value())
+                start_of_year = timezone.datetime(year, 1, 1)
+                if settings.USE_TZ and timezone.is_naive(start_of_year):
+                    start_of_year = timezone.make_aware(start_of_year, timezone.get_current_timezone())
+                return queryset.filter(created_at__lt=start_of_year)
             except (TypeError, ValueError):
                 return queryset
         return queryset

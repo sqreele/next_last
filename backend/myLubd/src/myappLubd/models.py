@@ -1630,6 +1630,13 @@ class UtilityConsumption(models.Model):
         blank=True,
         help_text="Total electricity cost"
     )
+    electricity_cost_budget = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Budgeted electricity cost for the month"
+    )
     
     # Water field
     water = models.DecimalField(

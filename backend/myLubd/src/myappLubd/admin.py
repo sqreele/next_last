@@ -2779,6 +2779,7 @@ class UtilityConsumptionAdmin(admin.ModelAdmin):
         'onpeakkwh',
         'offpeakkwh',
         'totalelectricity',
+        'electricity_cost_budget',
         'water',
         'nightsale',
         'created_by',
@@ -2798,7 +2799,7 @@ class UtilityConsumptionAdmin(admin.ModelAdmin):
             'fields': ('month', 'year')
         }),
         ('Electricity Consumption', {
-            'fields': ('totalkwh', 'onpeakkwh', 'offpeakkwh', 'totalelectricity')
+            'fields': ('totalkwh', 'onpeakkwh', 'offpeakkwh', 'totalelectricity', 'electricity_cost_budget')
         }),
         ('Other Utilities', {
             'fields': ('water', 'nightsale')
@@ -2833,6 +2834,7 @@ class UtilityConsumptionAdmin(admin.ModelAdmin):
             'On Peak kWh',
             'Off Peak kWh',
             'Total Electricity',
+            'Electricity Cost Budget',
             'Water',
             'Night Sale',
             'Created By',
@@ -2852,6 +2854,7 @@ class UtilityConsumptionAdmin(admin.ModelAdmin):
                 consumption.onpeakkwh or 0,
                 consumption.offpeakkwh or 0,
                 consumption.totalelectricity or 0,
+                consumption.electricity_cost_budget or 0,
                 consumption.water or 0,
                 consumption.nightsale or 0,
                 consumption.created_by.username if consumption.created_by else '',

@@ -32,8 +32,9 @@ admin.site.register(User, CustomUserAdmin)
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
+from collections import Counter
 from django.db import models
-from datetime import timedelta
+from datetime import timedelta, datetime
 from django.http import HttpResponse
 from django.urls import reverse, path
 from django.conf import settings
@@ -993,7 +994,7 @@ class JobAdmin(admin.ModelAdmin):
         formset.save_m2m()
 
     # Admin actions for timestamp management and export
-    actions = ['update_timestamps_to_now', 'reset_completed_timestamps', 'export_jobs_pdf', 'export_jobs_csv']
+    actions = ['update_timestamps_to_now', 'reset_completed_timestamps', 'export_jobs_pdf', 'export_jobs_csv', 'export_jobs_chart_pdf']
 
     def update_timestamps_to_now(self, request, queryset):
         """Update selected jobs' timestamps to current time"""
@@ -1025,17 +1026,13 @@ class JobAdmin(admin.ModelAdmin):
 
     def export_jobs_pdf(self, request, queryset):
         """Export selected/filtered jobs to a PDF with card-style rows matching the web Job PDF."""
-        try:
-            from reportlab.lib.pagesizes import A4
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
-            from reportlab.lib.styles import getSampleStyleSheet
-            from reportlab.lib.units import inch
-            from reportlab.lib import colors
-            from reportlab.pdfbase import pdfmetrics
-            from reportlab.pdfbase.ttfonts import TTFont
-        except Exception:
-            self.message_user(request, 'ReportLab is required for PDF export. Install with: pip install reportlab', level='error')
-            return None
+        from reportlab.lib.pagesizes import A4
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.units import inch
+        from reportlab.lib import colors
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
 
         # Local imports for file handling
         import os
@@ -1539,6 +1536,155 @@ class JobAdmin(admin.ModelAdmin):
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
     export_jobs_pdf.short_description = "Export selected/filtered jobs to PDF"
+
+    def export_jobs_chart_pdf(self, request, queryset):
+        """Export dashboard-style charts for selected/filtered jobs to PDF."""
+        from reportlab.lib.pagesizes import A4
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.units import inch
+        from reportlab.lib import colors
+        from reportlab.graphics.shapes import Drawing
+        from reportlab.graphics.charts.piecharts import Pie
+        from reportlab.graphics.charts.barcharts import VerticalBarChart
+
+        qs = queryset.select_related('user').prefetch_related('rooms', 'topics').order_by('created_at')
+        total_jobs = qs.count()
+
+        status_counts = Counter(job.status for job in qs)
+        status_labels = [
+            ('pending', 'Pending', colors.orange),
+            ('in_progress', 'In Progress', colors.blue),
+            ('completed', 'Completed', colors.green),
+            ('waiting_sparepart', 'Waiting Sparepart', colors.purple),
+            ('cancelled', 'Cancelled', colors.red),
+        ]
+        status_data = []
+        status_names = []
+        status_colors = []
+        for key, label, color in status_labels:
+            count = status_counts.get(key, 0)
+            if count:
+                status_data.append(count)
+                status_names.append(f"{label} ({count})")
+                status_colors.append(color)
+
+        month_counts = Counter()
+        for job in qs:
+            if job.created_at:
+                month_key = timezone.localtime(job.created_at).strftime('%Y-%m')
+                month_counts[month_key] += 1
+        month_keys = sorted(month_counts.keys())
+        month_labels = [datetime.strptime(m, '%Y-%m').strftime('%b %Y') for m in month_keys]
+        month_values = [month_counts[m] for m in month_keys]
+
+        topic_counts = Counter()
+        room_counts = Counter()
+        for job in qs:
+            for topic in job.topics.all():
+                topic_counts[topic.title] += 1
+            for room in job.rooms.all():
+                room_counts[room.name] += 1
+
+        top_topics = topic_counts.most_common(10)
+        top_rooms = room_counts.most_common(10)
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=48, bottomMargin=36)
+        styles = getSampleStyleSheet()
+        story = []
+
+        title = Paragraph("Job Analytics Dashboard", styles['Title'])
+        story.append(title)
+        story.append(Paragraph(f"Total jobs: {total_jobs}", styles['Normal']))
+        story.append(Spacer(1, 0.2 * inch))
+
+        if status_data:
+            story.append(Paragraph("Jobs by Status", styles['Heading2']))
+            drawing = Drawing(400, 220)
+            pie = Pie()
+            pie.x = 150
+            pie.y = 20
+            pie.width = 200
+            pie.height = 200
+            pie.data = status_data
+            pie.labels = status_names
+            pie.simpleLabels = 1
+            for index, color in enumerate(status_colors):
+                pie.slices[index].fillColor = color
+            drawing.add(pie)
+            story.append(drawing)
+            story.append(Spacer(1, 0.2 * inch))
+        else:
+            story.append(Paragraph("No status data available for the selected jobs.", styles['Normal']))
+            story.append(Spacer(1, 0.2 * inch))
+
+        if month_values:
+            story.append(Paragraph("Jobs Created by Month", styles['Heading2']))
+            chart_width = 430
+            chart_height = 200
+            drawing = Drawing(chart_width, chart_height)
+            bar_chart = VerticalBarChart()
+            bar_chart.x = 40
+            bar_chart.y = 30
+            bar_chart.height = 150
+            bar_chart.width = 360
+            bar_chart.data = [month_values]
+            bar_chart.valueAxis.valueMin = 0
+            bar_chart.valueAxis.valueMax = max(month_values) + 1
+            bar_chart.valueAxis.valueStep = max(1, int((bar_chart.valueAxis.valueMax) / 5))
+            bar_chart.categoryAxis.categoryNames = month_labels
+            bar_chart.categoryAxis.labels.boxAnchor = 'ne'
+            bar_chart.categoryAxis.labels.angle = 45
+            bar_chart.bars[0].fillColor = colors.HexColor('#3b82f6')
+            drawing.add(bar_chart)
+            story.append(drawing)
+            story.append(Spacer(1, 0.2 * inch))
+        else:
+            story.append(Paragraph("No monthly data available for the selected jobs.", styles['Normal']))
+            story.append(Spacer(1, 0.2 * inch))
+
+        story.append(PageBreak())
+        story.append(Paragraph("Top Topics & Rooms", styles['Heading2']))
+
+        topics_table_data = [['Topic', 'Jobs']]
+        for name, count in top_topics:
+            topics_table_data.append([name, str(count)])
+        if len(topics_table_data) == 1:
+            topics_table_data.append(['No topics available', '0'])
+
+        rooms_table_data = [['Room', 'Jobs']]
+        for name, count in top_rooms:
+            rooms_table_data.append([name, str(count)])
+        if len(rooms_table_data) == 1:
+            rooms_table_data.append(['No rooms available', '0'])
+
+        topics_table = Table(topics_table_data, colWidths=[3.5 * inch, 1 * inch])
+        rooms_table = Table(rooms_table_data, colWidths=[3.5 * inch, 1 * inch])
+
+        table_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+        ])
+        topics_table.setStyle(table_style)
+        rooms_table.setStyle(table_style)
+
+        story.append(Paragraph("Top Topics", styles['Heading3']))
+        story.append(topics_table)
+        story.append(Spacer(1, 0.3 * inch))
+        story.append(Paragraph("Top Rooms", styles['Heading3']))
+        story.append(rooms_table)
+
+        doc.build(story)
+        buffer.seek(0)
+        filename = f"job_dashboard_charts_{timezone.now().strftime('%Y_%m_%d')}.pdf"
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    export_jobs_chart_pdf.short_description = "Export selected/filtered jobs dashboard charts to PDF"
 
     def export_jobs_csv(self, request, queryset):
         """Export selected/filtered jobs to CSV"""
@@ -2051,7 +2197,7 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
             'description': 'Inventory items linked to this preventive maintenance'
         }),
     )
-    actions = ['mark_completed', 'export_pm_csv']
+    actions = ['mark_completed', 'export_pm_csv', 'export_pm_chart_pdf']
 
     def get_topics_display(self, obj):
         return ", ".join([topic.title for topic in obj.topics.all()])
@@ -2246,6 +2392,189 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
         
         return response
     export_pm_csv.short_description = "Export selected/filtered PM records to CSV"
+
+    def export_pm_chart_pdf(self, request, queryset):
+        """Export dashboard-style charts for selected preventive maintenance to PDF."""
+        from reportlab.lib.pagesizes import A4
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.units import inch
+        from reportlab.lib import colors
+        from reportlab.graphics.shapes import Drawing
+        from reportlab.graphics.charts.piecharts import Pie
+        from reportlab.graphics.charts.barcharts import VerticalBarChart
+
+        qs = queryset.select_related(
+            'created_by', 'assigned_to', 'procedure_template'
+        ).prefetch_related('topics', 'machines__property', 'job__rooms__properties').order_by('scheduled_date')
+        total_records = qs.count()
+        now = timezone.now()
+
+        status_counts = Counter()
+        for pm in qs:
+            if pm.completed_date:
+                status_counts['completed'] += 1
+            elif pm.scheduled_date and pm.scheduled_date < now:
+                status_counts['overdue'] += 1
+            elif pm.next_due_date and pm.next_due_date < now:
+                status_counts['next_due_overdue'] += 1
+            else:
+                status_counts['scheduled'] += 1
+
+        status_labels = [
+            ('completed', 'Completed', colors.green),
+            ('overdue', 'Overdue', colors.red),
+            ('next_due_overdue', 'Next Due Overdue', colors.orange),
+            ('scheduled', 'Scheduled', colors.blue),
+        ]
+        status_data = []
+        status_names = []
+        status_colors = []
+        for key, label, color in status_labels:
+            count = status_counts.get(key, 0)
+            if count:
+                status_data.append(count)
+                status_names.append(f"{label} ({count})")
+                status_colors.append(color)
+
+        month_counts = Counter()
+        for pm in qs:
+            if pm.scheduled_date:
+                month_key = timezone.localtime(pm.scheduled_date).strftime('%Y-%m')
+                month_counts[month_key] += 1
+        month_keys = sorted(month_counts.keys())
+        month_labels = [datetime.strptime(m, '%Y-%m').strftime('%b %Y') for m in month_keys]
+        month_values = [month_counts[m] for m in month_keys]
+
+        topic_counts = Counter()
+        machine_counts = Counter()
+        property_counts = Counter()
+        for pm in qs:
+            for topic in pm.topics.all():
+                topic_counts[topic.title] += 1
+            for machine in pm.machines.all():
+                machine_counts[machine.name] += 1
+                if machine.property:
+                    property_label = f"{machine.property.property_id} - {machine.property.name}"
+                    property_counts[property_label] += 1
+
+            if pm.job and pm.job.rooms.exists():
+                for room in pm.job.rooms.all():
+                    for prop in room.properties.all():
+                        property_label = f"{prop.property_id} - {prop.name}"
+                        property_counts[property_label] += 1
+
+        top_topics = topic_counts.most_common(10)
+        top_machines = machine_counts.most_common(10)
+        top_properties = property_counts.most_common(10)
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=48, bottomMargin=36)
+        styles = getSampleStyleSheet()
+        story = []
+
+        title = Paragraph("Preventive Maintenance Analytics", styles['Title'])
+        story.append(title)
+        story.append(Paragraph(f"Total records: {total_records}", styles['Normal']))
+        story.append(Spacer(1, 0.2 * inch))
+
+        if status_data:
+            story.append(Paragraph("Status Breakdown", styles['Heading2']))
+            drawing = Drawing(400, 220)
+            pie = Pie()
+            pie.x = 150
+            pie.y = 20
+            pie.width = 200
+            pie.height = 200
+            pie.data = status_data
+            pie.labels = status_names
+            pie.simpleLabels = 1
+            for index, color in enumerate(status_colors):
+                pie.slices[index].fillColor = color
+            drawing.add(pie)
+            story.append(drawing)
+            story.append(Spacer(1, 0.2 * inch))
+        else:
+            story.append(Paragraph("No status data available for the selected records.", styles['Normal']))
+            story.append(Spacer(1, 0.2 * inch))
+
+        if month_values:
+            story.append(Paragraph("Scheduled by Month", styles['Heading2']))
+            chart_width = 430
+            chart_height = 200
+            drawing = Drawing(chart_width, chart_height)
+            bar_chart = VerticalBarChart()
+            bar_chart.x = 40
+            bar_chart.y = 30
+            bar_chart.height = 150
+            bar_chart.width = 360
+            bar_chart.data = [month_values]
+            bar_chart.valueAxis.valueMin = 0
+            bar_chart.valueAxis.valueMax = max(month_values) + 1
+            bar_chart.valueAxis.valueStep = max(1, int((bar_chart.valueAxis.valueMax) / 5))
+            bar_chart.categoryAxis.categoryNames = month_labels
+            bar_chart.categoryAxis.labels.boxAnchor = 'ne'
+            bar_chart.categoryAxis.labels.angle = 45
+            bar_chart.bars[0].fillColor = colors.HexColor('#16a34a')
+            drawing.add(bar_chart)
+            story.append(drawing)
+            story.append(Spacer(1, 0.2 * inch))
+        else:
+            story.append(Paragraph("No monthly data available for the selected records.", styles['Normal']))
+            story.append(Spacer(1, 0.2 * inch))
+
+        story.append(PageBreak())
+        story.append(Paragraph("Top Topics, Machines & Properties", styles['Heading2']))
+
+        topics_table_data = [['Topic', 'Count']]
+        for name, count in top_topics:
+            topics_table_data.append([name, str(count)])
+        if len(topics_table_data) == 1:
+            topics_table_data.append(['No topics available', '0'])
+
+        machines_table_data = [['Machine', 'Count']]
+        for name, count in top_machines:
+            machines_table_data.append([name, str(count)])
+        if len(machines_table_data) == 1:
+            machines_table_data.append(['No machines available', '0'])
+
+        properties_table_data = [['Property', 'Count']]
+        for name, count in top_properties:
+            properties_table_data.append([name, str(count)])
+        if len(properties_table_data) == 1:
+            properties_table_data.append(['No properties available', '0'])
+
+        table_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+        ])
+
+        topics_table = Table(topics_table_data, colWidths=[3.5 * inch, 1 * inch])
+        topics_table.setStyle(table_style)
+        machines_table = Table(machines_table_data, colWidths=[3.5 * inch, 1 * inch])
+        machines_table.setStyle(table_style)
+        properties_table = Table(properties_table_data, colWidths=[3.5 * inch, 1 * inch])
+        properties_table.setStyle(table_style)
+
+        story.append(Paragraph("Top Topics", styles['Heading3']))
+        story.append(topics_table)
+        story.append(Spacer(1, 0.3 * inch))
+        story.append(Paragraph("Top Machines", styles['Heading3']))
+        story.append(machines_table)
+        story.append(Spacer(1, 0.3 * inch))
+        story.append(Paragraph("Top Properties", styles['Heading3']))
+        story.append(properties_table)
+
+        doc.build(story)
+        buffer.seek(0)
+        filename = f"preventive_maintenance_dashboard_{timezone.now().strftime('%Y_%m_%d')}.pdf"
+        response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    export_pm_chart_pdf.short_description = "Export selected/filtered preventive maintenance charts to PDF"
 
     def before_image_preview(self, obj):
         if obj.before_image and hasattr(obj.before_image, 'url'):

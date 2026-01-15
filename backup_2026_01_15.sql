@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict YNL2slxKGGlR2VYySq24LhgIZGWDfeRbBCX0Lh18rY5bWImVWUd97HOeInBmcHl
+\restrict Ubo4JiiwsF8yuivN6BxEJq2U96fXF8BewQtxg2sp0LcJZrApLw4FiwPdcyNVZWo
 
 -- Dumped from database version 17.7
 -- Dumped by pg_dump version 17.7
@@ -1139,7 +1139,8 @@ CREATE TABLE public."myappLubd_utilityconsumption" (
     created_at timestamp with time zone NOT NULL,
     updated_at timestamp with time zone NOT NULL,
     created_by_id bigint,
-    property_id integer
+    property_id integer,
+    electricity_cost_budget numeric(10,2)
 );
 
 
@@ -2509,6 +2510,37 @@ COPY public.django_admin_log (id, action_time, object_id, object_repr, action_fl
 1111	2026-01-15 02:27:26.102069+00	13	Lubd Bangkok Chainatown - December 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
 1112	2026-01-15 02:33:21.552011+00	13	Lubd Bangkok Chainatown - December 2025	2	[{"changed": {"fields": ["Water"]}}]	23	1
 1113	2026-01-15 02:34:26.003931+00	13	Lubd Bangkok Chainatown - December 2025	2	[{"changed": {"fields": ["Water"]}}]	23	1
+1114	2026-01-15 03:42:28.518369+00	1	Lubd Bangkok Chainatown - January 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1115	2026-01-15 03:43:04.76978+00	2	Lubd Bangkok Chainatown - February 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1116	2026-01-15 03:43:32.811471+00	3	Lubd Bangkok Chainatown - March 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1117	2026-01-15 03:44:04.947505+00	4	Lubd Bangkok Chainatown - April 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1118	2026-01-15 03:44:38.305216+00	5	Lubd Bangkok Chainatown - May 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1119	2026-01-15 03:45:29.742994+00	6	Lubd Bangkok Chainatown - June 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1120	2026-01-15 03:46:14.681379+00	5	Lubd Bangkok Chainatown - May 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1121	2026-01-15 03:47:00.351902+00	1	Lubd Bangkok Chainatown - January 2025	2	[]	23	1
+1122	2026-01-15 03:48:06.006586+00	2	Lubd Bangkok Chainatown - February 2025	2	[]	23	1
+1123	2026-01-15 03:48:40.356678+00	3	Lubd Bangkok Chainatown - March 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1124	2026-01-15 03:49:16.787469+00	4	Lubd Bangkok Chainatown - April 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1125	2026-01-15 03:49:49.911344+00	5	Lubd Bangkok Chainatown - May 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1126	2026-01-15 03:50:20.547396+00	7	Lubd Bangkok Chainatown - July 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1127	2026-01-15 03:50:43.910614+00	8	Lubd Bangkok Chainatown - August 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1128	2026-01-15 03:52:07.591952+00	9	Lubd Bangkok Chainatown - September 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1129	2026-01-15 03:53:44.529279+00	8	Lubd Bangkok Chainatown - August 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1130	2026-01-15 03:55:11.922057+00	10	Lubd Bangkok Chainatown - October 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1131	2026-01-15 03:56:03.382649+00	11	Lubd Bangkok Chainatown - November 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1132	2026-01-15 03:56:24.517298+00	13	Lubd Bangkok Chainatown - December 2025	2	[{"changed": {"fields": ["Totalelectricity", "Electricity cost budget"]}}]	23	1
+1133	2026-01-15 04:01:52.253575+00	1	Lubd Bangkok Chainatown - January 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
+1134	2026-01-15 04:02:07.032361+00	2	Lubd Bangkok Chainatown - February 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
+1135	2026-01-15 04:02:25.637636+00	3	Lubd Bangkok Chainatown - March 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
+1136	2026-01-15 04:02:45.342069+00	4	Lubd Bangkok Chainatown - April 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
+1137	2026-01-15 04:03:05.032512+00	5	Lubd Bangkok Chainatown - May 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
+1138	2026-01-15 04:04:27.846966+00	5	Lubd Bangkok Chainatown - May 2025	2	[]	23	1
+1139	2026-01-15 04:05:16.726693+00	7	Lubd Bangkok Chainatown - July 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
+1140	2026-01-15 04:05:31.757789+00	8	Lubd Bangkok Chainatown - August 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
+1141	2026-01-15 04:05:49.895635+00	9	Lubd Bangkok Chainatown - September 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
+1142	2026-01-15 04:06:09.50839+00	10	Lubd Bangkok Chainatown - October 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
+1143	2026-01-15 04:06:36.596495+00	11	Lubd Bangkok Chainatown - November 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
+1144	2026-01-15 04:06:44.176115+00	13	Lubd Bangkok Chainatown - December 2025	2	[{"changed": {"fields": ["Nightsale"]}}]	23	1
 \.
 
 
@@ -2636,6 +2668,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 115	myappLubd	0055_remove_inventory_myapplubd_i_job_id_50f920_idx_and_more	2025-12-25 08:52:28.502405+00
 116	myappLubd	0055_add_workspace_report_images_5_to_15	2025-12-25 09:32:34.31516+00
 117	myappLubd	0056_merge_20251225_1632	2025-12-25 09:32:34.324929+00
+118	myappLubd	0056_add_electricity_cost_budget_to_utility_consumption	2026-01-15 03:05:42.35901+00
+119	myappLubd	0057_merge_20260115_1005	2026-01-15 03:05:42.535444+00
 \.
 
 
@@ -4403,6 +4437,19 @@ COPY public."myappLubd_job" (id, job_id, is_defective, description, remarks, sta
 1599	j26D0E3FD	f	เปลี่ยนที่วางสายฉีดชำระlobby ชายหญิง4ตัว	.	completed	medium	2026-01-14 13:28:03.799051+00	2026-01-14 13:28:03.799156+00	2026-01-14 13:28:03.799158+00	19	19	f
 1600	j26ADC49E	f	clogged sink	clean hair	completed	medium	2026-01-15 02:24:53.269534+00	2026-01-15 02:24:53.269654+00	2026-01-15 02:24:53.269657+00	9	9	f
 1601	j26265DF2	f	The drain pipe is not flowing water	fix	completed	medium	2026-01-15 02:26:20.247346+00	2026-01-15 02:26:20.247469+00	2026-01-15 02:26:20.247473+00	9	9	f
+1602	j262028B8	f	ทาสีถังขยะ6ถัง	.	completed	medium	2026-01-15 03:43:25.865673+00	2026-01-15 03:43:25.865845+00	2026-01-15 03:43:25.865848+00	19	19	f
+1603	j2699B262	f	ฝาชักโครกโยก	.	completed	medium	2026-01-15 03:45:52.076356+00	2026-01-15 03:45:52.076493+00	2026-01-15 03:45:52.076496+00	19	19	f
+1604	j26D93BF9	f	ประตู shower ห้องน้ำตก ปิดไม่ได้	.	completed	medium	2026-01-15 03:47:10.452363+00	2026-01-15 03:47:10.452475+00	2026-01-15 03:47:10.452478+00	19	19	f
+1605	j268C7958	f	ปรับรีโมทแอร์และล้างฟิลเตอร์แอร์	.	completed	medium	2026-01-15 03:49:09.314439+00	2026-01-15 03:49:09.314557+00	2026-01-15 03:49:09.314581+00	19	19	f
+1606	j2697DCE8	f	ฝาชักโครกโยก	.	completed	medium	2026-01-15 03:51:59.107889+00	2026-01-15 03:51:59.108022+00	2026-01-15 03:51:59.108026+00	19	19	f
+1607	j265C7382	f	เปิดตู้เซฟ	.	completed	medium	2026-01-15 03:55:48.556684+00	2026-01-15 03:55:48.556783+00	2026-01-15 03:55:48.556787+00	19	19	f
+1608	j26D1AF96	f	แก้ไข\r\nเครื่องดูดฝุ่นไม่ทำงานชั้น3	.	completed	medium	2026-01-15 03:57:41.128077+00	2026-01-15 03:57:41.1282+00	2026-01-15 03:57:41.128204+00	19	19	f
+1609	j260F126F	f	แก้ไขชักโครกตัน	.	completed	medium	2026-01-15 03:58:58.084215+00	2026-01-15 03:58:58.084375+00	2026-01-15 03:58:58.084379+00	19	19	f
+1610	j263A63A9	f	ประตู shower ตกปิดไม่ได้	.	completed	medium	2026-01-15 04:00:56.201946+00	2026-01-15 04:00:56.202095+00	2026-01-15 04:00:56.202098+00	19	19	f
+1611	j26187FCD	f	แก้ไขโคมไฟหัวเตียงดับ	.	completed	medium	2026-01-15 04:03:16.70203+00	2026-01-15 04:03:16.702207+00	2026-01-15 04:03:16.702216+00	19	19	f
+1612	j26AB076B	f	แก้ไขสัญญาณโทรศัพท์	.	completed	medium	2026-01-15 04:05:08.135199+00	2026-01-15 04:05:08.135302+00	2026-01-15 04:05:08.135305+00	19	19	f
+1613	j26A853FC	f	ฝาชักโครกโยก	.	completed	medium	2026-01-15 04:08:20.348835+00	2026-01-15 04:08:20.348943+00	2026-01-15 04:08:20.348946+00	19	19	f
+1614	j2628D162	f	ทาสีผนังห้องและผนังหน้าห้องน้ำ	.	completed	medium	2026-01-15 04:10:25.682996+00	2026-01-15 04:10:25.683132+00	2026-01-15 04:10:25.683136+00	19	19	f
 \.
 
 
@@ -5949,6 +5996,19 @@ COPY public."myappLubd_job_rooms" (id, job_id, room_id) FROM stdin;
 1810	1599	181
 1811	1600	181
 1812	1601	111
+1813	1602	181
+1814	1603	83
+1815	1604	83
+1816	1605	38
+1817	1606	38
+1818	1607	21
+1819	1608	181
+1820	1609	50
+1821	1610	115
+1822	1611	106
+1823	1612	19
+1824	1613	85
+1825	1614	68
 \.
 
 
@@ -7495,6 +7555,19 @@ COPY public."myappLubd_job_topics" (id, job_id, topic_id) FROM stdin;
 1830	1599	2
 1831	1600	2
 1832	1601	2
+1833	1602	3
+1834	1603	2
+1835	1604	4
+1836	1605	1
+1837	1606	2
+1838	1607	10
+1839	1608	10
+1840	1609	2
+1841	1610	4
+1842	1611	5
+1843	1612	6
+1844	1613	2
+1845	1614	3
 \.
 
 
@@ -10002,6 +10075,22 @@ COPY public."myappLubd_jobimage" (id, image, uploaded_at, job_id, uploaded_by_id
 2595	maintenance_job_images/2026/01/1000010928.jpg	2026-01-14 13:28:04.233044+00	1599	19	1000010928.jpg
 2596	maintenance_job_images/2026/01/IMG_0039_whRp4nk.jpeg	2026-01-15 02:24:53.489542+00	1600	9	IMG_0039.jpg
 2597	maintenance_job_images/2026/01/IMG_0022.jpeg	2026-01-15 02:26:20.450739+00	1601	9	IMG_0022.jpg
+2598	maintenance_job_images/2026/01/1000010897.jpg	2026-01-15 03:43:26.206272+00	1602	19	1000010897.jpg
+2599	maintenance_job_images/2026/01/1000010895.jpg	2026-01-15 03:45:52.410881+00	1603	19	1000010895.jpg
+2600	maintenance_job_images/2026/01/1000010896.jpg	2026-01-15 03:47:10.744195+00	1604	19	1000010896.jpg
+2601	maintenance_job_images/2026/01/1000010893.jpg	2026-01-15 03:49:09.532852+00	1605	19	1000010893.jpg
+2602	maintenance_job_images/2026/01/1000010894.jpg	2026-01-15 03:49:09.754523+00	1605	19	1000010894.jpg
+2603	maintenance_job_images/2026/01/1000010948_qW5P6bw.jpg	2026-01-15 03:51:59.354715+00	1606	19	1000010948.jpg
+2604	maintenance_job_images/2026/01/1000010889.jpg	2026-01-15 03:55:48.783748+00	1607	19	1000010889.jpg
+2605	maintenance_job_images/2026/01/1000010963.jpg	2026-01-15 03:57:41.29161+00	1608	19	1000010963.jpg
+2606	maintenance_job_images/2026/01/1000010847.jpg	2026-01-15 03:58:58.215971+00	1609	19	1000010847.jpg
+2607	maintenance_job_images/2026/01/1000010846.jpg	2026-01-15 03:58:58.447079+00	1609	19	1000010846.jpg
+2608	maintenance_job_images/2026/01/1000010841.jpg	2026-01-15 04:00:56.443082+00	1610	19	1000010841.jpg
+2609	maintenance_job_images/2026/01/1000010840.jpg	2026-01-15 04:03:16.979933+00	1611	19	1000010840.jpg
+2610	maintenance_job_images/2026/01/1000010822.jpg	2026-01-15 04:05:08.39002+00	1612	19	1000010822.jpg
+2611	maintenance_job_images/2026/01/1000010513.jpg	2026-01-15 04:08:20.614931+00	1613	19	1000010513.jpg
+2612	maintenance_job_images/2026/01/1000010514.jpg	2026-01-15 04:10:25.986286+00	1614	19	1000010514.jpg
+2613	maintenance_job_images/2026/01/1000010515.jpg	2026-01-15 04:10:26.249966+00	1614	19	1000010515.jpg
 \.
 
 
@@ -10706,20 +10795,20 @@ COPY public."myappLubd_userprofile_properties" (id, userprofile_id, property_id)
 -- Data for Name: myappLubd_utilityconsumption; Type: TABLE DATA; Schema: public; Owner: mylubd_user
 --
 
-COPY public."myappLubd_utilityconsumption" (id, month, year, totalkwh, onpeakkwh, offpeakkwh, totalelectricity, water, nightsale, created_at, updated_at, created_by_id, property_id) FROM stdin;
-5	5	2025	75000.00	31000.00	44000.00	303692.81	8333.97	2210.00	2025-11-17 08:07:43.001808+00	2025-11-17 09:23:28.329599+00	8	1
-4	4	2025	78000.00	30000.00	48000.00	326745.68	8521.62	1843.00	2025-11-17 08:00:12.584029+00	2025-11-17 09:24:15.130765+00	8	1
-3	3	2025	73000.00	30000.00	43000.00	311362.54	8931.68	1788.00	2025-11-17 07:58:17.961058+00	2025-11-17 09:24:59.742928+00	8	1
-2	2	2025	65000.00	26000.00	39000.00	273678.97	12922.65	2332.00	2025-11-17 07:56:38.936694+00	2025-11-17 09:25:47.587827+00	8	1
-1	1	2025	58000.00	24000.00	34000.00	249213.48	13303.44	2243.00	2025-11-17 07:54:23.555302+00	2025-11-17 09:26:27.697077+00	8	1
-6	6	2025	79000.00	31000.00	48000.00	318667.60	7924.12	2465.00	2025-11-17 08:09:05.968287+00	2025-11-18 10:26:22.59584+00	8	1
-7	7	2025	84000.00	31000.00	53000.00	332514.54	9273.22	2882.00	2025-11-17 08:10:58.330062+00	2025-11-18 10:26:41.1472+00	8	1
-8	8	2025	95000.00	36000.00	59000.00	377775.55	12295.00	3627.00	2025-11-17 08:12:02.726048+00	2025-11-18 10:27:21.977333+00	8	1
-9	9	2025	77000.00	34000.00	44000.00	314107.31	12022.00	2830.00	2025-11-17 08:13:30.47689+00	2025-11-18 10:27:52.098584+00	8	1
-10	10	2025	84000.00	33000.00	51000.00	329882.97	11988.00	3948.00	2025-11-17 08:14:45.899634+00	2025-11-18 10:28:08.611894+00	8	1
-11	11	2025	73000.00	28000.00	45000.00	259419.43	13786.36	4346.00	2025-12-02 09:37:37.612831+00	2025-12-02 09:55:22.440323+00	8	1
-12	12	2024	66000.00	23000.00	43000.00	273477.29	759.00	300.00	2025-12-23 08:20:04.848623+00	2025-12-23 08:20:04.84865+00	8	1
-13	12	2025	74000.00	27000.00	45000.00	288774.10	13218.05	3204.00	2026-01-05 10:54:49.820581+00	2026-01-15 02:34:26.001878+00	8	1
+COPY public."myappLubd_utilityconsumption" (id, month, year, totalkwh, onpeakkwh, offpeakkwh, totalelectricity, water, nightsale, created_at, updated_at, created_by_id, property_id, electricity_cost_budget) FROM stdin;
+1	1	2025	58000.00	24000.00	34000.00	223719.01	13303.44	2126.00	2025-11-17 07:54:23.555302+00	2026-01-15 04:01:52.251625+00	8	1	239261.17
+2	2	2025	65000.00	26000.00	39000.00	249390.18	12922.65	2167.00	2025-11-17 07:56:38.936694+00	2026-01-15 04:02:07.030102+00	8	1	243359.86
+3	3	2025	73000.00	30000.00	43000.00	321014.35	8931.68	2345.00	2025-11-17 07:58:17.961058+00	2026-01-15 04:02:25.636128+00	8	1	257284.53
+4	4	2025	78000.00	30000.00	48000.00	269210.09	8521.62	2607.00	2025-11-17 08:00:12.584029+00	2026-01-15 04:02:45.33932+00	8	1	307660.33
+5	5	2025	75000.00	31000.00	44000.00	261284.93	8333.97	3617.00	2025-11-17 08:07:43.001808+00	2026-01-15 04:04:27.841062+00	8	1	354503.15
+7	7	2025	84000.00	31000.00	53000.00	274023.83	9273.22	3766.00	2025-11-17 08:10:58.330062+00	2026-01-15 04:05:16.724923+00	8	1	379533.88
+8	8	2025	95000.00	36000.00	59000.00	330497.14	12295.00	3871.00	2025-11-17 08:12:02.726048+00	2026-01-15 04:05:31.755659+00	8	1	481984.91
+9	9	2025	77000.00	34000.00	44000.00	230808.34	12022.00	3404.00	2025-11-17 08:13:30.47689+00	2026-01-15 04:05:49.893222+00	8	1	375292.14
+10	10	2025	84000.00	33000.00	51000.00	287864.04	11988.00	3505.00	2025-11-17 08:14:45.899634+00	2026-01-15 04:06:09.507185+00	8	1	367221.07
+11	11	2025	73000.00	28000.00	45000.00	273205.79	13786.36	3907.00	2025-12-02 09:37:37.612831+00	2026-01-15 04:06:36.594833+00	8	1	486054.68
+13	12	2025	74000.00	27000.00	45000.00	242481.06	13218.05	4097.00	2026-01-05 10:54:49.820581+00	2026-01-15 04:06:44.17428+00	8	1	512038.15
+12	12	2024	66000.00	23000.00	43000.00	273477.29	759.00	300.00	2025-12-23 08:20:04.848623+00	2025-12-23 08:20:04.84865+00	8	1	\N
+6	6	2025	79000.00	31000.00	48000.00	261284.93	7924.12	2465.00	2025-11-17 08:09:05.968287+00	2026-01-15 03:45:29.741427+00	8	1	354503.15
 \.
 
 
@@ -10758,7 +10847,7 @@ SELECT pg_catalog.setval('public.auth_permission_id_seq', 100, true);
 -- Name: django_admin_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public.django_admin_log_id_seq', 1113, true);
+SELECT pg_catalog.setval('public.django_admin_log_id_seq', 1144, true);
 
 
 --
@@ -10772,7 +10861,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 25, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 117, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 119, true);
 
 
 --
@@ -10800,28 +10889,28 @@ SELECT pg_catalog.setval('public."myappLubd_inventory_preventive_maintenances_id
 -- Name: myappLubd_job_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_id_seq"', 1601, true);
+SELECT pg_catalog.setval('public."myappLubd_job_id_seq"', 1614, true);
 
 
 --
 -- Name: myappLubd_job_rooms_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_rooms_id_seq"', 1812, true);
+SELECT pg_catalog.setval('public."myappLubd_job_rooms_id_seq"', 1825, true);
 
 
 --
 -- Name: myappLubd_job_topics_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_job_topics_id_seq"', 1832, true);
+SELECT pg_catalog.setval('public."myappLubd_job_topics_id_seq"', 1845, true);
 
 
 --
 -- Name: myappLubd_jobimage_id_seq; Type: SEQUENCE SET; Schema: public; Owner: mylubd_user
 --
 
-SELECT pg_catalog.setval('public."myappLubd_jobimage_id_seq"', 2597, true);
+SELECT pg_catalog.setval('public."myappLubd_jobimage_id_seq"', 2613, true);
 
 
 --
@@ -13083,5 +13172,5 @@ ALTER TABLE ONLY public."myappLubd_workspacereport"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict YNL2slxKGGlR2VYySq24LhgIZGWDfeRbBCX0Lh18rY5bWImVWUd97HOeInBmcHl
+\unrestrict Ubo4JiiwsF8yuivN6BxEJq2U96fXF8BewQtxg2sp0LcJZrApLw4FiwPdcyNVZWo
 

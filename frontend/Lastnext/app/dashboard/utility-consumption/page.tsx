@@ -38,6 +38,7 @@ interface UtilityConsumption {
   onpeakkwh?: number;
   offpeakkwh?: number;
   totalelectricity?: number;
+  electricity_cost_budget?: number;
   water?: number;
   nightsale?: number;
   created_at: string;
@@ -62,7 +63,6 @@ const UtilityConsumptionPage = () => {
   const [comparisonYear1, setComparisonYear1] = useState<number>(new Date().getFullYear() - 1);
   const [comparisonYear2, setComparisonYear2] = useState<number>(new Date().getFullYear());
   const [isMobile, setIsMobile] = useState(false);
-  const [electricityBudget, setElectricityBudget] = useState<number>(0);
 
   useEffect(() => {
     const updateIsMobile = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
@@ -176,6 +176,7 @@ const UtilityConsumptionPage = () => {
       onpeakkwh: number;
       offpeakkwh: number;
       totalelectricity: number;
+      electricity_cost_budget: number;
       water: number;
       nightsale: number;
       totalkwhPerNightsale: number;
@@ -199,6 +200,7 @@ const UtilityConsumptionPage = () => {
           onpeakkwh: 0,
           offpeakkwh: 0,
           totalelectricity: 0,
+          electricity_cost_budget: 0,
           water: 0,
           nightsale: 0,
           totalkwhPerNightsale: 0,
@@ -210,6 +212,7 @@ const UtilityConsumptionPage = () => {
       grouped[key].onpeakkwh += toNumber(item.onpeakkwh);
       grouped[key].offpeakkwh += toNumber(item.offpeakkwh);
       grouped[key].totalelectricity += toNumber(item.totalelectricity);
+      grouped[key].electricity_cost_budget += toNumber(item.electricity_cost_budget);
       grouped[key].water += toNumber(item.water);
       grouped[key].nightsale += toNumber(item.nightsale);
     });
@@ -227,13 +230,6 @@ const UtilityConsumptionPage = () => {
 
     return result.sort((a, b) => a.monthNum - b.monthNum);
   }, [filteredData]);
-
-  const monthlyCostWithBudget = useMemo(() => {
-    return monthlyData.map(item => ({
-      ...item,
-      electricityBudget,
-    }));
-  }, [monthlyData, electricityBudget]);
 
   // Calculate totals - sum all months when "All Months" is selected (using filtered data)
   const totals = useMemo(() => {
@@ -256,6 +252,7 @@ const UtilityConsumptionPage = () => {
       onpeakkwh: sumField('onpeakkwh'),
       offpeakkwh: sumField('offpeakkwh'),
       totalelectricity: sumField('totalelectricity'),
+      electricity_cost_budget: sumField('electricity_cost_budget'),
       water: sumField('water'),
       nightsale: sumField('nightsale'),
     };
@@ -425,20 +422,6 @@ const UtilityConsumptionPage = () => {
                 ))}
               </select>
             </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Electricity Budget (Monthly)
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={electricityBudget || ''}
-                onChange={(e) => setElectricityBudget(e.target.value ? Number(e.target.value) : 0)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter budget"
-              />
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -489,7 +472,7 @@ const UtilityConsumptionPage = () => {
           </CardHeader>
           <CardContent>
             <p className="text-xl sm:text-2xl font-bold text-gray-900">
-              ${formatNumber(electricityBudget)}
+              ${formatNumber(totals.electricity_cost_budget)}
             </p>
           </CardContent>
         </Card>
@@ -567,7 +550,7 @@ const UtilityConsumptionPage = () => {
             <CardContent className="pt-0">
               <div className="h-[300px] sm:h-[350px] md:h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={monthlyCostWithBudget}>
+                  <ComposedChart data={monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="month" 
@@ -600,7 +583,7 @@ const UtilityConsumptionPage = () => {
                     />
                     <Line
                       type="monotone"
-                      dataKey="electricityBudget"
+                      dataKey="electricity_cost_budget"
                       stroke="#f97316"
                       strokeDasharray="6 4"
                       strokeWidth={2}

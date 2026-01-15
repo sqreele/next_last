@@ -2770,6 +2770,7 @@ class MaintenanceScheduleAdmin(admin.ModelAdmin):
 @admin.register(UtilityConsumption)
 class UtilityConsumptionAdmin(admin.ModelAdmin):
     list_per_page = 25
+    ordering = ['year', 'month', 'property']
     list_display = [
         'id',
         'property',

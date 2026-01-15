@@ -360,6 +360,31 @@ LastOccurrenceMonthFilter = create_month_filter('last_occurrence', 'Last Occurre
 ExpiresAtMonthFilter = create_month_filter('expires_at', 'Expires Month', 'expires_month')
 
 
+class CreatedAtBeforeYearFilter(admin.SimpleListFilter):
+    title = 'created before year'
+    parameter_name = 'created_before_year'
+
+    def lookups(self, request, model_admin):
+        try:
+            queryset = model_admin.get_queryset(request)
+            return [
+                (str(date.year), f"Before {date.year}")
+                for date in queryset.dates('created_at', 'year', order='DESC')
+            ]
+        except Exception:
+            return []
+
+    def queryset(self, request, queryset):
+        if self.value():
+            try:
+                year = int(self.value())
+                start_of_year = timezone.make_aware(datetime(year, 1, 1))
+                return queryset.filter(created_at__lt=start_of_year)
+            except (TypeError, ValueError):
+                return queryset
+        return queryset
+
+
 # Add this new admin class for Machine
 @admin.register(Machine)
 class MachineAdmin(admin.ModelAdmin):
@@ -831,7 +856,7 @@ class JobAdmin(admin.ModelAdmin):
     list_per_page = 25
     form = JobAdminForm
     list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_user_display', 'user_id', 'get_properties_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
-    list_filter = ['status', 'priority', 'is_defective', 'created_at', CreatedAtMonthFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
+    list_filter = ['status', 'priority', 'is_defective', 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
     search_fields = ['job_id', 'description', 'user__username', 'updated_by__username', 'topics__title']
     readonly_fields = ['job_id', 'updated_by', 'inventory_items_display']
     filter_horizontal = ['rooms', 'topics']

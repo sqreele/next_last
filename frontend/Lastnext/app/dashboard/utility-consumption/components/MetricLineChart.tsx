@@ -16,6 +16,7 @@ interface MetricLineChartProps {
   title: string;
   subtitle: string;
   color: string;
+  yAxisMax?: number;
 }
 
 export default function MetricLineChart({
@@ -23,7 +24,10 @@ export default function MetricLineChart({
   title,
   subtitle,
   color,
+  yAxisMax,
 }: MetricLineChartProps) {
+  const yAxisDomain = yAxisMax === undefined ? ['auto', 'auto'] : [0, yAxisMax];
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-4">
@@ -35,7 +39,7 @@ export default function MetricLineChart({
           <LineChart data={data} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="label" stroke="#64748b" />
-            <YAxis stroke="#64748b" />
+            <YAxis stroke="#64748b" domain={yAxisDomain} />
             <Tooltip />
             <Legend />
             <Line

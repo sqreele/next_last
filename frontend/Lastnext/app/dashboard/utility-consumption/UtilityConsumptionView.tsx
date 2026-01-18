@@ -179,6 +179,7 @@ export default function UtilityConsumptionView() {
               title="Water trend"
               subtitle={`Primary year ${primaryYear ?? ''}`}
               color="#0ea5e9"
+              yAxisMax={10000}
             />
             <MetricLineChart
               data={nightSaleSeries}

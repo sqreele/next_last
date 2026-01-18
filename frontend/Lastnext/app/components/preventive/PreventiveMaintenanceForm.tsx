@@ -29,6 +29,11 @@ import MachineService from '@/app/lib/MachineService';
 import { fetchAllMaintenanceProcedures, type MaintenanceProcedureTemplate } from '@/app/lib/maintenanceProcedures';
 import apiClient from '@/app/lib/api-client';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const STATUS_OPTIONS = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'overdue', label: 'Overdue' },
+];
 
 interface PreventiveMaintenanceFormProps {
   pmId?: string | null;
@@ -44,6 +49,7 @@ interface FormValues {
   completed_date: string;
   frequency: FrequencyType;
   custom_days: number | '' | null;
+  status: string;
   notes: string;
   before_image_file: File | null;
   after_image_file: File | null;
@@ -152,8 +158,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   }, []);
 
   // Helper function to calculate next scheduled date based on frequency
-  const calculateNextScheduledDate = useCallback((frequency: string, customDays?: number): Date => {
-    const now = new Date();
+  const calculateNextScheduledDate = useCallback((frequency: string, customDays?: number, baseDate?: Date): Date => {
+    const now = baseDate ?? new Date();
     let nextDate: Date;
 
     switch (frequency) {
@@ -361,6 +367,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
     if (!values.pmtitle?.trim()) errors.pmtitle = 'Title is required';
     if (!values.scheduled_date) errors.scheduled_date = 'Scheduled date is required';
+    if (!values.status) errors.status = 'Status is required';
     
     // Validate date formats
     if (values.scheduled_date) {
@@ -513,6 +520,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         completed_date: completedDate,
         frequency: validateFrequency(currentData.frequency || 'monthly'),
         custom_days: customDays,
+        status: currentData.status || (completedDate ? 'completed' : 'pending'),
         notes: currentData.notes || '',
         before_image_file: null,
         after_image_file: null,
@@ -539,6 +547,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       completed_date: '',
       frequency: 'monthly',
       custom_days: '',
+      status: 'pending',
       notes: '',
       before_image_file: null,
       after_image_file: null,
@@ -1097,6 +1106,19 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         finalMachineIdsLength: finalMachineIds.length
       });
 
+      const nextDueDate = (() => {
+        const baseDate = values.scheduled_date ? new Date(values.scheduled_date) : new Date();
+        const safeBaseDate = isNaN(baseDate.getTime()) ? new Date() : baseDate;
+        return calculateNextScheduledDate(
+          values.frequency,
+          values.frequency === 'custom' && values.custom_days ? Number(values.custom_days) : undefined,
+          safeBaseDate
+        );
+      })();
+
+      const nextDueDateFormatted = formatDateForInput(nextDueDate);
+      const nextDueDateISO = convertToISO8601(nextDueDateFormatted);
+
       const dataForService: CreatePreventiveMaintenanceData = {
         pmtitle: values.pmtitle.trim() || 'Untitled Maintenance',
         scheduled_date: scheduledDateISO,
@@ -1122,6 +1144,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         // Only send assigned_to if it's a valid numeric ID
         // If not provided, backend will automatically use created_by (from request.user)
         assigned_to: assignedToNumber,
+        status: values.status,
+        next_due_date: values.status === 'completed' ? nextDueDateISO : undefined,
       };
 
       console.log('[FORM] handleSubmit - Data prepared for service:', JSON.stringify(dataForService, (key, value) => {
@@ -1601,6 +1625,22 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               }
             }, [values.selected_machine_ids, pmId, fetchAvailableMaintenanceTasks]);
 
+            const nextDueDate = React.useMemo(() => {
+              if (!values.frequency) {
+                return null;
+              }
+
+              const baseDate = values.scheduled_date ? new Date(values.scheduled_date) : new Date();
+              const safeBaseDate = isNaN(baseDate.getTime()) ? new Date() : baseDate;
+              return calculateNextScheduledDate(
+                values.frequency,
+                values.frequency === 'custom' && values.custom_days ? Number(values.custom_days) : undefined,
+                safeBaseDate
+              );
+            }, [values.frequency, values.custom_days, values.scheduled_date, calculateNextScheduledDate]);
+
+            const nextDueLabel = nextDueDate ? nextDueDate.toLocaleString() : 'Not available';
+
             return (
             <Form aria-label="Preventive Maintenance Form" className="space-y-4 sm:space-y-6">
               {!values.property_id && !pmId && (
@@ -1647,6 +1687,47 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               {errors.scheduled_date && touched.scheduled_date && (
                 <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.scheduled_date}</p>
               )}
+            </div>
+
+            {/* Status */}
+            <div className="mb-4 sm:mb-6">
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                Status <span className="text-red-500">*</span>
+              </label>
+              <Field
+                as="select"
+                id="status"
+                name="status"
+                className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.status && touched.status ? 'border-red-500' : 'border-gray-300'
+                }`}
+              >
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Field>
+              {errors.status && touched.status && (
+                <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.status}</p>
+              )}
+              <div
+                className={`mt-2 rounded-md border px-3 py-2 text-xs sm:text-sm ${
+                  values.status === 'completed'
+                    ? 'border-green-200 bg-green-50 text-green-700'
+                    : 'border-amber-200 bg-amber-50 text-amber-800'
+                }`}
+              >
+                {values.status === 'completed' ? (
+                  <p>
+                    Next due date will be created automatically: <span className="font-semibold">{nextDueLabel}</span>.
+                  </p>
+                ) : (
+                  <p>
+                    Next due date will be set after completion. Expected next due: <span className="font-semibold">{nextDueLabel}</span>.
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* Completed Date - Only show when editing existing records */}

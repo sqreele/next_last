@@ -28,6 +28,8 @@ export type CreatePreventiveMaintenanceData = {
   procedure_template?: number; // FK to MaintenanceProcedure task template
   assigned_to?: number; // User ID (pk value)
   remarks?: string;
+  status?: string;
+  next_due_date?: string;
 };
 
 export type UpdatePreventiveMaintenanceData = Partial<CreatePreventiveMaintenanceData>;

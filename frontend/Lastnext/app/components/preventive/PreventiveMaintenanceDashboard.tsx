@@ -39,7 +39,8 @@ const getImageUrl = (image: any): string | null => {
 const determinePMStatus = (item: PreventiveMaintenance): string => {
   // If status is already set, return it
   if (item.status) {
-    return item.status;
+    const normalizedStatus = item.status.toLowerCase();
+    return normalizedStatus === 'complete' ? 'completed' : normalizedStatus;
   }
   
   // Get current date

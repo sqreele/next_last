@@ -1002,9 +1002,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
     try {
       // Validate dates before submission (only for edit mode)
-      // For new records, completed_date should be empty
-      if (!pmId && values.completed_date && values.completed_date.trim() !== '') {
-        setSubmitError('Completed date should be empty when creating new maintenance records');
+      // For new records, completed_date should be empty unless status is completed
+      if (!pmId && values.completed_date && values.completed_date.trim() !== '' && values.status !== 'completed') {
+        setSubmitError('Completed date should be empty when creating new maintenance records unless status is completed.');
         setIsLoading(false);
         setIsImageUploading(false);
         setSubmitting(false);
@@ -1036,11 +1036,11 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
       // Prepare ISO 8601 strings for dates
       const scheduledDateISO = convertToISO8601(values.scheduled_date);
-      // For new records, always set completed_date to undefined (don't send it)
-      // Only include completed_date when editing existing records
-      const completedDateISO = (pmId && values.completed_date && values.completed_date.trim() !== '')
+      // Include completed_date when editing or when status is completed.
+      // If status is completed and no completed_date provided, default to now.
+      const completedDateISO = (values.completed_date && values.completed_date.trim() !== '')
         ? convertToISO8601(values.completed_date)
-        : undefined;
+        : (values.status === 'completed' ? new Date().toISOString() : undefined);
 
       // Debug: Log the exact date conversion process
       console.log('[FORM] Date conversion debug:', {

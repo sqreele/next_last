@@ -48,7 +48,7 @@ from django.conf import settings
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_http_methods
 from .cache import cache_result, CacheManager
-from .services import NotificationService
+from .services import NotificationService, PreventiveMaintenanceService
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -438,37 +438,31 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if 'completed_date' not in request.data:
-            request.data['completed_date'] = timezone.now().isoformat()
+        completed_date = request.data.get('completed_date')
+        if completed_date:
+            from django.utils.dateparse import parse_datetime
 
-        # Explicitly use PreventiveMaintenanceCompleteSerializer for complete action
-        serializer_class = self.get_serializer_class()
-        print(f"=== DEBUG: complete action ===")
-        print(f"Serializer class: {serializer_class.__name__}")
-        print(f"Request data: {request.data}")
-        print(f"Scheduled date: {instance.scheduled_date}")
-        
-        serializer = serializer_class(instance, data=request.data, partial=True, context={'request': request})
-        serializer.is_valid(raise_exception=True)
+            parsed_date = parse_datetime(str(completed_date))
+            if parsed_date:
+                completed_date = parsed_date
 
-        completed_date = serializer.validated_data.get('completed_date') or timezone.now()
-        # Calculate next scheduled date based on completion date and frequency
-        next_scheduled_date = self._calculate_next_due_date(instance, completed_date)
-        
-        logger.info(f"[PM Complete] Completing PM {instance.pm_id}: completed_date={completed_date}, next_scheduled_date={next_scheduled_date}")
-        
-        # Save completion data first
-        serializer.save(updated_by=request.user)
-        
-        # Update scheduled_date and next_due_date directly on the instance for the next occurrence
-        instance.scheduled_date = next_scheduled_date
-        instance.next_due_date = next_scheduled_date
-        instance.save(update_fields=['scheduled_date', 'next_due_date', 'updated_at'])
-        
-        logger.info(f"[PM Complete] PM {instance.pm_id} completed. Next scheduled date: {instance.scheduled_date}, next_due_date: {instance.next_due_date}")
-        return Response(
-            PreventiveMaintenanceDetailSerializer(instance, context={'request': request}).data
+        result = PreventiveMaintenanceService.update_status(
+            maintenance=instance,
+            new_status='completed',
+            user=request.user,
+            completed_date=completed_date,
         )
+
+        response_data = PreventiveMaintenanceDetailSerializer(
+            result['current'],
+            context={'request': request},
+        ).data
+
+        if result['next_schedule']:
+            response_data['next_schedule_pm_id'] = result['next_schedule'].pm_id
+            response_data['next_schedule_scheduled_date'] = result['next_schedule'].scheduled_date
+
+        return Response(response_data)
 
     def _calculate_next_due_date(self, instance, reference_date):
         """
@@ -532,6 +526,83 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         
         logger.info(f"[PM Complete] Calculated next scheduled date: {next_date} (from {reference_date} with frequency {frequency})")
         return next_date
+
+    @action(detail=True, methods=['post'])
+    def change_status(self, request, pm_id=None):
+        """
+        Update the status of a preventive maintenance task with validation.
+        """
+        instance = self.get_object()
+        new_status = request.data.get('status')
+        completed_date = request.data.get('completed_date')
+
+        if not new_status:
+            return Response(
+                {'detail': 'Status is required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        parsed_completed_date = None
+        if completed_date:
+            from django.utils.dateparse import parse_datetime
+
+            parsed_completed_date = parse_datetime(str(completed_date))
+            if not parsed_completed_date:
+                return Response(
+                    {'detail': 'Completed Date must be a valid datetime.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        try:
+            result = PreventiveMaintenanceService.update_status(
+                maintenance=instance,
+                new_status=new_status,
+                user=request.user,
+                completed_date=parsed_completed_date,
+            )
+        except Exception as exc:
+            return Response(
+                {'detail': str(exc)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        response_data = PreventiveMaintenanceDetailSerializer(
+            result['current'],
+            context={'request': request},
+        ).data
+
+        if result['next_schedule']:
+            response_data['next_schedule_pm_id'] = result['next_schedule'].pm_id
+            response_data['next_schedule_scheduled_date'] = result['next_schedule'].scheduled_date
+
+        return Response(response_data)
+
+    @action(detail=False, methods=['post'])
+    def import_csv(self, request):
+        """
+        Import preventive maintenance records from a CSV file.
+        """
+        upload = request.FILES.get('file')
+        if not upload:
+            return Response(
+                {'detail': 'CSV file is required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            content = upload.read().decode('utf-8-sig')
+        except UnicodeDecodeError:
+            return Response(
+                {'detail': 'Unable to decode CSV. Please upload a UTF-8 encoded file.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        result = PreventiveMaintenanceService.import_from_csv_content(
+            content,
+            default_user=request.user,
+        )
+
+        return Response(result, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def upload_images(self, request, pm_id=None):

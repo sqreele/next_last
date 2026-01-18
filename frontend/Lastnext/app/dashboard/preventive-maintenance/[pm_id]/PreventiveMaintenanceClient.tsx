@@ -1,7 +1,7 @@
 // app/dashboard/preventive-maintenance/[pm_id]/PreventiveMaintenanceClient.tsx
 
 'use client';
-import { preventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
+import { preventiveMaintenanceService, setPreventiveMaintenanceServiceToken } from '@/app/lib/PreventiveMaintenanceService';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -46,6 +46,13 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   const [currentImageAlt, setCurrentImageAlt] = useState<string>('');
   const [isCompleting, setIsCompleting] = useState(false);
   
+  useEffect(() => {
+    const accessToken = session?.user?.accessToken;
+    if (accessToken) {
+      setPreventiveMaintenanceServiceToken(accessToken);
+    }
+  }, [session?.user?.accessToken]);
+
 
   // ฟังก์ชันสำหรับการยืนยันการลบ
   const handleDelete = async () => {
@@ -89,16 +96,22 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
       
       if (scheduledDate) {
         const daysDiff = Math.floor((completedDate.getTime() - scheduledDate.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         if (daysDiff < -15 || daysDiff > 15) {
           const scheduledDateStr = scheduledDate.toLocaleDateString();
           const completedDateStr = completedDate.toLocaleDateString();
-          setError(
-            `Completion date must be within 15 days before or after the scheduled date (${scheduledDateStr}). ` +
-            `Your completion date (${completedDateStr}) is ${Math.abs(daysDiff)} days away.`
+          const proceed = window.confirm(
+            `This task is outside the recommended 15-day window.\n\n` +
+              `Scheduled: ${scheduledDateStr}\n` +
+              `Completion: ${completedDateStr}\n` +
+              `Difference: ${Math.abs(daysDiff)} days\n\n` +
+              `Do you still want to mark it complete?`
           );
-          setIsCompleting(false);
-          return;
+
+          if (!proceed) {
+            setIsCompleting(false);
+            return;
+          }
         }
       }
 

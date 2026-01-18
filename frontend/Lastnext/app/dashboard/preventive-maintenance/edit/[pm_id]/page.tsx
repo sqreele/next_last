@@ -199,6 +199,60 @@ export default function EditPreventiveMaintenancePage() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
+  const calculateNextScheduledDate = (frequency: FrequencyType, customDays: number | null, baseDate: Date): Date => {
+    const nextDate = new Date(baseDate);
+
+    switch (frequency) {
+      case 'daily':
+        nextDate.setDate(nextDate.getDate() + 1);
+        break;
+      case 'weekly':
+        nextDate.setDate(nextDate.getDate() + 7);
+        break;
+      case 'monthly':
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        if (nextDate.getDate() !== baseDate.getDate()) {
+          nextDate.setDate(0);
+        }
+        break;
+      case 'quarterly':
+        nextDate.setMonth(nextDate.getMonth() + 3);
+        if (nextDate.getDate() !== baseDate.getDate()) {
+          nextDate.setDate(0);
+        }
+        break;
+      case 'semi_annual':
+        nextDate.setMonth(nextDate.getMonth() + 6);
+        if (nextDate.getDate() !== baseDate.getDate()) {
+          nextDate.setDate(0);
+        }
+        break;
+      case 'annual':
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+        if (nextDate.getDate() !== baseDate.getDate()) {
+          nextDate.setDate(0);
+        }
+        break;
+      case 'custom':
+        if (customDays && customDays > 0) {
+          nextDate.setDate(nextDate.getDate() + customDays);
+        } else {
+          nextDate.setMonth(nextDate.getMonth() + 1);
+          if (nextDate.getDate() !== baseDate.getDate()) {
+            nextDate.setDate(0);
+          }
+        }
+        break;
+      default:
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        if (nextDate.getDate() !== baseDate.getDate()) {
+          nextDate.setDate(0);
+        }
+    }
+
+    return nextDate;
+  };
+
   // Populate form with existing data
   const populateForm = (data: PreventiveMaintenance) => {
     // Helper function to convert ISO datetime to datetime-local format
@@ -456,14 +510,24 @@ export default function EditPreventiveMaintenancePage() {
     clearError();
 
     try {
+      const completionValue = formState.completed_date || (completeRequested ? formatDateTimeLocal(new Date()) : '');
       // Convert dates to proper format for backend
       const scheduledDate = convertDateTimeForBackend(formState.scheduled_date);
-      const completedDate = formState.completed_date ? convertDateTimeForBackend(formState.completed_date) : undefined;
+      const completedDate = completionValue ? convertDateTimeForBackend(completionValue) : undefined;
+      const parsedCompletionDate = completionValue ? new Date(completionValue) : new Date();
+      const baseCompletionDate = isNaN(parsedCompletionDate.getTime()) ? new Date() : parsedCompletionDate;
+      const nextDueDate = completedDate
+        ? convertDateTimeForBackend(
+            formatDateTimeLocal(
+              calculateNextScheduledDate(formState.frequency, formState.custom_days, baseCompletionDate)
+            )
+          )
+        : undefined;
       
       console.log('[EDIT FORM] Date conversion debug:', {
         original_scheduled_date: formState.scheduled_date,
         converted_scheduled_date: scheduledDate,
-        original_completed_date: formState.completed_date,
+        original_completed_date: completionValue,
         converted_completed_date: completedDate
       });
 
@@ -481,6 +545,7 @@ export default function EditPreventiveMaintenancePage() {
         custom_days: formState.frequency === 'custom' ? (formState.custom_days === null ? undefined : formState.custom_days) : undefined,
         notes: formState.notes.trim(),
         completed_date: completedDate,
+        next_due_date: nextDueDate,
         topic_ids: formState.topic_ids,
         machine_ids: formState.machine_ids,
         procedure_template: typeof formState.procedure_template === 'number' ? formState.procedure_template : (formState.procedure_template !== '' ? Number(formState.procedure_template) : undefined),

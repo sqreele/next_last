@@ -6,6 +6,7 @@ import StatusPieChart from './components/StatusPieChart';
 import SummaryCards from './components/SummaryCards';
 import TopUsersChart from './components/TopUsersChart';
 import TrendLineChart from './components/TrendLineChart';
+import { useUser } from '@/app/lib/stores/mainStore';
 import type {
   DashboardSummaryResponse,
   MonthLabel,
@@ -93,14 +94,30 @@ export default function ChartDashboardView() {
   const [error, setError] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<MonthOption>('All');
   const [selectedYear, setSelectedYear] = useState<YearOption>('All');
+  const { selectedPropertyId: selectedProperty } = useUser();
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadSummary() {
       try {
+        if (!selectedProperty) {
+          setData(null);
+          setLoading(false);
+          setError(null);
+          return;
+        }
         setLoading(true);
-        const response = await fetch('/api/dashboard/summary', { signal: controller.signal });
+        setError(null);
+        const params = new URLSearchParams();
+        if (selectedProperty) {
+          params.set('property_id', selectedProperty);
+        }
+        const queryString = params.toString();
+        const response = await fetch(
+          `/api/dashboard/summary${queryString ? `?${queryString}` : ''}`,
+          { signal: controller.signal }
+        );
         if (!response.ok) {
           throw new Error('Unable to load dashboard summary.');
         }
@@ -121,7 +138,7 @@ export default function ChartDashboardView() {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [selectedProperty]);
 
   const availableYears = useMemo(() => {
     if (!data) return [];
@@ -190,7 +207,7 @@ export default function ChartDashboardView() {
 
   const topUsersChartData = aggregateTopUsers(filteredTopUsers);
 
-  const isEmpty = !loading && (!data || filteredTrend.length === 0);
+  const isEmpty = !loading && !error && selectedProperty && (!data || filteredTrend.length === 0);
 
   return (
     <div className="space-y-6">
@@ -247,6 +264,15 @@ export default function ChartDashboardView() {
       {error && !loading && (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-600">
           {error}
+        </div>
+      )}
+
+      {!selectedProperty && !loading && !error && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
+          <h2 className="text-lg font-semibold text-slate-900">Select a property</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Choose a property from the header to load chart dashboard analytics.
+          </p>
         </div>
       )}
 

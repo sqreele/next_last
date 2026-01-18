@@ -114,6 +114,8 @@ export interface PreventiveMaintenanceRequest {
   completed_date?: string;
   before_image?: File;
   after_image?: File;
+  status?: string;
+  next_due_date?: string | null;
 }
 
 // Form errors interface

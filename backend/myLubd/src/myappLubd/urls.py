@@ -58,6 +58,9 @@ urlpatterns = [
     
     # Health check
     path('api/v1/health/', views.health_check, name='health_check'),
+
+    # Dashboard summary
+    path('api/v1/dashboard/summary/', views.get_dashboard_summary, name='dashboard_summary'),
     
     # CSRF token endpoint
     path('api/v1/csrf-token/', views.get_csrf_token, name='get_csrf_token'),

@@ -7,6 +7,7 @@ import MetricLineChart from './components/MetricLineChart';
 import SummaryCards from './components/SummaryCards';
 import YoYLineChart from './components/YoYLineChart';
 import type { MetricKey, MonthName, UtilityConsumptionRow } from './types';
+import { useUser } from '@/app/lib/stores/mainStore';
 import {
   buildPrimaryYearSeries,
   buildYoYSeries,
@@ -29,15 +30,27 @@ export default function UtilityConsumptionView() {
   const [primaryYear, setPrimaryYear] = useState<number | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<MonthName | 'All'>('All');
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>('totalkwh');
+  const { selectedPropertyId: selectedProperty } = useUser();
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadData() {
       try {
+        if (!selectedProperty) {
+          setRows([]);
+          setError(null);
+          setLoading(false);
+          return;
+        }
         setLoading(true);
         setError(null);
-        const response = await fetch('/api/utility/consumption', { signal: controller.signal });
+        const params = new URLSearchParams();
+        params.set('property_id', selectedProperty);
+        const response = await fetch(
+          `/api/utility/consumption?${params.toString()}`,
+          { signal: controller.signal }
+        );
         if (!response.ok) {
           throw new Error('Unable to load utility consumption data.');
         }
@@ -56,7 +69,7 @@ export default function UtilityConsumptionView() {
     loadData();
 
     return () => controller.abort();
-  }, []);
+  }, [selectedProperty]);
 
   const availableYears = useMemo(() => {
     const yearSet = new Set<number>();
@@ -92,7 +105,7 @@ export default function UtilityConsumptionView() {
   const waterSeries = primaryYearSeries.map((item) => ({ label: item.label, value: item.water }));
   const nightSaleSeries = primaryYearSeries.map((item) => ({ label: item.label, value: item.nightsale }));
 
-  const isEmpty = !loading && !error && rows.length === 0;
+  const isEmpty = !loading && !error && selectedProperty && rows.length === 0;
 
   return (
     <div className="space-y-6">
@@ -118,6 +131,15 @@ export default function UtilityConsumptionView() {
       {error && !loading && (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-600">
           {error}
+        </div>
+      )}
+
+      {!selectedProperty && !loading && !error && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
+          <h2 className="text-lg font-semibold text-slate-900">Select a property</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Choose a property from the header to load utility consumption data.
+          </p>
         </div>
       )}
 

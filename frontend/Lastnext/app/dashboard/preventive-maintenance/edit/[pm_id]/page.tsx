@@ -1,9 +1,9 @@
 // app/dashboard/preventive-maintenance/edit/[pm_id]/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { JSX } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMaintenanceActions';
 import { PreventiveMaintenance, FrequencyType } from '@/app/lib/preventiveMaintenanceModels';
@@ -60,7 +60,9 @@ type MaintenanceTaskOption = {
 export default function EditPreventiveMaintenancePage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const pmId = params.pm_id as string;
+  const completeRequested = searchParams.get('complete') === 'true';
   
   const {
     fetchMaintenanceById,
@@ -73,6 +75,7 @@ export default function EditPreventiveMaintenancePage() {
 
   // State
   const [maintenance, setMaintenance] = useState<PreventiveMaintenance | null>(null);
+  const hasAppliedCompletionRef = useRef(false);
   const [formState, setFormState] = useState<FormState>({
     pmtitle: '',
     scheduled_date: '',
@@ -185,6 +188,17 @@ export default function EditPreventiveMaintenancePage() {
     });
   }, [formState]);
 
+  // Helper to convert Date to datetime-local format
+  const formatDateTimeLocal = (date: Date): string => {
+    if (isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   // Populate form with existing data
   const populateForm = (data: PreventiveMaintenance) => {
     // Helper function to convert ISO datetime to datetime-local format
@@ -277,6 +291,31 @@ export default function EditPreventiveMaintenancePage() {
       after_image_preview: fixedAfterImageUrl
     });
   };
+
+  useEffect(() => {
+    if (!completeRequested || !maintenance || hasAppliedCompletionRef.current) {
+      return;
+    }
+
+    if (maintenance.completed_date) {
+      hasAppliedCompletionRef.current = true;
+      return;
+    }
+
+    if (formState.completed_date) {
+      hasAppliedCompletionRef.current = true;
+      return;
+    }
+
+    const completionValue = formatDateTimeLocal(new Date());
+    if (!completionValue) {
+      return;
+    }
+
+    setFormState((prev) => ({ ...prev, completed_date: completionValue }));
+    setIsDirty(true);
+    hasAppliedCompletionRef.current = true;
+  }, [completeRequested, maintenance, formState.completed_date, formatDateTimeLocal]);
 
   // Handle form input changes
   const handleInputChange = (field: keyof FormState, value: any) => {

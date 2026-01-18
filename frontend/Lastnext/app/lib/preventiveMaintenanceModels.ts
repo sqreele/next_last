@@ -166,7 +166,8 @@ export interface PaginatedResponse<T> {
 export function determinePMStatus(item: PreventiveMaintenance): string {
   // If status is already set, return it
   if (item.status) {
-      return item.status;
+      const normalizedStatus = item.status.toLowerCase();
+      return normalizedStatus === 'complete' ? 'completed' : normalizedStatus;
   }
   
   // Get current date

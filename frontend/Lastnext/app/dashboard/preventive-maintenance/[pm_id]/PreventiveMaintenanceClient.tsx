@@ -328,13 +328,11 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   
   // Status functions - use useState/useEffect to avoid hydration issues with Date.now()
   // Initialize with a safe default that won't cause hydration mismatch
-  const [isOverdue, setIsOverdue] = useState(false);
   const [taskStatus, setTaskStatus] = useState<'completed' | 'pending' | 'overdue'>('pending');
 
   // Calculate status only on client side to avoid hydration issues
   useEffect(() => {
     if (maintenanceData.completed_date) {
-      setIsOverdue(false);
       setTaskStatus('completed');
       return;
     }
@@ -342,7 +340,6 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
     const scheduledDate = new Date(maintenanceData.scheduled_date);
     const now = new Date();
     const overdue = scheduledDate < now;
-    setIsOverdue(overdue);
     
     if (determinePMStatus) {
       const status = determinePMStatus(maintenanceData);
@@ -355,14 +352,15 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   const getTaskStatus = taskStatus;
     
   const statusInfo = useMemo(() => {
-    if (maintenanceData.completed_date) {
-      return { text: 'Completed', color: 'bg-green-100 text-green-800' };
-    } else if (isOverdue) {
-      return { text: 'Overdue', color: 'bg-red-100 text-red-800' };
-    } else {
-      return { text: 'Scheduled', color: 'bg-yellow-100 text-yellow-800' };
+    switch (taskStatus) {
+      case 'completed':
+        return { text: 'Completed', color: 'bg-green-100 text-green-800' };
+      case 'overdue':
+        return { text: 'Overdue', color: 'bg-red-100 text-red-800' };
+      default:
+        return { text: 'Scheduled', color: 'bg-yellow-100 text-yellow-800' };
     }
-  }, [maintenanceData.completed_date, isOverdue]);
+  }, [taskStatus]);
 
   // Get status color for PDF
   const getStatusColor = useMemo(() => {
@@ -592,7 +590,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
               </div>
             </div>
             
-            {maintenanceData.completed_date && (
+            {(maintenanceData.completed_date || taskStatus === 'completed') && (
               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-green-100 rounded-lg">
@@ -600,7 +598,9 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-500">Completed</p>
-                    <p className="text-lg font-semibold text-gray-900">{formatDate(maintenanceData.completed_date)}</p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {maintenanceData.completed_date ? formatDate(maintenanceData.completed_date) : 'Completion date not set'}
+                    </p>
                   </div>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
+import { PreventiveMaintenance, determinePMStatus } from '@/app/lib/preventiveMaintenanceModels';
 
 export function formatDate(dateString: string): string {
   if (!dateString) return 'N/A';
@@ -23,25 +23,30 @@ export function getFrequencyText(frequency: string): string {
 }
 
 export function getStatusInfo(item: PreventiveMaintenance) {
-  if (item.completed_date) {
+  const status = determinePMStatus(item);
+  const normalizedStatus = status?.toLowerCase();
+
+  if (normalizedStatus === 'completed' || normalizedStatus === 'complete') {
     return { 
       text: 'Completed', 
       color: 'bg-green-100 text-green-800 border-green-200',
       icon: 'CheckCircle'
     };
-  } else if (new Date(item.scheduled_date) < new Date()) {
+  }
+
+  if (normalizedStatus === 'overdue') {
     return { 
       text: 'Overdue', 
       color: 'bg-red-100 text-red-800 border-red-200',
       icon: 'AlertCircle'
     };
-  } else {
-    return { 
-      text: 'Scheduled', 
-      color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      icon: 'Clock'
-    };
   }
+
+  return { 
+    text: normalizedStatus === 'scheduled' ? 'Scheduled' : 'Scheduled',
+    color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    icon: 'Clock'
+  };
 }
 
 export function getMachineNames(machines: any): string {

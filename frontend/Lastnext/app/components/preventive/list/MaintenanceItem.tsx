@@ -73,6 +73,10 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                     <span>{formatDate(item.scheduled_date)}</span>
                   </div>
                   <div className="flex items-center">
+                    <Clock className="h-3 w-3 mr-1" />
+                    <span>Next due: {item.next_due_date ? formatDate(item.next_due_date) : 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center">
                     <Wrench className="h-3 w-3 mr-1" />
                     <span>{getMachineNames(item.machines)}</span>
                   </div>
@@ -121,7 +125,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
 
           {/* Desktop Layout */}
           <div className="hidden md:block">
-            <div className="grid grid-cols-5 gap-4 items-center">
+            <div className="grid grid-cols-6 gap-4 items-center">
               <div className="text-sm text-gray-900">
                 <Link 
                   href={`/dashboard/preventive-maintenance/${item.pm_id}`}
@@ -130,6 +134,11 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                   {item.pmtitle || `Task ${item.pm_id}`}
                 </Link>
                 <div className="text-xs text-gray-500">{formatDate(item.scheduled_date)}</div>
+              </div>
+
+              <div className="text-sm text-gray-900">
+                <div className="text-xs text-gray-500">Next due</div>
+                <div>{item.next_due_date ? formatDate(item.next_due_date) : 'N/A'}</div>
               </div>
               
               <div>

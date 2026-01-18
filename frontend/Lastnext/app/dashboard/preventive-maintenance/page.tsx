@@ -7,7 +7,7 @@ import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMa
 import { useFilterStore } from '@/app/lib/stores';
 import { useAuthStore } from '@/app/lib/stores/useAuthStore';
 import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
-import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
+import { PreventiveMaintenance, determinePMStatus } from '@/app/lib/preventiveMaintenanceModels';
 
 // Import types
 import { FilterState, MachineOption, Stats } from '@/app/lib/hooks/filterTypes';
@@ -316,8 +316,8 @@ function PreventiveMaintenanceListPageContent() {
           comparison = new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime();
           break;
         case 'status':
-          const statusA = a.completed_date ? 'completed' : new Date(a.scheduled_date) < new Date() ? 'overdue' : 'pending';
-          const statusB = b.completed_date ? 'completed' : new Date(b.scheduled_date) < new Date() ? 'overdue' : 'pending';
+          const statusA = determinePMStatus(a).toLowerCase();
+          const statusB = determinePMStatus(b).toLowerCase();
           comparison = statusA.localeCompare(statusB);
           break;
         // case 'frequency': removed - frequency column no longer displayed

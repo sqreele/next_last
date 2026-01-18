@@ -58,7 +58,6 @@ const navItems = [
   { href: '/dashboard/profile', label: 'Profile', icon: Users2 },
   { href: '/dashboard/createJob', label: 'Create Job', icon: PlusCircle },
   { href: '/dashboard/Preventive_maintenance', label: 'PM', icon: PlusCircle },
-  { href: '/dashboard/preventive-maintenance/dashboard', label: 'PM Dashboard', icon:Package },
   { href: '/dashboard/preventive-maintenance', label: 'PM List', icon:Activity },
   { href: '/dashboard/maintenance-tasks', label: 'Maintenance Tasks', icon: Settings },
   { href: '/dashboard/machines', label: 'Machines', icon: Wrench },

@@ -79,10 +79,11 @@ export default function UtilityConsumptionView() {
 
   useEffect(() => {
     if (availableYears.length === 0) return;
-    setPrimaryYear((current) => current ?? availableYears[0]);
+    const preferredPrimaryYear = availableYears.includes(2025) ? 2025 : availableYears[0];
+    setPrimaryYear((current) => current ?? preferredPrimaryYear);
     setSelectedYears((current) => {
       if (current.length > 0) return current;
-      return availableYears.slice(0, 2);
+      return [preferredPrimaryYear, ...availableYears.filter((year) => year !== preferredPrimaryYear).slice(0, 1)];
     });
   }, [availableYears]);
 
@@ -104,6 +105,15 @@ export default function UtilityConsumptionView() {
 
   const waterSeries = primaryYearSeries.map((item) => ({ label: item.label, value: item.water }));
   const nightSaleSeries = primaryYearSeries.map((item) => ({ label: item.label, value: item.nightsale }));
+  const waterYAxisMax = useMemo(() => {
+    const values = primaryYearSeries
+      .map((item) => item.water)
+      .filter((value): value is number => typeof value === 'number');
+    if (values.length === 0) return 15000;
+    const maxValue = Math.max(...values);
+    const roundedMax = Math.ceil(maxValue / 1000) * 1000;
+    return Math.max(15000, roundedMax);
+  }, [primaryYearSeries]);
 
   const isEmpty = !loading && !error && selectedProperty && rows.length === 0;
 
@@ -179,7 +189,7 @@ export default function UtilityConsumptionView() {
               title="Water trend"
               subtitle={`Primary year ${primaryYear ?? ''}`}
               color="#0ea5e9"
-              yAxisMax={10000}
+              yAxisMax={waterYAxisMax}
             />
             <MetricLineChart
               data={nightSaleSeries}

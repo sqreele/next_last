@@ -49,7 +49,8 @@
     "swr": "^2.3.6",
     "tailwind-merge": "^2.5.5",
     "yup": "^1.5.0",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.8",

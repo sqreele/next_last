@@ -14,10 +14,15 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 --ingroup
 # ================================
 FROM base AS deps
 
+ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
+    NPM_CONFIG_PROXY= \
+    NPM_CONFIG_HTTPS_PROXY=
+
 COPY package.json package-lock.json ./
 
 # Deterministic installs only: fail fast if lockfile doesn't match.
-RUN npm ci --legacy-peer-deps --no-audit --no-fund
+RUN npm config delete proxy && npm config delete https-proxy && \
+    npm ci --legacy-peer-deps --no-audit --no-fund
 
 # ================================
 # Builder stage - Build the application

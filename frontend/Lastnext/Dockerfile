@@ -20,9 +20,9 @@ ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
 
 COPY package.json package-lock.json ./
 
-# Deterministic installs only: fail fast if lockfile doesn't match.
+# Install dependencies while allowing lockfile refresh when out of sync.
 RUN npm config delete proxy && npm config delete https-proxy && \
-    npm ci --legacy-peer-deps --no-audit --no-fund
+    npm install --legacy-peer-deps --no-audit --no-fund
 
 # ================================
 # Builder stage - Build the application

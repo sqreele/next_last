@@ -120,6 +120,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     created_at = serializers.DateTimeField(source='user.date_joined', read_only=True)
+    uses_roster = serializers.BooleanField(source='user.uses_roster', read_only=True)
     # Property fields from User model
     user_property_name = serializers.CharField(source='user.property_name', read_only=True)
     user_property_id = serializers.CharField(source='user.property_id', read_only=True)
@@ -138,6 +139,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'profile_image',
             'positions',
             'properties',
+            'uses_roster',
             'user_property_name',
             'user_property_id',
             'profile_property_name',

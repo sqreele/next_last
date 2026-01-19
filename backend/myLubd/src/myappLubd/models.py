@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 class User(AbstractUser):
     property_name = models.CharField(max_length=255, blank=True, null=True, help_text="Name of the property this user belongs to")
     property_id = models.CharField(max_length=50, blank=True, null=True, help_text="ID of the property this user belongs to")
+    uses_roster = models.BooleanField(default=False, help_text="Enable roster management access for this user")
     
     class Meta:
         pass

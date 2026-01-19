@@ -9,6 +9,7 @@ export interface User {
   last_name?: string;
   profile_image: string | null;
   positions: string;
+  uses_roster?: boolean;
   properties: Property[];
   accessToken: string;
   refreshToken: string;
@@ -31,6 +32,7 @@ export interface UserProfile {
   profile_image: string | null;
   positions: string;
   properties: Property[];
+  uses_roster?: boolean;
   created_at: string;
 
 }

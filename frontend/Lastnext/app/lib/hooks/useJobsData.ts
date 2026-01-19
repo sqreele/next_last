@@ -80,13 +80,12 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       isLoadingRef.current = false;
       return false;
     }
-    // Need user details for client-side filtering
-    if (!session?.user?.id || !session?.user?.username) {
-        setJobs([]);
-        setError("User details not available in session.");
-        setIsLoading(false);
-        isLoadingRef.current = false;
-        return false;
+    if (!session?.user?.accessToken) {
+      setJobs([]);
+      setError("Access token not available. Please sign in again.");
+      setIsLoading(false);
+      isLoadingRef.current = false;
+      return false;
     }
 
     setIsLoading(true);
@@ -163,8 +162,6 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
     // Filters are accessed directly from options inside the function
   }, [
     activePropertyId,
-    session?.user?.id,
-    session?.user?.username,
     session?.user?.accessToken,
     sessionStatus,
   ]);
@@ -178,7 +175,7 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
   // Effect runs only when essential dependencies change, not on every filter change
   useEffect(() => {
     // Only fetch if authenticated and user data is available
-    if (sessionStatus === 'authenticated' && session?.user?.id && session?.user?.accessToken) {
+    if (sessionStatus === 'authenticated' && session?.user?.accessToken) {
       // Use a small delay to batch rapid changes and prevent excessive calls
       const timeoutId = setTimeout(() => {
         refreshJobsRef.current();
@@ -192,7 +189,6 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
     // Depend on stable values - refreshJobs is accessed via ref to prevent dependency loops
   }, [
     sessionStatus,
-    session?.user?.id,
     session?.user?.accessToken,
     activePropertyId,
   ]);

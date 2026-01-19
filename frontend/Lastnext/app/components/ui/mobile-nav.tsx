@@ -11,7 +11,8 @@ import {
   Bell,
   Filter,
   Plus,
-  User
+  User,
+  Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -26,6 +27,7 @@ const navigationItems = [
   { name: 'Create Job', href: '/dashboard/createJob', icon: Plus, shortName: 'Create' },
   { name: 'Analytics', href: '/dashboard/chartdashboard', icon: LineChart, shortName: 'Analytics' },
   { name: 'Profile', href: '/dashboard/profile', icon: User, shortName: 'Profile' },
+  { name: 'Roster', href: '/roster', icon: Calendar, shortName: 'Roster' },
 ];
 
 export function MobileNav({ className }: MobileNavProps) {

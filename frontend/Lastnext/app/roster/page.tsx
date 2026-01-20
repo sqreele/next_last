@@ -1,7 +1,7 @@
 "use client";
 
 import { addDays, format, parseISO } from "date-fns";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 
 type DayLabel = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
@@ -17,7 +17,7 @@ type Staff = {
 };
 
 type LeaveEntry = {
-  id: string;
+  id: number;
   staffId: string;
   week: number;
   day: DayLabel;
@@ -102,9 +102,6 @@ const buildWeekDates = (weekStart: Date, week: number) =>
     date: addDays(weekStart, (week - 1) * 7 + index),
   }));
 
-const getLeaveKey = (leave: Omit<LeaveEntry, "id">) =>
-  `${leave.staffId}-${leave.week}-${leave.day}-${leave.type}`;
-
 const countLeavesByType = (leaves: LeaveEntry[], staffId: string, type: LeaveType) =>
   leaves.filter((leave) => leave.staffId === staffId && leave.type === type).length;
 
@@ -128,7 +125,6 @@ export default function RosterPage() {
     note: "",
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
   const weekStartDate = useMemo(() => getWeekStartDate(weekStartInput), [weekStartInput]);
 
   const weekDates = useMemo(
@@ -237,7 +233,42 @@ export default function RosterPage() {
     return warningList;
   }, [coverageByDay, selectedWeek, staff]);
 
-  const handleAddLeave = () => {
+  const fetchLeaves = async () => {
+    try {
+      const response = await fetch("/api/roster-leaves");
+      if (!response.ok) {
+        setNotice("Unable to load saved leave entries.");
+        return;
+      }
+      const data = (await response.json()) as Array<{
+        id: number;
+        staff_id: string;
+        week: number;
+        day: DayLabel;
+        type: LeaveType;
+        note?: string | null;
+      }>;
+      const mapped = data.map((leave) => ({
+        id: leave.id,
+        staffId: leave.staff_id,
+        week: leave.week,
+        day: leave.day,
+        type: leave.type,
+        note: leave.note ?? undefined,
+      }));
+      setLeaves(mapped);
+      setNotice(null);
+    } catch (error) {
+      console.error("Failed to load roster leaves", error);
+      setNotice("Unable to load saved leave entries.");
+    }
+  };
+
+  useEffect(() => {
+    void fetchLeaves();
+  }, []);
+
+  const handleAddLeave = async () => {
     const staffMember = staff.find((member) => member.id === leaveForm.staffId);
     if (!staffMember) {
       setNotice("Select a valid staff member.");
@@ -269,27 +300,67 @@ export default function RosterPage() {
       return;
     }
 
-    const newLeave: LeaveEntry = {
-      id: getLeaveKey({
-        staffId: leaveForm.staffId,
-        week: leaveForm.week,
-        day: leaveForm.day,
-        type: leaveForm.type,
-        note: leaveForm.note,
-      }),
-      staffId: leaveForm.staffId,
-      week: leaveForm.week,
-      day: leaveForm.day,
-      type: leaveForm.type,
-      note: leaveForm.note || undefined,
-    };
+    try {
+      const response = await fetch("/api/roster-leaves", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          staff_id: leaveForm.staffId,
+          week: leaveForm.week,
+          day: leaveForm.day,
+          type: leaveForm.type,
+          note: leaveForm.note || undefined,
+        }),
+      });
 
-    setLeaves((prev) => [...prev, newLeave]);
-    setNotice(null);
+      if (!response.ok) {
+        setNotice("Unable to save leave entry.");
+        return;
+      }
+
+      const saved = (await response.json()) as {
+        id: number;
+        staff_id: string;
+        week: number;
+        day: DayLabel;
+        type: LeaveType;
+        note?: string | null;
+      };
+
+      const newLeave: LeaveEntry = {
+        id: saved.id,
+        staffId: saved.staff_id,
+        week: saved.week,
+        day: saved.day,
+        type: saved.type,
+        note: saved.note ?? undefined,
+      };
+
+      setLeaves((prev) => [...prev, newLeave]);
+      setNotice(null);
+    } catch (error) {
+      console.error("Failed to save roster leave", error);
+      setNotice("Unable to save leave entry.");
+    }
   };
 
-  const handleRemoveLeave = (leaveId: string) => {
-    setLeaves((prev) => prev.filter((leave) => leave.id !== leaveId));
+  const handleRemoveLeave = async (leaveId: number) => {
+    try {
+      const response = await fetch(`/api/roster-leaves/${leaveId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        setNotice("Unable to delete leave entry.");
+        return;
+      }
+      setLeaves((prev) => prev.filter((leave) => leave.id !== leaveId));
+      setNotice(null);
+    } catch (error) {
+      console.error("Failed to delete roster leave", error);
+      setNotice("Unable to delete leave entry.");
+    }
   };
 
   const handleRepeatCycle = () => {

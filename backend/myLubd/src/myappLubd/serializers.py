@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage, UtilityConsumption, Inventory
+from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage, UtilityConsumption, Inventory, RosterLeave
 from django.contrib.auth import get_user_model
 import logging
 
@@ -208,6 +208,15 @@ class TopicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Topic
         fields = ['title', 'description', 'id']
+
+
+class RosterLeaveSerializer(serializers.ModelSerializer):
+    type = serializers.ChoiceField(source='leave_type', choices=RosterLeave.LEAVE_TYPE_CHOICES)
+
+    class Meta:
+        model = RosterLeave
+        fields = ['id', 'staff_id', 'week', 'day', 'type', 'note', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 # Job serializer
 class JobSerializer(serializers.ModelSerializer):

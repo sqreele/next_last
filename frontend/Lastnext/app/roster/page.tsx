@@ -45,6 +45,11 @@ const staffSeed: Staff[] = [
 ];
 
 const baseStaffId = "A";
+const staffShiftTimes: Record<string, string> = {
+  B: "08:00",
+  C: "11:00",
+  D: "14:00",
+};
 
 const offPairs: DayLabel[][] = [
   ["Mon", "Tue"],
@@ -450,6 +455,7 @@ export default function RosterPage() {
     const legendRows = [
       ["Roster Management Legend"],
       ["Morning Shift", "08:00 (1 staff)"],
+      ["Mid Shift", "11:00 (1 staff)"],
       ["Night Shift", "14:00 (1 staff)"],
       ["Target staffing (excluding BASE)", "2 working staff per day"],
       ["Rules"],
@@ -504,7 +510,7 @@ export default function RosterPage() {
               <p className="text-sm font-semibold text-slate-500">Roster Management UI</p>
               <h1 className="text-2xl font-semibold text-slate-900">{weekLabel}</h1>
               <p className="mt-1 text-sm text-slate-500">
-                Morning 08:00 (1 staff) • Night 14:00 (1 staff)
+                Morning 08:00 (1 staff) • Mid 11:00 (1 staff) • Night 14:00 (1 staff)
               </p>
               <p className="text-xs text-slate-400">Shift change: 1 time per week</p>
             </div>
@@ -677,12 +683,15 @@ export default function RosterPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">Shift roster grid</h2>
                   <p className="text-sm text-slate-500">
-                    Morning 08:00 (1 staff) • Night 14:00 (1 staff)
+                    Morning 08:00 (1 staff) • Mid 11:00 (1 staff) • Night 14:00 (1 staff)
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                     Morning 08:00
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    Mid 11:00
                   </span>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                     Night 14:00
@@ -718,6 +727,7 @@ export default function RosterPage() {
                           const isOff = offDays.includes(day);
                           const leave = getLeaveForDay(leaves, member.id, selectedWeek, day);
                           const stateLabel = leave ? leave.type : isOff ? "OFF" : "Work";
+                          const shiftTime = !leave && !isOff ? staffShiftTimes[member.id] : null;
                           const stateColor = leave
                             ? leave.type === "PH"
                               ? "bg-amber-200 text-amber-900"
@@ -739,6 +749,9 @@ export default function RosterPage() {
                                 }`}
                               >
                                 <span>{stateLabel}</span>
+                                {shiftTime ? (
+                                  <span className="text-[10px] font-normal">{shiftTime}</span>
+                                ) : null}
                                 {leave?.note ? (
                                   <span className="text-[10px] font-normal">{leave.note}</span>
                                 ) : null}

@@ -59,7 +59,8 @@ from .models import (
     MaintenanceSchedule,
     UtilityConsumption,
     Inventory,
-    WorkspaceReport
+    WorkspaceReport,
+    RosterLeave
 )
 
 # Custom Date Joined Month Filter for Admin
@@ -3663,7 +3664,6 @@ class InventoryAdmin(admin.ModelAdmin):
             response = HttpResponse(buffer.getvalue(), content_type='image/png')
             response['Content-Disposition'] = f'attachment; filename="inventory-{inventory.item_id}-qr-code.png"'
             return response
-            
         except Inventory.DoesNotExist:
             return HttpResponse("Inventory item not found", status=404)
         except Exception as e:
@@ -4189,6 +4189,14 @@ class InventoryAdmin(admin.ModelAdmin):
         updated_count = queryset.update(status='out_of_stock')
         self.message_user(request, f"{updated_count} inventory items marked as out of stock.")
     mark_as_out_of_stock.short_description = "Mark selected items as out of stock"
+
+
+@admin.register(RosterLeave)
+class RosterLeaveAdmin(admin.ModelAdmin):
+    list_display = ('staff_id', 'week', 'day', 'leave_type', 'created_by', 'created_at')
+    list_filter = ('week', 'day', 'leave_type', 'created_by')
+    search_fields = ('staff_id', 'note', 'created_by__username')
+    ordering = ('-created_at',)
 
 
 # ========================================

@@ -4,7 +4,7 @@ import { API_CONFIG } from '@/app/lib/config';
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession();
 
@@ -12,7 +12,9 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const response = await fetch(`${API_CONFIG.baseUrl}/api/v1/roster-leaves/${params.id}/`, {
+  const { id } = await params;
+
+  const response = await fetch(`${API_CONFIG.baseUrl}/api/v1/roster-leaves/${id}/`, {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${session.user.accessToken}`,

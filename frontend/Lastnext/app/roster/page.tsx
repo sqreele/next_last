@@ -45,10 +45,14 @@ const staffSeed: Staff[] = [
 ];
 
 const baseStaffId = "A";
+const baseShiftLabel = "08:00 & 14:00";
+const additionalShiftLabel = "11:00";
+
 const staffShiftTimes: Record<string, string> = {
-  B: "08:00",
-  C: "11:00",
-  D: "14:00",
+  A: baseShiftLabel,
+  B: additionalShiftLabel,
+  C: additionalShiftLabel,
+  D: additionalShiftLabel,
 };
 
 const offPairs: DayLabel[][] = [
@@ -203,7 +207,7 @@ export default function RosterPage() {
       offCount,
       leaveCount,
       workingCount,
-      target: 2,
+      target: 1,
     };
   });
 
@@ -454,10 +458,9 @@ export default function RosterPage() {
 
     const legendRows = [
       ["Roster Management Legend"],
-      ["Morning Shift", "08:00 (1 staff)"],
-      ["Mid Shift", "11:00 (1 staff)"],
-      ["Night Shift", "14:00 (1 staff)"],
-      ["Target staffing (excluding BASE)", "2 working staff per day"],
+      ["Base coverage", "08:00 & 14:00 (daily)"],
+      ["Additional coverage", "11:00 (1 staff)"],
+      ["Target staffing (excluding BASE)", "1 working staff per day"],
       ["Rules"],
       ["Shift change", "1 time per week"],
       ["OFF days", "2 per staff per week (consecutive)"],
@@ -510,7 +513,7 @@ export default function RosterPage() {
               <p className="text-sm font-semibold text-slate-500">Roster Management UI</p>
               <h1 className="text-2xl font-semibold text-slate-900">{weekLabel}</h1>
               <p className="mt-1 text-sm text-slate-500">
-                Morning 08:00 (1 staff) • Mid 11:00 (1 staff) • Night 14:00 (1 staff)
+                Base 08:00 & 14:00 (daily) • Additional 11:00 (1 staff)
               </p>
               <p className="text-xs text-slate-400">Shift change: 1 time per week</p>
             </div>
@@ -683,18 +686,15 @@ export default function RosterPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">Shift roster grid</h2>
                   <p className="text-sm text-slate-500">
-                    Morning 08:00 (1 staff) • Mid 11:00 (1 staff) • Night 14:00 (1 staff)
+                    Base 08:00 & 14:00 (daily) • Additional 11:00 (1 staff)
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                    Morning 08:00
+                    Base 08:00 & 14:00
                   </span>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                    Mid 11:00
-                  </span>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                    Night 14:00
+                    Additional 11:00
                   </span>
                 </div>
               </div>

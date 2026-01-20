@@ -13,7 +13,6 @@ type Staff = {
   name: string;
   phAllowance: number;
   vcAllowance: number;
-  isBase?: boolean;
 };
 
 type LeaveEntry = {
@@ -38,22 +37,15 @@ type LeaveFormState = {
 const dayLabels: DayLabel[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const staffSeed: Staff[] = [
-  { id: "A", name: "Staff A", phAllowance: 16, vcAllowance: 10, isBase: true },
+  { id: "A", name: "Staff A", phAllowance: 16, vcAllowance: 10 },
   { id: "B", name: "Staff B", phAllowance: 16, vcAllowance: 10 },
   { id: "C", name: "Staff C", phAllowance: 16, vcAllowance: 10 },
   { id: "D", name: "Staff D", phAllowance: 16, vcAllowance: 10 },
 ];
 
-const baseStaffId = "A";
+const initialBaseStaffId = staffSeed[0]?.id ?? "A";
 const baseShiftLabel = "08:00 & 14:00";
 const additionalShiftLabel = "11:00";
-
-const staffShiftTimes: Record<string, string> = {
-  A: baseShiftLabel,
-  B: additionalShiftLabel,
-  C: additionalShiftLabel,
-  D: additionalShiftLabel,
-};
 
 const offPairs: DayLabel[][] = [
   ["Mon", "Tue"],
@@ -64,19 +56,23 @@ const offPairs: DayLabel[][] = [
   ["Sat", "Sun"],
 ];
 
-const createInitialRotation = (): RotationState => {
+const createInitialRotation = (baseId: string, staffList: Staff[]): RotationState => {
   const initial: RotationState = {};
+  const nonBaseStaff = staffList.filter((member) => member.id !== baseId);
 
   for (let week = 1; week <= 53; week += 1) {
     const baseIndex = (week - 1) % offPairs.length;
     const pickPair = (offset: number) => offPairs[(baseIndex + offset) % offPairs.length];
 
-    initial[week] = {
-      A: ["Sat", "Sun"],
-      B: pickPair(0),
-      C: pickPair(2),
-      D: pickPair(4),
+    const weekRotation: Record<string, DayLabel[]> = {
+      [baseId]: ["Sat", "Sun"],
     };
+
+    nonBaseStaff.forEach((member, index) => {
+      weekRotation[member.id] = pickPair(index * 2);
+    });
+
+    initial[week] = weekRotation;
   }
 
   return initial;
@@ -119,7 +115,10 @@ const getLeaveForDay = (leaves: LeaveEntry[], staffId: string, week: number, day
 
 export default function RosterPage() {
   const [staff, setStaff] = useState<Staff[]>(staffSeed);
-  const [rotation, setRotation] = useState<RotationState>(() => createInitialRotation());
+  const [baseStaffId, setBaseStaffId] = useState(initialBaseStaffId);
+  const [rotation, setRotation] = useState<RotationState>(() =>
+    createInitialRotation(initialBaseStaffId, staffSeed),
+  );
   const [leaves, setLeaves] = useState<LeaveEntry[]>([]);
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [weekStartInput, setWeekStartInput] = useState(() =>
@@ -144,6 +143,16 @@ export default function RosterPage() {
   const weekLabel = useMemo(
     () => formatRangeLabel(weekStartDate, selectedWeek),
     [selectedWeek, weekStartDate],
+  );
+
+  const staffShiftTimes = useMemo(
+    () =>
+      staff.reduce<Record<string, string>>((accumulator, member) => {
+        accumulator[member.id] =
+          member.id === baseStaffId ? baseShiftLabel : additionalShiftLabel;
+        return accumulator;
+      }, {}),
+    [baseStaffId, staff],
   );
 
   const updateRotation = (week: number, staffId: string, day: DayLabel) => {
@@ -377,17 +386,33 @@ export default function RosterPage() {
       const nextRotation: RotationState = { ...prev };
       for (let week = 8; week <= 53; week += 1) {
         const sourceWeek = ((week - 1) % 7) + 1;
-        nextRotation[week] = {
+        const sourceWeekData = prev[sourceWeek] ?? {};
+        const nextWeek: Record<string, DayLabel[]> = {
           ...nextRotation[week],
-          A: ["Sat", "Sun"],
-          B: [...(prev[sourceWeek]?.B ?? [])],
-          C: [...(prev[sourceWeek]?.C ?? [])],
-          D: [...(prev[sourceWeek]?.D ?? [])],
         };
+
+        staff.forEach((member) => {
+          if (member.id === baseStaffId) {
+            nextWeek[member.id] = ["Sat", "Sun"];
+          } else {
+            nextWeek[member.id] = [...(sourceWeekData[member.id] ?? [])];
+          }
+        });
+
+        nextRotation[week] = nextWeek;
       }
       return nextRotation;
     });
     setNotice("Applied 7-week rotation pattern to weeks 8-53.");
+  };
+
+  const handleBaseStaffChange = (nextBaseId: string) => {
+    if (nextBaseId === baseStaffId) {
+      return;
+    }
+    setBaseStaffId(nextBaseId);
+    setRotation(createInitialRotation(nextBaseId, staff));
+    setNotice(`Base staff updated to ${nextBaseId}. Rotation reset to defaults.`);
   };
 
   const handleImport = async (file: File) => {
@@ -464,7 +489,7 @@ export default function RosterPage() {
       ["Rules"],
       ["Shift change", "1 time per week"],
       ["OFF days", "2 per staff per week (consecutive)"],
-      ["BASE (A)", "OFF Sat + Sun (locked)"],
+      [`BASE (${baseStaffId})`, "OFF Sat + Sun (locked)"],
     ];
 
     const rotationRows = Array.from({ length: 53 }, (_, index) => {
@@ -605,7 +630,7 @@ export default function RosterPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-semibold text-slate-900">
-                            {member.name} {member.isBase ? "(BASE)" : ""}
+                            {member.name} {member.id === baseStaffId ? "(BASE)" : ""}
                           </p>
                           <p className="text-xs text-slate-500">PH {member.phAllowance}</p>
                         </div>
@@ -689,13 +714,27 @@ export default function RosterPage() {
                     Base 08:00 & 14:00 (daily) • Additional 11:00 (1 staff)
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                     Base 08:00 & 14:00
                   </span>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                     Additional 11:00
                   </span>
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                    Base staff
+                    <select
+                      value={baseStaffId}
+                      onChange={(event) => handleBaseStaffChange(event.target.value)}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700"
+                    >
+                      {staff.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
               </div>
               <div className="mt-4 overflow-x-auto">
@@ -720,7 +759,7 @@ export default function RosterPage() {
                     {staff.map((member) => (
                       <tr key={member.id}>
                         <td className="sticky left-0 z-10 border-b border-slate-100 bg-white p-3 text-xs font-semibold text-slate-700">
-                          {member.name} {member.isBase ? "(BASE)" : ""}
+                          {member.name} {member.id === baseStaffId ? "(BASE)" : ""}
                         </td>
                         {dayLabels.map((day) => {
                           const offDays = getOffDays(selectedWeek, member.id);

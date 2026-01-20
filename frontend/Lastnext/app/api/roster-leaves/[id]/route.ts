@@ -2,13 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG } from '@/app/lib/config';
 
-type Params = {
-  params: {
-    id: string;
-  };
-};
-
-export async function DELETE(_request: NextRequest, { params }: Params) {
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { id: string } },
+) {
   const session = await getServerSession();
 
   if (!session?.user?.accessToken) {

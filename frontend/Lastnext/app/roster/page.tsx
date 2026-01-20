@@ -58,6 +58,10 @@ const offPairs: DayLabel[][] = [
   ["Sat", "Sun"],
 ];
 
+const defaultStaffOffDays: Partial<Record<string, DayLabel[]>> = {
+  A: ["Sat", "Sun"],
+};
+
 const createInitialRotation = (staffList: Staff[]): RotationState => {
   const initial: RotationState = {};
 
@@ -68,7 +72,7 @@ const createInitialRotation = (staffList: Staff[]): RotationState => {
     const weekRotation: Record<string, DayLabel[]> = {};
 
     staffList.forEach((member, index) => {
-      weekRotation[member.id] = pickPair(index * 2);
+      weekRotation[member.id] = defaultStaffOffDays[member.id] ?? pickPair(index * 2);
     });
 
     initial[week] = weekRotation;
@@ -147,7 +151,10 @@ export default function RosterPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const weekStartDate = useMemo(() => getWeekStartDate(weekStartInput), [weekStartInput]);
 
-  const baseStaffId = baseSchedule[selectedWeek] ?? defaultBaseStaffId;
+  const baseStaffIdCandidate = baseSchedule[selectedWeek] ?? defaultBaseStaffId;
+  const baseStaffId = baseStaffExclusions.has(baseStaffIdCandidate)
+    ? defaultBaseStaffId
+    : baseStaffIdCandidate;
 
   const weekDates = useMemo(
     () => buildWeekDates(weekStartDate, selectedWeek),
@@ -190,10 +197,6 @@ export default function RosterPage() {
   };
 
   const handleToggleOff = (staffId: string, day: DayLabel) => {
-    if (staffId === baseStaffId) {
-      return;
-    }
-
     const existingLeave = getLeaveForDay(leaves, staffId, selectedWeek, day);
     if (existingLeave) {
       setNotice("Remove leave before setting OFF for this day.");
@@ -204,12 +207,8 @@ export default function RosterPage() {
     updateRotation(selectedWeek, staffId, day);
   };
 
-  const getOffDays = (week: number, staffId: string) => {
-    if (staffId === baseStaffId) {
-      return [] as DayLabel[];
-    }
-    return rotation[week]?.[staffId] ?? [];
-  };
+  const getOffDays = (week: number, staffId: string) =>
+    rotation[week]?.[staffId] ?? [];
 
   const nonBaseStaff = staff.filter((member) => member.id !== baseStaffId);
 
@@ -252,12 +251,12 @@ export default function RosterPage() {
 
     staff.forEach((member) => {
       const offDays = getOffDays(selectedWeek, member.id);
-      if (member.id !== baseStaffId && offDays.length !== 2) {
+      if (offDays.length !== 2) {
         warningList.push(
           `${member.name} has ${offDays.length} OFF day(s) in week ${selectedWeek}.`,
         );
       }
-      if (member.id !== baseStaffId && offDays.length === 2) {
+      if (offDays.length === 2) {
         const indices = offDays.map((day) => dayLabels.indexOf(day)).sort((a, b) => a - b);
         if (indices[1] - indices[0] !== 1) {
           warningList.push(
@@ -437,6 +436,10 @@ export default function RosterPage() {
 
   const handleBaseStaffChange = (nextBaseId: string) => {
     if (nextBaseId === baseStaffId) {
+      return;
+    }
+    if (baseStaffExclusions.has(nextBaseId)) {
+      setNotice("Staff A cannot be assigned to the base 08:00 & 14:00 shift.");
       return;
     }
     setBaseSchedule((prev) => ({
@@ -812,11 +815,8 @@ export default function RosterPage() {
                               <button
                                 type="button"
                                 onClick={() => handleToggleOff(member.id, day)}
-                                disabled={member.id === baseStaffId}
                                 className={`flex w-full flex-col items-center justify-center gap-1 rounded-lg border border-slate-200 px-2 py-3 text-xs font-semibold transition ${stateColor} ${
-                                  member.id === baseStaffId
-                                    ? "cursor-not-allowed opacity-70"
-                                    : "hover:border-slate-400"
+                                  "hover:border-slate-400"
                                 }`}
                               >
                                 <span>{stateLabel}</span>

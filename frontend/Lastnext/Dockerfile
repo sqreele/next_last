@@ -18,7 +18,14 @@ ENV NPM_CONFIG_REGISTRY=https://registry.npmjs.org/ \
     NPM_CONFIG_PROXY= \
     NPM_CONFIG_HTTPS_PROXY=
 
-COPY package.json package-lock.json ./
+COPY . .
+
+# Support building from either the frontend directory or the repo root context.
+# If the repo root is the context, copy the frontend app into /app so npm
+# picks up the correct package.json and lockfile.
+RUN if [ -d "/app/frontend/Lastnext" ]; then \
+        cp -a /app/frontend/Lastnext/. /app/; \
+    fi
 
 # Install dependencies while allowing lockfile refresh when out of sync.
 RUN npm config delete proxy && npm config delete https-proxy && \
@@ -35,6 +42,11 @@ COPY --from=deps /app/package-lock.json ./package-lock.json
 
 # Copy source code
 COPY . .
+
+# Ensure the frontend app is at /app when building from repo root context.
+RUN if [ -d "/app/frontend/Lastnext" ]; then \
+        cp -a /app/frontend/Lastnext/. /app/; \
+    fi
 
 # Verify source code
 RUN echo "📁 Verifying source code..." && \

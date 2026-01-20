@@ -43,7 +43,9 @@ const staffSeed: Staff[] = [
   { id: "D", name: "Staff D", phAllowance: 16, vcAllowance: 10 },
 ];
 
-const initialBaseStaffId = staffSeed[0]?.id ?? "A";
+const baseStaffExclusions = new Set(["A"]);
+const eligibleBaseStaff = staffSeed.filter((member) => !baseStaffExclusions.has(member.id));
+const defaultBaseStaffId = eligibleBaseStaff[0]?.id ?? staffSeed[0]?.id ?? "A";
 const baseShiftLabel = "08:00 & 14:00";
 const additionalShiftLabel = "11:00";
 
@@ -56,19 +58,16 @@ const offPairs: DayLabel[][] = [
   ["Sat", "Sun"],
 ];
 
-const createInitialRotation = (baseId: string, staffList: Staff[]): RotationState => {
+const createInitialRotation = (staffList: Staff[]): RotationState => {
   const initial: RotationState = {};
-  const nonBaseStaff = staffList.filter((member) => member.id !== baseId);
 
   for (let week = 1; week <= 53; week += 1) {
     const baseIndex = (week - 1) % offPairs.length;
     const pickPair = (offset: number) => offPairs[(baseIndex + offset) % offPairs.length];
 
-    const weekRotation: Record<string, DayLabel[]> = {
-      [baseId]: ["Sat", "Sun"],
-    };
+    const weekRotation: Record<string, DayLabel[]> = {};
 
-    nonBaseStaff.forEach((member, index) => {
+    staffList.forEach((member, index) => {
       weekRotation[member.id] = pickPair(index * 2);
     });
 
@@ -113,12 +112,25 @@ const countLeavesByType = (leaves: LeaveEntry[], staffId: string, type: LeaveTyp
 const getLeaveForDay = (leaves: LeaveEntry[], staffId: string, week: number, day: DayLabel) =>
   leaves.find((leave) => leave.staffId === staffId && leave.week === week && leave.day === day);
 
+const createInitialBaseSchedule = (staffList: Staff[]) => {
+  const basePool = staffList.filter((member) => !baseStaffExclusions.has(member.id));
+  const selectedPool = basePool.length > 0 ? basePool : staffList;
+  const schedule: Record<number, string> = {};
+
+  for (let week = 1; week <= 53; week += 1) {
+    const member = selectedPool[(week - 1) % selectedPool.length];
+    schedule[week] = member?.id ?? defaultBaseStaffId;
+  }
+
+  return schedule;
+};
+
 export default function RosterPage() {
   const [staff, setStaff] = useState<Staff[]>(staffSeed);
-  const [baseStaffId, setBaseStaffId] = useState(initialBaseStaffId);
-  const [rotation, setRotation] = useState<RotationState>(() =>
-    createInitialRotation(initialBaseStaffId, staffSeed),
+  const [baseSchedule, setBaseSchedule] = useState<Record<number, string>>(() =>
+    createInitialBaseSchedule(staffSeed),
   );
+  const [rotation, setRotation] = useState<RotationState>(() => createInitialRotation(staffSeed));
   const [leaves, setLeaves] = useState<LeaveEntry[]>([]);
   const [selectedWeek, setSelectedWeek] = useState(1);
   const [weekStartInput, setWeekStartInput] = useState(() =>
@@ -134,6 +146,8 @@ export default function RosterPage() {
   });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const weekStartDate = useMemo(() => getWeekStartDate(weekStartInput), [weekStartInput]);
+
+  const baseStaffId = baseSchedule[selectedWeek] ?? defaultBaseStaffId;
 
   const weekDates = useMemo(
     () => buildWeekDates(weekStartDate, selectedWeek),
@@ -192,7 +206,7 @@ export default function RosterPage() {
 
   const getOffDays = (week: number, staffId: string) => {
     if (staffId === baseStaffId) {
-      return ["Sat", "Sun"] as DayLabel[];
+      return [] as DayLabel[];
     }
     return rotation[week]?.[staffId] ?? [];
   };
@@ -223,14 +237,27 @@ export default function RosterPage() {
   const warnings = useMemo(() => {
     const warningList: string[] = [];
 
+    if (baseStaffExclusions.has(baseStaffId)) {
+      warningList.push("Base 08:00 & 14:00 shift must exclude Staff A.");
+    }
+
+    const baseLeaves = leaves.filter(
+      (leave) => leave.week === selectedWeek && leave.staffId === baseStaffId,
+    );
+    if (baseLeaves.length > 0) {
+      warningList.push(
+        `Base staff ${baseStaffId} has leave in week ${selectedWeek}. Assign a replacement for 08:00 & 14:00.`,
+      );
+    }
+
     staff.forEach((member) => {
       const offDays = getOffDays(selectedWeek, member.id);
-      if (offDays.length !== 2) {
+      if (member.id !== baseStaffId && offDays.length !== 2) {
         warningList.push(
           `${member.name} has ${offDays.length} OFF day(s) in week ${selectedWeek}.`,
         );
       }
-      if (offDays.length === 2) {
+      if (member.id !== baseStaffId && offDays.length === 2) {
         const indices = offDays.map((day) => dayLabels.indexOf(day)).sort((a, b) => a - b);
         if (indices[1] - indices[0] !== 1) {
           warningList.push(
@@ -290,6 +317,12 @@ export default function RosterPage() {
     const staffMember = staff.find((member) => member.id === leaveForm.staffId);
     if (!staffMember) {
       setNotice("Select a valid staff member.");
+      return;
+    }
+
+    const weekBaseStaff = baseSchedule[leaveForm.week] ?? defaultBaseStaffId;
+    if (leaveForm.staffId === weekBaseStaff) {
+      setNotice("Base 08:00 & 14:00 shift must be covered daily. Change base staff first.");
       return;
     }
 
@@ -392,11 +425,7 @@ export default function RosterPage() {
         };
 
         staff.forEach((member) => {
-          if (member.id === baseStaffId) {
-            nextWeek[member.id] = ["Sat", "Sun"];
-          } else {
-            nextWeek[member.id] = [...(sourceWeekData[member.id] ?? [])];
-          }
+          nextWeek[member.id] = [...(sourceWeekData[member.id] ?? [])];
         });
 
         nextRotation[week] = nextWeek;
@@ -410,9 +439,11 @@ export default function RosterPage() {
     if (nextBaseId === baseStaffId) {
       return;
     }
-    setBaseStaffId(nextBaseId);
-    setRotation(createInitialRotation(nextBaseId, staff));
-    setNotice(`Base staff updated to ${nextBaseId}. Rotation reset to defaults.`);
+    setBaseSchedule((prev) => ({
+      ...prev,
+      [selectedWeek]: nextBaseId,
+    }));
+    setNotice(`Base staff updated for week ${selectedWeek} to ${nextBaseId}.`);
   };
 
   const handleImport = async (file: File) => {
@@ -457,9 +488,7 @@ export default function RosterPage() {
             const off1 = normalizeDay(row[`${id}_Off1`]);
             const off2 = normalizeDay(row[`${id}_Off2`]);
             const entries = [off1, off2].filter(Boolean) as DayLabel[];
-            if (id === baseStaffId) {
-              updatedWeek[id] = ["Sat", "Sun"];
-            } else if (entries.length) {
+            if (entries.length) {
               updatedWeek[id] = entries;
             }
           });
@@ -487,9 +516,9 @@ export default function RosterPage() {
       ["Additional coverage", "11:00 (1 staff)"],
       ["Target staffing (excluding BASE)", "1 working staff per day"],
       ["Rules"],
-      ["Shift change", "1 time per week"],
-      ["OFF days", "2 per staff per week (consecutive)"],
-      [`BASE (${baseStaffId})`, "OFF Sat + Sun (locked)"],
+      ["Base shift (08:00 & 14:00)", "Daily coverage, exclude Staff A"],
+      ["Shift change (base staff)", "1 time per week"],
+      ["OFF days (non-base)", "2 per staff per week (consecutive)"],
     ];
 
     const rotationRows = Array.from({ length: 53 }, (_, index) => {
@@ -499,7 +528,8 @@ export default function RosterPage() {
         Week: week,
       };
       ["A", "B", "C", "D"].forEach((id) => {
-        const offDays = id === baseStaffId ? ["Sat", "Sun"] : weekRotation[id] ?? [];
+        const weekBaseStaff = baseSchedule[week] ?? defaultBaseStaffId;
+        const offDays = id === weekBaseStaff ? [] : weekRotation[id] ?? [];
         row[`${id}_Off1`] = offDays[0] ?? "";
         row[`${id}_Off2`] = offDays[1] ?? "";
         const phDays = leaves.filter(
@@ -538,9 +568,9 @@ export default function RosterPage() {
               <p className="text-sm font-semibold text-slate-500">Roster Management UI</p>
               <h1 className="text-2xl font-semibold text-slate-900">{weekLabel}</h1>
               <p className="mt-1 text-sm text-slate-500">
-                Base 08:00 & 14:00 (daily) • Additional 11:00 (1 staff)
+                Base 08:00 & 14:00 (daily, exclude Staff A) • Additional 11:00 (1 staff)
               </p>
-              <p className="text-xs text-slate-400">Shift change: 1 time per week</p>
+              <p className="text-xs text-slate-400">Shift change (base staff): 1 time per week</p>
             </div>
             <div className="flex flex-wrap items-end gap-4">
               <label className="flex flex-col text-sm font-medium text-slate-600">
@@ -710,9 +740,9 @@ export default function RosterPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">Shift roster grid</h2>
-                  <p className="text-sm text-slate-500">
-                    Base 08:00 & 14:00 (daily) • Additional 11:00 (1 staff)
-                  </p>
+              <p className="text-sm text-slate-500">
+                Base 08:00 & 14:00 (daily, exclude Staff A) • Additional 11:00 (1 staff)
+              </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
@@ -722,17 +752,19 @@ export default function RosterPage() {
                     Additional 11:00
                   </span>
                   <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                    Base staff
+                    Base staff (week {selectedWeek})
                     <select
                       value={baseStaffId}
                       onChange={(event) => handleBaseStaffChange(event.target.value)}
                       className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700"
                     >
-                      {staff.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.name}
-                        </option>
-                      ))}
+                      {staff
+                        .filter((member) => !baseStaffExclusions.has(member.id))
+                        .map((member) => (
+                          <option key={member.id} value={member.id}>
+                            {member.name}
+                          </option>
+                        ))}
                     </select>
                   </label>
                 </div>

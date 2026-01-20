@@ -26,6 +26,8 @@ type LeaveEntry = {
 
 type RotationState = Record<number, Record<string, DayLabel[]>>;
 
+type ShiftStart = "08:00" | "14:00" | "11:00" | "09:00";
+
 type LeaveFormState = {
   staffId: string;
   type: LeaveType;
@@ -43,11 +45,9 @@ const staffSeed: Staff[] = [
   { id: "D", name: "Staff D", phAllowance: 16, vcAllowance: 10 },
 ];
 
-const baseStaffExclusions = new Set(["A"]);
-const eligibleBaseStaff = staffSeed.filter((member) => !baseStaffExclusions.has(member.id));
-const defaultBaseStaffId = eligibleBaseStaff[0]?.id ?? staffSeed[0]?.id ?? "A";
-const baseShiftLabel = "08:00 & 14:00";
-const additionalShiftLabel = "11:00";
+const staffAId = "A";
+const staffAFixedShiftLabel: ShiftStart = "09:00";
+const standbyShiftLabel: ShiftStart = "11:00";
 
 const offPairs: DayLabel[][] = [
   ["Mon", "Tue"],
@@ -116,24 +116,10 @@ const countLeavesByType = (leaves: LeaveEntry[], staffId: string, type: LeaveTyp
 const getLeaveForDay = (leaves: LeaveEntry[], staffId: string, week: number, day: DayLabel) =>
   leaves.find((leave) => leave.staffId === staffId && leave.week === week && leave.day === day);
 
-const createInitialBaseSchedule = (staffList: Staff[]) => {
-  const basePool = staffList.filter((member) => !baseStaffExclusions.has(member.id));
-  const selectedPool = basePool.length > 0 ? basePool : staffList;
-  const schedule: Record<number, string> = {};
-
-  for (let week = 1; week <= 53; week += 1) {
-    const member = selectedPool[(week - 1) % selectedPool.length];
-    schedule[week] = member?.id ?? defaultBaseStaffId;
-  }
-
-  return schedule;
-};
+const getStaffWeekendOffDays = () => defaultStaffOffDays.A ?? ["Sat", "Sun"];
 
 export default function RosterPage() {
   const [staff, setStaff] = useState<Staff[]>(staffSeed);
-  const [baseSchedule, setBaseSchedule] = useState<Record<number, string>>(() =>
-    createInitialBaseSchedule(staffSeed),
-  );
   const [rotation, setRotation] = useState<RotationState>(() => createInitialRotation(staffSeed));
   const [leaves, setLeaves] = useState<LeaveEntry[]>([]);
   const [selectedWeek, setSelectedWeek] = useState(1);
@@ -151,11 +137,6 @@ export default function RosterPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const weekStartDate = useMemo(() => getWeekStartDate(weekStartInput), [weekStartInput]);
 
-  const baseStaffIdCandidate = baseSchedule[selectedWeek] ?? defaultBaseStaffId;
-  const baseStaffId = baseStaffExclusions.has(baseStaffIdCandidate)
-    ? defaultBaseStaffId
-    : baseStaffIdCandidate;
-
   const weekDates = useMemo(
     () => buildWeekDates(weekStartDate, selectedWeek),
     [selectedWeek, weekStartDate],
@@ -166,14 +147,9 @@ export default function RosterPage() {
     [selectedWeek, weekStartDate],
   );
 
-  const staffShiftTimes = useMemo(
-    () =>
-      staff.reduce<Record<string, string>>((accumulator, member) => {
-        accumulator[member.id] =
-          member.id === baseStaffId ? baseShiftLabel : additionalShiftLabel;
-        return accumulator;
-      }, {}),
-    [baseStaffId, staff],
+  const nonAStaff = useMemo(
+    () => staff.filter((member) => member.id !== staffAId),
+    [staff],
   );
 
   const updateRotation = (week: number, staffId: string, day: DayLabel) => {
@@ -197,6 +173,14 @@ export default function RosterPage() {
   };
 
   const handleToggleOff = (staffId: string, day: DayLabel) => {
+    if (staffId === staffAId) {
+      if (getStaffWeekendOffDays().includes(day)) {
+        setNotice("Staff A is always OFF on Saturday and Sunday.");
+        return;
+      }
+      setNotice("Staff A works 09:00 on weekdays and cannot be marked OFF.");
+      return;
+    }
     const existingLeave = getLeaveForDay(leaves, staffId, selectedWeek, day);
     if (existingLeave) {
       setNotice("Remove leave before setting OFF for this day.");
@@ -207,56 +191,132 @@ export default function RosterPage() {
     updateRotation(selectedWeek, staffId, day);
   };
 
-  const getOffDays = (week: number, staffId: string) =>
-    rotation[week]?.[staffId] ?? [];
+  const getOffDays = (week: number, staffId: string) => {
+    if (staffId === staffAId) {
+      return getStaffWeekendOffDays();
+    }
+    return rotation[week]?.[staffId] ?? [];
+  };
 
-  const nonBaseStaff = staff.filter((member) => member.id !== baseStaffId);
+  const getShiftPreference = (week: number, staffId: string): "08:00" | "14:00" => {
+    const staffIndex = Math.max(
+      0,
+      nonAStaff.findIndex((member) => member.id === staffId),
+    );
+    const basePreference = staffIndex % 2 === 0 ? "08:00" : "14:00";
+    return week % 2 === 0 ? (basePreference === "08:00" ? "14:00" : "08:00") : basePreference;
+  };
+
+  const dailyAssignments = useMemo(() => {
+    const counts: Record<string, number> = {};
+    nonAStaff.forEach((member) => {
+      counts[member.id] = 0;
+    });
+
+    return dayLabels.reduce<Record<DayLabel, { shift08?: string; shift14?: string; standby?: string }>>(
+      (accumulator, day) => {
+        const available = nonAStaff
+          .filter((member) => !getOffDays(selectedWeek, member.id).includes(day))
+          .filter(
+            (member) =>
+              !leaves.some(
+                (leave) =>
+                  leave.week === selectedWeek &&
+                  leave.day === day &&
+                  leave.staffId === member.id,
+              ),
+          );
+
+        const assigned = new Set<string>();
+        const pickForShift = (shift: "08:00" | "14:00") => {
+          const preferred = available.find(
+            (member) => !assigned.has(member.id) && getShiftPreference(selectedWeek, member.id) === shift,
+          );
+          const fallback = available.find((member) => !assigned.has(member.id));
+          const chosen = preferred ?? fallback;
+          if (chosen) {
+            assigned.add(chosen.id);
+            counts[chosen.id] = (counts[chosen.id] ?? 0) + 1;
+            return chosen.id;
+          }
+          return undefined;
+        };
+
+        const shift08 = pickForShift("08:00");
+        const shift14 = pickForShift("14:00");
+
+        let standby: string | undefined;
+        if (!shift08 || !shift14) {
+          const remaining = available.filter((member) => !assigned.has(member.id));
+          if (remaining.length > 0) {
+            const chosen = [...remaining].sort((a, b) => {
+              const countDiff = (counts[a.id] ?? 0) - (counts[b.id] ?? 0);
+              return countDiff !== 0 ? countDiff : a.id.localeCompare(b.id);
+            })[0];
+            standby = chosen?.id;
+            if (standby) {
+              assigned.add(standby);
+              counts[standby] = (counts[standby] ?? 0) + 1;
+            }
+          }
+        }
+
+        accumulator[day] = { shift08, shift14, standby };
+        return accumulator;
+      },
+      {} as Record<DayLabel, { shift08?: string; shift14?: string; standby?: string }>,
+    );
+  }, [leaves, nonAStaff, rotation, selectedWeek]);
 
   const coverageByDay = dayLabels.map((day) => {
-    const offCount = nonBaseStaff.filter((member) =>
+    const offCount = nonAStaff.filter((member) =>
       getOffDays(selectedWeek, member.id).includes(day),
     ).length;
     const leaveCount = leaves.filter(
-      (leave) =>
-        leave.week === selectedWeek &&
-        leave.day === day &&
-        leave.staffId !== baseStaffId,
+      (leave) => leave.week === selectedWeek && leave.day === day && leave.staffId !== staffAId,
     ).length;
-    const workingCount = nonBaseStaff.length - offCount - leaveCount;
+    const workingCount = nonAStaff.length - offCount - leaveCount;
 
     return {
       day,
       offCount,
       leaveCount,
       workingCount,
-      target: 1,
+      target: 2,
+      shift08: dailyAssignments[day]?.shift08,
+      shift14: dailyAssignments[day]?.shift14,
+      standby: dailyAssignments[day]?.standby,
     };
   });
+
+  const getShiftForStaffDay = (staffId: string, day: DayLabel) => {
+    if (staffId === staffAId) {
+      return getOffDays(selectedWeek, staffId).includes(day) ? null : staffAFixedShiftLabel;
+    }
+    const assignment = dailyAssignments[day];
+    if (assignment?.shift08 === staffId) {
+      return "08:00" as const;
+    }
+    if (assignment?.shift14 === staffId) {
+      return "14:00" as const;
+    }
+    if (assignment?.standby === staffId) {
+      return standbyShiftLabel;
+    }
+    return null;
+  };
 
   const warnings = useMemo(() => {
     const warningList: string[] = [];
 
-    if (baseStaffExclusions.has(baseStaffId)) {
-      warningList.push("Base 08:00 & 14:00 shift must exclude Staff A.");
-    }
-
-    const baseLeaves = leaves.filter(
-      (leave) => leave.week === selectedWeek && leave.staffId === baseStaffId,
-    );
-    if (baseLeaves.length > 0) {
-      warningList.push(
-        `Base staff ${baseStaffId} has leave in week ${selectedWeek}. Assign a replacement for 08:00 & 14:00.`,
-      );
-    }
-
     staff.forEach((member) => {
       const offDays = getOffDays(selectedWeek, member.id);
-      if (offDays.length !== 2) {
+      if (member.id !== staffAId && offDays.length !== 2) {
         warningList.push(
           `${member.name} has ${offDays.length} OFF day(s) in week ${selectedWeek}.`,
         );
       }
-      if (offDays.length === 2) {
+      if (member.id !== staffAId && offDays.length === 2) {
         const indices = offDays.map((day) => dayLabels.indexOf(day)).sort((a, b) => a - b);
         if (indices[1] - indices[0] !== 1) {
           warningList.push(
@@ -267,10 +327,15 @@ export default function RosterPage() {
     });
 
     coverageByDay.forEach((coverage) => {
-      if (coverage.workingCount !== coverage.target) {
+      if (!coverage.shift08 || !coverage.shift14) {
         warningList.push(
-          `${coverage.day}: working staff excluding BASE is ${coverage.workingCount}/${coverage.target}.`,
+          `${coverage.day}: missing ${!coverage.shift08 ? "08:00" : ""}${
+            !coverage.shift08 && !coverage.shift14 ? " & " : ""
+          }${!coverage.shift14 ? "14:00" : ""} coverage.`,
         );
+      }
+      if (coverage.standby) {
+        warningList.push(`${coverage.day}: standby assigned at 11:00 (${coverage.standby}).`);
       }
     });
 
@@ -316,12 +381,6 @@ export default function RosterPage() {
     const staffMember = staff.find((member) => member.id === leaveForm.staffId);
     if (!staffMember) {
       setNotice("Select a valid staff member.");
-      return;
-    }
-
-    const weekBaseStaff = baseSchedule[leaveForm.week] ?? defaultBaseStaffId;
-    if (leaveForm.staffId === weekBaseStaff) {
-      setNotice("Base 08:00 & 14:00 shift must be covered daily. Change base staff first.");
       return;
     }
 
@@ -434,21 +493,6 @@ export default function RosterPage() {
     setNotice("Applied 7-week rotation pattern to weeks 8-53.");
   };
 
-  const handleBaseStaffChange = (nextBaseId: string) => {
-    if (nextBaseId === baseStaffId) {
-      return;
-    }
-    if (baseStaffExclusions.has(nextBaseId)) {
-      setNotice("Staff A cannot be assigned to the base 08:00 & 14:00 shift.");
-      return;
-    }
-    setBaseSchedule((prev) => ({
-      ...prev,
-      [selectedWeek]: nextBaseId,
-    }));
-    setNotice(`Base staff updated for week ${selectedWeek} to ${nextBaseId}.`);
-  };
-
   const handleImport = async (file: File) => {
     const data = await file.arrayBuffer();
     const workbook = XLSX.read(data, { type: "array" });
@@ -515,13 +559,14 @@ export default function RosterPage() {
 
     const legendRows = [
       ["Roster Management Legend"],
-      ["Base coverage", "08:00 & 14:00 (daily)"],
-      ["Additional coverage", "11:00 (1 staff)"],
-      ["Target staffing (excluding BASE)", "1 working staff per day"],
+      ["Coverage", "08:00 and 14:00 (1 staff each)"],
+      ["Staff A", "Fixed 09:00 shift, OFF Sat/Sun"],
+      ["Standby coverage", "11:00 (used only if 08:00/14:00 missing)"],
+      ["Target staffing (excluding Staff A)", "2 working staff per day"],
       ["Rules"],
-      ["Base shift (08:00 & 14:00)", "Daily coverage, exclude Staff A"],
-      ["Shift change (base staff)", "1 time per week"],
-      ["OFF days (non-base)", "2 per staff per week (consecutive)"],
+      ["Base shifts (08:00/14:00)", "Daily coverage, exclude Staff A"],
+      ["Shift change (non-A)", "Weekly toggle between 08:00 and 14:00"],
+      ["OFF days (non-A)", "2 per staff per week (consecutive)"],
     ];
 
     const rotationRows = Array.from({ length: 53 }, (_, index) => {
@@ -531,8 +576,7 @@ export default function RosterPage() {
         Week: week,
       };
       ["A", "B", "C", "D"].forEach((id) => {
-        const weekBaseStaff = baseSchedule[week] ?? defaultBaseStaffId;
-        const offDays = id === weekBaseStaff ? [] : weekRotation[id] ?? [];
+        const offDays = id === staffAId ? getStaffWeekendOffDays() : weekRotation[id] ?? [];
         row[`${id}_Off1`] = offDays[0] ?? "";
         row[`${id}_Off2`] = offDays[1] ?? "";
         const phDays = leaves.filter(
@@ -571,9 +615,11 @@ export default function RosterPage() {
               <p className="text-sm font-semibold text-slate-500">Roster Management UI</p>
               <h1 className="text-2xl font-semibold text-slate-900">{weekLabel}</h1>
               <p className="mt-1 text-sm text-slate-500">
-                Base 08:00 & 14:00 (daily, exclude Staff A) • Additional 11:00 (1 staff)
+                Coverage 08:00 + 14:00 (exclude Staff A) • Staff A 09:00 (Mon-Fri) • Standby 11:00
               </p>
-              <p className="text-xs text-slate-400">Shift change (base staff): 1 time per week</p>
+              <p className="text-xs text-slate-400">
+                Shift change (non-A staff): weekly toggle 08:00 ↔ 14:00
+              </p>
             </div>
             <div className="flex flex-wrap items-end gap-4">
               <label className="flex flex-col text-sm font-medium text-slate-600">
@@ -662,9 +708,7 @@ export default function RosterPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {member.name} {member.id === baseStaffId ? "(BASE)" : ""}
-                          </p>
+                          <p className="text-sm font-semibold text-slate-900">{member.name}</p>
                           <p className="text-xs text-slate-500">PH {member.phAllowance}</p>
                         </div>
                         <div className="text-right">
@@ -687,9 +731,9 @@ export default function RosterPage() {
               <div className="mt-4 space-y-3">
                 {coverageByDay.map((coverage) => {
                   const status =
-                    coverage.workingCount === coverage.target
+                    coverage.shift08 && coverage.shift14
                       ? "OK"
-                      : coverage.workingCount < coverage.target
+                      : !coverage.shift08 || !coverage.shift14
                         ? "Under"
                         : "Over";
                   const statusStyle =
@@ -706,7 +750,8 @@ export default function RosterPage() {
                       <div>
                         <p className="text-sm font-semibold text-slate-900">{coverage.day}</p>
                         <p className="text-xs text-slate-500">
-                          Work {coverage.workingCount} • OFF {coverage.offCount} • Leave {coverage.leaveCount}
+                          08:00 {coverage.shift08 ?? "—"} • 14:00 {coverage.shift14 ?? "—"} •
+                          Standby {coverage.standby ?? "—"}
                         </p>
                       </div>
                       <span
@@ -744,32 +789,19 @@ export default function RosterPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">Shift roster grid</h2>
               <p className="text-sm text-slate-500">
-                Base 08:00 & 14:00 (daily, exclude Staff A) • Additional 11:00 (1 staff)
+                Coverage 08:00 + 14:00 (exclude Staff A) • Staff A 09:00 (Mon-Fri) • Standby 11:00
               </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                    Base 08:00 & 14:00
+                    08:00 coverage
                   </span>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                    Additional 11:00
+                    14:00 coverage
                   </span>
-                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                    Base staff (week {selectedWeek})
-                    <select
-                      value={baseStaffId}
-                      onChange={(event) => handleBaseStaffChange(event.target.value)}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700"
-                    >
-                      {staff
-                        .filter((member) => !baseStaffExclusions.has(member.id))
-                        .map((member) => (
-                          <option key={member.id} value={member.id}>
-                            {member.name}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                    Standby 11:00
+                  </span>
                 </div>
               </div>
               <div className="mt-4 overflow-x-auto">
@@ -794,14 +826,20 @@ export default function RosterPage() {
                     {staff.map((member) => (
                       <tr key={member.id}>
                         <td className="sticky left-0 z-10 border-b border-slate-100 bg-white p-3 text-xs font-semibold text-slate-700">
-                          {member.name} {member.id === baseStaffId ? "(BASE)" : ""}
+                          {member.name}
                         </td>
                         {dayLabels.map((day) => {
                           const offDays = getOffDays(selectedWeek, member.id);
                           const isOff = offDays.includes(day);
                           const leave = getLeaveForDay(leaves, member.id, selectedWeek, day);
-                          const stateLabel = leave ? leave.type : isOff ? "OFF" : "Work";
-                          const shiftTime = !leave && !isOff ? staffShiftTimes[member.id] : null;
+                          const shiftTime = !leave && !isOff ? getShiftForStaffDay(member.id, day) : null;
+                          const stateLabel = leave
+                            ? leave.type
+                            : isOff
+                              ? "OFF"
+                              : shiftTime === standbyShiftLabel
+                                ? "Standby"
+                                : "Work";
                           const stateColor = leave
                             ? leave.type === "PH"
                               ? "bg-amber-200 text-amber-900"

@@ -16,7 +16,7 @@ import math
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import models
-from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory
+from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory, RosterLeave
 from django.urls import reverse
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .serializers import (
@@ -28,7 +28,7 @@ from .serializers import (
     MachineCreateSerializer, MachineUpdateSerializer, MachinePreventiveMaintenanceSerializer,
     MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer,
     UtilityConsumptionSerializer, UtilityConsumptionListSerializer,
-    InventorySerializer, InventoryListSerializer
+    InventorySerializer, InventoryListSerializer, RosterLeaveSerializer
 )
 from PIL import Image
 from io import BytesIO
@@ -1854,6 +1854,29 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+
+
+class RosterLeaveViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing roster leave records (PH/VC).
+    """
+    serializer_class = RosterLeaveSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['staff_id', 'week', 'day', 'leave_type']
+    ordering_fields = ['week', 'day', 'created_at']
+    ordering = ['week', 'day']
+    pagination_class = None
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = RosterLeave.objects.select_related('created_by')
+        if not (user.is_staff or user.is_superuser):
+            queryset = queryset.filter(created_by=user)
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
 
 class PreventiveMaintenanceImageUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]

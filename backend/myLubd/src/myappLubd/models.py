@@ -20,6 +20,21 @@ import logging
 # Set up logger
 logger = logging.getLogger(__name__)
 
+# Natural key managers for stable fixture serialization/loading
+class PropertyManager(models.Manager):
+    def get_by_natural_key(self, property_id):
+        return self.get(property_id=property_id)
+
+
+class PreventiveMaintenanceManager(models.Manager):
+    def get_by_natural_key(self, pm_id):
+        return self.get(pm_id=pm_id)
+
+
+class MachineManager(models.Manager):
+    def get_by_natural_key(self, machine_id):
+        return self.get(machine_id=machine_id)
+
 # Custom User Model with property fields
 class User(AbstractUser):
     property_name = models.CharField(max_length=255, blank=True, null=True, help_text="Name of the property this user belongs to")
@@ -274,8 +289,15 @@ class PreventiveMaintenance(models.Model):
             models.Index(fields=['procedure_template', 'status']),  # Task status tracking
         ]
 
+    # Use a manager that can resolve by natural key
+    objects = PreventiveMaintenanceManager()
+
     def __str__(self):
         return f"PM {self.pm_id} - {self.pmtitle}"
+
+    def natural_key(self):
+        # Unique, stable identifier for fixtures
+        return (self.pm_id,)
 
     def process_image(self, image_file, quality=85):
         """
@@ -555,8 +577,14 @@ class Property(models.Model):
             models.Index(fields=['name']),  # For search operations
         ]
 
+    # Enable natural key lookups
+    objects = PropertyManager()
+
     def __str__(self):
         return self.name
+
+    def natural_key(self):
+        return (self.property_id,)
 
     def save(self, *args, **kwargs):
         if not self.property_id:
@@ -1121,6 +1149,9 @@ class Machine(models.Model):
             models.Index(fields=['installation_date']),  # For age tracking
         ]
 
+    # Natural key manager
+    objects = MachineManager()
+
     def __str__(self):
         return f"{self.name} ({self.machine_id})"
     
@@ -1140,6 +1171,9 @@ class Machine(models.Model):
         if upcoming_maintenances.exists():
             return upcoming_maintenances.first().next_due_date
         return None
+
+    def natural_key(self):
+        return (self.machine_id,)
 
 
 class MaintenanceProcedure(models.Model):

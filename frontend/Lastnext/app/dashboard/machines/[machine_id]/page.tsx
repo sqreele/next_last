@@ -26,8 +26,10 @@ import {
   AlertTriangle,
   XCircle,
   FilePlus2,
-  Hash
+  Hash,
+  ImageIcon
 } from 'lucide-react';
+import { fixImageUrl } from '@/app/lib/utils/image-utils';
 import Link from 'next/link';
 import { useUser } from '@/app/lib/stores/mainStore';
 import dynamic from 'next/dynamic';
@@ -74,6 +76,8 @@ interface Machine {
   preventive_maintenances?: PMHistory[];
   created_at?: string;
   updated_at?: string;
+  image?: string | null;
+  image_url?: string | null;
 }
 
 interface PMHistory {
@@ -242,6 +246,13 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
       return `${window.location.origin}/dashboard/machines/${machine.machine_id}`;
     }
     return '';
+  };
+
+  // Get machine image URL
+  const getMachineImageUrl = (): string | null => {
+    if (!machine) return null;
+    const candidate = machine.image_url || machine.image;
+    return candidate ? fixImageUrl(candidate) : null;
   };
 
   // Download QR code as PNG
@@ -534,6 +545,36 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Machine Image */}
+          {getMachineImageUrl() && (
+            <div className="pb-4 border-b border-gray-200">
+              <p className="text-sm text-gray-600 mb-3 flex items-center gap-1">
+                <ImageIcon className="h-4 w-4" />
+                Equipment Photo
+              </p>
+              <div className="w-full max-w-md">
+                <div className="relative aspect-video rounded-lg border-2 border-gray-200 bg-gray-50 overflow-hidden">
+                  <img
+                    src={getMachineImageUrl()!}
+                    alt={`${machine.name} image`}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const fallback = target.nextElementSibling as HTMLElement | null;
+                      if (fallback) {
+                        fallback.style.display = 'flex';
+                      }
+                    }}
+                  />
+                  <div className="hidden w-full h-full items-center justify-center bg-blue-50 text-blue-600 absolute inset-0">
+                    <Wrench className="h-16 w-16" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {machine.description && (
             <div className="pb-4">
               <p className="text-sm text-gray-600 mb-2">Description</p>

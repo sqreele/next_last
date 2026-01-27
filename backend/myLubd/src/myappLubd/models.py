@@ -1097,6 +1097,16 @@ class Machine(models.Model):
     
     installation_date = models.DateField(null=True, blank=True, help_text="Date when equipment was installed")
     last_maintenance_date = models.DateTimeField(null=True, blank=True)
+    
+    # Image field for equipment photo
+    image = models.ImageField(
+        upload_to='machine_images/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+        null=True,
+        blank=True,
+        help_text="Photo of the equipment"
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

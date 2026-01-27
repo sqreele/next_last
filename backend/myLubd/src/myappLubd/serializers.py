@@ -448,6 +448,7 @@ class MachineSerializer(serializers.ModelSerializer):
     """General-purpose serializer for Equipment (Machine) following ER diagram"""
     property_name = serializers.CharField(source='property.name', read_only=True)
     task_count = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Machine
@@ -455,9 +456,18 @@ class MachineSerializer(serializers.ModelSerializer):
             'id', 'machine_id', 'name', 'brand', 'category', 'serial_number',
             'description', 'location', 'property', 'property_name',
             'status', 'group_id', 'installation_date', 'last_maintenance_date', 'task_count',
-            'created_at', 'updated_at'
+            'image', 'image_url', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'machine_id', 'created_at', 'updated_at']
+    
+    def get_image_url(self, obj):
+        """Get the absolute URL for the machine image"""
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        elif obj.image:
+            return obj.image.url
+        return None
     
     def get_task_count(self, obj):
         """Get count of maintenance tasks for this equipment"""
@@ -482,13 +492,14 @@ class MachineListSerializer(serializers.ModelSerializer):
     property_name = serializers.CharField(source='property.name', read_only=True)
     task_count = serializers.SerializerMethodField()
     next_maintenance_date = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Machine
         fields = [
             'id', 'machine_id', 'name', 'brand', 'category', 'serial_number',
             'status', 'location', 'property_name', 
-            'task_count', 'next_maintenance_date', 'last_maintenance_date'
+            'task_count', 'next_maintenance_date', 'last_maintenance_date', 'image_url'
         ]
     
     def get_task_count(self, obj):
@@ -499,6 +510,15 @@ class MachineListSerializer(serializers.ModelSerializer):
     def get_next_maintenance_date(self, obj):
         """Get the next scheduled maintenance date"""
         return obj.get_next_maintenance_date()
+    
+    def get_image_url(self, obj):
+        """Get the absolute URL for the machine image"""
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        elif obj.image:
+            return obj.image.url
+        return None
 class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
     job_id = serializers.SerializerMethodField()
     job_description = serializers.SerializerMethodField()
@@ -581,6 +601,7 @@ class MachineDetailSerializer(serializers.ModelSerializer):
     maintenance_procedures = serializers.SerializerMethodField()
     days_since_last_maintenance = serializers.SerializerMethodField()
     next_maintenance_date = serializers.SerializerMethodField()
+    image_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Machine
@@ -590,9 +611,18 @@ class MachineDetailSerializer(serializers.ModelSerializer):
             'status', 'group_id', 'installation_date', 'last_maintenance_date', 
             'preventive_maintenances', 'maintenance_tasks', 'maintenance_procedures',
             'days_since_last_maintenance', 'next_maintenance_date', 
-            'created_at', 'updated_at'
+            'image', 'image_url', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'machine_id', 'created_at', 'updated_at']
+    
+    def get_image_url(self, obj):
+        """Get the absolute URL for the machine image"""
+        request = self.context.get('request')
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        elif obj.image:
+            return obj.image.url
+        return None
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -666,7 +696,7 @@ class MachineCreateSerializer(serializers.ModelSerializer):
         model = Machine
         fields = [
             'name', 'description', 'location', 'property', 
-            'status', 'installation_date', 'last_maintenance_date'
+            'status', 'installation_date', 'last_maintenance_date', 'image'
         ]
     
     def validate(self, data):
@@ -688,7 +718,7 @@ class MachineUpdateSerializer(serializers.ModelSerializer):
         model = Machine
         fields = [
             'name', 'description', 'location', 'property', 
-            'status', 'installation_date', 'last_maintenance_date'
+            'status', 'installation_date', 'last_maintenance_date', 'image'
         ]
     
     def validate(self, data):

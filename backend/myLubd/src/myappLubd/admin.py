@@ -402,6 +402,7 @@ class CreatedAtBeforeYearFilter(admin.SimpleListFilter):
 class MachineAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_display = [
+        'image_thumbnail',
         'machine_id', 
         'name', 
         'brand',
@@ -420,12 +421,16 @@ class MachineAdmin(admin.ModelAdmin):
     ]
     list_filter = ['status', 'category', 'brand', 'property', 'group_id', 'created_at', CreatedAtMonthFilter, 'installation_date', InstallationDateMonthFilter]
     search_fields = ['machine_id', 'name', 'brand', 'serial_number', 'description', 'location', 'group_id']
-    readonly_fields = ['created_at', 'updated_at', 'next_maintenance_date', 'qr_code_preview', 'maintenance_procedures_display', 'get_group_ids']  # Removed machine_id - now editable
+    readonly_fields = ['created_at', 'updated_at', 'next_maintenance_date', 'qr_code_preview', 'maintenance_procedures_display', 'get_group_ids', 'image_preview']  # Removed machine_id - now editable
     filter_horizontal = ['preventive_maintenances']
     
     fieldsets = (
         ('Equipment Information', {
             'fields': ('machine_id', 'name', 'brand', 'category', 'serial_number', 'description', 'location', 'status', 'group_id')
+        }),
+        ('Equipment Image', {
+            'fields': ('image', 'image_preview'),
+            'description': 'Upload an image of the equipment'
         }),
         ('Property & Maintenance', {
             'fields': ('property', 'preventive_maintenances', 'maintenance_procedures_display', 'get_group_ids', 'installation_date', 'last_maintenance_date')
@@ -507,6 +512,28 @@ class MachineAdmin(admin.ModelAdmin):
                 return format_html('<span style="color: orange;">Error loading procedures</span>')
         return 'Save the machine first to assign maintenance procedures'
     maintenance_procedures_display.short_description = 'Maintenance Procedures'
+
+    def image_preview(self, obj):
+        """Display image preview in admin"""
+        if obj and obj.image:
+            return format_html(
+                '<div style="padding: 10px;">'
+                '<img src="{}" style="max-width: 300px; max-height: 300px; border: 2px solid #ddd; border-radius: 4px;" />'
+                '</div>',
+                obj.image.url
+            )
+        return format_html('<span style="color: #999;">No image uploaded</span>')
+    image_preview.short_description = 'Image Preview'
+
+    def image_thumbnail(self, obj):
+        """Display small thumbnail in list view"""
+        if obj and obj.image:
+            return format_html(
+                '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;" />',
+                obj.image.url
+            )
+        return format_html('<span style="color: #ccc; font-size: 11px;">No image</span>')
+    image_thumbnail.short_description = 'Image'
 
     def property_link(self, obj):
         if obj.property:

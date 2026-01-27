@@ -16,6 +16,8 @@ export interface Machine {
   property_id?: string;
   is_active?: boolean;
   procedure?: string;
+  image?: string | null;
+  image_url?: string | null;
 }
 
 type MachineApiPayload = Machine[] | {

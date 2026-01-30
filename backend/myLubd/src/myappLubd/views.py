@@ -3037,6 +3037,9 @@ class InventoryViewSet(viewsets.ModelViewSet):
             )
             .all()
         )
+
+        if not user.is_authenticated:
+            return queryset.none()
         
         # Filter by property if user is not staff
         if not (user.is_staff or user.is_superuser):

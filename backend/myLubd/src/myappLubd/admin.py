@@ -3913,11 +3913,11 @@ class InventoryAdmin(admin.ModelAdmin):
 
         # Status colors
         status_bg_map = {
-            'available': colors.Color(0.09, 0.64, 0.29, alpha=0.15),      # green
-            'low_stock': colors.Color(0.92, 0.35, 0.05, alpha=0.15),      # orange
-            'out_of_stock': colors.Color(0.86, 0.15, 0.15, alpha=0.15),   # red
-            'reserved': colors.Color(0.15, 0.39, 0.92, alpha=0.15),       # blue
-            'maintenance': colors.Color(0.49, 0.23, 0.93, alpha=0.15),    # purple
+            'available': colors.Color(0.09, 0.64, 0.29),      # green
+            'low_stock': colors.Color(0.92, 0.35, 0.05),      # orange
+            'out_of_stock': colors.Color(0.86, 0.15, 0.15),   # red
+            'reserved': colors.Color(0.15, 0.39, 0.92),       # blue
+            'maintenance': colors.Color(0.49, 0.23, 0.93),    # purple
         }
         status_text_map = {
             'available': colors.Color(0.09, 0.64, 0.29),
@@ -3926,6 +3926,20 @@ class InventoryAdmin(admin.ModelAdmin):
             'reserved': colors.Color(0.15, 0.39, 0.92),
             'maintenance': colors.Color(0.49, 0.23, 0.93),
         }
+
+        def _color_to_hex(color_value, fallback="#6b7280"):
+            if not color_value:
+                return fallback
+            if isinstance(color_value, str):
+                return color_value
+            if hasattr(color_value, 'hexval'):
+                return color_value.hexval()
+            red = getattr(color_value, 'red', None)
+            green = getattr(color_value, 'green', None)
+            blue = getattr(color_value, 'blue', None)
+            if red is None or green is None or blue is None:
+                return fallback
+            return "#{:02x}{:02x}{:02x}".format(int(red * 255), int(green * 255), int(blue * 255))
 
         def _get_item_image_path(item):
             """Get the image path for an inventory item"""
@@ -4050,8 +4064,9 @@ class InventoryAdmin(admin.ModelAdmin):
             status_label = item.get_status_display().upper().replace('_', ' ') if hasattr(item, 'get_status_display') else (item.status or 'UNKNOWN').upper().replace('_', ' ')
 
             # Status badge
+            status_color = status_text_map.get(status_key, colors.grey)
             status_badge_para = Paragraph(
-                f"<font color='{status_text_map.get(status_key, colors.grey).hexval()}'><b>{_escape_text(status_label)}</b></font>",
+                f"<font color='{_color_to_hex(status_color)}'><b>{_escape_text(status_label)}</b></font>",
                 styles['ThaiSmall']
             )
             status_badge = Table([[status_badge_para]], colWidths=[col_widths[2] - 16])

@@ -2017,6 +2017,43 @@ def auth_check(request):
         "email": request.user.email,
     }, status=status.HTTP_200_OK)
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def is_backend_admin(request):
+    """
+    Determine if the current user has backend admin privileges, optionally scoped to a property.
+
+    Behavior:
+    - global_admin is true when the user is superuser, staff, or username == 'admin'.
+    - If a property_id is provided, is_backend_admin is true only when the user is a
+      global admin AND has access to that property (is associated via Property.users).
+    - If no property_id is provided, is_backend_admin equals global_admin.
+    """
+    user = request.user
+    global_admin = bool(user.is_superuser or user.is_staff or user.username == 'admin')
+    property_id = request.query_params.get('property_id')
+    has_property_access = None
+
+    if property_id:
+        # Ensure property exists and check access
+        property_obj = get_object_or_404(Property, property_id=property_id)
+        has_property_access = property_obj.users.filter(id=user.id).exists()
+        is_admin_for_property = bool(global_admin and has_property_access)
+        return Response({
+            'property_id': property_id,
+            'global_admin': global_admin,
+            'has_property_access': has_property_access,
+            'is_backend_admin': is_admin_for_property,
+        }, status=status.HTTP_200_OK)
+
+    return Response({
+        'property_id': None,
+        'global_admin': global_admin,
+        'has_property_access': has_property_access,
+        'is_backend_admin': global_admin,
+    }, status=status.HTTP_200_OK)
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def auth_providers(request):

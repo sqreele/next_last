@@ -525,6 +525,40 @@ class NotificationService:
         
         return list(queryset.distinct())
 
+    @staticmethod
+    def normalize_days(days: Any, default: int = 7, minimum: int = 1) -> int:
+        """
+        Normalize the days parameter used for upcoming notifications.
+        Falls back to default when value is missing, invalid, or below minimum.
+        """
+        try:
+            normalized_days = int(days)
+            if normalized_days < minimum:
+                return default
+            return normalized_days
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def get_all_notifications(user, days: int = 7) -> Dict[str, Any]:
+        """
+        Get combined overdue and upcoming notification payload.
+        """
+        normalized_days = NotificationService.normalize_days(days)
+        overdue_tasks = NotificationService.get_overdue_maintenance(user)
+        upcoming_tasks = NotificationService.get_upcoming_alerts(user, days=normalized_days)
+        all_tasks = list(overdue_tasks) + list(upcoming_tasks)
+
+        return {
+            'overdue_tasks': overdue_tasks,
+            'upcoming_tasks': upcoming_tasks,
+            'all_tasks': all_tasks,
+            'overdue_count': len(overdue_tasks),
+            'upcoming_count': len(upcoming_tasks),
+            'total_count': len(all_tasks),
+            'days': normalized_days,
+        }
+
 
 class PreventiveMaintenanceService:
     """

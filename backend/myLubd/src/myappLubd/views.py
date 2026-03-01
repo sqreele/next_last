@@ -3301,15 +3301,7 @@ def get_upcoming_notifications(request):
     """
     try:
         user = request.user
-        
-        # Get days parameter from query string, default to 7
-        days_param = request.query_params.get('days', '7')
-        try:
-            days = int(days_param)
-            if days < 1:
-                days = 7
-        except ValueError:
-            days = 7
+        days = NotificationService.normalize_days(request.query_params.get('days', 7))
         
         upcoming_tasks = NotificationService.get_upcoming_alerts(user, days=days)
         
@@ -3350,22 +3342,11 @@ def get_all_notifications(request):
     """
     try:
         user = request.user
-        
-        # Get days parameter from query string, default to 7
-        days_param = request.query_params.get('days', '7')
-        try:
-            days = int(days_param)
-            if days < 1:
-                days = 7
-        except ValueError:
-            days = 7
-        
-        # Get both overdue and upcoming tasks
-        overdue_tasks = NotificationService.get_overdue_maintenance(user)
-        upcoming_tasks = NotificationService.get_upcoming_alerts(user, days=days)
-        
-        # Combine and serialize
-        all_tasks = list(overdue_tasks) + list(upcoming_tasks)
+        notification_payload = NotificationService.get_all_notifications(
+            user,
+            days=request.query_params.get('days', 7)
+        )
+        all_tasks = notification_payload['all_tasks']
         serializer = PreventiveMaintenanceListSerializer(
             all_tasks, 
             many=True, 
@@ -3373,10 +3354,10 @@ def get_all_notifications(request):
         )
         
         return Response({
-            'overdue_count': len(overdue_tasks),
-            'upcoming_count': len(upcoming_tasks),
-            'total_count': len(all_tasks),
-            'days': days,
+            'overdue_count': notification_payload['overdue_count'],
+            'upcoming_count': notification_payload['upcoming_count'],
+            'total_count': notification_payload['total_count'],
+            'days': notification_payload['days'],
             'results': serializer.data
         }, status=status.HTTP_200_OK)
     except Exception as e:

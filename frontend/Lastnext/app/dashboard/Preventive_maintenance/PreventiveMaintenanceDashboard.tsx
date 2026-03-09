@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSession } from '@/app/lib/session.client';
 import { usePreventiveMaintenanceJobs } from '@/app/lib/hooks/usePreventiveMaintenanceJobs';
-import { Job } from '@/app/lib/types';
+import { Job, Room, TopicFromAPI } from '@/app/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -57,6 +57,21 @@ interface PreventiveMaintenanceDashboardProps {
   propertyId: string;
   limit?: number;
 }
+
+
+const getUniqueRoomsFromJobs = (jobsToProcess: Job[]): Room[] => {
+  const roomMap = new Map<number, Room>();
+
+  jobsToProcess.forEach(job => {
+    job.rooms?.forEach(room => {
+      if (!roomMap.has(room.room_id)) {
+        roomMap.set(room.room_id, room);
+      }
+    });
+  });
+
+  return Array.from(roomMap.values());
+};
 
 export default function PreventiveMaintenanceDashboard({
   propertyId,
@@ -183,7 +198,7 @@ export default function PreventiveMaintenanceDashboard({
     });
   }, [jobs, statusFilter, priorityFilter, timeRangeFilter, monthFilter, topicFilter]);
 
-  const availableTopics = useMemo(() => {
+  const availableTopics = useMemo<TopicFromAPI[]>(() => {
     const topicMap = new Map<string, string>();
 
     jobs.forEach(job => {
@@ -195,17 +210,9 @@ export default function PreventiveMaintenanceDashboard({
     return Array.from(topicMap.entries()).map(([id, title]) => ({ id, title }));
   }, [jobs]);
 
-  const uniqueFilteredRoomCount = useMemo(() => {
-    const roomIds = new Set<number>();
+  const uniqueFilteredRoomCount = useMemo(() => getUniqueRoomsFromJobs(filteredJobs).length, [filteredJobs]);
 
-    filteredJobs.forEach(job => {
-      job.rooms?.forEach(room => {
-        roomIds.add(room.room_id);
-      });
-    });
-
-    return roomIds.size;
-  }, [filteredJobs]);
+  const uniqueTotalRoomCount = useMemo(() => getUniqueRoomsFromJobs(jobs).length, [jobs]);
 
 
   const filteredNonPMJobs = useMemo(() => {
@@ -269,21 +276,7 @@ export default function PreventiveMaintenanceDashboard({
     return roomIds.size;
   }, [filteredNonPMJobs]);
 
-  const nonPMRooms = useMemo(() => {
-    const roomMap = new Map<number, { room_id: number; name: string; room_type?: string }>();
-
-    filteredNonPMJobs.forEach(job => {
-      job.rooms?.forEach(room => {
-        roomMap.set(room.room_id, {
-          room_id: room.room_id,
-          name: room.name,
-          room_type: room.room_type,
-        });
-      });
-    });
-
-    return Array.from(roomMap.values()).sort((a, b) => a.room_id - b.room_id);
-  }, [filteredNonPMJobs]);
+  const nonPMRooms = useMemo(() => getUniqueRoomsFromJobs(filteredNonPMJobs).sort((a, b) => a.room_id - b.room_id), [filteredNonPMJobs]);
 
   useEffect(() => {
     const loadNonPMJobs = async () => {
@@ -681,8 +674,9 @@ export default function PreventiveMaintenanceDashboard({
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-indigo-500">Rooms (Filtered PM)</p>
-                    <p className="text-2xl font-bold text-indigo-700">{uniqueFilteredRoomCount}</p>
+                    <p className="text-sm text-indigo-500">Total Rooms (PM)</p>
+                    <p className="text-2xl font-bold text-indigo-700">{uniqueTotalRoomCount}</p>
+                    <p className="text-xs text-indigo-500 mt-1">Filtered: {uniqueFilteredRoomCount}</p>
                   </div>
                   <Wrench className="h-8 w-8 text-indigo-400" />
                 </div>

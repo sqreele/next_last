@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSession } from '@/app/lib/session.client';
 import { usePreventiveMaintenanceJobs } from '@/app/lib/hooks/usePreventiveMaintenanceJobs';
-import { Job, Room, TopicFromAPI } from '@/app/lib/types';
+import { Job, Room } from '@/app/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -56,6 +56,11 @@ import {
 interface PreventiveMaintenanceDashboardProps {
   propertyId: string;
   limit?: number;
+}
+
+interface TopicFilterOption {
+  id: string;
+  title: string;
 }
 
 
@@ -198,7 +203,7 @@ export default function PreventiveMaintenanceDashboard({
     });
   }, [jobs, statusFilter, priorityFilter, timeRangeFilter, monthFilter, topicFilter]);
 
-  const availableTopics = useMemo<TopicFromAPI[]>(() => {
+  const availableTopics = useMemo<TopicFilterOption[]>(() => {
     const topicMap = new Map<string, string>();
 
     jobs.forEach(job => {

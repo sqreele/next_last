@@ -93,6 +93,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   const [rooms, setRooms] = useState<Room[]>([]);
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPropertyId, setCurrentPropertyId] = useState<string | null>(null);
@@ -144,6 +145,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     isSubmittingRef.current = true;
     setSubmitting(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       if (!session?.user) {
@@ -197,18 +199,24 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         formData.append('images', file);
       });
 
-      const response = await axios.post(`/api/jobs/`, formData, { withCredentials: true });
+      await axios.post(`/api/jobs/`, formData, { withCredentials: true });
+
+      const statusLabel = values.status.replace('_', ' ');
+      setSuccessMessage(`Job created successfully with status: ${statusLabel}. Redirecting to My Jobs...`);
 
       // Success - reset form and redirect
       resetForm();
       triggerJobCreation();
       if (onJobCreated) onJobCreated();
-      router.push('/dashboard/myJobs');
+      setTimeout(() => {
+        router.push('/dashboard/myJobs');
+      }, 1500);
       
       // Note: Don't reset isSubmittingRef here because we're navigating away
     } catch (error) {
       console.error('Submission error:', error);
       setError('Failed to create job. Please try again.');
+      setSuccessMessage(null);
       isSubmittingRef.current = false;
       setSubmitting(false);
     }
@@ -252,6 +260,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         <Alert className="border-red-200 bg-red-50">
           <AlertCircle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-800">{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {successMessage && (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
         </Alert>
       )}
 

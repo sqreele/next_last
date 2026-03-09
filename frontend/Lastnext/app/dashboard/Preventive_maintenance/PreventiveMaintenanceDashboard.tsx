@@ -72,6 +72,7 @@ export default function PreventiveMaintenanceDashboard({
   const [topicFilter, setTopicFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [nonPMJobs, setNonPMJobs] = useState<Job[]>([]);
+  const [showNonPMRooms, setShowNonPMRooms] = useState(false);
   const itemsPerPage = 5;
 
   // Get jobs using the hook
@@ -266,6 +267,22 @@ export default function PreventiveMaintenanceDashboard({
     });
 
     return roomIds.size;
+  }, [filteredNonPMJobs]);
+
+  const nonPMRooms = useMemo(() => {
+    const roomMap = new Map<number, { room_id: number; name: string; room_type?: string }>();
+
+    filteredNonPMJobs.forEach(job => {
+      job.rooms?.forEach(room => {
+        roomMap.set(room.room_id, {
+          room_id: room.room_id,
+          name: room.name,
+          room_type: room.room_type,
+        });
+      });
+    });
+
+    return Array.from(roomMap.values()).sort((a, b) => a.room_id - b.room_id);
   }, [filteredNonPMJobs]);
 
   useEffect(() => {
@@ -708,6 +725,43 @@ export default function PreventiveMaintenanceDashboard({
               </div>
             </div>
           )}
+
+          <Card className="mb-6 border-slate-200">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base">No PM Rooms</CardTitle>
+                  <CardDescription>
+                    Rooms from non-preventive jobs ({nonPMRooms.length} total)
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowNonPMRooms((prev) => !prev)}
+                >
+                  {showNonPMRooms ? 'Hide Rooms' : 'Show Rooms'}
+                  <ChevronDown className={cn('ml-1 h-4 w-4 transition-transform', showNonPMRooms && 'rotate-180')} />
+                </Button>
+              </div>
+            </CardHeader>
+            {showNonPMRooms && (
+              <CardContent>
+                {nonPMRooms.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {nonPMRooms.map((room) => (
+                      <Badge key={room.room_id} variant="secondary" className="bg-slate-100 text-slate-700">
+                        Room #{room.room_id} • {room.name}
+                        {room.room_type ? ` (${room.room_type})` : ''}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No non-PM rooms found for current filters.</p>
+                )}
+              </CardContent>
+            )}
+          </Card>
           
           {/* Tabs section */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

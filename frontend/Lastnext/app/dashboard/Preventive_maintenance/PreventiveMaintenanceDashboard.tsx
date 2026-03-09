@@ -219,6 +219,16 @@ export default function PreventiveMaintenanceDashboard({
 
   const uniqueTotalRoomCount = useMemo(() => getUniqueRoomsFromJobs(jobs).length, [jobs]);
 
+  const nonFilteredPMRoomNumbers = useMemo(() => {
+    const allPMRooms = getUniqueRoomsFromJobs(jobs);
+    const filteredPMRoomIds = new Set(getUniqueRoomsFromJobs(filteredJobs).map(room => room.room_id));
+
+    return allPMRooms
+      .filter(room => !filteredPMRoomIds.has(room.room_id))
+      .map(room => room.room_id)
+      .sort((a, b) => a - b);
+  }, [jobs, filteredJobs]);
+
 
   const filteredNonPMJobs = useMemo(() => {
     return nonPMJobs.filter(job => {
@@ -682,6 +692,11 @@ export default function PreventiveMaintenanceDashboard({
                     <p className="text-sm text-indigo-500">Total Rooms (PM)</p>
                     <p className="text-2xl font-bold text-indigo-700">{uniqueTotalRoomCount}</p>
                     <p className="text-xs text-indigo-500 mt-1">Filtered: {uniqueFilteredRoomCount}</p>
+                    {nonFilteredPMRoomNumbers.length > 0 && (
+                      <p className="text-xs text-indigo-500 mt-1">
+                        Not in filtered ({nonFilteredPMRoomNumbers.length}): {nonFilteredPMRoomNumbers.join(', ')}
+                      </p>
+                    )}
                   </div>
                   <Wrench className="h-8 w-8 text-indigo-400" />
                 </div>

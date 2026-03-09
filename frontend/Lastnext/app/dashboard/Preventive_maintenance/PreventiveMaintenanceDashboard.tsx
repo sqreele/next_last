@@ -93,6 +93,7 @@ export default function PreventiveMaintenanceDashboard({
   const [currentPage, setCurrentPage] = useState(1);
   const [nonPMJobs, setNonPMJobs] = useState<Job[]>([]);
   const [showNonPMRooms, setShowNonPMRooms] = useState(false);
+  const [showExcludedPMRooms, setShowExcludedPMRooms] = useState(false);
   const itemsPerPage = 5;
 
   // Get jobs using the hook
@@ -219,14 +220,14 @@ export default function PreventiveMaintenanceDashboard({
 
   const uniqueTotalRoomCount = useMemo(() => getUniqueRoomsFromJobs(jobs).length, [jobs]);
 
-  const nonFilteredPMRoomNumbers = useMemo(() => {
+  const nonFilteredPMRooms = useMemo(() => {
     const allPMRooms = getUniqueRoomsFromJobs(jobs);
     const filteredPMRoomIds = new Set(getUniqueRoomsFromJobs(filteredJobs).map(room => room.room_id));
 
     return allPMRooms
       .filter(room => !filteredPMRoomIds.has(room.room_id))
-      .map(room => room.room_id)
-      .sort((a, b) => a - b);
+      .map(room => room.name?.trim() || `Room ${room.room_id}`)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
   }, [jobs, filteredJobs]);
 
 
@@ -278,18 +279,6 @@ export default function PreventiveMaintenanceDashboard({
       return true;
     });
   }, [nonPMJobs, statusFilter, priorityFilter, monthFilter, topicFilter, timeRangeFilter]);
-
-  const uniqueFilteredNonPMRoomCount = useMemo(() => {
-    const roomIds = new Set<number>();
-
-    filteredNonPMJobs.forEach(job => {
-      job.rooms?.forEach(room => {
-        roomIds.add(room.room_id);
-      });
-    });
-
-    return roomIds.size;
-  }, [filteredNonPMJobs]);
 
   const nonPMRooms = useMemo(() => getUniqueRoomsFromJobs(filteredNonPMJobs).sort((a, b) => a.room_id - b.room_id), [filteredNonPMJobs]);
 
@@ -692,30 +681,46 @@ export default function PreventiveMaintenanceDashboard({
                     <p className="text-sm text-indigo-500">Total Rooms (PM)</p>
                     <p className="text-2xl font-bold text-indigo-700">{uniqueTotalRoomCount}</p>
                     <p className="text-xs text-indigo-500 mt-1">Filtered: {uniqueFilteredRoomCount}</p>
-                    {nonFilteredPMRoomNumbers.length > 0 && (
-                      <p className="text-xs text-indigo-500 mt-1">
-                        Not in filtered ({nonFilteredPMRoomNumbers.length}): {nonFilteredPMRoomNumbers.join(', ')}
-                      </p>
-                    )}
+                    <p className="text-xs text-indigo-500 mt-1">Not in filtered: {nonFilteredPMRooms.length}</p>
                   </div>
                   <Wrench className="h-8 w-8 text-indigo-400" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-slate-50 border-slate-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-500">Rooms (Filtered Non-PM)</p>
-                    <p className="text-2xl font-bold text-slate-700">{uniqueFilteredNonPMRoomCount}</p>
-                  </div>
-                  <Wrench className="h-8 w-8 text-slate-400" />
-                </div>
-              </CardContent>
-            </Card>
           </div>
-          
+
+          {nonFilteredPMRooms.length > 0 && (
+            <Card className="mb-6 border-indigo-200 bg-indigo-50/40"> 
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base text-indigo-700">PM Rooms Not in Current Filter</CardTitle>
+                    <CardDescription className="text-indigo-600">
+                      {nonFilteredPMRooms.length} room{nonFilteredPMRooms.length === 1 ? '' : 's'} excluded by current filters
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-indigo-300 text-indigo-700 hover:bg-indigo-100"
+                    onClick={() => setShowExcludedPMRooms((prev) => !prev)}
+                  >
+                    {showExcludedPMRooms ? 'Hide Rooms' : 'Show Rooms'}
+                    <ChevronDown className={cn('ml-1 h-4 w-4 transition-transform', showExcludedPMRooms && 'rotate-180')} />
+                  </Button>
+                </div>
+              </CardHeader>
+              {showExcludedPMRooms && (
+                <CardContent className="pt-0">
+                  <div className="max-h-40 overflow-y-auto rounded-md border border-indigo-200 bg-white p-3 text-sm text-indigo-800">
+                    {nonFilteredPMRooms.join(', ')}
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
+
           {/* Upcoming maintenance alert - show only if there are pending tasks */}
           {upcomingMaintenance.length > 0 && (
             <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start">

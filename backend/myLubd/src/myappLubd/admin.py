@@ -1991,7 +1991,7 @@ class HasPreventiveMaintenanceFilter(admin.SimpleListFilter):
 class RoomAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_display = ['room_id', 'name', 'room_type', 'is_active', 'created_at', 'get_properties_display']
-    list_filter = ['room_type', 'is_active', 'created_at', CreatedAtMonthFilter, HasPreventiveMaintenanceFilter]
+    list_filter = ['room_type', 'properties', 'is_active', 'created_at', CreatedAtMonthFilter, HasPreventiveMaintenanceFilter]
     search_fields = ['name', 'room_type', 'properties__name']
     filter_horizontal = ['properties']
     readonly_fields = ['room_id', 'created_at']

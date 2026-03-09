@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSession } from '@/app/lib/session.client';
 import { usePreventiveMaintenanceJobs } from '@/app/lib/hooks/usePreventiveMaintenanceJobs';
 import { Job } from '@/app/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/app/components/ui/card';
@@ -68,10 +69,14 @@ export default function PreventiveMaintenanceDashboard({
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [timeRangeFilter, setTimeRangeFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
+  const [topicFilter, setTopicFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [nonPMJobs, setNonPMJobs] = useState<Job[]>([]);
   const itemsPerPage = 5;
 
   // Get jobs using the hook
+  const { data: session } = useSession();
+
   const {
     jobs,
     isLoading,
@@ -89,7 +94,7 @@ export default function PreventiveMaintenanceDashboard({
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, priorityFilter, timeRangeFilter, monthFilter, activeTab]);
+  }, [statusFilter, priorityFilter, timeRangeFilter, monthFilter, topicFilter, activeTab]);
 
   const stats = getStats();
 
@@ -144,6 +149,13 @@ export default function PreventiveMaintenanceDashboard({
           return false;
         }
       }
+
+      if (topicFilter !== 'all') {
+        const hasSelectedTopic = job.topics?.some(topic => String(topic.id) === topicFilter);
+        if (!hasSelectedTopic) {
+          return false;
+        }
+      }
       
       // Filter by time range
       if (timeRangeFilter !== 'all') {
@@ -168,7 +180,128 @@ export default function PreventiveMaintenanceDashboard({
       
       return true;
     });
-  }, [jobs, statusFilter, priorityFilter, timeRangeFilter, monthFilter]);
+  }, [jobs, statusFilter, priorityFilter, timeRangeFilter, monthFilter, topicFilter]);
+
+  const availableTopics = useMemo(() => {
+    const topicMap = new Map<string, string>();
+
+    jobs.forEach(job => {
+      job.topics?.forEach(topic => {
+        topicMap.set(String(topic.id), topic.title);
+      });
+    });
+
+    return Array.from(topicMap.entries()).map(([id, title]) => ({ id, title }));
+  }, [jobs]);
+
+  const uniqueFilteredRoomCount = useMemo(() => {
+    const roomIds = new Set<number>();
+
+    filteredJobs.forEach(job => {
+      job.rooms?.forEach(room => {
+        roomIds.add(room.room_id);
+      });
+    });
+
+    return roomIds.size;
+  }, [filteredJobs]);
+
+
+  const filteredNonPMJobs = useMemo(() => {
+    return nonPMJobs.filter(job => {
+      if (statusFilter !== 'all' && job.status !== statusFilter) {
+        return false;
+      }
+
+      if (priorityFilter !== 'all' && job.priority !== priorityFilter) {
+        return false;
+      }
+
+      if (monthFilter !== 'all') {
+        const jobDate = new Date(job.created_at);
+        const [filterYear, filterMonth] = monthFilter.split('-').map(Number);
+        if (jobDate.getFullYear() !== filterYear || jobDate.getMonth() !== filterMonth) {
+          return false;
+        }
+      }
+
+      if (topicFilter !== 'all') {
+        const hasSelectedTopic = job.topics?.some(topic => String(topic.id) === topicFilter);
+        if (!hasSelectedTopic) {
+          return false;
+        }
+      }
+
+      if (timeRangeFilter !== 'all') {
+        const jobDate = new Date(job.created_at);
+        const now = new Date();
+
+        switch (timeRangeFilter) {
+          case 'today':
+            return jobDate.toDateString() === now.toDateString();
+          case 'week':
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(now.getDate() - 7);
+            return jobDate >= oneWeekAgo;
+          case 'month':
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(now.getMonth() - 1);
+            return jobDate >= oneMonthAgo;
+          default:
+            return true;
+        }
+      }
+
+      return true;
+    });
+  }, [nonPMJobs, statusFilter, priorityFilter, monthFilter, topicFilter, timeRangeFilter]);
+
+  const uniqueFilteredNonPMRoomCount = useMemo(() => {
+    const roomIds = new Set<number>();
+
+    filteredNonPMJobs.forEach(job => {
+      job.rooms?.forEach(room => {
+        roomIds.add(room.room_id);
+      });
+    });
+
+    return roomIds.size;
+  }, [filteredNonPMJobs]);
+
+  useEffect(() => {
+    const loadNonPMJobs = async () => {
+      try {
+        const params = new URLSearchParams({
+          limit: String(limit),
+          is_preventivemaintenance: 'false',
+        });
+
+        if (propertyId) {
+          params.set('property_id', propertyId);
+        }
+
+        const response = await fetch(`/api/v1/jobs?${params.toString()}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.user?.accessToken ? { Authorization: `Bearer ${session.user.accessToken}` } : {}),
+          },
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          setNonPMJobs([]);
+          return;
+        }
+
+        const data = await response.json();
+        setNonPMJobs(Array.isArray(data) ? data : []);
+      } catch {
+        setNonPMJobs([]);
+      }
+    };
+
+    loadNonPMJobs();
+  }, [propertyId, limit, session?.user?.accessToken]);
 
   // Group jobs by status for tab filtering
   const jobsByStatus = useMemo(() => ({
@@ -192,6 +325,7 @@ export default function PreventiveMaintenanceDashboard({
     setPriorityFilter('all');
     setTimeRangeFilter('all');
     setMonthFilter('all');
+    setTopicFilter('all');
   };
 
   // Get available statuses and priorities from jobs
@@ -363,7 +497,7 @@ export default function PreventiveMaintenanceDashboard({
           
           {/* Filters panel */}
           {showFilters && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg border grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg border grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Status</label>
                 <Select 
@@ -441,8 +575,28 @@ export default function PreventiveMaintenanceDashboard({
                   </SelectContent>
                 </Select>
               </div>
-              
-              <div className="md:col-span-4 flex justify-end">
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Topic</label>
+                <Select 
+                  value={topicFilter} 
+                  onValueChange={setTopicFilter}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select topic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Topics</SelectItem>
+                    {availableTopics.map(topic => (
+                      <SelectItem key={topic.id} value={topic.id}>
+                        {topic.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+                            
+              <div className="md:col-span-5 flex justify-end">
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -457,7 +611,7 @@ export default function PreventiveMaintenanceDashboard({
         
         <CardContent>
           {/* Stats cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
             <Card className="bg-gray-50 border">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -502,6 +656,30 @@ export default function PreventiveMaintenanceDashboard({
                     <p className="text-2xl font-bold text-purple-700">{stats.completionRate.toFixed(1)}%</p>
                   </div>
                   <BarChart4 className="h-8 w-8 text-purple-400" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-indigo-50 border-indigo-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-indigo-500">Rooms (Filtered PM)</p>
+                    <p className="text-2xl font-bold text-indigo-700">{uniqueFilteredRoomCount}</p>
+                  </div>
+                  <Wrench className="h-8 w-8 text-indigo-400" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-slate-50 border-slate-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-slate-500">Rooms (Filtered Non-PM)</p>
+                    <p className="text-2xl font-bold text-slate-700">{uniqueFilteredNonPMRoomCount}</p>
+                  </div>
+                  <Wrench className="h-8 w-8 text-slate-400" />
                 </div>
               </CardContent>
             </Card>

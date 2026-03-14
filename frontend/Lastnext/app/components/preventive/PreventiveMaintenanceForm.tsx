@@ -29,6 +29,8 @@ import MachineService from '@/app/lib/MachineService';
 import { fetchAllMaintenanceProcedures, type MaintenanceProcedureTemplate } from '@/app/lib/maintenanceProcedures';
 import apiClient from '@/app/lib/api-client';
 import { Loader } from 'lucide-react';
+
+const MIN_LOADER_MS = 400; // Minimum time to show loader to avoid flash
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
@@ -96,6 +98,24 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const actualInitialData = initialDataProp || fetchedInitialData;
 
   const createdMaintenanceIdRef = useRef<string | null>(null);
+  const loaderShownAtRef = useRef<number | null>(null);
+
+  const clearLoadingAfterMinTime = useCallback(() => {
+    const shownAt = loaderShownAtRef.current;
+    loaderShownAtRef.current = null;
+    if (shownAt == null) {
+      setIsLoading(false);
+      return;
+    }
+    const elapsed = Date.now() - shownAt;
+    const remaining = Math.max(0, MIN_LOADER_MS - elapsed);
+    if (remaining === 0) {
+      setIsLoading(false);
+    } else {
+      const t = setTimeout(() => setIsLoading(false), remaining);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
   const [availableMachines, setAvailableMachines] = useState<MachineDetails[]>([]);
@@ -836,6 +856,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   useEffect(() => {
     let mounted = true;
     if (pmId && !initialDataProp) {
+      loaderShownAtRef.current = Date.now();
       setIsLoading(true);
       clearError();
       preventiveMaintenanceService
@@ -867,7 +888,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         })
         .finally(() => {
           if (!mounted) return;
-          setIsLoading(false);
+          clearLoadingAfterMinTime();
         });
     } else if (initialDataProp) {
       console.log('[PreventiveMaintenanceForm] Using initialDataProp:', initialDataProp);
@@ -992,6 +1013,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
     clearError();
     setSubmitError(null);
+    loaderShownAtRef.current = Date.now();
     setIsLoading(true);
 
     const hasBeforeImageFile = values.before_image_file instanceof File;
@@ -1408,7 +1430,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     } finally {
       if (isMounted) {
         setSubmitting(false);
-        setIsLoading(false);
+        clearLoadingAfterMinTime();
         setIsImageUploading(false);
       }
     }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/app/lib/session.client';
 import { useAuthStore } from '@/app/lib/stores/useAuthStore';
 import apiClient from '@/app/lib/api-client';
+import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -94,6 +95,8 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
   const [error, setError] = useState<string | null>(null);
   const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceHistory[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
 
   // Debug logging for property changes
   useEffect(() => {
@@ -192,6 +195,7 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
   const fetchTask = useCallback(async () => {
     console.log('[Fetch Task] Starting fetch for task ID:', unwrappedParams.id);
     console.log('[Fetch Task] Selected Property:', selectedProperty);
+    recordLoaderShown();
     setLoading(true);
     setError(null);
     try {
@@ -206,9 +210,9 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
       console.error('Error fetching task:', err);
       setError(err.message || 'Failed to load task details');
     } finally {
-      setLoading(false);
+      clearLoadingAfterMinTime();
     }
-  }, [unwrappedParams.id, selectedProperty, fetchMaintenanceHistory]); // Add selectedProperty
+  }, [unwrappedParams.id, selectedProperty, fetchMaintenanceHistory, recordLoaderShown, clearLoadingAfterMinTime]); // Add selectedProperty
 
   useEffect(() => {
     console.log('[useEffect - fetchTask] Trigger check:', {
@@ -225,8 +229,18 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
 
   if (status === 'loading' || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+        aria-live="polite"
+        aria-busy="true"
+        role="status"
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
+        <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+          Loading task details…
+        </p>
       </div>
     );
   }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Formik, Form, Field, FormikErrors } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { useUser, useJobs } from '@/app/lib/stores/mainStore';
 
 // Use Next.js API routes for proxying to the backend
+const MIN_LOADER_MS = 400; // Minimum time to show loader to avoid flash
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_FILES = 2; // Maximum number of images allowed
 
@@ -83,6 +84,24 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   const { data: session } = useSession();
   const { toast } = useToast();
   const isSubmittingRef = React.useRef(false); // Prevent double submission
+  const loaderShownAtRef = useRef<number | null>(null);
+
+  const clearLoadingAfterMinTime = useCallback(() => {
+    const shownAt = loaderShownAtRef.current;
+    loaderShownAtRef.current = null;
+    if (shownAt == null) {
+      setIsLoading(false);
+      return;
+    }
+    const elapsed = Date.now() - shownAt;
+    const remaining = Math.max(0, MIN_LOADER_MS - elapsed);
+    if (remaining === 0) {
+      setIsLoading(false);
+    } else {
+      setTimeout(() => setIsLoading(false), remaining);
+    }
+  }, []);
+
   const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setSelectedProperty, userProfile } = useUser();
   const { addJob } = useJobs();
   
@@ -284,6 +303,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       return;
     }
 
+    loaderShownAtRef.current = Date.now();
     setIsLoading(true);
     setError(null);
     
@@ -301,9 +321,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       setError(errorMessage);
       showErrorToast(errorMessage);
     } finally {
-      setIsLoading(false);
+      clearLoadingAfterMinTime();
     }
-  }, [session?.user?.accessToken, selectedProperty, currentPropertyId]);
+  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, clearLoadingAfterMinTime]);
 
   useEffect(() => {
     if (session?.user?.accessToken) {

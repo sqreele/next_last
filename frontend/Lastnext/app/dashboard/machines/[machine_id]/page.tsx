@@ -32,6 +32,7 @@ import {
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
 import Link from 'next/link';
 import { useUser } from '@/app/lib/stores/mainStore';
+import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import dynamic from 'next/dynamic';
 
 // Dynamically import QRCode to avoid SSR issues
@@ -125,6 +126,8 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
   const [loadingHistory, setLoadingHistory] = useState(false);
   const qrCodeRef = useRef<HTMLDivElement>(null);
 
+  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
+
   // Verify equipment location against selected property
   const verifyMachineProperty = (): { matches: boolean; message: string } => {
     if (!selectedProperty || !machine) {
@@ -157,6 +160,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
   }, [status, unwrappedParams.machine_id]);
 
   const fetchMachineDetails = async () => {
+    recordLoaderShown();
     setLoading(true);
     setLoadingHistory(true);
     setError(null);
@@ -186,7 +190,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
       setError(err.message || 'Failed to load machine details');
       setLoadingHistory(false);
     } finally {
-      setLoading(false);
+      clearLoadingAfterMinTime();
     }
   };
 

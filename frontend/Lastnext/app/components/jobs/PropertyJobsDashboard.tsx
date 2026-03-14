@@ -54,6 +54,7 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 import html2canvas from "html2canvas";
 import { jobsApi } from "@/app/lib/api/jobsApi";
+import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 
 interface PropertyJobsDashboardProps {
   initialJobs?: Job[];
@@ -86,6 +87,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     pieChart?: string;
     barChart?: string;
   }>({});
+  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setIsLoading);
   
   // Job comparison states
   const [comparisonJobYear1, setComparisonJobYear1] = useState<number>(new Date().getFullYear() - 1);
@@ -137,6 +139,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       return;
     }
 
+    recordLoaderShown();
     setIsLoading(true);
     setError(null);
 
@@ -160,7 +163,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       setError(errorMessage);
       setAllJobs([]);
     } finally {
-      setIsLoading(false);
+      clearLoadingAfterMinTime();
     }
   };
 

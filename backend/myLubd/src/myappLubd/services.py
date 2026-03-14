@@ -6,7 +6,8 @@ from datetime import datetime
 from calendar import monthrange
 import csv
 from io import StringIO
-from django.db import transaction
+from django.db import transaction, connection
+from django.db.utils import IntegrityError
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db.models import Q, Count, F, Prefetch
@@ -731,6 +732,18 @@ class PreventiveMaintenanceService:
         }
 
     @staticmethod
+    def _reset_preventive_maintenance_sequence():
+        """Reset the id sequence to max(id)+1 to fix duplicate key after restore or manual inserts."""
+        table = PreventiveMaintenance._meta.db_table
+        quoted = connection.ops.quote_name(table)
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT setval(pg_get_serial_sequence(%s, 'id'), "
+                "COALESCE((SELECT MAX(id) FROM {}), 1))".format(quoted),
+                [table],
+            )
+
+    @staticmethod
     def create_next_occurrence(
         maintenance: PreventiveMaintenance,
         scheduled_date: datetime,
@@ -742,7 +755,7 @@ class PreventiveMaintenanceService:
             scheduled_date,
         )
 
-        next_task = PreventiveMaintenance.objects.create(
+        create_kwargs = dict(
             pmtitle=maintenance.pmtitle,
             scheduled_date=scheduled_date,
             frequency=maintenance.frequency,
@@ -757,6 +770,19 @@ class PreventiveMaintenanceService:
             job=maintenance.job,
             remarks=maintenance.remarks,
         )
+
+        try:
+            next_task = PreventiveMaintenance.objects.create(**create_kwargs)
+        except IntegrityError as e:
+            if 'duplicate key' in str(e).lower() and 'id' in str(e).lower():
+                logger.warning(
+                    "PreventiveMaintenance id sequence out of sync (%s), resetting and retrying",
+                    e,
+                )
+                PreventiveMaintenanceService._reset_preventive_maintenance_sequence()
+                next_task = PreventiveMaintenance.objects.create(**create_kwargs)
+            else:
+                raise
 
         next_task.topics.set(maintenance.topics.all())
         next_task.machines.set(maintenance.machines.all())

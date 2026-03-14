@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
+import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import { Building, User2, Mail, Calendar, Shield, Pencil, AlertCircle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/app/components/ui/button';
@@ -17,6 +18,7 @@ export default function ProfilePage() {
   const [userProperties, setUserProperties] = useState<any[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(true);
   const [propertiesError, setPropertiesError] = useState<string | null>(null);
+  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoadingProperties);
 
   // Process profile image URL
   const profileImageUrl = user?.profile_image ? fixImageUrl(user.profile_image) : null;
@@ -30,6 +32,7 @@ export default function ProfilePage() {
 
   const fetchUserProperties = async () => {
     try {
+      recordLoaderShown();
       setLoadingProperties(true);
       console.log('🔍 Fetching user properties...');
       
@@ -78,7 +81,7 @@ export default function ProfilePage() {
         setUserProperties([]);
       }
     } finally {
-      setLoadingProperties(false);
+      clearLoadingAfterMinTime();
     }
   };
 

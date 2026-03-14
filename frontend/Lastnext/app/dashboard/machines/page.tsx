@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/app/lib/session.client';
 import { useUser } from '@/app/lib/stores/mainStore';
 import apiClient from '@/app/lib/api-client';
+import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Input } from '@/app/components/ui/input';
 import { Badge } from '@/app/components/ui/badge';
@@ -69,6 +70,8 @@ export default function MachinesListPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
+  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/login');
@@ -87,6 +90,7 @@ export default function MachinesListPage() {
   }, [selectedProperty]);
 
   const fetchMachines = async () => {
+    recordLoaderShown();
     setLoading(true);
     setError(null);
     try {
@@ -164,7 +168,7 @@ export default function MachinesListPage() {
       setError(err.message || 'Failed to load machines');
       setMachines([]);
     } finally {
-      setLoading(false);
+      clearLoadingAfterMinTime();
     }
   };
 
@@ -199,11 +203,18 @@ export default function MachinesListPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading machines...</p>
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+        aria-live="polite"
+        aria-busy="true"
+        role="status"
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
+        <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+          Loading machines…
+        </p>
       </div>
     );
   }

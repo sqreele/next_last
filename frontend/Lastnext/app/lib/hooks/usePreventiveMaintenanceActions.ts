@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useSession } from '@/app/lib/session.client';
 import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import { useAuthStore } from '@/app/lib/stores/useAuthStore';
@@ -14,10 +14,13 @@ import type { SearchParams, DashboardStats } from '@/app/lib/stores/usePreventiv
 import type { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { logger } from '@/app/lib/utils/logger';
 
+const MIN_LOADER_MS = 400;
+
 export function usePreventiveMaintenanceActions() {
   const { data: session } = useSession();
   const { selectedProperty } = useAuthStore();
   const accessToken = session?.user?.accessToken || null;
+  const loaderShownAtRef = useRef<number | null>(null);
 
   const {
     maintenanceItems,
@@ -40,6 +43,22 @@ export function usePreventiveMaintenanceActions() {
     setFilterParams,
     clearError: clearStoreError,
   } = usePreventiveMaintenanceStore();
+
+  const clearLoadingAfterMinTime = useCallback(() => {
+    const shownAt = loaderShownAtRef.current;
+    loaderShownAtRef.current = null;
+    if (shownAt == null) {
+      setLoading(false);
+      return;
+    }
+    const elapsed = Date.now() - shownAt;
+    const remaining = Math.max(0, MIN_LOADER_MS - elapsed);
+    if (remaining === 0) {
+      setLoading(false);
+    } else {
+      setTimeout(() => setLoading(false), remaining);
+    }
+  }, [setLoading]);
 
   // Fetch topics
   const fetchTopicsAction = useCallback(async () => {
@@ -104,6 +123,7 @@ export function usePreventiveMaintenanceActions() {
     // This prevents data from disappearing during refresh
     const hasExistingData = maintenanceItems.length > 0;
     if (!hasExistingData) {
+      loaderShownAtRef.current = Date.now();
       setLoading(true);
     }
     clearStoreError();
@@ -239,9 +259,13 @@ export function usePreventiveMaintenanceActions() {
         setMaintenanceItems([]);
       }
     } finally {
-      setLoading(false);
+      if (loaderShownAtRef.current != null) {
+        clearLoadingAfterMinTime();
+      } else {
+        setLoading(false);
+      }
     }
-  }, [filterParams, selectedProperty, accessToken, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError, maintenanceItems]);
+  }, [filterParams, selectedProperty, accessToken, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError, maintenanceItems, clearLoadingAfterMinTime]);
 
   // Fetch statistics
   const fetchStatistics = useCallback(async () => {

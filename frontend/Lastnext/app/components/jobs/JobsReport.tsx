@@ -21,6 +21,7 @@ import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
 import { Job, TabValue, JobStatus, JobPriority, STATUS_COLORS } from '@/app/lib/types';
 import { fetchAllJobsForProperty } from '@/app/lib/data.server';
+import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import { format } from 'date-fns';
 import { jobsToCSV, downloadCSV } from '@/app/lib/utils/csv-export';
 
@@ -60,6 +61,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
   const [isGeneratingCsv, setIsGeneratingCsv] = useState(false);
   const [reportJobs, setReportJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
+  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
 
   // Get current property information
   const currentProperty = useMemo(() => {
@@ -180,6 +182,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
   useEffect(() => {
     if (selectedProperty && jobs.length === 0) {
       const loadPropertyJobs = async () => {
+        recordLoaderShown();
         setLoading(true);
         try {
           console.log('🔍 JobsReport: Loading property jobs for:', selectedProperty);
@@ -216,7 +219,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         } catch (error) {
           console.error('Error loading property jobs:', error);
         } finally {
-          setLoading(false);
+          clearLoadingAfterMinTime();
         }
       };
       
@@ -224,7 +227,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
     } else if (jobs.length > 0) {
       setReportJobs(jobs);
     }
-  }, [selectedProperty, jobs.length, session?.user?.accessToken]);
+  }, [selectedProperty, jobs.length, session?.user?.accessToken, recordLoaderShown, clearLoadingAfterMinTime]);
 
 
   // Generate CSV export

@@ -34,6 +34,8 @@ interface UseJobsDataReturn {
   lastRefreshed: Date | null;
 }
 
+const MIN_LOADER_MS = 400;
+
 export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
   const { data: session, status: sessionStatus } = useSession();
   const { userProfile } = useUser();
@@ -41,7 +43,25 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-  
+
+  const loaderShownAtRef = useRef<number | null>(null);
+
+  const clearLoadingAfterMinTime = useCallback(() => {
+    const shownAt = loaderShownAtRef.current;
+    loaderShownAtRef.current = null;
+    if (shownAt == null) {
+      setIsLoading(false);
+      return;
+    }
+    const elapsed = Date.now() - shownAt;
+    const remaining = Math.max(0, MIN_LOADER_MS - elapsed);
+    if (remaining === 0) {
+      setIsLoading(false);
+    } else {
+      setTimeout(() => setIsLoading(false), remaining);
+    }
+  }, []);
+
   // Refs to prevent infinite loops and excessive calls
   const isLoadingRef = useRef(false);
   const lastCallTimeRef = useRef<number>(0);
@@ -88,6 +108,7 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       return false;
     }
 
+    loaderShownAtRef.current = Date.now();
     setIsLoading(true);
     setError(null);
 
@@ -154,7 +175,7 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       setJobs([]); // Clear jobs on error
       return false; // Failure
     } finally {
-      setIsLoading(false);
+      clearLoadingAfterMinTime();
       isLoadingRef.current = false;
     }
     // Dependencies: activePropertyId and user session details used for filtering

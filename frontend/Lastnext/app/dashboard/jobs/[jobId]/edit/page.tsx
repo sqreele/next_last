@@ -6,6 +6,7 @@ import { Loader } from "lucide-react";
 import { Job } from "@/app/lib/types";
 import FileUpload from "@/app/components/jobs/FileUpload";
 import Image from "next/image";
+import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 
 export default function EditJobPage() {
   const router = useRouter();
@@ -18,11 +19,14 @@ export default function EditJobPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
+  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setIsLoading);
+
   // Simple job loading without complex hooks
   useEffect(() => {
     if (!jobId) return;
 
     const loadJob = async () => {
+      recordLoaderShown();
       setIsLoading(true);
       setError(null);
       
@@ -39,12 +43,12 @@ export default function EditJobPage() {
       } catch (e: any) {
         setError(e?.message || "Failed to load job");
       } finally {
-        setIsLoading(false);
+        clearLoadingAfterMinTime();
       }
     };
 
     loadJob();
-  }, [jobId]);
+  }, [jobId, recordLoaderShown, clearLoadingAfterMinTime]);
 
   const handleClose = () => {
     router.push(`/dashboard/jobs/${jobId}`);

@@ -519,11 +519,16 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   // the correct status from the backend (rather than filtering only the
   // currently loaded page on the client). This prevents empty tabs when
   // the first page doesn't contain the desired status.
+  // Intentionally omit state.filters from deps to avoid loop: updating filters
+  // would re-run this effect and can cause "Maximum update depth exceeded".
   useEffect(() => {
     if (!isAuthenticated) return;
 
+    // Read current filters from ref to avoid stale closure; ref is updated in sync with state
+    const currentFilters = filtersRef.current;
+
     // Map selectedTab to backend filters
-    const nextFilters: Partial<JobsDashboardState['filters']> = { ...state.filters };
+    const nextFilters: Partial<JobsDashboardState['filters']> = { ...currentFilters };
 
     // Reset tab-related filters
     delete (nextFilters as any).status;
@@ -559,7 +564,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     }
 
     // Only update filters (and trigger refresh) if something actually changed
-    const filtersChanged = JSON.stringify(state.filters) !== JSON.stringify(nextFilters);
+    const filtersChanged = JSON.stringify(currentFilters) !== JSON.stringify(nextFilters);
     if (filtersChanged) {
       updateFilters(nextFilters);
     }
@@ -571,7 +576,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
       }, 100);
       return () => clearTimeout(timeoutId);
     }
-  }, [isAuthenticated, state.selectedTab, state.filters, updateFilters]);
+  }, [isAuthenticated, state.selectedTab, updateFilters]);
   
   // Refresh when selected property changes
   useEffect(() => {

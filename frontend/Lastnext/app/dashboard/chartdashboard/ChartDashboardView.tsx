@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import PMNonPMBarChart from './components/PMNonPMBarChart';
 import StatusPieChart from './components/StatusPieChart';
 import SummaryCards from './components/SummaryCards';
@@ -95,6 +96,7 @@ export default function ChartDashboardView() {
   const [selectedMonth, setSelectedMonth] = useState<MonthOption>('All');
   const [selectedYear, setSelectedYear] = useState<YearOption>('All');
   const { selectedPropertyId: selectedProperty } = useUser();
+  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -107,6 +109,7 @@ export default function ChartDashboardView() {
           setError(null);
           return;
         }
+        recordLoaderShown();
         setLoading(true);
         setError(null);
         const params = new URLSearchParams();
@@ -129,7 +132,7 @@ export default function ChartDashboardView() {
         }
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
-        setLoading(false);
+        clearLoadingAfterMinTime();
       }
     }
 
@@ -138,7 +141,7 @@ export default function ChartDashboardView() {
     return () => {
       controller.abort();
     };
-  }, [selectedProperty]);
+  }, [selectedProperty, recordLoaderShown, clearLoadingAfterMinTime]);
 
   const availableYears = useMemo(() => {
     if (!data) return [];

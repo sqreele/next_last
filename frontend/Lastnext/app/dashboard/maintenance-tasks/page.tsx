@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from '@/app/lib/session.client';
 import { useRouter } from 'next/navigation';
 import apiClient from '@/app/lib/api-client';
@@ -22,7 +22,8 @@ import {
   RefreshCw,
   Users,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Loader
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -70,9 +71,29 @@ const difficultyColors: Record<string, string> = {
   expert: 'bg-red-100 text-red-800',
 };
 
+const MIN_LOADER_MS = 400;
+
 export default function MaintenanceTasksPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const loaderShownAtRef = useRef<number | null>(null);
+
+  const clearLoadingAfterMinTime = useCallback(() => {
+    const shownAt = loaderShownAtRef.current;
+    loaderShownAtRef.current = null;
+    if (shownAt == null) {
+      setLoading(false);
+      return;
+    }
+    const elapsed = Date.now() - shownAt;
+    const remaining = Math.max(0, MIN_LOADER_MS - elapsed);
+    if (remaining === 0) {
+      setLoading(false);
+    } else {
+      setTimeout(() => setLoading(false), remaining);
+    }
+  }, []);
+
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<MaintenanceTask[]>([]);
   const [page, setPage] = useState(1);
@@ -93,6 +114,7 @@ export default function MaintenanceTasksPage() {
   }, [status, router]);
 
   const fetchTasks = useCallback(async (pageToLoad: number = page, pageSizeToUse: number = pageSize) => {
+    loaderShownAtRef.current = Date.now();
     setLoading(true);
     setError(null);
     try {
@@ -169,9 +191,9 @@ export default function MaintenanceTasksPage() {
       setTotalCount(0);
       setTotalPages(1);
     } finally {
-      setLoading(false);
+      clearLoadingAfterMinTime();
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, clearLoadingAfterMinTime]);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -249,8 +271,18 @@ export default function MaintenanceTasksPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+        aria-live="polite"
+        aria-busy="true"
+        role="status"
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+          <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+        </div>
+        <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+          Loading maintenance tasks…
+        </p>
       </div>
     );
   }

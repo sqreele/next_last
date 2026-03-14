@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import Link from 'next/link';
 import { Package, Search, CalendarClock, Home, MapPin, AlertCircle } from 'lucide-react';
 import {CardFooter, Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
@@ -23,6 +24,7 @@ export default function SearchContent() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setIsLoading);
   
   // Get auth token from session
   const { data: session } = useSession();
@@ -35,6 +37,7 @@ export default function SearchContent() {
     const fetchSearchResults = async () => {
       if (!query) return;
       
+      recordLoaderShown();
       setIsLoading(true);
       setError(null);
       
@@ -112,12 +115,12 @@ export default function SearchContent() {
         console.error('Error fetching search results:', error);
         setError('An error occurred while fetching search results. Please try again.');
       } finally {
-        setIsLoading(false);
+        clearLoadingAfterMinTime();
       }
     };
     
     fetchSearchResults();
-  }, [query, accessToken, selectedProperty, userProperties]);
+  }, [query, accessToken, selectedProperty, userProperties, recordLoaderShown, clearLoadingAfterMinTime]);
 
   // Create filtered lists with proper null checks
   const filteredJobs = Array.isArray(jobs) ? jobs.filter(job => 

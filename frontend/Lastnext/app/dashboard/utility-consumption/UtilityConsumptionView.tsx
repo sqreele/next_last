@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import ActualVsBudgetChart from './components/ActualVsBudgetChart';
 import FiltersBar from './components/FiltersBar';
 import MetricLineChart from './components/MetricLineChart';
@@ -31,6 +32,7 @@ export default function UtilityConsumptionView() {
   const [selectedMonth, setSelectedMonth] = useState<MonthName | 'All'>('All');
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>('totalkwh');
   const { selectedPropertyId: selectedProperty } = useUser();
+  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -43,6 +45,7 @@ export default function UtilityConsumptionView() {
           setLoading(false);
           return;
         }
+        recordLoaderShown();
         setLoading(true);
         setError(null);
         const params = new URLSearchParams();
@@ -62,14 +65,14 @@ export default function UtilityConsumptionView() {
         }
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
-        setLoading(false);
+        clearLoadingAfterMinTime();
       }
     }
 
     loadData();
 
     return () => controller.abort();
-  }, [selectedProperty]);
+  }, [selectedProperty, recordLoaderShown, clearLoadingAfterMinTime]);
 
   const availableYears = useMemo(() => {
     const yearSet = new Set<number>();

@@ -6,6 +6,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from "@/app/lib/session.client";
+import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import { 
   PreventiveMaintenance, 
   getImageUrl,
@@ -45,6 +46,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const [currentImageAlt, setCurrentImageAlt] = useState<string>('');
   const [isCompleting, setIsCompleting] = useState(false);
+  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setIsLoading);
   
   useEffect(() => {
     const accessToken = session?.user?.accessToken;
@@ -60,6 +62,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
       return;
     }
   
+    recordLoaderShown();
     setIsLoading(true);
     setError(null);
   
@@ -76,7 +79,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
       console.error('Error deleting maintenance:', err);
       setError(err.message || 'An error occurred while deleting');
     } finally {
-      setIsLoading(false);
+      clearLoadingAfterMinTime();
     }
   }
   

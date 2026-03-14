@@ -10,6 +10,7 @@ import { Plus, ChevronDown, ChevronUp, Loader, AlertCircle, CheckCircle, Upload,
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import { useToast } from "@/app/components/ui/use-toast";
 import { useSession, signIn } from '@/app/lib/session.client';
 import { Label } from "@/app/components/ui/label";
 import RoomAutocomplete from '@/app/components/jobs/RoomAutocomplete';
@@ -80,6 +81,7 @@ const initialValues: FormValues = {
 
 const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }) => {
   const { data: session } = useSession();
+  const { toast } = useToast();
   const isSubmittingRef = React.useRef(false); // Prevent double submission
   const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setSelectedProperty, userProfile } = useUser();
   const { addJob } = useJobs();
@@ -97,6 +99,47 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPropertyId, setCurrentPropertyId] = useState<string | null>(null);
+
+  const formatApiError = (error: unknown, fallbackMessage: string): string => {
+    if (!axios.isAxiosError(error)) {
+      if (error instanceof Error && error.message) return error.message;
+      return fallbackMessage;
+    }
+
+    const data = error.response?.data;
+    if (!data) return error.message || fallbackMessage;
+    if (typeof data === 'string') return data;
+    if (typeof data !== 'object') return fallbackMessage;
+
+    const payload = data as Record<string, unknown>;
+    const directMessage = payload.detail || payload.message || payload.error;
+    const fieldErrors = Object.entries(payload)
+      .filter(([key]) => !['detail', 'message', 'error', 'non_field_errors'].includes(key))
+      .map(([key, value]) => {
+        if (Array.isArray(value)) return `${key}: ${value.join(', ')}`;
+        return `${key}: ${String(value)}`;
+      });
+
+    const nonFieldErrors = Array.isArray(payload.non_field_errors)
+      ? payload.non_field_errors.join(', ')
+      : null;
+
+    const parts = [
+      directMessage ? String(directMessage) : null,
+      nonFieldErrors,
+      ...fieldErrors,
+    ].filter(Boolean);
+
+    return parts.length ? parts.join(' | ') : fallbackMessage;
+  };
+
+  const showErrorToast = (message: string) => {
+    toast({
+      title: 'Error',
+      description: message,
+      variant: 'destructive',
+    });
+  };
 
   // Check if user has properties
   const hasProperties = userProfile?.properties && userProfile.properties.length > 0;
@@ -149,7 +192,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
     try {
       if (!session?.user) {
-        setError('Please login first');
+        const message = 'Please login first';
+        setError(message);
+        showErrorToast(message);
         await signIn();
         isSubmittingRef.current = false;
         setSubmitting(false);
@@ -157,14 +202,18 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       }
 
       if (!selectedProperty) {
-        setError('Please select a property');
+        const message = 'Please select a property';
+        setError(message);
+        showErrorToast(message);
         isSubmittingRef.current = false;
         setSubmitting(false);
         return;
       }
 
       if (!values.room || !values.room.room_id) {
-        setError('Please select a valid room');
+        const message = 'Please select a valid room';
+        setError(message);
+        showErrorToast(message);
         isSubmittingRef.current = false;
         setSubmitting(false);
         return;
@@ -173,6 +222,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       const fileError = validateFiles(values.files);
       if (fileError) {
         setError(fileError);
+        showErrorToast(fileError);
         isSubmittingRef.current = false;
         setSubmitting(false);
         return;
@@ -208,15 +258,29 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       resetForm();
       triggerJobCreation();
       if (onJobCreated) onJobCreated();
+<<<<<<< HEAD
       setTimeout(() => {
         router.push('/dashboard/myJobs');
       }, 1500);
+=======
+      toast({
+        title: 'Success',
+        description: 'Job created successfully.',
+      });
+      router.push('/dashboard/myJobs');
+>>>>>>> 69714ec (addlast)
       
       // Note: Don't reset isSubmittingRef here because we're navigating away
     } catch (error) {
       console.error('Submission error:', error);
+<<<<<<< HEAD
       setError('Failed to create job. Please try again.');
       setSuccessMessage(null);
+=======
+      const errorMessage = formatApiError(error, 'Failed to create job. Please try again.');
+      setError(errorMessage);
+      showErrorToast(errorMessage);
+>>>>>>> 69714ec (addlast)
       isSubmittingRef.current = false;
       setSubmitting(false);
     }
@@ -241,7 +305,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       setTopics(topicsResponse.data);
     } catch (error) {
       console.error('Error fetching data:', error);
-      setError('Failed to fetch rooms and topics. Please try again.');
+      const errorMessage = formatApiError(error, 'Failed to fetch rooms and topics. Please try again.');
+      setError(errorMessage);
+      showErrorToast(errorMessage);
     } finally {
       setIsLoading(false);
     }

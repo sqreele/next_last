@@ -212,9 +212,9 @@ const RoomAutocomplete = ({
   return (
     <div className="space-y-2">
       {/* Info text showing current property */}
-      <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-        <Building className="h-3 w-3" />
-        <span>
+      <div className="mb-1 flex flex-wrap items-start gap-1.5 text-xs text-gray-500">
+        <Building className="mt-0.5 h-3 w-3 shrink-0" />
+        <span className="min-w-0 break-words">
           Showing rooms for: <span className="font-medium text-gray-700">{getPropertyName()}</span>
           {(selectedProperty || searchQuery) && (<span className="ml-1">({filteredRooms.length} found)</span>)}
         </span>
@@ -237,18 +237,23 @@ const RoomAutocomplete = ({
             aria-expanded={open}
             disabled={disabled || safeRooms.length === 0}
             className={cn(
-              "w-full justify-between h-11 text-sm bg-white border-gray-300 font-normal",
+              "h-11 w-full justify-between border-gray-300 bg-white px-3 text-left text-sm font-normal sm:text-base",
               !selectedRoom?.name && "text-muted-foreground"
             )}
             data-testid="room-select-button"
           >
-            {selectedRoom?.name
-              ? `${selectedRoom.name}${selectedRoom.room_type ? ` (${selectedRoom.room_type})` : ''}`
-              : "Select room..."}
+            <span className="truncate">
+              {selectedRoom?.name
+                ? `${selectedRoom.name}${selectedRoom.room_type ? ` (${selectedRoom.room_type})` : ''}`
+                : "Select room..."}
+            </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[--radix-popover-trigger-width)] p-0 bg-white border border-input shadow-md">
+        <PopoverContent
+          align="start"
+          className="w-[var(--radix-popover-trigger-width)] min-w-[260px] max-w-[calc(100vw-1rem)] border border-input bg-white p-0 shadow-md"
+        >
           <Command shouldFilter={false} className="border-0">
             <CommandInput
               placeholder="Search room number, name, or type..."
@@ -283,8 +288,8 @@ const RoomAutocomplete = ({
                         selectedRoom?.room_id === room.room_id ? "opacity-100" : "opacity-0"
                       )} 
                     />
-                    <span>{room.name}</span>
-                    {room.room_type && <span className="ml-2 text-xs text-muted-foreground">({room.room_type})</span>}
+                    <span className="min-w-0 truncate">{room.name}</span>
+                    {room.room_type && <span className="ml-2 hidden text-xs text-muted-foreground sm:inline">({room.room_type})</span>}
                   </CommandItem>
                 ))}
               </CommandGroup>

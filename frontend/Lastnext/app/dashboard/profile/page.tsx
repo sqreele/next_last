@@ -95,13 +95,13 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-white">
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-          <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
             </div>
           </div>
         </div>
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-6">
           <div className="text-center space-y-4">
             <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto"></div>
             <p className="text-sm text-gray-500">Loading...</p>
@@ -120,14 +120,14 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-white">
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-          <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-3">
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
             </div>
           </div>
         </div>
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <Card className="max-w-md mx-auto">
+        <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-6">
+          <Card className="w-full mx-auto">
             <CardContent className="pt-6">
               <div className="text-center space-y-4">
                 <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
@@ -148,14 +148,14 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-white">
       {/* Instagram-style header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-3">
+        <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-6">
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Profile Information */}

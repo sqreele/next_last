@@ -69,7 +69,7 @@ export default function EditProfilePage() {
       <div className="w-full max-w-2xl mx-auto p-4">
         <Card>
           <CardContent className="flex justify-center py-12">
-            <div className="animate-pulse space-y-4 w-full max-w-md">
+            <div className="animate-pulse space-y-4 w-full">
               <div className="h-4 bg-muted rounded w-3/4 mx-auto" />
               <div className="h-4 bg-muted rounded w-1/2 mx-auto" />
             </div>

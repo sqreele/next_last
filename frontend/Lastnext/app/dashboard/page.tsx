@@ -13,7 +13,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Instagram-style layout */}
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto">
         <Suspense
           fallback={
             <div className="flex items-center justify-center min-h-screen">

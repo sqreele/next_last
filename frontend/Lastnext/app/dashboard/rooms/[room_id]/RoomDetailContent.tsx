@@ -77,7 +77,7 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-7xl desktop:max-w-[96rem] mx-auto">
       <Card>
         <CardHeader>
           <div className="flex justify-between items-start">

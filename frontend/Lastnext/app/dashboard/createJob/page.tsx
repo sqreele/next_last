@@ -47,7 +47,7 @@ export default async function CreateJobPage() {
     <div className="min-h-screen bg-white">
       {/* Instagram-style header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-3">
+        <div className="w-full px-4 py-3">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-900">Create Job</h1>
             <div className="flex items-center gap-4">
@@ -59,18 +59,18 @@ export default async function CreateJobPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full">
         {/* Form Section with Instagram-style clean design */}
-        <div className="px-4 py-6">
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
+        <div className="-mx-3 mobile:-mx-4 sm:mx-0 py-4 sm:py-6">
+          <div className="w-full bg-white border-y border-gray-200 sm:border sm:rounded-lg rounded-none overflow-hidden">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">New Maintenance Job</h2>
               <p className="text-sm text-gray-600 mt-1">
                 Fill out the details below to create a new maintenance job.
               </p>
             </div>
             
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <Suspense fallback={
                 <div className="flex items-center justify-center py-12">
                   <div className="flex flex-col items-center gap-4">

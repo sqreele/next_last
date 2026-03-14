@@ -310,7 +310,7 @@ export default function ImprovedDashboard() {
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
+        <Card className="w-full">
           <CardContent className="p-8 text-center space-y-6">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
               <span className="text-3xl">⚠️</span>
@@ -332,7 +332,7 @@ export default function ImprovedDashboard() {
     <div className="min-h-screen bg-white">
       {/* Instagram-style header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-3">
+        <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
             <div className="flex items-center gap-4">
@@ -357,7 +357,7 @@ export default function ImprovedDashboard() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto">
         {/* Instagram-style stories/stats section */}
         <div className="px-4 py-6 border-b border-gray-200">
           <div className="flex items-center gap-6 overflow-x-auto pb-2">

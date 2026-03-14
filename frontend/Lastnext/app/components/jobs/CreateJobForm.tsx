@@ -258,29 +258,21 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       resetForm();
       triggerJobCreation();
       if (onJobCreated) onJobCreated();
-<<<<<<< HEAD
-      setTimeout(() => {
-        router.push('/dashboard/myJobs');
-      }, 1500);
-=======
       toast({
         title: 'Success',
         description: 'Job created successfully.',
       });
-      router.push('/dashboard/myJobs');
->>>>>>> 69714ec (addlast)
+      setTimeout(() => {
+        router.push('/dashboard/myJobs');
+      }, 1500);
       
       // Note: Don't reset isSubmittingRef here because we're navigating away
     } catch (error) {
       console.error('Submission error:', error);
-<<<<<<< HEAD
-      setError('Failed to create job. Please try again.');
-      setSuccessMessage(null);
-=======
       const errorMessage = formatApiError(error, 'Failed to create job. Please try again.');
       setError(errorMessage);
+      setSuccessMessage(null);
       showErrorToast(errorMessage);
->>>>>>> 69714ec (addlast)
       isSubmittingRef.current = false;
       setSubmitting(false);
     }
@@ -320,28 +312,28 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   }, [fetchData, session?.user?.accessToken, selectedProperty]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 pb-24 sm:space-y-6 sm:pb-24 md:space-y-8 md:pb-0">
       {/* Error Alert */}
       {error && (
         <Alert className="border-red-200 bg-red-50">
           <AlertCircle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-800">{error}</AlertDescription>
+          <AlertDescription className="break-words text-sm text-red-800">{error}</AlertDescription>
         </Alert>
       )}
 
       {successMessage && (
         <Alert className="border-green-200 bg-green-50">
           <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
+          <AlertDescription className="text-sm text-green-800">{successMessage}</AlertDescription>
         </Alert>
       )}
 
       {/* Loading Indicator */}
       {isLoading && (
-        <div className="flex items-center justify-center p-8">
+        <div className="flex items-center justify-center p-6 sm:p-8">
           <div className="flex items-center gap-3 text-blue-600">
             <Loader className="h-6 w-6 animate-spin" />
-            <span className="text-lg font-medium">Loading form data...</span>
+            <span className="text-base font-medium sm:text-lg">Loading form data...</span>
           </div>
         </div>
       )}
@@ -354,20 +346,20 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         onSubmit={handleSubmit}
       >
         {({ values, errors, touched, setFieldValue, isSubmitting }) => (
-                  <Form className="space-y-8">
+                  <Form className="space-y-5 sm:space-y-6 md:space-y-8">
           {/* Basic Information Section */}
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-2xl border border-blue-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Plus className="h-5 w-5 text-blue-600" />
+            <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-cyan-50 p-4 sm:rounded-2xl sm:p-6">
+              <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
+                <div className="rounded-lg bg-blue-100 p-1.5 sm:p-2">
+                  <Plus className="h-4 w-4 text-blue-600 sm:h-5 sm:w-5" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Basic Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Basic Information</h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                 {/* Description */}
                 <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="description" className="font-medium text-gray-700">
+                  <Label htmlFor="description" className="text-sm font-medium text-gray-700 sm:text-base">
                     Job Description <span className="text-red-500">*</span>
                   </Label>
                   <Field
@@ -376,11 +368,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     name="description"
                     placeholder="Describe the maintenance job in detail..."
                     disabled={isSubmitting}
-                    className={`w-full min-h-[100px] p-4 text-base border-2 rounded-xl transition-all duration-200 ${
+                    className={`w-full min-h-[96px] border-2 p-3 text-sm transition-all duration-200 sm:min-h-[110px] sm:p-4 sm:text-base ${
                       touched.description && errors.description 
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
                         : 'border-gray-200 focus:border-blue-500 focus:ring-blue-200'
-                    } focus:ring-4 focus:outline-none resize-none`}
+                    } resize-none rounded-xl focus:outline-none focus:ring-4`}
                   />
                   {touched.description && errors.description && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
@@ -392,7 +384,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
                 {/* Status and Priority */}
                 <div className="space-y-2">
-                  <Label className="font-medium text-gray-700">
+                  <Label className="text-sm font-medium text-gray-700 sm:text-base">
                     Status <span className="text-red-500">*</span>
                   </Label>
                   <Select
@@ -400,7 +392,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     onValueChange={(value) => setFieldValue('status', value)}
                     disabled={isSubmitting}
                   >
-                    <SelectTrigger className={`h-12 border-2 rounded-xl transition-all duration-200 ${
+                    <SelectTrigger className={`h-11 border-2 rounded-xl transition-all duration-200 sm:h-12 ${
                       touched.status && errors.status ? 'border-red-300' : 'border-gray-200'
                     }`}>
                       <SelectValue placeholder="Select Status" />
@@ -422,7 +414,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-medium text-gray-700">
+                  <Label className="text-sm font-medium text-gray-700 sm:text-base">
                     Priority <span className="text-red-500">*</span>
                   </Label>
                   <Select
@@ -430,7 +422,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     onValueChange={(value) => setFieldValue('priority', value)}
                     disabled={isSubmitting}
                   >
-                    <SelectTrigger className={`h-12 border-2 rounded-xl transition-all duration-200 ${
+                    <SelectTrigger className={`h-11 border-2 rounded-xl transition-all duration-200 sm:h-12 ${
                       touched.priority && errors.priority ? 'border-red-300' : 'border-gray-200'
                     }`}>
                       <SelectValue placeholder="Select Priority" />
@@ -453,18 +445,18 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Assignment Section */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Building className="h-5 w-5 text-green-600" />
+            <div className="rounded-xl border border-green-100 bg-gradient-to-r from-green-50 to-emerald-50 p-4 sm:rounded-2xl sm:p-6">
+              <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
+                <div className="rounded-lg bg-green-100 p-1.5 sm:p-2">
+                  <Building className="h-4 w-4 text-green-600 sm:h-5 sm:w-5" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Assignment & Location</h3>
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Assignment & Location</h3>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                 {/* Room Selection */}
                 <div className="md:col-span-2 space-y-2">
-                  <Label className="font-medium text-gray-700">
+                  <Label className="text-sm font-medium text-gray-700 sm:text-base">
                     Room <span className="text-red-500">*</span>
                   </Label>
                   <RoomAutocomplete
@@ -483,7 +475,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
                 {/* Topic Selection */}
                 <div className="md:col-span-2 space-y-2">
-                  <Label className="font-medium text-gray-700">
+                  <Label className="text-sm font-medium text-gray-700 sm:text-base">
                     Topic <span className="text-red-500">*</span>
                   </Label>
                   <Select
@@ -494,7 +486,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     }}
                     disabled={isSubmitting}
                   >
-                    <SelectTrigger className={`h-12 border-2 rounded-xl transition-all duration-200 ${
+                    <SelectTrigger className={`h-11 border-2 rounded-xl transition-all duration-200 sm:h-12 ${
                       touched.topic?.title && errors.topic?.title ? 'border-red-300' : 'border-gray-200'
                     }`}>
                       <SelectValue placeholder="Select a maintenance topic" />
@@ -520,18 +512,18 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Additional Details Section */}
-            <div className="bg-gradient-to-r from-purple-50 to-violet-50 p-6 rounded-2xl border border-purple-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Plus className="h-5 w-5 text-purple-600" />
+            <div className="rounded-xl border border-purple-100 bg-gradient-to-r from-purple-50 to-violet-50 p-4 sm:rounded-2xl sm:p-6">
+              <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
+                <div className="rounded-lg bg-purple-100 p-1.5 sm:p-2">
+                  <Plus className="h-4 w-4 text-purple-600 sm:h-5 sm:w-5" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Additional Details</h3>
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Additional Details</h3>
               </div>
               
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Remarks */}
                 <div className="space-y-2">
-                  <Label htmlFor="remarks" className="font-medium text-gray-700">
+                  <Label htmlFor="remarks" className="text-sm font-medium text-gray-700 sm:text-base">
                     Remarks
                   </Label>
                   <Field
@@ -540,11 +532,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     name="remarks"
                     placeholder="Enter any additional remarks or special instructions..."
                     disabled={isSubmitting}
-                    className={`w-full min-h-[100px] p-4 text-base border-2 rounded-xl transition-all duration-200 ${
+                    className={`w-full min-h-[96px] border-2 p-3 text-sm transition-all duration-200 sm:min-h-[110px] sm:p-4 sm:text-base ${
                       touched.remarks && errors.remarks 
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
                         : 'border-gray-200 focus:border-purple-500 focus:ring-purple-200'
-                    } focus:ring-4 focus:outline-none resize-none`}
+                    } resize-none rounded-xl focus:outline-none focus:ring-4`}
                   />
                   {touched.remarks && errors.remarks && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
@@ -555,8 +547,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 </div>
 
                 {/* Checkboxes */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3 p-4 bg-white/60 rounded-xl border border-purple-200">
+                <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
+                  <div className="flex items-center gap-3 rounded-xl border border-purple-200 bg-white/60 p-3 sm:p-4">
                     <Checkbox
                       id="is_defective"
                       checked={values.is_defective}
@@ -564,12 +556,12 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       disabled={isSubmitting}
                       className="h-5 w-5 text-purple-600 border-2 border-purple-300 rounded"
                     />
-                    <Label htmlFor="is_defective" className="text-gray-700 font-medium cursor-pointer">
+                    <Label htmlFor="is_defective" className="cursor-pointer text-sm font-medium text-gray-700 sm:text-base">
                       Is Defective?
                     </Label>
                   </div>
 
-                  <div className="flex items-center gap-3 p-4 bg-white/60 rounded-xl border border-purple-200">
+                  <div className="flex items-center gap-3 rounded-xl border border-purple-200 bg-white/60 p-3 sm:p-4">
                     <Checkbox
                       id="is_preventivemaintenance"
                       checked={values.is_preventivemaintenance}
@@ -577,7 +569,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       disabled={isSubmitting}
                       className="h-5 w-5 text-purple-600 border-2 border-purple-300 rounded"
                     />
-                    <Label htmlFor="is_preventivemaintenance" className="text-gray-700 font-medium cursor-pointer">
+                    <Label htmlFor="is_preventivemaintenance" className="cursor-pointer text-sm font-medium text-gray-700 sm:text-base">
                       Is Preventive Maintenance?
                     </Label>
                   </div>
@@ -586,16 +578,16 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* File Upload Section */}
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-6 rounded-2xl border border-amber-100">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-amber-100 rounded-lg">
-                  <Upload className="h-5 w-5 text-amber-600" />
+            <div className="rounded-xl border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 p-4 sm:rounded-2xl sm:p-6">
+              <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
+                <div className="rounded-lg bg-amber-100 p-1.5 sm:p-2">
+                  <Upload className="h-4 w-4 text-amber-600 sm:h-5 sm:w-5" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900">Images & Documentation</h3>
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Images & Documentation</h3>
               </div>
               
               <div className="space-y-2">
-                <Label className="font-medium text-gray-700">
+                <Label className="text-sm font-medium text-gray-700 sm:text-base">
                   Images (up to {MAX_FILES}) <span className="text-red-500">*</span>
                 </Label>
                 <FileUpload
@@ -604,18 +596,18 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                   disabled={isSubmitting}
                   maxFiles={MAX_FILES}
                 />
-                <p className="text-sm text-gray-500">
+                <p className="text-xs text-gray-500 sm:text-sm">
                   Upload up to {MAX_FILES} images to document the issue. Max 5MB each.
                 </p>
               </div>
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-center">
+            <div className="sticky bottom-0 z-20 -mx-2 border-t bg-white/95 px-2 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:-mx-4 sm:px-4 md:static md:mx-0 md:border-t-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
               <Button 
                 type="submit" 
                 disabled={isSubmitting} 
-                className="w-full max-w-md h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg md:mx-auto md:max-w-md md:rounded-2xl"
               >
                 {isSubmitting ? (
                   <div className="flex items-center gap-3">

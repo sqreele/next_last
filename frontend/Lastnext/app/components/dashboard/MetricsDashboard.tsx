@@ -52,7 +52,7 @@ export function MetricsDashboard() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="max-w-md mx-auto">
+        <Card className="w-full mx-auto">
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
               <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />

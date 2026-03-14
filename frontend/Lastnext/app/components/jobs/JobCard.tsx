@@ -413,7 +413,7 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
       className={`w-full flex flex-col transition-all duration-200 bg-white shadow hover:shadow-md cursor-pointer mobile-card relative overflow-hidden ${
         viewMode === 'list' 
           ? "max-w-none" 
-          : "max-w-none sm:max-w-md mx-auto"
+          : "max-w-none sm:w-full mx-auto"
       }`}
       onClick={handleCardClick}
     >

@@ -11,7 +11,7 @@ interface DeleteModalProps {
 const DeleteModal: React.FC<DeleteModalProps> = ({ onConfirm, onCancel }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex items-center mb-4">
           <div className="flex-shrink-0">
             <div className="bg-red-100 rounded-full p-2">

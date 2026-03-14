@@ -168,10 +168,10 @@ function NoPropertiesCard() {
 
 function LoadingSkeleton() {
   return (
-    <div className="w-full max-w-4xl mx-auto p-4">
+    <div className="w-full max-w-7xl desktop:max-w-[96rem] mx-auto p-4">
       <Card>
         <CardContent className="flex justify-center py-12 sm:py-20">
-          <div className="animate-pulse space-y-8 w-full max-w-md">
+          <div className="animate-pulse space-y-8 w-full">
             <div className="flex justify-center">
               <div className="w-24 h-24 bg-muted rounded-full" />
             </div>
@@ -220,7 +220,7 @@ export default function ProfileDisplay() {
   // Use PropertyContext for properties instead of userProfile.properties
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 space-y-6">
+    <div className="w-full max-w-7xl desktop:max-w-[96rem] mx-auto p-4 space-y-6">
       <Card>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-3 sm:pb-6">
           <div>

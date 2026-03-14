@@ -889,7 +889,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   // Now check for early return conditions after all hooks are defined
   if (!hasProperties) {
     return (
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           <h2 className="font-semibold mb-2">No Properties Available</h2>
           <p>You need to have at least one property assigned to create preventive maintenance records.</p>
@@ -910,7 +910,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   // Check if properties are still loading
   if (userProperties.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
           <h2 className="font-semibold mb-2">Loading Properties...</h2>
           <p>Please wait while we load your property information.</p>

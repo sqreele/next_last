@@ -122,7 +122,7 @@ export default function EditJobPage() {
 
   if (error) {
     return (
-      <div className="max-w-md mx-auto p-4">
+      <div className="w-full mx-auto p-4">
         <div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-700 text-sm">
           {error}
         </div>

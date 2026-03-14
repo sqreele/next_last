@@ -375,7 +375,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
 
   if (error || !machine) {
     return (
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-4">
@@ -402,7 +402,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
     : '/dashboard/preventive-maintenance/create';
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-start gap-4">
         <div className="flex items-center gap-4 flex-1">
@@ -552,7 +552,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
                 <ImageIcon className="h-4 w-4" />
                 Equipment Photo
               </p>
-              <div className="w-full max-w-md">
+              <div className="w-full">
                 <div className="relative aspect-video rounded-lg border-2 border-gray-200 bg-gray-50 overflow-hidden">
                   <img
                     src={getMachineImageUrl()!}

@@ -137,7 +137,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   }, [selectedFiles, getFilePreview]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Display External (Formik) Error OR Internal Validation Error */}
       {(touched && error) || validationError ? (
         <Alert variant="destructive">
@@ -148,7 +148,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       <div
         className={cn(
-          "border-2 border-dashed rounded-lg p-6 text-center",
+          "rounded-lg border-2 border-dashed p-4 text-center sm:p-6",
           isDragging ? "border-primary bg-primary/10" : "border-muted",
           disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
         )}
@@ -161,15 +161,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
       >
         <label
           className={cn(
-            "flex flex-col items-center gap-2",
+            "flex flex-col items-center gap-1.5 sm:gap-2",
             disabled ? "pointer-events-none" : ""
           )}
         >
-          <Upload className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
+          <Upload className="h-6 w-6 text-muted-foreground sm:h-8 sm:w-8" />
+          <p className="px-2 text-xs text-muted-foreground sm:text-sm">
             Drag and drop images or click to upload
           </p>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground sm:text-xs">
             (Max {maxFiles} files, {maxSize}MB each)
           </p>
           <input
@@ -185,33 +185,33 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       {/* File Previews */}
       {selectedFiles.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-2.5 sm:space-y-3">
           {selectedFiles.map((file, index) => (
             <div
               key={`${file.name}-${index}-${file.lastModified}`}
-              className="relative flex items-center gap-3 p-3 border rounded-lg group bg-background"
+              className="group relative flex items-start gap-2.5 rounded-lg border bg-background p-2.5 sm:items-center sm:gap-3 sm:p-3"
             >
               {/* Image Preview */}
-              <div className="relative w-16 h-16 flex-shrink-0">
+              <div className="relative h-14 w-14 flex-shrink-0 sm:h-16 sm:w-16">
                 <Image
                   src={getFilePreview(file)}
                   alt={`Preview ${index}`}
                   fill
                   className="object-cover rounded"
-                  sizes="64px"
+                  sizes="(max-width: 640px) 56px, 64px"
                 />
               </div>
               {/* File Info & Progress */}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" title={file.name}>
+                <p className="truncate pr-8 text-xs font-medium sm:pr-0 sm:text-sm" title={file.name}>
                   {file.name}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground sm:text-xs">
                   {(file.size / (1024 * 1024)).toFixed(2)}MB
                 </p>
                 <Progress
                   value={fileProgress[file.name] || (file ? 100 : 0)}
-                  className="h-1 mt-1"
+                  className="mt-1 h-1"
                 />
               </div>
               {/* Remove Button */}
@@ -220,7 +220,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  className="absolute right-1 top-1 h-7 w-7 text-muted-foreground opacity-100 transition-opacity hover:text-destructive sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100"
                   onClick={() => removeFile(index)}
                   aria-label="Remove file"
                 >

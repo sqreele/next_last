@@ -53,7 +53,7 @@ export default function PreventiveMaintenancePage() {
   // If no property is selected, show property selection prompt
   if (!selectedProperty) {
     return (
-      <div className="max-w-4xl mx-auto p-4 sm:p-6">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6">
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
           <div className="mb-4 flex justify-center">
             <Building className="h-12 w-12 text-amber-500" />
@@ -77,7 +77,7 @@ export default function PreventiveMaintenancePage() {
   // If user has no properties, show no properties message
   if (!hasProperties) {
     return (
-      <div className="max-w-4xl mx-auto p-4 sm:p-6">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <div className="mb-4 flex justify-center">
             <AlertTriangle className="h-12 w-12 text-red-500" />

@@ -856,7 +856,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
       {/* Friendly header with gradient */}
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/50 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+        <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
@@ -893,7 +893,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 sm:px-6 py-6">
         {/* Job count info with friendly design */}
         <Card className="mb-6 border-blue-100 bg-gradient-to-r from-blue-50/50 to-white">
           <CardContent className="pt-6">
@@ -1059,7 +1059,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
             // Empty State with friendly design
             <Card className="border-dashed border-2 border-gray-300 bg-gradient-to-br from-gray-50 to-white">
               <CardContent className="pt-16 pb-16 text-center">
-                <div className="max-w-md mx-auto space-y-6">
+                <div className="w-full mx-auto space-y-6">
                   <div className="relative inline-block">
                     <div className="absolute inset-0 bg-blue-100 rounded-full blur-xl opacity-50"></div>
                     {jobs.length > 0 ? (

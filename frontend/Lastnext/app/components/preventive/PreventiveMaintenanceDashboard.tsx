@@ -300,7 +300,7 @@ export default function PreventiveMaintenanceDashboard() {
   
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="text-center py-10">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-slate-300 border-t-blue-600"></div>
           <p className="mt-2 text-gray-500">Loading dashboard...</p>
@@ -311,7 +311,7 @@ export default function PreventiveMaintenanceDashboard() {
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
@@ -328,7 +328,7 @@ export default function PreventiveMaintenanceDashboard() {
   // If statistics is null, show a no data message
   if (!statistics || !statistics.counts) {
     return (
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="text-center py-10">
           <p className="text-lg text-gray-500">No maintenance data available.</p>
           <Link 
@@ -343,7 +343,7 @@ export default function PreventiveMaintenanceDashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Preventive Maintenance Dashboard</h1>
         <div className="flex space-x-3">

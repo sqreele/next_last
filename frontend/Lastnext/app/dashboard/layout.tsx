@@ -97,7 +97,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ">
             <div className="
               mx-auto w-full 
-              max-w-sm mobile:max-w-full tablet:max-w-6xl desktop:max-w-7xl
+              max-w-sm mobile:max-w-full tablet:max-w-7xl desktop:max-w-[96rem]
               space-y-4 mobile:space-y-5 tablet:space-y-6
             ">
               {children}

@@ -24,7 +24,7 @@ export default function EmptyState({
         </div>
       </div>
       <h3 className="text-lg font-medium text-gray-900 mb-2">No maintenance tasks found</h3>
-      <p className="text-gray-600 mb-6 text-sm md:text-base max-w-md mx-auto">
+      <p className="text-gray-600 mb-6 text-sm md:text-base w-full mx-auto">
         {hasFilters 
           ? "Try adjusting your filters to see more results or create a new task."
           : "Get started by creating your first maintenance task to keep your equipment running smoothly."
@@ -34,7 +34,7 @@ export default function EmptyState({
       {hasFilters ? (
         <div className="space-y-3">
           {currentFilters.machine && (
-            <p className="text-sm text-blue-600 bg-blue-50 rounded-lg p-3 max-w-md mx-auto">
+            <p className="text-sm text-blue-600 bg-blue-50 rounded-lg p-3 w-full mx-auto">
               No tasks found for machine: <strong>{getMachineNameById(currentFilters.machine)}</strong>
             </p>
           )}

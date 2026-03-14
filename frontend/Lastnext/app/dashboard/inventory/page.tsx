@@ -438,7 +438,7 @@ export default function InventoryPage() {
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
+      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <p className="text-red-800">{error}</p>
@@ -451,7 +451,7 @@ export default function InventoryPage() {
   const lowStockCount = inventory.filter(item => item.status === 'low_stock' || item.status === 'out_of_stock').length;
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex-1">

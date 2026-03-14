@@ -808,7 +808,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   if (status === "loading" || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="w-full max-w-md">
+        <Card className="w-full">
           <CardContent className="text-center p-6 sm:p-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600 text-sm sm:text-base">Loading charts...</p>
@@ -822,7 +822,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   if (status === "unauthenticated") {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="w-full max-w-md bg-yellow-50 border border-yellow-200">
+        <Card className="w-full bg-yellow-50 border border-yellow-200">
           <CardContent className="text-center space-y-4 p-6 sm:p-8">
             <p className="text-yellow-600 text-sm sm:text-base">Please log in to view job statistics.</p>
             <Button asChild variant="outline" className="w-full h-10 sm:h-12 text-sm sm:text-base">
@@ -838,7 +838,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="w-full max-w-md bg-red-50 border border-red-200">
+        <Card className="w-full bg-red-50 border border-red-200">
           <CardContent className="text-center space-y-4 p-6 sm:p-8">
             <p className="text-red-600 text-sm sm:text-base">{error}</p>
             <Button asChild variant="outline" className="w-full h-10 sm:h-12 text-sm sm:text-base">
@@ -854,7 +854,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   if (filteredJobs.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Card className="w-full max-w-md bg-yellow-50 border border-yellow-200">
+        <Card className="w-full bg-yellow-50 border border-yellow-200">
           <CardContent className="text-center space-y-4 p-6 sm:p-8">
             <p className="text-yellow-600 text-sm sm:text-base">
               {allJobs.length ? "No jobs found for the selected property." : "No jobs available yet."}

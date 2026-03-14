@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 
 export default function CreateMaintenanceTaskPage() {
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
+    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6 space-y-6">
       <div className="flex items-center gap-4">
         <Button asChild variant="outline" size="sm">
           <Link href="/dashboard/maintenance-tasks">

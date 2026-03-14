@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
-import { Building, ArrowRight, Shield, Users, Wrench, CheckCircle2 } from 'lucide-react';
+import { Building, ArrowRight, Shield, Users, Wrench, CheckCircle2, Loader } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
@@ -12,11 +12,18 @@ import Link from 'next/link';
 // Loading fallback component
 function LoginLoadingFallback() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="text-center space-y-4">
-        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-        <p className="text-lg font-medium text-gray-600">Loading...</p>
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+      aria-live="polite"
+      aria-busy="true"
+      role="status"
+    >
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+        <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
       </div>
+      <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+        Loading, please wait…
+      </p>
     </div>
   );
 }
@@ -26,11 +33,12 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const message = searchParams.get('message');
-  
+  const [isRedirecting, setIsRedirecting] = React.useState(false);
+
   // Check if user is already authenticated
-  const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({ 
-    requireAuth: false, 
-    showToast: false 
+  const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({
+    requireAuth: false,
+    showToast: false,
   });
 
   // Redirect to dashboard if already authenticated
@@ -41,18 +49,25 @@ function LoginContent() {
   }, [isAuthenticated, sessionLoading, router]);
 
   const handleAuth0Login = () => {
-    // Redirect to your existing Auth0 login flow
+    setIsRedirecting(true);
     router.push('/api/auth/login');
   };
 
   // Show loading while checking session
   if (sessionLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-          <p className="text-lg font-medium text-gray-600">Checking session...</p>
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+        aria-live="polite"
+        aria-busy="true"
+        role="status"
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+          <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
         </div>
+        <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+          Checking session, please wait…
+        </p>
       </div>
     );
   }
@@ -60,6 +75,25 @@ function LoginContent() {
   // Don't render login form if already authenticated
   if (isAuthenticated) {
     return null;
+  }
+
+  // Full-screen overlay after user clicks sign in (until redirect)
+  if (isRedirecting) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+        aria-live="polite"
+        aria-busy="true"
+        role="status"
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+          <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+        </div>
+        <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+          Signing in, please wait…
+        </p>
+      </div>
+    );
   }
 
   return (

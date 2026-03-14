@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader } from "lucide-react";
 import { Job } from "@/app/lib/types";
 import FileUpload from "@/app/components/jobs/FileUpload";
 import Image from "next/image";
@@ -114,8 +114,18 @@ export default function EditJobPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+        aria-live="polite"
+        aria-busy="true"
+        role="status"
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+          <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+        </div>
+        <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+          Loading form, please wait…
+        </p>
       </div>
     );
   }
@@ -142,7 +152,23 @@ export default function EditJobPage() {
 
   // Simple inline form instead of complex dialog component
   return (
-    <div className="max-w-2xl mx-auto p-4 sm:p-6">
+    <div className="relative max-w-2xl mx-auto p-4 sm:p-6">
+      {/* Full-screen saving overlay */}
+      {isSubmitting && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+          aria-live="polite"
+          aria-busy="true"
+          role="status"
+        >
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+            <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+          </div>
+          <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+            Saving, please wait…
+          </p>
+        </div>
+      )}
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-gray-900">

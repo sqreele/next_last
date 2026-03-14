@@ -88,7 +88,23 @@ const EditJobDialog: FC<EditDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[90vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[90vw] sm:max-w-md max-h-[90vh] overflow-y-auto relative">
+        {/* Full-screen saving overlay when submitting (inside portal so it stacks above dialog) */}
+        {isSubmitting && (
+          <div
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+            aria-live="polite"
+            aria-busy="true"
+            role="status"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+              <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+            </div>
+            <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+              Saving, please wait…
+            </p>
+          </div>
+        )}
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold">
             Edit Maintenance Job #{job.job_id}

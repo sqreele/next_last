@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Loader } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,20 +13,18 @@ export default function LoginPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Redirecting to Auth0...
-          </p>
-        </div>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        </div>
+    <div
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+      aria-live="polite"
+      aria-busy="true"
+      role="status"
+    >
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+        <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
       </div>
+      <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+        Redirecting to sign in, please wait…
+      </p>
     </div>
   );
 }

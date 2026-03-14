@@ -328,13 +328,20 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         </Alert>
       )}
 
-      {/* Loading Indicator */}
+      {/* Full-screen loading overlay (form data) */}
       {isLoading && (
-        <div className="flex items-center justify-center p-6 sm:p-8">
-          <div className="flex items-center gap-3 text-blue-600">
-            <Loader className="h-6 w-6 animate-spin" />
-            <span className="text-base font-medium sm:text-lg">Loading form data...</span>
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+          aria-live="polite"
+          aria-busy="true"
+          role="status"
+        >
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+            <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
           </div>
+          <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+            Loading form, please wait…
+          </p>
         </div>
       )}
 
@@ -346,7 +353,23 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         onSubmit={handleSubmit}
       >
         {({ values, errors, touched, setFieldValue, isSubmitting }) => (
-                  <Form className="space-y-5 sm:space-y-6 md:space-y-8">
+                  <Form className="relative space-y-5 sm:space-y-6 md:space-y-8">
+          {/* Upload loading overlay */}
+          {isSubmitting && (
+            <div
+              className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+              aria-live="polite"
+              aria-busy="true"
+              role="status"
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+                <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+              </div>
+              <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+                Uploading, please wait…
+              </p>
+            </div>
+          )}
           {/* Basic Information Section */}
             <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-cyan-50 p-4 sm:rounded-2xl sm:p-6">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">

@@ -28,6 +28,7 @@ import TopicService from '@/app/lib/TopicService';
 import MachineService from '@/app/lib/MachineService';
 import { fetchAllMaintenanceProcedures, type MaintenanceProcedureTemplate } from '@/app/lib/maintenanceProcedures';
 import apiClient from '@/app/lib/api-client';
+import { Loader } from 'lucide-react';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
@@ -1415,8 +1416,18 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   if (isLoading && pmId && !actualInitialData) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+        aria-live="polite"
+        aria-busy="true"
+        role="status"
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+          <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+        </div>
+        <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+          Loading form, please wait…
+        </p>
       </div>
     );
   }
@@ -1642,7 +1653,23 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             const nextDueLabel = nextDueDate ? nextDueDate.toLocaleString() : 'Not available';
 
             return (
-            <Form aria-label="Preventive Maintenance Form" className="space-y-4 sm:space-y-6">
+            <Form aria-label="Preventive Maintenance Form" className="relative space-y-4 sm:space-y-6">
+              {/* Full-screen saving/uploading overlay */}
+              {(isSubmitting || isLoading) && (
+                <div
+                  className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+                  aria-live="polite"
+                  aria-busy="true"
+                  role="status"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
+                    <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+                  </div>
+                  <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+                    Saving, please wait…
+                  </p>
+                </div>
+              )}
               {!values.property_id && !pmId && (
                 <div className="mb-4 sm:mb-6 rounded-md border border-amber-200 bg-amber-50 p-3 sm:p-4 text-xs sm:text-sm text-amber-800">
                   Please select a property using the header dropdown before creating preventive maintenance tasks.

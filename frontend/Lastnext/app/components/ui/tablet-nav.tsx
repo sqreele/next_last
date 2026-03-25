@@ -12,11 +12,10 @@ import {
   Filter,
   Plus,
   User,
-  Menu,
-  X,
-  Package2
+  Menu
 } from 'lucide-react';
 import Link from 'next/link';
+import Logo from './logo';
 import { usePathname } from 'next/navigation';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from './sheet';
 
@@ -42,7 +41,9 @@ export function TabletNav({ className }: TabletNavProps) {
     <nav className={`tablet:flex desktop:hidden items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm ${className || ''}`}>
       <div className="flex items-center gap-4">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Package2 className="h-8 w-8 text-blue-600" />
+          <span className="text-blue-700" aria-hidden="true">
+            <Logo className="h-8 w-8" />
+          </span>
           <span className="font-bold text-xl text-gray-800">HotelEngPro</span>
         </Link>
       </div>

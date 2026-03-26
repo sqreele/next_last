@@ -58,7 +58,8 @@ RUN echo "📁 Verifying source code..." && \
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
-    SKIP_ENV_VALIDATION=true
+    SKIP_ENV_VALIDATION=true \
+    TZ=Asia/Bangkok
 
 # Only pass public build-time envs that Next.js may inline into client bundles.
 ARG NEXT_PUBLIC_API_URL
@@ -95,7 +96,8 @@ WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
-    HOSTNAME="0.0.0.0"
+    HOSTNAME="0.0.0.0" \
+    TZ=Asia/Bangkok
 
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 --ingroup nodejs nextjs
 

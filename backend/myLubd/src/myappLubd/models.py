@@ -24,52 +24,9 @@ logger = logging.getLogger(__name__)
 class User(AbstractUser):
     property_name = models.CharField(max_length=255, blank=True, null=True, help_text="Name of the property this user belongs to")
     property_id = models.CharField(max_length=50, blank=True, null=True, help_text="ID of the property this user belongs to")
-    uses_roster = models.BooleanField(default=False, help_text="Enable roster management access for this user")
     
     class Meta:
         pass
-
-
-class RosterLeave(models.Model):
-    DAY_CHOICES = [
-        ('Mon', 'Monday'),
-        ('Tue', 'Tuesday'),
-        ('Wed', 'Wednesday'),
-        ('Thu', 'Thursday'),
-        ('Fri', 'Friday'),
-        ('Sat', 'Saturday'),
-        ('Sun', 'Sunday'),
-    ]
-
-    LEAVE_TYPE_CHOICES = [
-        ('PH', 'PH'),
-        ('VC', 'VC'),
-    ]
-
-    staff_id = models.CharField(max_length=10)
-    week = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(53)])
-    day = models.CharField(max_length=3, choices=DAY_CHOICES)
-    leave_type = models.CharField(max_length=2, choices=LEAVE_TYPE_CHOICES)
-    note = models.TextField(blank=True, null=True)
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='roster_leaves'
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['-created_at']
-        constraints = [
-            models.UniqueConstraint(
-                fields=['created_by', 'staff_id', 'week', 'day'],
-                name='uniq_roster_leave_entry'
-            )
-        ]
-
-    def __str__(self):
-        return f"{self.staff_id} {self.week} {self.day} {self.leave_type}"
 
 class PreventiveMaintenance(models.Model):
     FREQUENCY_CHOICES = [

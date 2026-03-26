@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage, UtilityConsumption, Inventory, RosterLeave
+from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage, UtilityConsumption, Inventory
 from django.contrib.auth import get_user_model
 import logging
 
@@ -120,7 +120,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     created_at = serializers.DateTimeField(source='user.date_joined', read_only=True)
-    uses_roster = serializers.BooleanField(source='user.uses_roster', read_only=True)
     # Property fields from User model
     user_property_name = serializers.CharField(source='user.property_name', read_only=True)
     user_property_id = serializers.CharField(source='user.property_id', read_only=True)
@@ -139,7 +138,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'profile_image',
             'positions',
             'properties',
-            'uses_roster',
             'user_property_name',
             'user_property_id',
             'profile_property_name',
@@ -208,15 +206,6 @@ class TopicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Topic
         fields = ['title', 'description', 'id']
-
-
-class RosterLeaveSerializer(serializers.ModelSerializer):
-    type = serializers.ChoiceField(source='leave_type', choices=RosterLeave.LEAVE_TYPE_CHOICES)
-
-    class Meta:
-        model = RosterLeave
-        fields = ['id', 'staff_id', 'week', 'day', 'type', 'note', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
 
 # Job serializer
 class JobSerializer(serializers.ModelSerializer):

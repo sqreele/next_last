@@ -24,8 +24,7 @@ import {
   FileText,
   Filter,
   Wrench,
-  Zap,
-  Calendar
+  Zap
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -64,7 +63,6 @@ const navItems = [
   { href: '/dashboard/machines', label: 'Machines', icon: Wrench },
   { href: '/dashboard/inventory', label: 'Inventory', icon: Package },
   { href: '/dashboard/utility-consumption', label: 'Utility Consumption', icon: Zap },
-  { href: '/roster', label: 'Roster', icon: Calendar },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

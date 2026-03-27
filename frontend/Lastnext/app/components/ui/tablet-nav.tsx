@@ -3,36 +3,21 @@
 import React from 'react';
 import { Button } from './button';
 import { 
-  Home, 
-  ShoppingCart, 
-  LineChart, 
-  FileText, 
   Search,
   Bell,
-  Filter,
-  Plus,
-  User,
   Menu,
-  X,
   Package2
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from './sheet';
+import { primaryNavigationItems } from '@/app/lib/navigation';
 
 interface TabletNavProps {
   className?: string;
 }
 
-const navigationItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
-  { name: 'My Jobs', href: '/dashboard/myJobs', icon: ShoppingCart },
-  { name: 'Analytics', href: '/dashboard/chartdashboard', icon: LineChart },
-  { name: 'Jobs Report', href: '/dashboard/jobs-report', icon: FileText },
-  { name: 'Rooms by Topic', href: '/dashboard/rooms/by-topics', icon: Filter },
-  { name: 'Create Job', href: '/dashboard/createJob', icon: Plus },
-  { name: 'Profile', href: '/dashboard/profile', icon: User },
-];
+const navigationItems = primaryNavigationItems.filter((item) => item.href !== '/roster');
 
 export function TabletNav({ className }: TabletNavProps) {
   const pathname = usePathname();
@@ -70,7 +55,7 @@ export function TabletNav({ className }: TabletNavProps) {
             <SheetTitle className="text-lg font-semibold mb-6">Navigation</SheetTitle>
             <nav className="space-y-2">
               {navigationItems.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
                 const Icon = item.icon;
                 
                 return (
@@ -126,4 +111,3 @@ export function TabletCard({
     </div>
   );
 }
-

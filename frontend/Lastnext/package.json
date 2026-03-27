@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "shadcn": "shadcn-ui"
+    "shadcn": "shadcn-ui",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"No automated tests configured yet\""
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.13.3",

@@ -272,7 +272,7 @@ export default function ProfilePage() {
                   </Link>
                 </Button>
                 <Button asChild variant="outline" className="w-full justify-start">
-                  <Link href="/dashboard/createJob">
+                  <Link href="/dashboard/create-job">
                     <Pencil className="w-4 h-4 mr-2" />
                     Create Job
                   </Link>

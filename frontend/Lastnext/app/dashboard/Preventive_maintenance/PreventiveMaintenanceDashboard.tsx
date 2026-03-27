@@ -450,7 +450,7 @@ export default function PreventiveMaintenanceDashboard({
         </CardContent>
         <CardFooter className="justify-center">
           <Button asChild>
-            <Link href="/dashboard/createJob">
+            <Link href="/dashboard/create-job">
               Create Preventive Maintenance Job
             </Link>
           </Button>
@@ -502,7 +502,7 @@ export default function PreventiveMaintenanceDashboard({
               </Button>
               
               <Button asChild size="sm">
-                <Link href="/dashboard/createJob">
+                <Link href="/dashboard/create-job">
                   Create Job
                 </Link>
               </Button>
@@ -893,7 +893,7 @@ export default function PreventiveMaintenanceDashboard({
               Refresh Data
             </Button>
             <Button asChild>
-              <Link href="/dashboard/createJob">
+              <Link href="/dashboard/create-job">
                 Create Maintenance Job
               </Link>
             </Button>

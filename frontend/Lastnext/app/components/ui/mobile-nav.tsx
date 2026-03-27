@@ -84,10 +84,10 @@ export function MobileTopBar({ className }: MobileNavProps) {
   
   // Get page title based on current path
   const getPageTitle = () => {
-    if (pathname.includes('/myJobs')) return 'My Jobs';
+    if (pathname.includes('/my-jobs') || pathname.includes('/myJobs')) return 'My Jobs';
     if (pathname.includes('/chartdashboard')) return 'Analytics';
     if (pathname.includes('/jobs-report')) return 'Jobs Report';
-    if (pathname.includes('/createJob')) return 'Create Job';
+    if (pathname.includes('/create-job') || pathname.includes('/createJob')) return 'Create Job';
     if (pathname.includes('/profile')) return 'Profile';
     if (pathname.includes('/preventive-maintenance')) return 'Maintenance';
     return 'Dashboard';

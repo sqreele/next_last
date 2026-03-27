@@ -42,7 +42,7 @@
       "name": "My Jobs",
       "short_name": "Jobs",
       "description": "View your jobs",
-      "url": "/dashboard/myJobs",
+      "url": "/dashboard/my-jobs",
       "icons": [
         {
           "src": "/icon-192x192.png",
@@ -54,7 +54,7 @@
       "name": "Create Job",
       "short_name": "Create",
       "description": "Create a new job",
-      "url": "/dashboard/createJob",
+      "url": "/dashboard/create-job",
       "icons": [
         {
           "src": "/icon-192x192.png",

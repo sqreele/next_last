@@ -53,7 +53,7 @@ const nextConfig = {
   },
   
   eslint: {
-    ignoreDuringBuilds: true, // Remove this once ESLint issues are fixed
+    ignoreDuringBuilds: false,
   },
   
   trailingSlash: true, // Optional, depending on your backend
@@ -120,6 +120,37 @@ const nextConfig = {
       {
         source: '/auth/profile/',
         destination: '/dashboard/profile/',
+        permanent: true,
+      },
+
+      {
+        source: '/dashboard/createJob',
+        destination: '/dashboard/create-job',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/createJob/',
+        destination: '/dashboard/create-job/',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/myJobs',
+        destination: '/dashboard/my-jobs',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/myJobs/',
+        destination: '/dashboard/my-jobs/',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/Preventive_maintenance',
+        destination: '/dashboard/preventive-maintenance',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/Preventive_maintenance/',
+        destination: '/dashboard/preventive-maintenance/',
         permanent: true,
       },
       {

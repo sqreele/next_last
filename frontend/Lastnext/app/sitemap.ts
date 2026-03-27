@@ -29,8 +29,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Dashboard pages (these are behind auth but can still be in sitemap for logged-in crawlers)
   const dashboardPages = [
     '/dashboard',
-    '/dashboard/myJobs',
-    '/dashboard/createJob',
+    '/dashboard/my-jobs',
+    '/dashboard/create-job',
     '/dashboard/preventive-maintenance',
     '/dashboard/machines',
     '/dashboard/inventory',

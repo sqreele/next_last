@@ -845,7 +845,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           <CardContent className="text-center space-y-4 p-6 sm:p-8">
             <p className="text-red-600 text-sm sm:text-base">{error}</p>
             <Button asChild variant="outline" className="w-full h-10 sm:h-12 text-sm sm:text-base">
-              <Link href="/dashboard/myJobs">Go to My Jobs</Link>
+              <Link href="/dashboard/my-jobs">Go to My Jobs</Link>
             </Button>
           </CardContent>
         </Card>
@@ -863,7 +863,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
               {allJobs.length ? "No jobs found for the selected property." : "No jobs available yet."}
             </p>
             <Button asChild variant="outline" className="w-full h-10 sm:h-12 text-sm sm:text-base">
-              <Link href={allJobs.length ? "/dashboard/myJobs" : "/dashboard/createJob"}>
+              <Link href={allJobs.length ? "/dashboard/my-jobs" : "/dashboard/create-job"}>
                 {allJobs.length ? "View All Jobs" : "Create a Job"}
               </Link>
             </Button>

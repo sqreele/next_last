@@ -156,7 +156,7 @@ function NoPropertiesCard() {
           </Link>
         </Button>
         <Button asChild className="w-full h-12 bg-blue-600 hover:bg-blue-700">
-          <Link href="/dashboard/createJob">
+          <Link href="/dashboard/create-job">
             <Plus className="mr-2 h-4 w-4" />
             Create Job Anyway
           </Link>

@@ -1,0 +1,90 @@
+// /app/dashboard/create-job/page.tsx
+import { Suspense } from 'react';
+import { Metadata } from 'next';
+import CreateJobForm from '@/app/components/jobs/CreateJobForm';
+import { redirect } from 'next/navigation';
+import { getServerSession } from '@/app/lib/session.server';
+import { Plus } from 'lucide-react';
+
+export const dynamic = 'force-dynamic';
+
+export const metadata: Metadata = {
+  title: 'Create Job - HotelEngPro',
+  description: 'Create a new hotel maintenance job effortlessly with HotelEngPro. Assign tasks, set priorities, and upload images with our intuitive form.',
+  keywords: ['HotelEngPro', 'create job', 'hotel maintenance', 'job management', 'property maintenance', 'hotel engineering'],
+  openGraph: {
+    title: 'Create Job - HotelEngPro',
+    description: 'Add new hotel maintenance tasks with ease using HotelEngPro.',
+    url: 'https://pcms.live/dashboard/create-job',
+    type: 'website',
+    images: [
+      {
+        url: 'https://pcms.live/og-create-job.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'HotelEngPro - Create Job Page',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Create Job - HotelEngPro',
+    description: 'Effortlessly create hotel maintenance jobs with HotelEngPro.',
+    images: ['https://pcms.live/twitter-create-job.jpg'],
+  },
+};
+
+export default async function CreateJobPage() {
+  // Server-side session check
+  const session = await getServerSession();
+  console.log('Server session:', session); // Debug log
+
+  if (!session) {
+    redirect('/auth/login');
+  }
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Instagram-style header */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="w-full px-4 py-3">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold text-gray-900">Create Job</h1>
+            <div className="flex items-center gap-4">
+              <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full">
+        {/* Form Section with Instagram-style clean design */}
+        <div className="-mx-3 mobile:-mx-4 sm:mx-0 py-4 sm:py-6">
+          <div className="w-full bg-white border-y border-gray-200 sm:border sm:rounded-lg rounded-none overflow-hidden">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">New Maintenance Job</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Fill out the details below to create a new maintenance job.
+              </p>
+            </div>
+            
+            <div className="p-4 sm:p-6">
+              <Suspense fallback={
+                <div className="flex items-center justify-center py-12">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
+                    <p className="text-sm text-gray-500">Loading...</p>
+                  </div>
+                </div>
+              }>
+                <CreateJobForm />
+              </Suspense>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

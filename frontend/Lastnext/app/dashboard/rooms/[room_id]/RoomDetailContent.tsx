@@ -123,7 +123,7 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
                   {preventiveMaintenanceJobs.length} PM {preventiveMaintenanceJobs.length === 1 ? 'job' : 'jobs'} in this room.
                 </p>
                 <div className="flex gap-2">
-                  <Link href="/dashboard/Preventive_maintenance">
+                  <Link href="/dashboard/preventive-maintenance">
                     <Button size="sm" variant="secondary">Open PM Dashboard</Button>
                   </Link>
                   <Link href="/dashboard/preventive-maintenance/create">

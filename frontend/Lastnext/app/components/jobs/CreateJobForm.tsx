@@ -282,7 +282,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         description: 'Job created successfully.',
       });
       setTimeout(() => {
-        router.push('/dashboard/myJobs');
+        router.push('/dashboard/my-jobs');
       }, 1500);
       
       // Note: Don't reset isSubmittingRef here because we're navigating away

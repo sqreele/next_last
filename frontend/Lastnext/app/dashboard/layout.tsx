@@ -51,14 +51,14 @@ import { MobileNav as BottomNav } from '@/app/components/ui/mobile-nav';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/dashboard/myJobs', label: 'My Jobs', icon: ShoppingCart },
+  { href: '/dashboard/my-jobs', label: 'My Jobs', icon: ShoppingCart },
   { href: '/dashboard/chartdashboard', label: 'Analytics', icon: LineChart },
   { href: '/dashboard/jobs-report', label: 'Jobs Report', icon: FileText },
   { href: '/dashboard/jobs/by-topic', label: 'Jobs by Topic', icon: Filter },
   { href: '/dashboard/rooms/by-topics', label: 'Rooms by Topic', icon: Filter },
   { href: '/dashboard/profile', label: 'Profile', icon: Users2 },
-  { href: '/dashboard/createJob', label: 'Create Job', icon: PlusCircle },
-  { href: '/dashboard/Preventive_maintenance', label: 'PM', icon: PlusCircle },
+  { href: '/dashboard/create-job', label: 'Create Job', icon: PlusCircle },
+  { href: '/dashboard/preventive-maintenance', label: 'PM', icon: PlusCircle },
   { href: '/dashboard/preventive-maintenance', label: 'PM List', icon:Activity },
   { href: '/dashboard/maintenance-tasks', label: 'Maintenance Tasks', icon: Settings },
   { href: '/dashboard/machines', label: 'Machines', icon: Wrench },

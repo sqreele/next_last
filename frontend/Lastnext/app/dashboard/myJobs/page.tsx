@@ -1,8 +1,5 @@
+import { redirect } from 'next/navigation';
 
-'use client';
-
-import MyJobs from './myJobs';
-
-export default function myJobsPage() {
-  return <MyJobs />
+export default function LegacyMyJobsRedirect() {
+  redirect('/dashboard/my-jobs');
 }

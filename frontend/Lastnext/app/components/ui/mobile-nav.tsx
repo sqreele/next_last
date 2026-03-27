@@ -3,32 +3,20 @@
 import React from 'react';
 import { Button } from './button';
 import { 
-  Home, 
-  ShoppingCart, 
-  LineChart, 
-  FileText, 
   Search,
   Bell,
-  Filter,
-  Plus,
-  User,
-  Calendar
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { primaryNavigationItems } from '@/app/lib/navigation';
 
 interface MobileNavProps {
   className?: string;
 }
 
-const navigationItems = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home, shortName: 'Home' },
-  { name: 'My Jobs', href: '/dashboard/myJobs', icon: ShoppingCart, shortName: 'Jobs' },
-  { name: 'Create Job', href: '/dashboard/createJob', icon: Plus, shortName: 'Create' },
-  { name: 'Analytics', href: '/dashboard/chartdashboard', icon: LineChart, shortName: 'Analytics' },
-  { name: 'Profile', href: '/dashboard/profile', icon: User, shortName: 'Profile' },
-  { name: 'Roster', href: '/roster', icon: Calendar, shortName: 'Roster' },
-];
+const navigationItems = primaryNavigationItems.filter((item) =>
+  ['Dashboard', 'My Jobs', 'Create Job', 'Analytics', 'Profile'].includes(item.name)
+);
 
 export function MobileNav({ className }: MobileNavProps) {
   const pathname = usePathname();
@@ -40,8 +28,8 @@ export function MobileNav({ className }: MobileNavProps) {
       aria-label="Mobile navigation"
     >
       <div className="flex items-center justify-around px-2 py-2">
-        {navigationItems.map((item, index) => {
-          const isActive = pathname === item.href;
+        {navigationItems.map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           
           return (
@@ -72,7 +60,7 @@ export function MobileNav({ className }: MobileNavProps) {
                   className={`w-6 h-6 transition-all duration-200 ${
                     isActive ? "text-gray-900" : "text-gray-600"
                   }`} 
-                  aria-hidden="true"
+                  aria-hidden={true}
                 />
                 <span className={`text-xs font-medium ${
                   isActive ? "text-gray-900" : "text-gray-600"
@@ -118,7 +106,7 @@ export function MobileTopBar({ className }: MobileNavProps) {
             className="p-2 min-h-touch-target min-w-touch-target touch-manipulation hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
             aria-label="Search"
           >
-            <Search className="w-5 h-5 text-gray-600" aria-hidden="true" />
+            <Search className="w-5 h-5 text-gray-600" aria-hidden={true} />
           </Button>
         </div>
         
@@ -133,7 +121,7 @@ export function MobileTopBar({ className }: MobileNavProps) {
             className="p-2 relative min-h-touch-target min-w-touch-target touch-manipulation hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
             aria-label="Notifications"
           >
-            <Bell className="w-5 h-5 text-gray-600" aria-hidden="true" />
+            <Bell className="w-5 h-5 text-gray-600" aria-hidden={true} />
             <span 
               className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full animate-pulse"
               aria-label="You have new notifications"

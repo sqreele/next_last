@@ -1,15 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useJobsDashboard } from '@/app/lib/hooks/useJobsDashboard';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
-import { Building, User, Calendar, RefreshCw, Download, Settings, Search, Filter } from 'lucide-react';
-import { MobileTopBar } from '@/app/components/ui/mobile-nav';
+import { Calendar, RefreshCw, Download, Settings, Search, Filter } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
-import { Badge } from '@/app/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { Card, CardContent, CardHeader } from '@/app/components/ui/card';
+import { Tabs } from '@/app/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/app/components/ui/dropdown-menu';
 import { useToast } from '@/app/lib/hooks/use-toast';
 import JobList from '@/app/components/jobs/jobList';
@@ -225,6 +223,7 @@ export default function ImprovedDashboard() {
   
   // Add room filtering state
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   
   const {
     // State
@@ -307,6 +306,23 @@ export default function ImprovedDashboard() {
     { value: "preventive_maintenance", label: "Maintenance", icon: "🔧", color: "bg-purple-100 text-purple-700" },
   ];
 
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft' && event.key !== 'Home' && event.key !== 'End') {
+      return;
+    }
+    event.preventDefault();
+    const lastIndex = tabConfig.length - 1;
+    let nextIndex = index;
+
+    if (event.key === 'ArrowRight') nextIndex = index === lastIndex ? 0 : index + 1;
+    if (event.key === 'ArrowLeft') nextIndex = index === 0 ? lastIndex : index - 1;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = lastIndex;
+
+    setSelectedTab(tabConfig[nextIndex].value);
+    tabRefs.current[nextIndex]?.focus();
+  };
+
   if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center p-4">
@@ -338,6 +354,7 @@ export default function ImprovedDashboard() {
             <div className="flex items-center gap-4">
               <button 
                 onClick={() => refreshJobs()} 
+                aria-label="Refresh dashboard data"
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <RefreshCw className="w-5 h-5" />
@@ -345,11 +362,12 @@ export default function ImprovedDashboard() {
             <button
               onClick={() => exportJobs('csv')}
               title="Export CSV"
+              aria-label="Export jobs as CSV"
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
               <Download className="w-5 h-5" />
             </button>
-              <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <button aria-label="Open dashboard settings" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                 <Settings className="w-5 h-5" />
               </button>
             </div>
@@ -438,11 +456,20 @@ export default function ImprovedDashboard() {
               {/* Instagram-style horizontal scrolling tabs */}
               <div className="flex items-center justify-between py-3">
                 <div className="flex-1 overflow-x-auto">
-                  <div className="flex gap-8 min-w-max">
-                    {tabConfig.map(({ value, label, icon }) => (
+                  <div className="flex gap-8 min-w-max" role="tablist" aria-label="Job status tabs">
+                    {tabConfig.map(({ value, label, icon }, index) => (
                       <button
                         key={value}
+                        id={`jobs-tab-${value}`}
+                        ref={(element) => {
+                          tabRefs.current[index] = element;
+                        }}
+                        role="tab"
+                        aria-selected={selectedTab === value}
+                        aria-controls={`jobs-panel-${value}`}
+                        tabIndex={selectedTab === value ? 0 : -1}
                         onClick={() => setSelectedTab(value)}
+                        onKeyDown={(event) => handleTabKeyDown(event, index)}
                         className={`flex items-center gap-2 pb-3 border-b-2 transition-colors whitespace-nowrap ${
                           selectedTab === value
                             ? 'border-gray-900 text-gray-900'
@@ -467,6 +494,7 @@ export default function ImprovedDashboard() {
                 <div className="flex items-center gap-1 ml-4">
                   <button
                     onClick={() => setViewMode('grid')}
+                    aria-label="Switch to grid view"
                     className={`p-2 rounded-md transition-colors ${
                       viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700'
                     }`}
@@ -477,6 +505,7 @@ export default function ImprovedDashboard() {
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
+                    aria-label="Switch to list view"
                     className={`p-2 rounded-md transition-colors ${
                       viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700'
                     }`}
@@ -490,11 +519,18 @@ export default function ImprovedDashboard() {
 
               {/* Instagram-style content area */}
               {tabConfig.map(({ value }) => (
-                <div key={value} className={selectedTab === value ? 'block' : 'hidden'}>
+                <div
+                  key={value}
+                  id={`jobs-panel-${value}`}
+                  role="tabpanel"
+                  aria-labelledby={`jobs-tab-${value}`}
+                  hidden={selectedTab !== value}
+                  className={selectedTab === value ? 'block' : 'hidden'}
+                >
                   <div className="bg-white">
                     <JobList 
                       jobs={jobs}
-                      filter={value as any}
+                      filter={value as JobStatus}
                       properties={properties}
                       viewMode={viewMode}
                       selectedRoom={selectedRoom}

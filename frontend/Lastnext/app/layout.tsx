@@ -1,15 +1,19 @@
 import { type Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from '@/app/providers';
 import { Toaster } from '@/app/components/ui/toaster';
 import { StoreProvider } from '@/app/lib/providers/StoreProvider';
 import { SWRProvider } from '@/app/lib/swr-config'; // ✅ PERFORMANCE: Global SWR caching
 import './globals.css';
-// Initialize Inter font
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
+// Bilingual UI font (Thai + English)
+const sarabun = localFont({
+  src: [
+    { path: '../public/fonts/Sarabun-Regular.ttf', weight: '400', style: 'normal' },
+    { path: '../public/fonts/Sarabun-Bold.ttf', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-ui',
+  display: 'swap',
 });
 
 // SEO-Optimized Metadata for HotelEngPro - Hotel Engineering & Maintenance Management
@@ -93,7 +97,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className={`${inter.variable} font-sans min-h-screen bg-background`}>
+      <body className={`${sarabun.variable} font-sans min-h-screen bg-background`}>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-gray-900 focus:shadow-lg focus:ring-2 focus:ring-blue-600"

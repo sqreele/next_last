@@ -10,7 +10,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui), 'Sarabun', 'Noto Sans Thai', 'Noto Sans', 'Segoe UI', sans-serif;
 }
 
 /* Safe area utilities for devices with notches/home indicators */

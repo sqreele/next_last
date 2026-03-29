@@ -24,6 +24,8 @@ export class ServerApiError extends Error {
 const MAX_RETRIES = 2; // Reduced from 3 to prevent excessive CPU usage
 const RETRY_DELAY = 1000; // 1 second base delay
 const REQUEST_TIMEOUT = 20000; // 20 seconds timeout (reduced from 30)
+/** Bulk list/export endpoints can exceed {@link REQUEST_TIMEOUT}; keep retries + longer wait for `/jobs/all/`. */
+const JOBS_ALL_REQUEST_TIMEOUT_MS = 120000;
 
 // Helper function to delay execution
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -54,7 +56,8 @@ export async function fetchWithToken<T>(
   token?: string,
   method: string = "GET",
   body?: any,
-  retries: number = MAX_RETRIES
+  retries: number = MAX_RETRIES,
+  timeoutMs: number = REQUEST_TIMEOUT
 ): Promise<T> {
   // Production mode: Always make real API calls
 
@@ -107,7 +110,7 @@ export async function fetchWithToken<T>(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort();
-  }, REQUEST_TIMEOUT);
+  }, timeoutMs);
 
   try {
     const response = await fetch(absoluteUrl, {
@@ -152,7 +155,7 @@ export async function fetchWithToken<T>(
       if (isRetryableError(null, response.status) && retries > 0) {
         logger.warn(`Retrying request due to ${response.status} error (${retries} attempts left)`);
         await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
-        return fetchWithToken<T>(url, token, method, body, retries - 1);
+        return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs);
       }
       
       throw new ServerApiError(errorMessage, response.status, errorData);
@@ -182,7 +185,7 @@ export async function fetchWithToken<T>(
       if (retries > 0) {
         logger.warn(`Request timeout, retrying (${retries} attempts left)`);
         await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
-        return fetchWithToken<T>(url, token, method, body, retries - 1);
+        return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs);
       }
       throw new ServerApiError("Request timeout", 408);
     }
@@ -191,7 +194,7 @@ export async function fetchWithToken<T>(
     if (isRetryableError(error) && retries > 0) {
       logger.warn(`Network error, retrying (${retries} attempts left):`, error instanceof Error ? error.message : String(error));
       await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
-      return fetchWithToken<T>(url, token, method, body, retries - 1);
+      return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs);
     }
     
     logger.error(`Error during ${method} request to ${absoluteUrl}`, error);
@@ -487,7 +490,14 @@ export async function fetchAllJobsForProperty(
   try {
     const allUrlBase = `/api/v1/jobs/all/?property_id=${encodeURIComponent(propertyId)}`;
     const allUrl = additionalParams ? `${allUrlBase}&${additionalParams}` : allUrlBase;
-    const allResponse = await fetchWithToken<any>(allUrl, accessToken);
+    const allResponse = await fetchWithToken<any>(
+      allUrl,
+      accessToken,
+      'GET',
+      undefined,
+      MAX_RETRIES,
+      JOBS_ALL_REQUEST_TIMEOUT_MS
+    );
     let jobs: Job[] = [];
     if (Array.isArray(allResponse)) {
       jobs = allResponse as Job[];

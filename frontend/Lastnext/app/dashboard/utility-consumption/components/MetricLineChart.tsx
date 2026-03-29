@@ -2,6 +2,7 @@
 
 import {
   CartesianGrid,
+  LabelList,
   Legend,
   Line,
   LineChart,
@@ -19,6 +20,15 @@ interface MetricLineChartProps {
   yAxisMax?: number;
 }
 
+function formatPointLabel(v: number | string | null | undefined) {
+  if (v == null || v === '') return '';
+  const n = typeof v === 'number' ? v : Number(v);
+  if (Number.isNaN(n) || n === 0) return '';
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 10_000) return `${(n / 1000).toFixed(1)}k`;
+  return String(Math.round(n));
+}
+
 export default function MetricLineChart({
   data,
   title,
@@ -34,12 +44,12 @@ export default function MetricLineChart({
         <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
         <p className="text-sm text-slate-500">{subtitle}</p>
       </div>
-      <div className="h-72 w-full">
-        <ResponsiveContainer>
-          <LineChart data={data} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+      <div className="h-72 w-full min-h-[18rem]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ left: 8, right: 12, top: 28, bottom: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="label" stroke="#64748b" />
-            <YAxis stroke="#64748b" domain={yAxisDomain} />
+            <XAxis dataKey="label" stroke="#64748b" tick={{ fontSize: 11 }} />
+            <YAxis stroke="#64748b" tick={{ fontSize: 11 }} domain={yAxisDomain} />
             <Tooltip />
             <Legend />
             <Line
@@ -51,7 +61,14 @@ export default function MetricLineChart({
               dot={{ r: 3 }}
               activeDot={{ r: 5 }}
               connectNulls={false}
-            />
+            >
+              <LabelList
+                dataKey="value"
+                position="top"
+                formatter={formatPointLabel}
+                className="fill-slate-600 text-[11px] font-medium"
+              />
+            </Line>
           </LineChart>
         </ResponsiveContainer>
       </div>

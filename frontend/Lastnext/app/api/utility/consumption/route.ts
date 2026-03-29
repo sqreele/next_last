@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG } from '@/app/lib/config';
 import type { MonthName, UtilityConsumptionRow } from '@/app/dashboard/utility-consumption/types';
+import { coerceUtilityConsumptionRow } from '@/app/dashboard/utility-consumption/utils/data';
 
 const months: MonthName[] = [
   'January',
@@ -29,10 +30,12 @@ function mapMonthName(value?: number | null): MonthName {
 }
 
 function normalizeRows(rows: UtilityConsumptionApiRow[]): UtilityConsumptionRow[] {
-  return rows.map((row) => ({
-    ...row,
-    month: row.month_display ?? mapMonthName(row.month),
-  }));
+  return rows.map((row) =>
+    coerceUtilityConsumptionRow({
+      ...row,
+      month: row.month_display ?? mapMonthName(row.month),
+    })
+  );
 }
 
 export async function GET(request: NextRequest) {

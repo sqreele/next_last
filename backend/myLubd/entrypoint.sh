@@ -13,7 +13,13 @@ done
 
 echo "PostgreSQL started"
 
-cd src
+# Align PostgreSQL sequences with MAX(id) so post_migrate create_permissions does not
+# hit duplicate-key errors (common after DB restore or manual data changes).
+echo "Syncing PostgreSQL sequences..."
+SEQFIX=$(python manage.py sqlsequencereset auth admin contenttypes sessions myappLubd 2>/dev/null || true)
+if [ -n "$SEQFIX" ]; then
+    echo "$SEQFIX" | python manage.py dbshell >/dev/null 2>&1 || true
+fi
 
 # Create and set permissions for media and static directories
 mkdir -p /app/media/maintenance_job_images
@@ -54,7 +60,7 @@ python manage.py collectstatic --no-input
     echo "GMAIL_CLIENT_SECRET=${GMAIL_CLIENT_SECRET}"
     echo "GMAIL_REFRESH_TOKEN=${GMAIL_REFRESH_TOKEN}"
     # Schedule: run daily at 23:00 Asia/Bangkok (must include user column for /etc/cron.d)
-    echo "0 23 * * * root cd /app/src && /usr/local/bin/python manage.py send_daily_summary >> /var/log/cron.log 2>&1"
+    echo "0 23 * * * root cd /app && /usr/local/bin/python manage.py send_daily_summary >> /var/log/cron.log 2>&1"
 } > /etc/cron.d/daily_summary
 chmod 0644 /etc/cron.d/daily_summary
 

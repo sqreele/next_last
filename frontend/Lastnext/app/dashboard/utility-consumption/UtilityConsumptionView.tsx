@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import ActualVsBudgetChart from './components/ActualVsBudgetChart';
+import BudgetStatusPieChart from './components/BudgetStatusPieChart';
 import FiltersBar from './components/FiltersBar';
 import MetricLineChart from './components/MetricLineChart';
 import SummaryCards from './components/SummaryCards';
@@ -10,7 +11,9 @@ import YoYLineChart from './components/YoYLineChart';
 import type { MetricKey, MonthName, UtilityConsumptionRow } from './types';
 import { useUser } from '@/app/lib/stores/mainStore';
 import {
+  buildBudgetStatusPieData,
   buildPrimaryYearSeries,
+  buildUtilityComparisonRows,
   buildYoYSeries,
   calculateSummary,
   filterRowsByMonth,
@@ -96,6 +99,40 @@ export default function UtilityConsumptionView() {
 
   const summary = useMemo(() => calculateSummary(yearFilteredRows), [yearFilteredRows]);
 
+  const comparisonContext = useMemo(
+    () => buildUtilityComparisonRows(monthFilteredRows, selectedMonth, activeYears),
+    [monthFilteredRows, selectedMonth, activeYears]
+  );
+
+  const previousSummary = useMemo(() => {
+    if (!comparisonContext) return null;
+    return calculateSummary(comparisonContext.previousRows);
+  }, [comparisonContext]);
+
+  const comparisonMeta = useMemo(() => {
+    if (!comparisonContext || !previousSummary) return null;
+    return {
+      vsLabel: comparisonContext.vsLabel,
+      mode: comparisonContext.mode,
+      previous: previousSummary,
+    };
+  }, [comparisonContext, previousSummary]);
+
+  const budgetStatusPie = useMemo(
+    () => buildBudgetStatusPieData(yearFilteredRows),
+    [yearFilteredRows]
+  );
+
+  const comparisonScopeNote = useMemo(() => {
+    if (activeYears.length <= 1 || !comparisonMeta) return null;
+    if (comparisonMeta.mode === 'year_over_year') {
+      const prevYears = [...new Set(activeYears.map((y) => y - 1))].sort((a, b) => a - b);
+      const label = prevYears.length === 1 ? `${prevYears[0]}` : `${prevYears[0]}–${prevYears[prevYears.length - 1]}`;
+      return `Multiple years selected: the card baseline is the combined total for ${label} (each selected year compared to the year before), versus your current filter total.`;
+    }
+    return `Multiple years selected: the card baseline sums the prior calendar month for each selected year (e.g. Feb vs Mar), compared to your current filter total.`;
+  }, [activeYears, comparisonMeta]);
+
   const yoyData = useMemo(
     () => buildYoYSeries(monthFilteredRows, activeYears, selectedMetric),
     [monthFilteredRows, activeYears, selectedMetric]
@@ -168,10 +205,9 @@ export default function UtilityConsumptionView() {
       {!loading && !error && !isEmpty && (
         <div className="space-y-6">
           <SummaryCards
-            totalKwh={summary.totalkwh}
-            totalElectricity={summary.totalelectricity}
-            water={summary.water}
-            variance={summary.variance}
+            summary={summary}
+            comparison={comparisonMeta}
+            comparisonScopeNote={comparisonScopeNote}
           />
 
           <div className="grid gap-6 xl:grid-cols-2">
@@ -186,7 +222,11 @@ export default function UtilityConsumptionView() {
             />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+            <BudgetStatusPieChart
+              data={budgetStatusPie.data}
+              budgetUnsetForAllMonths={budgetStatusPie.budgetUnsetForAllMonths}
+            />
             <MetricLineChart
               data={waterSeries}
               title="Water trend"

@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  LabelList,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -15,6 +16,12 @@ interface PMNonPMBarChartProps {
   data: Array<{ label: string; pm: number; nonPm: number }>;
 }
 
+function formatBarLabel(v: number | string) {
+  const n = typeof v === 'number' ? v : Number(v);
+  if (Number.isNaN(n) || n === 0) return '';
+  return String(n);
+}
+
 export default function PMNonPMBarChart({ data }: PMNonPMBarChartProps) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -22,16 +29,30 @@ export default function PMNonPMBarChart({ data }: PMNonPMBarChartProps) {
         <h3 className="text-lg font-semibold text-slate-900">PM vs Non-PM by month</h3>
         <p className="text-sm text-slate-500">Compare preventive and reactive tasks.</p>
       </div>
-      <div className="h-72 w-full">
-        <ResponsiveContainer>
-          <BarChart data={data} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+      <div className="h-72 w-full min-h-[18rem]">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ left: 8, right: 12, top: 28, bottom: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis dataKey="label" stroke="#64748b" />
-            <YAxis stroke="#64748b" />
+            <XAxis dataKey="label" stroke="#64748b" tick={{ fontSize: 11 }} />
+            <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
             <Tooltip />
             <Legend />
-            <Bar dataKey="pm" fill="#10b981" radius={[6, 6, 0, 0]} />
-            <Bar dataKey="nonPm" fill="#f97316" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="pm" name="PM" fill="#10b981" radius={[6, 6, 0, 0]}>
+              <LabelList
+                dataKey="pm"
+                position="top"
+                formatter={formatBarLabel}
+                className="fill-slate-600 text-[11px] font-medium"
+              />
+            </Bar>
+            <Bar dataKey="nonPm" name="Non-PM" fill="#f97316" radius={[6, 6, 0, 0]}>
+              <LabelList
+                dataKey="nonPm"
+                position="top"
+                formatter={formatBarLabel}
+                className="fill-slate-600 text-[11px] font-medium"
+              />
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>

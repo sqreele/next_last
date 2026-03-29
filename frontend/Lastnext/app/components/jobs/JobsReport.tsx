@@ -3,27 +3,240 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Badge } from '@/app/components/ui/badge';
-import { 
-  FileText, 
-  Download, 
-  Building2, 
-  Calendar, 
-  Clock, 
-  CheckCircle2, 
+import {
+  FileText,
+  Building2,
+  Building,
+  Calendar,
+  Clock,
+  CheckCircle2,
   AlertTriangle,
   TrendingUp,
-  Users,
   Settings,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Wrench,
+  ClipboardList,
 } from 'lucide-react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  LabelList,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
+import { useDetailedUsers, type DetailedUser } from '@/app/lib/hooks/useDetailedUsers';
 import { Job, TabValue, JobStatus, JobPriority, STATUS_COLORS } from '@/app/lib/types';
 import { fetchAllJobsForProperty } from '@/app/lib/data.server';
 import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
-import { format } from 'date-fns';
+import { endOfDay, format, startOfDay } from 'date-fns';
 import { jobsToCSV, downloadCSV } from '@/app/lib/utils/csv-export';
+
+const STATUS_FILTER_OPTIONS: Array<{ value: JobStatus | 'all'; label: string }> = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'in_progress', label: 'In progress' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'waiting_sparepart', label: 'Waiting spare part' },
+];
+
+const PRIORITY_FILTER_OPTIONS: Array<{ value: JobPriority | 'all'; label: string }> = [
+  { value: 'all', label: 'All priorities' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+];
+
+type PmFilterType = 'all' | 'pm' | 'non_pm';
+
+const PM_FILTER_OPTIONS: Array<{ value: PmFilterType; label: string }> = [
+  { value: 'all', label: 'PM + Non-PM' },
+  { value: 'pm', label: 'PM only' },
+  { value: 'non_pm', label: 'Non-PM only' },
+];
+
+const UNASSIGNED_ROOM_KEY = '__unassigned__';
+
+/** Stable key for report user filter; `null` = no assignee. */
+function getJobUserKey(user: Job['user'] | undefined | null): string | null {
+  if (user === undefined || user === null) return null;
+  if (typeof user === 'string') {
+    const s = user.trim();
+    return s.length ? s : null;
+  }
+  if (typeof user === 'number') {
+    if (Number.isNaN(user)) return null;
+    return String(user);
+  }
+  if (typeof user === 'object') {
+    const o = user as { id?: string | number; username?: string };
+    if (o.id != null && String(o.id).trim() !== '') {
+      return String(o.id).trim();
+    }
+    if (o.username != null && String(o.username).trim() !== '') {
+      return `username:${String(o.username).trim()}`;
+    }
+  }
+  return null;
+}
+
+function cleanAuthUsername(raw: string): string {
+  if (raw.includes('auth0_') || raw.includes('google-oauth2_')) {
+    return raw.replace(/^(auth0_|google-oauth2_)/, '');
+  }
+  return raw;
+}
+
+function getReportUserLabel(
+  user: Job['user'] | undefined | null,
+  detailedUsers: DetailedUser[],
+  sessionUser: { id?: string; username?: string; first_name?: string | null; last_name?: string | null } | undefined
+): string {
+  if (user === undefined || user === null) return 'Unassigned';
+
+  if (typeof user === 'object' && user && 'username' in user) {
+    const detailed = detailedUsers.find((u) => u.username === user.username);
+    if (detailed?.full_name?.trim()) return detailed.full_name.trim();
+    if (detailed?.username) return cleanAuthUsername(detailed.username);
+    const u = user.username ? cleanAuthUsername(String(user.username)) : '';
+    return u || 'Unknown user';
+  }
+
+  if (typeof user === 'string' || typeof user === 'number') {
+    const userStr = String(user);
+    const detailed = detailedUsers.find(
+      (u) =>
+        u.id.toString() === userStr || u.username === userStr || u.email === userStr
+    );
+    if (detailed?.full_name?.trim()) return detailed.full_name.trim();
+    if (detailed?.username) return cleanAuthUsername(detailed.username);
+
+    if (sessionUser?.id) {
+      const sid = String(sessionUser.id).trim();
+      if (userStr === sid || userStr.toLowerCase() === sid.toLowerCase()) {
+        const fn = [sessionUser.first_name, sessionUser.last_name].filter(Boolean).join(' ').trim();
+        return fn || sessionUser.username || 'You';
+      }
+      if (userStr.includes('google-oauth2_') && sid.includes('google-oauth2_')) {
+        if (userStr.replace('google-oauth2_', '') === sid.replace('google-oauth2_', '')) {
+          return sessionUser.username || 'You';
+        }
+      }
+      const un = parseInt(userStr, 10);
+      const sn = parseInt(sid, 10);
+      if (!Number.isNaN(un) && !Number.isNaN(sn) && un === sn) {
+        return sessionUser.username || 'You';
+      }
+    }
+
+    if (!Number.isNaN(Number(userStr))) return `User #${userStr}`;
+    return `User ${userStr}`;
+  }
+
+  return 'Unknown user';
+}
+
+function jobIsPm(job: Job): boolean {
+  return job.is_preventivemaintenance === true;
+}
+
+/** Rooms linked to a job (each job can count toward multiple rooms). */
+function getJobRoomEntries(job: Job): Array<{ key: string; displayName: string; roomId: string }> {
+  if (job.rooms && job.rooms.length > 0) {
+    return job.rooms.map((room) => {
+      const id = room.room_id ?? room.name;
+      const key = `id:${String(id)}`;
+      const displayName =
+        (room.name && String(room.name).trim()) || `Room ${room.room_id ?? ''}`.trim() || 'Unnamed room';
+      return {
+        key,
+        displayName,
+        roomId: room.room_id != null ? String(room.room_id) : '—',
+      };
+    });
+  }
+  if (job.room_name && String(job.room_name).trim()) {
+    const name = String(job.room_name).trim();
+    return [{ key: `name:${name}`, displayName: name, roomId: '—' }];
+  }
+  return [];
+}
+
+function parseLocalDateYmd(ymd: string): Date | null {
+  const parts = ymd.trim().split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
+  const [y, m, d] = parts;
+  if (!y || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return new Date(y, m - 1, d);
+}
+
+/** `all` = any topic; `none` = jobs with no topics; otherwise numeric topic id as string. */
+type TopicFilterValue = 'all' | 'none' | string;
+
+/** `all` = any user; `none` = no assignee; otherwise key from {@link getJobUserKey}. */
+type UserFilterValue = 'all' | 'none' | string;
+
+function filterJobsForReport(
+  jobs: Job[],
+  statusFilter: JobStatus | 'all',
+  priorityFilter: JobPriority | 'all',
+  pmFilter: PmFilterType,
+  topicFilter: TopicFilterValue,
+  userFilter: UserFilterValue,
+  createdFrom: string,
+  createdTo: string
+): Job[] {
+  return jobs.filter((job) => {
+    if (statusFilter !== 'all' && job.status !== statusFilter) return false;
+    if (priorityFilter !== 'all' && job.priority !== priorityFilter) return false;
+    const isPm = jobIsPm(job);
+    if (pmFilter === 'pm' && !isPm) return false;
+    if (pmFilter === 'non_pm' && isPm) return false;
+
+    const userKey = getJobUserKey(job.user);
+    if (userFilter === 'none') {
+      if (userKey !== null) return false;
+    } else if (userFilter !== 'all') {
+      if (userKey !== userFilter) return false;
+    }
+
+    const topics = job.topics;
+    const hasTopics = Array.isArray(topics) && topics.length > 0;
+    if (topicFilter === 'none') {
+      if (hasTopics) return false;
+    } else if (topicFilter !== 'all') {
+      const wantId = Number(topicFilter);
+      if (Number.isNaN(wantId)) return false;
+      if (!topics?.some((t) => Number(t.id) === wantId)) return false;
+    }
+
+    const created = new Date(job.created_at).getTime();
+    if (createdFrom.trim()) {
+      const day = parseLocalDateYmd(createdFrom);
+      if (day) {
+        const from = startOfDay(day).getTime();
+        if (created < from) return false;
+      }
+    }
+    if (createdTo.trim()) {
+      const day = parseLocalDateYmd(createdTo);
+      if (day) {
+        const to = endOfDay(day).getTime();
+        if (created > to) return false;
+      }
+    }
+    return true;
+  });
+}
 
 interface JobsReportProps {
   jobs?: Job[];
@@ -33,6 +246,8 @@ interface JobsReportProps {
 
 interface ReportStatistics {
   total: number;
+  pmJobs: number;
+  nonPmJobs: number;
   completed: number;
   inProgress: number;
   pending: number;
@@ -47,21 +262,330 @@ interface ReportStatistics {
   jobsByStatus: Array<{ status: string; count: number; color: string }>;
 }
 
+interface RoomJobsSummaryRow {
+  key: string;
+  displayName: string;
+  roomId: string;
+  jobCount: number;
+  pmJobCount: number;
+}
+
 const PRIORITY_COLORS: Record<JobPriority, string> = {
   high: '#dc2626',
   medium: '#ea580c',
-  low: '#16a34a'
+  low: '#16a34a',
 };
+
+function formatChartCount(v: number | string) {
+  const n = typeof v === 'number' ? v : Number(v);
+  if (Number.isNaN(n) || n === 0) return '';
+  return String(n);
+}
+
+/** Always show digit (including 0) for short bar charts like PM vs non-PM. */
+function formatChartCountWithZero(v: number | string) {
+  const n = typeof v === 'number' ? v : Number(v);
+  if (Number.isNaN(n)) return '';
+  return String(n);
+}
+
+const LABEL_TEXT_STYLE = { fontSize: 11, fontWeight: 600 as const };
+
+/** Inner label on stacked room bar when both PM and non-PM exist (avoids duplicating the total). */
+function RoomsInnerSegmentLabel(
+  props: {
+    x?: number | string;
+    y?: number | string;
+    width?: number | string;
+    height?: number | string;
+    payload?: { pm?: number; nonPm?: number };
+  },
+  which: 'pm' | 'nonPm'
+) {
+  const { x, y, width, height, payload } = props;
+  if (
+    x == null ||
+    y == null ||
+    width == null ||
+    height == null ||
+    !payload ||
+    typeof payload !== 'object'
+  ) {
+    return null;
+  }
+  const pm = Number(payload.pm) || 0;
+  const nonPm = Number(payload.nonPm) || 0;
+  if (pm <= 0 || nonPm <= 0) return null;
+
+  const val = which === 'pm' ? pm : nonPm;
+  if (val <= 0) return null;
+
+  const nx = typeof x === 'number' ? x : Number(x);
+  const ny = typeof y === 'number' ? y : Number(y);
+  const nw = typeof width === 'number' ? width : Number(width);
+  const nh = typeof height === 'number' ? height : Number(height);
+  if (nw < 16) return null;
+
+  return (
+    <text
+      x={nx + nw / 2}
+      y={ny + nh / 2}
+      fill="#ffffff"
+      fontSize={10}
+      fontWeight={600}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      className="tabular-nums"
+      style={{ textShadow: '0 0 2px rgba(0,0,0,0.35)' }}
+    >
+      {val}
+    </text>
+  );
+}
+
+const ROOMS_CHART_MAX = 25;
+
+function truncateRoomLabel(name: string, max = 24): string {
+  const t = name.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1)}…`;
+}
+
+/** Total at end of stack: on non-PM segment when it exists, else on PM segment. */
+function RoomsStackEndLabel(
+  props: {
+    x?: number | string;
+    y?: number | string;
+    width?: number | string;
+    height?: number | string;
+    payload?: { pm?: number; nonPm?: number };
+  },
+  segment: 'pm' | 'nonPm'
+) {
+  const { x, y, width, height, payload } = props;
+  if (
+    x == null ||
+    y == null ||
+    width == null ||
+    height == null ||
+    !payload ||
+    typeof payload !== 'object'
+  ) {
+    return null;
+  }
+  const pm = Number(payload.pm) || 0;
+  const nonPm = Number(payload.nonPm) || 0;
+  const total = pm + nonPm;
+  if (total === 0) return null;
+  if (segment === 'nonPm' && nonPm === 0) return null;
+  if (segment === 'pm' && nonPm > 0) return null;
+
+  const nx = typeof x === 'number' ? x : Number(x);
+  const ny = typeof y === 'number' ? y : Number(y);
+  const nw = typeof width === 'number' ? width : Number(width);
+  const nh = typeof height === 'number' ? height : Number(height);
+
+  return (
+    <text
+      x={nx + nw + 8}
+      y={ny + nh / 2}
+      fill="#111827"
+      dominantBaseline="middle"
+      className="tabular-nums"
+      style={LABEL_TEXT_STYLE}
+    >
+      {total}
+    </text>
+  );
+}
 
 export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: JobsReportProps) {
   const { data: session } = useSession();
   const { userProfile, selectedPropertyId: selectedProperty } = useUser();
   const { properties: userProperties } = useProperties();
+  const { users: detailedUsers } = useDetailedUsers();
   
   const [isGeneratingCsv, setIsGeneratingCsv] = useState(false);
   const [reportJobs, setReportJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<JobStatus | 'all'>('all');
+  const [priorityFilter, setPriorityFilter] = useState<JobPriority | 'all'>('all');
+  const [createdFrom, setCreatedFrom] = useState('');
+  const [createdTo, setCreatedTo] = useState('');
+  const [pmFilter, setPmFilter] = useState<PmFilterType>('all');
+  const [topicFilter, setTopicFilter] = useState<TopicFilterValue>('all');
+  const [userFilter, setUserFilter] = useState<UserFilterValue>('all');
   const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
+
+  const topicFilterOptions = useMemo(() => {
+    const byId = new Map<number, { id: number; title: string }>();
+    reportJobs.forEach((job) => {
+      job.topics?.forEach((t) => {
+        if (t == null || t.id == null) return;
+        const id = Number(t.id);
+        if (Number.isNaN(id)) return;
+        const title = (t.title && String(t.title).trim()) || `Topic ${id}`;
+        if (!byId.has(id)) byId.set(id, { id, title });
+      });
+    });
+    return Array.from(byId.values()).sort((a, b) =>
+      a.title.localeCompare(b.title, undefined, { sensitivity: 'base' })
+    );
+  }, [reportJobs]);
+
+  const jobsWithNoTopicCount = useMemo(
+    () => reportJobs.filter((j) => !j.topics?.length).length,
+    [reportJobs]
+  );
+
+  const jobsWithNoUserCount = useMemo(
+    () => reportJobs.filter((j) => getJobUserKey(j.user) === null).length,
+    [reportJobs]
+  );
+
+  const userFilterOptions = useMemo(() => {
+    const byKey = new Map<string, string>();
+    reportJobs.forEach((job) => {
+      const key = getJobUserKey(job.user);
+      if (!key || byKey.has(key)) return;
+      byKey.set(key, getReportUserLabel(job.user, detailedUsers, session?.user));
+    });
+    return Array.from(byKey.entries())
+      .map(([key, label]) => ({ key, label }))
+      .sort((a, b) =>
+        a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })
+      );
+  }, [reportJobs, detailedUsers, session?.user]);
+
+  const filteredReportJobs = useMemo(
+    () =>
+      filterJobsForReport(
+        reportJobs,
+        statusFilter,
+        priorityFilter,
+        pmFilter,
+        topicFilter,
+        userFilter,
+        createdFrom,
+        createdTo
+      ),
+    [
+      reportJobs,
+      statusFilter,
+      priorityFilter,
+      pmFilter,
+      topicFilter,
+      userFilter,
+      createdFrom,
+      createdTo,
+    ]
+  );
+
+  useEffect(() => {
+    if (topicFilter === 'none' && jobsWithNoTopicCount === 0) {
+      setTopicFilter('all');
+      return;
+    }
+    if (topicFilter === 'all' || topicFilter === 'none') return;
+    const ok = topicFilterOptions.some((t) => String(t.id) === topicFilter);
+    if (!ok) setTopicFilter('all');
+  }, [topicFilter, topicFilterOptions, jobsWithNoTopicCount]);
+
+  useEffect(() => {
+    if (userFilter === 'none' && jobsWithNoUserCount === 0) {
+      setUserFilter('all');
+      return;
+    }
+    if (userFilter === 'all' || userFilter === 'none') return;
+    const ok = userFilterOptions.some((u) => u.key === userFilter);
+    if (!ok) setUserFilter('all');
+  }, [userFilter, userFilterOptions, jobsWithNoUserCount]);
+
+  const roomsJobsSummary = useMemo((): RoomJobsSummaryRow[] => {
+    const map = new Map<
+      string,
+      { displayName: string; roomId: string; jobCount: number; pmJobCount: number }
+    >();
+
+    filteredReportJobs.forEach((job) => {
+      const isPm = jobIsPm(job);
+      const entries = getJobRoomEntries(job);
+      if (entries.length === 0) {
+        const cur = map.get(UNASSIGNED_ROOM_KEY) ?? {
+          displayName: 'No room linked',
+          roomId: '—',
+          jobCount: 0,
+          pmJobCount: 0,
+        };
+        cur.jobCount += 1;
+        if (isPm) cur.pmJobCount += 1;
+        map.set(UNASSIGNED_ROOM_KEY, cur);
+        return;
+      }
+      entries.forEach((r) => {
+        const cur = map.get(r.key) ?? {
+          displayName: r.displayName,
+          roomId: r.roomId,
+          jobCount: 0,
+          pmJobCount: 0,
+        };
+        cur.jobCount += 1;
+        if (isPm) cur.pmJobCount += 1;
+        if (r.displayName) cur.displayName = r.displayName;
+        if (r.roomId !== '—') cur.roomId = r.roomId;
+        map.set(r.key, cur);
+      });
+    });
+
+    return Array.from(map.entries())
+      .map(([key, v]) => ({
+        key,
+        displayName: v.displayName,
+        roomId: v.roomId,
+        jobCount: v.jobCount,
+        pmJobCount: v.pmJobCount,
+      }))
+      .sort((a, b) => b.jobCount - a.jobCount);
+  }, [filteredReportJobs]);
+
+  /** Top rooms, reversed so highest count appears at top of horizontal bar chart. */
+  const roomsChartData = useMemo(() => {
+    const top = roomsJobsSummary.slice(0, ROOMS_CHART_MAX);
+    return [...top].reverse().map((r) => {
+      const pm = r.pmJobCount;
+      const nonPm = Math.max(0, r.jobCount - pm);
+      return {
+        label: truncateRoomLabel(r.displayName),
+        fullLabel: r.displayName,
+        roomId: r.roomId,
+        pm,
+        nonPm,
+        total: r.jobCount,
+      };
+    });
+  }, [roomsJobsSummary]);
+
+  const roomsChartHeight = useMemo(
+    () => Math.min(720, 56 + Math.max(roomsChartData.length, 1) * 36),
+    [roomsChartData.length]
+  );
+
+  /** Chronological month buckets for charts (statistics.jobsByMonth order is not sorted). */
+  const jobsByMonthChart = useMemo(() => {
+    const map = new Map<string, { sortKey: string; label: string; count: number }>();
+    filteredReportJobs.forEach((job) => {
+      const d = new Date(job.created_at);
+      const sortKey = format(d, 'yyyy-MM');
+      const label = format(d, 'MMM yyyy');
+      const cur = map.get(sortKey);
+      if (cur) {
+        cur.count += 1;
+      } else {
+        map.set(sortKey, { sortKey, label, count: 1 });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  }, [filteredReportJobs]);
 
   // Get current property information
   const currentProperty = useMemo(() => {
@@ -117,22 +641,24 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
     });
   }, [jobs, selectedProperty]);
 
-  // Calculate comprehensive statistics
+  // Calculate comprehensive statistics (respects export filters)
   const statistics: ReportStatistics = useMemo(() => {
-    const total = reportJobs.length;
-    const completed = reportJobs.filter(job => job.status === 'completed').length;
-    const inProgress = reportJobs.filter(job => job.status === 'in_progress').length;
-    const pending = reportJobs.filter(job => job.status === 'pending').length;
-    const cancelled = reportJobs.filter(job => job.status === 'cancelled').length;
-    const waitingSparepart = reportJobs.filter(job => job.status === 'waiting_sparepart').length;
-    const highPriority = reportJobs.filter(job => job.priority === 'high').length;
-    const mediumPriority = reportJobs.filter(job => job.priority === 'medium').length;
-    const lowPriority = reportJobs.filter(job => job.priority === 'low').length;
+    const total = filteredReportJobs.length;
+    const pmJobs = filteredReportJobs.filter((job) => jobIsPm(job)).length;
+    const nonPmJobs = total - pmJobs;
+    const completed = filteredReportJobs.filter(job => job.status === 'completed').length;
+    const inProgress = filteredReportJobs.filter(job => job.status === 'in_progress').length;
+    const pending = filteredReportJobs.filter(job => job.status === 'pending').length;
+    const cancelled = filteredReportJobs.filter(job => job.status === 'cancelled').length;
+    const waitingSparepart = filteredReportJobs.filter(job => job.status === 'waiting_sparepart').length;
+    const highPriority = filteredReportJobs.filter(job => job.priority === 'high').length;
+    const mediumPriority = filteredReportJobs.filter(job => job.priority === 'medium').length;
+    const lowPriority = filteredReportJobs.filter(job => job.priority === 'low').length;
     
     const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
     
     // Calculate average response time
-    const completedJobDates = reportJobs
+    const completedJobDates = filteredReportJobs
       .filter(job => job.status === 'completed' && job.completed_at)
       .map(job => new Date(job.completed_at!).getTime() - new Date(job.created_at).getTime());
     
@@ -141,7 +667,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       : 0;
 
     // Group jobs by month
-    const jobsByMonth = reportJobs.reduce((acc, job) => {
+    const jobsByMonth = filteredReportJobs.reduce((acc, job) => {
       const month = format(new Date(job.created_at), 'MMM yyyy');
       const existing = acc.find(item => item.month === month);
       if (existing) {
@@ -163,6 +689,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
 
     return {
       total,
+      pmJobs,
+      nonPmJobs,
       completed,
       inProgress,
       pending,
@@ -176,7 +704,24 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       jobsByMonth,
       jobsByStatus
     };
-  }, [reportJobs]);
+  }, [filteredReportJobs]);
+
+  const pmVsNonPmChartRows = useMemo(
+    () => [
+      { name: 'PM', value: statistics.pmJobs, fill: '#7c3aed' },
+      { name: 'Non-PM', value: statistics.nonPmJobs, fill: '#0ea5e9' },
+    ],
+    [statistics.pmJobs, statistics.nonPmJobs]
+  );
+
+  const priorityChartRows = useMemo(
+    () => [
+      { name: 'High', value: statistics.highPriority, fill: PRIORITY_COLORS.high },
+      { name: 'Medium', value: statistics.mediumPriority, fill: PRIORITY_COLORS.medium },
+      { name: 'Low', value: statistics.lowPriority, fill: PRIORITY_COLORS.low },
+    ],
+    [statistics.highPriority, statistics.mediumPriority, statistics.lowPriority]
+  );
 
   // Load jobs for the selected property if not provided
   useEffect(() => {
@@ -232,8 +777,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
 
   // Generate CSV export
   const handleGenerateCSV = async () => {
-    if (!reportJobs.length) {
-      alert('No jobs available to export.');
+    if (!filteredReportJobs.length) {
+      alert('No jobs match the current filters. Adjust filters or clear them to export.');
       return;
     }
 
@@ -241,7 +786,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       setIsGeneratingCsv(true);
       const propertyName = currentProperty?.name || `Property ${selectedProperty}`;
 
-      const csvContent = jobsToCSV(reportJobs, userProperties, {
+      const csvContent = jobsToCSV(filteredReportJobs, userProperties, {
         includeImages: false,
         includeUserDetails: true,
         includeRoomDetails: true,
@@ -250,7 +795,27 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       });
 
       const date = format(new Date(), 'yyyy-MM-dd');
-      const filename = `${propertyName.replace(/\s+/g, '-')}-jobs-report-${date}.csv`;
+      const filterParts = [
+        statusFilter !== 'all' ? statusFilter : '',
+        priorityFilter !== 'all' ? priorityFilter : '',
+        pmFilter !== 'all' ? pmFilter : '',
+        topicFilter === 'none'
+          ? 'no-topic'
+          : topicFilter !== 'all'
+            ? `topic-${topicFilter}`
+            : '',
+        userFilter === 'none'
+          ? 'no-user'
+          : userFilter !== 'all'
+            ? `user-${userFilter.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+            : '',
+        createdFrom.trim() ? `from-${createdFrom}` : '',
+        createdTo.trim() ? `to-${createdTo}` : '',
+      ].filter(Boolean);
+      const filterSlug = filterParts.length ? `-${filterParts.join('-')}` : '';
+      const filename = `${propertyName.replace(/\s+/g, '-')}-jobs-report${filterSlug}-${date}.csv`
+        .replace(/[^a-zA-Z0-9._-]+/g, '-')
+        .replace(/-+/g, '-');
 
       downloadCSV(csvContent, filename);
     } catch (error: any) {
@@ -352,13 +917,17 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
                 {currentProperty?.name} - Jobs Report
               </CardTitle>
               <p className="text-sm text-gray-500 mt-1">
-                Property ID: {selectedProperty} | Filter: {filter}
+                Property ID: {selectedProperty}
+                {filter !== 'all' ? ` · Tab filter: ${filter}` : ''}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
+              <p className="text-xs text-gray-500 sm:mr-2">
+                Export uses filtered rows ({filteredReportJobs.length}/{reportJobs.length})
+              </p>
               <Button 
                 onClick={handleGenerateCSV} 
-                disabled={isGeneratingCsv || reportJobs.length === 0}
+                disabled={isGeneratingCsv || filteredReportJobs.length === 0}
                 variant="outline"
                 className="flex items-center gap-2"
               >
@@ -370,7 +939,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
                 ) : (
                   <>
                     <FileSpreadsheet className="h-4 w-4" />
-                    Export CSV
+                    Export CSV ({filteredReportJobs.length})
                   </>
                 )}
               </Button>
@@ -379,15 +948,173 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         </CardHeader>
       </Card>
 
+      {/* Filters — same scope as statistics and CSV export */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Report & export filters</CardTitle>
+          <p className="text-sm font-normal text-gray-500">
+            Narrow jobs before export. Charts and CSV only include rows that match all selected criteria
+            (including topic and user).
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
+            <div className="space-y-1.5">
+              <label htmlFor="jobs-report-status" className="text-xs font-medium text-gray-700">
+                Status
+              </label>
+              <select
+                id="jobs-report-status"
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as JobStatus | 'all')}
+              >
+                {STATUS_FILTER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="jobs-report-priority" className="text-xs font-medium text-gray-700">
+                Priority
+              </label>
+              <select
+                id="jobs-report-priority"
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value as JobPriority | 'all')}
+              >
+                {PRIORITY_FILTER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="jobs-report-pm" className="text-xs font-medium text-gray-700">
+                Job type (PM)
+              </label>
+              <select
+                id="jobs-report-pm"
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={pmFilter}
+                onChange={(e) => setPmFilter(e.target.value as PmFilterType)}
+              >
+                {PM_FILTER_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="jobs-report-topic" className="text-xs font-medium text-gray-700">
+                Topic
+              </label>
+              <select
+                id="jobs-report-topic"
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={topicFilter}
+                onChange={(e) => setTopicFilter(e.target.value as TopicFilterValue)}
+              >
+                <option value="all">All topics</option>
+                {jobsWithNoTopicCount > 0 ? (
+                  <option value="none">
+                    No topic ({jobsWithNoTopicCount})
+                  </option>
+                ) : null}
+                {topicFilterOptions.map((t) => (
+                  <option key={t.id} value={String(t.id)}>
+                    {t.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="jobs-report-user" className="text-xs font-medium text-gray-700">
+                User
+              </label>
+              <select
+                id="jobs-report-user"
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={userFilter}
+                onChange={(e) => setUserFilter(e.target.value as UserFilterValue)}
+              >
+                <option value="all">All users</option>
+                {jobsWithNoUserCount > 0 ? (
+                  <option value="none">
+                    No assignee ({jobsWithNoUserCount})
+                  </option>
+                ) : null}
+                {userFilterOptions.map((u) => (
+                  <option key={u.key} value={u.key}>
+                    {u.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="jobs-report-from" className="text-xs font-medium text-gray-700">
+                Created from
+              </label>
+              <input
+                id="jobs-report-from"
+                type="date"
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={createdFrom}
+                onChange={(e) => setCreatedFrom(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="jobs-report-to" className="text-xs font-medium text-gray-700">
+                Created to
+              </label>
+              <input
+                id="jobs-report-to"
+                type="date"
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={createdTo}
+                onChange={(e) => setCreatedTo(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-gray-600"
+              onClick={() => {
+                setStatusFilter('all');
+                setPriorityFilter('all');
+                setPmFilter('all');
+                setTopicFilter('all');
+                setUserFilter('all');
+                setCreatedFrom('');
+                setCreatedTo('');
+              }}
+            >
+              Clear filters
+            </Button>
+            {filteredReportJobs.length === 0 && reportJobs.length > 0 ? (
+              <span className="text-xs text-amber-700">No jobs match — loosen filters to see data.</span>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Key Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              <div>
+              <FileText className="h-5 w-5 shrink-0 text-blue-600" />
+              <div className="min-w-0">
                 <p className="text-2xl font-bold">{statistics.total}</p>
-                <p className="text-sm text-gray-500">Total Jobs</p>
+                <p className="text-sm text-gray-500">Total</p>
               </div>
             </div>
           </CardContent>
@@ -396,10 +1123,34 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-              <div>
+              <Wrench className="h-5 w-5 shrink-0 text-violet-600" />
+              <div className="min-w-0">
+                <p className="text-2xl font-bold">{statistics.pmJobs}</p>
+                <p className="text-sm text-gray-500">PM jobs</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 shrink-0 text-sky-600" />
+              <div className="min-w-0">
+                <p className="text-2xl font-bold">{statistics.nonPmJobs}</p>
+                <p className="text-sm text-gray-500">Non-PM</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600" />
+              <div className="min-w-0">
                 <p className="text-2xl font-bold">{statistics.completionRate}%</p>
-                <p className="text-sm text-gray-500">Completion Rate</p>
+                <p className="text-sm text-gray-500">Complete</p>
               </div>
             </div>
           </CardContent>
@@ -408,10 +1159,10 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-orange-600" />
-              <div>
+              <Clock className="h-5 w-5 shrink-0 text-orange-600" />
+              <div className="min-w-0">
                 <p className="text-2xl font-bold">{statistics.averageResponseTime}d</p>
-                <p className="text-sm text-gray-500">Avg Response Time</p>
+                <p className="text-sm text-gray-500">Avg time</p>
               </div>
             </div>
           </CardContent>
@@ -420,87 +1171,323 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <div>
+              <AlertTriangle className="h-5 w-5 shrink-0 text-red-600" />
+              <div className="min-w-0">
                 <p className="text-2xl font-bold">{statistics.highPriority}</p>
-                <p className="text-sm text-gray-500">High Priority</p>
+                <p className="text-sm text-gray-500">High Prio</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Status Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Jobs by Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            {statistics.jobsByStatus.map((status) => (
-              <div key={status.status} className="text-center">
-                <div 
-                  className="w-4 h-4 rounded-full mx-auto mb-2"
-                  style={{ backgroundColor: status.color }}
-                />
-                <p className="text-2xl font-bold">{status.count}</p>
-                <p className="text-sm text-gray-500">{status.status}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Priority Breakdown */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Jobs by Priority
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <Badge variant="destructive" className="mb-2">High</Badge>
-              <p className="text-2xl font-bold">{statistics.highPriority}</p>
-            </div>
-            <div className="text-center">
-              <Badge variant="secondary" className="mb-2">Medium</Badge>
-              <p className="text-2xl font-bold">{statistics.mediumPriority}</p>
-            </div>
-            <div className="text-center">
-              <Badge variant="default" className="mb-2">Low</Badge>
-              <p className="text-2xl font-bold">{statistics.lowPriority}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Monthly Trend */}
-      {statistics.jobsByMonth.length > 0 && (
+      {/* Charts — filtered jobs only */}
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Jobs by Month
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TrendingUp className="h-5 w-5" />
+              Jobs by status
             </CardTitle>
+            <p className="text-sm font-normal text-gray-500">
+              Count per status for the current filter selection.
+            </p>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {statistics.jobsByMonth.slice(-6).map((month) => (
-                <div key={month.month} className="text-center">
-                  <p className="text-lg font-bold">{month.count}</p>
-                  <p className="text-sm text-gray-500">{month.month}</p>
-                </div>
-              ))}
-            </div>
+          <CardContent className="pt-0">
+            {filteredReportJobs.length === 0 ? (
+              <div className="flex h-72 min-h-[18rem] items-center justify-center text-sm text-gray-500">
+                No jobs match the filters.
+              </div>
+            ) : (
+              <div className="h-72 w-full min-h-[18rem]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={statistics.jobsByStatus}
+                    margin={{ top: 28, right: 12, left: 8, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey="status"
+                      tick={{ fontSize: 11 }}
+                      stroke="#6b7280"
+                      interval={0}
+                      angle={-20}
+                      textAnchor="end"
+                      height={56}
+                    />
+                    <YAxis tick={{ fontSize: 11 }} stroke="#6b7280" allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Jobs">
+                      {statistics.jobsByStatus.map((entry, index) => (
+                        <Cell key={`cell-${entry.status}`} fill={entry.color} />
+                      ))}
+                      <LabelList
+                        dataKey="count"
+                        position="top"
+                        formatter={formatChartCountWithZero}
+                        fill="#374151"
+                        style={LABEL_TEXT_STYLE}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Calendar className="h-5 w-5" />
+              Jobs by month (created)
+            </CardTitle>
+            <p className="text-sm font-normal text-gray-500">
+              Chronological trend from filtered jobs.
+            </p>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {jobsByMonthChart.length === 0 ? (
+              <div className="flex h-72 min-h-[18rem] items-center justify-center text-sm text-gray-500">
+                No jobs match the filters.
+              </div>
+            ) : (
+              <div className="h-72 w-full min-h-[18rem]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={jobsByMonthChart.map((m) => ({ label: m.label, jobs: m.count }))}
+                    margin={{ top: 28, right: 12, left: 8, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#6b7280" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="#6b7280" allowDecimals={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="jobs"
+                      name="Jobs"
+                      stroke="#2563eb"
+                      strokeWidth={2.5}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    >
+                      <LabelList
+                        dataKey="jobs"
+                        position="top"
+                        formatter={formatChartCount}
+                        fill="#374151"
+                        style={LABEL_TEXT_STYLE}
+                      />
+                    </Line>
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Wrench className="h-5 w-5" />
+              PM vs non-PM
+            </CardTitle>
+            <p className="text-sm font-normal text-gray-500">
+              Based on <span className="font-medium">Preventive maintenance</span> flag on each job (
+              <code className="text-xs">is_preventivemaintenance</code>).
+            </p>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {filteredReportJobs.length === 0 ? (
+              <div className="flex h-56 min-h-[14rem] items-center justify-center text-sm text-gray-500">
+                No jobs match the filters.
+              </div>
+            ) : (
+              <div className="h-56 w-full min-h-[14rem]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={pmVsNonPmChartRows}
+                    margin={{ top: 28, right: 12, left: 8, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#6b7280" />
+                    <YAxis tick={{ fontSize: 11 }} stroke="#6b7280" allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="value" name="Jobs" radius={[6, 6, 0, 0]}>
+                      {pmVsNonPmChartRows.map((row) => (
+                        <Cell key={row.name} fill={row.fill} />
+                      ))}
+                      <LabelList
+                        dataKey="value"
+                        position="top"
+                        formatter={formatChartCountWithZero}
+                        fill="#374151"
+                        style={LABEL_TEXT_STYLE}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Settings className="h-5 w-5" />
+              Jobs by priority
+            </CardTitle>
+            <p className="text-sm font-normal text-gray-500">
+              Horizontal bars — value labels at the end of each bar.
+            </p>
+          </CardHeader>
+          <CardContent className="pt-0">
+            {filteredReportJobs.length === 0 ? (
+              <div className="flex h-56 min-h-[14rem] items-center justify-center text-sm text-gray-500">
+                No jobs match the filters.
+              </div>
+            ) : (
+              <div className="h-56 w-full min-h-[14rem] max-w-2xl lg:max-w-none">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    layout="vertical"
+                    data={priorityChartRows}
+                    margin={{ top: 8, right: 48, left: 8, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" tick={{ fontSize: 11 }} stroke="#6b7280" allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={64}
+                      tick={{ fontSize: 12 }}
+                      stroke="#6b7280"
+                    />
+                    <Tooltip />
+                    <Bar dataKey="value" name="Jobs" radius={[0, 6, 6, 0]}>
+                      {priorityChartRows.map((row) => (
+                        <Cell key={row.name} fill={row.fill} />
+                      ))}
+                      <LabelList
+                        dataKey="value"
+                        position="right"
+                        formatter={formatChartCountWithZero}
+                        fill="#374151"
+                        style={LABEL_TEXT_STYLE}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Building className="h-5 w-5" />
+            Rooms with jobs
+          </CardTitle>
+          <p className="text-sm font-normal text-gray-500">
+            Stacked bars: <span className="text-violet-700 font-medium">PM</span> +{' '}
+            <span className="text-sky-700 font-medium">Non-PM</span>. White numbers inside each segment when
+            both exist; total at bar end. Same counting rules
+            as before (multi-room jobs count per room; no room → &quot;No room linked&quot;).
+            {roomsJobsSummary.length > ROOMS_CHART_MAX ? (
+              <span className="mt-1 block text-amber-800">
+                Showing top {ROOMS_CHART_MAX} rooms by job count ({roomsJobsSummary.length} rows total).
+              </span>
+            ) : null}
+          </p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {filteredReportJobs.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-500">No jobs match the filters.</p>
+          ) : roomsJobsSummary.length === 0 ? (
+            <p className="py-8 text-center text-sm text-gray-500">No room data on these jobs.</p>
+          ) : (
+            <div style={{ height: roomsChartHeight }} className="w-full min-h-[14rem]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  layout="vertical"
+                  data={roomsChartData}
+                  margin={{ top: 8, right: 52, left: 8, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis type="number" tick={{ fontSize: 11 }} stroke="#6b7280" allowDecimals={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    width={108}
+                    tick={{ fontSize: 10 }}
+                    stroke="#6b7280"
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.[0]) return null;
+                      const p = payload[0].payload as {
+                        fullLabel: string;
+                        roomId: string;
+                        pm: number;
+                        nonPm: number;
+                        total: number;
+                      };
+                      return (
+                        <div className="rounded-md border border-gray-200 bg-white px-3 py-2 text-xs shadow-md">
+                          <p className="font-semibold text-gray-900">{p.fullLabel}</p>
+                          <p className="text-gray-500">Room ID: {p.roomId}</p>
+                          <p className="text-violet-700">PM: {p.pm}</p>
+                          <p className="text-sky-700">Non-PM: {p.nonPm}</p>
+                          <p className="mt-1 font-medium text-gray-800">Total jobs: {p.total}</p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="pm"
+                    name="PM"
+                    stackId="roomJobs"
+                    fill="#7c3aed"
+                    radius={[4, 0, 0, 4]}
+                  >
+                    <LabelList
+                      dataKey="pm"
+                      content={(p) => RoomsInnerSegmentLabel(p, 'pm')}
+                    />
+                    <LabelList
+                      dataKey="pm"
+                      content={(p) => RoomsStackEndLabel(p, 'pm')}
+                    />
+                  </Bar>
+                  <Bar
+                    dataKey="nonPm"
+                    name="Non-PM"
+                    stackId="roomJobs"
+                    fill="#0ea5e9"
+                    radius={[0, 4, 4, 0]}
+                  >
+                    <LabelList
+                      dataKey="nonPm"
+                      content={(p) => RoomsInnerSegmentLabel(p, 'nonPm')}
+                    />
+                    <LabelList
+                      dataKey="nonPm"
+                      content={(p) => RoomsStackEndLabel(p, 'nonPm')}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Summary */}
       <Card>
@@ -511,7 +1498,10 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
           <div className="space-y-2 text-sm text-gray-600">
             <p>• Generated on: {format(new Date(), 'PPP')}</p>
             <p>• Property: {currentProperty?.name}</p>
-            <p>• Total jobs analyzed: {statistics.total}</p>
+            <p>• Total jobs in this report (after filters): {statistics.total}</p>
+            <p>• PM jobs: {statistics.pmJobs} · Non-PM: {statistics.nonPmJobs}</p>
+            <p>• Distinct rooms in chart data: {roomsJobsSummary.length}</p>
+            <p>• Jobs loaded for property: {reportJobs.length}</p>
             <p>• Completion rate: {statistics.completionRate}%</p>
             <p>• Average response time: {statistics.averageResponseTime} days</p>
             <p>• High priority jobs requiring attention: {statistics.highPriority}</p>

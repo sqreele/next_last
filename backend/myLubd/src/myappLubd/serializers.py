@@ -1774,13 +1774,30 @@ class MaintenanceTaskImageListSerializer(serializers.ModelSerializer):
         return None
 
 # Utility Consumption Serializers
+# JSON numbers for dashboard clients (avoid string Decimals from COERCE_DECIMAL_TO_STRING).
+_UTILITY_DECIMAL_KWARGS = dict(
+    max_digits=10,
+    decimal_places=2,
+    coerce_to_string=False,
+    allow_null=True,
+    required=False,
+)
+
+
 class UtilityConsumptionSerializer(serializers.ModelSerializer):
     """Serializer for Utility Consumption records"""
     property_name = serializers.CharField(source='property.name', read_only=True)
     property_id = serializers.CharField(source='property.property_id', read_only=True)
     month_display = serializers.CharField(source='get_month_display', read_only=True)
     created_by_username = serializers.CharField(source='created_by.username', read_only=True)
-    
+    totalkwh = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    onpeakkwh = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    offpeakkwh = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    totalelectricity = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    electricity_cost_budget = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    water = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    nightsale = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+
     class Meta:
         model = UtilityConsumption
         fields = [
@@ -1827,7 +1844,14 @@ class UtilityConsumptionListSerializer(serializers.ModelSerializer):
     property_name = serializers.CharField(source='property.name', read_only=True)
     property_id = serializers.CharField(source='property.property_id', read_only=True)
     month_display = serializers.CharField(source='get_month_display', read_only=True)
-    
+    totalkwh = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    onpeakkwh = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    offpeakkwh = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    totalelectricity = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    electricity_cost_budget = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    water = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+    nightsale = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
+
     class Meta:
         model = UtilityConsumption
         fields = [

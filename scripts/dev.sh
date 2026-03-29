@@ -66,6 +66,11 @@ wait_for_db() {
 
 # Function to run migrations
 run_migrations() {
+    print_status "Syncing PostgreSQL sequences (avoids auth_permission duplicate-key errors)..."
+    docker-compose -f docker-compose.dev.yml exec -T backend sh -c '
+      SEQFIX=$(python manage.py sqlsequencereset auth admin contenttypes sessions myappLubd 2>/dev/null || true)
+      if [ -n "$SEQFIX" ]; then echo "$SEQFIX" | python manage.py dbshell >/dev/null 2>&1 || true; fi
+    ' 2>/dev/null || true
     print_status "Running database migrations..."
     if docker-compose -f docker-compose.dev.yml exec -T backend python manage.py migrate; then
         print_success "Migrations completed successfully!"

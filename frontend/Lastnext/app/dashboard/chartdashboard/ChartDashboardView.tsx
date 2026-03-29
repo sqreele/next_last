@@ -8,6 +8,12 @@ import SummaryCards from './components/SummaryCards';
 import TopUsersChart from './components/TopUsersChart';
 import TrendLineChart from './components/TrendLineChart';
 import { useUser } from '@/app/lib/stores/mainStore';
+import {
+  aggregateTopUsers,
+  applyMonthYearFilter,
+  buildCardSummary,
+  resolveComparisonPeriod,
+} from './utils/dashboardAggregate';
 import type {
   DashboardSummaryResponse,
   MonthLabel,
@@ -37,53 +43,6 @@ const monthOptions = ['All', ...months] as const;
 type MonthOption = (typeof monthOptions)[number];
 
 type YearOption = 'All' | number;
-
-function applyMonthYearFilter<T extends { month: MonthLabel; year: number }>(
-  data: T[],
-  selectedMonth: MonthOption,
-  selectedYear: YearOption
-) {
-  return data.filter((item) => {
-    const monthMatches = selectedMonth === 'All' || item.month === selectedMonth;
-    const yearMatches = selectedYear === 'All' || item.year === selectedYear;
-    return monthMatches && yearMatches;
-  });
-}
-
-function aggregateStatus(data: StatusPoint[]) {
-  const totals = data.reduce(
-    (acc, item) => {
-      acc[item.status] = (acc[item.status] ?? 0) + item.count;
-      return acc;
-    },
-    {} as Record<StatusPoint['status'], number>
-  );
-
-  return [
-    { name: 'Completed', value: totals.Completed ?? 0 },
-    { name: 'Waiting Sparepart', value: totals['Waiting Sparepart'] ?? 0 },
-    { name: 'Waiting Fix Defect', value: totals['Waiting Fix Defect'] ?? 0 },
-  ];
-}
-
-function aggregateTopUsers(data: TopUserPoint[]) {
-  const totals = data.reduce(
-    (acc, item) => {
-      const existing = acc[item.user] ?? { pm: 0, nonPm: 0 };
-      acc[item.user] = {
-        pm: existing.pm + item.pm,
-        nonPm: existing.nonPm + item.nonPm,
-      };
-      return acc;
-    },
-    {} as Record<string, { pm: number; nonPm: number }>
-  );
-
-  return Object.entries(totals)
-    .map(([name, values]) => ({ name, ...values }))
-    .sort((a, b) => b.pm + b.nonPm - (a.pm + a.nonPm))
-    .slice(0, 6);
-}
 
 function formatChartLabel(point: TrendPoint | PMNonPMPoint, includeYear: boolean) {
   return includeYear ? `${point.month} ${point.year}` : point.month;
@@ -176,22 +135,39 @@ export default function ChartDashboardView() {
     return applyMonthYearFilter(data.topUsersByMonth, selectedMonth, selectedYear);
   }, [data, selectedMonth, selectedYear]);
 
-  const summary = useMemo(() => {
-    const pmJobs = filteredPMNonPM.reduce((total, item) => total + item.pm, 0);
-    const nonPmJobs = filteredPMNonPM.reduce((total, item) => total + item.nonPm, 0);
-    const totalJobs = pmJobs + nonPmJobs;
-    const statusTotals = aggregateStatus(filteredStatus);
-    const completed = statusTotals.find((item) => item.name === 'Completed')?.value ?? 0;
-    const completionRate = totalJobs > 0 ? (completed / totalJobs) * 100 : 0;
+  const summary = useMemo(
+    () => buildCardSummary(filteredPMNonPM, filteredStatus),
+    [filteredPMNonPM, filteredStatus]
+  );
 
+  const comparisonPeriod = useMemo(
+    () => (data ? resolveComparisonPeriod(selectedMonth, selectedYear) : null),
+    [data, selectedMonth, selectedYear]
+  );
+
+  const previousSummary = useMemo(() => {
+    if (!data || !comparisonPeriod) return null;
+    const prevPm = applyMonthYearFilter(
+      data.pmNonPmByMonth,
+      comparisonPeriod.month,
+      comparisonPeriod.year
+    );
+    const prevStatus = applyMonthYearFilter(
+      data.statusByMonth,
+      comparisonPeriod.month,
+      comparisonPeriod.year
+    );
+    return buildCardSummary(prevPm, prevStatus);
+  }, [data, comparisonPeriod]);
+
+  const comparisonMeta = useMemo(() => {
+    if (!comparisonPeriod || !previousSummary) return null;
     return {
-      totalJobs,
-      pmJobs,
-      nonPmJobs,
-      completionRate,
-      statusTotals,
+      vsLabel: comparisonPeriod.label,
+      mode: comparisonPeriod.mode,
+      previous: previousSummary,
     };
-  }, [filteredPMNonPM, filteredStatus]);
+  }, [comparisonPeriod, previousSummary]);
 
   const includeYearLabel = availableYears.length > 1 || selectedYear === 'All';
 
@@ -290,12 +266,7 @@ export default function ChartDashboardView() {
 
       {!loading && !error && !isEmpty && (
         <div className="space-y-6">
-          <SummaryCards
-            totalJobs={summary.totalJobs}
-            pmJobs={summary.pmJobs}
-            nonPmJobs={summary.nonPmJobs}
-            completionRate={summary.completionRate}
-          />
+          <SummaryCards summary={summary} comparison={comparisonMeta} />
 
           <div className="grid gap-6 lg:grid-cols-2">
             <TrendLineChart data={trendChartData} />

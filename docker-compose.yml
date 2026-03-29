@@ -40,6 +40,8 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
+      TZ: ${TZ:-Asia/Bangkok}
+      NEXT_PUBLIC_APP_TIMEZONE: ${NEXT_PUBLIC_APP_TIMEZONE:-Asia/Bangkok}
     healthcheck:
       test: ["CMD", "wget", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
@@ -132,6 +134,7 @@ services:
       GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN}
       # ✅ PERFORMANCE OPTIMIZATION: Redis cache configuration
       REDIS_URL: redis://redis:6379/1
+      TZ: ${TZ:-Asia/Bangkok}
     healthcheck:
       test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/api/v1/health/'); response = conn.getresponse(); exit(0 if response.status == 200 else 1)"]
       interval: 30s

@@ -280,6 +280,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       toast({
         title: 'Success',
         description: 'Job created successfully.',
+        variant: 'success',
       });
       setTimeout(() => {
         router.push('/dashboard/my-jobs');
@@ -372,7 +373,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        {({ values, errors, touched, setFieldValue, isSubmitting }) => (
+        {({ values, errors, touched, submitCount, setFieldValue, setFieldTouched, isSubmitting }) => (
                   <Form className="relative space-y-5 sm:space-y-6 md:space-y-8">
           {/* Upload loading overlay */}
           {isSubmitting && (
@@ -417,7 +418,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                         : 'border-gray-200 focus:border-blue-500 focus:ring-blue-200'
                     } resize-none rounded-xl focus:outline-none focus:ring-4`}
                   />
-                  {touched.description && errors.description && (
+                  {(touched.description || submitCount > 0) && errors.description && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-4 w-4" />
                       {errors.description}
@@ -432,11 +433,14 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                   </Label>
                   <Select
                     value={values.status}
-                    onValueChange={(value) => setFieldValue('status', value)}
+                    onValueChange={(value) => {
+                      setFieldValue('status', value);
+                      setFieldTouched('status', true, false);
+                    }}
                     disabled={isSubmitting}
                   >
                     <SelectTrigger className={`h-11 border-2 rounded-xl transition-all duration-200 sm:h-12 ${
-                      touched.status && errors.status ? 'border-red-300' : 'border-gray-200'
+                      (touched.status || submitCount > 0) && errors.status ? 'border-red-300' : 'border-gray-200'
                     }`}>
                       <SelectValue placeholder="Select Status" />
                     </SelectTrigger>
@@ -448,7 +452,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       <SelectItem value="cancelled">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
-                  {touched.status && errors.status && (
+                  {(touched.status || submitCount > 0) && errors.status && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-4 w-4" />
                       {errors.status}
@@ -462,11 +466,14 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                   </Label>
                   <Select
                     value={values.priority}
-                    onValueChange={(value) => setFieldValue('priority', value)}
+                    onValueChange={(value) => {
+                      setFieldValue('priority', value);
+                      setFieldTouched('priority', true, false);
+                    }}
                     disabled={isSubmitting}
                   >
                     <SelectTrigger className={`h-11 border-2 rounded-xl transition-all duration-200 sm:h-12 ${
-                      touched.priority && errors.priority ? 'border-red-300' : 'border-gray-200'
+                      (touched.priority || submitCount > 0) && errors.priority ? 'border-red-300' : 'border-gray-200'
                     }`}>
                       <SelectValue placeholder="Select Priority" />
                     </SelectTrigger>
@@ -477,7 +484,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       <SelectItem value="urgent">Urgent</SelectItem>
                     </SelectContent>
                   </Select>
-                  {touched.priority && errors.priority && (
+                  {(touched.priority || submitCount > 0) && errors.priority && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-4 w-4" />
                       {errors.priority}
@@ -505,10 +512,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                   <RoomAutocomplete
                     rooms={rooms}
                     selectedRoom={values.room}
-                    onSelect={(selectedRoom) => setFieldValue('room', selectedRoom)}
+                    onSelect={(selectedRoom) => {
+                      setFieldValue('room', selectedRoom);
+                      setFieldTouched('room', true, false);
+                    }}
                     disabled={isSubmitting}
                   />
-                  {touched.room && errors.room && (
+                  {(touched.room || submitCount > 0) && errors.room && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-4 w-4" />
                       {typeof errors.room === 'string' ? errors.room : (errors.room as FormikErrors<Room>).room_id}
@@ -525,12 +535,15 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     value={values.topic.title}
                     onValueChange={(value) => {
                       const topic = topics.find(t => t.title === value);
-                      if (topic) setFieldValue('topic', { title: topic.title, description: topic.description || '' });
+                      if (topic) {
+                        setFieldValue('topic', { title: topic.title, description: topic.description || '' });
+                        setFieldTouched('topic.title', true, false);
+                      }
                     }}
                     disabled={isSubmitting}
                   >
                     <SelectTrigger className={`h-11 border-2 rounded-xl transition-all duration-200 sm:h-12 ${
-                      touched.topic?.title && errors.topic?.title ? 'border-red-300' : 'border-gray-200'
+                      (touched.topic?.title || submitCount > 0) && errors.topic?.title ? 'border-red-300' : 'border-gray-200'
                     }`}>
                       <SelectValue placeholder="Select a maintenance topic" />
                     </SelectTrigger>
@@ -544,7 +557,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       )}
                     </SelectContent>
                   </Select>
-                  {touched.topic?.title && errors.topic?.title && (
+                  {(touched.topic?.title || submitCount > 0) && errors.topic?.title && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-4 w-4" />
                       {errors.topic.title}
@@ -576,12 +589,12 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     placeholder="Enter any additional remarks or special instructions..."
                     disabled={isSubmitting}
                     className={`w-full min-h-[96px] border-2 p-3 text-sm transition-all duration-200 sm:min-h-[110px] sm:p-4 sm:text-base ${
-                      touched.remarks && errors.remarks 
+                      (touched.remarks || submitCount > 0) && errors.remarks 
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
                         : 'border-gray-200 focus:border-purple-500 focus:ring-purple-200'
                     } resize-none rounded-xl focus:outline-none focus:ring-4`}
                   />
-                  {touched.remarks && errors.remarks && (
+                  {(touched.remarks || submitCount > 0) && errors.remarks && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-4 w-4" />
                       {errors.remarks}
@@ -634,8 +647,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                   Images (up to {MAX_FILES}) <span className="text-red-500">*</span>
                 </Label>
                 <FileUpload
-                  onFileSelect={(selectedFiles) => setFieldValue('files', selectedFiles)}
-                  error={touched.files && typeof errors.files === 'string' ? errors.files : undefined}
+                  onFileSelect={(selectedFiles) => {
+                    setFieldValue('files', selectedFiles);
+                    setFieldTouched('files', true, false);
+                  }}
+                  error={(touched.files || submitCount > 0) && typeof errors.files === 'string' ? errors.files : undefined}
                   disabled={isSubmitting}
                   maxFiles={MAX_FILES}
                 />

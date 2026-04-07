@@ -56,6 +56,7 @@ const navItems = [
   { href: '/dashboard/jobs-report', label: 'Jobs Report', icon: FileText },
   { href: '/dashboard/jobs/by-topic', label: 'Jobs by Topic', icon: Filter },
   { href: '/dashboard/rooms/by-topics', label: 'Rooms by Topic', icon: Filter },
+  { href: '/dashboard/rooms/topic-mismatch', label: 'Topic Mismatch', icon: Filter },
   { href: '/dashboard/profile', label: 'Profile', icon: Users2 },
   { href: '/dashboard/create-job', label: 'Create Job', icon: PlusCircle },
   { href: '/dashboard/preventive-maintenance', label: 'PM', icon: PlusCircle },

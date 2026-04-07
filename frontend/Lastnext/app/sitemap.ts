@@ -35,6 +35,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/dashboard/machines',
     '/dashboard/inventory',
     '/dashboard/rooms/by-topics',
+    '/dashboard/rooms/topic-mismatch',
     '/dashboard/jobs/by-topic',
     '/dashboard/jobs-report',
     '/dashboard/chartdashboard',

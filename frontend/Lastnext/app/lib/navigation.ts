@@ -24,6 +24,7 @@ export const primaryNavigationItems: AppNavigationItem[] = [
   { name: 'Analytics', href: '/dashboard/chartdashboard', icon: LineChart, shortName: 'Analytics' },
   { name: 'Jobs Report', href: '/dashboard/jobs-report', icon: FileText, shortName: 'Reports' },
   { name: 'Rooms by Topic', href: '/dashboard/rooms/by-topics', icon: Filter, shortName: 'Rooms' },
+  { name: 'Topic Mismatch', href: '/dashboard/rooms/topic-mismatch', icon: Filter, shortName: 'Mismatch' },
   { name: 'Profile', href: '/dashboard/profile', icon: User, shortName: 'Profile' },
   { name: 'Roster', href: '/roster', icon: Calendar, shortName: 'Roster' },
 ];

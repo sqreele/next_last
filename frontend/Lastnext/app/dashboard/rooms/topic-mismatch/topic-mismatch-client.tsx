@@ -11,7 +11,7 @@ import { downloadCSV } from '@/app/lib/utils/csv-export';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/app/components/ui/command';
-import { ChevronDown, Filter, X, AlertTriangle, Download } from 'lucide-react';
+import { ChevronDown, Filter, X, AlertTriangle, Download, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 
 type Props = {
   rooms: Room[];
@@ -344,6 +344,56 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
     });
   }, [mismatchRooms, mismatchRoomNames, roomJobCountMap]);
 
+  const mismatchRoomDetails = React.useMemo(() => {
+    return mismatchRooms
+      .map((room, idx) => {
+        const rid = normalizeRoomId(room.room_id);
+        const roomId = rid ?? room.room_id;
+        const name = mismatchRoomNames[idx] ?? room.name?.trim() ?? (rid != null ? `Room ${rid}` : 'Unknown room');
+        const jobCount = rid != null ? (roomJobCountMap.get(rid) ?? 0) : 0;
+        return {
+          roomId,
+          name,
+          roomType: room.room_type || 'Unknown type',
+          jobCount,
+          href: `/dashboard/rooms/${roomId}`,
+        };
+      })
+      .sort((a, b) => b.jobCount - a.jobCount || a.name.localeCompare(b.name));
+  }, [mismatchRooms, mismatchRoomNames, roomJobCountMap]);
+
+  const matchedRoomDetails = React.useMemo(() => {
+    if (!selectedTopicId) return [];
+
+    if (matchedRooms.length > 0) {
+      return matchedRooms
+        .map((room, idx) => {
+          const rid = normalizeRoomId(room.room_id);
+          const roomId = rid ?? room.room_id;
+          const name = matchedRoomNames[idx] ?? room.name?.trim() ?? (rid != null ? `Room ${rid}` : 'Unknown room');
+          const jobCount = rid != null ? (roomJobCountMap.get(rid) ?? 0) : 0;
+          return {
+            roomId,
+            name,
+            href: `/dashboard/rooms/${roomId}`,
+            jobCount,
+          };
+        })
+        .sort((a, b) => b.jobCount - a.jobCount || a.name.localeCompare(b.name));
+    }
+
+    const matchedIds = topicToRoomIds.get(selectedTopicId);
+    if (!matchedIds || matchedIds.size === 0) return [];
+    return Array.from(matchedIds)
+      .map((rid) => ({
+        roomId: rid,
+        name: roomNameById.get(rid) || `Room ${rid}`,
+        href: `/dashboard/rooms/${rid}`,
+        jobCount: roomJobCountMap.get(rid) ?? 0,
+      }))
+      .sort((a, b) => b.jobCount - a.jobCount || a.name.localeCompare(b.name));
+  }, [selectedTopicId, matchedRooms, matchedRoomNames, roomJobCountMap, topicToRoomIds, roomNameById]);
+
   const matchCount = React.useMemo(() => {
     if (!selectedTopicId) return 0;
     return topicToRoomIds.get(selectedTopicId)?.size ?? 0;
@@ -633,58 +683,80 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
                 <h3 className="text-sm font-semibold text-gray-900">
                   Rooms not matching topic: {selectedTopic.title}
                 </h3>
-                {mismatchCount > 0 ? (
-                  <p className="text-xs text-gray-600 mt-1">
-                    {mismatchCount} room{mismatchCount === 1 ? '' : 's'} — {mismatchRoomLabels.join(', ')}
-                  </p>
-                ) : (
-                  <p className="text-xs text-gray-500 mt-1">None — every room in this property has at least one matching job for this topic.</p>
-                )}
+                <p className="text-xs text-gray-600 mt-1">
+                  Click any room row to open full room details.
+                </p>
               </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {mismatchRooms.map((room, idx) => {
-                const rid = normalizeRoomId(room.room_id);
-                const hrefId = rid ?? room.room_id;
-                return (
-                <Link
-                  key={hrefId}
-                  href={`/dashboard/rooms/${hrefId}`}
-                  className="border rounded-md p-3 hover:bg-gray-50 transition-colors block focus:outline-none focus:ring-2 focus:ring-primary"
-                  aria-label={`View details for room ${mismatchRoomNames[idx] ?? room.name ?? hrefId}`}
-                >
-                  <div className="font-medium text-gray-900">
-                    {mismatchRoomNames[idx] ?? room.name?.trim() ?? (rid != null ? `Room ${rid}` : 'Unknown room')}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-md border bg-red-50 p-3">
+                  <p className="text-xs font-medium text-red-700">Unmatched rooms</p>
+                  <p className="text-2xl font-semibold text-red-900">{mismatchCount.toLocaleString()}</p>
+                </div>
+                <div className="rounded-md border bg-emerald-50 p-3">
+                  <p className="text-xs font-medium text-emerald-700">Matched rooms</p>
+                  <p className="text-2xl font-semibold text-emerald-900">{matchCount.toLocaleString()}</p>
+                </div>
+                <div className="rounded-md border bg-blue-50 p-3">
+                  <p className="text-xs font-medium text-blue-700">Jobs with this topic</p>
+                  <p className="text-2xl font-semibold text-blue-900">{selectedTopicJobCount.toLocaleString()}</p>
+                </div>
+              </div>
+
+              {mismatchRoomDetails.length > 0 ? (
+                <div className="overflow-hidden rounded-md border">
+                  <div className="grid grid-cols-12 gap-2 border-b bg-gray-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+                    <div className="col-span-6 sm:col-span-5">Room</div>
+                    <div className="col-span-3 sm:col-span-3">Type</div>
+                    <div className="col-span-2 sm:col-span-2 text-right">Jobs</div>
+                    <div className="col-span-1 sm:col-span-2 text-right">Action</div>
                   </div>
-                  <div className="text-xs text-gray-500">{room.room_type || 'Unknown type'}</div>
-                  <div className="text-xs text-blue-700 mt-1">
-                    Jobs in room (filtered):{' '}
-                    {(rid != null ? roomJobCountMap.get(rid) ?? 0 : 0).toLocaleString()}
-                  </div>
-                </Link>
-              );
-              })}
-              {mismatchRooms.length === 0 && (
-                <div className="text-sm text-emerald-700 space-y-1">
-                  <p>
+                  {mismatchRoomDetails.map((room) => (
+                    <Link
+                      key={String(room.roomId)}
+                      href={room.href}
+                      className="grid grid-cols-12 items-center gap-2 border-b px-3 py-2 last:border-b-0 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary"
+                      aria-label={`Open room ${room.name}`}
+                    >
+                      <div className="col-span-6 sm:col-span-5 min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-900">{room.name}</p>
+                        <p className="text-[11px] text-gray-500">Room ID: {String(room.roomId)}</p>
+                      </div>
+                      <div className="col-span-3 sm:col-span-3 text-xs text-gray-600">{room.roomType}</div>
+                      <div className="col-span-2 sm:col-span-2 text-right text-sm font-semibold text-blue-700">
+                        {room.jobCount.toLocaleString()}
+                      </div>
+                      <div className="col-span-1 sm:col-span-2 flex justify-end">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-700">
+                          Open <ArrowUpRight className="h-3.5 w-3.5" />
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                  <div className="mb-2 flex items-center gap-2 font-medium">
+                    <CheckCircle2 className="h-4 w-4" />
                     All rooms already match topic <strong>{selectedTopic.title}</strong>.
-                  </p>
-                  <p className="text-gray-700">
-                    Room names:{' '}
-                    {matchedRoomLabels.length > 0
-                      ? matchedRoomLabels.join(', ')
-                      : selectedTopicId && (topicToRoomIds.get(selectedTopicId)?.size ?? 0) > 0
-                        ? Array.from(topicToRoomIds.get(selectedTopicId))
-                            .sort((a, b) => a - b)
-                            .map(
-                              (id) =>
-                                `${roomNameById.get(id) || `Room ${id}`} (${roomJobCountMap.get(id) ?? 0})`
-                            )
-                            .join(', ')
-                        : 'No room names available'}
-                  </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {matchedRoomDetails.length > 0 ? (
+                      matchedRoomDetails.map((room) => (
+                        <Link
+                          key={String(room.roomId)}
+                          href={room.href}
+                          className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-white px-2.5 py-1 text-xs text-emerald-900 hover:bg-emerald-100"
+                        >
+                          {room.name}
+                          <span className="text-emerald-700">({room.jobCount})</span>
+                        </Link>
+                      ))
+                    ) : (
+                      <span className="text-xs text-emerald-800">No room names available.</span>
+                    )}
+                  </div>
                 </div>
               )}
-            </div>
             </div>
           )}
         </CardContent>

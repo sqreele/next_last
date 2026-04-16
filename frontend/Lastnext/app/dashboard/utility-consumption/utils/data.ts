@@ -63,6 +63,8 @@ export const monthShortLabels = [
 
 export const metricOptions: Array<{ label: string; value: MetricKey }> = [
   { label: 'Total kWh', value: 'totalkwh' },
+  { label: 'On-Peak kWh', value: 'onpeakkwh' },
+  { label: 'Off-Peak kWh', value: 'offpeakkwh' },
   { label: 'Total Electricity', value: 'totalelectricity' },
   { label: 'Water', value: 'water' },
   { label: 'Night Sale', value: 'nightsale' },

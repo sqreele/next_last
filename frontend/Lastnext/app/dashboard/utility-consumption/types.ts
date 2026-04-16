@@ -12,7 +12,13 @@ export type MonthName =
   | 'November'
   | 'December';
 
-export type MetricKey = 'totalkwh' | 'totalelectricity' | 'water' | 'nightsale';
+export type MetricKey =
+  | 'totalkwh'
+  | 'onpeakkwh'
+  | 'offpeakkwh'
+  | 'totalelectricity'
+  | 'water'
+  | 'nightsale';
 
 export interface UtilityConsumptionRow {
   month: MonthName;

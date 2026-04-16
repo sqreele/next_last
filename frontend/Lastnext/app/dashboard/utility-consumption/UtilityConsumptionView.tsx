@@ -5,7 +5,6 @@ import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import ActualVsBudgetChart from './components/ActualVsBudgetChart';
 import BudgetStatusPieChart from './components/BudgetStatusPieChart';
 import FiltersBar from './components/FiltersBar';
-import MetricLineChart from './components/MetricLineChart';
 import SummaryCards from './components/SummaryCards';
 import YoYLineChart from './components/YoYLineChart';
 import type { MetricKey, MonthName, UtilityConsumptionRow } from './types';
@@ -143,17 +142,14 @@ export default function UtilityConsumptionView() {
     return buildPrimaryYearSeries(monthFilteredRows, primaryYear);
   }, [monthFilteredRows, primaryYear]);
 
-  const waterSeries = primaryYearSeries.map((item) => ({ label: item.label, value: item.water }));
-  const nightSaleSeries = primaryYearSeries.map((item) => ({ label: item.label, value: item.nightsale }));
-  const waterYAxisMax = useMemo(() => {
-    const values = primaryYearSeries
-      .map((item) => item.water)
-      .filter((value): value is number => typeof value === 'number');
-    if (values.length === 0) return 15000;
-    const maxValue = Math.max(...values);
-    const roundedMax = Math.ceil(maxValue / 1000) * 1000;
-    return Math.max(15000, roundedMax);
-  }, [primaryYearSeries]);
+  const waterYoYData = useMemo(
+    () => buildYoYSeries(monthFilteredRows, activeYears, 'water'),
+    [monthFilteredRows, activeYears]
+  );
+  const nightSaleYoYData = useMemo(
+    () => buildYoYSeries(monthFilteredRows, activeYears, 'nightsale'),
+    [monthFilteredRows, activeYears]
+  );
 
   const isEmpty = !loading && !error && selectedProperty && rows.length === 0;
 
@@ -227,19 +223,8 @@ export default function UtilityConsumptionView() {
               data={budgetStatusPie.data}
               budgetUnsetForAllMonths={budgetStatusPie.budgetUnsetForAllMonths}
             />
-            <MetricLineChart
-              data={waterSeries}
-              title="Water trend"
-              subtitle={`Primary year ${primaryYear ?? ''}`}
-              color="#0ea5e9"
-              yAxisMax={waterYAxisMax}
-            />
-            <MetricLineChart
-              data={nightSaleSeries}
-              title="Night sale trend"
-              subtitle={`Primary year ${primaryYear ?? ''}`}
-              color="#f97316"
-            />
+            <YoYLineChart data={waterYoYData} years={activeYears} metricLabel="Water" />
+            <YoYLineChart data={nightSaleYoYData} years={activeYears} metricLabel="Night Sale" />
           </div>
         </div>
       )}

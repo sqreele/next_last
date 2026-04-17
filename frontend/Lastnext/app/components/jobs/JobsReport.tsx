@@ -733,9 +733,19 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       yearOverYear: buildComparisonMetrics(currentSnapshot, previousYearSnapshot),
       utility: {
         currentNightSale: utilityCurrent.nightsale,
+        previousMonthNightSale: utilityPreviousMonth.nightsale,
+        sameMonthLastYearNightSale: utilityPreviousYear.nightsale,
         monthOverMonthNightSale: utilityCurrent.nightsale - utilityPreviousMonth.nightsale,
         yearOverYearNightSale: utilityCurrent.nightsale - utilityPreviousYear.nightsale,
         nightSalePerJobOrder: safeRatio(utilityCurrent.nightsale, currentSnapshot.total),
+        previousMonthNightSalePerJobOrder: safeRatio(utilityPreviousMonth.nightsale, previousMonthSnapshot.total),
+        sameMonthLastYearNightSalePerJobOrder: safeRatio(utilityPreviousYear.nightsale, previousYearSnapshot.total),
+        monthOverMonthNightSalePerJobOrder:
+          safeRatio(utilityCurrent.nightsale, currentSnapshot.total) -
+          safeRatio(utilityPreviousMonth.nightsale, previousMonthSnapshot.total),
+        yearOverYearNightSalePerJobOrder:
+          safeRatio(utilityCurrent.nightsale, currentSnapshot.total) -
+          safeRatio(utilityPreviousYear.nightsale, previousYearSnapshot.total),
         nightSalePerPmJob: safeRatio(utilityCurrent.nightsale, currentSnapshot.pm),
       },
     };
@@ -1519,40 +1529,107 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
             ) : utilityError ? (
               <p className="mt-2 text-sm text-red-600">{utilityError}</p>
             ) : (
-              <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
-                <div>
-                  <p className="text-blue-700">Current Night Sale</p>
-                  <p className="font-semibold tabular-nums text-blue-900">
-                    {monthlyAndYearlyComparisons.utility.currentNightSale.toLocaleString()}
-                  </p>
+              <>
+                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
+                  <div>
+                    <p className="text-blue-700">Current Night Sale</p>
+                    <p className="font-semibold tabular-nums text-blue-900">
+                      {monthlyAndYearlyComparisons.utility.currentNightSale.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-blue-700">MoM Night Sale Δ</p>
+                    <p className="font-semibold tabular-nums text-blue-900">
+                      {monthlyAndYearlyComparisons.utility.monthOverMonthNightSale >= 0 ? '+' : ''}
+                      {monthlyAndYearlyComparisons.utility.monthOverMonthNightSale.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-blue-700">YoY Night Sale Δ</p>
+                    <p className="font-semibold tabular-nums text-blue-900">
+                      {monthlyAndYearlyComparisons.utility.yearOverYearNightSale >= 0 ? '+' : ''}
+                      {monthlyAndYearlyComparisons.utility.yearOverYearNightSale.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-blue-700">Night Sale / Job order</p>
+                    <p className="font-semibold tabular-nums text-blue-900">
+                      {monthlyAndYearlyComparisons.utility.nightSalePerJobOrder.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-blue-700">Night Sale / PM job</p>
+                    <p className="font-semibold tabular-nums text-blue-900">
+                      {monthlyAndYearlyComparisons.utility.nightSalePerPmJob.toFixed(2)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-blue-700">MoM Night Sale Δ</p>
-                  <p className="font-semibold tabular-nums text-blue-900">
-                    {monthlyAndYearlyComparisons.utility.monthOverMonthNightSale >= 0 ? '+' : ''}
-                    {monthlyAndYearlyComparisons.utility.monthOverMonthNightSale.toLocaleString()}
-                  </p>
+                <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+                  <div className="rounded-md border border-blue-200 bg-white/80 p-3">
+                    <p className="text-blue-700">MoM Night Sale / Job order Δ</p>
+                    <p className="font-semibold tabular-nums text-blue-900">
+                      {monthlyAndYearlyComparisons.utility.monthOverMonthNightSalePerJobOrder >= 0 ? '+' : ''}
+                      {monthlyAndYearlyComparisons.utility.monthOverMonthNightSalePerJobOrder.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="rounded-md border border-blue-200 bg-white/80 p-3">
+                    <p className="text-blue-700">YoY Night Sale / Job order Δ</p>
+                    <p className="font-semibold tabular-nums text-blue-900">
+                      {monthlyAndYearlyComparisons.utility.yearOverYearNightSalePerJobOrder >= 0 ? '+' : ''}
+                      {monthlyAndYearlyComparisons.utility.yearOverYearNightSalePerJobOrder.toFixed(2)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-blue-700">YoY Night Sale Δ</p>
-                  <p className="font-semibold tabular-nums text-blue-900">
-                    {monthlyAndYearlyComparisons.utility.yearOverYearNightSale >= 0 ? '+' : ''}
-                    {monthlyAndYearlyComparisons.utility.yearOverYearNightSale.toLocaleString()}
-                  </p>
+                <div className="mt-4 h-64 w-full rounded-md border border-blue-100 bg-white p-3">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={[
+                        {
+                          period: monthlyAndYearlyComparisons.previousMonthLabel,
+                          nightSale: monthlyAndYearlyComparisons.utility.previousMonthNightSale,
+                          perJobOrder: monthlyAndYearlyComparisons.utility.previousMonthNightSalePerJobOrder,
+                        },
+                        {
+                          period: monthlyAndYearlyComparisons.monthLabel,
+                          nightSale: monthlyAndYearlyComparisons.utility.currentNightSale,
+                          perJobOrder: monthlyAndYearlyComparisons.utility.nightSalePerJobOrder,
+                        },
+                        {
+                          period: monthlyAndYearlyComparisons.sameMonthLastYearLabel,
+                          nightSale: monthlyAndYearlyComparisons.utility.sameMonthLastYearNightSale,
+                          perJobOrder: monthlyAndYearlyComparisons.utility.sameMonthLastYearNightSalePerJobOrder,
+                        },
+                      ]}
+                      margin={{ top: 10, right: 12, left: 6, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#dbeafe" />
+                      <XAxis dataKey="period" tick={{ fontSize: 11 }} stroke="#1d4ed8" />
+                      <YAxis yAxisId="left" tick={{ fontSize: 11 }} stroke="#1d4ed8" />
+                      <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} stroke="#0e7490" />
+                      <Tooltip />
+                      <Legend />
+                      <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="nightSale"
+                        name="Night Sale"
+                        stroke="#1d4ed8"
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="perJobOrder"
+                        name="Night Sale / Job order"
+                        stroke="#0e7490"
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
-                <div>
-                  <p className="text-blue-700">Night Sale / Job order</p>
-                  <p className="font-semibold tabular-nums text-blue-900">
-                    {monthlyAndYearlyComparisons.utility.nightSalePerJobOrder.toFixed(2)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-blue-700">Night Sale / PM job</p>
-                  <p className="font-semibold tabular-nums text-blue-900">
-                    {monthlyAndYearlyComparisons.utility.nightSalePerPmJob.toFixed(2)}
-                  </p>
-                </div>
-              </div>
+              </>
             )}
           </div>
         </CardContent>

@@ -682,6 +682,40 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
     return Array.from(map.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
   }, [filteredReportJobs]);
 
+  const jobsAndNightSaleByMonthChart = useMemo(() => {
+    const monthMap = new Map<string, { sortKey: string; label: string; jobs: number; nightSale: number }>();
+
+    jobsByMonthChart.forEach((monthRow) => {
+      monthMap.set(monthRow.sortKey, {
+        sortKey: monthRow.sortKey,
+        label: monthRow.label,
+        jobs: monthRow.count,
+        nightSale: 0,
+      });
+    });
+
+    utilityRows.forEach((row) => {
+      const monthDate = new Date(`${row.month} 1, ${row.year}`);
+      if (Number.isNaN(monthDate.getTime())) return;
+
+      const sortKey = format(monthDate, 'yyyy-MM');
+      const existing = monthMap.get(sortKey);
+      if (existing) {
+        existing.nightSale += Number(row.nightsale) || 0;
+        return;
+      }
+
+      monthMap.set(sortKey, {
+        sortKey,
+        label: format(monthDate, 'MMM yyyy'),
+        jobs: 0,
+        nightSale: Number(row.nightsale) || 0,
+      });
+    });
+
+    return Array.from(monthMap.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+  }, [jobsByMonthChart, utilityRows]);
+
   const monthlyAndYearlyComparisons = useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -1419,16 +1453,29 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
               <div className="h-72 w-full min-h-[18rem]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={jobsByMonthChart.map((m) => ({ label: m.label, jobs: m.count }))}
+                    data={jobsAndNightSaleByMonthChart}
                     margin={{ top: 28, right: 12, left: 8, bottom: 8 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="#6b7280" />
-                    <YAxis tick={{ fontSize: 11 }} stroke="#6b7280" allowDecimals={false} />
+                    <YAxis
+                      yAxisId="jobs"
+                      tick={{ fontSize: 11 }}
+                      stroke="#6b7280"
+                      allowDecimals={false}
+                    />
+                    <YAxis
+                      yAxisId="nightSale"
+                      orientation="right"
+                      tick={{ fontSize: 11 }}
+                      stroke="#16a34a"
+                      allowDecimals={false}
+                    />
                     <Tooltip />
                     <Legend />
                     <Line
                       type="monotone"
+                      yAxisId="jobs"
                       dataKey="jobs"
                       name="Jobs"
                       stroke="#2563eb"
@@ -1444,6 +1491,16 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
                         style={LABEL_TEXT_STYLE}
                       />
                     </Line>
+                    <Line
+                      type="monotone"
+                      yAxisId="nightSale"
+                      dataKey="nightSale"
+                      name="Night sale"
+                      stroke="#16a34a"
+                      strokeWidth={2.5}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

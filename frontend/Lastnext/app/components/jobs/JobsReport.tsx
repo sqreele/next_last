@@ -39,6 +39,7 @@ import { fetchAllJobsForProperty } from '@/app/lib/data.server';
 import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import { endOfDay, format, startOfDay } from 'date-fns';
 import { jobsToCSV, downloadCSV } from '@/app/lib/utils/csv-export';
+import type { UtilityConsumptionRow } from '@/app/dashboard/utility-consumption/types';
 
 const STATUS_FILTER_OPTIONS: Array<{ value: JobStatus | 'all'; label: string }> = [
   { value: 'all', label: 'All statuses' },
@@ -270,6 +271,26 @@ interface RoomJobsSummaryRow {
   pmJobCount: number;
 }
 
+interface ComparisonSnapshot {
+  total: number;
+  pm: number;
+  nonPm: number;
+}
+
+interface ComparisonMetric {
+  label: string;
+  current: number;
+  previous: number;
+  delta: number;
+  deltaPct: number | null;
+}
+
+interface UtilityMonthSnapshot {
+  nightsale: number;
+  water: number;
+  totalkwh: number;
+}
+
 const PRIORITY_COLORS: Record<JobPriority, string> = {
   high: '#dc2626',
   medium: '#ea580c',
@@ -290,6 +311,40 @@ function formatChartCountWithZero(v: number | string) {
 }
 
 const LABEL_TEXT_STYLE = { fontSize: 11, fontWeight: 600 as const };
+
+function buildComparisonSnapshot(jobs: Job[]): ComparisonSnapshot {
+  const total = jobs.length;
+  const pm = jobs.filter((job) => jobIsPm(job)).length;
+  const nonPm = total - pm;
+  return { total, pm, nonPm };
+}
+
+function buildComparisonMetrics(
+  current: ComparisonSnapshot,
+  previous: ComparisonSnapshot
+): ComparisonMetric[] {
+  return [
+    { label: 'Job orders', current: current.total, previous: previous.total },
+    { label: 'PM jobs', current: current.pm, previous: previous.pm },
+    { label: 'Non-PM jobs', current: current.nonPm, previous: previous.nonPm },
+  ].map((row) => {
+    const delta = row.current - row.previous;
+    const deltaPct = row.previous === 0 ? null : Math.round((delta / row.previous) * 100);
+    return { ...row, delta, deltaPct };
+  });
+}
+
+function buildUtilitySnapshot(rows: UtilityConsumptionRow[]): UtilityMonthSnapshot {
+  return rows.reduce(
+    (acc, row) => {
+      acc.nightsale += Number(row.nightsale) || 0;
+      acc.water += Number(row.water) || 0;
+      acc.totalkwh += Number(row.totalkwh) || 0;
+      return acc;
+    },
+    { nightsale: 0, water: 0, totalkwh: 0 }
+  );
+}
 
 /** Inner label on stacked room bar when both PM and non-PM exist (avoids duplicating the total). */
 function RoomsInnerSegmentLabel(
@@ -407,6 +462,9 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
   
   const [isGeneratingCsv, setIsGeneratingCsv] = useState(false);
   const [reportJobs, setReportJobs] = useState<Job[]>([]);
+  const [utilityRows, setUtilityRows] = useState<UtilityConsumptionRow[]>([]);
+  const [utilityLoading, setUtilityLoading] = useState(false);
+  const [utilityError, setUtilityError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<JobStatus | 'all'>('all');
   const [priorityFilter, setPriorityFilter] = useState<JobPriority | 'all'>('all');
@@ -480,6 +538,43 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       createdTo,
     ]
   );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadUtilityRows() {
+      if (!selectedProperty) {
+        setUtilityRows([]);
+        setUtilityError(null);
+        setUtilityLoading(false);
+        return;
+      }
+      try {
+        setUtilityLoading(true);
+        setUtilityError(null);
+        const params = new URLSearchParams();
+        params.set('property_id', String(selectedProperty));
+        params.set('page_size', '1000');
+        const res = await fetch(`/api/utility/consumption?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          throw new Error('Unable to load utility consumption for comparison.');
+        }
+        const payload: UtilityConsumptionRow[] = await res.json();
+        setUtilityRows(Array.isArray(payload) ? payload : []);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+        setUtilityRows([]);
+        setUtilityError(error instanceof Error ? error.message : 'Unable to load utility consumption.');
+      } finally {
+        setUtilityLoading(false);
+      }
+    }
+
+    loadUtilityRows();
+    return () => controller.abort();
+  }, [selectedProperty]);
 
   useEffect(() => {
     if (topicFilter === 'none' && jobsWithNoTopicCount === 0) {
@@ -586,6 +681,65 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
     });
     return Array.from(map.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
   }, [filteredReportJobs]);
+
+  const monthlyAndYearlyComparisons = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const previousMonthDate = new Date(currentYear, currentMonth - 1, 1);
+    const previousYear = currentYear - 1;
+
+    const inMonth = (date: Date, year: number, month: number) =>
+      date.getFullYear() === year && date.getMonth() === month;
+
+    const currentMonthJobs = filteredReportJobs.filter((job) =>
+      inMonth(new Date(job.created_at), currentYear, currentMonth)
+    );
+    const previousMonthJobs = filteredReportJobs.filter((job) =>
+      inMonth(new Date(job.created_at), previousMonthDate.getFullYear(), previousMonthDate.getMonth())
+    );
+    const sameMonthLastYearJobs = filteredReportJobs.filter((job) =>
+      inMonth(new Date(job.created_at), previousYear, currentMonth)
+    );
+    const currentMonthUtilityRows = utilityRows.filter((row) => row.year === currentYear && new Date(`${row.month} 1, ${row.year}`).getMonth() === currentMonth);
+    const previousMonthUtilityRows = utilityRows.filter(
+      (row) =>
+        row.year === previousMonthDate.getFullYear() &&
+        new Date(`${row.month} 1, ${row.year}`).getMonth() === previousMonthDate.getMonth()
+    );
+    const sameMonthLastYearUtilityRows = utilityRows.filter(
+      (row) =>
+        row.year === previousYear &&
+        new Date(`${row.month} 1, ${row.year}`).getMonth() === currentMonth
+    );
+
+    const monthLabel = format(new Date(currentYear, currentMonth, 1), 'MMMM yyyy');
+    const previousMonthLabel = format(previousMonthDate, 'MMMM yyyy');
+    const sameMonthLastYearLabel = format(new Date(previousYear, currentMonth, 1), 'MMMM yyyy');
+
+    const currentSnapshot = buildComparisonSnapshot(currentMonthJobs);
+    const previousMonthSnapshot = buildComparisonSnapshot(previousMonthJobs);
+    const previousYearSnapshot = buildComparisonSnapshot(sameMonthLastYearJobs);
+    const utilityCurrent = buildUtilitySnapshot(currentMonthUtilityRows);
+    const utilityPreviousMonth = buildUtilitySnapshot(previousMonthUtilityRows);
+    const utilityPreviousYear = buildUtilitySnapshot(sameMonthLastYearUtilityRows);
+    const safeRatio = (num: number, den: number) => (den > 0 ? num / den : 0);
+
+    return {
+      monthLabel,
+      previousMonthLabel,
+      sameMonthLastYearLabel,
+      monthOverMonth: buildComparisonMetrics(currentSnapshot, previousMonthSnapshot),
+      yearOverYear: buildComparisonMetrics(currentSnapshot, previousYearSnapshot),
+      utility: {
+        currentNightSale: utilityCurrent.nightsale,
+        monthOverMonthNightSale: utilityCurrent.nightsale - utilityPreviousMonth.nightsale,
+        yearOverYearNightSale: utilityCurrent.nightsale - utilityPreviousYear.nightsale,
+        nightSalePerJobOrder: safeRatio(utilityCurrent.nightsale, currentSnapshot.total),
+        nightSalePerPmJob: safeRatio(utilityCurrent.nightsale, currentSnapshot.pm),
+      },
+    };
+  }, [filteredReportJobs, utilityRows]);
 
   // Get current property information
   const currentProperty = useMemo(() => {
@@ -1287,6 +1441,122 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <TrendingUp className="h-5 w-5" />
+            Month-by-month & year-to-year comparison
+          </CardTitle>
+          <p className="text-sm font-normal text-gray-500">
+            Compares current month job orders and PM mix against last month and the same month last year.
+          </p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {filteredReportJobs.length === 0 ? (
+            <p className="py-6 text-center text-sm text-gray-500">No jobs match the filters.</p>
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-lg border border-gray-200 p-4">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Month by month ({monthlyAndYearlyComparisons.monthLabel} vs {monthlyAndYearlyComparisons.previousMonthLabel})
+                </h3>
+                <div className="mt-3 space-y-2">
+                  {monthlyAndYearlyComparisons.monthOverMonth.map((row) => (
+                    <div key={`mom-${row.label}`} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-gray-700">{row.label}</span>
+                      <span className="text-gray-500 tabular-nums">
+                        {row.current} vs {row.previous}
+                      </span>
+                      <span
+                        className={`tabular-nums font-medium ${
+                          row.delta > 0 ? 'text-green-600' : row.delta < 0 ? 'text-red-600' : 'text-gray-600'
+                        }`}
+                      >
+                        {row.delta >= 0 ? '+' : ''}
+                        {row.delta}
+                        {row.deltaPct === null ? '' : ` (${row.deltaPct >= 0 ? '+' : ''}${row.deltaPct}%)`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 p-4">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Year to year ({monthlyAndYearlyComparisons.monthLabel} vs {monthlyAndYearlyComparisons.sameMonthLastYearLabel})
+                </h3>
+                <div className="mt-3 space-y-2">
+                  {monthlyAndYearlyComparisons.yearOverYear.map((row) => (
+                    <div key={`yoy-${row.label}`} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-gray-700">{row.label}</span>
+                      <span className="text-gray-500 tabular-nums">
+                        {row.current} vs {row.previous}
+                      </span>
+                      <span
+                        className={`tabular-nums font-medium ${
+                          row.delta > 0 ? 'text-green-600' : row.delta < 0 ? 'text-red-600' : 'text-gray-600'
+                        }`}
+                      >
+                        {row.delta >= 0 ? '+' : ''}
+                        {row.delta}
+                        {row.deltaPct === null ? '' : ` (${row.deltaPct >= 0 ? '+' : ''}${row.deltaPct}%)`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            
+          )}
+          <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/50 p-4">
+            <h3 className="text-sm font-semibold text-blue-900">
+              Utility Consumption comparison (Night Sale vs Jobs)
+            </h3>
+            {utilityLoading ? (
+              <p className="mt-2 text-sm text-blue-700">Loading utility consumption...</p>
+            ) : utilityError ? (
+              <p className="mt-2 text-sm text-red-600">{utilityError}</p>
+            ) : (
+              <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-5">
+                <div>
+                  <p className="text-blue-700">Current Night Sale</p>
+                  <p className="font-semibold tabular-nums text-blue-900">
+                    {monthlyAndYearlyComparisons.utility.currentNightSale.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-blue-700">MoM Night Sale Δ</p>
+                  <p className="font-semibold tabular-nums text-blue-900">
+                    {monthlyAndYearlyComparisons.utility.monthOverMonthNightSale >= 0 ? '+' : ''}
+                    {monthlyAndYearlyComparisons.utility.monthOverMonthNightSale.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-blue-700">YoY Night Sale Δ</p>
+                  <p className="font-semibold tabular-nums text-blue-900">
+                    {monthlyAndYearlyComparisons.utility.yearOverYearNightSale >= 0 ? '+' : ''}
+                    {monthlyAndYearlyComparisons.utility.yearOverYearNightSale.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-blue-700">Night Sale / Job order</p>
+                  <p className="font-semibold tabular-nums text-blue-900">
+                    {monthlyAndYearlyComparisons.utility.nightSalePerJobOrder.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-blue-700">Night Sale / PM job</p>
+                  <p className="font-semibold tabular-nums text-blue-900">
+                    {monthlyAndYearlyComparisons.utility.nightSalePerPmJob.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

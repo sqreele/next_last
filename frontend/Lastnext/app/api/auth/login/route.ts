@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       process.env.AUTH0_BASE_URL ||
       process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
       process.env.APP_BASE_URL ||
-      'https://pcms.live';
+      request.nextUrl.origin;
 
     const base = new URL('/api/auth', baseUrl);
     base.searchParams.set('action', 'login');
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       process.env.AUTH0_BASE_URL ||
       process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
       process.env.APP_BASE_URL ||
-      'https://pcms.live';
+      request.nextUrl.origin;
     const fallback = new URL('/auth/login', baseUrl);
     return NextResponse.redirect(fallback);
   }

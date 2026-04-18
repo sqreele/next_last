@@ -5,10 +5,19 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
+    const expectedState = request.cookies.get('auth0_login_state')?.value;
+    const baseUrl = process.env.AUTH0_BASE_URL || request.nextUrl.origin;
 
     if (!code) {
       console.error('No authorization code provided');
-      return NextResponse.redirect('/login?error=no_code');
+      return NextResponse.redirect(`${baseUrl}/login?error=no_code`);
+    }
+
+    if (!state || !expectedState || state !== expectedState) {
+      console.error('OAuth state validation failed');
+      const invalidStateRedirect = NextResponse.redirect(`${baseUrl}/login?error=invalid_state`);
+      invalidStateRedirect.cookies.delete('auth0_login_state');
+      return invalidStateRedirect;
     }
 
     // Exchange authorization code for tokens using server-side environment variables
@@ -41,7 +50,7 @@ export async function GET(request: NextRequest) {
       const domain = process.env.AUTH0_DOMAIN;
       const clientId = process.env.AUTH0_CLIENT_ID;
       const clientSecret = process.env.AUTH0_CLIENT_SECRET;
-      const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
+      const baseUrl = process.env.AUTH0_BASE_URL || request.nextUrl.origin;
       
       if (!domain || !clientId || !clientSecret) {
         console.error('Missing required Auth0 environment variables');
@@ -299,20 +308,25 @@ export async function GET(request: NextRequest) {
         sameSite: 'lax',
         maxAge: tokens.expires_in, // Use token expiry time
       });
+      response.cookies.delete('auth0_login_state');
 
       return response;
 
     } catch (tokenError) {
       console.error('Token exchange error:', tokenError);
-      return NextResponse.redirect(
-        `${process.env.AUTH0_BASE_URL || 'https://pcms.live'}/login?error=token_exchange_error`
+      const tokenErrorRedirect = NextResponse.redirect(
+        `${process.env.AUTH0_BASE_URL || request.nextUrl.origin}/login?error=token_exchange_error`
       );
+      tokenErrorRedirect.cookies.delete('auth0_login_state');
+      return tokenErrorRedirect;
     }
 
   } catch (error) {
     console.error('Auth0 callback error:', error);
-    return NextResponse.redirect(
-      `${process.env.AUTH0_BASE_URL || 'https://pcms.live'}/login?error=callback_error`
+    const callbackErrorRedirect = NextResponse.redirect(
+      `${process.env.AUTH0_BASE_URL || request.nextUrl.origin}/login?error=callback_error`
     );
+    callbackErrorRedirect.cookies.delete('auth0_login_state');
+    return callbackErrorRedirect;
   }
 }

@@ -108,7 +108,18 @@ export function buildYoYSeries(
     years.forEach((year) => {
       const row = map.get(year)?.get(month);
       const raw = row ? row[metric] : null;
-      point[`${year}`] = raw == null ? null : toFiniteNumber(raw);
+      const currentValue = raw == null ? null : toFiniteNumber(raw);
+      point[`${year}`] = currentValue;
+
+      const prevYearValueRaw = map.get(year - 1)?.get(month)?.[metric];
+      const prevYearValue =
+        prevYearValueRaw == null ? null : toFiniteNumber(prevYearValueRaw);
+      point[`${year}_yoyPct`] =
+        currentValue == null ||
+        prevYearValue == null ||
+        prevYearValue === 0
+          ? null
+          : ((currentValue - prevYearValue) / prevYearValue) * 100;
     });
 
     return point;

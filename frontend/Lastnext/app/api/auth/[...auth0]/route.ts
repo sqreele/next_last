@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 
 function resolveAudience(raw?: string | null): string {
   const fallback = 'https://pcms.live/api';
@@ -41,21 +42,29 @@ export async function GET(request: NextRequest) {
           // Use server-side environment variables for sensitive data
           const domain = process.env.AUTH0_DOMAIN;
           const clientId = process.env.AUTH0_CLIENT_ID;
-          const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
+          const baseUrl = process.env.AUTH0_BASE_URL || request.nextUrl.origin;
           const scope = 'openid profile email';
           const audience = resolveAudience(process.env.AUTH0_AUDIENCE);
+          const state = randomUUID();
           
           if (!domain || !clientId) {
             console.error('Missing required Auth0 environment variables');
             return NextResponse.redirect(`${baseUrl}/login?error=config_error`);
           }
           
-          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${baseUrl}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}`;
-          
-          return NextResponse.redirect(loginUrl);
+          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${baseUrl}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}&state=${encodeURIComponent(state)}`;
+          const response = NextResponse.redirect(loginUrl);
+          response.cookies.set('auth0_login_state', state, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/api/auth/callback',
+            maxAge: 10 * 60,
+          });
+          return response;
         } catch (loginError) {
           console.error('Auth0 login error:', loginError);
-          const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
+          const baseUrl = process.env.AUTH0_BASE_URL || request.nextUrl.origin;
           return NextResponse.redirect(`${baseUrl}/login?error=login_failed`);
         }
       

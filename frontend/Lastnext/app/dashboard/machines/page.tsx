@@ -56,6 +56,10 @@ interface Machine {
   last_maintenance?: string; // Last PM date
 }
 
+function normalizeCategory(value?: string | null): string {
+  return (value ?? '').trim().toLowerCase();
+}
+
 export default function MachinesListPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -174,14 +178,26 @@ export default function MachinesListPage() {
 
   // Extract unique categories from machines
   const categories = useMemo(() => {
-    const uniqueCategories = new Set<string>();
+    const categoryMap = new Map<string, string>();
     machines.forEach((machine) => {
-      if (machine.category) {
-        uniqueCategories.add(machine.category);
-      }
+      const raw = machine.category?.trim();
+      if (!raw) return;
+      const key = normalizeCategory(raw);
+      if (!key) return;
+      if (!categoryMap.has(key)) categoryMap.set(key, raw);
     });
-    return Array.from(uniqueCategories).sort();
+    return Array.from(categoryMap.entries())
+      .sort((a, b) => a[1].localeCompare(b[1], undefined, { sensitivity: 'base' }))
+      .map(([value, label]) => ({ value, label }));
   }, [machines]);
+
+  useEffect(() => {
+    if (selectedCategory === 'all') return;
+    const exists = categories.some((category) => category.value === selectedCategory);
+    if (!exists) {
+      setSelectedCategory('all');
+    }
+  }, [categories, selectedCategory]);
 
   const filteredMachines = machines.filter((machine) => {
     const searchLower = searchTerm.toLowerCase();
@@ -191,7 +207,9 @@ export default function MachinesListPage() {
       machine.location?.toLowerCase().includes(searchLower) ||
       machine.category?.toLowerCase().includes(searchLower);
     
-    const matchesCategory = selectedCategory === 'all' || machine.category === selectedCategory;
+    const matchesCategory =
+      selectedCategory === 'all' ||
+      normalizeCategory(machine.category) === selectedCategory;
     
     return matchesSearch && matchesCategory;
   });
@@ -277,8 +295,8 @@ export default function MachinesListPage() {
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
                   {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

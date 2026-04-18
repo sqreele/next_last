@@ -193,6 +193,8 @@ function filterJobsForReport(
   pmFilter: PmFilterType,
   topicFilter: TopicFilterValue,
   userFilter: UserFilterValue,
+  monthFilter: 'all' | string,
+  yearFilter: 'all' | string,
   createdFrom: string,
   createdTo: string
 ): Job[] {
@@ -210,6 +212,16 @@ function filterJobsForReport(
       if (userKey !== userFilter) return false;
     }
 
+    const createdDate = new Date(job.created_at);
+    if (monthFilter !== 'all') {
+      const wantedMonth = Number(monthFilter);
+      if (Number.isNaN(wantedMonth) || createdDate.getMonth() + 1 !== wantedMonth) return false;
+    }
+    if (yearFilter !== 'all') {
+      const wantedYear = Number(yearFilter);
+      if (Number.isNaN(wantedYear) || createdDate.getFullYear() !== wantedYear) return false;
+    }
+
     const topics = job.topics;
     const hasTopics = Array.isArray(topics) && topics.length > 0;
     if (topicFilter === 'none') {
@@ -220,7 +232,7 @@ function filterJobsForReport(
       if (!topics?.some((t) => Number(t.id) === wantId)) return false;
     }
 
-    const created = new Date(job.created_at).getTime();
+    const created = createdDate.getTime();
     if (createdFrom.trim()) {
       const day = parseLocalDateYmd(createdFrom);
       if (day) {
@@ -473,6 +485,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
   const [pmFilter, setPmFilter] = useState<PmFilterType>('all');
   const [topicFilter, setTopicFilter] = useState<TopicFilterValue>('all');
   const [userFilter, setUserFilter] = useState<UserFilterValue>('all');
+  const [monthFilter, setMonthFilter] = useState<'all' | string>('all');
+  const [yearFilter, setYearFilter] = useState<'all' | string>('all');
   const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
 
   const topicFilterOptions = useMemo(() => {
@@ -524,6 +538,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         pmFilter,
         topicFilter,
         userFilter,
+        monthFilter,
+        yearFilter,
         createdFrom,
         createdTo
       ),
@@ -534,9 +550,25 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       pmFilter,
       topicFilter,
       userFilter,
+      monthFilter,
+      yearFilter,
       createdFrom,
       createdTo,
     ]
+  );
+
+  const yearFilterOptions = useMemo(() => {
+    const years = new Set<number>();
+    reportJobs.forEach((job) => {
+      const d = new Date(job.created_at);
+      if (!Number.isNaN(d.getTime())) years.add(d.getFullYear());
+    });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [reportJobs]);
+
+  const monthFilterOptions = useMemo(
+    () => Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: format(new Date(2020, i, 1), 'MMMM') })),
+    []
   );
 
   useEffect(() => {
@@ -713,7 +745,29 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       });
     });
 
-    return Array.from(monthMap.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+    const sorted = Array.from(monthMap.values()).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+    const bySortKey = new Map(sorted.map((row) => [row.sortKey, row]));
+
+    return sorted.map((row) => {
+      const [yearStr, monthStr] = row.sortKey.split('-');
+      const year = Number(yearStr);
+      const month = Number(monthStr);
+      const prevYearKey = `${year - 1}-${String(month).padStart(2, '0')}`;
+      const prevYearRow = bySortKey.get(prevYearKey);
+      const jobsYoyPct =
+        prevYearRow && prevYearRow.jobs !== 0
+          ? ((row.jobs - prevYearRow.jobs) / prevYearRow.jobs) * 100
+          : null;
+      const nightSaleYoyPct =
+        prevYearRow && prevYearRow.nightSale !== 0
+          ? ((row.nightSale - prevYearRow.nightSale) / prevYearRow.nightSale) * 100
+          : null;
+      return {
+        ...row,
+        jobsYoyPct,
+        nightSaleYoyPct,
+      };
+    });
   }, [jobsByMonthChart, utilityRows]);
 
   const monthlyAndYearlyComparisons = useMemo(() => {
@@ -1007,6 +1061,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
           : userFilter !== 'all'
             ? `user-${userFilter.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '')}`
             : '',
+        monthFilter !== 'all' ? `month-${monthFilter}` : '',
+        yearFilter !== 'all' ? `year-${yearFilter}` : '',
         createdFrom.trim() ? `from-${createdFrom}` : '',
         createdTo.trim() ? `to-${createdTo}` : '',
       ].filter(Boolean);
@@ -1156,7 +1212,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-9">
             <div className="space-y-1.5">
               <label htmlFor="jobs-report-status" className="text-xs font-medium text-gray-700">
                 Status
@@ -1278,6 +1334,42 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
                 onChange={(e) => setCreatedTo(e.target.value)}
               />
             </div>
+            <div className="space-y-1.5">
+              <label htmlFor="jobs-report-month" className="text-xs font-medium text-gray-700">
+                Month
+              </label>
+              <select
+                id="jobs-report-month"
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={monthFilter}
+                onChange={(e) => setMonthFilter(e.target.value as 'all' | string)}
+              >
+                <option value="all">All months</option>
+                {monthFilterOptions.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="jobs-report-year" className="text-xs font-medium text-gray-700">
+                Year
+              </label>
+              <select
+                id="jobs-report-year"
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value as 'all' | string)}
+              >
+                <option value="all">All years</option>
+                {yearFilterOptions.map((y) => (
+                  <option key={y} value={String(y)}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -1291,6 +1383,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
                 setPmFilter('all');
                 setTopicFilter('all');
                 setUserFilter('all');
+                setMonthFilter('all');
+                setYearFilter('all');
                 setCreatedFrom('');
                 setCreatedTo('');
               }}
@@ -1441,7 +1535,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
               Jobs by month (created)
             </CardTitle>
             <p className="text-sm font-normal text-gray-500">
-              Chronological trend from filtered jobs.
+              Chronological trend from filtered jobs (tooltip includes YoY %).
             </p>
           </CardHeader>
           <CardContent className="pt-0">
@@ -1471,7 +1565,29 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
                       stroke="#16a34a"
                       allowDecimals={false}
                     />
-                    <Tooltip />
+                    <Tooltip
+                      formatter={(value, name, item) => {
+                        const rawYoy =
+                          name === 'Jobs'
+                            ? item?.payload?.jobsYoyPct
+                            : item?.payload?.nightSaleYoyPct;
+                        const yoy =
+                          typeof rawYoy === 'number'
+                            ? rawYoy
+                            : typeof rawYoy === 'string'
+                              ? Number(rawYoy)
+                              : null;
+                        const valueText =
+                          typeof value === 'number'
+                            ? value.toLocaleString()
+                            : String(value);
+                        const yoyText =
+                          yoy == null || Number.isNaN(yoy) || !Number.isFinite(yoy)
+                            ? 'N/A'
+                            : `${yoy >= 0 ? '+' : ''}${yoy.toFixed(1)}%`;
+                        return [`${valueText} (YoY ${yoyText})`, String(name)];
+                      }}
+                    />
                     <Legend />
                     <Line
                       type="monotone"

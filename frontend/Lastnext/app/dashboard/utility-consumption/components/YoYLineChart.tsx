@@ -29,12 +29,19 @@ function formatYoYLabel(v: number | string | null | undefined) {
   return String(Math.round(n));
 }
 
+function formatYoYPercent(v: number | null | undefined) {
+  if (v == null || Number.isNaN(v) || !Number.isFinite(v)) return 'N/A';
+  return `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+}
+
 export default function YoYLineChart({ data, years, metricLabel }: YoYLineChartProps) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-slate-900">YoY multi-line</h3>
-        <p className="text-sm text-slate-500">{metricLabel} comparison by year.</p>
+        <p className="text-sm text-slate-500">
+          {metricLabel} comparison by year (tooltip shows YoY %).
+        </p>
       </div>
       <div className="h-80 w-full min-h-[20rem]">
         <ResponsiveContainer width="100%" height="100%">
@@ -42,7 +49,23 @@ export default function YoYLineChart({ data, years, metricLabel }: YoYLineChartP
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="label" stroke="#64748b" tick={{ fontSize: 11 }} />
             <YAxis stroke="#64748b" tick={{ fontSize: 11 }} />
-            <Tooltip />
+            <Tooltip
+              formatter={(value, name, item) => {
+                const yearKey = String(name);
+                const yoyValue = item?.payload?.[`${yearKey}_yoyPct`];
+                const yoyPct =
+                  typeof yoyValue === 'number'
+                    ? yoyValue
+                    : typeof yoyValue === 'string'
+                      ? Number(yoyValue)
+                      : null;
+                return [
+                  `${formatYoYLabel(value)} (${formatYoYPercent(yoyPct)})`,
+                  `${name}`,
+                ];
+              }}
+              labelFormatter={(label) => `${label} (${metricLabel})`}
+            />
             <Legend />
             {years.map((year, index) => (
               <Line
@@ -59,7 +82,11 @@ export default function YoYLineChart({ data, years, metricLabel }: YoYLineChartP
                 <LabelList
                   dataKey={`${year}`}
                   position="top"
-                  formatter={formatYoYLabel}
+                  formatter={(value, _entry) => {
+                    const n = typeof value === 'number' ? value : Number(value);
+                    if (Number.isNaN(n) || n === 0) return '';
+                    return formatYoYLabel(value);
+                  }}
                   className="fill-slate-600 text-[10px] font-medium"
                 />
               </Line>

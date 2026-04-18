@@ -529,6 +529,31 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       );
   }, [reportJobs, detailedUsers, session?.user]);
 
+  /**
+   * Keep provided jobs reactive even when length stays the same, while avoiding
+   * fetch loops from default `jobs = []` creating a new array every render.
+   */
+  const providedJobsFingerprint = useMemo(
+    () =>
+      jobs
+        .map((job) =>
+          [
+            String((job as { job_id?: string }).job_id ?? ''),
+            String(job.created_at ?? ''),
+            String(job.status ?? ''),
+            String(job.priority ?? ''),
+            String(job.completed_at ?? ''),
+            String(job.topics?.length ?? 0),
+            String(job.rooms?.length ?? 0),
+            String(jobIsPm(job)),
+          ].join('|')
+        )
+        .join('||'),
+    [jobs]
+  );
+
+  const stableProvidedJobs = useMemo(() => jobs, [providedJobsFingerprint]);
+
   const filteredReportJobs = useMemo(
     () =>
       filterJobsForReport(
@@ -975,9 +1000,9 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
     [statistics.highPriority, statistics.mediumPriority, statistics.lowPriority]
   );
 
-  // Load jobs for the selected property if not provided
+  // Load jobs for the selected property if external jobs were not provided.
   useEffect(() => {
-    if (selectedProperty && jobs.length === 0) {
+    if (selectedProperty && stableProvidedJobs.length === 0) {
       const loadPropertyJobs = async () => {
         recordLoaderShown();
         setLoading(true);
@@ -1021,10 +1046,16 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       };
       
       loadPropertyJobs();
-    } else if (jobs.length > 0) {
-      setReportJobs(jobs);
+    } else if (stableProvidedJobs.length > 0) {
+      setReportJobs(stableProvidedJobs);
     }
-  }, [selectedProperty, jobs.length, session?.user?.accessToken, recordLoaderShown, clearLoadingAfterMinTime]);
+  }, [
+    selectedProperty,
+    stableProvidedJobs,
+    session?.user?.accessToken,
+    recordLoaderShown,
+    clearLoadingAfterMinTime,
+  ]);
 
 
   // Generate CSV export

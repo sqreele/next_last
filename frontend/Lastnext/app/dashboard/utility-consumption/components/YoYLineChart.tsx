@@ -34,6 +34,15 @@ function formatYoYPercent(v: number | null | undefined) {
   return `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 }
 
+function normalizeTooltipValue(
+  value: string | number | Array<string | number> | null | undefined
+): string | number | null | undefined {
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value[0] : null;
+  }
+  return value;
+}
+
 export default function YoYLineChart({ data, years, metricLabel }: YoYLineChartProps) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -51,6 +60,7 @@ export default function YoYLineChart({ data, years, metricLabel }: YoYLineChartP
             <YAxis stroke="#64748b" tick={{ fontSize: 11 }} />
             <Tooltip
               formatter={(value, name, item) => {
+                const normalizedValue = normalizeTooltipValue(value);
                 const yearKey = String(name);
                 const yoyValue = item?.payload?.[`${yearKey}_yoyPct`];
                 const yoyPct =
@@ -60,7 +70,7 @@ export default function YoYLineChart({ data, years, metricLabel }: YoYLineChartP
                       ? Number(yoyValue)
                       : null;
                 return [
-                  `${formatYoYLabel(value)} (${formatYoYPercent(yoyPct)})`,
+                  `${formatYoYLabel(normalizedValue)} (${formatYoYPercent(yoyPct)})`,
                   `${name}`,
                 ];
               }}

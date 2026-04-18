@@ -60,6 +60,11 @@ function normalizeCategory(value?: string | null): string {
   return (value ?? '').trim().toLowerCase();
 }
 
+interface PreventiveMaintenanceRow {
+  scheduled_date?: string;
+  machines?: Array<{ machine_id?: string }>;
+}
+
 export default function MachinesListPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -130,41 +135,51 @@ export default function MachinesListPage() {
       
       setTotalCount(total);
 
-      // Fetch PM count for each machine
-      const machinesWithCounts = await Promise.all(
-        machinesData.map(async (machine) => {
-          try {
-            const pmResponse = await apiClient.get('/api/v1/preventive-maintenance/', {
-              params: { machine_id: machine.machine_id }
-            });
-            
-            let pmData: any[] = [];
-            if (Array.isArray(pmResponse.data)) {
-              pmData = pmResponse.data;
-            } else if (pmResponse.data && 'results' in pmResponse.data) {
-              pmData = pmResponse.data.results || [];
+      // Fetch PM rows once, then aggregate by machine_id to avoid N+1 requests.
+      const pmByMachine = new Map<string, { count: number; lastMaintenance?: string }>();
+      try {
+        const pmParams: Record<string, string | number> = { page_size: 1000 };
+        if (selectedProperty) {
+          pmParams.property_id = selectedProperty;
+        }
+        const pmResponse = await apiClient.get('/api/v1/preventive-maintenance/', {
+          params: pmParams,
+        });
+        const pmRows: PreventiveMaintenanceRow[] = Array.isArray(pmResponse.data)
+          ? pmResponse.data
+          : pmResponse.data?.results || [];
+
+        pmRows.forEach((pm) => {
+          const scheduled = pm.scheduled_date;
+          (pm.machines || []).forEach((machineRef) => {
+            const machineId = machineRef?.machine_id;
+            if (!machineId) return;
+            const current = pmByMachine.get(machineId) ?? { count: 0, lastMaintenance: undefined };
+            current.count += 1;
+            if (
+              scheduled &&
+              (!current.lastMaintenance ||
+                new Date(scheduled).getTime() > new Date(current.lastMaintenance).getTime())
+            ) {
+              current.lastMaintenance = scheduled;
             }
-            
-            // Find the most recent PM
-            const sortedPMs = pmData.sort((a: any, b: any) => 
-              new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime()
-            );
-            
-            return {
-              ...machine,
-              pm_count: pmData.length,
-              last_maintenance: sortedPMs.length > 0 ? sortedPMs[0].scheduled_date : undefined
-            };
-          } catch (err) {
-            console.error(`Error fetching PM data for machine ${machine.machine_id}:`, err);
-            return {
-              ...machine,
-              pm_count: 0,
-              last_maintenance: undefined
-            };
-          }
-        })
-      );
+            pmByMachine.set(machineId, current);
+          });
+        });
+      } catch (pmError) {
+        console.error('Error fetching preventive maintenance aggregation:', pmError);
+      }
+
+      const machinesWithCounts = machinesData.map((machine) => {
+        const aggregated = pmByMachine.get(machine.machine_id);
+        return {
+          ...machine,
+          pm_count:
+            aggregated?.count ??
+            (typeof machine.pm_count === 'number' ? machine.pm_count : 0),
+          last_maintenance: aggregated?.lastMaintenance ?? machine.last_maintenance,
+        };
+      });
 
       setMachines(machinesWithCounts);
     } catch (err: any) {

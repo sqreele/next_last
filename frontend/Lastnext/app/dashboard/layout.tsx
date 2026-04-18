@@ -8,24 +8,13 @@ import { appSignOut } from '@/app/lib/logout';
 import {
   Home,
   LineChart,
-  Package,
   Package2,
   PanelLeft,
-  Settings,
-  ShoppingCart,
-  Users2,
   Search,
   Menu,
   LogOut,
-  PlusCircle,
   Bell,
   ChevronDown,
-  Activity,
-  FileText,
-  Filter,
-  Wrench,
-  Zap,
-  Calendar
 } from 'lucide-react';
 import {
   Breadcrumb,
@@ -48,25 +37,11 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 import { MobileNav as BottomNav } from '@/app/components/ui/mobile-nav';
+import { dashboardNavigationItems } from '@/app/lib/navigation';
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/dashboard/my-jobs', label: 'My Jobs', icon: ShoppingCart },
-  { href: '/dashboard/chartdashboard', label: 'Analytics', icon: LineChart },
-  { href: '/dashboard/jobs-report', label: 'Jobs Report', icon: FileText },
-  { href: '/dashboard/jobs/by-topic', label: 'Jobs by Topic', icon: Filter },
-  { href: '/dashboard/rooms/by-topics', label: 'Rooms by Topic', icon: Filter },
-  { href: '/dashboard/rooms/topic-mismatch', label: 'Topic Mismatch', icon: Filter },
-  { href: '/dashboard/profile', label: 'Profile', icon: Users2 },
-  { href: '/dashboard/create-job', label: 'Create Job', icon: PlusCircle },
-  { href: '/dashboard/preventive-maintenance', label: 'PM', icon: PlusCircle },
-  { href: '/dashboard/preventive-maintenance', label: 'PM List', icon:Activity },
-  { href: '/dashboard/maintenance-tasks', label: 'Maintenance Tasks', icon: Settings },
-  { href: '/dashboard/machines', label: 'Machines', icon: Wrench },
-  { href: '/dashboard/inventory', label: 'Inventory', icon: Package },
-  { href: '/dashboard/utility-consumption', label: 'Utility Consumption', icon: Zap },
-  { href: '/roster', label: 'Roster', icon: Calendar },
-];
+function isNavItemActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed, setSidebarCollapsed] = React.useState(false);
@@ -151,11 +126,11 @@ function DesktopNav({ collapsed, toggleCollapse }: {
       </div>
       <div className="flex-1 overflow-auto py-4">
         <nav className="grid gap-1 px-2">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
+          {dashboardNavigationItems.map((item) => {
+            const isActive = isNavItemActive(pathname, item.href);
             return (
               <Link
-                key={item.label}
+                key={item.name}
                 href={item.href}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ease-in-out',
@@ -164,10 +139,10 @@ function DesktopNav({ collapsed, toggleCollapse }: {
                     ? 'bg-blue-600 text-white shadow-md'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 )}
-                title={collapsed ? item.label : undefined}
+                title={collapsed ? item.name : undefined}
               >
                 <item.icon className={cn("h-5 w-5", collapsed ? "flex-shrink-0" : "")} />
-                {!collapsed && <span>{item.label}</span>}
+                {!collapsed && <span>{item.name}</span>}
               </Link>
             );
           })}
@@ -257,6 +232,7 @@ function DesktopHeader({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
               size="icon"
               className="h-9 w-9 relative"
               title="Notifications"
+              aria-label="Open notifications"
             >
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
@@ -312,11 +288,11 @@ function MobileNav() {
         
         <div className="flex-1 overflow-auto py-2">
           <nav className="grid gap-1 px-2">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
+            {dashboardNavigationItems.map((item) => {
+              const isActive = isNavItemActive(pathname, item.href);
               return (
                 <Link
-                  key={item.label}
+                  key={item.name}
                   href={item.href}
                   onClick={() => setOpen(false)}
                   className={cn(
@@ -327,7 +303,7 @@ function MobileNav() {
                   )}
                 >
                   <item.icon className="h-5 w-5" />
-                  {item.label}
+                  {item.name}
                 </Link>
               );
             })}

@@ -155,7 +155,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
@@ -186,7 +186,7 @@ export default function LandingPage() {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      <section id="demo" className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
@@ -287,7 +287,7 @@ export default function LandingPage() {
               <h4 className="text-white font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link href="#features" className="hover:text-white">Features</Link></li>
-                <li><Link href="#pricing" className="hover:text-white">Pricing</Link></li>
+                <li><Link href="/auth/register" className="hover:text-white">Pricing</Link></li>
                 <li><Link href="#demo" className="hover:text-white">Demo</Link></li>
               </ul>
             </div>
@@ -295,18 +295,18 @@ export default function LandingPage() {
             <div>
               <h4 className="text-white font-semibold mb-4">Company</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/about" className="hover:text-white">About</Link></li>
-                <li><Link href="/contact" className="hover:text-white">Contact</Link></li>
-                <li><Link href="/careers" className="hover:text-white">Careers</Link></li>
+                <li><Link href="/auth/login" className="hover:text-white">About</Link></li>
+                <li><Link href="/auth/login" className="hover:text-white">Contact</Link></li>
+                <li><Link href="/auth/login" className="hover:text-white">Careers</Link></li>
               </ul>
             </div>
             
             <div>
               <h4 className="text-white font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link href="/help" className="hover:text-white">Help Center</Link></li>
-                <li><Link href="/docs" className="hover:text-white">Documentation</Link></li>
-                <li><Link href="/status" className="hover:text-white">System Status</Link></li>
+                <li><Link href="/auth/login" className="hover:text-white">Help Center</Link></li>
+                <li><Link href="/auth/login" className="hover:text-white">Documentation</Link></li>
+                <li><Link href="/auth/login" className="hover:text-white">System Status</Link></li>
               </ul>
             </div>
           </div>

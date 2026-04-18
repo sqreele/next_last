@@ -88,7 +88,19 @@ interface DeleteDialogProps {
 // Updated JobTableRow component - Desktop only
 const JobTableRow: React.FC<JobTableRowProps> = React.memo(
   ({ job, onEdit, onDelete, onStatusUpdated }) => (
-    <TableRow className="hidden md:table-row hover:bg-gray-50 cursor-pointer" onClick={() => onEdit(job)}>
+    <TableRow
+      className="hidden md:table-row hover:bg-gray-50 cursor-pointer"
+      onClick={() => onEdit(job)}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open job ${job.job_id}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onEdit(job);
+        }
+      }}
+    >
       <TableCell className="py-3">
         <div className="font-medium text-gray-900">#{job.job_id}</div>
         <Badge
@@ -204,6 +216,15 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
       variant="interactive"
       className="md:hidden border-gray-200 hover:border-blue-300 transition-all cursor-pointer"
       onClick={() => onEdit(job)}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open job ${job.job_id}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onEdit(job);
+        }
+      }}
     >
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
@@ -885,6 +906,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                 disabled={isLoading}
                 className="rounded-full hover:bg-blue-50 hover:border-blue-300 transition-all"
                 title="Refresh jobs"
+                aria-label="Refresh jobs"
               >
                 <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin text-blue-600' : 'text-gray-600'}`} />
               </Button>

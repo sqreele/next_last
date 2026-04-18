@@ -70,12 +70,12 @@ function CreatePageContent() {
           router.push(`/dashboard/preventive-maintenance/${pmId}`);
         } else {
           console.warn('PM ID is undefined or invalid, redirecting to dashboard instead');
-          router.push('/dashboard/preventive-maintenance/dashboard');
+          router.push('/dashboard/preventive-maintenance');
         }
       } catch (error) {
         console.error('Error during redirect:', error);
         // Fallback to dashboard on any error
-        router.push('/dashboard/preventive-maintenance/dashboard');
+        router.push('/dashboard/preventive-maintenance');
       }
     }, 1500);
   };

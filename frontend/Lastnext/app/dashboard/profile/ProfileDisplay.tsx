@@ -150,7 +150,7 @@ function NoPropertiesCard() {
           variant="outline"
           className="w-full h-12 border-blue-300 hover:border-blue-400 hover:bg-blue-100 text-blue-700"
         >
-          <Link href="/dashboard/properties/request">
+          <Link href="/auth/onboarding">
             <Building2 className="mr-2 h-4 w-4" />
             Request Property Access
           </Link>
@@ -234,21 +234,6 @@ export default function ProfileDisplay() {
             </Button>
           </Link>
           
-          {/* Debug button to test navigation */}
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            className="mt-2 sm:mt-0"
-            onClick={() => {
-              console.log('🧪 Debug button clicked');
-              console.log('🧪 userProfile.id:', userProfile.id);
-              console.log('🧪 Edit URL:', `/dashboard/profile/edit/${userProfile.id}`);
-              console.log('🧪 Attempting navigation...');
-              router.push(`/dashboard/profile/edit/${userProfile.id}`);
-            }}
-          >
-            Debug: Go to Edit
-          </Button>
         </CardHeader>
         <CardContent className="space-y-6 sm:space-y-8">
           <div className="flex flex-col items-center justify-center space-y-4">

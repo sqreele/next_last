@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BarChart3, RefreshCw, Filter, Plus, FileText, Bug } from 'lucide-react';
+import { BarChart3, RefreshCw, Filter, Plus, Bug } from 'lucide-react';
 
 interface DesktopHeaderProps {
   currentFilters: any;
@@ -63,7 +63,7 @@ export default function DesktopHeader({
           )}
           
           <Link
-            href="/dashboard/preventive-maintenance/dashboard"
+            href="/dashboard/preventive-maintenance"
             className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <BarChart3 className="h-4 w-4 mr-2" />
@@ -75,6 +75,7 @@ export default function DesktopHeader({
             disabled={isLoading}
             className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
             title="Refresh Data"
+            aria-label="Refresh maintenance data"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -85,6 +86,7 @@ export default function DesktopHeader({
             className={`flex items-center px-4 py-2 border rounded-lg transition-colors ${
               showFilters ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
+            aria-label="Toggle maintenance filters"
           >
             <Filter className="h-4 w-4 mr-2" />
             Filters
@@ -101,14 +103,6 @@ export default function DesktopHeader({
           >
             <Plus className="h-4 w-4 mr-2" />
             New Maintenance
-          </Link>
-          
-          <Link
-            href="/dashboard/preventive-maintenance/pdf"
-            className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            Generate PDF
           </Link>
         </div>
       </div>

@@ -92,7 +92,10 @@ export default function YoYLineChart({ data, years, metricLabel }: YoYLineChartP
                 <LabelList
                   dataKey={`${year}`}
                   position="top"
-                  formatter={(value, _entry) => {
+                  formatter={(
+                    value: string | number | null | undefined,
+                    _entry: unknown
+                  ) => {
                     const n = typeof value === 'number' ? value : Number(value);
                     if (Number.isNaN(n) || n === 0) return '';
                     return formatYoYLabel(value);

@@ -38,9 +38,10 @@ export default function MobileHeader({
         </div>
         <div className="flex items-center space-x-2">
           <Link
-            href="/dashboard/preventive-maintenance/dashboard"
+            href="/dashboard/preventive-maintenance"
             className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
             title="Dashboard"
+            aria-label="Open maintenance dashboard"
           >
             <BarChart3 className="h-5 w-5" />
           </Link>
@@ -49,6 +50,7 @@ export default function MobileHeader({
             disabled={isLoading}
             className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 rounded-lg hover:bg-gray-100 transition-colors"
             title="Refresh"
+            aria-label="Refresh maintenance data"
           >
             <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
@@ -57,6 +59,7 @@ export default function MobileHeader({
             className={`relative p-2 rounded-lg transition-colors ${
               showFilters ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
             }`}
+            aria-label="Toggle maintenance filters"
           >
             <Filter className="h-5 w-5" />
             {activeFiltersCount > 0 && (
@@ -68,6 +71,7 @@ export default function MobileHeader({
           <Link
             href="/dashboard/preventive-maintenance/create"
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            aria-label="Create new maintenance task"
           >
             <Plus className="h-5 w-5" />
           </Link>

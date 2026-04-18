@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            path: '/api/auth/callback',
+            path: '/',
             maxAge: 10 * 60,
           });
           return response;

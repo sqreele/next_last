@@ -75,6 +75,9 @@ export default function EditPreventiveMaintenancePage() {
 
   // State
   const [maintenance, setMaintenance] = useState<PreventiveMaintenance | null>(null);
+  const resolvedPmId =
+    maintenance?.pm_id ||
+    (pmId?.toLowerCase().startsWith('pm') ? pmId.toUpperCase() : pmId);
   const hasAppliedCompletionRef = useRef(false);
   const [formState, setFormState] = useState<FormState>({
     pmtitle: '',
@@ -559,11 +562,11 @@ export default function EditPreventiveMaintenancePage() {
         after_image: formState.after_image_file ? { name: formState.after_image_file.name, size: formState.after_image_file.size } : 'none'
       });
 
-      const result = await updateMaintenance(pmId, updateData);
+      const result = await updateMaintenance(resolvedPmId, updateData);
       
       if (result) {
         setIsDirty(false);
-        router.push(`/dashboard/preventive-maintenance/${pmId}`);
+        router.push(`/dashboard/preventive-maintenance/${resolvedPmId}`);
       }
     } catch (error) {
       console.error('Error updating maintenance:', error);
@@ -631,14 +634,14 @@ export default function EditPreventiveMaintenancePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div className="flex-1">
           <button
-            onClick={() => handleNavigation(`/dashboard/preventive-maintenance/${pmId}`)}
+            onClick={() => handleNavigation(`/dashboard/preventive-maintenance/${resolvedPmId}`)}
             className="flex items-center text-gray-600 hover:text-gray-900 mb-2 text-sm sm:text-base touch-target min-h-[44px]"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Details
           </button>
           <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">Edit Maintenance</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">ID: {pmId}</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">ID: {resolvedPmId}</p>
         </div>
         
         <div className="flex items-center space-x-3">
@@ -972,7 +975,7 @@ export default function EditPreventiveMaintenancePage() {
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <button
                 type="button"
-                onClick={() => handleNavigation(`/dashboard/preventive-maintenance/${pmId}`)}
+                onClick={() => handleNavigation(`/dashboard/preventive-maintenance/${resolvedPmId}`)}
                 className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 touch-target min-h-[44px]"
               >
                 View Details

@@ -386,9 +386,14 @@ export function usePreventiveMaintenanceActions() {
         setError(response.message || 'Failed to update maintenance item');
         return null;
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error updating maintenance', error);
-      setError('Failed to update maintenance item');
+      const message =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to update maintenance item';
+      setError(message);
       return null;
     } finally {
       setLoading(false);

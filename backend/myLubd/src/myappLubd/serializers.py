@@ -695,8 +695,8 @@ class MachineCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Machine
         fields = [
-            'name', 'description', 'location', 'property', 
-            'status', 'installation_date', 'last_maintenance_date', 'image'
+            'name', 'brand', 'category', 'serial_number', 'description', 'location', 'property',
+            'status', 'group_id', 'installation_date', 'last_maintenance_date', 'image'
         ]
     
     def validate(self, data):
@@ -717,8 +717,8 @@ class MachineUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Machine
         fields = [
-            'name', 'description', 'location', 'property', 
-            'status', 'installation_date', 'last_maintenance_date', 'image'
+            'name', 'brand', 'category', 'serial_number', 'description', 'location', 'property',
+            'status', 'group_id', 'installation_date', 'last_maintenance_date', 'image'
         ]
     
     def validate(self, data):

@@ -1,4 +1,4 @@
-import type { MonthLabel, PMNonPMPoint, StatusPoint, TopUserPoint } from '../types';
+import type { MonthLabel, PMNonPMPoint, StatusPoint, TopUserPoint, TopicPoint } from '../types';
 
 export function aggregateStatus(data: StatusPoint[]) {
   const totals = data.reduce(
@@ -142,4 +142,18 @@ export function aggregateTopUsers(data: TopUserPoint[]) {
     .map(([name, values]) => ({ name, ...values }))
     .sort((a, b) => b.pm + b.nonPm - (a.pm + a.nonPm))
     .slice(0, 6);
+}
+
+export function aggregateTopics(data: TopicPoint[]) {
+  const totals = data.reduce(
+    (acc, item) => {
+      acc[item.topic] = (acc[item.topic] ?? 0) + item.count;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  return Object.entries(totals)
+    .map(([topic, count]) => ({ topic, count }))
+    .sort((a, b) => b.count - a.count);
 }

@@ -10,6 +10,7 @@ import TopUsersChart from './components/TopUsersChart';
 import TrendLineChart from './components/TrendLineChart';
 import { useUser } from '@/app/lib/stores/mainStore';
 import {
+  aggregateTopics,
   aggregateTopUsers,
   applyMonthYearFilter,
   buildCardSummary,
@@ -136,6 +137,11 @@ export default function ChartDashboardView() {
     return applyMonthYearFilter(data.topUsersByMonth, selectedMonth, selectedYear);
   }, [data, selectedMonth, selectedYear]);
 
+  const filteredTopics = useMemo(() => {
+    if (!data) return [];
+    return applyMonthYearFilter(data.topicsByMonth, selectedMonth, selectedYear);
+  }, [data, selectedMonth, selectedYear]);
+
   const summary = useMemo(
     () => buildCardSummary(filteredPMNonPM, filteredStatus),
     [filteredPMNonPM, filteredStatus]
@@ -186,6 +192,8 @@ export default function ChartDashboardView() {
   const statusChartData = summary.statusTotals;
 
   const topUsersChartData = aggregateTopUsers(filteredTopUsers);
+  const topTopicData = aggregateTopics(filteredTopics);
+  const topTopic = topTopicData[0] ?? null;
 
   const isEmpty = !loading && !error && selectedProperty && (!data || filteredTrend.length === 0);
 
@@ -276,7 +284,11 @@ export default function ChartDashboardView() {
 
           <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
             <StatusPieChart data={statusChartData} />
-            <JobPmPieChart pmJobs={summary.pmJobs} nonPmJobs={summary.nonPmJobs} />
+            <JobPmPieChart
+              pmJobs={summary.pmJobs}
+              nonPmJobs={summary.nonPmJobs}
+              topTopic={topTopic}
+            />
             <TopUsersChart data={topUsersChartData} />
           </div>
         </div>

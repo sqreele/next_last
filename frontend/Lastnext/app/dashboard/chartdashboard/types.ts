@@ -40,6 +40,13 @@ export interface TopUserPoint {
   nonPm: number;
 }
 
+export interface TopicPoint {
+  month: MonthLabel;
+  year: number;
+  topic: string;
+  count: number;
+}
+
 export interface DashboardSummaryResponse {
   totalJobs: number;
   pmJobs: number;
@@ -49,4 +56,5 @@ export interface DashboardSummaryResponse {
   pmNonPmByMonth: PMNonPMPoint[];
   statusByMonth: StatusPoint[];
   topUsersByMonth: TopUserPoint[];
+  topicsByMonth: TopicPoint[];
 }

@@ -2647,6 +2647,23 @@ def get_dashboard_summary(request):
             'nonPm': item['non_pm'],
         })
 
+    topics_by_month = []
+    topic_counts = annotated_queryset.values('month', 'year', 'topics__title').annotate(
+        count=Count('id', distinct=True),
+    ).order_by('year', 'month', 'topics__title')
+
+    for item in topic_counts:
+        if not item['topics__title']:
+            continue
+
+        month_label = month_labels[item['month'] - 1]
+        topics_by_month.append({
+            'month': month_label,
+            'year': item['year'],
+            'topic': item['topics__title'],
+            'count': item['count'],
+        })
+
     payload = {
         'totalJobs': total_jobs,
         'pmJobs': pm_jobs,
@@ -2656,6 +2673,7 @@ def get_dashboard_summary(request):
         'pmNonPmByMonth': pm_non_pm_by_month,
         'statusByMonth': status_by_month,
         'topUsersByMonth': top_users_by_month,
+        'topicsByMonth': topics_by_month,
     }
 
     return Response(payload, status=status.HTTP_200_OK)

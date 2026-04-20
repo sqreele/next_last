@@ -30,6 +30,7 @@ export default function JobPmPieChart({ pmJobs, nonPmJobs, topTopic }: JobPmPieC
   ];
 
   const total = pmJobs + nonPmJobs;
+  const hasData = total > 0;
   const bestTopic = topTopic ? `${topTopic.topic} (${topTopic.count})` : 'No topic data';
 
   return (
@@ -44,36 +45,42 @@ export default function JobPmPieChart({ pmJobs, nonPmJobs, topTopic }: JobPmPieC
           Top job topic: <span className="font-medium text-slate-700">{bestTopic}</span>
         </p>
       </div>
-      <div className="h-72 w-full min-h-[18rem]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={100}
-              innerRadius={55}
-              paddingAngle={3}
-              labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
-              label={renderLabel}
-            >
-              {data.map((entry, index) => (
-                <Cell key={`${entry.name}-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Pie>
-            <Tooltip
-              formatter={(value: number | string, name) => {
-                const n = typeof value === 'number' ? value : Number(value);
-                const share = total > 0 ? ((n / total) * 100).toFixed(1) : '0.0';
-                return [`${n} (${share}%)`, name];
-              }}
-            />
-            <Legend formatter={(value) => <span className="text-xs text-slate-700">{value}</span>} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
+      {hasData ? (
+        <div className="h-[18rem] w-full min-h-[18rem] sm:h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                innerRadius={55}
+                paddingAngle={3}
+                labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
+                label={renderLabel}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`${entry.name}-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value: number | string, name) => {
+                  const n = typeof value === 'number' ? value : Number(value);
+                  const share = total > 0 ? ((n / total) * 100).toFixed(1) : '0.0';
+                  return [`${n} (${share}%)`, name];
+                }}
+              />
+              <Legend formatter={(value) => <span className="text-xs text-slate-700">{value}</span>} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="flex h-[18rem] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
+          No PM/non-PM split data for selected filters.
+        </div>
+      )}
     </div>
   );
 }

@@ -33,6 +33,7 @@ function renderStatusLabel(entry: PieLabelRenderProps) {
 
 export default function StatusPieChart({ data }: StatusPieChartProps) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
+  const hasData = total > 0;
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -46,40 +47,46 @@ export default function StatusPieChart({ data }: StatusPieChartProps) {
           .
         </p>
       </div>
-      <div className="h-72 w-full min-h-[18rem]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              dataKey="value"
-              nameKey="name"
-              cx="50%"
-              cy="50%"
-              outerRadius={100}
-              innerRadius={55}
-              paddingAngle={3}
-              labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
-              label={renderStatusLabel}
-            >
-              {data.map((entry, index) => (
-                <Cell key={`${entry.name}-${index}`} fill={colors[index % colors.length]} />
-              ))}
-            </Pie>
-            <Tooltip
-              formatter={(value: number | string, name) => {
-                const n = typeof value === 'number' ? value : Number(value);
-                const share = total > 0 ? ((n / total) * 100).toFixed(1) : '0.0';
-                return [`${n} (${share}%)`, name];
-              }}
-            />
-            <Legend
-              formatter={(value) => (
-                <span className="text-xs text-slate-700">{value}</span>
-              )}
-            />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
+      {hasData ? (
+        <div className="h-[18rem] w-full min-h-[18rem] sm:h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                innerRadius={55}
+                paddingAngle={3}
+                labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
+                label={renderStatusLabel}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`${entry.name}-${index}`} fill={colors[index % colors.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value: number | string, name) => {
+                  const n = typeof value === 'number' ? value : Number(value);
+                  const share = total > 0 ? ((n / total) * 100).toFixed(1) : '0.0';
+                  return [`${n} (${share}%)`, name];
+                }}
+              />
+              <Legend
+                formatter={(value) => (
+                  <span className="text-xs text-slate-700">{value}</span>
+                )}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="flex h-[18rem] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
+          No status data for selected filters.
+        </div>
+      )}
     </div>
   );
 }

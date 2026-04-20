@@ -201,16 +201,18 @@ export default function ChartDashboardView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Chart Dashboard</h1>
-          <p className="text-sm text-slate-500">Overview of job performance analytics.</p>
+          <p className="text-sm text-slate-500">
+            Overview of job performance analytics across months, teams, and topics.
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex w-full flex-wrap items-end gap-3 lg:w-auto">
           <div className="flex flex-col">
             <label className="text-xs font-medium text-slate-500">Month</label>
             <select
-              className="mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
+              className="mt-1 min-w-[8.5rem] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
               value={selectedMonth}
               onChange={(event) => setSelectedMonth(event.target.value as MonthOption)}
             >
@@ -225,7 +227,7 @@ export default function ChartDashboardView() {
             <div className="flex flex-col">
               <label className="text-xs font-medium text-slate-500">Year</label>
               <select
-                className="mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
+                className="mt-1 min-w-[7.5rem] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
                 value={selectedYear}
                 onChange={(event) => {
                   const value = event.target.value;
@@ -241,6 +243,16 @@ export default function ChartDashboardView() {
               </select>
             </div>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedMonth('All');
+              setSelectedYear(availableYears[0] ?? 'All');
+            }}
+            className="h-[42px] rounded-lg border border-slate-200 px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          >
+            Reset filters
+          </button>
         </div>
       </div>
 
@@ -284,13 +296,16 @@ export default function ChartDashboardView() {
             <PMNonPMBarChart data={pmNonPmChartData} />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-2">
             <StatusPieChart data={statusChartData} />
             <JobPmPieChart
               pmJobs={summary.pmJobs}
               nonPmJobs={summary.nonPmJobs}
               topTopic={topTopic}
             />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-2">
             <TopUsersChart data={topUsersChartData} />
             <TopicJobsLineChart data={topicLineChartData} />
           </div>

@@ -29,6 +29,7 @@ function truncateTopic(topic: string, max = 18) {
 }
 
 export default function TopicJobsLineChart({ data }: TopicJobsLineChartProps) {
+  const hasData = data.length > 0;
   const chartData = data.map((item) => ({
     ...item,
     shortTopic: truncateTopic(item.topic),
@@ -40,44 +41,50 @@ export default function TopicJobsLineChart({ data }: TopicJobsLineChartProps) {
         <h3 className="text-lg font-semibold text-slate-900">Job count by topic</h3>
         <p className="text-sm text-slate-500">Top topics based on selected period filters.</p>
       </div>
-      <div className="h-72 w-full min-h-[18rem]">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ left: 8, right: 16, top: 28, bottom: 24 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis
-              dataKey="shortTopic"
-              stroke="#64748b"
-              tick={{ fontSize: 11 }}
-              interval={0}
-              angle={-20}
-              textAnchor="end"
-              height={52}
-            />
-            <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
-            <Tooltip
-              formatter={(value: number | string) => [value, 'Jobs']}
-              labelFormatter={(_, payload) => payload?.[0]?.payload?.topic ?? ''}
-            />
-            <Legend />
-            <Line
-              type="monotone"
-              dataKey="count"
-              name="Jobs"
-              stroke="#0ea5e9"
-              strokeWidth={3}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-            >
-              <LabelList
-                dataKey="count"
-                position="top"
-                formatter={formatCountLabel}
-                className="fill-slate-600 text-[11px] font-medium"
+      {hasData ? (
+        <div className="h-[18rem] w-full min-h-[18rem] sm:h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData} margin={{ left: 8, right: 16, top: 28, bottom: 24 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis
+                dataKey="shortTopic"
+                stroke="#64748b"
+                tick={{ fontSize: 11 }}
+                interval={0}
+                angle={-20}
+                textAnchor="end"
+                height={52}
               />
-            </Line>
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+              <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
+              <Tooltip
+                formatter={(value: number | string) => [value, 'Jobs']}
+                labelFormatter={(_, payload) => payload?.[0]?.payload?.topic ?? ''}
+              />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="count"
+                name="Jobs"
+                stroke="#0ea5e9"
+                strokeWidth={3}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+              >
+                <LabelList
+                  dataKey="count"
+                  position="top"
+                  formatter={formatCountLabel}
+                  className="fill-slate-600 text-[11px] font-medium"
+                />
+              </Line>
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="flex h-[18rem] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
+          No topic data for selected filters.
+        </div>
+      )}
     </div>
   );
 }

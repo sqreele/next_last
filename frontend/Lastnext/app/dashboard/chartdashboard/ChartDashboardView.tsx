@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import PMNonPMBarChart from './components/PMNonPMBarChart';
+import JobPmPieChart from './components/JobPmPieChart';
 import StatusPieChart from './components/StatusPieChart';
 import SummaryCards from './components/SummaryCards';
 import TopUsersChart from './components/TopUsersChart';
@@ -273,8 +274,9 @@ export default function ChartDashboardView() {
             <PMNonPMBarChart data={pmNonPmChartData} />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
             <StatusPieChart data={statusChartData} />
+            <JobPmPieChart pmJobs={summary.pmJobs} nonPmJobs={summary.nonPmJobs} />
             <TopUsersChart data={topUsersChartData} />
           </div>
         </div>

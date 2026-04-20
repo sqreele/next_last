@@ -45,6 +45,9 @@ export interface TopicPoint {
   year: number;
   topic: string;
   count: number;
+  pm?: number;
+  nonPm?: number;
+  isPreventive?: boolean;
 }
 
 export interface DashboardSummaryResponse {

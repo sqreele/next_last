@@ -8,6 +8,7 @@ import StatusPieChart from './components/StatusPieChart';
 import SummaryCards from './components/SummaryCards';
 import TopUsersChart from './components/TopUsersChart';
 import TrendLineChart from './components/TrendLineChart';
+import TopicJobsLineChart from './components/TopicJobsLineChart';
 import { useUser } from '@/app/lib/stores/mainStore';
 import {
   aggregateTopics,
@@ -193,6 +194,7 @@ export default function ChartDashboardView() {
 
   const topUsersChartData = aggregateTopUsers(filteredTopUsers);
   const topTopicData = aggregateTopics(filteredTopics);
+  const topicLineChartData = topTopicData.slice(0, 10);
   const topTopic = topTopicData[0] ?? null;
 
   const isEmpty = !loading && !error && selectedProperty && (!data || filteredTrend.length === 0);
@@ -282,7 +284,7 @@ export default function ChartDashboardView() {
             <PMNonPMBarChart data={pmNonPmChartData} />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-4">
             <StatusPieChart data={statusChartData} />
             <JobPmPieChart
               pmJobs={summary.pmJobs}
@@ -290,6 +292,7 @@ export default function ChartDashboardView() {
               topTopic={topTopic}
             />
             <TopUsersChart data={topUsersChartData} />
+            <TopicJobsLineChart data={topicLineChartData} />
           </div>
         </div>
       )}

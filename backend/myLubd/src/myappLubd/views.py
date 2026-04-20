@@ -2650,6 +2650,8 @@ def get_dashboard_summary(request):
     topics_by_month = []
     topic_counts = annotated_queryset.values('month', 'year', 'topics__title').annotate(
         count=Count('id', distinct=True),
+        pm=Count('id', filter=Q(is_preventivemaintenance=True), distinct=True),
+        non_pm=Count('id', filter=Q(is_preventivemaintenance=False), distinct=True),
     ).order_by('year', 'month', 'topics__title')
 
     for item in topic_counts:
@@ -2662,6 +2664,9 @@ def get_dashboard_summary(request):
             'year': item['year'],
             'topic': item['topics__title'],
             'count': item['count'],
+            'pm': item['pm'],
+            'nonPm': item['non_pm'],
+            'isPreventive': (item['pm'] or 0) > 0,
         })
 
     payload = {

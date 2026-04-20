@@ -147,13 +147,28 @@ export function aggregateTopUsers(data: TopUserPoint[]) {
 export function aggregateTopics(data: TopicPoint[]) {
   const totals = data.reduce(
     (acc, item) => {
-      acc[item.topic] = (acc[item.topic] ?? 0) + item.count;
+      const existing = acc[item.topic] ?? {
+        count: 0,
+        pm: 0,
+        nonPm: 0,
+      };
+      acc[item.topic] = {
+        count: existing.count + item.count,
+        pm: existing.pm + (item.pm ?? 0),
+        nonPm: existing.nonPm + (item.nonPm ?? 0),
+      };
       return acc;
     },
-    {} as Record<string, number>
+    {} as Record<string, { count: number; pm: number; nonPm: number }>
   );
 
   return Object.entries(totals)
-    .map(([topic, count]) => ({ topic, count }))
+    .map(([topic, values]) => ({
+      topic,
+      count: values.count,
+      pm: values.pm,
+      nonPm: values.nonPm,
+      isPreventive: values.pm > 0,
+    }))
     .sort((a, b) => b.count - a.count);
 }

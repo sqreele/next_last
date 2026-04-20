@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 
 interface TopicJobsLineChartProps {
-  data: Array<{ topic: string; count: number }>;
+  data: Array<{ topic: string; count: number; pm?: number; nonPm?: number }>;
 }
 
 function formatCountLabel(v: number | string) {
@@ -32,6 +32,7 @@ export default function TopicJobsLineChart({ data }: TopicJobsLineChartProps) {
   const hasData = data.length > 0;
   const chartData = data.map((item) => ({
     ...item,
+    pm: item.pm ?? 0,
     shortTopic: truncateTopic(item.topic),
   }));
 
@@ -64,7 +65,7 @@ export default function TopicJobsLineChart({ data }: TopicJobsLineChartProps) {
               <Line
                 type="monotone"
                 dataKey="count"
-                name="Jobs"
+                name="All Jobs"
                 stroke="#0ea5e9"
                 strokeWidth={3}
                 dot={{ r: 4 }}
@@ -77,6 +78,15 @@ export default function TopicJobsLineChart({ data }: TopicJobsLineChartProps) {
                   className="fill-slate-600 text-[11px] font-medium"
                 />
               </Line>
+              <Line
+                type="monotone"
+                dataKey="pm"
+                name="Preventive"
+                stroke="#10b981"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>

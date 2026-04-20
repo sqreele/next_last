@@ -6,6 +6,10 @@ import type { PieLabelRenderProps } from 'recharts';
 interface JobPmPieChartProps {
   pmJobs: number;
   nonPmJobs: number;
+  topTopic?: {
+    topic: string;
+    count: number;
+  } | null;
 }
 
 const COLORS = ['#10b981', '#f97316'];
@@ -19,14 +23,14 @@ function renderLabel(entry: PieLabelRenderProps) {
   return `${name}: ${v} (${pct}%)`;
 }
 
-export default function JobPmPieChart({ pmJobs, nonPmJobs }: JobPmPieChartProps) {
+export default function JobPmPieChart({ pmJobs, nonPmJobs, topTopic }: JobPmPieChartProps) {
   const data = [
     { name: 'PM Jobs', value: pmJobs },
     { name: 'Non-PM Jobs', value: nonPmJobs },
   ];
 
   const total = pmJobs + nonPmJobs;
-  const bestTopic = pmJobs === nonPmJobs ? 'PM & Non-PM (tie)' : pmJobs > nonPmJobs ? 'PM Jobs' : 'Non-PM Jobs';
+  const bestTopic = topTopic ? `${topTopic.topic} (${topTopic.count})` : 'No topic data';
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -37,7 +41,7 @@ export default function JobPmPieChart({ pmJobs, nonPmJobs }: JobPmPieChartProps)
           {total > 0 ? <span className="text-slate-400"> · {total} total</span> : null}.
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          Best topic: <span className="font-medium text-slate-700">{bestTopic}</span>
+          Top job topic: <span className="font-medium text-slate-700">{bestTopic}</span>
         </p>
       </div>
       <div className="h-72 w-full min-h-[18rem]">

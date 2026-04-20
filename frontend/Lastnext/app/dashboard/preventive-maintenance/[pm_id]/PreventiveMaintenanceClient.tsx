@@ -9,7 +9,6 @@ import { useSession } from "@/app/lib/session.client";
 import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import { 
   PreventiveMaintenance, 
-  getImageUrl,
   determinePMStatus 
 } from '@/app/lib/preventiveMaintenanceModels';
 import { 
@@ -21,7 +20,6 @@ import {
   ZoomIn,
   FileText,
   Download,
-  Printer,
   Settings,
   Building,
   Camera,
@@ -38,7 +36,7 @@ interface PreventiveMaintenanceClientProps {
 }
 
 export default function PreventiveMaintenanceClient({ maintenanceData }: PreventiveMaintenanceClientProps) {
-  const { data: session, status } = useSession();  
+  const { data: session } = useSession();  
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +44,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const [currentImageAlt, setCurrentImageAlt] = useState<string>('');
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setIsLoading);
   
   useEffect(() => {
@@ -187,6 +186,106 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   const closeImageModal = () => {
     setIsImageModalOpen(false);
     setCurrentImage(null);
+  };
+
+  const handleExportPdf = async () => {
+    setIsExportingPdf(true);
+    setError(null);
+
+    const pdfContent = document.getElementById('pdf-content');
+    if (!pdfContent) {
+      setError('PDF content not found.');
+      setIsExportingPdf(false);
+      return;
+    }
+
+    const originalDisplay = pdfContent.style.display;
+    const originalPosition = pdfContent.style.position;
+    const originalLeft = pdfContent.style.left;
+    const originalTop = pdfContent.style.top;
+    const originalZIndex = pdfContent.style.zIndex;
+
+    try {
+      pdfContent.style.display = 'block';
+      pdfContent.style.position = 'fixed';
+      pdfContent.style.left = '-99999px';
+      pdfContent.style.top = '0';
+      pdfContent.style.zIndex = '-1';
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf')
+      ]);
+
+      const canvas = await html2canvas(pdfContent, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 10;
+      const targetWidth = pageWidth - margin * 2;
+      const targetHeight = pageHeight - margin * 2;
+      const pxPerMm = canvas.width / targetWidth;
+      const pageCanvasHeight = Math.floor(targetHeight * pxPerMm);
+
+      let pageIndex = 0;
+      let yOffset = 0;
+
+      while (yOffset < canvas.height) {
+        const sliceHeight = Math.min(pageCanvasHeight, canvas.height - yOffset);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeight;
+
+        const context = pageCanvas.getContext('2d');
+        if (!context) {
+          throw new Error('Failed to create canvas context for PDF export.');
+        }
+
+        context.drawImage(
+          canvas,
+          0,
+          yOffset,
+          canvas.width,
+          sliceHeight,
+          0,
+          0,
+          canvas.width,
+          sliceHeight
+        );
+
+        const imageData = pageCanvas.toDataURL('image/png');
+        const renderedHeight = (sliceHeight * targetWidth) / canvas.width;
+
+        if (pageIndex > 0) {
+          pdf.addPage();
+        }
+
+        pdf.addImage(imageData, 'PNG', margin, margin, targetWidth, renderedHeight);
+        yOffset += sliceHeight;
+        pageIndex += 1;
+      }
+
+      const generatedDate = new Date().toISOString().slice(0, 10);
+      pdf.save(`preventive-maintenance-${maintenanceData.pm_id}-${generatedDate}.pdf`);
+    } catch (err: any) {
+      console.error('Error exporting PDF:', err);
+      setError(err?.message || 'Failed to export PDF.');
+    } finally {
+      pdfContent.style.display = originalDisplay;
+      pdfContent.style.position = originalPosition;
+      pdfContent.style.left = originalLeft;
+      pdfContent.style.top = originalTop;
+      pdfContent.style.zIndex = originalZIndex;
+      setIsExportingPdf(false);
+    }
   };
 
   // Debug: Log the full maintenance data structure
@@ -914,6 +1013,17 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             </Link>
 
             <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={handleExportPdf}
+                disabled={isExportingPdf}
+                className={`flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl hover:from-slate-700 hover:to-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 font-medium shadow-lg hover:shadow-xl transition-all duration-200 ${
+                  isExportingPdf ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <Download className="h-4 w-4" />
+                {isExportingPdf ? 'Exporting PDF...' : 'Export PDF'}
+              </button>
+
               {!maintenanceData.completed_date && (
                 <button
                   onClick={handleMarkComplete}

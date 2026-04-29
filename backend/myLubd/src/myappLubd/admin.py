@@ -4852,13 +4852,19 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         # Compact Title with report ID on same line
         title_text = report.title[:50] + '...' if len(report.title or '') > 50 else (report.title or 'Untitled')
         story.append(Paragraph(f"Workspace Report: {title_text} ({report.report_id})", title_style))
+
+        status_display = (report.get_status_display() or report.status or 'N/A')[:15]
+        priority_display = (report.get_priority_display() or report.priority or 'N/A')[:15]
+        topic_display = (report.topic.name if report.topic else 'N/A')[:15]
+        if report.custom_topic:
+            topic_display = report.custom_topic[:15]
         
         # Single-row compact info table with all key info
         info_data = [[
-            Paragraph(f"<b>Status:</b> {report.get_status_display()}", value_style),
-            Paragraph(f"<b>Priority:</b> {report.get_priority_display()}", value_style),
+            Paragraph(f"<b>Status:</b> {status_display}", value_style),
+            Paragraph(f"<b>Priority:</b> {priority_display}", value_style),
             Paragraph(f"<b>Property:</b> {report.property.name[:15] if report.property else 'N/A'}", value_style),
-            Paragraph(f"<b>Topic:</b> {report.get_topic_display()[:15]}", value_style),
+            Paragraph(f"<b>Topic:</b> {topic_display}", value_style),
             Paragraph(f"<b>Date:</b> {report.report_date.strftime('%Y-%m-%d') if report.report_date else 'N/A'}", value_style),
         ]]
         

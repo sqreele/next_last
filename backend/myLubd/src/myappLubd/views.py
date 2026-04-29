@@ -1196,18 +1196,28 @@ class TopicViewSet(viewsets.ModelViewSet):
         """
         user = self.request.user
         
-        # Admin users can access all topics
+        include_hidden = self.request.query_params.get('include_hidden', 'false').lower() == 'true'
+
+        # Admin users can access all topics, with optional hidden topic filtering
         if user.is_superuser or user.is_staff:
-            return Topic.objects.all()
+            queryset = Topic.objects.all()
+            if not include_hidden:
+                queryset = queryset.filter(is_visible_in_create_job=True)
+            return queryset
         
         # Get properties the user has access to
         accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
         
         # Return topics that are used in jobs within user's accessible properties
-        return Topic.objects.filter(
+        queryset = Topic.objects.filter(
             Q(jobs__rooms__properties__in=accessible_property_ids) |
             Q(preventive_maintenances__job__rooms__properties__in=accessible_property_ids)
         ).distinct()
+
+        if not include_hidden:
+            queryset = queryset.filter(is_visible_in_create_job=True)
+
+        return queryset
 
 class JobViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]

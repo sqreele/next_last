@@ -207,7 +207,7 @@ class JobImageSerializer(serializers.ModelSerializer):
 class TopicSerializer(serializers.ModelSerializer):
     class Meta:
         model = Topic
-        fields = ['title', 'description', 'id']
+        fields = ['title', 'description', 'id', 'is_visible_in_create_job']
 
 
 class RosterLeaveSerializer(serializers.ModelSerializer):

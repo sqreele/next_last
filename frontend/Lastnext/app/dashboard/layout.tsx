@@ -200,7 +200,7 @@ function MobileHeader() {
           </Link>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Notifications">
             <Bell className="h-5 w-5" />
           </Button>
           <MobileSearch />
@@ -349,7 +349,7 @@ function SearchInput() {
   }
 
   return (
-    <form action={searchAction} className="w-[300px] relative">
+    <form action={searchAction} className="w-full max-w-xs relative">
       <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
       <Input
         name="q"

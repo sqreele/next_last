@@ -207,7 +207,7 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
           </div>
         )}
         {imageUrls.length > 0 && imageUrls[activeIdx] && !failed.has(activeIdx) ? (
-          <Image src={imageUrls[activeIdx]} alt="job" fill className="object-cover" unoptimized onError={() => onError(activeIdx)} />
+          <Image src={imageUrls[activeIdx]} alt={job.topics?.[0]?.title || 'Job image'} fill className="object-cover" onError={() => onError(activeIdx)} />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100"></div>
         )}

@@ -7,7 +7,6 @@ import { Job, JobStatus, Property } from "@/app/lib/types";
 import { LazyImage } from "@/app/components/jobs/LazyImage";
 import { OptimizedImage, OptimizedThumbnail } from "@/app/components/ui/OptimizedImage";
 import { JobCardImage, ThumbnailImage, ProfileImage } from "@/app/components/ui/OptimizedImageEnhanced";
-import Image from 'next/image';
 import { 
   Clock, Calendar, User, MapPin, MessageSquare, CheckCircle2, 
   AlertCircle, ClipboardList, StickyNote, AlertTriangle, 
@@ -537,13 +536,14 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
             onTouchEnd={handleTouchEnd}
           >
             {imageUrls.length > 0 && imageUrls[selectedImage] && !failedImageIndexes.has(selectedImage) ? (
-              <Image
+              <JobCardImage
                 src={imageUrls[selectedImage]}
                 alt={`Job Image ${selectedImage + 1}`}
                 fill
                 className="object-cover rounded-md"
                 draggable={false}
                 onError={() => handleImageError(selectedImage)}
+                fallback={<MissingImage className="w-full h-full" />}
               />
             ) : (
               <MissingImage className="w-full h-full" />

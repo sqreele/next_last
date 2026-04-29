@@ -408,7 +408,7 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
     router.push(`/dashboard/jobs/${job.job_id}`);
   }, [job.job_id, router]);
 
-  const handleCardKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
+  const handleCardKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       router.push(`/dashboard/jobs/${job.job_id}`);

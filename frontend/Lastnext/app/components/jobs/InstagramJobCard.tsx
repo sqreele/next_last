@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Job, JobStatus } from "@/app/lib/types";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
+import { isExternalImage } from "@/app/lib/utils/universal-image-optimization";
 import { Badge } from "@/app/components/ui/badge";
 import { CheckCircle2, Clock, AlertCircle, AlertTriangle, ClipboardList, User, Calendar, MessageSquare } from "lucide-react";
 
@@ -14,6 +15,7 @@ interface InstagramJobCardProps {
   job: Job;
   viewMode?: ViewMode;
 }
+
 
 function getStatusConfig(status: JobStatus) {
   const configs = {
@@ -207,7 +209,9 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
           </div>
         )}
         {imageUrls.length > 0 && imageUrls[activeIdx] && !failed.has(activeIdx) ? (
-          <Image src={imageUrls[activeIdx]} alt={job.topics?.[0]?.title || 'Job image'} fill className="object-cover" onError={() => onError(activeIdx)} />
+          <Image src={imageUrls[activeIdx]} alt={job.topics?.[0]?.title || 'Job image'} fill className="object-cover" onError={() => onError(activeIdx)} unoptimized={isExternalImage(imageUrls[activeIdx])}
+            sizes="(max-width: 768px) 100vw, 50vw"
+            loading="lazy" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100"></div>
         )}

@@ -9,6 +9,7 @@ import { Button } from "@/app/components/ui/button";
 import { Job, JobStatus, Property } from "@/app/lib/types";
 import { Calendar, MapPin, CheckCircle2, Clock, AlertCircle, AlertTriangle, ClipboardList } from "lucide-react";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
+import { isExternalImage } from "@/app/lib/utils/universal-image-optimization";
 
 type ViewMode = "grid" | "list";
 
@@ -17,6 +18,7 @@ interface ModernJobCardProps {
   properties?: Property[];
   viewMode?: ViewMode;
 }
+
 
 function getStatusConfig(status: JobStatus) {
   const configs = {
@@ -88,6 +90,9 @@ const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid"
               fill
               className="object-cover"
               onError={() => onError(activeIdx)}
+              unoptimized={isExternalImage(imageUrls[activeIdx])}
+            sizes="(max-width: 768px) 100vw, 50vw"
+            loading="lazy"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100"></div>

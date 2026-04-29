@@ -613,6 +613,10 @@ class Topic(models.Model):
         verbose_name="Subject"
     )
     description = models.TextField(blank=True, null=True)
+    is_visible_in_create_job = models.BooleanField(
+        default=True,
+        help_text='Controls whether this topic appears in Create Job topic list on frontend'
+    )
 
     class Meta:
         ordering = ['title']

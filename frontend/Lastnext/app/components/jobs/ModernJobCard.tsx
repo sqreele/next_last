@@ -84,10 +84,9 @@ const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid"
           {imageUrls.length > 0 && imageUrls[activeIdx] && !failed.has(activeIdx) ? (
             <Image
               src={imageUrls[activeIdx]}
-              alt={"Job image"}
+              alt={job.topics?.[0]?.title || "Job image"}
               fill
               className="object-cover"
-              unoptimized
               onError={() => onError(activeIdx)}
             />
           ) : (

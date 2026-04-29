@@ -270,7 +270,10 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
 
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(nextOpen) => {
+      if (isSubmitting) return;
+      setOpen(nextOpen);
+    }}>
       <DialogTrigger asChild>
         <Button
           className="h-11 px-6 flex items-center gap-2" // Adjust styling as needed

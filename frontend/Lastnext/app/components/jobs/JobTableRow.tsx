@@ -13,7 +13,7 @@ interface JobTableRowProps {
 }
 
 const JobTableRow: React.FC<JobTableRowProps> = ({ job, onEdit, onDelete }) => (
-  <tr key={job.job_id} className="cursor-pointer hover:bg-gray-50">
+  <tr key={job.job_id} className="hover:bg-gray-50">
     <td>
       <div className="space-y-1">
         <div className="text-xs">#{job.job_id}</div>
@@ -51,22 +51,24 @@ const JobTableRow: React.FC<JobTableRowProps> = ({ job, onEdit, onDelete }) => (
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="min-h-[44px] min-w-[44px]"
           onClick={(e) => {
             e.stopPropagation();
             onEdit(job);
           }}
+          aria-label="Edit job"
         >
           <Pencil className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+          className="min-h-[44px] min-w-[44px] text-red-500 hover:text-red-600 hover:bg-red-50"
           onClick={(e) => {
             e.stopPropagation();
             onDelete(job);
           }}
+          aria-label="Delete job"
         >
           <Trash2 className="h-4 w-4" />
         </Button>

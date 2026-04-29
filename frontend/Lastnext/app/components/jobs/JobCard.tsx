@@ -401,11 +401,18 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
   }, [selectNextImage, selectPrevImage]);
 
   const handleStatusUpdateComplete = useCallback(() => {
-    window.location.reload();
-  }, []);
+    router.refresh();
+  }, [router]);
 
   const handleCardClick = useCallback((e: MouseEvent) => {
     router.push(`/dashboard/jobs/${job.job_id}`);
+  }, [job.job_id, router]);
+
+  const handleCardKeyDown = useCallback((e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      router.push(`/dashboard/jobs/${job.job_id}`);
+    }
   }, [job.job_id, router]);
 
   return (
@@ -416,6 +423,9 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
           : "max-w-none sm:w-full mx-auto"
       }`}
       onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      role="button"
+      tabIndex={0}
     >
       <div className={cn("absolute left-0 top-0 h-full w-1", statusAccentClass)} />
       <CardHeader className="flex-shrink-0 p-3 sm:p-4 pb-2 sm:pb-3 border-b border-gray-100">
@@ -532,7 +542,6 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
                 alt={`Job Image ${selectedImage + 1}`}
                 fill
                 className="object-cover rounded-md"
-                unoptimized={true}
                 draggable={false}
                 onError={() => handleImageError(selectedImage)}
               />

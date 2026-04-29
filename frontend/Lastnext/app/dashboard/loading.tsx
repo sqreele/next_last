@@ -1,7 +1,7 @@
 // ./app/dashboard/loading.tsx
 export default function Loading() {
   return (
-    <div className="space-y-6 w-full animate-pulse p-4 sm:p-8">
+    <div className="space-y-6 w-full animate-pulse p-4 sm:p-8" role="status" aria-live="polite" aria-label="Loading dashboard">
       {/* Header skeleton */}
       <div className="flex justify-between items-center">
         <div className="h-8 bg-gray-200 rounded w-1/3"></div>

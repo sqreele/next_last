@@ -18,6 +18,8 @@ interface ModernJobCardProps {
   viewMode?: ViewMode;
 }
 
+const isExternalImageUrl = (url: string) => /^https?:\/\//i.test(url) || url.startsWith('/media/');
+
 function getStatusConfig(status: JobStatus) {
   const configs = {
     completed: { icon: <CheckCircle2 className="w-3.5 h-3.5" />, color: "bg-green-100 text-green-700", label: "Completed" },
@@ -88,6 +90,7 @@ const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid"
               fill
               className="object-cover"
               onError={() => onError(activeIdx)}
+              unoptimized={isExternalImageUrl(imageUrls[activeIdx])}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100"></div>

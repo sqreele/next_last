@@ -1,4 +1,5 @@
 import { API_CONFIG } from '../config';
+import { fixJobImageUrls, fixJobsImageUrls } from '../utils/image-utils';
 
 // Custom error class for Jobs API
 export class JobsApiError extends Error {
@@ -261,7 +262,13 @@ export class JobsApiService {
 
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/?${params.toString()}`;
     const response = await this.fetchWithRetry<any>(url, token);
-    
+
+    if (response && Array.isArray(response.results)) {
+      response.results = fixJobsImageUrls(response.results);
+    } else if (Array.isArray(response)) {
+      return fixJobsImageUrls(response);
+    }
+
     this.cache.set(cacheKey, response);
     return response;
   }
@@ -289,8 +296,9 @@ export class JobsApiService {
     if (cached) return cached;
 
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`;
-    const job = await this.fetchWithRetry<any>(url, token);
-    
+    const rawJob = await this.fetchWithRetry<any>(url, token);
+    const job = fixJobImageUrls(rawJob);
+
     this.cache.set(cacheKey, job);
     return job;
   }

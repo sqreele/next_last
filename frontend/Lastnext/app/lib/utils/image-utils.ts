@@ -44,13 +44,21 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
     }
     
     // Handle localhost:8000 URLs - preserve external URLs for media files
-    if (imageUrl.includes('localhost:8000')) {
+    if (imageUrl.includes('localhost:8000') || imageUrl.includes('127.0.0.1:8000')) {
+      // In production, the browser cannot reach localhost on the server. Rewrite to public domain.
+      if (process.env.NODE_ENV === 'production') {
+        return imageUrl
+          .replace('http://localhost:8000', 'https://pcms.live')
+          .replace('http://127.0.0.1:8000', 'https://pcms.live');
+      }
       // For media files, keep the external URL to avoid Next.js image optimization issues
       if (imageUrl.includes('/media/')) {
         return imageUrl;
       }
       // For non-media files, use relative path
-      const relativePath = imageUrl.replace('http://localhost:8000', '');
+      const relativePath = imageUrl
+        .replace('http://localhost:8000', '')
+        .replace('http://127.0.0.1:8000', '');
       return relativePath;
     }
     

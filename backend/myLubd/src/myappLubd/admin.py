@@ -1026,6 +1026,15 @@ class JobAdmin(admin.ModelAdmin):
         
         super().save_model(request, obj, form, change)
 
+
+    def delete_queryset(self, request, queryset):
+        """Allow bulk delete when list filters introduced DISTINCT joins."""
+        if queryset.query.distinct:
+            pk_values = list(queryset.values_list('pk', flat=True))
+            if pk_values:
+                self.model.objects.filter(pk__in=pk_values).delete()
+            return
+        super().delete_queryset(request, queryset)
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
         extra_context['missing_rooms_summary'] = self._get_missing_rooms_summary(request)

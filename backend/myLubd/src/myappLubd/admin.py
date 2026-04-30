@@ -936,6 +936,7 @@ class JobAdmin(admin.ModelAdmin):
             'description': 'You can edit these timestamps. Created date should be the original job creation time, updated date should be the last modification time, and completed date should be when the job was finished.'
         }),
     )
+    change_list_template = 'admin/myappLubd/job/change_list.html'
 
     def get_topics_display(self, obj):
         return ", ".join([topic.title for topic in obj.topics.all()])
@@ -1024,6 +1025,50 @@ class JobAdmin(admin.ModelAdmin):
                 return
         
         super().save_model(request, obj, form, change)
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['missing_rooms_summary'] = self._get_missing_rooms_summary(request)
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def _get_missing_rooms_summary(self, request):
+        """
+        Admin summary for room numbers in Room model that are not present in Job.
+        Supports optional floor filtering via ?missing_floor=6
+        and aligns with selected property filter when present.
+        """
+        floor = (request.GET.get('missing_floor') or '').strip()
+        property_filter = (request.GET.get('property') or '').strip()
+        topic_filter = (request.GET.get('topic') or '').strip()
+
+        room_qs = Room.objects.filter(is_active=True)
+        if property_filter:
+            room_qs = room_qs.filter(properties__id=property_filter)
+        if floor:
+            room_qs = room_qs.filter(name__regex=rf'^{floor}[0-9]+$')
+
+        room_names = sorted(set(room_qs.values_list('name', flat=True)))
+
+        job_qs = Job.objects.all()
+        if property_filter:
+            job_qs = job_qs.filter(rooms__properties__id=property_filter)
+        if topic_filter:
+            job_qs = job_qs.filter(topics__id=topic_filter)
+        if floor:
+            job_qs = job_qs.filter(rooms__name__regex=rf'^{floor}[0-9]+$')
+
+        used_room_names = set(job_qs.values_list('rooms__name', flat=True))
+        missing_rooms = [name for name in room_names if name and name not in used_room_names]
+
+        return {
+            'floor': floor,
+            'property': property_filter,
+            'topic': topic_filter,
+            'total_rooms_in_model': len(room_names),
+            'rooms_with_jobs': len([name for name in room_names if name in used_room_names]),
+            'missing_rooms_count': len(missing_rooms),
+            'missing_rooms': missing_rooms,
+        }
 
     def get_inventory_items_display(self, obj):
         """Display inventory items used in this job"""

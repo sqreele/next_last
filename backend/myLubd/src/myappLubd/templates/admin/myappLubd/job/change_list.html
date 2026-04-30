@@ -1,0 +1,34 @@
+{% extends "admin/change_list.html" %}
+
+{% block content_title %}
+  {{ block.super }}
+  {% if missing_rooms_summary %}
+    <div style="margin-top: 12px; padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa;">
+      <strong>Missing Rooms by selected Topic</strong>
+      <form method="get" style="margin-top: 8px;">
+        {% for key, value in request.GET.items %}
+          {% if key != 'missing_floor' %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+          {% endif %}
+        {% endfor %}
+        <label for="missing_floor">Floor:</label>
+        <input id="missing_floor" type="text" name="missing_floor" value="{{ missing_rooms_summary.floor }}" placeholder="e.g. 6" style="width: 80px;">
+        <button type="submit">Apply</button>
+      </form>
+        <div style="margin-top: 8px;">
+        <div>Selected topic ID: <strong>{{ missing_rooms_summary.topic|default:"-" }}</strong></div>
+        <div>Total rooms in model: <strong>{{ missing_rooms_summary.total_rooms_in_model }}</strong></div>
+        <div>Rooms with jobs: <strong>{{ missing_rooms_summary.rooms_with_jobs }}</strong></div>
+        <div>Missing rooms count: <strong>{{ missing_rooms_summary.missing_rooms_count }}</strong></div>
+        <div>Missing rooms:</div>
+        <div style="margin-top: 4px; white-space: normal;">
+          {% if missing_rooms_summary.missing_rooms %}
+            {{ missing_rooms_summary.missing_rooms|join:", " }}
+          {% else %}
+            <span style="color: #666;">No missing rooms.</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

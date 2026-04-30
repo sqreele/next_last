@@ -845,7 +845,7 @@ class RoomFilter(admin.SimpleListFilter):
         rooms_queryset = rooms_queryset.order_by('name').distinct()
 
         return [
-            (str(room.room_id), room.name or room.room_type)
+            (str(room.room_id), room.name)
             for room in rooms_queryset
         ]
 

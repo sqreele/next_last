@@ -832,7 +832,22 @@ class RoomFilter(admin.SimpleListFilter):
     parameter_name = 'room'
 
     def lookups(self, request, model_admin):
-        return [(str(r.room_id), r.name) for r in Room.objects.all().order_by('name')]
+        rooms_queryset = Room.objects.all()
+
+        selected_topic = request.GET.get('topic')
+        if selected_topic:
+            rooms_queryset = rooms_queryset.filter(jobs__topics__id=selected_topic)
+
+        selected_property = request.GET.get('property')
+        if selected_property:
+            rooms_queryset = rooms_queryset.filter(properties__id=selected_property)
+
+        rooms_queryset = rooms_queryset.order_by('name').distinct()
+
+        return [
+            (str(room.room_id), room.name or room.room_type)
+            for room in rooms_queryset
+        ]
 
     def queryset(self, request, queryset):
         if self.value():

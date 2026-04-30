@@ -4,7 +4,7 @@
   {{ block.super }}
   {% if missing_rooms_summary %}
     <div style="margin-top: 12px; padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa;">
-      <strong>Missing Rooms (from Room model)</strong>
+      <strong>Missing Rooms by Selected Topic (from Room model)</strong>
       <form method="get" style="margin-top: 8px;">
         {% for key, value in request.GET.items %}
           {% if key != 'missing_floor' %}
@@ -16,6 +16,8 @@
         <button type="submit">Apply</button>
       </form>
       <div style="margin-top: 8px;">
+        <div>Selected topic ID: <strong>{{ missing_rooms_summary.selected_topic_id|default:"All topics" }}</strong></div>
+        <div>Missing rooms count: <strong>{{ missing_rooms_summary.missing_rooms_count }}</strong></div>
         <div>Total rooms in model: <strong>{{ missing_rooms_summary.total_rooms_in_model }}</strong></div>
         <div>Rooms with jobs: <strong>{{ missing_rooms_summary.rooms_with_jobs }}</strong></div>
         <div>Missing rooms:</div>

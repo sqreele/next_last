@@ -1035,10 +1035,11 @@ class JobAdmin(admin.ModelAdmin):
         """
         Admin summary for room numbers in Room model that are not present in Job.
         Supports optional floor filtering via ?missing_floor=6
-        and aligns with selected property filter when present.
+        and aligns with selected property/topic filter when present.
         """
         floor = (request.GET.get('missing_floor') or '').strip()
         property_filter = (request.GET.get('property') or '').strip()
+        topic_filter = (request.GET.get('topic') or '').strip()
 
         room_qs = Room.objects.filter(is_active=True)
         if property_filter:
@@ -1051,6 +1052,8 @@ class JobAdmin(admin.ModelAdmin):
         job_qs = Job.objects.all()
         if property_filter:
             job_qs = job_qs.filter(rooms__properties__id=property_filter)
+        if topic_filter:
+            job_qs = job_qs.filter(topics__id=topic_filter)
         if floor:
             job_qs = job_qs.filter(rooms__name__regex=rf'^{floor}[0-9]+$')
 
@@ -1060,8 +1063,10 @@ class JobAdmin(admin.ModelAdmin):
         return {
             'floor': floor,
             'property': property_filter,
+            'selected_topic_id': topic_filter or None,
             'total_rooms_in_model': len(room_names),
             'rooms_with_jobs': len([name for name in room_names if name in used_room_names]),
+            'missing_rooms_count': len(missing_rooms),
             'missing_rooms': missing_rooms,
         }
 

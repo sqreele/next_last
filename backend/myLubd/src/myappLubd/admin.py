@@ -836,8 +836,7 @@ class RoomFilter(admin.SimpleListFilter):
 
         selected_topic = request.GET.get('topic')
         if selected_topic:
-            # Show rooms that do NOT match the selected topic
-            rooms_queryset = rooms_queryset.exclude(jobs__topics__id=selected_topic)
+
 
         selected_property = request.GET.get('property')
         if selected_property:

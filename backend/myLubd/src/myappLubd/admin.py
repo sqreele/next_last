@@ -832,11 +832,17 @@ class RoomFilter(admin.SimpleListFilter):
     parameter_name = 'room'
 
     def lookups(self, request, model_admin):
-        rooms_queryset = Room.objects.all()
+        rooms_queryset = Room.objects.filter(jobs__isnull=False)
 
         selected_topic = request.GET.get('topic')
         if selected_topic:
+
+            matching_room_ids = Room.objects.filter(
+                jobs__topics__id=selected_topic
+            ).values_list('room_id', flat=True)
+           
             rooms_queryset = rooms_queryset.filter(jobs__topics__id=selected_topic)
+
 
         selected_property = request.GET.get('property')
         if selected_property:
@@ -845,7 +851,7 @@ class RoomFilter(admin.SimpleListFilter):
         rooms_queryset = rooms_queryset.order_by('name').distinct()
 
         return [
-            (str(room.room_id), room.name or room.room_type)
+            (str(room.room_id), room.name)
             for room in rooms_queryset
         ]
 

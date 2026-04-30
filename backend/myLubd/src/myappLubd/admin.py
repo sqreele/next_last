@@ -832,17 +832,13 @@ class RoomFilter(admin.SimpleListFilter):
     parameter_name = 'room'
 
     def lookups(self, request, model_admin):
-        rooms_queryset = Room.objects.filter(jobs__isnull=False)
+        jobs_queryset = Job.objects.all()
 
         selected_topic = request.GET.get('topic')
         if selected_topic:
+            jobs_queryset = jobs_queryset.exclude(topics__id=selected_topic)
 
-            matching_room_ids = Room.objects.filter(
-                jobs__topics__id=selected_topic
-            ).values_list('room_id', flat=True)
-           
-            rooms_queryset = rooms_queryset.filter(jobs__topics__id=selected_topic)
-
+        rooms_queryset = Room.objects.filter(jobs__in=jobs_queryset)
 
         selected_property = request.GET.get('property')
         if selected_property:

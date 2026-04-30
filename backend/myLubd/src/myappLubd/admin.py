@@ -845,7 +845,7 @@ class RoomFilter(admin.SimpleListFilter):
         rooms_queryset = rooms_queryset.order_by('name').distinct()
 
         return [
-            (str(room.room_id), room.name)
+            (str(room.room_id), room.name or room.room_type)
             for room in rooms_queryset
         ]
 
@@ -951,7 +951,13 @@ class JobAdmin(admin.ModelAdmin):
     get_rooms_count.short_description = 'Rooms'
 
     def get_rooms_display(self, obj):
-        rooms = [room.name or room.room_type for room in obj.rooms.all()]
+        rooms_qs = obj.rooms.all()
+        request = getattr(self, '_request', None)
+        if request is not None:
+            selected_topic = request.GET.get('topic')
+            if selected_topic:
+                rooms_qs = rooms_qs.filter(jobs__topics__id=selected_topic).distinct()
+        rooms = [room.name or room.room_type for room in rooms_qs]
         return ", ".join(rooms) if rooms else "-"
     get_rooms_display.short_description = 'Room names'
 
@@ -1072,6 +1078,7 @@ class JobAdmin(admin.ModelAdmin):
     get_timestamps_display.admin_order_field = 'created_at'
 
     def get_queryset(self, request):
+        self._request = request
         return super().get_queryset(request).select_related('user', 'updated_by').prefetch_related('rooms__properties', 'topics')
 
     def save_formset(self, request, form, formset, change):

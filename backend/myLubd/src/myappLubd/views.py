@@ -1315,6 +1315,66 @@ class JobViewSet(viewsets.ModelViewSet):
         )
         
         return Response(cached_stats)
+
+    @action(detail=False, methods=['get'])
+    def missing_rooms(self, request):
+        """
+        Return room numbers that exist in Room model but are not present
+        in jobs matching the current user's access and optional filters.
+
+        Query params:
+        - floor: floor number prefix (e.g. 6 -> rooms like 6xx)
+        - property_id/property: optional property filter
+        """
+        user = request.user
+        floor = request.query_params.get('floor')
+        property_filter = request.query_params.get('property_id') or request.query_params.get('property')
+
+        # Base room queryset scoped by permissions
+        room_qs = Room.objects.filter(is_active=True)
+        if not (user.is_staff or user.is_superuser):
+            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
+            room_qs = room_qs.filter(properties__in=accessible_property_ids)
+
+        if property_filter:
+            room_qs = room_qs.filter(
+                Q(properties__property_id=property_filter) |
+                Q(properties__id=property_filter)
+            )
+
+        # Scope by floor using room name prefix (e.g. 6 => 6xx)
+        if floor:
+            floor_str = str(floor).strip()
+            room_qs = room_qs.filter(name__regex=rf'^{floor_str}[0-9]+$')
+
+        room_names = sorted(set(room_qs.values_list('name', flat=True)))
+
+        # Job rooms under same permission and optional filters
+        job_qs = Job.objects.all()
+        if not (user.is_staff or user.is_superuser):
+            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
+            job_qs = job_qs.filter(rooms__properties__in=accessible_property_ids)
+
+        if property_filter:
+            job_qs = job_qs.filter(
+                Q(rooms__properties__property_id=property_filter) |
+                Q(rooms__properties__id=property_filter)
+            )
+
+        if floor:
+            floor_str = str(floor).strip()
+            job_qs = job_qs.filter(rooms__name__regex=rf'^{floor_str}[0-9]+$')
+
+        used_room_names = set(job_qs.values_list('rooms__name', flat=True))
+        missing = [room for room in room_names if room and room not in used_room_names]
+
+        return Response({
+            "floor": floor,
+            "property": property_filter,
+            "total_rooms_in_model": len(room_names),
+            "rooms_with_jobs": len([r for r in room_names if r in used_room_names]),
+            "missing_rooms": missing,
+        })
     
     def _calculate_stats(self, user, query_params):
         """Calculate job statistics (separated for caching)"""

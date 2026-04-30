@@ -1252,16 +1252,23 @@ class JobViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(rooms__properties__in=accessible_property_ids)
 
         # Filters
-        property_filter = self.request.query_params.get('property_id')
+        property_filter = self.request.query_params.get('property_id') or self.request.query_params.get('property')
+        topic_filter = self.request.query_params.get('topic_id') or self.request.query_params.get('topic')
         status_filter = self.request.query_params.get('status')
         is_pm_filter = self.request.query_params.get('is_preventivemaintenance')
         search_term = self.request.query_params.get('search')
-        room_filter = self.request.query_params.get('room_id')
-        room_name_filter = self.request.query_params.get('room_name')
+        room_filter = self.request.query_params.get('room_id') or self.request.query_params.get('room')
+        room_name_filter = self.request.query_params.get('room_name') or self.request.query_params.get('room_number')
         user_filter = self.request.query_params.get('user_id')
 
         if property_filter:
-            queryset = queryset.filter(rooms__properties__property_id=property_filter)
+            queryset = queryset.filter(
+                Q(rooms__properties__property_id=property_filter) |
+                Q(rooms__properties__id=property_filter)
+            )
+
+        if topic_filter and str(topic_filter).lower() != 'all':
+            queryset = queryset.filter(topics__id=topic_filter)
 
         if status_filter:
             queryset = queryset.filter(status=status_filter)

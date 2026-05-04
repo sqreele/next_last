@@ -1262,10 +1262,10 @@ class JobViewSet(viewsets.ModelViewSet):
         user_filter = self.request.query_params.get('user_id')
 
         if property_filter:
-            queryset = queryset.filter(
-                Q(rooms__properties__property_id=property_filter) |
-                Q(rooms__properties__id=property_filter)
-            )
+            property_q = Q(rooms__properties__property_id=property_filter)
+            if str(property_filter).isdigit():
+                property_q |= Q(rooms__properties__id=int(property_filter))
+            queryset = queryset.filter(property_q)
 
         if topic_filter and str(topic_filter).lower() != 'all':
             queryset = queryset.filter(topics__id=topic_filter)

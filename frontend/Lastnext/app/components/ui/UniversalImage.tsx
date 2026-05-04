@@ -113,6 +113,7 @@ export function UniversalImage({
   const [hasError, setHasError] = useState(false);
   const [isInView, setIsInView] = useState(!lazy || priority);
   const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   // Get preset configuration
@@ -165,8 +166,8 @@ export function UniversalImage({
       }
     );
 
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
       observerRef.current = observer;
     }
 
@@ -244,6 +245,7 @@ export function UniversalImage({
   if (!isInView) {
     return (
       <div 
+        ref={containerRef}
         className={cn("bg-gray-100 animate-pulse", className)}
         style={fill ? undefined : { width, height }}
       >
@@ -257,7 +259,7 @@ export function UniversalImage({
   }
 
   return (
-    <div className={cn("relative overflow-hidden", className)}>
+    <div ref={containerRef} className={cn("relative overflow-hidden", className)}>
       {shouldUnoptimize ? (
         <img
           ref={imgRef}

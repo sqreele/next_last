@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     // Support multipart/form-data passthrough
     const contentType = request.headers.get('content-type') || '';
-    let fetchOptions: RequestInit = { method: 'POST', headers: { 'Authorization': `Bearer ${session.user.accessToken}` } };
+    const fetchOptions: RequestInit = { method: 'POST', headers: { 'Authorization': `Bearer ${session.user.accessToken}` } };
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData();

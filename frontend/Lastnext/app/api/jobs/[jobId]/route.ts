@@ -61,7 +61,7 @@ export async function PUT(
 
     const { jobId } = await params;
     const contentType = request.headers.get('content-type') || '';
-    let fetchOptions: RequestInit = {
+    const fetchOptions: RequestInit = {
       method: 'PUT',
       headers: { 'Authorization': `Bearer ${session.user.accessToken}` } as any,
     };
@@ -118,7 +118,7 @@ export async function PATCH(
 
     const { jobId } = await params;
     const contentType = request.headers.get('content-type') || '';
-    let fetchOptions: RequestInit = {
+    const fetchOptions: RequestInit = {
       method: 'PATCH',
       headers: { 'Authorization': `Bearer ${session.user.accessToken}` } as any,
     };

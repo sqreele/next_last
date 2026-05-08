@@ -1,6 +1,41 @@
 import * as React from 'react';
-import { Search } from 'lucide-react';
+import Link from 'next/link';
+import { Search, RefreshCw, Home, FileText, Settings, Plus } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
+
+
+export function AppShell({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
+  return <div className={cn('pcms-app-shell', className)}>{children}</div>;
+}
+
+export function MobileTopBar({ title, actions }: { title: string; actions?: React.ReactNode }) {
+  return (
+    <div className="pcms-section-card flex items-center justify-between gap-3 p-2.5 md:p-3">
+      <div className="min-w-0 px-2">
+        <p className="pcms-eyebrow">PCMS</p>
+        <h2 className="truncate text-xl font-black tracking-[-0.03em] text-[var(--pcms-text)] md:text-2xl">{title}</h2>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        {actions || (
+          <>
+            <Link href="/dashboard" className="pcms-secondary-button h-11 w-11 p-0" aria-label="Dashboard"><Home className="h-4 w-4" /></Link>
+            <button className="pcms-secondary-button h-11 w-11 p-0" type="button" aria-label="Refresh" onClick={() => window.location.reload()}><RefreshCw className="h-4 w-4" /></button>
+            <Link href="/dashboard/jobs-report" className="pcms-secondary-button h-11 w-11 p-0" aria-label="PDF Report"><FileText className="h-4 w-4" /></Link>
+            <Link href="/dashboard/profile" className="pcms-secondary-button h-11 w-11 p-0" aria-label="Settings"><Settings className="h-4 w-4" /></Link>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function FloatingActionButton({ href = '/dashboard/create-job', label = 'Create Job' }: { href?: string; label?: string }) {
+  return <Link href={href} className="pcms-floating-action"><Plus className="h-5 w-5" />{label}</Link>;
+}
+
+export function LoadingSkeleton({ rows = 4 }: { rows?: number }) {
+  return <SkeletonList rows={rows} />;
+}
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: React.ReactNode }) {
   return (

@@ -14,17 +14,15 @@ export default function LoginPage() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-[var(--pcms-app-bg)] bg-[image:var(--pcms-app-bg-gradient)] p-6 backdrop-blur-sm"
       aria-live="polite"
       aria-busy="true"
       role="status"
     >
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-        <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+      <div className="flex h-20 w-20 items-center justify-center rounded-[2rem] bg-white/90 shadow-[var(--pcms-shadow)] ring-1 ring-[var(--pcms-border)]">
+        <Loader className="h-9 w-9 animate-spin text-[var(--pcms-primary)]" aria-hidden />
       </div>
-      <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
-        Redirecting to PCMS sign in...
-      </p>
+      <div className="pcms-section-card max-w-sm p-6 text-center"><p className="pcms-eyebrow">Property Care Maintenance System</p><h1 className="mt-2 text-2xl font-black text-[var(--pcms-text)]">Hotel maintenance sign in</h1><p className="mt-2 text-sm font-semibold text-[var(--pcms-text-muted)]">Redirecting to secure PCMS sign in...</p></div>
     </div>
   );
 }

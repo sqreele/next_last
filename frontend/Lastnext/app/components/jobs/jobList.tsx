@@ -6,7 +6,7 @@ import InstagramJobCard from '@/app/components/jobs/InstagramJobCard';
 import Pagination from '@/app/components/jobs/Pagination';
 import JobActions from '@/app/components/jobs/JobActions';
 import { Job, TabValue, Property, SortOrder } from '@/app/lib/types';
-import { Loader2 } from 'lucide-react';
+import { EmptyState, LoadingSkeleton } from '@/app/components/pcms-ui';
 import {
   startOfDay, endOfDay, subDays,
   startOfWeek, endOfWeek, startOfMonth, endOfMonth,
@@ -303,25 +303,10 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
           />
         </div>
 
-        <div className="flex flex-col items-center justify-center min-h-[200px] p-4 text-center bg-white rounded-lg shadow-sm">
-          <p className="text-base font-medium text-gray-600 mb-2">
-            No jobs found
-          </p>
-          <p className="text-sm text-gray-500">
-            {selectedProperty
-              ? `No jobs match your current filters`
-              : 'No property selected.'}
-          </p>
-          {/* Debug information */}
-          <div className="mt-4 p-4 bg-gray-100 rounded text-left text-xs">
-            <p><strong>Debug Info:</strong></p>
-            <p>Total jobs: {jobs?.length || 0}</p>
-            <p>Selected property: {selectedProperty || 'None'}</p>
-            <p>Filtered jobs: {filteredJobs?.length || 0}</p>
-            <p>Sorted jobs: {sortedJobs?.length || 0}</p>
-            <p>Properties count: {properties?.length || 0}</p>
-          </div>
-        </div>
+        <EmptyState
+          title="No maintenance jobs found"
+          description={selectedProperty ? 'No jobs match the selected room, date, status, or search filters.' : 'Select a property to view hotel maintenance jobs.'}
+        />
       </div>
     );
   }
@@ -343,19 +328,19 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
         />
       </div>
 
-      <div className="text-sm text-gray-500 mb-2">
-        Showing {Math.min(currentJobs.length, itemsPerPage)} of {sortedJobs.length} results
+      <div className="rounded-full bg-white/70 px-4 py-2 text-sm font-bold text-[var(--pcms-text-muted)] shadow-[var(--pcms-shadow-sm)]">
+        Showing {Math.min(currentJobs.length, itemsPerPage)} of {sortedJobs.length} maintenance jobs
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center min-h-[200px] bg-white rounded-lg shadow-sm">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <div className="pcms-section-card p-4">
+          <LoadingSkeleton rows={6} />
         </div>
       ) : (
         <div className="job-grid-container mb-10">
           <div className={viewMode === 'list' 
             ? "gap-4 space-y-4" 
-            : "grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 auto-rows-fr"
+            : "pcms-job-grid auto-rows-fr"
           }>
             {currentJobs.map((job, index) => (
               <div key={job.job_id || `job-${index}`} className={viewMode === 'list' ? "h-full w-full" : "h-full"}>
@@ -370,7 +355,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
       {totalPages > 1 && (
         <div className="mt-8 px-4 flex justify-center items-center">
-          <div className="bg-white rounded-lg shadow-sm p-2 touch-action-manipulation">
+          <div className="rounded-full border border-[var(--pcms-border)] bg-white/90 p-2 shadow-[var(--pcms-shadow-sm)] touch-action-manipulation">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

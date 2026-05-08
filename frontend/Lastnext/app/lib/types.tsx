@@ -195,9 +195,9 @@ export const FILTER_TITLES: Record<TabValue, string> = {
 };
 
 export const PRIORITY_COLORS: Record<JobPriority, string> = {
-  low: '#4CAF50',
-  medium: '#FF9800',
-  high: '#F44336',
+  low: '#16A34A',
+  medium: '#2563EB',
+  high: '#F97316',
 };
 
 export const PRIORITY_VARIANTS = {

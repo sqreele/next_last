@@ -10,10 +10,11 @@ import {CardFooter, Card, CardContent, CardHeader, CardTitle, CardDescription } 
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
-import { Job, Property, JobStatus, STATUS_VARIANTS, Room } from '@/app/lib/types';
+import { Job, Property, Room } from '@/app/lib/types';
 import { useRouter } from 'next/navigation';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
+import { PriorityBadge, StatusBadge } from '@/app/components/pcms-ui';
 
 export default function SearchContent() {
   const searchParams = useSearchParams();
@@ -348,7 +349,6 @@ export default function SearchContent() {
 function JobCard({ job, query, highlightMatch, properties }: JobCardProps) {
   const router = useRouter();
   const { selectedPropertyId: selectedProperty } = useUser();
-  const statusVariant = (job?.status && STATUS_VARIANTS[job.status as JobStatus]) || STATUS_VARIANTS.default;
   const displayId = typeof job?.job_id === 'number' ? `#${job.job_id}` : job?.job_id;
 
   const getPropertyName = () => {
@@ -416,10 +416,11 @@ function JobCard({ job, query, highlightMatch, properties }: JobCardProps) {
           <CardTitle className="text-lg font-semibold line-clamp-1">
             Job {highlightMatch(displayId, query)}
           </CardTitle>
-          <Badge variant={statusVariant}>{highlightMatch(job?.status, query) || 'Unknown Status'}</Badge>
+          <StatusBadge status={job?.status} />
         </div>
-        <CardDescription className="line-clamp-1">
-          Priority: {highlightMatch(job?.priority, query)}
+        <CardDescription className="flex flex-wrap items-center gap-2">
+          <span>Priority:</span>
+          <PriorityBadge priority={job?.priority} />
         </CardDescription>
       </CardHeader>
       <CardContent className="pb-4">

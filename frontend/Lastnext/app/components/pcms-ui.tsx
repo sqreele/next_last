@@ -82,7 +82,18 @@ export function KpiWidget({ label, value, tone = 'blue', detail }: { label: stri
 const statusAliases: Record<string, string> = {
   pending: 'open',
   waiting_sparepart: 'waiting_spare_part',
+  'waiting spare part': 'waiting_spare_part',
+  'waiting sparepart': 'waiting_spare_part',
+  'waiting vendor': 'waiting_vendor',
+  'in progress': 'in_progress',
+  'waiting fix defect': 'defect',
+  under_review: 'defect',
 };
+
+function normalizeStatus(status?: string) {
+  const key = (status || 'open').trim().toLowerCase().replace(/[-\s]+/g, '_');
+  return statusAliases[key] || statusAliases[key.replace(/_/g, ' ')] || key;
+}
 
 export function humanize(value?: string) {
   if (!value) return 'Unassigned';
@@ -90,7 +101,7 @@ export function humanize(value?: string) {
 }
 
 export function StatusBadge({ status }: { status?: string }) {
-  const normalized = statusAliases[status || ''] || status || 'open';
+  const normalized = normalizeStatus(status);
   return <span className={cn('pcms-status-badge', `pcms-status-badge--${normalized}`)}>{humanize(normalized)}</span>;
 }
 
@@ -157,7 +168,7 @@ export function DangerButton({ className, children, ...props }: React.ButtonHTML
 }
 
 export function StatusUpdateButton({ status, className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { status: string }) {
-  const normalized = statusAliases[status || ''] || status || 'open';
+  const normalized = normalizeStatus(status);
   return <button className={cn('pcms-status-update-button', `pcms-status-update-button--${normalized}`, className)} {...props}>{children}</button>;
 }
 

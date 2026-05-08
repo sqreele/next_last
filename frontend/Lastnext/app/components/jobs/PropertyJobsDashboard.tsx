@@ -56,6 +56,61 @@ import html2canvas from "html2canvas";
 import { jobsApi } from "@/app/lib/api/jobsApi";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 
+
+type WorkflowStatusKey = JobStatus | "defect";
+
+const DASHBOARD_STATUS_FLOW: Array<{ key: WorkflowStatusKey; label: string }> = [
+  { key: "pending", label: "Open" },
+  { key: "in_progress", label: "In Progress" },
+  { key: "waiting_sparepart", label: "Waiting Spare Part" },
+  { key: "completed", label: "Completed" },
+  { key: "cancelled", label: "Cancelled" },
+  { key: "defect", label: "Defect" },
+];
+
+const getDashboardStatusClass = (status: WorkflowStatusKey) =>
+  `pcms-status-card--${status === "waiting_sparepart" ? "waiting_spare_part" : status}`;
+
+const getJobStatusCount = (
+  status: WorkflowStatusKey,
+  backendStats: {
+    total: number;
+    pending: number;
+    inProgress: number;
+    completed: number;
+    cancelled: number;
+    waitingSparepart: number;
+    defect: number;
+    preventiveMaintenance: number;
+  } | null,
+  filteredJobs: Job[]
+) => {
+  if (backendStats) {
+    switch (status) {
+      case "pending":
+        return backendStats.pending || 0;
+      case "in_progress":
+        return backendStats.inProgress || 0;
+      case "completed":
+        return backendStats.completed || 0;
+      case "waiting_sparepart":
+        return backendStats.waitingSparepart || 0;
+      case "cancelled":
+        return backendStats.cancelled || 0;
+      case "defect":
+        return backendStats.defect || 0;
+      default:
+        return 0;
+    }
+  }
+
+  if (status === "defect") {
+    return filteredJobs.filter((job) => job.is_defective).length;
+  }
+
+  return filteredJobs.filter((job) => job.status === status).length;
+};
+
 interface PropertyJobsDashboardProps {
   initialJobs?: Job[];
 }
@@ -309,43 +364,16 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       return [];
     }
     
-    // Use a simple accumulator approach for performance
-    const statusCounts = {} as Record<JobStatus, number>;
-    
-    for (const job of filteredJobs) {
-      statusCounts[job.status] = (statusCounts[job.status] || 0) + 1;
-    }
-
-    const result = (["pending", "in_progress", "completed", "waiting_sparepart", "cancelled"] as JobStatus[]).map(
-      (status) => ({
-        name: status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " "),
-        value: backendStats
-          ? (status === "pending"
-              ? backendStats.pending
-              : status === "in_progress"
-              ? backendStats.inProgress
-              : status === "completed"
-              ? backendStats.completed
-              : status === "waiting_sparepart"
-              ? backendStats.waitingSparepart
-              : backendStats.cancelled) || 0
-          : statusCounts[status] || 0,
-        color: STATUS_COLORS[status],
-        percentage: total > 0
-          ? ((backendStats
-              ? (status === "pending"
-                  ? backendStats.pending
-                  : status === "in_progress"
-                  ? backendStats.inProgress
-                  : status === "completed"
-                  ? backendStats.completed
-                  : status === "waiting_sparepart"
-                  ? backendStats.waitingSparepart
-                  : backendStats.cancelled)
-              : (statusCounts[status] || 0)) / total * 100).toFixed(1)
-          : "0",
-      })
-    );
+    const result = DASHBOARD_STATUS_FLOW.map(({ key, label }) => {
+      const value = getJobStatusCount(key, backendStats, filteredJobs);
+      return {
+        key,
+        name: label,
+        value,
+        color: key === "defect" ? "#7C3AED" : STATUS_COLORS[key],
+        percentage: total > 0 ? ((value / total) * 100).toFixed(1) : "0",
+      };
+    });
     
     // Filter out zero values for chart display
     const validStats = result.filter(stat => stat.value > 0);
@@ -898,17 +926,33 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
             <CardTitle className="text-lg sm:text-xl">Jobs by Status</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div id="pie-chart-container" className="w-full h-[280px] sm:h-[320px] lg:h-[360px] flex items-center justify-center">
-              <div className="w-full h-full">
-                {jobStats.length > 0 ? (
+            {jobStats.length > 0 ? (
+              <div className="space-y-5">
+                <div className="pcms-status-summary-grid" aria-label="Jobs by workflow status">
+                  {jobStats.map((status) => (
+                    <div
+                      key={status.key}
+                      className={`pcms-status-card ${getDashboardStatusClass(status.key)}`}
+                    >
+                      <div className="pcms-status-card__header">
+                        <p className="pcms-status-card__label">{status.name}</p>
+                        <span className="pcms-status-card__indicator" aria-hidden="true" />
+                      </div>
+                      <strong className="pcms-status-card__count">{status.value}</strong>
+                      <p className="pcms-status-card__detail">{status.percentage}% of visible jobs</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div id="pie-chart-container" className="w-full h-[220px] sm:h-[260px] lg:h-[300px] flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={jobStats}
                         cx="50%"
                         cy="50%"
-                        innerRadius={isMobile ? 50 : 70}
-                        outerRadius={isMobile ? 90 : 120}
+                        innerRadius={isMobile ? 45 : 65}
+                        outerRadius={isMobile ? 78 : 105}
                         paddingAngle={2}
                         dataKey="value"
                       >
@@ -927,21 +971,21 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                         align="center"
                         verticalAlign="bottom"
                         iconSize={isMobile ? 10 : 14}
-                        wrapperStyle={{ 
-                          fontSize: isMobile ? 10 : 12, 
+                        wrapperStyle={{
+                          fontSize: isMobile ? 10 : 12,
                           paddingTop: isMobile ? 4 : 8,
                           lineHeight: isMobile ? '12px' : '16px'
                         }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <p className="text-sm sm:text-base">No data available for chart</p>
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex h-36 items-center justify-center text-gray-500">
+                <p className="text-sm sm:text-base">No status data available</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -1283,44 +1327,37 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
               {[
                 { name: "Total Jobs", status: null },
-                ...(["pending", "in_progress", "completed", "waiting_sparepart", "cancelled"] as JobStatus[]).map(
-                  (status) => ({
-                    name: status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " "),
-                    status,
-                  })
-                ),
+                ...DASHBOARD_STATUS_FLOW.map(({ key, label }) => ({
+                  name: label,
+                  status: key,
+                })),
               ].map((item, index) => {
                 const statValue = item.status
-                  ? (backendStats
-                      ? (item.status === "pending"
-                          ? backendStats.pending
-                          : item.status === "in_progress"
-                          ? backendStats.inProgress
-                          : item.status === "completed"
-                          ? backendStats.completed
-                          : item.status === "waiting_sparepart"
-                          ? backendStats.waitingSparepart
-                          : backendStats.cancelled)
-                      : filteredJobs.filter((job) => job.status === item.status).length)
+                  ? getJobStatusCount(item.status, backendStats, filteredJobs)
                   : (backendStats?.total ?? filteredJobs.length);
-                const color = item.status ? STATUS_COLORS[item.status] : "#8884d8";
+                const color = item.status ? (item.status === "defect" ? "#7C3AED" : STATUS_COLORS[item.status]) : "#8884d8";
                 const percentage = item.status
                   ? ((statValue / (backendStats?.total ?? filteredJobs.length)) * 100).toFixed(1)
                   : (backendStats ? ((backendStats.total > 0 ? 100 : 0).toFixed(1)) : "100.0");
 
-                return (
-                  <div key={`stat-${index}`} className="p-3 sm:p-4 rounded-lg bg-gray-50 w-full flex flex-col">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1 truncate">{item.name}</p>
-                    <div className="flex flex-col sm:flex-row sm:items-baseline">
-                      <p className="text-lg sm:text-xl lg:text-2xl font-semibold" style={{ color }}>
-                        {statValue}
-                      </p>
-                      {item.status && (
-                        <p className="text-xs text-gray-500 mt-1 sm:mt-0 sm:ml-2">
-                          ({percentage}%)
-                        </p>
-                      )}
+                return item.status ? (
+                  <div
+                    key={`stat-${index}`}
+                    className={`pcms-status-card min-h-[104px] ${getDashboardStatusClass(item.status)}`}
+                  >
+                    <div className="pcms-status-card__header">
+                      <p className="pcms-status-card__label">{item.name}</p>
+                      <span className="pcms-status-card__indicator" aria-hidden="true" />
                     </div>
+                    <strong className="pcms-status-card__count">{statValue}</strong>
+                    <p className="pcms-status-card__detail">{percentage}% of jobs</p>
+                  </div>
+                ) : (
+                  <div key={`stat-${index}`} className="p-3 sm:p-4 rounded-lg bg-gray-50 w-full flex flex-col border border-gray-200">
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1 truncate">{item.name}</p>
+                    <p className="text-lg sm:text-xl lg:text-2xl font-semibold" style={{ color }}>
+                      {statValue}
+                    </p>
                   </div>
                 );
               })}

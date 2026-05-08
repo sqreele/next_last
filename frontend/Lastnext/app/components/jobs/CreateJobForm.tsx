@@ -396,7 +396,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
           )}
           {/* 1. Location Section */}
-            <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-cyan-50 p-4 sm:rounded-2xl sm:p-6">
+            <div className="rounded-[2rem] border border-[var(--pcms-border)] bg-white/88 p-4 shadow-[var(--pcms-shadow-card)] sm:p-6">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="rounded-lg bg-blue-100 p-1.5 sm:p-2">
                   <Plus className="h-4 w-4 text-blue-600 sm:h-5 sm:w-5" />
@@ -420,7 +420,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       touched.description && errors.description 
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
                         : 'border-gray-200 focus:border-blue-500 focus:ring-blue-200'
-                    } resize-none rounded-xl focus:outline-none focus:ring-4`}
+                    } pcms-textarea resize-none focus:outline-none focus:ring-4`}
                   />
                   {(touched.description || submitCount > 0) && errors.description && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
@@ -499,7 +499,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Assignment Section */}
-            <div className="rounded-xl border border-green-100 bg-gradient-to-r from-green-50 to-emerald-50 p-4 sm:rounded-2xl sm:p-6">
+            <div className="rounded-[2rem] border border-[var(--pcms-border)] bg-white/88 p-4 shadow-[var(--pcms-shadow-card)] sm:p-6">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="rounded-lg bg-green-100 p-1.5 sm:p-2">
                   <Building className="h-4 w-4 text-green-600 sm:h-5 sm:w-5" />
@@ -596,7 +596,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       (touched.remarks || submitCount > 0) && errors.remarks 
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
                         : 'border-gray-200 focus:border-purple-500 focus:ring-purple-200'
-                    } resize-none rounded-xl focus:outline-none focus:ring-4`}
+                    } pcms-textarea resize-none focus:outline-none focus:ring-4`}
                   />
                   {(touched.remarks || submitCount > 0) && errors.remarks && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
@@ -638,7 +638,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* File Upload Section */}
-            <div className="rounded-xl border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 p-4 sm:rounded-2xl sm:p-6">
+            <div className="rounded-[2rem] border border-[var(--pcms-border)] bg-white/88 p-4 shadow-[var(--pcms-shadow-card)] sm:p-6">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="rounded-lg bg-amber-100 p-1.5 sm:p-2">
                   <Upload className="h-4 w-4 text-amber-600 sm:h-5 sm:w-5" />
@@ -683,11 +683,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Submit Button */}
-            <div className="sticky bottom-0 z-20 -mx-2 border-t bg-white/95 px-2 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:-mx-4 sm:px-4 md:static md:mx-0 md:border-t-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+            <div className="sticky bottom-24 z-20 -mx-2 border-t border-[var(--pcms-border)] bg-white/90 px-2 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/80 sm:-mx-4 sm:px-4 md:static md:mx-0 md:border-t-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
               <Button 
                 type="submit" 
                 disabled={isSubmitting} 
-                className="h-12 w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 sm:h-14 sm:text-lg md:mx-auto md:max-w-md md:rounded-2xl"
+                className="h-14 w-full rounded-full bg-[var(--pcms-accent-gradient)] text-base font-black text-white shadow-[var(--pcms-button-shadow)] transition-all duration-200 hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50 sm:text-lg md:mx-auto md:max-w-md"
               >
                 {isSubmitting ? (
                   <div className="flex items-center gap-3">

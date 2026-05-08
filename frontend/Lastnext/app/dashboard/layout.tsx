@@ -47,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isSidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   return (
-    <div className="flex min-h-screen-safe w-full bg-[var(--pcms-app-bg)] text-slate-800 overscroll-none">
+    <div className="pcms-app-shell flex min-h-screen-safe w-full text-[var(--pcms-text)] overscroll-none">
         {/* Desktop Navigation - Hidden on mobile and tablet */}
         <DesktopNav 
           collapsed={isSidebarCollapsed} 
@@ -65,15 +65,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Main Content */}
           <main className="
             flex-1 overflow-auto
-            p-3 mobile:p-4 tablet:p-5 desktop:p-6
-            pb-20 mobile:pb-24 tablet:pb-6 desktop:pb-6
+            p-3 mobile:p-4 tablet:p-5 desktop:p-7
+            pb-28 mobile:pb-32 tablet:pb-8 desktop:pb-8
             transition-all duration-200
             scroll-smooth
             touch-pan-y
           ">
             <div className="
               mx-auto w-full 
-              max-w-sm mobile:max-w-full tablet:max-w-7xl desktop:max-w-[96rem]
+              max-w-[430px] mobile:max-w-full tablet:max-w-7xl desktop:max-w-[96rem]
               space-y-4 mobile:space-y-5 tablet:space-y-6
             ">
               {children}
@@ -95,7 +95,7 @@ function DesktopNav({ collapsed, toggleCollapse }: {
 
   return (
     <aside className={cn(
-      "hidden desktop:flex flex-col border-r transition-all duration-300 bg-white/95 border-slate-200 shadow-[var(--pcms-shadow-sm)] relative z-30",
+      "hidden desktop:flex flex-col border-r transition-all duration-300 bg-white/85 backdrop-blur-xl border-[var(--pcms-border)] shadow-[var(--pcms-shadow-sm)] relative z-30",
       collapsed ? "w-[80px]" : "w-[240px] tablet:w-[220px]",
     )}>
       <div className={cn(
@@ -136,8 +136,8 @@ function DesktopNav({ collapsed, toggleCollapse }: {
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ease-in-out',
                   collapsed ? 'justify-center' : '',
                   isActive
-                    ? 'bg-blue-50 text-blue-700 shadow-none ring-1 ring-blue-100 font-semibold'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+                    ? 'bg-[var(--pcms-accent-gradient)] text-white shadow-[var(--pcms-button-shadow)] font-extrabold'
+                    : 'text-slate-600 hover:bg-white/80 hover:text-[var(--pcms-primary-strong)]'
                 )}
                 title={collapsed ? item.name : undefined}
               >
@@ -190,7 +190,7 @@ function DesktopNav({ collapsed, toggleCollapse }: {
 
 function MobileHeader() {
   return (
-    <header className="lg:hidden sticky top-0 z-50 border-b shadow-sm bg-white/95 backdrop-blur-sm border-gray-200">
+    <header className="lg:hidden sticky top-0 z-50 border-b shadow-[var(--pcms-shadow-sm)] bg-white/78 backdrop-blur-xl border-[var(--pcms-border)]">
       <div className="flex items-center justify-between h-16 px-4">
         <div className="flex items-center gap-3">
           <MobileNav />
@@ -220,7 +220,7 @@ function MobileHeader() {
 
 function DesktopHeader({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
   return (
-    <header className="hidden lg:flex sticky top-0 z-50 h-16 items-center border-b bg-white/95 backdrop-blur-sm px-6 shadow-sm border-gray-200">
+    <header className="hidden lg:flex sticky top-0 z-50 h-16 items-center border-b bg-white/80 backdrop-blur-xl px-6 shadow-[var(--pcms-shadow-sm)] border-[var(--pcms-border)]">
       <div className="flex items-center flex-1 gap-4">
         <DashboardBreadcrumb />
       </div>
@@ -355,7 +355,7 @@ function SearchInput() {
         name="q"
         type="search"
         placeholder="Search jobs, properties, rooms..."
-        className="w-full pl-9 h-10 text-sm rounded-full bg-gray-100 border-none focus:ring-2 focus:ring-blue-500"
+        className="w-full pl-9 h-10 text-sm rounded-full bg-[var(--pcms-surface-soft)] border-[var(--pcms-border)] focus:ring-2 focus:ring-cyan-300"
       />
       {isPending && (
         <div className="absolute right-3 top-3">
@@ -420,7 +420,7 @@ function MobileSearch() {
               type="search"
               placeholder="Search jobs, properties, rooms..."
               autoFocus
-              className="w-full pl-9 h-10 text-sm rounded-full bg-gray-100 border-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-9 h-10 text-sm rounded-full bg-[var(--pcms-surface-soft)] border-[var(--pcms-border)] focus:ring-2 focus:ring-cyan-300"
             />
             {isPending && (
               <div className="absolute right-3 top-3">

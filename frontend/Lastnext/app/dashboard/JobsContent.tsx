@@ -8,14 +8,14 @@ import { Job, Property, TabValue } from "@/app/lib/types";
 import {
   Inbox, Clock, PlayCircle, CheckCircle2, XCircle,
   AlertTriangle, Filter, ChevronDown, Wrench, Settings,
-  Grid3X3, List
+  Grid3X3, List, FileText
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
 import { Button } from "@/app/components/ui/button";
-import { cn } from "@/app/lib/utils/cn";
+import { FloatingActionButton, MobileTopBar, SearchInput } from "@/app/components/pcms-ui";
 
 interface JobsContentProps {
   jobs: Job[];
@@ -44,33 +44,48 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
   const [currentTab, setCurrentTab] = useState<TabValue>("all");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchQuery, setSearchQuery] = useState('');
   const { selectedPropertyId: selectedProperty } = useUser();
 
   const filteredJobs = useMemo(() => {
     if (!Array.isArray(jobs)) return [];
 
-    // Only apply room filtering here. Property/status/date sorting will be handled in JobList.
-    if (!selectedRoom) return jobs;
+    let nextJobs = jobs;
 
-    return jobs.filter(job => {
-      if (!job.rooms || !Array.isArray(job.rooms) || job.rooms.length === 0) {
-        return false;
-      }
+    if (selectedRoom) {
+      nextJobs = nextJobs.filter(job => {
+        if (!job.rooms || !Array.isArray(job.rooms) || job.rooms.length === 0) {
+          return false;
+        }
 
-      return job.rooms.some((room: any) => {
-        if (typeof room === "string" || typeof room === "number") {
-          return String(room) === selectedRoom;
-        }
-        if (room && typeof room === "object" && "room_id" in room) {
-          return String(room.room_id) === selectedRoom;
-        }
-        if (room && typeof room === "object" && "id" in room) {
-          return String(room.id) === selectedRoom;
-        }
-        return false;
+        return job.rooms.some((room: any) => {
+          if (typeof room === "string" || typeof room === "number") {
+            return String(room) === selectedRoom;
+          }
+          if (room && typeof room === "object" && "room_id" in room) {
+            return String(room.room_id) === selectedRoom;
+          }
+          if (room && typeof room === "object" && "id" in room) {
+            return String(room.id) === selectedRoom;
+          }
+          return false;
+        });
       });
-    });
-  }, [jobs, selectedRoom]);
+    }
+
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return nextJobs;
+
+    return nextJobs.filter((job) => [
+      job.job_id,
+      job.description,
+      job.remarks,
+      job.status,
+      job.priority,
+      job.topics?.[0]?.title,
+      job.rooms?.[0]?.name,
+    ].some((value) => String(value || '').toLowerCase().includes(query)));
+  }, [jobs, selectedRoom, searchQuery]);
 
   const handleTabChange = (value: string) => {
     setCurrentTab(value as TabValue);
@@ -80,13 +95,35 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
   const currentTabConfig = tabConfig.find(tab => tab.value === currentTab);
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-4 p-3 sm:p-4 md:p-6">
+      <MobileTopBar title="Maintenance Jobs" />
+      <div className="pcms-page-header">
+        <div>
+          <p className="pcms-eyebrow">Hotel maintenance workspace</p>
+          <h1>Maintenance Jobs</h1>
+          <p className="pcms-page-description">
+            Search rooms, areas, technicians, job IDs, and live status across the selected property.
+          </p>
+        </div>
+        <div className="pcms-page-actions">
+          <Button className="pcms-secondary-button" variant="outline"><Filter className="mr-2 h-4 w-4" />Filters</Button>
+          <Button className="pcms-secondary-button" variant="outline"><FileText className="mr-2 h-4 w-4" />PDF Report</Button>
+        </div>
+      </div>
+
+      <SearchInput
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+        placeholder="Search maintenance jobs, rooms, areas, status..."
+        aria-label="Search maintenance jobs"
+      />
+
       {/* Header with View Toggle */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 border-b border-gray-100">
+      <div className="pcms-section-card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h2 className="text-xl font-semibold text-gray-900">Maintenance Jobs</h2>
-          <p className="text-sm text-gray-600">
-            {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} found
+          <h2 className="text-xl font-black tracking-[-0.02em] text-[var(--pcms-text)]">Job history</h2>
+          <p className="text-sm font-semibold text-[var(--pcms-text-muted)]">
+            {filteredJobs.length} maintenance job{filteredJobs.length !== 1 ? 's' : ''} found
           </p>
         </div>
         
@@ -96,7 +133,7 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
             variant={viewMode === 'grid' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('grid')}
-            className="h-9 px-3"
+            className="pcms-secondary-button h-11 px-4"
           >
             <Grid3X3 className="w-4 h-4" />
           </Button>
@@ -104,7 +141,7 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
             variant={viewMode === 'list' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('list')}
-            className="h-9 px-3"
+            className="pcms-secondary-button h-11 px-4"
           >
             <List className="w-4 h-4" />
           </Button>
@@ -117,15 +154,15 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
         value={currentTab}
         onValueChange={handleTabChange}
       >
-        <div className="px-6 pt-4">
+        <div className="pt-1">
           {/* Desktop Tabs - Horizontal Scrollable */}
           <div className="hidden md:block overflow-x-auto">
-            <TabsList className="inline-flex h-12 items-center justify-center rounded-xl bg-gray-50 p-1 border border-gray-200">
+            <TabsList className="inline-flex h-12 items-center justify-center rounded-full bg-white/70 p-1 border border-[var(--pcms-border)] shadow-[var(--pcms-shadow-sm)]">
               {tabConfig.map(({ value, label, icon: Icon, color }) => (
                 <TabsTrigger 
                   key={value} 
                   value={value} 
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm hover:bg-gray-100 hover:text-gray-900 min-w-fit"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--pcms-accent-gradient)] data-[state=active]:text-white data-[state=active]:shadow-[var(--pcms-button-shadow)] hover:bg-white hover:text-[var(--pcms-primary-strong)] min-w-fit"
                 >
                   <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
                   {label}
@@ -186,6 +223,7 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
           </TabsContent>
         ))}
       </Tabs>
+      <FloatingActionButton label="Create Job" />
     </div>
   );
 }

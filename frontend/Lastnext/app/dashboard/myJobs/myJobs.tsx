@@ -38,7 +38,7 @@ import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import JobFilters, { FilterState } from "@/app/components/jobs/JobFilters";
 import Pagination from "@/app/components/jobs/Pagination";
 import UpdateStatusButton from "@/app/components/jobs/UpdateStatusButton";
-import { EmptyState, PageHeader, PageLoader, PriorityBadge, SectionCard, StatusBadge, WorkspaceCard } from '@/app/components/pcms-ui';
+import { EmptyState, FloatingActionButton, PageHeader, PageLoader, PriorityBadge, SectionCard, StatusBadge, WorkspaceCard } from '@/app/components/pcms-ui';
 
 // Constants
 const ITEMS_PER_PAGE = 25;
@@ -204,7 +204,7 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
   ({ job, onEdit, onDelete, onStatusUpdated }) => (
     <Card 
       variant="interactive"
-      className="md:hidden border-gray-200 hover:border-blue-300 transition-all cursor-pointer"
+      className="md:hidden overflow-hidden rounded-[2rem] border-[var(--pcms-border)] bg-white/92 shadow-[var(--pcms-shadow-card)] transition-all hover:-translate-y-0.5 hover:border-cyan-200 cursor-pointer"
       onClick={() => onEdit(job)}
       role="button"
       tabIndex={0}
@@ -216,14 +216,20 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
         }
       }}
     >
+      <div className="mx-3 mt-3 flex h-28 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50 text-cyan-700">
+        <div className="text-center">
+          <Briefcase className="mx-auto h-8 w-8" />
+          <p className="mt-2 text-xs font-black uppercase tracking-[0.18em]">Maintenance Job</p>
+        </div>
+      </div>
       <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
+        <div className="flex justify-between items-start gap-3">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-blue-100 rounded-lg">
+              <div className="rounded-2xl bg-blue-100 p-2">
                 <Briefcase className="h-4 w-4 text-blue-600" />
               </div>
-              <span className="text-base font-bold text-gray-900">#{job.job_id}</span>
+              <span className="text-base font-black text-[var(--pcms-text)]">#{job.job_id}</span>
             </div>
             <PriorityBadge priority={job.priority} />
           </div>
@@ -235,7 +241,7 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
           <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
             <span>Description</span>
           </div>
-          <p className="text-sm text-gray-800 break-words leading-relaxed">{job.description}</p>
+          <p className="text-sm font-medium text-[var(--pcms-text-muted)] break-words leading-relaxed">{job.description}</p>
           {job.topics && job.topics.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {job.topics?.map((topic) => (
@@ -259,7 +265,7 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
             </div>
             <div className="flex flex-col gap-1.5">
               {job.rooms?.map((room) => (
-                <div key={room.room_id} className="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 p-2 rounded-md">
+                <div key={room.room_id} className="flex items-center gap-2 rounded-2xl border border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] p-2 text-sm text-[var(--pcms-text)]">
                   <Home className="h-4 w-4 flex-shrink-0 text-gray-400" />
                   <span className="font-medium">{room.name}</span>
                 </div>
@@ -268,7 +274,7 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
           </div>
         )}
 
-        <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100">
+        <div className="flex items-center gap-4 border-t border-[var(--pcms-border)] pt-2 text-xs font-bold text-[var(--pcms-text-muted)]">
           <div className="flex items-center gap-1.5">
             <Calendar className="h-3.5 w-3.5" />
             <span>Created {new Date(job.created_at).toLocaleDateString()}</span>
@@ -280,7 +286,7 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
             <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
               <span>Comments</span>
             </div>
-            <div className="text-sm text-gray-700 bg-blue-50 p-3 rounded-lg border border-blue-100">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm font-medium text-blue-900">
               {job.remarks}
             </div>
           </div>
@@ -292,7 +298,7 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
             onStatusUpdated={onStatusUpdated} 
             size="sm" 
             variant="outline" 
-            className="w-full border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+            className="pcms-secondary-button w-full"
             buttonText="Update Status"
             onClick={(e) => {
               e.stopPropagation();
@@ -303,7 +309,7 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 h-9 hover:bg-blue-50 hover:border-blue-300"
+              className="pcms-secondary-button flex-1 h-10"
               onClick={() => onEdit(job)}
             >
               <Pencil className="h-4 w-4 mr-2" /> Edit
@@ -854,20 +860,20 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
 
   // Main Render Output
   return (
-    <div className="min-h-screen bg-transparent">
+    <div className="min-h-screen bg-transparent pb-24">
       {/* Friendly header with gradient */}
       <div className="bg-transparent">
         <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="pcms-page-header">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg">
+              <div className="rounded-3xl bg-[var(--pcms-accent-gradient)] p-3 shadow-[var(--pcms-button-shadow)]">
                 <Briefcase className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-black tracking-[-0.04em] text-[var(--pcms-text)]">
                   Maintenance Jobs
                 </h1>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="mt-1 text-sm font-semibold text-[var(--pcms-text-muted)]">
                   {userProfile?.username ? `Welcome back, ${userProfile.username}` : 'Manage hotel maintenance jobs'}
                 </p>
               </div>
@@ -897,7 +903,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
 
       <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 sm:px-6 py-6">
         {/* Job count info with friendly design */}
-        <Card className="mb-6 border-blue-100 bg-gradient-to-r from-blue-50/50 to-white">
+        <Card className="pcms-section-card mb-6">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
@@ -916,7 +922,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                     }
                   </p>
                   {jobs.length > 0 && (
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="mt-1 text-sm font-semibold text-[var(--pcms-text-muted)]">
                       {filtersApplied() ? 'Filtered results' : 'All maintenance jobs'}
                     </p>
                   )}
@@ -937,7 +943,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
         </Card>
 
         {/* Filters with better design */}
-        <Card className="mb-6 border-gray-200 shadow-sm">
+        <Card className="pcms-section-card mb-6">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-600" />
@@ -990,14 +996,14 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                   <Sparkles className="h-6 w-6 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
                 </div>
                 <p className="text-base font-medium text-gray-700">Loading maintenance jobs...</p>
-                <p className="text-sm text-gray-500 mt-1">Preparing the board/list workflow</p>
+                <p className="text-sm text-gray-500 mt-1">Preparing the hotel maintenance workspace</p>
               </CardContent>
             </Card>
           ) : filteredJobs.length > 0 ? (
             <>
               {/* Table for Desktop */}
               <div className="hidden md:block">
-                <Card className="border-gray-200 shadow-sm overflow-hidden">
+                <Card className="pcms-section-card overflow-hidden">
                   <Table className="w-full">
                     <TableHeader>
                       <TableRow className="bg-gradient-to-r from-gray-50 to-blue-50/30 hover:bg-gray-50 border-b-2 border-gray-200">
@@ -1140,6 +1146,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
         selectedTopics={selectedTopics}
         onTopicsChange={handleTopicsChange}
       />
+      <FloatingActionButton label="Create Job" />
       <DeleteDialog 
         isOpen={isDeleteDialogOpen} 
         onClose={() => setIsDeleteDialogOpen(false)} 

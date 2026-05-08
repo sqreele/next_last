@@ -144,12 +144,12 @@ export default async function JobPage({ params }: Props) {
     };
 
     return (
-      <div className="max-w-2xl mx-auto p-4 sm:p-6 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 border-b-2 border-blue-500 pb-2">
+      <div className="mx-auto max-w-4xl space-y-5">
+        <h1 className="pcms-page-header text-2xl font-black tracking-[-0.03em] text-[var(--pcms-text)] sm:text-3xl">
           Job: <PriorityBadge priority={job.priority} /> #{job.job_id}
         </h1>
         
-        <div className="space-y-4 text-gray-700">
+        <div className="pcms-section-card space-y-4 p-5 text-[var(--pcms-text)] sm:p-6">
           {/* Basic Info */}
           <div className="flex items-center gap-2">
             <span className="font-semibold">ID:</span>
@@ -163,10 +163,10 @@ export default async function JobPage({ params }: Props) {
           {/* Description */}
           {job.description && (
             <div className="flex items-start gap-2">
-              <MessageSquare className="w-4 h-4 text-gray-500 mt-1 flex-shrink-0" />
+              <MessageSquare className="w-4 h-4 text-[var(--pcms-text-muted)] mt-1 flex-shrink-0" />
               <div>
                 <span className="font-semibold">Description:</span>
-                <p className="text-sm mt-1">{job.description}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--pcms-text-muted)]">{job.description}</p>
               </div>
             </div>
           )}
@@ -174,13 +174,13 @@ export default async function JobPage({ params }: Props) {
           {/* Timestamps */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-500" />
+              <Calendar className="w-4 h-4 text-[var(--pcms-text-muted)]" />
               <span>
                 <span className="font-semibold">Created:</span> {formatDate(job.created_at)}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-500" />
+              <Clock className="w-4 h-4 text-[var(--pcms-text-muted)]" />
               <span>
                 <span className="font-semibold">Updated:</span> {formatDate(job.updated_at)}
               </span>
@@ -198,7 +198,7 @@ export default async function JobPage({ params }: Props) {
           {/* User */}
           {job.user && (
             <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-gray-500" />
+              <User className="w-4 h-4 text-[var(--pcms-text-muted)]" />
               <span>
                 <span className="font-semibold">Assigned to:</span>{' '}
                 {getUserDisplayName(job.user)}
@@ -210,7 +210,7 @@ export default async function JobPage({ params }: Props) {
           {job.rooms && job.rooms.length > 0 && (
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-gray-500" />
+                <MapPin className="w-4 h-4 text-[var(--pcms-text-muted)]" />
                 <span className="font-semibold">Rooms:</span>
               </div>
               <ul className="ml-6 list-disc text-sm">
@@ -245,7 +245,7 @@ export default async function JobPage({ params }: Props) {
           {job.properties && job.properties.length > 0 && (
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-gray-500" />
+                <MapPin className="w-4 h-4 text-[var(--pcms-text-muted)]" />
                 <span className="font-semibold">Properties:</span>
               </div>
               <ul className="ml-6 list-disc text-sm">
@@ -263,10 +263,10 @@ export default async function JobPage({ params }: Props) {
           {/* Remarks */}
           {job.remarks && (
             <div className="flex items-start gap-2">
-              <StickyNote className="w-4 h-4 text-gray-500 mt-1 flex-shrink-0" />
+              <StickyNote className="w-4 h-4 text-[var(--pcms-text-muted)] mt-1 flex-shrink-0" />
               <div>
                 <span className="font-semibold">Remarks:</span>
-                <p className="text-sm mt-1">{job.remarks}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--pcms-text-muted)]">{job.remarks}</p>
               </div>
             </div>
           )}
@@ -282,8 +282,8 @@ export default async function JobPage({ params }: Props) {
           {/* Images */}
           {job.image_urls && job.image_urls.length > 0 && (
             <div className="space-y-2">
-              <h2 className="text-lg font-semibold text-gray-800">Images</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <h2 className="text-lg font-black text-[var(--pcms-text)]">Images</h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {job.image_urls.map((url, index) => {
                   // Use the fixImageUrl utility to properly handle different URL formats
                   const imageUrl = fixImageUrl(url);
@@ -303,14 +303,14 @@ export default async function JobPage({ params }: Props) {
                   
                   if (!finalImageUrl) {
                     return (
-                      <div key={index} className="relative w-full h-48 overflow-hidden rounded-md shadow-sm bg-gray-100 flex items-center justify-center">
-                        <span className="text-gray-500">No Image</span>
+                      <div key={index} className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-[1.5rem] bg-[var(--pcms-surface-soft)] shadow-[var(--pcms-shadow-sm)]">
+                        <span className="text-[var(--pcms-text-muted)]">No Image</span>
                       </div>
                     );
                   }
                   
                   return (
-                    <div key={index} className="relative w-full h-48 overflow-hidden rounded-md shadow-sm">
+                    <div key={index} className="relative h-56 w-full overflow-hidden rounded-[1.5rem] shadow-[var(--pcms-shadow-sm)]">
                       <Image
                         src={finalImageUrl}
                         alt={`Job image ${index + 1}`}
@@ -332,7 +332,7 @@ export default async function JobPage({ params }: Props) {
           {/* Topics */}
           {job.topics && job.topics.length > 0 && (
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold text-gray-800">Topics</h2>
+              <h2 className="text-lg font-black text-[var(--pcms-text)]">Topics</h2>
               <div className="flex flex-wrap gap-2">
                 {job.topics.map(topic => (
                   <Badge key={topic.id || topic.title} variant="outline" className="text-sm">

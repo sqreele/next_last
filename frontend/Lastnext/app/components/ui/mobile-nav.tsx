@@ -15,7 +15,7 @@ interface MobileNavProps {
 }
 
 const navigationItems = primaryNavigationItems.filter((item) =>
-  ['Dashboard', 'Maintenance Jobs', 'Create Job', 'Rooms', 'Reports'].includes(item.name)
+  ['Dashboard', 'Maintenance Jobs', 'Create Job', 'Reports'].includes(item.name)
 );
 
 export function MobileNav({ className }: MobileNavProps) {
@@ -23,11 +23,11 @@ export function MobileNav({ className }: MobileNavProps) {
 
   return (
     <nav 
-      className={`fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 md:hidden safe-area-inset ${className || ''}`}
+      className={`fixed bottom-3 left-3 right-3 z-50 rounded-[2rem] border border-[var(--pcms-border)] bg-white/90 shadow-[var(--pcms-shadow)] backdrop-blur-xl md:hidden safe-area-inset ${className || ''}`}
       role="navigation"
       aria-label="Mobile navigation"
     >
-      <div className="flex items-center justify-around px-2 py-2">
+      <div className="flex items-center justify-around gap-1 px-2 py-2">
         {navigationItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
@@ -41,29 +41,27 @@ export function MobileNav({ className }: MobileNavProps) {
             >
               <div
                 className={`
-                  flex flex-col items-center gap-1 py-2 px-1
-                  rounded-lg transition-all duration-200 ease-in-out
+                  flex flex-col items-center gap-1 px-2 py-2
+                  rounded-2xl transition-all duration-200 ease-in-out
                   touch-manipulation relative
                   ${isActive 
-                    ? "text-blue-700" 
-                    : "text-gray-600 hover:text-blue-700"
+                    ? "bg-[var(--pcms-accent-gradient)] text-white shadow-[var(--pcms-button-shadow)]" 
+                    : "text-slate-500 hover:bg-[var(--pcms-primary-soft)] hover:text-[var(--pcms-primary-strong)]"
                   }
                 `}
                 aria-label={`Navigate to ${item.name}`}
                 aria-current={isActive ? 'page' : undefined}
               >
                 {/* Active indicator */}
-                {isActive && (
-                  <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-blue-600 rounded-full" />
-                )}
+
                 <Icon 
                   className={`w-6 h-6 transition-all duration-200 ${
-                    isActive ? "text-blue-700" : "text-gray-600"
+                    isActive ? "text-white" : "text-slate-500"
                   }`} 
                   aria-hidden={true}
                 />
                 <span className={`text-xs font-medium ${
-                  isActive ? "text-blue-700" : "text-gray-600"
+                  isActive ? "text-white" : "text-slate-500"
                 }`}>
                   {item.shortName}
                 </span>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import JobsContent from './JobsContent';
 import { Job, Property } from '@/app/lib/types';
 import { useSession } from '@/app/lib/session.client';
-import { Building, User, Calendar } from 'lucide-react';
+import { Building, Calendar } from 'lucide-react';
 import { MobileTopBar } from '@/app/components/ui/mobile-nav';
 
 interface DashboardClientProps {
@@ -32,17 +32,17 @@ export default function DashboardClient({ jobs, properties }: DashboardClientPro
       <MobileTopBar />
       
       {/* Dashboard Header */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="pcms-page-header">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl font-black tracking-[-0.03em] text-[var(--pcms-text)] sm:text-4xl">
               Welcome back, {session?.user?.username || 'User'}! 👋
             </h1>
-            <p className="text-gray-600 text-sm sm:text-base">
+            <p className="text-[var(--pcms-text-muted)] text-sm font-medium sm:text-base">
               Manage your maintenance jobs and property operations
             </p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className="flex items-center gap-2 text-sm font-bold text-[var(--pcms-text-muted)]">
             <Calendar className="w-4 h-4" />
             <span>{new Date().toLocaleDateString('en-US', { 
               weekday: 'long', 
@@ -55,58 +55,58 @@ export default function DashboardClient({ jobs, properties }: DashboardClientPro
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <div className="pcms-section-card p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
+            <div className="rounded-2xl bg-blue-100 p-2">
               <Building className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{totalJobs}</p>
-              <p className="text-sm text-gray-600">Total Jobs</p>
+              <p className="text-2xl font-black text-[var(--pcms-text)]">{totalJobs}</p>
+              <p className="text-sm font-bold text-[var(--pcms-text-muted)]">Total Jobs</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="pcms-section-card p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 rounded-lg">
+            <div className="rounded-2xl bg-pink-100 p-2">
               <div className="w-5 h-5 bg-yellow-500 rounded-full animate-pulse"></div>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{pendingJobs}</p>
-              <p className="text-sm text-gray-600">Pending</p>
+              <p className="text-2xl font-black text-[var(--pcms-text)]">{pendingJobs}</p>
+              <p className="text-sm font-bold text-[var(--pcms-text-muted)]">Pending</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="pcms-section-card p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
+            <div className="rounded-2xl bg-orange-100 p-2">
               <div className="w-5 h-5 bg-orange-500 rounded-full"></div>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{inProgressJobs}</p>
-              <p className="text-sm text-gray-600">In Progress</p>
+              <p className="text-2xl font-black text-[var(--pcms-text)]">{inProgressJobs}</p>
+              <p className="text-sm font-bold text-[var(--pcms-text-muted)]">In Progress</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="pcms-section-card p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
+            <div className="rounded-2xl bg-green-100 p-2">
               <div className="w-5 h-5 bg-green-500 rounded-full"></div>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{completedJobs}</p>
-              <p className="text-sm text-gray-600">Completed</p>
+              <p className="text-2xl font-black text-[var(--pcms-text)]">{completedJobs}</p>
+              <p className="text-sm font-bold text-[var(--pcms-text-muted)]">Completed</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Jobs Content */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="pcms-workspace-card overflow-hidden">
         <JobsContent 
           jobs={jobs} 
           properties={properties}

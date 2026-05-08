@@ -5,7 +5,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { CalendarClock, Home, MapPin, Wrench } from 'lucide-react';
 import { Room, Property, Job } from '@/app/lib/types';
-import { cn } from '@/app/lib/utils/cn';
+import { PriorityBadge, StatusBadge } from '@/app/components/pcms-ui';
 import Link from 'next/link';
 
 type RoomDetailContentProps = {
@@ -58,22 +58,6 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
     }
 
     return 'N/A';
-  };
-
-  // Status color mapping based on JobStatus
-  const statusColors: Record<Job['status'], string> = {
-    pending: 'bg-yellow-100 text-yellow-800',
-    in_progress: 'bg-blue-100 text-blue-800',
-    completed: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800',
-    waiting_sparepart: 'bg-purple-100 text-purple-800',
-  };
-
-  // Priority color mapping based on JobPriority
-  const priorityColors: Record<Job['priority'], string> = {
-    low: 'bg-green-100 text-green-800',
-    medium: 'bg-orange-100 text-orange-800',
-    high: 'bg-red-100 text-red-800',
   };
 
   return (
@@ -155,9 +139,7 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
                           <p><strong>Job ID:</strong> {job.job_id}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge className={cn("px-2 py-1 text-xs", statusColors[job.status])}>
-                            {job.status.replace('_', ' ').toUpperCase()}
-                          </Badge>
+                          <StatusBadge status={job.status} />
                           {job.is_preventivemaintenance && (
                             <Badge variant="outline" className="px-2 py-1 text-xs bg-blue-50 text-blue-700 border-blue-200">PM</Badge>
                           )}
@@ -165,9 +147,7 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
                       </div>
                       <p className="mt-2"><strong>Description:</strong> {job.description || 'N/A'}</p>
                       <div className="flex justify-between items-center mt-2">
-                        <Badge className={cn("px-2 py-1 text-xs", priorityColors[job.priority])}>
-                          {job.priority.toUpperCase()}
-                        </Badge>
+                        <PriorityBadge priority={job.priority} />
                         <span className="text-sm text-gray-500"><strong>Created:</strong> {new Date(job.created_at).toLocaleDateString()}</span>
                       </div>
                     </Link>

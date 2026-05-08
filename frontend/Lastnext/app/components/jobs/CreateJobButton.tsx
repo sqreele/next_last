@@ -276,7 +276,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
     }}>
       <DialogTrigger asChild>
         <Button
-          className="h-11 px-6 flex items-center gap-2" // Adjust styling as needed
+          className="h-12 px-6 flex items-center gap-2 rounded-[14px] shadow-lg sm:w-auto w-full"
           onClick={handleAuthClick} // Use unified click handler
         >
           <Plus className="h-4 w-4" />

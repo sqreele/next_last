@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
+import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
 import { Button } from "@/app/components/ui/button";
 import { Job, JobStatus, Property } from "@/app/lib/types";
 import { Calendar, MapPin, CheckCircle2, Clock, AlertCircle, AlertTriangle, ClipboardList } from "lucide-react";
@@ -98,7 +99,7 @@ const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid"
         </div>
 
         <div className="absolute top-3 left-3 flex items-center gap-2">
-          <Badge variant="secondary" className={`px-2 py-0.5 text-xs ${status.color}`}>{status.icon}<span className="ml-1 hidden xs:inline">{status.label}</span></Badge>
+          <StatusBadge status={job.status} />
           {job.is_preventivemaintenance && (
             <Badge className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700">PM</Badge>
           )}
@@ -136,9 +137,7 @@ const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid"
         </p>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <Badge variant="outline" className="px-2 py-0.5">
-            {job.priority?.charAt(0).toUpperCase() + job.priority?.slice(1) || "Medium"}
-          </Badge>
+          <PriorityBadge priority={job.priority} />
           <Badge variant="outline" className="px-2 py-0.5 flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5" />
             <span>{createdAt}</span>

@@ -1,9 +1,10 @@
 // ./app/components/JobTableRow.tsx
 import React from 'react';
 import { Badge } from '@/app/components/ui/badge';
+import { PriorityBadge, StatusBadge } from '@/app/components/pcms-ui';
 import { Button } from '@/app/components/ui/button';
 import { Pencil, Trash2, Home } from 'lucide-react';
-import { Job,PRIORITY_VARIANTS, STATUS_VARIANTS } from '@/app/lib/types';
+import { Job } from '@/app/lib/types';
 
 
 interface JobTableRowProps {
@@ -17,9 +18,7 @@ const JobTableRow: React.FC<JobTableRowProps> = ({ job, onEdit, onDelete }) => (
     <td>
       <div className="space-y-1">
         <div className="text-xs">#{job.job_id}</div>
-        <Badge variant={PRIORITY_VARIANTS[job.priority] || 'default'}>
-          {job.priority.charAt(0).toUpperCase() + job.priority.slice(1)}
-        </Badge>
+        <PriorityBadge priority={job.priority} />
       </div>
     </td>
     <td>
@@ -41,9 +40,7 @@ const JobTableRow: React.FC<JobTableRowProps> = ({ job, onEdit, onDelete }) => (
       ))}
     </td>
     <td>
-      <Badge variant={STATUS_VARIANTS[job.status] || 'default'}>
-        {job.status.replace('_', ' ').charAt(0).toUpperCase() + job.status.replace('_', ' ').slice(1)}
-      </Badge>
+      <StatusBadge status={job.status} />
     </td>
     <td>{new Date(job.created_at).toLocaleDateString()}</td>
     <td>

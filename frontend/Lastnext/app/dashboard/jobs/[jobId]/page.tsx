@@ -3,8 +3,8 @@ import { fetchJob, fetchProperties } from '@/app/lib/data.server';
 import { getServerSession } from '@/app/lib/session.server';
 import type { Metadata, ResolvingMetadata } from 'next';
 import { MapPin, Clock, Calendar, User, CheckCircle2, MessageSquare, StickyNote, AlertTriangle } from 'lucide-react';
+import { StatusBadge, PriorityBadge } from '@/app/components/pcms-ui';
 import { Badge } from '@/app/components/ui/badge';
-import { cn } from '@/app/lib/utils/cn';
 import { Job, Property, JobStatus, JobPriority } from '@/app/lib/types';
 import Image from 'next/image';
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
@@ -146,7 +146,7 @@ export default async function JobPage({ params }: Props) {
     return (
       <div className="max-w-2xl mx-auto p-4 sm:p-6 bg-white rounded-lg shadow-md">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 border-b-2 border-blue-500 pb-2">
-          Job: {job.priority} #{job.job_id}
+          Job: <PriorityBadge priority={job.priority} /> #{job.job_id}
         </h1>
         
         <div className="space-y-4 text-gray-700">
@@ -157,18 +157,7 @@ export default async function JobPage({ params }: Props) {
           </div>
           <div className="flex items-center gap-2">
             <span className="font-semibold">Status:</span>
-            <Badge
-              className={cn(
-                "px-2 py-1 text-xs",
-                job.status === 'completed' && 'bg-green-100 text-green-800',
-                job.status === 'in_progress' && 'bg-blue-100 text-blue-800',
-                job.status === 'pending' && 'bg-yellow-100 text-yellow-800',
-                job.status === 'cancelled' && 'bg-red-100 text-red-800',
-                job.status === 'waiting_sparepart' && 'bg-purple-100 text-purple-800'
-              )}
-            >
-              {job.status.replace('_', ' ').toUpperCase()}
-            </Badge>
+            <StatusBadge status={job.status} />
           </div>
 
           {/* Description */}

@@ -13,8 +13,9 @@ import {
   DialogTrigger,
 } from "@/app/components/ui/dialog";
 import { Button } from "@/app/components/ui/button";
+import { StatusBadge, StatusUpdateButton } from '@/app/components/pcms-ui';
 import { Label } from "@/app/components/ui/label";
-import { Circle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
   (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
@@ -90,7 +91,7 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
   const triggerButton = children || (
     <Button 
       variant="outline" 
-      className="w-full text-sm h-9 bg-white"
+      className="w-full text-sm h-11"
       onClick={handleButtonClick}
     >
       Update Status
@@ -117,34 +118,22 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
           )}
           <div className="space-y-2">
             <div className="font-medium text-sm text-gray-700">Current Status:</div>
-            <div className="px-3 py-2 bg-gray-100 rounded-md text-sm capitalize text-gray-700">
-              {job.status.replace('_', ' ')}
-            </div>
+            <StatusBadge status={job.status} />
           </div>
           <div className="space-y-2">
             <div className="font-medium text-sm text-gray-700">New Status:</div>
-            <div className="space-y-2 bg-gray-50 p-2 rounded-md">
+            <div className="flex flex-wrap gap-2 bg-gray-50 p-2 rounded-md">
               {statuses.map((status) => (
-                <div key={status.value} className="flex items-center gap-3 py-2 px-1">
-                  <button
+                <div key={status.value} className="flex">
+                  <StatusUpdateButton
                     type="button"
+                    status={status.value}
                     onClick={() => handleStatusChange(status.value)}
-                    className={`flex items-center justify-center w-5 h-5 rounded-full border ${
-                      selectedStatus === status.value 
-                        ? 'border-blue-500 bg-blue-500' 
-                        : 'border-gray-300 hover:border-blue-400'
-                    }`}
-                  >
-                    {selectedStatus === status.value && (
-                      <Circle className="w-2.5 h-2.5 text-white fill-current" />
-                    )}
-                  </button>
-                  <Label 
-                    className="capitalize cursor-pointer text-gray-700" 
-                    onClick={() => handleStatusChange(status.value)}
+                    aria-pressed={selectedStatus === status.value}
+                    className={selectedStatus === status.value ? 'ring-2 ring-offset-2 ring-[var(--pcms-primary)]' : ''}
                   >
                     {status.label}
-                  </Label>
+                  </StatusUpdateButton>
                 </div>
               ))}
             </div>
@@ -156,7 +145,7 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
             variant="outline"
             onClick={() => setOpen(false)}
             disabled={isUpdating}
-            className="w-full sm:w-auto bg-white text-gray-700 border-gray-300"
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -164,7 +153,7 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
             type="button"
             onClick={handleUpdate}
             disabled={isUpdating || selectedStatus === job.status}
-            className="flex items-center justify-center gap-2 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             {isUpdating ? (
               <>

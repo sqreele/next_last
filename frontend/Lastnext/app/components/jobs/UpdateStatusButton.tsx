@@ -24,6 +24,7 @@ import { Job, JobStatus } from "@/app/lib/types";
 import { updateJob as apiUpdateJob } from "@/app/lib/data.server";
 import { useToast } from "@/app/components/ui/use-toast";
 import { useSession } from "@/app/lib/session.client";
+import { cn } from "@/app/lib/utils/cn";
 
 // Define status constants
 const JOB_STATUS = {
@@ -37,7 +38,7 @@ const JOB_STATUS = {
 interface UpdateStatusButtonProps {
   job: Job;
   onStatusUpdated: (updatedJob: Job) => void;
-  variant?: "default" | "outline" | "destructive" | "secondary" | "ghost" | "link";
+  variant?: "default" | "outline" | "destructive" | "secondary" | "success" | "warning" | "ghost" | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
   buttonText?: string;
@@ -169,7 +170,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
         }}
         variant={variant}
         size={size}
-        className={className}
+        className={cn('h-11', className)}
         disabled={status === 'loading' || status === 'unauthenticated'}
       >
         <ClipboardEdit className="h-4 w-4 mr-2" />

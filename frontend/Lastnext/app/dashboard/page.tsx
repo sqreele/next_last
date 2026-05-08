@@ -11,16 +11,14 @@ export const metadata: Metadata = generatePageMetadata('dashboard');
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-white">
-      {/* Instagram-style layout */}
-      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto">
+    <div className="min-h-screen bg-[var(--pcms-app-bg)]">
+      <div className="mx-auto max-w-7xl desktop:max-w-[96rem]">
         <Suspense
           fallback={
             <div className="flex items-center justify-center min-h-screen">
               <div className="text-center space-y-4">
-                {/* Instagram-style loading spinner */}
                 <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto"></div>
-                <p className="text-sm text-gray-500">Loading...</p>
+                <p className="text-sm font-semibold text-gray-500">Loading dashboard...</p>
               </div>
             </div>
           }

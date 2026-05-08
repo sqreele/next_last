@@ -77,7 +77,7 @@ interface UseJobsDashboardReturn extends JobsDashboardState {
 const initialState: JobsDashboardState = {
   jobs: [],
   properties: [],
-  loading: false,
+  loading: true,
   error: null,
   stats: {
     total: 0,

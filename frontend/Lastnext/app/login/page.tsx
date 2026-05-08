@@ -23,7 +23,7 @@ export default function LoginPage() {
         <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
       </div>
       <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
-        Redirecting to sign in, please wait…
+        Redirecting to PCMS sign in...
       </p>
     </div>
   );

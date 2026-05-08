@@ -97,7 +97,7 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--pcms-app-bg)] p-4">
       <div className="w-full max-w-4xl">
         {/* Success message from onboarding */}
         {message === 'onboarding_complete' && (
@@ -116,11 +116,10 @@ function LoginContent() {
             </div>
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Welcome to HotelEngPro
+            Welcome to PCMS
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            The complete hotel engineering and maintenance management solution that helps you maintain properties, 
-            coordinate teams, and optimize costs with intelligent automation.
+            A hotel maintenance SaaS for Chief Engineers, Technicians, GMs, and Owners to manage rooms, areas, properties, PDF reports, and maintenance jobs.
           </p>
         </div>
 
@@ -130,12 +129,11 @@ function LoginContent() {
               <div className="mx-auto mb-4 p-3 bg-green-100 rounded-full w-16 h-16 flex items-center justify-center">
                 <Wrench className="w-8 h-8 text-green-600" />
               </div>
-              <CardTitle className="text-xl">Preventive Maintenance</CardTitle>
+              <CardTitle className="text-xl">Hotel Maintenance Workflow</CardTitle>
             </CardHeader>
             <CardContent className="text-center">
               <p className="text-gray-600">
-                Schedule and track maintenance tasks to prevent costly breakdowns and 
-                ensure your equipment runs at peak efficiency.
+                Track room and area maintenance jobs with clear status, priority, before photo, after photo, and technician visibility.
               </p>
             </CardContent>
           </Card>
@@ -145,12 +143,11 @@ function LoginContent() {
               <div className="mx-auto mb-4 p-3 bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center">
                 <Users className="w-8 h-8 text-purple-600" />
               </div>
-              <CardTitle className="text-xl">Team Collaboration</CardTitle>
+              <CardTitle className="text-xl">Operations Visibility</CardTitle>
             </CardHeader>
             <CardContent className="text-center">
               <p className="text-gray-600">
-                Coordinate maintenance teams and track work progress in real-time 
-                with powerful collaboration tools.
+                Give hotel leadership a clean KPI Dashboard, management reports, and a professional job record for every issue.
               </p>
             </CardContent>
           </Card>
@@ -167,7 +164,7 @@ function LoginContent() {
               Sign in to your account
             </CardTitle>
             <p className="text-gray-600">
-              Access your hotel engineering dashboard and manage your properties
+              Access your PCMS maintenance dashboard and manage your properties
             </p>
           </CardHeader>
           
@@ -177,7 +174,7 @@ function LoginContent() {
               className="w-full h-12 text-lg"
               size="lg"
             >
-              Continue with Auth0
+              Sign in to PCMS
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
             
@@ -187,7 +184,7 @@ function LoginContent() {
             
             <div className="border-t pt-4">
               <div className="text-center text-sm text-gray-600">
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <Link 
                   href="/auth/register" 
                   className="text-blue-600 hover:text-blue-800 font-medium"

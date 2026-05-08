@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useJobsDashboard } from '@/app/lib/hooks/useJobsDashboard';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
-import { Calendar, RefreshCw, Download, Settings, Search, Filter } from 'lucide-react';
+import { RefreshCw, Download, Settings, Search, Filter, ClipboardList, Timer, CheckCircle2, AlertTriangle, Users, Calendar } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/app/components/ui/card';
@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/app/lib/hooks/use-toast';
 import JobList from '@/app/components/jobs/jobList';
 import { JobStatus } from '@/app/lib/types';
+import { KpiWidget, PageHeader, SectionCard, StatusBadge, WorkspaceCard } from '@/app/components/pcms-ui';
 
 // Enhanced statistics card component
 const StatCard: React.FC<{
@@ -134,7 +135,7 @@ const DashboardHeader: React.FC<{
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-2">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Welcome back, {username}! 👋
+            Welcome back, {username}
           </h1>
           <p className="text-gray-600 text-sm sm:text-base">
             Manage your maintenance jobs and property operations
@@ -296,14 +297,14 @@ export default function ImprovedDashboard() {
 
   // Tab configuration
   const tabConfig = [
-    { value: "all", label: "All Jobs", icon: "📋", color: "bg-gray-100 text-gray-700" },
-    { value: "pending", label: "Pending", icon: "⏳", color: "bg-yellow-100 text-yellow-700" },
-    { value: "in_progress", label: "In Progress", icon: "🔧", color: "bg-blue-100 text-blue-700" },
-    { value: "waiting_sparepart", label: "Waiting Parts", icon: "📦", color: "bg-orange-100 text-orange-700" },
-    { value: "completed", label: "Completed", icon: "✅", color: "bg-green-100 text-green-700" },
-    { value: "cancelled", label: "Cancelled", icon: "❌", color: "bg-red-100 text-red-700" },
-    { value: "defect", label: "Defect", icon: "⚠️", color: "bg-red-100 text-red-700" },
-    { value: "preventive_maintenance", label: "Maintenance", icon: "🔧", color: "bg-purple-100 text-purple-700" },
+    { value: "all", label: "All Maintenance Jobs" },
+    { value: "pending", label: "Open" },
+    { value: "in_progress", label: "In Progress" },
+    { value: "waiting_sparepart", label: "Waiting Spare Part" },
+    { value: "completed", label: "Completed" },
+    { value: "cancelled", label: "Cancelled" },
+    { value: "defect", label: "Defect" },
+    { value: "preventive_maintenance", label: "Preventive Maintenance" },
   ];
 
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -329,10 +330,10 @@ export default function ImprovedDashboard() {
         <Card className="w-full">
           <CardContent className="p-8 text-center space-y-6">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-3xl">⚠️</span>
+              <AlertTriangle className="h-10 w-10 text-red-600" />
             </div>
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-gray-900">Dashboard Error</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Unable to load KPI Dashboard</h1>
               <p className="text-gray-600">{error}</p>
             </div>
             <Button onClick={refreshJobs} className="w-full">
@@ -345,218 +346,105 @@ export default function ImprovedDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Instagram-style header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => refreshJobs()} 
-                aria-label="Refresh dashboard data"
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <RefreshCw className="w-5 h-5" />
-              </button>
-            <button
-              onClick={() => exportJobs('csv')}
-              title="Export CSV"
-              aria-label="Export jobs as CSV"
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <Download className="w-5 h-5" />
+    <div className="space-y-6">
+      <PageHeader
+        title="KPI Dashboard"
+        description="Monitor hotel maintenance jobs, room issues, technician workload, and management reporting from one operations workspace."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => refreshJobs()} className="pcms-secondary-button inline-flex items-center gap-2" aria-label="Refresh dashboard data">
+              <RefreshCw className="h-4 w-4" /> Refresh
             </button>
-              <button aria-label="Open dashboard settings" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                <Settings className="w-5 h-5" />
+            <button onClick={() => exportJobs('csv')} className="pcms-action-button inline-flex items-center gap-2" aria-label="Export maintenance jobs as CSV">
+              <Download className="h-4 w-4" /> Export CSV
+            </button>
+          </div>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiWidget label="Total Maintenance Jobs" value={stats.total} tone="blue" detail="All active property care records" />
+        <KpiWidget label="Open Jobs" value={stats.pending} tone="violet" detail="Needs Chief Engineer review" />
+        <KpiWidget label="In Progress" value={stats.inProgress} tone="orange" detail="Technicians currently assigned" />
+        <KpiWidget label="Completed" value={stats.completed} tone="green" detail="Ready for verification or report" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
+        <SectionCard title="Jobs by status" description="Color-coded workflow states for fast scanning.">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {tabConfig.slice(1, 7).map(({ value, label }) => (
+              <button key={value} onClick={() => setSelectedTab(value)} className="flex min-h-[56px] items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 text-left transition hover:border-blue-200 hover:bg-blue-50/40">
+                <span className="font-semibold text-slate-700">{label}</span>
+                <StatusBadge status={value} />
               </button>
-            </div>
+            ))}
           </div>
-        </div>
+        </SectionCard>
+        <SectionCard title="Technician performance" description="Operational snapshot for Chief Engineer, GM, and Owner review.">
+          <div className="grid gap-3">
+            <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-4"><span className="flex items-center gap-2 font-semibold text-slate-700"><Users className="h-4 w-4 text-blue-600" /> Assigned technicians</span><strong>{stats.inProgress + stats.completed}</strong></div>
+            <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-4"><span className="flex items-center gap-2 font-semibold text-slate-700"><Timer className="h-4 w-4 text-orange-600" /> Waiting spare part</span><strong>{stats.waitingSparepart}</strong></div>
+            <div className="flex items-center justify-between rounded-2xl bg-slate-50 p-4"><span className="flex items-center gap-2 font-semibold text-slate-700"><CheckCircle2 className="h-4 w-4 text-green-600" /> Preventive maintenance</span><strong>{stats.preventiveMaintenance}</strong></div>
+          </div>
+        </SectionCard>
       </div>
 
-      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto">
-        {/* Instagram-style stories/stats section */}
-        <div className="px-4 py-6 border-b border-gray-200">
-          <div className="flex items-center gap-6 overflow-x-auto pb-2">
-            <div className="flex flex-col items-center min-w-[80px]">
-              <div className="w-16 h-16 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-full p-0.5">
-                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-900">{stats.total}</span>
-                </div>
-              </div>
-              <span className="text-xs text-gray-500 mt-1">Total</span>
+      <WorkspaceCard>
+        <div className="border-b border-slate-200 p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-lg font-extrabold tracking-tight text-slate-950">Recent maintenance jobs</h2>
+              <p className="text-sm text-slate-500">Board/table hybrid workflow with status filters and pagination.</p>
             </div>
-            <div className="flex flex-col items-center min-w-[80px]">
-              <div className="w-16 h-16 bg-gradient-to-tr from-yellow-400 to-orange-500 rounded-full p-0.5">
-                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-900">{stats.pending}</span>
-                </div>
-              </div>
-              <span className="text-xs text-gray-500 mt-1">Pending</span>
-            </div>
-            <div className="flex flex-col items-center min-w-[80px]">
-              <div className="w-16 h-16 bg-gradient-to-tr from-blue-400 to-blue-600 rounded-full p-0.5">
-                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-900">{stats.inProgress}</span>
-                </div>
-              </div>
-              <span className="text-xs text-gray-500 mt-1">In Progress</span>
-            </div>
-            <div className="flex flex-col items-center min-w-[80px]">
-              <div className="w-16 h-16 bg-gradient-to-tr from-orange-400 to-orange-600 rounded-full p-0.5">
-                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-900">{stats.waitingSparepart}</span>
-                </div>
-              </div>
-              <span className="text-xs text-gray-500 mt-1">Waiting Parts</span>
-            </div>
-            <div className="flex flex-col items-center min-w-[80px]">
-              <div className="w-16 h-16 bg-gradient-to-tr from-green-400 to-green-600 rounded-full p-0.5">
-                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-900">{stats.completed}</span>
-                </div>
-              </div>
-              <span className="text-xs text-gray-500 mt-1">Completed</span>
-            </div>
-            <div className="flex flex-col items-center min-w-[80px]">
-              <div className="w-16 h-16 bg-gradient-to-tr from-purple-400 to-purple-600 rounded-full p-0.5">
-                <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-900">{stats.preventiveMaintenance}</span>
-                </div>
-              </div>
-              <span className="text-xs text-gray-500 mt-1">PM</span>
+            <div className="relative min-w-0 lg:w-96">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                placeholder="Search job number, room, area, category..."
+                value={filters.search || ''}
+                onChange={(e) => handleSearch(e.target.value)}
+                className="h-11 w-full rounded-full border border-slate-200 bg-white pl-10 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+              />
             </div>
           </div>
-        </div>
-
-        {/* Instagram-style search */}
-        <div className="px-4 py-4 border-b border-gray-200">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search jobs..."
-              value={filters.search || ''}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-gray-100 border-none rounded-lg text-sm focus:outline-none focus:bg-white focus:ring-1 focus:ring-gray-300 transition-all"
-            />
+          <div className="mt-4 flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Maintenance job status filters">
+            {tabConfig.map(({ value, label }, index) => (
+              <button
+                key={value}
+                ref={(element) => { tabRefs.current[index] = element; }}
+                role="tab"
+                aria-selected={selectedTab === value}
+                onClick={() => setSelectedTab(value)}
+                onKeyDown={(event) => handleTabKeyDown(event, index)}
+                className={`min-h-[40px] whitespace-nowrap rounded-full border px-4 text-sm font-bold transition ${selectedTab === value ? 'border-blue-600 bg-blue-600 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200 hover:bg-blue-50'}`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
-
-        {/* Instagram-style tabs */}
-        <div className="border-b border-gray-200">
-          <div className="px-4">
-            <Tabs
-              defaultValue="all"
-              className="w-full"
-              value={selectedTab}
-              onValueChange={setSelectedTab}
-            >
-              {/* Instagram-style horizontal scrolling tabs */}
-              <div className="flex items-center justify-between py-3">
-                <div className="flex-1 overflow-x-auto">
-                  <div className="flex gap-8 min-w-max" role="tablist" aria-label="Job status tabs">
-                    {tabConfig.map(({ value, label, icon }, index) => (
-                      <button
-                        key={value}
-                        id={`jobs-tab-${value}`}
-                        ref={(element) => {
-                          tabRefs.current[index] = element;
-                        }}
-                        role="tab"
-                        aria-selected={selectedTab === value}
-                        aria-controls={`jobs-panel-${value}`}
-                        tabIndex={selectedTab === value ? 0 : -1}
-                        onClick={() => setSelectedTab(value)}
-                        onKeyDown={(event) => handleTabKeyDown(event, index)}
-                        className={`flex items-center gap-2 pb-3 border-b-2 transition-colors whitespace-nowrap ${
-                          selectedTab === value
-                            ? 'border-gray-900 text-gray-900'
-                            : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                      >
-                        <span className="text-sm">{icon}</span>
-                        <span className="text-sm font-medium">{label}</span>
-                        <span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">
-                          {value === 'all' ? stats.total : 
-                           value === 'in_progress' ? stats.inProgress :
-                           value === 'waiting_sparepart' ? stats.waitingSparepart :
-                           value === 'preventive_maintenance' ? stats.preventiveMaintenance :
-                           stats[value as keyof typeof stats] || 0}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* View Mode Toggle - Instagram style */}
-                <div className="flex items-center gap-1 ml-4">
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    aria-label="Switch to grid view"
-                    className={`p-2 rounded-md transition-colors ${
-                      viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    aria-label="Switch to list view"
-                    className={`p-2 rounded-md transition-colors ${
-                      viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Instagram-style content area */}
-              {tabConfig.map(({ value }) => (
-                <div
-                  key={value}
-                  id={`jobs-panel-${value}`}
-                  role="tabpanel"
-                  aria-labelledby={`jobs-tab-${value}`}
-                  hidden={selectedTab !== value}
-                  className={selectedTab === value ? 'block' : 'hidden'}
-                >
-                  <div className="bg-white">
-                    <JobList 
-                      jobs={jobs}
-                      filter={value as JobStatus}
-                      properties={properties}
-                      viewMode={viewMode}
-                      selectedRoom={selectedRoom}
-                      onRoomFilter={handleRoomFilter}
-                      onRefresh={refreshJobs}
-                    />
-                    
-                    {/* Instagram-style load more */}
-                    {hasMoreJobs && (
-                      <div className="px-4 py-6 text-center border-t border-gray-200">
-                        <button
-                          onClick={() => setPage(pagination.page + 1)}
-                          disabled={isLoadingMore}
-                          className="text-blue-500 text-sm font-medium hover:text-blue-700 disabled:text-gray-400 transition-colors"
-                        >
-                          {isLoadingMore ? 'Loading...' : 'Load more jobs'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </Tabs>
+        {tabConfig.map(({ value }) => (
+          <div key={value} hidden={selectedTab !== value}>
+            {selectedTab === value && (
+              <JobList
+                jobs={jobs}
+                filter={value as JobStatus}
+                properties={properties}
+                viewMode={viewMode}
+                selectedRoom={selectedRoom}
+                onRoomFilter={handleRoomFilter}
+                onRefresh={refreshJobs}
+              />
+            )}
           </div>
-        </div>
-      </div>
+        ))}
+        {hasMoreJobs && (
+          <div className="border-t border-slate-200 p-4 text-center">
+            <button onClick={() => setPage(pagination.page + 1)} disabled={isLoadingMore} className="pcms-secondary-button">
+              {isLoadingMore ? 'Loading maintenance jobs...' : 'Load more maintenance jobs'}
+            </button>
+          </div>
+        )}
+      </WorkspaceCard>
     </div>
-  );
-}
+  );}

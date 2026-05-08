@@ -5,6 +5,7 @@ import { Formik, Form, Field, FormikErrors } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
 import { Button } from "@/app/components/ui/button";
+import { PageHeader, PriorityBadge, SectionCard } from '@/app/components/pcms-ui';
 import { Textarea } from "@/app/components/ui/textarea";
 import { Plus, ChevronDown, ChevronUp, Loader, AlertCircle, CheckCircle, Upload, X, Building } from 'lucide-react';
 import { Checkbox } from "@/app/components/ui/checkbox";
@@ -271,7 +272,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       await axios.post(`/api/jobs/`, formData, { withCredentials: true });
 
       const statusLabel = values.status.replace('_', ' ');
-      setSuccessMessage(`Job created successfully with status: ${statusLabel}. Redirecting to My Jobs...`);
+      setSuccessMessage(`Maintenance job created successfully with status: ${statusLabel}. Redirecting to Maintenance Jobs...`);
 
       // Success - reset form and redirect
       resetForm();
@@ -279,7 +280,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       if (onJobCreated) onJobCreated();
       toast({
         title: 'Success',
-        description: 'Job created successfully.',
+        description: 'Maintenance job created successfully.',
         variant: 'success',
       });
       setTimeout(() => {
@@ -361,7 +362,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
           </div>
           <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
-            Loading form, please wait…
+            Loading create maintenance job form...
           </p>
         </div>
       )}
@@ -375,6 +376,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       >
         {({ values, errors, touched, submitCount, setFieldValue, setFieldTouched, isSubmitting }) => (
                   <Form className="relative space-y-5 sm:space-y-6 md:space-y-8">
+          <PageHeader title="Create Maintenance Job" description="Use the 3-step hotel workflow: Location, Job Details, then Assignment & Evidence." />
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-5 sm:space-y-6 md:space-y-8">
           {/* Upload loading overlay */}
           {isSubmitting && (
             <div
@@ -387,17 +391,17 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
               </div>
               <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
-                Uploading, please wait…
+                Creating maintenance job...
               </p>
             </div>
           )}
-          {/* Basic Information Section */}
+          {/* 1. Location Section */}
             <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-cyan-50 p-4 sm:rounded-2xl sm:p-6">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="rounded-lg bg-blue-100 p-1.5 sm:p-2">
                   <Plus className="h-4 w-4 text-blue-600 sm:h-5 sm:w-5" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Basic Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">1. Location</h3>
               </div>
               
               <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
@@ -529,7 +533,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 {/* Topic Selection */}
                 <div className="md:col-span-2 space-y-2">
                   <Label className="text-sm font-medium text-gray-700 sm:text-base">
-                    Topic <span className="text-red-500">*</span>
+                    Category <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={values.topic.title}
@@ -545,7 +549,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     <SelectTrigger className={`h-11 border-2 rounded-xl transition-all duration-200 sm:h-12 ${
                       (touched.topic?.title || submitCount > 0) && errors.topic?.title ? 'border-red-300' : 'border-gray-200'
                     }`}>
-                      <SelectValue placeholder="Select a maintenance topic" />
+                      <SelectValue placeholder="Select a maintenance category" />
                     </SelectTrigger>
                     <SelectContent>
                       {topics.length ? topics.map(topic => (
@@ -567,13 +571,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               </div>
             </div>
 
-            {/* Additional Details Section */}
+            {/* 2. Job Details Section */}
             <div className="rounded-xl border border-purple-100 bg-gradient-to-r from-purple-50 to-violet-50 p-4 sm:rounded-2xl sm:p-6">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="rounded-lg bg-purple-100 p-1.5 sm:p-2">
                   <Plus className="h-4 w-4 text-purple-600 sm:h-5 sm:w-5" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Additional Details</h3>
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">2. Job Details</h3>
               </div>
               
               <div className="space-y-4 sm:space-y-6">
@@ -639,12 +643,12 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 <div className="rounded-lg bg-amber-100 p-1.5 sm:p-2">
                   <Upload className="h-4 w-4 text-amber-600 sm:h-5 sm:w-5" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Images & Documentation</h3>
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">3. Assignment & Evidence</h3>
               </div>
               
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-gray-700 sm:text-base">
-                  Images (up to {MAX_FILES}) <span className="text-red-500">*</span>
+                  Before Photo / Evidence (up to {MAX_FILES}) <span className="text-red-500">*</span>
                 </Label>
                 <FileUpload
                   onFileSelect={(selectedFiles) => {
@@ -656,9 +660,26 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                   maxFiles={MAX_FILES}
                 />
                 <p className="text-xs text-gray-500 sm:text-sm">
-                  Upload up to {MAX_FILES} images to document the issue. Max 5MB each.
+                  Upload before photos or evidence to document the issue. Max 5MB each.
                 </p>
               </div>
+            </div>
+
+            </div>
+            <aside className="hidden xl:block">
+              <div className="sticky top-24 space-y-4">
+                <SectionCard title="Maintenance job summary" description="Review before creating the job.">
+                  <dl className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Property</dt><dd className="font-semibold text-slate-900">{selectedProperty || 'Select property'}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Room / Area</dt><dd className="font-semibold text-slate-900">{values.room?.name || 'Select room'}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Category</dt><dd className="font-semibold text-slate-900">{values.topic.title || 'Select category'}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Priority</dt><dd><PriorityBadge priority={values.priority} /></dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Technician</dt><dd className="font-semibold text-slate-900">Chief Engineer review</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Before photo count</dt><dd className="font-semibold text-slate-900">{values.files.length}</dd></div>
+                  </dl>
+                </SectionCard>
+              </div>
+            </aside>
             </div>
 
             {/* Submit Button */}
@@ -671,7 +692,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 {isSubmitting ? (
                   <div className="flex items-center gap-3">
                     <Loader className="h-5 w-5 animate-spin" />
-                    <span>Creating Job...</span>
+                    <span>Creating maintenance job...</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">

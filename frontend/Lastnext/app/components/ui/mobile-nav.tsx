@@ -15,7 +15,7 @@ interface MobileNavProps {
 }
 
 const navigationItems = primaryNavigationItems.filter((item) =>
-  ['Dashboard', 'My Jobs', 'Create Job', 'Analytics', 'Profile'].includes(item.name)
+  ['Dashboard', 'Maintenance Jobs', 'Create Job', 'Rooms', 'Reports'].includes(item.name)
 );
 
 export function MobileNav({ className }: MobileNavProps) {
@@ -45,25 +45,25 @@ export function MobileNav({ className }: MobileNavProps) {
                   rounded-lg transition-all duration-200 ease-in-out
                   touch-manipulation relative
                   ${isActive 
-                    ? "text-gray-900" 
-                    : "text-gray-600 hover:text-gray-900"
+                    ? "text-blue-700" 
+                    : "text-gray-600 hover:text-blue-700"
                   }
                 `}
                 aria-label={`Navigate to ${item.name}`}
                 aria-current={isActive ? 'page' : undefined}
               >
-                {/* Instagram-style active indicator */}
+                {/* Active indicator */}
                 {isActive && (
-                  <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-gray-900 rounded-full" />
+                  <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-6 h-0.5 bg-blue-600 rounded-full" />
                 )}
                 <Icon 
                   className={`w-6 h-6 transition-all duration-200 ${
-                    isActive ? "text-gray-900" : "text-gray-600"
+                    isActive ? "text-blue-700" : "text-gray-600"
                   }`} 
                   aria-hidden={true}
                 />
                 <span className={`text-xs font-medium ${
-                  isActive ? "text-gray-900" : "text-gray-600"
+                  isActive ? "text-blue-700" : "text-gray-600"
                 }`}>
                   {item.shortName}
                 </span>
@@ -110,7 +110,7 @@ export function MobileTopBar({ className }: MobileNavProps) {
           </Button>
         </div>
         
-        <h1 className="text-lg font-semibold text-gray-900 text-balance truncate max-w-48">
+        <h1 className="text-lg font-semibold text-blue-700 text-balance truncate max-w-48">
           {getPageTitle()}
         </h1>
         

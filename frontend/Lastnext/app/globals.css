@@ -5,6 +5,34 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --status-open-bg: #2563EB;
+  --status-open-text: #FFFFFF;
+  --status-open-border: #1D4ED8;
+  --status-assigned-bg: #2563EB;
+  --status-assigned-text: #FFFFFF;
+  --status-assigned-border: #1D4ED8;
+  --status-in-progress-bg: #F97316;
+  --status-in-progress-text: #FFFFFF;
+  --status-in-progress-border: #C2410C;
+  --status-waiting-spare-part-bg: #F59E0B;
+  --status-waiting-spare-part-text: #111827;
+  --status-waiting-spare-part-border: #B45309;
+  --status-waiting-vendor-bg: #D97706;
+  --status-waiting-vendor-text: #FFFFFF;
+  --status-waiting-vendor-border: #92400E;
+  --status-completed-bg: #16A34A;
+  --status-completed-text: #FFFFFF;
+  --status-completed-border: #15803D;
+  --status-verified-bg: #0D9488;
+  --status-verified-text: #FFFFFF;
+  --status-verified-border: #0F766E;
+  --status-cancelled-bg: #DC2626;
+  --status-cancelled-text: #FFFFFF;
+  --status-cancelled-border: #B91C1C;
+  --status-defect-bg: #7C3AED;
+  --status-defect-text: #FFFFFF;
+  --status-defect-border: #6D28D9;
 }
 
 body {
@@ -421,14 +449,15 @@ body {
     --pcms-row-hover: #f8fbff;
     --pcms-focus: 0 0 0 4px rgba(21, 94, 239, 0.18);
 
-    --status-open-bg: #DBEAFE; --status-open-text: #1D4ED8; --status-open-border: #93C5FD;
-    --status-assigned-bg: #EDE9FE; --status-assigned-text: #6D28D9; --status-assigned-border: #C4B5FD;
-    --status-in-progress-bg: #FFEDD5; --status-in-progress-text: #C2410C; --status-in-progress-border: #FDBA74;
-    --status-waiting-spare-part-bg: #FEF3C7; --status-waiting-spare-part-text: #B45309; --status-waiting-spare-part-border: #F59E0B;
-    --status-waiting-vendor-bg: #FDE68A; --status-waiting-vendor-text: #92400E; --status-waiting-vendor-border: #D97706;
-    --status-completed-bg: #DCFCE7; --status-completed-text: #15803D; --status-completed-border: #86EFAC;
-    --status-verified-bg: #CCFBF1; --status-verified-text: #0F766E; --status-verified-border: #5EEAD4;
-    --status-cancelled-bg: #FEE2E2; --status-cancelled-text: #B91C1C; --status-cancelled-border: #FCA5A5;
+    --status-open-bg: #2563EB; --status-open-text: #FFFFFF; --status-open-border: #1D4ED8;
+    --status-assigned-bg: #2563EB; --status-assigned-text: #FFFFFF; --status-assigned-border: #1D4ED8;
+    --status-in-progress-bg: #F97316; --status-in-progress-text: #FFFFFF; --status-in-progress-border: #C2410C;
+    --status-waiting-spare-part-bg: #F59E0B; --status-waiting-spare-part-text: #111827; --status-waiting-spare-part-border: #B45309;
+    --status-waiting-vendor-bg: #D97706; --status-waiting-vendor-text: #FFFFFF; --status-waiting-vendor-border: #92400E;
+    --status-completed-bg: #16A34A; --status-completed-text: #FFFFFF; --status-completed-border: #15803D;
+    --status-verified-bg: #0D9488; --status-verified-text: #FFFFFF; --status-verified-border: #0F766E;
+    --status-cancelled-bg: #DC2626; --status-cancelled-text: #FFFFFF; --status-cancelled-border: #B91C1C;
+    --status-defect-bg: #7C3AED; --status-defect-text: #FFFFFF; --status-defect-border: #6D28D9;
 
     --priority-low-bg: #DCFCE7; --priority-low-text: #166534; --priority-low-border: #86EFAC;
     --priority-medium-bg: #DBEAFE; --priority-medium-text: #1D4ED8; --priority-medium-border: #93C5FD;
@@ -469,9 +498,10 @@ body {
   .pcms-status-badge--in_progress { background: var(--status-in-progress-bg); color: var(--status-in-progress-text); border-color: var(--status-in-progress-border); }
   .pcms-status-badge--waiting_spare_part, .pcms-status-badge--waiting_sparepart { background: var(--status-waiting-spare-part-bg); color: var(--status-waiting-spare-part-text); border-color: var(--status-waiting-spare-part-border); }
   .pcms-status-badge--waiting_vendor { background: var(--status-waiting-vendor-bg); color: var(--status-waiting-vendor-text); border-color: var(--status-waiting-vendor-border); }
-  .pcms-status-badge--completed { background: var(--status-completed-bg); color: var(--status-completed-text); border-color: var(--status-completed-border); }
+  .pcms-status-badge--completed, .pcms-status-badge--fixed { background: var(--status-completed-bg); color: var(--status-completed-text); border-color: var(--status-completed-border); }
   .pcms-status-badge--verified { background: var(--status-verified-bg); color: var(--status-verified-text); border-color: var(--status-verified-border); }
   .pcms-status-badge--cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
+  .pcms-status-badge--defect, .pcms-status-badge--under_review, .pcms-status-badge--waiting_fix_defect { background: var(--status-defect-bg); color: var(--status-defect-text); border-color: var(--status-defect-border); }
   .pcms-priority-badge--low { background: var(--priority-low-bg); color: var(--priority-low-text); border-color: var(--priority-low-border); }
   .pcms-priority-badge--medium { background: var(--priority-medium-bg); color: var(--priority-medium-text); border-color: var(--priority-medium-border); }
   .pcms-priority-badge--high { background: var(--priority-high-bg); color: var(--priority-high-text); border-color: var(--priority-high-border); }
@@ -556,14 +586,15 @@ body {
     --pcms-button-shadow: 0 14px 28px rgba(29, 161, 242, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35);
     --pcms-focus: 0 0 0 4px rgba(32, 214, 199, 0.24);
 
-    --status-open-bg: #e4f4ff; --status-open-text: #075ca8; --status-open-border: #7cc8ff;
-    --status-assigned-bg: #f0e9ff; --status-assigned-text: #6730ba; --status-assigned-border: #c5a8ff;
-    --status-in-progress-bg: #fff0df; --status-in-progress-text: #bd4b00; --status-in-progress-border: #ffbd75;
-    --status-waiting-spare-part-bg: #fff6cf; --status-waiting-spare-part-text: #9b6200; --status-waiting-spare-part-border: #f0c33f;
-    --status-waiting-vendor-bg: #f8e6c9; --status-waiting-vendor-text: #81511b; --status-waiting-vendor-border: #ce9a50;
-    --status-completed-bg: #dbfae6; --status-completed-text: #11733a; --status-completed-border: #77dd9b;
-    --status-verified-bg: #d8fbf5; --status-verified-text: #08766d; --status-verified-border: #64ddd0;
-    --status-cancelled-bg: #ffe3e8; --status-cancelled-text: #b01638; --status-cancelled-border: #ff9aad;
+    --status-open-bg: #2563EB; --status-open-text: #FFFFFF; --status-open-border: #1D4ED8;
+    --status-assigned-bg: #2563EB; --status-assigned-text: #FFFFFF; --status-assigned-border: #1D4ED8;
+    --status-in-progress-bg: #F97316; --status-in-progress-text: #FFFFFF; --status-in-progress-border: #C2410C;
+    --status-waiting-spare-part-bg: #F59E0B; --status-waiting-spare-part-text: #111827; --status-waiting-spare-part-border: #B45309;
+    --status-waiting-vendor-bg: #D97706; --status-waiting-vendor-text: #FFFFFF; --status-waiting-vendor-border: #92400E;
+    --status-completed-bg: #16A34A; --status-completed-text: #FFFFFF; --status-completed-border: #15803D;
+    --status-verified-bg: #0D9488; --status-verified-text: #FFFFFF; --status-verified-border: #0F766E;
+    --status-cancelled-bg: #DC2626; --status-cancelled-text: #FFFFFF; --status-cancelled-border: #B91C1C;
+    --status-defect-bg: #7C3AED; --status-defect-text: #FFFFFF; --status-defect-border: #6D28D9;
   }
 
   html { background: var(--pcms-app-bg); }
@@ -641,7 +672,52 @@ body {
   .pcms-status-badge--completed, .pcms-status-badge--fixed { background: var(--status-completed-bg); color: var(--status-completed-text); border-color: var(--status-completed-border); }
   .pcms-status-badge--verified { background: var(--status-verified-bg); color: var(--status-verified-text); border-color: var(--status-verified-border); }
   .pcms-status-badge--cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
-  .pcms-status-badge--under_review { background: #f0e9ff; color: #6d28d9; border-color: #c4b5fd; }
+  .pcms-status-badge--defect, .pcms-status-badge--under_review, .pcms-status-badge--waiting_fix_defect { background: var(--status-defect-bg); color: var(--status-defect-text); border-color: var(--status-defect-border); }
+
+  .pcms-status-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+  }
+  @media (min-width: 768px) { .pcms-status-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (min-width: 1280px) { .pcms-status-summary-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  .pcms-status-card {
+    --status-card-bg: var(--status-open-bg);
+    --status-card-text: var(--status-open-text);
+    --status-card-border: var(--status-open-border);
+    position: relative;
+    isolation: isolate;
+    min-height: 118px;
+    overflow: hidden;
+    border: 1px solid var(--status-card-border);
+    border-radius: 22px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--status-card-bg) 94%, #ffffff 6%), var(--status-card-bg));
+    color: var(--status-card-text);
+    padding: 1rem;
+    box-shadow: 0 14px 28px color-mix(in srgb, var(--status-card-border) 24%, transparent), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  .pcms-status-card::after {
+    content: "";
+    position: absolute;
+    inset: auto -20% -45% 32%;
+    z-index: -1;
+    height: 120px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.18);
+  }
+  .pcms-status-card__header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+  .pcms-status-card__label { margin: 0; color: var(--status-card-text); font-size: .78rem; font-weight: 900; line-height: 1.2; letter-spacing: .04em; text-transform: uppercase; }
+  .pcms-status-card__indicator { width: 14px; height: 14px; flex: 0 0 auto; border: 2px solid color-mix(in srgb, var(--status-card-text) 72%, transparent); border-radius: 999px; background: var(--status-card-border); box-shadow: 0 0 0 4px rgba(255,255,255,.18); }
+  .pcms-status-card__count { display: block; margin-top: 1.15rem; color: var(--status-card-text); font-size: clamp(2rem, 7vw, 3rem); font-weight: 950; line-height: .9; letter-spacing: -.06em; }
+  .pcms-status-card__detail { margin: .65rem 0 0; color: var(--status-card-text); font-size: .78rem; font-weight: 800; opacity: .86; }
+  .pcms-status-card--open, .pcms-status-card--pending { --status-card-bg: var(--status-open-bg); --status-card-text: var(--status-open-text); --status-card-border: var(--status-open-border); }
+  .pcms-status-card--in_progress { --status-card-bg: var(--status-in-progress-bg); --status-card-text: var(--status-in-progress-text); --status-card-border: var(--status-in-progress-border); }
+  .pcms-status-card--waiting_spare_part, .pcms-status-card--waiting_sparepart { --status-card-bg: var(--status-waiting-spare-part-bg); --status-card-text: var(--status-waiting-spare-part-text); --status-card-border: var(--status-waiting-spare-part-border); }
+  .pcms-status-card--waiting_vendor { --status-card-bg: var(--status-waiting-vendor-bg); --status-card-text: var(--status-waiting-vendor-text); --status-card-border: var(--status-waiting-vendor-border); }
+  .pcms-status-card--completed, .pcms-status-card--fixed { --status-card-bg: var(--status-completed-bg); --status-card-text: var(--status-completed-text); --status-card-border: var(--status-completed-border); }
+  .pcms-status-card--verified { --status-card-bg: var(--status-verified-bg); --status-card-text: var(--status-verified-text); --status-card-border: var(--status-verified-border); }
+  .pcms-status-card--cancelled { --status-card-bg: var(--status-cancelled-bg); --status-card-text: var(--status-cancelled-text); --status-card-border: var(--status-cancelled-border); }
+  .pcms-status-card--defect, .pcms-status-card--under_review, .pcms-status-card--waiting_fix_defect { --status-card-bg: var(--status-defect-bg); --status-card-text: var(--status-defect-text); --status-card-border: var(--status-defect-border); }
 
   .pcms-floating-action {
     position: fixed;

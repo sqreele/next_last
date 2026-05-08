@@ -30,7 +30,12 @@ export function MobileTopBar({ title, actions }: { title: string; actions?: Reac
 }
 
 export function FloatingActionButton({ href = '/dashboard/create-job', label = 'Create Job' }: { href?: string; label?: string }) {
-  return <Link href={href} className="pcms-floating-action"><Plus className="h-5 w-5" />{label}</Link>;
+  return (
+    <Link href={href} className="pcms-floating-action" aria-label={label}>
+      <Plus className="h-5 w-5" />
+      <span>{label}</span>
+    </Link>
+  );
 }
 
 export function LoadingSkeleton({ rows = 4 }: { rows?: number }) {

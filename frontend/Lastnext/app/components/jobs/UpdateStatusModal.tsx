@@ -36,11 +36,11 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
   const [error, setError] = useState<string | null>(null);
 
   const statuses = [
-    { value: 'pending' as JobStatus, label: 'Pending' },
+    { value: 'pending' as JobStatus, label: 'Open' },
     { value: 'in_progress' as JobStatus, label: 'In Progress' },
     { value: 'completed' as JobStatus, label: 'Completed' },
     { value: 'cancelled' as JobStatus, label: 'Cancelled' },
-    { value: 'waiting_sparepart' as JobStatus, label: 'Waiting for Sparepart' },
+    { value: 'waiting_sparepart' as JobStatus, label: 'Waiting Spare Part' },
   ].filter(status => status.value !== job.status);
 
   const handleUpdate = async () => {
@@ -122,7 +122,7 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
           </div>
           <div className="space-y-2">
             <div className="font-medium text-sm text-gray-700">New Status:</div>
-            <div className="flex flex-wrap gap-2 bg-gray-50 p-2 rounded-md">
+            <div className="flex flex-wrap gap-2 rounded-2xl border border-[var(--pcms-border)] bg-white/80 p-2">
               {statuses.map((status) => (
                 <div key={status.value} className="flex">
                   <StatusUpdateButton

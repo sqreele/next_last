@@ -43,7 +43,7 @@ import type { UtilityConsumptionRow } from '@/app/dashboard/utility-consumption/
 
 const STATUS_FILTER_OPTIONS: Array<{ value: JobStatus | 'all'; label: string }> = [
   { value: 'all', label: 'All statuses' },
-  { value: 'pending', label: 'Pending' },
+  { value: 'pending', label: 'Open' },
   { value: 'in_progress', label: 'In progress' },
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },
@@ -304,9 +304,9 @@ interface UtilityMonthSnapshot {
 }
 
 const PRIORITY_COLORS: Record<JobPriority, string> = {
-  high: '#dc2626',
-  medium: '#ea580c',
-  low: '#16a34a',
+  high: '#F97316',
+  medium: '#2563EB',
+  low: '#16A34A',
 };
 
 function formatChartCount(v: number | string) {

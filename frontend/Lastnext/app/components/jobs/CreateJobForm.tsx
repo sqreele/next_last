@@ -69,6 +69,14 @@ const validationSchema = Yup.object().shape({
   is_preventivemaintenance: Yup.boolean().default(false),
 });
 
+
+const PRIORITY_OPTIONS = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'critical', label: 'Critical' },
+];
+
 const initialValues: FormValues = {
   description: '',
   status: 'pending',
@@ -468,26 +476,31 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                   <Label className="text-sm font-medium text-gray-700 sm:text-base">
                     Priority <span className="text-red-500">*</span>
                   </Label>
-                  <Select
-                    value={values.priority}
-                    onValueChange={(value) => {
-                      setFieldValue('priority', value);
-                      setFieldTouched('priority', true, false);
-                    }}
-                    disabled={isSubmitting}
+                  <div
+                    className={`pcms-priority-picker ${(touched.priority || submitCount > 0) && errors.priority ? 'pcms-priority-picker--error' : ''}`}
+                    role="radiogroup"
+                    aria-label="Priority"
                   >
-                    <SelectTrigger className={`h-11 border-2 rounded-xl transition-all duration-200 sm:h-12 ${
-                      (touched.priority || submitCount > 0) && errors.priority ? 'border-red-300' : 'border-gray-200'
-                    }`}>
-                      <SelectValue placeholder="Select Priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    {PRIORITY_OPTIONS.map((option) => {
+                      const active = values.priority === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          disabled={isSubmitting}
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => {
+                            setFieldValue('priority', option.value);
+                            setFieldTouched('priority', true, false);
+                          }}
+                          className={`pcms-priority-picker__option pcms-priority-picker__option--${option.value} ${active ? 'is-active' : ''}`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                   {(touched.priority || submitCount > 0) && errors.priority && (
                     <p className="text-sm text-red-600 flex items-center gap-1">
                       <AlertCircle className="h-4 w-4" />

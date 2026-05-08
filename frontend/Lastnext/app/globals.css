@@ -820,3 +820,223 @@ body {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* PCMS global workflow color system: final specificity layer for priority, status, and actions. */
+@layer base {
+  :root {
+    --priority-low-bg: #DCFCE7;
+    --priority-low-text: #166534;
+    --priority-low-border: #86EFAC;
+    --priority-low-active-bg: #16A34A;
+    --priority-low-active-text: #FFFFFF;
+    --priority-low-active-border: #15803D;
+    --priority-medium-bg: #DBEAFE;
+    --priority-medium-text: #1D4ED8;
+    --priority-medium-border: #93C5FD;
+    --priority-medium-active-bg: #2563EB;
+    --priority-medium-active-text: #FFFFFF;
+    --priority-medium-active-border: #1D4ED8;
+    --priority-high-bg: #FED7AA;
+    --priority-high-text: #C2410C;
+    --priority-high-border: #FB923C;
+    --priority-high-active-bg: #F97316;
+    --priority-high-active-text: #FFFFFF;
+    --priority-high-active-border: #C2410C;
+    --priority-critical-bg: #FEE2E2;
+    --priority-critical-text: #B91C1C;
+    --priority-critical-border: #FCA5A5;
+    --priority-critical-active-bg: #DC2626;
+    --priority-critical-active-text: #FFFFFF;
+    --priority-critical-active-border: #B91C1C;
+
+    --status-open-bg: #2563EB;
+    --status-open-text: #FFFFFF;
+    --status-open-border: #1D4ED8;
+    --status-assigned-bg: #7C3AED;
+    --status-assigned-text: #FFFFFF;
+    --status-assigned-border: #6D28D9;
+    --status-in-progress-bg: #F97316;
+    --status-in-progress-text: #FFFFFF;
+    --status-in-progress-border: #C2410C;
+    --status-waiting-spare-part-bg: #F59E0B;
+    --status-waiting-spare-part-text: #111827;
+    --status-waiting-spare-part-border: #B45309;
+    --status-waiting-vendor-bg: #D97706;
+    --status-waiting-vendor-text: #FFFFFF;
+    --status-waiting-vendor-border: #92400E;
+    --status-completed-bg: #16A34A;
+    --status-completed-text: #FFFFFF;
+    --status-completed-border: #15803D;
+    --status-verified-bg: #0D9488;
+    --status-verified-text: #FFFFFF;
+    --status-verified-border: #0F766E;
+    --status-cancelled-bg: #DC2626;
+    --status-cancelled-text: #FFFFFF;
+    --status-cancelled-border: #B91C1C;
+    --status-defect-bg: #7C3AED;
+    --status-defect-text: #FFFFFF;
+    --status-defect-border: #6D28D9;
+
+    --pcms-primary: #155EEF;
+    --pcms-primary-hover: #1247B6;
+    --pcms-button-primary-bg: #155EEF;
+    --pcms-button-primary-hover-bg: #1247B6;
+    --pcms-button-primary-text: #FFFFFF;
+    --pcms-button-secondary-bg: #FFFFFF;
+    --pcms-button-secondary-border: #CBD5E1;
+    --pcms-button-secondary-text: #334155;
+    --pcms-button-secondary-hover-bg: #F8FAFC;
+    --pcms-button-success-bg: #16A34A;
+    --pcms-button-success-hover-bg: #15803D;
+    --pcms-button-warning-bg: #F97316;
+    --pcms-button-warning-hover-bg: #C2410C;
+    --pcms-button-danger-bg: #DC2626;
+    --pcms-button-danger-hover-bg: #B91C1C;
+    --pcms-button-shadow: 0 10px 20px rgba(21, 94, 239, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    --pcms-button-shadow-hover: 0 14px 28px rgba(18, 71, 182, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    --pcms-accent-gradient: linear-gradient(135deg, var(--pcms-button-primary-bg), #0D9488);
+  }
+}
+
+@layer components {
+  .pcms-status-badge,
+  .pcms-priority-badge {
+    border-style: solid;
+    border-width: 1px;
+    min-height: 30px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pcms-priority-badge--low { background: var(--priority-low-bg); color: var(--priority-low-text); border-color: var(--priority-low-border); }
+  .pcms-priority-badge--medium { background: var(--priority-medium-bg); color: var(--priority-medium-text); border-color: var(--priority-medium-border); }
+  .pcms-priority-badge--high { background: var(--priority-high-bg); color: var(--priority-high-text); border-color: var(--priority-high-border); box-shadow: 0 6px 14px rgba(249, 115, 22, .18), inset 0 1px 0 rgba(255,255,255,.6); }
+  .pcms-priority-badge--critical,
+  .pcms-priority-badge--urgent { background: var(--priority-critical-bg); color: var(--priority-critical-text); border-color: var(--priority-critical-border); box-shadow: 0 8px 18px rgba(220, 38, 38, .20), inset 0 1px 0 rgba(255,255,255,.6); }
+
+  .pcms-priority-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+    max-width: 100%;
+  }
+
+  .pcms-priority-picker__option {
+    min-height: 44px;
+    flex: 1 1 138px;
+    border: 1px solid currentColor;
+    border-radius: var(--pcms-button-radius);
+    padding: .7rem 1rem;
+    font-size: .9rem;
+    font-weight: 900;
+    line-height: 1;
+    text-align: center;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease;
+    touch-action: manipulation;
+  }
+  .pcms-priority-picker__option:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(15, 23, 42, .10); }
+  .pcms-priority-picker__option:active:not(:disabled) { transform: translateY(0); }
+  .pcms-priority-picker__option:disabled { cursor: not-allowed; opacity: .55; }
+  .pcms-priority-picker--error .pcms-priority-picker__option { box-shadow: 0 0 0 1px #FCA5A5; }
+  .pcms-priority-picker__option--low { background: var(--priority-low-bg); color: var(--priority-low-text); border-color: var(--priority-low-border); }
+  .pcms-priority-picker__option--medium { background: var(--priority-medium-bg); color: var(--priority-medium-text); border-color: var(--priority-medium-border); }
+  .pcms-priority-picker__option--high { background: var(--priority-high-bg); color: var(--priority-high-text); border-color: var(--priority-high-border); }
+  .pcms-priority-picker__option--critical { background: var(--priority-critical-bg); color: var(--priority-critical-text); border-color: var(--priority-critical-border); }
+  .pcms-priority-picker__option--low.is-active { background: var(--priority-low-active-bg); color: var(--priority-low-active-text); border-color: var(--priority-low-active-border); }
+  .pcms-priority-picker__option--medium.is-active { background: var(--priority-medium-active-bg); color: var(--priority-medium-active-text); border-color: var(--priority-medium-active-border); }
+  .pcms-priority-picker__option--high.is-active { background: var(--priority-high-active-bg); color: var(--priority-high-active-text); border-color: var(--priority-high-active-border); }
+  .pcms-priority-picker__option--critical.is-active { background: var(--priority-critical-active-bg); color: var(--priority-critical-active-text); border-color: var(--priority-critical-active-border); }
+
+  .pcms-status-badge--open,
+  .pcms-status-badge--pending { background: var(--status-open-bg); color: var(--status-open-text); border-color: var(--status-open-border); }
+  .pcms-status-badge--assigned { background: var(--status-assigned-bg); color: var(--status-assigned-text); border-color: var(--status-assigned-border); }
+  .pcms-status-badge--in_progress { background: var(--status-in-progress-bg); color: var(--status-in-progress-text); border-color: var(--status-in-progress-border); }
+  .pcms-status-badge--waiting_spare_part,
+  .pcms-status-badge--waiting_sparepart { background: var(--status-waiting-spare-part-bg); color: var(--status-waiting-spare-part-text); border-color: var(--status-waiting-spare-part-border); }
+  .pcms-status-badge--waiting_vendor { background: var(--status-waiting-vendor-bg); color: var(--status-waiting-vendor-text); border-color: var(--status-waiting-vendor-border); }
+  .pcms-status-badge--completed,
+  .pcms-status-badge--fixed { background: var(--status-completed-bg); color: var(--status-completed-text); border-color: var(--status-completed-border); }
+  .pcms-status-badge--verified { background: var(--status-verified-bg); color: var(--status-verified-text); border-color: var(--status-verified-border); }
+  .pcms-status-badge--cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
+  .pcms-status-badge--defect,
+  .pcms-status-badge--under_review,
+  .pcms-status-badge--waiting_fix_defect { background: var(--status-defect-bg); color: var(--status-defect-text); border-color: var(--status-defect-border); }
+
+  .pcms-btn,
+  .pcms-action-button,
+  .pcms-secondary-button,
+  .pcms-danger-button,
+  .pcms-status-update-button,
+  .pcms-filter-button,
+  .pcms-pagination-button,
+  .pcms-pagination-button--active {
+    min-height: 44px;
+    border-style: solid;
+    border-width: 1px;
+  }
+  .pcms-btn-primary,
+  .pcms-action-button { background: var(--pcms-button-primary-bg); color: var(--pcms-button-primary-text); border-color: var(--pcms-button-primary-bg); box-shadow: var(--pcms-button-shadow); }
+  .pcms-btn-primary:hover:not(:disabled),
+  .pcms-action-button:hover:not(:disabled) { background: var(--pcms-button-primary-hover-bg); border-color: var(--pcms-button-primary-hover-bg); color: var(--pcms-button-primary-text); box-shadow: var(--pcms-button-shadow-hover); }
+  .pcms-btn-secondary,
+  .pcms-secondary-button,
+  .pcms-filter-button,
+  .pcms-pagination-button { background: var(--pcms-button-secondary-bg); color: var(--pcms-button-secondary-text); border-color: var(--pcms-button-secondary-border); }
+  .pcms-btn-secondary:hover:not(:disabled),
+  .pcms-secondary-button:hover:not(:disabled),
+  .pcms-filter-button:hover:not(:disabled),
+  .pcms-pagination-button:hover:not(:disabled) { background: var(--pcms-button-secondary-hover-bg); border-color: var(--pcms-button-primary-bg); color: var(--pcms-button-primary-hover-bg); }
+  .pcms-btn-success { background: var(--pcms-button-success-bg); color: #FFFFFF; border-color: var(--pcms-button-success-bg); }
+  .pcms-btn-success:hover:not(:disabled) { background: var(--pcms-button-success-hover-bg); border-color: var(--pcms-button-success-hover-bg); }
+  .pcms-btn-warning { background: var(--pcms-button-warning-bg); color: #FFFFFF; border-color: var(--pcms-button-warning-bg); }
+  .pcms-btn-warning:hover:not(:disabled) { background: var(--pcms-button-warning-hover-bg); border-color: var(--pcms-button-warning-hover-bg); }
+  .pcms-btn-danger,
+  .pcms-danger-button { background: var(--pcms-button-danger-bg); color: #FFFFFF; border-color: var(--pcms-button-danger-bg); }
+  .pcms-btn-danger:hover:not(:disabled),
+  .pcms-danger-button:hover:not(:disabled) { background: var(--pcms-button-danger-hover-bg); border-color: var(--pcms-button-danger-hover-bg); }
+  .pcms-pagination-button--active { background: var(--pcms-button-primary-bg); color: #FFFFFF; border-color: var(--pcms-button-primary-bg); box-shadow: var(--pcms-button-shadow); }
+
+  .pcms-status-update-button { flex: 1 1 170px; box-shadow: 0 8px 18px rgba(15, 23, 42, .12), inset 0 1px 0 rgba(255,255,255,.22); }
+  .pcms-status-update-button--open,
+  .pcms-status-update-button--pending { background: var(--status-open-bg); color: var(--status-open-text); border-color: var(--status-open-border); }
+  .pcms-status-update-button--assigned { background: var(--status-assigned-bg); color: var(--status-assigned-text); border-color: var(--status-assigned-border); }
+  .pcms-status-update-button--in_progress { background: var(--status-in-progress-bg); color: var(--status-in-progress-text); border-color: var(--status-in-progress-border); }
+  .pcms-status-update-button--waiting_spare_part,
+  .pcms-status-update-button--waiting_sparepart { background: var(--status-waiting-spare-part-bg); color: var(--status-waiting-spare-part-text); border-color: var(--status-waiting-spare-part-border); }
+  .pcms-status-update-button--waiting_vendor { background: var(--status-waiting-vendor-bg); color: var(--status-waiting-vendor-text); border-color: var(--status-waiting-vendor-border); }
+  .pcms-status-update-button--completed,
+  .pcms-status-update-button--fixed { background: var(--status-completed-bg); color: var(--status-completed-text); border-color: var(--status-completed-border); }
+  .pcms-status-update-button--verified { background: var(--status-verified-bg); color: var(--status-verified-text); border-color: var(--status-verified-border); }
+  .pcms-status-update-button--cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
+  .pcms-status-update-button--defect,
+  .pcms-status-update-button--under_review,
+  .pcms-status-update-button--waiting_fix_defect { background: var(--status-defect-bg); color: var(--status-defect-text); border-color: var(--status-defect-border); }
+
+  .pcms-status-card--assigned { --status-card-bg: var(--status-assigned-bg); --status-card-text: var(--status-assigned-text); --status-card-border: var(--status-assigned-border); }
+
+  .pcms-upload-dropzone { border-color: #93C5FD; background: linear-gradient(180deg, #EFF6FF, #FFFFFF); }
+  .pcms-upload-dropzone:hover { border-color: var(--pcms-button-primary-bg); background: #EFF6FF; }
+}
+
+@media (max-width: 640px) {
+  .pcms-priority-picker__option { flex-basis: calc(50% - .3rem); padding-inline: .75rem; }
+  .pcms-status-update-button { flex-basis: 100%; width: 100%; }
+  .pcms-status-badge,
+  .pcms-priority-badge { min-height: 30px; max-width: 100%; }
+}
+
+@layer components {
+  .pcms-room-status-badge {
+    min-height: 30px;
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 999px;
+    padding: .32rem .75rem;
+    font-size: .74rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .pcms-room-status-badge--active { background: var(--status-completed-bg); color: var(--status-completed-text); border-color: var(--status-completed-border); }
+  .pcms-room-status-badge--inactive { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
+}

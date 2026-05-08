@@ -95,7 +95,7 @@ const statusAliases: Record<string, string> = {
   under_review: 'defect',
 };
 
-function normalizeStatus(status?: string) {
+export function normalizeStatus(status?: string) {
   const key = (status || 'open').trim().toLowerCase().replace(/[-\s]+/g, '_');
   return statusAliases[key] || statusAliases[key.replace(/_/g, ' ')] || key;
 }
@@ -110,8 +110,14 @@ export function StatusBadge({ status }: { status?: string }) {
   return <span className={cn('pcms-status-badge', `pcms-status-badge--${normalized}`)}>{humanize(normalized)}</span>;
 }
 
+export function normalizePriority(priority?: string) {
+  const key = (priority || 'medium').trim().toLowerCase().replace(/[-\s]+/g, '_');
+  if (key === 'urgent') return 'critical';
+  return key;
+}
+
 export function PriorityBadge({ priority }: { priority?: string }) {
-  const normalized = priority || 'medium';
+  const normalized = normalizePriority(priority);
   return <span className={cn('pcms-priority-badge', `pcms-priority-badge--${normalized}`)}>{humanize(normalized)}</span>;
 }
 

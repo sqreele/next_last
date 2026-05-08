@@ -66,9 +66,9 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
         <CardHeader>
           <div className="flex justify-between items-start">
             <CardTitle className="text-2xl font-bold">Room {room.name || 'N/A'}</CardTitle>
-            <Badge 
-              variant={room.is_active ? 'default' : 'secondary'}
-              className={room.is_active ? 'bg-green-100 text-green-800 border-green-200' : ''}
+            <Badge
+              variant="outline"
+              className={room.is_active ? 'pcms-room-status-badge pcms-room-status-badge--active' : 'pcms-room-status-badge pcms-room-status-badge--inactive'}
             >
               {room.is_active ? 'Active' : 'Inactive'}
             </Badge>

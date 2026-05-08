@@ -751,3 +751,72 @@ body {
   }
   .pcms-input:focus, .pcms-textarea:focus { box-shadow: var(--pcms-focus) !important; }
 }
+
+/* Screenshot-aligned mobile refinements: airy mint canvas, compact two-column cards, soft floating controls. */
+@layer components {
+  .pcms-job-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .72rem;
+  }
+
+  .pcms-floating-action {
+    bottom: calc(6.35rem + env(safe-area-inset-bottom));
+    right: max(1.05rem, env(safe-area-inset-right));
+    min-height: 58px;
+    min-width: 58px;
+    padding: 0 1rem;
+    border: 3px solid rgba(255, 255, 255, .72);
+  }
+
+  .pcms-floating-action span {
+    display: none;
+  }
+
+  .pcms-floating-action svg {
+    height: 1.45rem;
+    width: 1.45rem;
+  }
+
+  .pcms-section-card:has(.pcms-eyebrow) {
+    background: rgba(255, 255, 255, .94);
+  }
+}
+
+@media (max-width: 640px) {
+  .pcms-status-badge,
+  .pcms-priority-badge {
+    min-height: 25px;
+    padding: .32rem .52rem;
+    font-size: .62rem;
+    letter-spacing: -.01em;
+  }
+
+  .pcms-search-input {
+    min-height: 52px;
+    border-radius: 1.35rem;
+    background: rgba(255, 255, 255, .94);
+  }
+
+  .pcms-page-header {
+    border-radius: 1.65rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .pcms-floating-action span {
+    display: inline;
+  }
+}
+
+@media (min-width: 768px) {
+  .pcms-job-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.15rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .pcms-job-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

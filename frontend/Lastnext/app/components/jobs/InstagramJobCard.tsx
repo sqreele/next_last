@@ -43,7 +43,7 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
           year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
         });
       }
-    } catch (error) {
+    } catch {
       return 'Invalid date';
     }
   }, []);
@@ -89,11 +89,11 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
 
   return (
     <article
-      className="group h-full w-full max-w-full cursor-pointer overflow-hidden rounded-[2rem] border border-[var(--pcms-border)] bg-white/92 text-[var(--pcms-text)] shadow-[var(--pcms-shadow-card)] transition duration-200 hover:-translate-y-1 hover:border-cyan-200 hover:shadow-[var(--pcms-shadow)]"
+      className="group h-full w-full max-w-full cursor-pointer overflow-hidden rounded-[1.35rem] border border-white/80 bg-white/95 text-[var(--pcms-text)] shadow-[var(--pcms-shadow-card)] transition duration-200 hover:-translate-y-1 hover:border-cyan-200 hover:shadow-[var(--pcms-shadow)] sm:rounded-[2rem]"
       onClick={goToDetail}
     >
-      <div className="relative p-2.5">
-        <div className={viewMode === "list" ? "relative h-56 w-full overflow-hidden rounded-[1.55rem] bg-[var(--pcms-surface-soft)]" : "relative aspect-[4/3] w-full overflow-hidden rounded-[1.55rem] bg-[var(--pcms-surface-soft)]"}>
+      <div className="relative p-1.5 sm:p-2.5">
+        <div className={viewMode === "list" ? "relative h-56 w-full overflow-hidden rounded-[1.15rem] bg-[var(--pcms-surface-soft)] sm:rounded-[1.55rem]" : "relative aspect-square w-full overflow-hidden rounded-[1.15rem] bg-[var(--pcms-surface-soft)] sm:aspect-[4/3] sm:rounded-[1.55rem]"}>
           {imageUrls.length > 0 && imageUrls[activeIdx] && !failed.has(activeIdx) ? (
             <Image
               src={imageUrls[activeIdx]}
@@ -114,7 +114,7 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
             </div>
           )}
 
-          <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] items-center gap-2">
+          <div className="absolute left-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-1.5 sm:left-3 sm:top-3 sm:gap-2">
             <StatusBadge status={job.status} />
             {job.is_preventivemaintenance && (
               <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-black text-cyan-700">PM</span>
@@ -136,26 +136,26 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
         </div>
       </div>
 
-      <div className="space-y-3 px-4 pb-4 pt-1">
+      <div className="space-y-2 px-2.5 pb-3 pt-1 sm:space-y-3 sm:px-4 sm:pb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="mb-1 flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-[var(--pcms-primary-strong)]">
+            <div className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[var(--pcms-primary-strong)] sm:gap-2 sm:text-xs sm:tracking-[0.12em]">
               <span>#{job.job_id}</span>
               <span className="h-1 w-1 rounded-full bg-cyan-300" />
               <span>{formatDate(job.created_at)}</span>
             </div>
-            <h2 className="line-clamp-2 text-base font-black leading-tight tracking-[-0.02em] text-[var(--pcms-text)]">
+            <h2 className="line-clamp-2 text-sm font-black leading-tight tracking-[-0.02em] text-[var(--pcms-text)] sm:text-base">
               {job.topics?.[0]?.title || "Maintenance Job"}
             </h2>
           </div>
           <PriorityBadge priority={job.priority} />
         </div>
 
-        <p className="line-clamp-3 text-sm font-medium leading-relaxed text-[var(--pcms-text-muted)]">
+        <p className="line-clamp-2 text-xs font-medium leading-relaxed text-[var(--pcms-text-muted)] sm:line-clamp-3 sm:text-sm">
           {job.description || "No description provided. Add maintenance notes for the technician and Chief Engineer."}
         </p>
 
-        <div className="grid gap-2 rounded-[1.35rem] border border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] p-3 text-xs font-bold text-[var(--pcms-text-muted)]">
+        <div className="grid gap-1.5 rounded-[1rem] border border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] p-2 text-[11px] font-bold text-[var(--pcms-text-muted)] sm:gap-2 sm:rounded-[1.35rem] sm:p-3 sm:text-xs">
           <div className="flex min-w-0 items-center gap-2">
             <MapPin className="h-3.5 w-3.5 shrink-0 text-cyan-600" />
             <span className="truncate">Room / Area: {job.rooms?.[0]?.name || "Not assigned"}</span>
@@ -178,13 +178,13 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
         )}
 
         <div className="flex items-center justify-between gap-3 pt-1">
-          <div className="flex items-center gap-2 text-xs font-black text-[var(--pcms-text-soft)]">
+          <div className="hidden items-center gap-2 text-xs font-black text-[var(--pcms-text-soft)] sm:flex">
             <Calendar className="h-3.5 w-3.5" />
             <span>Created / updated info</span>
           </div>
           <button
             type="button"
-            className="rounded-full bg-[var(--pcms-accent-gradient)] px-3 py-2 text-xs font-black text-white shadow-[var(--pcms-button-shadow)]"
+            className="rounded-full bg-[var(--pcms-accent-gradient)] px-3 py-2 text-xs font-black text-white shadow-[var(--pcms-button-shadow)] max-sm:w-full"
             onClick={(e) => { e.stopPropagation(); goToDetail(); }}
           >
             View

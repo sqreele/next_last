@@ -7,13 +7,9 @@ import JobList from "@/app/components/jobs/jobList";
 import { Job, Property, TabValue } from "@/app/lib/types";
 import {
   Inbox, Clock, PlayCircle, CheckCircle2, XCircle,
-  AlertTriangle, Filter, ChevronDown, Wrench, Settings,
+  AlertTriangle, Filter, Wrench, Settings,
   Grid3X3, List, FileText
 } from "lucide-react";
-import {
-  DropdownMenu, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuTrigger,
-} from "@/app/components/ui/dropdown-menu";
 import { Button } from "@/app/components/ui/button";
 import { FloatingActionButton, MobileTopBar, SearchInput } from "@/app/components/pcms-ui";
 
@@ -42,7 +38,6 @@ const tabConfig = [
 
 export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilter }: JobsContentProps) {
   const [currentTab, setCurrentTab] = useState<TabValue>("all");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const { selectedPropertyId: selectedProperty } = useUser();
@@ -89,10 +84,7 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
 
   const handleTabChange = (value: string) => {
     setCurrentTab(value as TabValue);
-    setIsDropdownOpen(false);
   };
-
-  const currentTabConfig = tabConfig.find(tab => tab.value === currentTab);
 
   return (
     <div className="w-full space-y-4 p-3 sm:p-4 md:p-6">
@@ -171,42 +163,20 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
             </TabsList>
           </div>
 
-          {/* Mobile Dropdown */}
-          <div className="md:hidden">
-            <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full h-12 flex items-center justify-between gap-2 text-sm font-medium text-gray-800 border-gray-200 bg-white hover:bg-gray-50 rounded-xl"
+          {/* Mobile Status Pills */}
+          <div className="md:hidden -mx-3 overflow-x-auto px-3 pb-2 scrollbar-none">
+            <TabsList className="inline-flex h-auto min-w-max items-center gap-2 bg-transparent p-0">
+              {tabConfig.map(({ value, label, icon: Icon, color }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/70 px-3.5 py-2 text-xs font-black shadow-[var(--pcms-shadow-sm)] transition-all data-[state=active]:scale-[1.02] data-[state=active]:bg-[var(--pcms-accent-gradient)] data-[state=active]:text-white data-[state=active]:shadow-[var(--pcms-button-shadow)] ${color}`}
                 >
-                  <div className="flex items-center gap-2">
-                    {currentTabConfig && (
-                      <>
-                        <currentTabConfig.icon className="w-5 h-5 text-gray-600" />
-                        <span className="truncate">{currentTabConfig.label}</span>
-                      </>
-                    )}
-                  </div>
-                  <ChevronDown className="w-5 h-5 text-gray-600" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent 
-                align="start" 
-                className="w-full min-w-[calc(100vw-3rem)] bg-white border border-gray-200 rounded-xl shadow-lg p-2 max-h-80 overflow-y-auto"
-                sideOffset={4}
-              >
-                {tabConfig.map(({ value, label, icon: Icon, color }) => (
-                  <DropdownMenuItem
-                    key={value}
-                    onClick={() => handleTabChange(value)}
-                    className="flex items-center gap-3 py-3 px-4 text-sm text-gray-800 hover:bg-gray-50 hover:text-gray-900 cursor-pointer rounded-lg transition-colors"
-                  >
-                    <Icon className="w-5 h-5 flex-shrink-0" />
-                    <span className="truncate">{label}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  <Icon className="mr-1.5 h-4 w-4 flex-shrink-0" />
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
           </div>
         </div>
 

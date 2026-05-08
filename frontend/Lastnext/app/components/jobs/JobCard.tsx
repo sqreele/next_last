@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
 import { Badge } from "@/app/components/ui/badge";
+import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
 import { Button } from "@/app/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/app/lib/stores/mainStore";
@@ -465,31 +466,14 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
               </div>
             </div>
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
-              <Badge 
-                variant="secondary"
-                className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium flex-shrink-0 ${statusConfig.color} whitespace-nowrap`}
-              >
-                {statusConfig.icon}
-                <span className="hidden xs:inline">{statusConfig.label}</span>
-              </Badge>
+              <StatusBadge status={job.status} />
               <span className="text-[11px] text-gray-500">ID #{String(job.job_id).slice(0, 8)}</span>
             </div>
           </div>
           
           {/* Mobile-friendly priority and status indicators */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <Badge 
-              variant="outline" 
-              className="px-2 py-0.5 text-xs font-medium"
-              aria-label={`Priority ${job.priority || 'Medium'}`}
-            >
-              <span className="xs:hidden">
-                {(job.priority?.charAt(0).toUpperCase() || 'M')}
-              </span>
-              <span className="hidden xs:inline">
-                {job.priority?.charAt(0).toUpperCase() + job.priority?.slice(1) || 'Medium'}
-              </span>
-            </Badge>
+            <PriorityBadge priority={job.priority} />
             <Badge 
               variant="outline" 
               className="px-2 py-0.5 text-xs flex items-center gap-1"

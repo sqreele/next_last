@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { usePreventiveMaintenanceJobs } from '@/app/lib/hooks/usePreventiveMaintenanceJobs';
 import { Job } from '@/app/lib/types';
 import Link from 'next/link';
+import { PriorityBadge, StatusBadge } from '@/app/components/pcms-ui';
 
 interface PreventiveMaintenanceListProps {
   propertyId: string;
@@ -142,16 +143,7 @@ export default function PreventiveMaintenanceList({
           >
             <div className="flex justify-between">
               <h3 className="font-medium">{job.job_id.substring(0, 10)}...</h3>
-              <span className={`px-2 py-1 rounded text-xs ${
-                job.status === 'completed' ? 'bg-green-100 text-green-800' :
-                job.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                job.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                job.status === 'waiting_sparepart' ? 'bg-purple-100 text-purple-800' :
-                job.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {job.status.replace('_', ' ')}
-              </span>
+<StatusBadge status={job.status} />
             </div>
             <p className="text-sm text-gray-600 mt-1 line-clamp-2">{job.description || "No description"}</p>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
@@ -160,13 +152,7 @@ export default function PreventiveMaintenanceList({
                 <span>Completed: {formatDate(job.completed_at)}</span>
               )}
               {job.priority && (
-                <span className={`${
-                  job.priority === 'high' ? 'text-red-600' :
-                  job.priority === 'medium' ? 'text-amber-600' :
-                  'text-green-600'
-                }`}>
-                  Priority: {job.priority}
-                </span>
+<PriorityBadge priority={job.priority} />
               )}
               {job.rooms && job.rooms.length > 0 && (
                 <span>Room: {job.rooms[0].name}</span>

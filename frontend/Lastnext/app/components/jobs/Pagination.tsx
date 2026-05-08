@@ -37,7 +37,7 @@ export default function Pagination({ totalPages, currentPage, onPageChange }: Pa
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
           variant="outline"
-          className="h-9 px-3"
+          className="pcms-pagination-button h-11 px-4"
         >
           Prev
         </Button>
@@ -48,7 +48,7 @@ export default function Pagination({ totalPages, currentPage, onPageChange }: Pa
               key={page}
               onClick={() => onPageChange(page)}
               variant={currentPage === page ? 'default' : 'outline'}
-              className="h-9 min-w-[2.25rem] px-2"
+              className={currentPage === page ? 'pcms-pagination-button--active h-11 min-w-[2.75rem] px-3' : 'pcms-pagination-button h-11 min-w-[2.75rem] px-3'}
             >
               {page}
             </Button>
@@ -59,7 +59,7 @@ export default function Pagination({ totalPages, currentPage, onPageChange }: Pa
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
           variant="outline"
-          className="h-9 px-3"
+          className="pcms-pagination-button h-11 px-4"
         >
           Next
         </Button>
@@ -79,7 +79,7 @@ export default function Pagination({ totalPages, currentPage, onPageChange }: Pa
         <div className="flex items-center gap-1">
           {desktopPages[0] > 1 && (
             <>
-              <Button onClick={() => onPageChange(1)} variant={currentPage === 1 ? 'default' : 'outline'} className="min-w-[2.5rem]">
+              <Button onClick={() => onPageChange(1)} variant={currentPage === 1 ? 'default' : 'outline'} className={currentPage === 1 ? 'pcms-pagination-button--active min-w-[2.75rem]' : 'pcms-pagination-button min-w-[2.75rem]'}>
                 1
               </Button>
               {desktopPages[0] > 2 && <span className="px-1 text-gray-400">…</span>}
@@ -91,7 +91,7 @@ export default function Pagination({ totalPages, currentPage, onPageChange }: Pa
               key={page}
               onClick={() => onPageChange(page)}
               variant={currentPage === page ? 'default' : 'outline'}
-              className="flex items-center justify-center min-w-[2.5rem]"
+              className={currentPage === page ? 'pcms-pagination-button--active flex items-center justify-center min-w-[2.75rem]' : 'pcms-pagination-button flex items-center justify-center min-w-[2.75rem]'}
             >
               {page}
             </Button>
@@ -102,7 +102,7 @@ export default function Pagination({ totalPages, currentPage, onPageChange }: Pa
               {desktopPages[desktopPages.length - 1] < totalPages - 1 && (
                 <span className="px-1 text-gray-400">…</span>
               )}
-              <Button onClick={() => onPageChange(totalPages)} variant={currentPage === totalPages ? 'default' : 'outline'} className="min-w-[2.5rem]">
+              <Button onClick={() => onPageChange(totalPages)} variant={currentPage === totalPages ? 'default' : 'outline'} className={currentPage === totalPages ? 'pcms-pagination-button--active min-w-[2.75rem]' : 'pcms-pagination-button min-w-[2.75rem]'}>
                 {totalPages}
               </Button>
             </>

@@ -148,8 +148,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       <div
         className={cn(
-          "rounded-lg border-2 border-dashed p-4 text-center sm:p-6",
-          isDragging ? "border-primary bg-primary/10" : "border-muted",
+          "pcms-upload-dropzone rounded-xl border-2 border-dashed p-4 text-center transition-colors sm:p-6",
+          isDragging ? "border-[var(--pcms-primary)] bg-[var(--pcms-primary-soft)]" : "",
           disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
         )}
         onDragOver={(e) => {
@@ -167,7 +167,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         >
           <Upload className="h-6 w-6 text-muted-foreground sm:h-8 sm:w-8" />
           <p className="px-2 text-xs text-muted-foreground sm:text-sm">
-            Drag and drop images or click to upload
+            Drag and drop images or click to upload photos
           </p>
           <p className="text-[11px] text-muted-foreground sm:text-xs">
             (Max {maxFiles} files, {maxSize}MB each)

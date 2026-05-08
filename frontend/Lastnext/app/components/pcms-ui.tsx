@@ -117,6 +117,15 @@ export function SecondaryButton({ className, children, ...props }: React.ButtonH
   return <button className={cn('pcms-secondary-button', className)} {...props}>{children}</button>;
 }
 
+export function DangerButton({ className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button className={cn('pcms-danger-button', className)} {...props}>{children}</button>;
+}
+
+export function StatusUpdateButton({ status, className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { status: string }) {
+  const normalized = statusAliases[status || ''] || status || 'open';
+  return <button className={cn('pcms-status-update-button', `pcms-status-update-button--${normalized}`, className)} {...props}>{children}</button>;
+}
+
 export function FormField({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-700">

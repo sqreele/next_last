@@ -1016,19 +1016,19 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
               <button
                 onClick={handleExportPdf}
                 disabled={isExportingPdf}
-                className={`flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl hover:from-slate-700 hover:to-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 font-medium shadow-lg hover:shadow-xl transition-all duration-200 ${
+                className={`pcms-btn pcms-btn-primary flex items-center justify-center gap-2 px-6 py-3 ${
                   isExportingPdf ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
                 <Download className="h-4 w-4" />
-                {isExportingPdf ? 'Exporting PDF...' : 'Export PDF'}
+                {isExportingPdf ? 'Generating PDF report...' : 'Generate PDF'}
               </button>
 
               {!maintenanceData.completed_date && (
                 <button
                   onClick={handleMarkComplete}
                   disabled={isCompleting}
-                  className={`flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 font-medium shadow-lg hover:shadow-xl transition-all duration-200 ${
+                  className={`pcms-btn pcms-btn-success flex items-center gap-2 px-6 py-3 ${
                     isCompleting ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >

@@ -84,6 +84,16 @@ export function KpiWidget({ label, value, tone = 'blue', detail }: { label: stri
   );
 }
 
+export function SkeletonCard() {
+  return (
+    <div className="pcms-skeleton-card" aria-hidden="true">
+      <span />
+      <strong />
+      <em />
+    </div>
+  );
+}
+
 const statusAliases: Record<string, string> = {
   pending: 'open',
   waiting_sparepart: 'waiting_spare_part',

@@ -2,8 +2,9 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { PageHeader, SectionCard } from '@/app/components/pcms-ui';
 import { Badge } from '@/app/components/ui/badge';
-import { Building2, Info, FileText, Download } from 'lucide-react';
+import { Building2, Info, FileText, Download, CalendarRange } from 'lucide-react';
 import JobsReport from '@/app/components/jobs/JobsReport';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 
@@ -12,17 +13,18 @@ export default function JobsReportPage() {
   const { properties: userProperties } = useProperties();
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Instagram-style header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900">Jobs Report</h1>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="PDF Report" description="Generate management-ready maintenance job reports by property and date range." />
 
-      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-6 space-y-6">
+      <SectionCard title="Generate PDF Report" description="Select a property and reporting period, then export a clean maintenance operations report.">
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl bg-slate-50 p-4"><CalendarRange className="mb-2 h-5 w-5 text-blue-600" /><p className="text-sm font-bold text-slate-900">Date/property filters</p><p className="text-xs text-slate-500">Use the report controls below.</p></div>
+          <div className="rounded-2xl bg-slate-50 p-4"><FileText className="mb-2 h-5 w-5 text-violet-600" /><p className="text-sm font-bold text-slate-900">Generated report list</p><p className="text-xs text-slate-500">Review existing property reports.</p></div>
+          <div className="rounded-2xl bg-slate-50 p-4"><Download className="mb-2 h-5 w-5 text-green-600" /><p className="text-sm font-bold text-slate-900">Download buttons</p><p className="text-xs text-slate-500">Export PDF Report files.</p></div>
+        </div>
+      </SectionCard>
+
+      <div className="space-y-6">
 
       {/* Property Selection Info */}
       <Card>
@@ -135,7 +137,7 @@ export default function JobsReportPage() {
         </CardContent>
       </Card>
 
-        {/* Jobs Report Component */}
+        {/* Generated PDF Report component */}
         <JobsReport />
       </div>
     </div>

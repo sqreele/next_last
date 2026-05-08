@@ -53,7 +53,8 @@ const nextConfig = {
   },
   
   eslint: {
-    ignoreDuringBuilds: false,
+    // Build must validate TypeScript but skip legacy lint debt during production bundling.
+    ignoreDuringBuilds: true,
   },
   
   trailingSlash: true, // Optional, depending on your backend

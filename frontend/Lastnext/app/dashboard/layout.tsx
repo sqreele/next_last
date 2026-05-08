@@ -47,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isSidebarCollapsed, setSidebarCollapsed] = React.useState(false);
 
   return (
-    <div className="flex min-h-screen-safe w-full bg-white text-gray-800 overscroll-none">
+    <div className="flex min-h-screen-safe w-full bg-[var(--pcms-app-bg)] text-slate-800 overscroll-none">
         {/* Desktop Navigation - Hidden on mobile and tablet */}
         <DesktopNav 
           collapsed={isSidebarCollapsed} 
@@ -95,7 +95,7 @@ function DesktopNav({ collapsed, toggleCollapse }: {
 
   return (
     <aside className={cn(
-      "hidden desktop:flex flex-col border-r transition-all duration-300 bg-white border-gray-200 shadow-lg relative z-30",
+      "hidden desktop:flex flex-col border-r transition-all duration-300 bg-white/95 border-slate-200 shadow-[var(--pcms-shadow-sm)] relative z-30",
       collapsed ? "w-[80px]" : "w-[240px] tablet:w-[220px]",
     )}>
       <div className={cn(
@@ -109,7 +109,7 @@ function DesktopNav({ collapsed, toggleCollapse }: {
           <Package2 className="h-6 w-6 text-blue-600 group-hover:text-blue-700 transition-colors" />
           {!collapsed && (
             <span className="font-semibold text-lg text-gray-800 group-hover:text-blue-700 transition-colors">
-              HotelEngPro
+              PCMS
             </span>
           )}
         </Link>
@@ -136,8 +136,8 @@ function DesktopNav({ collapsed, toggleCollapse }: {
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ease-in-out',
                   collapsed ? 'justify-center' : '',
                   isActive
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    ? 'bg-blue-50 text-blue-700 shadow-none ring-1 ring-blue-100 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
                 )}
                 title={collapsed ? item.name : undefined}
               >
@@ -196,7 +196,7 @@ function MobileHeader() {
           <MobileNav />
           <Link href="/dashboard" className="flex items-center gap-2">
             <Package2 className="h-6 w-6 text-blue-600" />
-            <span className="font-semibold text-gray-800">HotelEngPro</span>
+            <span className="font-semibold text-gray-800">PCMS</span>
           </Link>
         </div>
         <div className="flex items-center gap-3">
@@ -276,7 +276,7 @@ function MobileNav() {
         <div className="p-4 border-b border-gray-200">
           <Link href="/dashboard" className="flex items-center gap-2" onClick={() => setOpen(false)}>
             <Package2 className="h-5 w-5 text-blue-600" />
-            <span className="font-semibold text-gray-800">HotelEngPro</span>
+            <span className="font-semibold text-gray-800">PCMS</span>
           </Link>
         </div>
         
@@ -298,8 +298,8 @@ function MobileNav() {
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-all duration-200 ease-in-out',
                     isActive
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100 font-semibold'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
                   )}
                 >
                   <item.icon className="h-5 w-5" />

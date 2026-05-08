@@ -37,25 +37,26 @@ import { fetchTopics, deleteJob as deleteJobApi } from "@/app/lib/data.server";
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import JobFilters, { FilterState } from "@/app/components/jobs/JobFilters";
 import Pagination from "@/app/components/jobs/Pagination";
-import UpdateStatusButton from "@/app/components/jobs/UpdateStatusButton"; // Import the new component
+import UpdateStatusButton from "@/app/components/jobs/UpdateStatusButton";
+import { EmptyState, PageHeader, PageLoader, PriorityBadge, SectionCard, StatusBadge, WorkspaceCard } from '@/app/components/pcms-ui';
 
 // Constants
 const ITEMS_PER_PAGE = 25;
 
 // Tailwind-based styles (Keep as they are)
 const PRIORITY_STYLES: Record<JobPriority | 'default', string> = {
-  high: "bg-red-100 text-red-800 border border-red-200",
-  medium: "bg-yellow-100 text-yellow-800 border border-yellow-300",
-  low: "bg-green-100 text-green-800 border border-green-200",
-  default: "bg-gray-100 text-gray-800 border border-gray-200",
+  high: "",
+  medium: "",
+  low: "",
+  default: "",
 };
 const STATUS_STYLES: Record<JobStatus | "default", string> = {
-  completed: "bg-green-100 text-green-800 border border-green-200",
-  in_progress: "bg-blue-100 text-blue-800 border border-blue-200",
-  pending: "bg-yellow-100 text-yellow-800 border border-yellow-200",
-  cancelled: "bg-red-100 text-red-800 border border-red-200",
-  waiting_sparepart: "bg-gray-100 text-gray-800 border border-gray-200",
-  default: "bg-gray-100 text-gray-800 border border-gray-200",
+  completed: "",
+  in_progress: "",
+  pending: "",
+  cancelled: "",
+  waiting_sparepart: "",
+  default: "",
 };
 
 // Updated Types
@@ -89,7 +90,7 @@ interface DeleteDialogProps {
 const JobTableRow: React.FC<JobTableRowProps> = React.memo(
   ({ job, onEdit, onDelete, onStatusUpdated }) => (
     <TableRow
-      className="hidden md:table-row hover:bg-gray-50 cursor-pointer"
+      className="pcms-table-row-hover hidden md:table-row cursor-pointer border-b border-slate-100"
       onClick={() => onEdit(job)}
       role="button"
       tabIndex={0}
@@ -103,12 +104,7 @@ const JobTableRow: React.FC<JobTableRowProps> = React.memo(
     >
       <TableCell className="py-3">
         <div className="font-medium text-gray-900">#{job.job_id}</div>
-        <Badge
-          className={`${PRIORITY_STYLES[job.priority as JobPriority] || PRIORITY_STYLES.default
-            } text-xs`}
-        >
-          {job.priority.charAt(0).toUpperCase() + job.priority.slice(1)}
-        </Badge>
+        <PriorityBadge priority={job.priority} />
         {job.remarks && (
           <div className="mt-2">
             <div className="text-xs text-gray-500 font-medium">Comments:</div>
@@ -147,13 +143,7 @@ const JobTableRow: React.FC<JobTableRowProps> = React.memo(
       </TableCell>
       <TableCell className="py-3">
         <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
-          <Badge
-            className={`${STATUS_STYLES[job.status] || STATUS_STYLES.default
-              } text-xs px-2 py-1`}
-          >
-            {/* Replace underscores and capitalize */}
-            {job.status.replace("_", " ").charAt(0).toUpperCase() + job.status.replace("_", " ").slice(1)}
-          </Badge>
+          <StatusBadge status={job.status} />
           {/* Add the Update Status button with stopPropagation */}
           <UpdateStatusButton 
             job={job} 
@@ -235,19 +225,9 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
               </div>
               <span className="text-base font-bold text-gray-900">#{job.job_id}</span>
             </div>
-            <Badge
-              className={`${PRIORITY_STYLES[job.priority as JobPriority] || PRIORITY_STYLES.default
-                } text-xs font-medium`}
-            >
-              {job.priority.charAt(0).toUpperCase() + job.priority.slice(1)} Priority
-            </Badge>
+            <PriorityBadge priority={job.priority} />
           </div>
-          <Badge
-            className={`${STATUS_STYLES[job.status] || STATUS_STYLES.default
-              } text-xs px-3 py-1.5 font-semibold`}
-          >
-            {job.status.replace("_", " ").charAt(0).toUpperCase() + job.status.replace("_", " ").slice(1)}
-          </Badge>
+          <StatusBadge status={job.status} />
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -611,11 +591,11 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     updateJob, // Hook's function to update local state
     removeJob, // Hook's function to remove from local state
   } = useJobsData({ 
-    propertyId: null, // keep using My Jobs endpoint
+    propertyId: null, // keep using Maintenance Jobs endpoint
     filters: { 
       ...filters,
       // Don't pass user_id - backend handles user filtering automatically
-      // pass selected property as a filter so backend restricts My Jobs to that property
+      // pass selected property as a filter so backend restricts Maintenance Jobs to that property
       property_id: selectedProperty ?? null,
     }
   });
@@ -860,8 +840,8 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
             <Sparkles className="h-6 w-6 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
           </div>
           <div>
-            <p className="text-lg font-semibold text-gray-700">Loading Your Jobs</p>
-            <p className="text-sm text-gray-500 mt-1">Just a moment...</p>
+            <p className="text-lg font-semibold text-gray-700">Loading maintenance jobs...</p>
+            <p className="text-sm text-gray-500 mt-1">Preparing your hotel maintenance workspace</p>
           </div>
         </div>
       </div>
@@ -874,9 +854,9 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
 
   // Main Render Output
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
+    <div className="min-h-screen bg-transparent">
       {/* Friendly header with gradient */}
-      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/50 shadow-sm">
+      <div className="bg-transparent">
         <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -885,10 +865,10 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  My Jobs
+                  Maintenance Jobs
                 </h1>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {userProfile?.username ? `Welcome back, ${userProfile.username}!` : 'Manage your maintenance tasks'}
+                  {userProfile?.username ? `Welcome back, ${userProfile.username}` : 'Manage hotel maintenance jobs'}
                 </p>
               </div>
             </div>
@@ -931,13 +911,13 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                 <div>
                   <p className="text-sm font-medium text-gray-700">
                     {filteredJobs.length === jobs.length && !filtersApplied()
-                      ? `You have ${jobs.length} job${jobs.length !== 1 ? 's' : ''} ${jobs.length === 0 ? 'yet' : 'in total'}`
-                      : `Showing ${filteredJobs.length} of ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`
+                      ? `You have ${jobs.length} maintenance job${jobs.length !== 1 ? 's' : ''} ${jobs.length === 0 ? 'yet' : 'in total'}`
+                      : `Showing ${filteredJobs.length} of ${jobs.length} maintenance job${jobs.length !== 1 ? 's' : ''}`
                     }
                   </p>
                   {jobs.length > 0 && (
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {filtersApplied() ? 'Filtered results' : 'All your jobs'}
+                      {filtersApplied() ? 'Filtered results' : 'All maintenance jobs'}
                     </p>
                   )}
                 </div>
@@ -947,7 +927,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                   {!filtersApplied() && (
                     <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                       <CheckCircle2 className="h-3 w-3 mr-1" />
-                      All jobs
+                      All maintenance jobs
                     </Badge>
                   )}
                 </div>
@@ -961,9 +941,9 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-gray-600" />
-              <CardTitle className="text-base">Filters</CardTitle>
+              <CardTitle className="text-base">Maintenance job filters</CardTitle>
             </div>
-            <CardDescription className="text-xs">Refine your job search</CardDescription>
+            <CardDescription className="text-xs">Refine by search, status, priority, room, category, and page size</CardDescription>
           </CardHeader>
           <CardContent>
             <JobFilters
@@ -983,7 +963,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                   <AlertCircle className="h-5 w-5 text-red-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-red-900 mb-1">Oops! Something went wrong</h3>
+                  <h3 className="font-semibold text-red-900 mb-1">Unable to load maintenance jobs</h3>
                   <p className="text-sm text-red-700 mb-3">{error}</p>
                   <Button 
                     onClick={() => refreshJobs(true)} 
@@ -1009,8 +989,8 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                   <Loader className="h-12 w-12 animate-spin text-blue-500 mx-auto" />
                   <Sparkles className="h-6 w-6 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
                 </div>
-                <p className="text-base font-medium text-gray-700">Loading your jobs...</p>
-                <p className="text-sm text-gray-500 mt-1">This will just take a moment</p>
+                <p className="text-base font-medium text-gray-700">Loading maintenance jobs...</p>
+                <p className="text-sm text-gray-500 mt-1">Preparing the board/list workflow</p>
               </CardContent>
             </Card>
           ) : filteredJobs.length > 0 ? (
@@ -1021,9 +1001,9 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                   <Table className="w-full">
                     <TableHeader>
                       <TableRow className="bg-gradient-to-r from-gray-50 to-blue-50/30 hover:bg-gray-50 border-b-2 border-gray-200">
-                        <TableHead className="w-[180px] py-4 text-gray-700 font-semibold">Job Details</TableHead>
-                        <TableHead className="py-4 text-gray-700 font-semibold">Description</TableHead>
-                        <TableHead className="py-4 text-gray-700 font-semibold">Location</TableHead>
+                        <TableHead className="w-[180px] py-4 text-gray-700 font-semibold">Job Number</TableHead>
+                        <TableHead className="py-4 text-gray-700 font-semibold">Title / Category</TableHead>
+                        <TableHead className="py-4 text-gray-700 font-semibold">Room or Area</TableHead>
                         <TableHead className="py-4 text-gray-700 font-semibold">Status</TableHead>
                         <TableHead className="py-4 text-gray-700 font-semibold">Created</TableHead>
                         <TableHead className="w-[100px] py-4 text-gray-700 font-semibold text-right pr-6">Actions</TableHead>
@@ -1098,20 +1078,20 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                     <h3 className="text-xl font-semibold text-gray-900">
                       {jobs.length > 0 ? (
                         <>
-                          No jobs match your filters
+                          No maintenance jobs match your filters
                         </>
                       ) : (
                         <>
-                          Welcome! Ready to get started?
+                          Ready to create the first maintenance job?
                         </>
                       )}
                     </h3>
                     <p className="text-gray-600 text-sm max-w-sm mx-auto">
                       {jobs.length > 0
-                        ? "We couldn't find any jobs matching your current filters. Try adjusting your search or filters to see more results."
+                        ? "No maintenance jobs match the current filters. Try a different room, category, status, or priority."
                         : (activePropertyId ?? selectedProperty)
-                          ? "No maintenance requests found for this property yet. Create your first job to get started!"
-                          : "You don't have any maintenance jobs yet. Create your first job to begin tracking maintenance tasks!"}
+                          ? "No maintenance jobs found for this property yet. Create the first hotel maintenance job to get started."
+                          : "Create the first maintenance job to begin tracking room and area work."}
                     </p>
                   </div>
 
@@ -1123,7 +1103,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                         className="border-blue-200 hover:bg-blue-50 hover:border-blue-300"
                       >
                         <X className="h-4 w-4 mr-2" />
-                        Clear Filters
+                        Clear filters
                       </Button>
                     )}
                     {jobs.length === 0 && selectedProperty && (
@@ -1139,7 +1119,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                       className={jobs.length === 0 ? "border-blue-200 hover:bg-blue-50 hover:border-blue-300" : ""}
                     >
                       <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                      Refresh List
+                      Refresh list
                     </Button>
                   </div>
                 </div>

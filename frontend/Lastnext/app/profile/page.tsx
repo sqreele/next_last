@@ -1,6 +1,7 @@
 'use client';
 
 import { useUser } from '@auth0/nextjs-auth0';
+import Link from 'next/link';
 import { ProfileImage } from '@/app/components/ui/UniversalImage';
 
 export default function ProfilePage() {
@@ -27,7 +28,7 @@ export default function ProfilePage() {
         <div><strong>Email:</strong> {user.email}</div>
         <pre className="mt-2 p-3 bg-gray-100 rounded overflow-auto text-xs">{JSON.stringify(user, null, 2)}</pre>
       </div>
-      <a href="/api/auth/logout" className="inline-block px-4 py-2 bg-gray-200 rounded">Log out</a>
+      <Link href="/api/auth/logout" className="inline-block px-4 py-2 bg-gray-200 rounded">Log out</Link>
     </div>
   );
 }

@@ -3,10 +3,10 @@
 import React, { useMemo, useState, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Job, JobStatus } from "@/app/lib/types";
+import { Job } from "@/app/lib/types";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
-import { Badge } from "@/app/components/ui/badge";
-import { CheckCircle2, Clock, AlertCircle, AlertTriangle, ClipboardList, User, Calendar, MessageSquare } from "lucide-react";
+import { CheckCircle2, Clock, User, Calendar, MessageSquare, MapPin } from "lucide-react";
+import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
 
 type ViewMode = "grid" | "list";
 
@@ -17,70 +17,8 @@ interface InstagramJobCardProps {
 
 const isExternalImageUrl = (url: string) => /^https?:\/\//i.test(url) || url.startsWith('/media/');
 
-function getStatusConfig(status: JobStatus) {
-  const configs = {
-    completed: { icon: <CheckCircle2 className="w-3.5 h-3.5" />, color: "bg-green-100 text-green-700", label: "Completed" },
-    in_progress: { icon: <Clock className="w-3.5 h-3.5" />, color: "bg-blue-100 text-blue-700", label: "In Progress" },
-    pending: { icon: <AlertCircle className="w-3.5 h-3.5" />, color: "bg-yellow-100 text-yellow-700", label: "Pending" },
-    cancelled: { icon: <AlertTriangle className="w-3.5 h-3.5" />, color: "bg-red-100 text-red-700", label: "Cancelled" },
-    waiting_sparepart: { icon: <ClipboardList className="w-3.5 h-3.5" />, color: "bg-purple-100 text-purple-700", label: "Waiting Sparepart" },
-  } as const;
-  return (configs as any)[status] || configs.pending;
-}
-
 export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJobCardProps) {
   const router = useRouter();
-
-  // Function to get user display name
-  const getUserDisplayName = useCallback((user: Job['user'] | undefined): string => {
-    if (!user) return 'Unknown User';
-    
-    // If user is an object with user properties
-    if (typeof user === 'object' && user) {
-      // Priority 1: Check for full_name
-      if ('full_name' in user && user.full_name && typeof user.full_name === 'string' && user.full_name.trim()) {
-        return user.full_name.trim();
-      }
-      // Priority 2: Check for first_name and last_name combination
-      if ('first_name' in user && 'last_name' in user) {
-        const firstName = typeof user.first_name === 'string' ? user.first_name : '';
-        const lastName = typeof user.last_name === 'string' ? user.last_name : '';
-        const fullName = `${firstName} ${lastName}`.trim();
-        if (fullName) return fullName;
-      }
-      // Priority 3: Check for name property
-      if ('name' in user && user.name && typeof user.name === 'string') {
-        return user.name;
-      }
-      // Priority 4: Check for username property (clean Auth0 usernames)
-      if ('username' in user && user.username && typeof user.username === 'string') {
-        let cleanUsername = user.username;
-        // Clean up Auth0 usernames for better display
-        if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
-          cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
-        }
-        return cleanUsername;
-      }
-      // Priority 5: Check for email and extract name part
-      if ('email' in user && user.email && typeof user.email === 'string') {
-        return user.email.split('@')[0]; // Return part before @ as display name
-      }
-    }
-    
-    // If user is a string or number (ID), return a generic name
-    if (typeof user === 'string') {
-      if (user.includes('google-oauth2')) {
-        return 'Google User'; // Generic name for Google OAuth users
-      }
-      return user;
-    }
-    
-    if (typeof user === 'number') {
-      return `User ${user}`;
-    }
-    
-    return 'Unknown User';
-  }, []);
 
   // Function to format dates
   const formatDate = useCallback((dateString: string | null | undefined): string => {
@@ -183,35 +121,36 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
     }
   }, [job, formatDate]);
 
-  const status = getStatusConfig(job.status);
-
   return (
-    <div className="rounded-md shadow-md bg-white text-gray-900 overflow-hidden cursor-pointer w-full max-w-full" onClick={goToDetail}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-gray-100">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-            <User className="w-4 h-4 text-gray-500" />
+    <div className="h-full overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-[var(--pcms-shadow-sm)] transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[var(--pcms-shadow)] cursor-pointer w-full max-w-full" onClick={goToDetail}>
+      <div className="flex items-start justify-between gap-3 p-4 border-b border-slate-100">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 ring-1 ring-blue-100">
+            <User className="h-4 w-4 text-blue-600" />
           </div>
-          <div className="-space-y-0.5 min-w-0">
-            <h2 className="text-sm font-semibold leading-none truncate">{getUserDisplayName(job.user)}</h2>
-            <span className="inline-block text-xs text-gray-500 truncate">{job.rooms?.[0]?.name || "N/A"} • {job.topics?.[0]?.title || "Job"}</span>
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-extrabold uppercase tracking-wide text-blue-600">#{job.job_id}</p>
+              <PriorityBadge priority={job.priority} />
+            </div>
+            <h2 className="truncate text-sm font-extrabold leading-tight text-slate-950">{job.topics?.[0]?.title || "Maintenance Job"}</h2>
+            <span className="flex min-w-0 items-center gap-1 text-xs text-slate-500"><MapPin className="h-3 w-3 shrink-0" />{job.rooms?.[0]?.name || "Area not assigned"}</span>
           </div>
         </div>
-        <Badge variant="secondary" className={`px-2 py-0.5 text-xs ${status.color}`}>{status.icon}<span className="ml-1 hidden xs:inline">{status.label}</span></Badge>
+        <StatusBadge status={job.status} />
       </div>
 
       {/* Image */}
-      <div className={viewMode === "list" ? "h-60 w-full relative" : "relative aspect-square sm:aspect-square w-full bg-gray-50 min-h-[250px] sm:min-h-0"}>
+      <div className={viewMode === "list" ? "h-60 w-full relative" : "relative aspect-square sm:aspect-square w-full bg-slate-50 min-h-[250px] sm:min-h-0"}>
         {job.status === 'waiting_sparepart' && (
           <div className="absolute top-2 left-2 z-10 bg-orange-600 text-white text-xs font-medium px-2 py-0.5 rounded">
-            Parts
+            Waiting spare part
           </div>
         )}
         {imageUrls.length > 0 && imageUrls[activeIdx] && !failed.has(activeIdx) ? (
           <Image src={imageUrls[activeIdx]} alt={job.topics?.[0]?.title || 'Job image'} fill className="object-cover" onError={() => onError(activeIdx)} unoptimized={isExternalImageUrl(imageUrls[activeIdx])} />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-100"></div>
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-100"></div>
         )}
 
         {imageUrls.length > 1 && (
@@ -254,12 +193,12 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
           
           {/* Job Details */}
           <div className="space-y-2">
-            <div className="text-xs text-gray-500">
-              <span className="font-medium">{job.topics?.[0]?.title || "Job"}</span>
+            <div className="text-xs text-slate-500">
+              <span className="font-medium">{job.topics?.[0]?.title || "Maintenance Job"}</span>
             </div>
             
             {/* Dates */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-gray-500">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs text-slate-500">
               <div className="flex items-center gap-1">
                 <Calendar className="w-3 h-3 flex-shrink-0" />
                 <span>Created: {formatDate(job.created_at)}</span>
@@ -278,14 +217,14 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
             
             {/* Remarks */}
             {job.remarks && job.remarks.trim() && (
-              <div className="flex items-start gap-1 text-xs text-gray-600">
+              <div className="flex items-start gap-1 text-xs text-slate-600">
                 <MessageSquare className="w-3 h-3 mt-0.5 flex-shrink-0" />
                 <span className="italic">{job.remarks}</span>
               </div>
             )}
           </div>
           
-          <input type="text" placeholder="Add a comment..." className="w-full py-1 bg-transparent border-none rounded text-sm pl-0 outline-none" onClick={(e: React.MouseEvent<HTMLInputElement>) => e.stopPropagation()} />
+          <input type="text" placeholder="Add a maintenance comment..." className="w-full py-1 bg-transparent border-none rounded text-sm pl-0 outline-none" onClick={(e: React.MouseEvent<HTMLInputElement>) => e.stopPropagation()} />
         </div>
       </div>
     </div>

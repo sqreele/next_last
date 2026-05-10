@@ -41,9 +41,7 @@ const debug = (message: string, data?: any) => {
     (typeof localStorage !== 'undefined' && localStorage.getItem('debug_mode') === 'true');
   if (isDebugMode) {
     if (data) {
-      console.log(`[PM Jobs Debug] ${message}`, data);
     } else {
-      console.log(`[PM Jobs Debug] ${message}`);
     }
   }
 };
@@ -104,50 +102,13 @@ export function usePreventiveMaintenanceJobs({
     };
   }, [session?.user?.accessToken]);
 
-  // Modified function to safely check if property has preventive maintenance
   const checkPropertyPMStatus = useCallback(async (): Promise<boolean> => {
-    if (!propertyId) return true; // Default to true if no property ID
+    if (!propertyId) return true;
     
     debug(`Checking PM status for property ${propertyId}`);
     
-    // For now, skip the PM status check to avoid authentication issues
-    // This check is not critical for the main functionality
     debug(`Skipping PM status check - assuming PM is enabled`);
     return true;
-    
-    // TODO: Re-enable this check once authentication is properly configured
-    // try {
-    //   // Call the Django backend directly for property PM status
-    //   const pmStatusUrl = `/api/v1/properties/${propertyId}/is-preventivemaintenance/`;
-    //   debug(`PM status API call to: ${pmStatusUrl}`);
-    //   
-    //   const response = await fetchData<PropertyPMStatus>(pmStatusUrl);
-    //   debug(`PM status response:`, response);
-    //   
-    //   // Check if response has the expected structure
-    //   if (response && 'is_preventivemaintenance' in response) {
-    //     setIsPMProperty(response.is_preventivemaintenance);
-    //     debug(`Property has PM: ${response.is_preventivemaintenance}`);
-    //     return response.is_preventivemaintenance;
-    //   }
-    //   
-    //   debug(`Unexpected PM status response format - assuming PM is enabled`);
-    //   return true; // Default to true if response format is unexpected
-    // } catch (error) {
-    //   debug(`Error checking PM status - assuming PM is enabled:`, error);
-    //   console.warn('Error checking PM status (this is expected if the column does not exist yet):', error);
-    //   
-    //   // Log more details about the error for debugging
-    //   if (error instanceof Error) {
-    //     console.warn('Error details:', {
-    //       message: error.message,
-    //       name: error.name,
-    //       stack: error.stack
-    //     });
-    //   }
-    //   
-    //   return true; // Default to true if there's an error (missing column)
-    // }
   }, [propertyId]);
 
   const loadJobs = useCallback(async (forceRefresh: boolean = false) => {

@@ -3,10 +3,11 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
-import { CalendarClock, Home, MapPin, Wrench } from 'lucide-react';
+import { CalendarClock, Home, MapPin, User, Wrench } from 'lucide-react';
 import { Room, Property, Job } from '@/app/lib/types';
 import { PriorityBadge, StatusBadge } from '@/app/components/pcms-ui';
 import Link from 'next/link';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 
 type RoomDetailContentProps = {
   room: Room;
@@ -149,6 +150,10 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
                       <div className="flex justify-between items-center mt-2">
                         <PriorityBadge priority={job.priority} />
                         <span className="text-sm text-gray-500"><strong>Created:</strong> {new Date(job.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-1 text-sm text-gray-600">
+                        <User className="h-4 w-4 text-gray-400" />
+                        <span><strong>Technician:</strong> {getDisplayName(job.user, job.technician_name || job.user_name || 'Unknown Technician')}</span>
                       </div>
                     </Link>
                   </li>

@@ -130,24 +130,15 @@ export default function EditPreventiveMaintenancePage() {
   useEffect(() => {
     const loadMaintenance = async () => {
       if (pmId) {
-        console.log('[EDIT FORM] Loading maintenance data for PM ID:', pmId);
-        console.log('[EDIT FORM] PM ID case:', {
-          original: pmId,
-          uppercase: pmId.toUpperCase(),
-          lowercase: pmId.toLowerCase()
-        });
         
         try {
           // Try with original case
           let data = await fetchMaintenanceById(pmId);
-          console.log('[EDIT FORM] Fetched maintenance data (attempt 1):', data);
           
           // If failed and starts with lowercase 'pm', try uppercase
           if (!data && pmId.toLowerCase().startsWith('pm')) {
             const upperPmId = pmId.toUpperCase();
-            console.log('[EDIT FORM] Retrying with uppercase PM ID:', upperPmId);
             data = await fetchMaintenanceById(upperPmId);
-            console.log('[EDIT FORM] Fetched maintenance data (attempt 2):', data);
           }
           
           if (data) {
@@ -181,14 +172,6 @@ export default function EditPreventiveMaintenancePage() {
 
   // Debug: Monitor form state changes
   useEffect(() => {
-    console.log('[EDIT FORM] Form state changed:', {
-      ...formState,
-      machine_ids_detail: {
-        count: formState.machine_ids.length,
-        ids: formState.machine_ids,
-        note: formState.machine_ids.length === 0 ? 'No machines assigned' : `${formState.machine_ids.length} machine(s) assigned`
-      }
-    });
   }, [formState]);
 
   // Helper to convert Date to datetime-local format
@@ -278,59 +261,17 @@ export default function EditPreventiveMaintenancePage() {
       }
     };
 
-    console.log('[EDIT FORM] populateForm debug:', {
-      incoming_data: data,
-      pmtitle_from_data: data.pmtitle,
-      pmtitle_type: typeof data.pmtitle,
-      pmtitle_length: data.pmtitle?.length || 0,
-      before_image_url: data.before_image_url,
-      after_image_url: data.after_image_url,
-      has_before_image: !!data.before_image_url,
-      has_after_image: !!data.after_image_url,
-      machines: data.machines,
-      machines_type: typeof data.machines,
-      machines_is_array: Array.isArray(data.machines),
-      machines_length: Array.isArray(data.machines) ? data.machines.length : 'N/A',
-      machines_details: Array.isArray(data.machines) ? data.machines.map((m, idx) => ({
-        index: idx,
-        machine: m,
-        machine_type: typeof m,
-        machine_id: typeof m === 'object' ? m.machine_id : m,
-        machine_name: typeof m === 'object' ? m.name : 'N/A'
-      })) : 'N/A'
-    });
-
     // Fix image URLs before setting them
     const fixedBeforeImageUrl = data.before_image_url ? fixImageUrl(data.before_image_url) : null;
     const fixedAfterImageUrl = data.after_image_url ? fixImageUrl(data.after_image_url) : null;
-    
-    console.log('[EDIT FORM] Image URL fixing:', {
-      original_before_url: data.before_image_url,
-      fixed_before_url: fixedBeforeImageUrl,
-      original_after_url: data.after_image_url,
-      fixed_after_url: fixedAfterImageUrl
-    });
 
     // Extract machine IDs with detailed logging
     const extractedMachineIds = data.machines 
       ? data.machines.map(m => {
           const machineId = typeof m === 'object' ? m.machine_id : m;
-          console.log('[EDIT FORM] Extracting machine ID:', {
-            machine_object: m,
-            machine_type: typeof m,
-            extracted_id: machineId,
-            machine_name: typeof m === 'object' ? m.name : 'N/A'
-          });
           return machineId;
         })
       : [];
-    
-    console.log('[EDIT FORM] Machine IDs extraction result:', {
-      original_machines: data.machines,
-      extracted_machine_ids: extractedMachineIds,
-      count: extractedMachineIds.length,
-      note: extractedMachineIds.length === 0 ? 'No machines assigned to this maintenance task' : `${extractedMachineIds.length} machine(s) found`
-    });
 
     setFormState({
       pmtitle: data.pmtitle || '',
@@ -376,7 +317,6 @@ export default function EditPreventiveMaintenancePage() {
 
   // Handle form input changes
   const handleInputChange = (field: keyof FormState, value: any) => {
-    console.log('[EDIT FORM] handleInputChange:', { field, value, currentFormState: formState });
     setFormState(prev => ({ ...prev, [field]: value }));
     setIsDirty(true);
     
@@ -388,7 +328,6 @@ export default function EditPreventiveMaintenancePage() {
 
   // Handle file upload
   const handleFileUpload = (field: 'before_image_file' | 'after_image_file', file: File | null) => {
-    console.log('[EDIT FORM] handleFileUpload called:', { field, file: file?.name, size: file?.size, type: file?.type });
     
     if (file) {
       // Validate file size (5MB max)
@@ -408,7 +347,6 @@ export default function EditPreventiveMaintenancePage() {
       
       const reader = new FileReader();
       reader.onload = (e) => {
-        console.log('[EDIT FORM] File loaded successfully');
         const previewField = field === 'before_image_file' ? 'before_image_preview' : 'after_image_preview';
         setFormState(prev => ({
           ...prev,
@@ -526,20 +464,6 @@ export default function EditPreventiveMaintenancePage() {
             )
           )
         : undefined;
-      
-      console.log('[EDIT FORM] Date conversion debug:', {
-        original_scheduled_date: formState.scheduled_date,
-        converted_scheduled_date: scheduledDate,
-        original_completed_date: completionValue,
-        converted_completed_date: completedDate
-      });
-
-      console.log('[EDIT FORM] Title debug:', {
-        original_pmtitle: formState.pmtitle,
-        trimmed_pmtitle: formState.pmtitle.trim(),
-        pmtitle_length: formState.pmtitle.length,
-        pmtitle_type: typeof formState.pmtitle
-      });
 
       const updateData: UpdatePreventiveMaintenanceData = {
         pmtitle: formState.pmtitle.trim(),
@@ -555,12 +479,6 @@ export default function EditPreventiveMaintenancePage() {
         before_image: formState.before_image_file || undefined,
         after_image: formState.after_image_file || undefined
       };
-
-      console.log('[EDIT FORM] Submitting update data:', {
-        ...updateData,
-        before_image: formState.before_image_file ? { name: formState.before_image_file.name, size: formState.before_image_file.size } : 'none',
-        after_image: formState.after_image_file ? { name: formState.after_image_file.name, size: formState.after_image_file.size } : 'none'
-      });
 
       const result = await updateMaintenance(resolvedPmId, updateData);
       
@@ -878,7 +796,6 @@ export default function EditPreventiveMaintenancePage() {
                       className="w-full h-40 sm:h-48 object-cover rounded-lg border border-gray-300"
                       width={400}
                       height={192}
-                      onLoad={() => console.log('[EDIT FORM] Before image loaded successfully')}
                       onError={() => {
                         console.error('[EDIT FORM] Before image failed to load');
                         console.error('[EDIT FORM] Failed URL:', formState.before_image_preview);
@@ -926,7 +843,6 @@ export default function EditPreventiveMaintenancePage() {
                       className="w-full h-40 sm:h-48 object-cover rounded-lg border border-gray-300"
                       width={400}
                       height={192}
-                      onLoad={() => console.log('[EDIT FORM] After image loaded successfully')}
                       onError={() => {
                         console.error('[EDIT FORM] After image failed to load');
                         console.error('[EDIT FORM] Failed URL:', formState.after_image_preview);

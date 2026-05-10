@@ -18,7 +18,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Sync session data to Zustand store
   useEffect(() => {
     if (status === 'authenticated' && session?.user) {
-      console.log('🔄 Syncing session data to Zustand store...');
       
       // Set auth tokens
       if (session.user?.accessToken) {
@@ -47,7 +46,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           currentProfile.email !== userProfile.email;
         
         if (profileChanged) {
-          console.log('✅ Setting user profile in store:', userProfile);
           setUserProfile(userProfile);
         }
 
@@ -62,7 +60,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             );
           
           if (propertiesChanged) {
-            console.log('✅ Setting properties in store:', session.user.properties.length);
             setProperties(session.user.properties);
           }
 
@@ -72,7 +69,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             const firstProperty = session.user?.properties[0];
             if (firstProperty) {
               const propertyId = String(firstProperty.property_id || firstProperty.id);
-              console.log('✅ Auto-selecting first property:', propertyId);
               setSelectedPropertyId(propertyId);
             }
           }
@@ -80,7 +76,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     } else if (status === 'unauthenticated') {
       // Clear store data when unauthenticated
-      console.log('🔄 Clearing store data (unauthenticated)');
       setUserProfile(null);
       setProperties([]);
       setSelectedPropertyId(null);

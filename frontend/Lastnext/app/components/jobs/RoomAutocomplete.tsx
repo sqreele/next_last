@@ -34,7 +34,6 @@ const RoomAutocomplete = ({
   // Safer debug logging
   const debugLog = useCallback((message: string, data?: any) => {
     if (debug) {
-      console.log(`[RoomAutocomplete] ${message}`, data !== undefined ? data : "");
     }
   }, [debug]);
 

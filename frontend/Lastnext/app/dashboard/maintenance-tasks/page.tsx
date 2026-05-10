@@ -161,13 +161,6 @@ export default function MaintenanceTasksPage() {
       if ((!totalPagesValue || totalPagesValue < 1) && total > 0 && responsePageSize > 0) {
         totalPagesValue = Math.max(1, Math.ceil(total / responsePageSize));
       }
-      
-      console.log('Fetched maintenance tasks:', {
-        page: currentPageFromResponse ?? pageToLoad,
-        pageSize: responsePageSize,
-        totalCount: total,
-        totalPages: totalPagesValue,
-      });
       setTasks(taskData);
       setFilteredTasks(taskData);
       setTotalCount(total);

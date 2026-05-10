@@ -14,6 +14,7 @@ export interface SimpleUser {
   first_name?: string | null;
   last_name?: string | null;
   full_name?: string | null;
+  display_name?: string | null;
   is_staff?: boolean;
 }
 
@@ -88,12 +89,15 @@ export interface PreventiveMaintenance {
   after_image_url?: string | null;
   created_by?: number | SimpleUser | null;
   created_by_details?: SimpleUser | null;
+  created_by_name?: string | null;
   procedure?: string; // Added procedure field
   procedure_template?: number | null; // FK to MaintenanceProcedure task template
   procedure_template_id?: number | null; // Task template ID (from serializer)
   procedure_template_name?: string | null; // Task template name (from serializer)
   assigned_to?: number | SimpleUser | null;
   assigned_to_details?: SimpleUser | null;
+  assigned_to_name?: string | null;
+  technician_name?: string | null;
   remarks?: string | null;
 }
 
@@ -326,11 +330,8 @@ export function itemMatchesMachine(item: PreventiveMaintenance, machineFilter: s
   // Normalize the filter for comparison
   const normalizedFilter = machineFilter.trim().toLowerCase();
   
-  console.log(`🔍 Checking item ${item.pm_id} against filter "${machineFilter}"`);
-  
   // Check if item has machines array
   if (!item.machines || !Array.isArray(item.machines) || item.machines.length === 0) {
-    console.log(`❌ No machines array for item ${item.pm_id}`);
     return false;
   }
   
@@ -352,28 +353,13 @@ export function itemMatchesMachine(item: PreventiveMaintenance, machineFilter: s
       // Check name (partial match)
       const namePartialMatch = machine.name?.toLowerCase().includes(normalizedFilter);
       
-      console.log(`🔍 Machine comparison for ${machine.machine_id}:`, {
-        machine_id: machine.machine_id,
-        name: machine.name,
-        filter: machineFilter,
-        machineIdMatch,
-        machineIdCaseInsensitive,
-        nameMatch,
-        nameCaseInsensitive,
-        namePartialMatch
-      });
-      
       return machineIdMatch || machineIdCaseInsensitive || nameMatch || nameCaseInsensitive;
     }
-    
-    console.log(`❌ Invalid machine object in item ${item.pm_id}:`, machine);
     return false;
   });
   
   if (hasMatch) {
-    console.log(`✅ Item ${item.pm_id} matches filter "${machineFilter}"`);
   } else {
-    console.log(`❌ Item ${item.pm_id} does NOT match filter "${machineFilter}"`);
   }
   
   return hasMatch;

@@ -295,7 +295,6 @@ export async function fetchJobs(accessToken?: string): Promise<Job[]> {
 // Dedicated function for Chart Dashboard: fetch ALL jobs by paginating
 export async function fetchAllJobsForDashboard(accessToken?: string): Promise<Job[]> {
   try {
-    console.log('fetchAllJobsForDashboard: Starting to fetch all jobs...');
     const REQUEST_PAGE_SIZE = 100; // Respect backend max_page_size
     let currentPage = 1;
     let allJobs: Job[] = [];
@@ -622,12 +621,9 @@ export async function updateJobStatus(
 }
 
 export async function fetchMyJobs(accessToken?: string, queryParams?: string): Promise<Job[]> {
-  console.log("fetchMyJobs: Starting to fetch my jobs...");
   try {
     const url = queryParams ? `/api/v1/jobs/my_jobs/?${queryParams}` : `/api/v1/jobs/my_jobs/`;
     const response = await fetchWithToken<any>(url, accessToken);
-    console.log(`fetchMyJobs: Raw API response:`, response);
-    console.log(`fetchMyJobs: Response type:`, typeof response);
     
     // The backend returns a structured response with 'results' field containing the jobs
     let jobs: Job[] = [];
@@ -638,14 +634,11 @@ export async function fetchMyJobs(accessToken?: string, queryParams?: string): P
       } else if (response.results && Array.isArray(response.results)) {
         // Structured response with results field
         jobs = response.results;
-        console.log(`fetchMyJobs: Extracted ${jobs.length} jobs from results field`);
       } else {
         console.error('fetchMyJobs: Unexpected response format:', response);
         return [];
       }
     }
-    
-    console.log(`fetchMyJobs: Successfully extracted ${jobs.length} jobs from API`);
     
     if (!jobs || !Array.isArray(jobs)) {
       console.error('fetchMyJobs: No valid jobs array found:', jobs);
@@ -653,11 +646,8 @@ export async function fetchMyJobs(accessToken?: string, queryParams?: string): P
     }
     
     const sanitizedJobs = sanitizeJobsData(jobs);
-    console.log(`fetchMyJobs: After sanitization:`, sanitizedJobs);
     
     const fixedJobs = fixJobsImageUrls(sanitizedJobs);
-    console.log(`fetchMyJobs: After image URL fixing:`, fixedJobs);
-    console.log(`fetchMyJobs: Returning ${fixedJobs.length} processed jobs`);
     return fixedJobs;
   } catch (error) {
     console.error('fetchMyJobs: Error fetching my jobs:', error);
@@ -713,8 +703,6 @@ export async function updateUserProfile(auth0Profile: any, accessToken?: string)
       return false;
     }
     
-    console.log('🔍 Updating user profile with token:', token.substring(0, 20) + '...');
-    
     const response = await fetchWithToken<{message: string, updated_fields: string[], user: any}>(
       '/api/v1/auth/profile/update/',
       token,
@@ -723,8 +711,6 @@ export async function updateUserProfile(auth0Profile: any, accessToken?: string)
         auth0_profile: auth0Profile
       }
     );
-
-    console.log('✅ User profile updated successfully:', response);
     return true;
   } catch (error) {
     console.error('❌ Error updating user profile:', error);
@@ -733,10 +719,8 @@ export async function updateUserProfile(auth0Profile: any, accessToken?: string)
 }
 
 export async function fetchUsers(accessToken?: string): Promise<User[]> {
-  console.log("fetchUsers: Starting to fetch users...");
   try {
     const response = await fetchWithToken<any>(`/api/v1/users/`, accessToken);
-    console.log(`fetchUsers: Raw API response:`, response);
     
     // The backend returns a structured response with 'results' field containing the users
     let users: User[] = [];
@@ -747,7 +731,6 @@ export async function fetchUsers(accessToken?: string): Promise<User[]> {
       } else if (response.results && Array.isArray(response.results)) {
         // Structured response with results field
         users = response.results;
-        console.log(`fetchUsers: Extracted ${users.length} users from results field`);
       } else {
         console.error('fetchUsers: Unexpected response format:', response);
         return [];
@@ -756,8 +739,6 @@ export async function fetchUsers(accessToken?: string): Promise<User[]> {
       console.error('fetchUsers: Invalid response type:', typeof response);
       return [];
     }
-
-    console.log(`fetchUsers: Successfully fetched ${users.length} users`);
     return users;
   } catch (error) {
     console.error('fetchUsers: Error fetching users:', error);
@@ -766,11 +747,9 @@ export async function fetchUsers(accessToken?: string): Promise<User[]> {
 }
 
 export async function fetchUsersByProperty(propertyId: string, accessToken?: string): Promise<User[]> {
-  console.log(`fetchUsersByProperty: Starting to fetch users for property ${propertyId}...`);
   try {
     // Use the user-profiles endpoint which includes property information
     const response = await fetchWithToken<any>(`/api/v1/user-profiles/`, accessToken);
-    console.log(`fetchUsersByProperty: Raw API response:`, response);
     
     // The backend returns a structured response with 'results' field containing the user profiles
     let userProfiles: any[] = [];
@@ -781,7 +760,6 @@ export async function fetchUsersByProperty(propertyId: string, accessToken?: str
       } else if (response.results && Array.isArray(response.results)) {
         // Structured response with results field
         userProfiles = response.results;
-        console.log(`fetchUsersByProperty: Extracted ${userProfiles.length} user profiles from results field`);
       } else {
         console.error('fetchUsersByProperty: Unexpected response format:', response);
         return [];
@@ -815,8 +793,6 @@ export async function fetchUsersByProperty(propertyId: string, accessToken?: str
       refreshToken: '', // Not needed for this context
       created_at: profile.created_at
     }));
-
-    console.log(`fetchUsersByProperty: Successfully fetched ${users.length} users for property ${propertyId}`);
     return users;
   } catch (error) {
     console.error('fetchUsersByProperty: Error fetching users by property:', error);
@@ -825,10 +801,8 @@ export async function fetchUsersByProperty(propertyId: string, accessToken?: str
 }
 
 export async function fetchTopics(accessToken?: string): Promise<Topic[]> {
-  console.log("fetchTopics: Starting to fetch topics...");
   try {
     const response = await fetchWithToken<any>(`/api/v1/topics/`, accessToken);
-    console.log(`fetchTopics: Raw API response:`, response);
     
     // The backend returns a structured response with 'results' field containing the topics
     let topics: Topic[] = [];
@@ -839,7 +813,6 @@ export async function fetchTopics(accessToken?: string): Promise<Topic[]> {
       } else if (response.results && Array.isArray(response.results)) {
         // Structured response with results field
         topics = response.results;
-        console.log(`fetchTopics: Extracted ${topics.length} topics from results field`);
       } else {
         console.error('fetchTopics: Unexpected response format:', response);
         return [];
@@ -848,8 +821,6 @@ export async function fetchTopics(accessToken?: string): Promise<Topic[]> {
       console.error('fetchTopics: Invalid response type:', typeof response);
       return [];
     }
-
-    console.log(`fetchTopics: Successfully fetched ${topics.length} topics`);
     return topics;
   } catch (error) {
     console.error('fetchTopics: Error fetching topics:', error);
@@ -858,10 +829,8 @@ export async function fetchTopics(accessToken?: string): Promise<Topic[]> {
 }
 
 export async function fetchRooms(accessToken?: string): Promise<Room[]> {
-  console.log("fetchRooms: Starting to fetch rooms...");
   try {
     const response = await fetchWithToken<any>(`/api/v1/rooms/`, accessToken);
-    console.log(`fetchRooms: Raw API response:`, response);
     
     // The backend returns a structured response with 'results' field containing the rooms
     let rooms: Room[] = [];
@@ -872,7 +841,6 @@ export async function fetchRooms(accessToken?: string): Promise<Room[]> {
       } else if (response.results && Array.isArray(response.results)) {
         // Structured response with results field
         rooms = response.results;
-        console.log(`fetchRooms: Extracted ${rooms.length} rooms from results field`);
       } else {
         console.error('fetchRooms: Unexpected response format:', response);
         return [];
@@ -881,8 +849,6 @@ export async function fetchRooms(accessToken?: string): Promise<Room[]> {
       console.error('fetchRooms: Invalid response type:', typeof response);
       return [];
     }
-
-    console.log(`fetchRooms: Successfully fetched ${rooms.length} rooms`);
     return rooms;
   } catch (error) {
     console.error('fetchRooms: Error fetching rooms:', error);

@@ -16,23 +16,70 @@ from django.core.validators import FileExtensionValidator
 from datetime import timedelta
 import math
 
+
+RAW_AUTH_PREFIXES = ('google-oauth2_', 'auth0_', 'auth0|')
+
+
+def is_raw_auth_identifier(value):
+    if value is None:
+        return False
+    text = str(value).strip()
+    return (
+        text.startswith(RAW_AUTH_PREFIXES)
+        or text.lower() in {'null', 'undefined', '[object object]'}
+    )
+
+
+def get_user_display_name(user, fallback='Unknown Technician'):
+    if not user:
+        return fallback
+
+    profile = getattr(user, 'userprofile', None)
+    profile_full_name = getattr(profile, 'full_name', None)
+    candidates = [
+        profile_full_name,
+        user.get_full_name().strip() if hasattr(user, 'get_full_name') else None,
+        getattr(user, 'name', None),
+        getattr(user, 'email', None),
+        getattr(user, 'username', None),
+    ]
+
+    for candidate in candidates:
+        if candidate is None:
+            continue
+        value = str(candidate).strip()
+        if value and not is_raw_auth_identifier(value):
+            return value
+
+    return fallback
+
+
 # User serializer for basic user data
 class UserSerializer(serializers.HyperlinkedModelSerializer):
+    display_name = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['url', 'username', 'email', 'is_staff']
+        fields = ['url', 'username', 'email', 'display_name', 'is_staff']
+
+    def get_display_name(self, obj):
+        return get_user_display_name(obj)
 
 class UserSummarySerializer(serializers.ModelSerializer):
     full_name = serializers.SerializerMethodField()
+    display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'is_staff']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'display_name', 'is_staff']
         read_only_fields = fields
 
     def get_full_name(self, obj):
         full_name = obj.get_full_name().strip()
-        return full_name or obj.username
+        return full_name or get_user_display_name(obj)
+
+    def get_display_name(self, obj):
+        return get_user_display_name(obj)
 
 # Room serializer defined first to avoid circular import issues
 class RoomSerializer(serializers.ModelSerializer):
@@ -119,6 +166,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
+    display_name = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(source='user.date_joined', read_only=True)
     uses_roster = serializers.BooleanField(source='user.uses_roster', read_only=True)
     # Property fields from User model
@@ -136,6 +184,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'email',
             'first_name',
             'last_name',
+            'display_name',
             'profile_image',
             'positions',
             'properties',
@@ -147,7 +196,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'created_at',
             'email_notifications_enabled',
         ]
-        read_only_fields = ['id', 'username', 'email', 'first_name', 'last_name', 'created_at']
+        read_only_fields = ['id', 'username', 'email', 'first_name', 'last_name', 'display_name', 'created_at']
+
+    def get_display_name(self, obj):
+        return get_user_display_name(obj.user)
 
 # Job image serializer
 class JobImageSerializer(serializers.ModelSerializer):
@@ -232,6 +284,10 @@ class JobSerializer(serializers.ModelSerializer):
     user_first_name = serializers.CharField(source='user.first_name', read_only=True)
     user_last_name = serializers.CharField(source='user.last_name', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
+    user_name = serializers.SerializerMethodField()
+    technician_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+    updated_by_name = serializers.SerializerMethodField()
     images = JobImageSerializer(source='job_images', many=True, read_only=True)
     topics = TopicSerializer(many=True, read_only=True)
     profile_image = serializers.SerializerMethodField()
@@ -246,12 +302,17 @@ class JobSerializer(serializers.ModelSerializer):
         model = Job
         fields = [
             'id', 'job_id', 'user', 'user_username', 'user_first_name', 'user_last_name', 'user_email',
+            'user_name', 'technician_name', 'created_by_name', 'updated_by_name',
             'updated_by', 'description', 'status', 'priority',
             'remarks', 'created_at', 'updated_at', 'completed_at', 'is_defective',
             'rooms', 'topics', 'images', 'profile_image', 'room_type', 'name',
             'topic_data', 'room_id', 'image_urls', 'is_preventivemaintenance'
         ]
-        read_only_fields = ['id', 'job_id', 'user', 'user_username', 'user_first_name', 'user_last_name', 'user_email', 'images', 'topics']
+        read_only_fields = [
+            'id', 'job_id', 'user', 'user_username', 'user_first_name', 'user_last_name',
+            'user_email', 'user_name', 'technician_name', 'created_by_name',
+            'updated_by_name', 'images', 'topics'
+        ]
 
     def validate(self, data):
         """Validate timestamp fields to ensure logical order"""
@@ -284,9 +345,22 @@ class JobSerializer(serializers.ModelSerializer):
                 'first_name': obj.user.first_name,
                 'last_name': obj.user.last_name,
                 'email': obj.user.email,
-                'full_name': f"{obj.user.first_name} {obj.user.last_name}".strip() if obj.user.first_name or obj.user.last_name else obj.user.username
+                'full_name': obj.user.get_full_name().strip() or get_user_display_name(obj.user),
+                'display_name': get_user_display_name(obj.user),
             }
         return None
+
+    def get_user_name(self, obj):
+        return get_user_display_name(obj.user)
+
+    def get_technician_name(self, obj):
+        return get_user_display_name(obj.user)
+
+    def get_created_by_name(self, obj):
+        return get_user_display_name(obj.user)
+
+    def get_updated_by_name(self, obj):
+        return get_user_display_name(obj.updated_by)
 
     def get_profile_image(self, obj):
         """
@@ -533,6 +607,9 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
     procedure_template_id = serializers.IntegerField(source='procedure_template.id', read_only=True)
     assigned_to_details = UserSummarySerializer(source='assigned_to', read_only=True)
     created_by_details = UserSummarySerializer(source='created_by', read_only=True)
+    assigned_to_name = serializers.SerializerMethodField()
+    technician_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = PreventiveMaintenance
@@ -540,9 +617,19 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
             'pm_id', 'pmtitle', 'job_id', 'job_description', 'scheduled_date', 'completed_date',
             'frequency', 'next_due_date', 'status', 'topics', 'machines', 'property_id',
             'procedure', 'notes', 'before_image_url', 'after_image_url', 'procedure_template',
-            'procedure_template_id', 'procedure_template_name', 'assigned_to_details', 'created_by_details'
+            'procedure_template_id', 'procedure_template_name', 'assigned_to_details',
+            'created_by_details', 'assigned_to_name', 'technician_name', 'created_by_name'
         ]
         list_serializer_class = serializers.ListSerializer
+
+    def get_assigned_to_name(self, obj):
+        return get_user_display_name(obj.assigned_to)
+
+    def get_technician_name(self, obj):
+        return get_user_display_name(obj.assigned_to)
+
+    def get_created_by_name(self, obj):
+        return get_user_display_name(obj.created_by)
 
     def get_job_id(self, obj):
         return obj.job.job_id if obj.job else None
@@ -803,6 +890,9 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
     )
     assigned_to_details = UserSummarySerializer(source='assigned_to', read_only=True)
     created_by_details = UserSummarySerializer(source='created_by', read_only=True)
+    assigned_to_name = serializers.SerializerMethodField()
+    technician_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
     
     before_image = serializers.ImageField(
         required=False,
@@ -823,9 +913,14 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
             'before_image_url', 'after_image_url', 'notes', 'procedure', 'procedure_template',
             'procedure_template_id', 'procedure_template_name', 'created_by', 'updated_at',
             'is_overdue', 'days_remaining', 'machine_ids', 'machines', 'property_id',
-            'assigned_to', 'assigned_to_details', 'created_by_details'
+            'assigned_to', 'assigned_to_details', 'created_by_details',
+            'assigned_to_name', 'technician_name', 'created_by_name'
         ]
-        read_only_fields = ['pm_id', 'created_by', 'updated_at', 'next_due_date', 'procedure_template_id', 'procedure_template_name', 'assigned_to_details', 'created_by_details']
+        read_only_fields = [
+            'pm_id', 'created_by', 'updated_at', 'next_due_date', 'procedure_template_id',
+            'procedure_template_name', 'assigned_to_details', 'created_by_details',
+            'assigned_to_name', 'technician_name', 'created_by_name'
+        ]
         extra_kwargs = {
             'before_image': {'required': False},
             'after_image': {'required': False},
@@ -840,6 +935,15 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
     
     def get_pmtitle(self, obj):
         return obj.pmtitle
+
+    def get_assigned_to_name(self, obj):
+        return get_user_display_name(obj.assigned_to)
+
+    def get_technician_name(self, obj):
+        return get_user_display_name(obj.assigned_to)
+
+    def get_created_by_name(self, obj):
+        return get_user_display_name(obj.created_by)
     
     def get_before_image_url(self, obj):
         """Get the full URL for the before image"""
@@ -894,30 +998,18 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
         machine_ids = list(machines_queryset.values_list('machine_id', flat=True))
         
         # Use print for immediate visibility in docker logs
-        print(f"[PreventiveMaintenanceDetailSerializer] ===== SERIALIZING PM {instance.pm_id} =====")
-        print(f"[PreventiveMaintenanceDetailSerializer] Machine count from DB: {machine_count}")
-        print(f"[PreventiveMaintenanceDetailSerializer] Machine IDs from DB: {machine_ids}")
-        print(f"[PreventiveMaintenanceDetailSerializer] Machine queryset type: {type(machines_queryset)}")
         
         logger.info(f"[PreventiveMaintenanceDetailSerializer] Serializing PM {instance.pm_id}: {machine_count} machines, IDs: {machine_ids}")
         
         representation = super().to_representation(instance)
         
-        print(f"[PreventiveMaintenanceDetailSerializer] Machines in representation: {representation.get('machines', [])}")
-        print(f"[PreventiveMaintenanceDetailSerializer] Representation machines count: {len(representation.get('machines', []))}")
-        print(f"[PreventiveMaintenanceDetailSerializer] ===== END SERIALIZATION =====")
-        
         return representation
 
     def create(self, validated_data):
-        print(f"[PreventiveMaintenanceDetailSerializer] CREATE - validated_data: {validated_data}")
-        print(f"[PreventiveMaintenanceDetailSerializer] procedure_template in data: {validated_data.get('procedure_template')}")
         
         topic_ids = validated_data.pop('topic_ids', [])
         machine_ids = validated_data.pop('machine_ids', [])
         instance = super().create(validated_data)
-        
-        print(f"[PreventiveMaintenanceDetailSerializer] Created instance - procedure_template: {instance.procedure_template}")
         
         if topic_ids:
             instance.topics.set(topic_ids)
@@ -926,14 +1018,10 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
         return instance
 
     def update(self, instance, validated_data):
-        print(f"[PreventiveMaintenanceDetailSerializer] UPDATE - validated_data: {validated_data}")
-        print(f"[PreventiveMaintenanceDetailSerializer] procedure_template in data: {validated_data.get('procedure_template')}")
         
         topic_ids = validated_data.pop('topic_ids', None)
         machine_ids = validated_data.pop('machine_ids', None)
         instance = super().update(instance, validated_data)
-        
-        print(f"[PreventiveMaintenanceDetailSerializer] Updated instance - procedure_template: {instance.procedure_template}")
         
         if topic_ids is not None:
             instance.topics.set(topic_ids)
@@ -1035,9 +1123,12 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             'frequency', 'custom_days', 'next_due_date', 'before_image', 'after_image',
             'before_image_url', 'after_image_url', 'notes', 'procedure', 'procedure_template',
             'procedure_template_id', 'procedure_template_name', 'machine_ids', 'machines',
-            'property_id', 'assigned_to', 'remarks'
+            'property_id', 'assigned_to', 'assigned_to_name', 'technician_name', 'remarks'
         ]
-        read_only_fields = ['pm_id', 'next_due_date', 'procedure_template_id', 'procedure_template_name']
+        read_only_fields = [
+            'pm_id', 'next_due_date', 'procedure_template_id', 'procedure_template_name',
+            'assigned_to_name', 'technician_name'
+        ]
         extra_kwargs = {
             'before_image': {'required': False},
             'after_image': {'required': False},
@@ -1051,12 +1142,14 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             'assigned_to': {'required': False, 'allow_null': True},
             'remarks': {'required': False},
         }
+
+    def get_assigned_to_name(self, obj):
+        return get_user_display_name(obj.assigned_to)
+
+    def get_technician_name(self, obj):
+        return get_user_display_name(obj.assigned_to)
     
     def to_internal_value(self, data):
-        print(f"=== DEBUG: to_internal_value ===")
-        print(f"Input data: {data}")
-        print(f"Input data type: {type(data)}")
-        print(f"Input data keys: {data.keys() if hasattr(data, 'keys') else 'N/A'}")
         
         # CRITICAL: Handle FormData/QueryDict for machine_ids and topic_ids
         # When FormData has multiple values for the same key, QueryDict.get() returns only the last value
@@ -1065,9 +1158,6 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             # This is a QueryDict (from FormData)
             machine_ids_raw = data.getlist('machine_ids')
             topic_ids_raw = data.getlist('topic_ids')
-            
-            print(f"[to_internal_value] QueryDict detected - machine_ids from getlist(): {machine_ids_raw}")
-            print(f"[to_internal_value] QueryDict detected - topic_ids from getlist(): {topic_ids_raw}")
             
             # Convert QueryDict to a regular dict, preserving lists for array fields
             # Use items() but handle list fields specially
@@ -1092,8 +1182,6 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             data_dict['topic_ids'] = topic_ids_raw if topic_ids_raw else []
             
             logger.info(f"[to_internal_value] Converted QueryDict. machine_ids: {data_dict.get('machine_ids')}, topic_ids: {data_dict.get('topic_ids')}")
-            print(f"[to_internal_value] Converted QueryDict to dict. machine_ids: {data_dict.get('machine_ids')}, topic_ids: {data_dict.get('topic_ids')}")
-            print(f"[to_internal_value] machine_ids type: {type(data_dict.get('machine_ids'))}, length: {len(data_dict.get('machine_ids', []))}")
             
             # Replace data with the dict version
             data = data_dict
@@ -1113,11 +1201,9 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                     if not isinstance(data, dict):
                         data = data.copy()
                     data.pop('before_image', None)
-                    print(f"Removed invalid before_image from data")
                 elif isinstance(data, dict):
                     # Regular dict - remove the key
                     data = {k: v for k, v in data.items() if k != 'before_image' or hasattr(v, 'read')}
-                    print(f"Removed invalid before_image from dict")
             
             if after_image is not None and not hasattr(after_image, 'read'):
                 # Not a file object - remove it
@@ -1126,11 +1212,9 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                     if not isinstance(data, dict):
                         data = data.copy()
                     data.pop('after_image', None)
-                    print(f"Removed invalid after_image from data")
                 elif isinstance(data, dict):
                     # Regular dict - remove the key
                     data = {k: v for k, v in data.items() if k != 'after_image' or hasattr(v, 'read')}
-                    print(f"Removed invalid after_image from dict")
         
         result = super().to_internal_value(data)
         
@@ -1140,19 +1224,15 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             result_topic_ids = result.get('topic_ids')
             
             logger.info(f"[to_internal_value] Result machine_ids: {result_machine_ids} (type: {type(result_machine_ids)})")
-            print(f"[to_internal_value] Result machine_ids: {result_machine_ids} (type: {type(result_machine_ids)})")
-            print(f"[to_internal_value] Result topic_ids: {result_topic_ids} (type: {type(result_topic_ids)})")
             
             # If machine_ids was lost or is empty but we had it in input data, restore it
             if isinstance(data, dict) and 'machine_ids' in data:
                 input_machine_ids = data.get('machine_ids', [])
                 if input_machine_ids and (not result_machine_ids or (isinstance(result_machine_ids, list) and len(result_machine_ids) == 0)):
                     logger.warning(f"[to_internal_value] ⚠️ machine_ids lost! Restoring: {input_machine_ids}")
-                    print(f"[to_internal_value] ⚠️ machine_ids lost in processing! Restoring from input: {input_machine_ids}")
                     result['machine_ids'] = input_machine_ids if isinstance(input_machine_ids, list) else [input_machine_ids]
         else:
             logger.warning(f"[to_internal_value] Result is not a dict: {type(result)}")
-            print(f"[to_internal_value] Result is not a dict: {type(result)}")
         
         return result
 
@@ -1176,10 +1256,6 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         return None
 
     def create(self, validated_data):
-        print(f"=== DEBUG: PreventiveMaintenanceCreateUpdateSerializer.create ===")
-        print(f"validated_data: {validated_data}")
-        print(f"pmtitle in validated_data: {validated_data.get('pmtitle')}")
-        print(f"procedure_template in validated_data: {validated_data.get('procedure_template')}")
         
         # CRITICAL: Pop topic_ids and machine_ids ONCE at the beginning
         # These are ManyToMany relationships that need to be set after instance creation
@@ -1187,16 +1263,13 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         machine_ids = validated_data.pop('machine_ids', [])
         
         # Ensure machine_ids is a list (handle case where it might be a string or single value)
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] BEFORE PROCESSING - machine_ids: {machine_ids}, type: {type(machine_ids)}, is_list: {isinstance(machine_ids, list)}")
         if machine_ids and not isinstance(machine_ids, list):
             machine_ids = [machine_ids] if machine_ids else []
         # Filter out empty strings and None values
         if isinstance(machine_ids, list):
-            original_count = len(machine_ids)
             machine_ids = [str(mid).strip() for mid in machine_ids if mid and str(mid).strip()]
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] AFTER FILTERING - machine_ids: {machine_ids}, original_count: {original_count}, filtered_count: {len(machine_ids)}")
         else:
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids is NOT a list after conversion: {machine_ids}, type: {type(machine_ids)}")
+            machine_ids = []
         
         # Ensure topic_ids is a list
         if topic_ids and not isinstance(topic_ids, list):
@@ -1204,9 +1277,6 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         # Filter out None values and ensure integers
         if isinstance(topic_ids, list):
             topic_ids = [int(tid) for tid in topic_ids if tid is not None]
-        
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] Popped machine_ids: {machine_ids} (type: {type(machine_ids)}, length: {len(machine_ids) if isinstance(machine_ids, list) else 'N/A'})")
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] Popped topic_ids: {topic_ids} (type: {type(topic_ids)}, length: {len(topic_ids) if isinstance(topic_ids, list) else 'N/A'})")
         
         # Auto-calculate scheduled_date based on frequency if procedure_template is provided
         procedure_template = validated_data.get('procedure_template')
@@ -1288,43 +1358,18 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                     next_schedule = now.replace(year=year, month=month, day=day)
                 
                 validated_data['scheduled_date'] = next_schedule
-                print(f"Auto-calculated scheduled_date based on frequency '{frequency}': {next_schedule}")
-        
-        print(f"After processing - validated_data keys: {list(validated_data.keys())}")
         
         instance = super().create(validated_data)
-        print(f"Created instance: {instance}")
-        print(f"Instance pmtitle: {instance.pmtitle}")
-        print(f"Instance procedure_template: {instance.procedure_template}")
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] ===== INSTANCE CREATED, NOW SETTING RELATIONSHIPS =====")
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids variable exists: {'machine_ids' in locals()}")
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids value: {machine_ids if 'machine_ids' in locals() else 'NOT IN LOCALS'}")
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids type: {type(machine_ids) if 'machine_ids' in locals() else 'N/A'}")
         
         # Set ManyToMany relationships after instance creation
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] ===== SETTING RELATIONSHIPS =====")
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] topic_ids check: {topic_ids}, bool: {bool(topic_ids)}, len: {len(topic_ids) if isinstance(topic_ids, list) else 'N/A'}")
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids check: {machine_ids}, bool: {bool(machine_ids)}, len: {len(machine_ids) if isinstance(machine_ids, list) else 'N/A'}")
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids repr: {repr(machine_ids)}")
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids == []: {machine_ids == []}")
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids is None: {machine_ids is None}")
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] len(machine_ids) if list: {len(machine_ids) if isinstance(machine_ids, list) else 'NOT A LIST'}")
         
         if topic_ids:
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Setting {len(topic_ids)} topics")
             instance.topics.set(topic_ids)
-        else:
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] No topics to set")
-            
-        # CRITICAL: Check machine_ids more explicitly
+
         has_machines = machine_ids and len(machine_ids) > 0 if isinstance(machine_ids, list) else bool(machine_ids)
-        print(f"[PreventiveMaintenanceCreateUpdateSerializer] has_machines check: {has_machines}")
         
         if has_machines:
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] ===== ENTERING MACHINE SETTING BLOCK =====")
             logger.info(f"[PreventiveMaintenanceCreateUpdateSerializer] Setting {len(machine_ids)} machines: {machine_ids}")
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Setting {len(machine_ids)} machines: {machine_ids}")
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Machine IDs type: {type(machine_ids)}, values: {machine_ids}")
             
             # Query machines by machine_id
             machines = Machine.objects.filter(machine_id__in=machine_ids)
@@ -1332,12 +1377,9 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             found_ids = list(machines.values_list('machine_id', flat=True))
             
             logger.info(f"[PreventiveMaintenanceCreateUpdateSerializer] Found {found_count} machines: {found_ids}")
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Found {found_count} machines in database")
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Found machine IDs: {found_ids}")
             
             if found_count == 0:
                 logger.warning(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ No machines found for IDs: {machine_ids}")
-                print(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ WARNING: No machines found for IDs: {machine_ids}")
             
             # Set the machines relationship
             instance.machines.set(machines)
@@ -1350,29 +1392,17 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             final_machine_ids = list(instance.machines.values_list('machine_id', flat=True))
             
             logger.info(f"[PreventiveMaintenanceCreateUpdateSerializer] ✅ Machines set. Count: {final_machine_count}, IDs: {final_machine_ids}")
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] ✅ Machines set. Instance now has {final_machine_count} machines")
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] Final machine IDs: {final_machine_ids}")
             
             if final_machine_count == 0 and found_count > 0:
                 logger.error(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ ERROR: Machines found but not set!")
-                print(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ ERROR: Machines were found but not set! This is a bug.")
-        else:
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ No machine_ids provided - machines will be empty")
-            print(f"[PreventiveMaintenanceCreateUpdateSerializer] machine_ids value: {machine_ids}, type: {type(machine_ids)}")
-        
-        print(f"Final instance pmtitle: {instance.pmtitle}")
+
         return instance
 
     def update(self, instance, validated_data):
-        print(f"=== DEBUG: PreventiveMaintenanceCreateUpdateSerializer.update ===")
-        print(f"validated_data: {validated_data}")
-        print(f"procedure_template in validated_data: {validated_data.get('procedure_template')}")
         
         topic_ids = validated_data.pop('topic_ids', None)
         machine_ids = validated_data.pop('machine_ids', None)
         instance = super().update(instance, validated_data)
-        
-        print(f"Updated instance procedure_template: {instance.procedure_template}")
         
         if topic_ids is not None:
             instance.topics.set(topic_ids)
@@ -1382,19 +1412,9 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate_assigned_to(self, value):
         """Custom validation for assigned_to field"""
-        print(f"=== DEBUG: validate_assigned_to ===")
-        print(f"Type: {type(value)}")
-        print(f"Value: {value}")
-        print(f"Repr: {repr(value)}")
         return value
 
     def validate(self, data):
-        print(f"=== DEBUG: validate method ===")
-        print(f"assigned_to in data: {'assigned_to' in data}")
-        if 'assigned_to' in data:
-            print(f"assigned_to value: {data.get('assigned_to')}")
-            print(f"assigned_to type: {type(data.get('assigned_to'))}")
-        
         frequency = data.get('frequency')
         custom_days = data.get('custom_days')
 
@@ -1555,6 +1575,9 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
     )
     assigned_to_details = UserSummarySerializer(source='assigned_to', read_only=True)
     created_by_details = UserSummarySerializer(source='created_by', read_only=True)
+    assigned_to_name = serializers.SerializerMethodField()
+    technician_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = PreventiveMaintenance
@@ -1563,7 +1586,8 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
             'property_id', 'machine_ids', 'machines', 'frequency', 'custom_days', 'next_due_date',
             'before_image', 'after_image', 'before_image_url', 'after_image_url', 'notes',
             'procedure', 'procedure_template', 'assigned_to', 'remarks',
-            'assigned_to_details', 'created_by', 'created_by_details', 'updated_at'
+            'assigned_to_details', 'created_by', 'created_by_details', 'updated_at',
+            'assigned_to_name', 'technician_name', 'created_by_name'
         ]
         extra_kwargs = {
             'completed_date': {'required': False},
@@ -1581,6 +1605,15 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
             # All machines must belong to the same property, so return the first one
             return machines.first().property.property_id
         return None
+
+    def get_assigned_to_name(self, obj):
+        return get_user_display_name(obj.assigned_to)
+
+    def get_technician_name(self, obj):
+        return get_user_display_name(obj.assigned_to)
+
+    def get_created_by_name(self, obj):
+        return get_user_display_name(obj.created_by)
 
     def get_before_image_url(self, obj):
         request = self.context.get('request')
@@ -1735,6 +1768,7 @@ class MaintenanceTaskImageSerializer(serializers.ModelSerializer):
     task_name = serializers.CharField(source='task.name', read_only=True)
     # equipment_name removed - tasks no longer have equipment field
     uploaded_by_username = serializers.CharField(source='uploaded_by.username', read_only=True)
+    uploaded_by_name = serializers.SerializerMethodField()
     image_url_full = serializers.SerializerMethodField()
     
     class Meta:
@@ -1742,9 +1776,12 @@ class MaintenanceTaskImageSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'task', 'task_name',
             'image_type', 'image_url', 'image_url_full',
-            'jpeg_path', 'uploaded_at', 'uploaded_by', 'uploaded_by_username'
+            'jpeg_path', 'uploaded_at', 'uploaded_by', 'uploaded_by_username', 'uploaded_by_name'
         ]
         read_only_fields = ['id', 'jpeg_path', 'uploaded_at']
+
+    def get_uploaded_by_name(self, obj):
+        return get_user_display_name(obj.uploaded_by)
     
     def get_image_url_full(self, obj):
         """Get full URL for the image"""
@@ -1790,6 +1827,7 @@ class UtilityConsumptionSerializer(serializers.ModelSerializer):
     property_id = serializers.CharField(source='property.property_id', read_only=True)
     month_display = serializers.CharField(source='get_month_display', read_only=True)
     created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    created_by_name = serializers.SerializerMethodField()
     totalkwh = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
     onpeakkwh = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
     offpeakkwh = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
@@ -1818,9 +1856,13 @@ class UtilityConsumptionSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'created_by',
-            'created_by_username'
+            'created_by_username',
+            'created_by_name'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_created_by_name(self, obj):
+        return get_user_display_name(obj.created_by)
     
     def validate(self, data):
         """Validate that property is provided"""
@@ -1880,6 +1922,7 @@ class InventorySerializer(serializers.ModelSerializer):
     room_name = serializers.CharField(source='room.name', read_only=True)
     room_id = serializers.CharField(source='room.room_id', read_only=True)
     created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    created_by_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     image_url = serializers.SerializerMethodField()
@@ -1925,7 +1968,8 @@ class InventorySerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'created_by',
-            'created_by_username'
+            'created_by_username',
+            'created_by_name'
         ]
         read_only_fields = ['id', 'item_id', 'created_at', 'updated_at']
     
@@ -1956,6 +2000,7 @@ class InventorySerializer(serializers.ModelSerializer):
                 'description': job.description,
                 'status': job.status,
                 'user_id': job.user_id,
+                'technician_name': get_user_display_name(job.user),
                 'updated_at': job.updated_at,
             }
             for job in jobs
@@ -1971,7 +2016,9 @@ class InventorySerializer(serializers.ModelSerializer):
                 'title': pm.pmtitle,
                 'status': pm.status,
                 'assigned_to_id': pm.assigned_to_id,
+                'assigned_to_name': get_user_display_name(pm.assigned_to),
                 'created_by_id': pm.created_by_id,
+                'created_by_name': get_user_display_name(pm.created_by),
                 'updated_at': pm.updated_at,
             }
             for pm in pms
@@ -1995,6 +2042,9 @@ class InventorySerializer(serializers.ModelSerializer):
             })
         
         return data
+
+    def get_created_by_name(self, obj):
+        return get_user_display_name(obj.created_by)
 
 
 class InventoryListSerializer(serializers.ModelSerializer):

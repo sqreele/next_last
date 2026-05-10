@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 
 export default function LandingPage() {
   const { isAuthenticated, user } = useSessionGuard({ 
@@ -81,7 +82,7 @@ export default function LandingPage() {
               {isAuthenticated ? (
                 <>
                   <span className="text-sm text-gray-600">
-                    Welcome back, {user?.username}!
+                    Welcome back, {getDisplayName(user, 'User')}!
                   </span>
                   <Button asChild>
                     <Link href="/dashboard">

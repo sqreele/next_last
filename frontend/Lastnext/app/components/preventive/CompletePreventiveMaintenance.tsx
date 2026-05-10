@@ -39,11 +39,6 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
   const router = useRouter();
   const pmId = params?.id;
   
-  console.log('=== COMPONENT DEBUG ===');
-  console.log('Received params:', params);
-  console.log('Using pmId:', pmId);
-  console.log('pmId type:', typeof pmId);
-  
   // Use context for state management and actions
   const { 
     selectedMaintenance,
@@ -130,12 +125,8 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
 
   // Fetch maintenance record
   useEffect(() => {
-    console.log('=== FETCH EFFECT ===');
-    console.log('pmId from useEffect:', pmId);
-    console.log('pmId exists?', !!pmId);
     
     if (pmId) {
-      console.log('Calling fetchMaintenanceById with ID:', pmId);
       fetchMaintenanceById(pmId);
     } else {
       console.error('No pmId provided to component');
@@ -145,10 +136,6 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
   // Pre-populate form when data is loaded
   useEffect(() => {
     if (selectedMaintenance) {
-      console.log('=== SELECTED MAINTENANCE LOADED ===');
-      console.log('Selected maintenance:', selectedMaintenance);
-      console.log('Maintenance ID:', selectedMaintenance.id);
-      console.log('Maintenance PM_ID:', selectedMaintenance.pm_id);
       
       // Pre-populate notes if any exist
       if (selectedMaintenance.notes) {
@@ -210,10 +197,6 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
       console.error('Cannot submit: No pmId available');
       return;
     }
-    
-    console.log('=== FORM SUBMISSION ===');
-    console.log('Submitting for pmId:', pmId);
-    console.log('Completion data:', completionData);
     
     // Validate completion date is within 15 days of scheduled date
     if (selectedMaintenance?.scheduled_date) {
@@ -311,11 +294,6 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
 
   // Debug component state
   useEffect(() => {
-    console.log('=== COMPONENT STATE DEBUG ===');
-    console.log('isLoading:', isLoading);
-    console.log('error:', error);
-    console.log('selectedMaintenance:', selectedMaintenance);
-    console.log('pmId:', pmId);
   }, [isLoading, error, selectedMaintenance, pmId]);
 
   if (isLoading) {

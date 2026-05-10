@@ -179,7 +179,6 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     // Room filtering
     if (selectedRoom) {
       if (!job.rooms || !Array.isArray(job.rooms) || job.rooms.length === 0) {
-        console.log('❌ Job', job.job_id, 'filtered out by room - no rooms');
         return false;
       }
 
@@ -197,7 +196,6 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
       });
 
       if (!matchesRoom) {
-        console.log('❌ Job', job.job_id, 'filtered out by room - no room match');
         return false;
       }
     }
@@ -233,10 +231,8 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     
     // Debug logging for defect and in_progress filters
     if (filter === 'defect' && process.env.NODE_ENV === 'development') {
-      console.log(`🔍 Defect filter - Job ${job.job_id}: is_defective=${job.is_defective}, matches=${matchesStatus}`);
     }
     if (filter === 'in_progress' && process.env.NODE_ENV === 'development') {
-      console.log(`🔍 In Progress filter - Job ${job.job_id}: status=${job.status}, matches=${matchesStatus}`);
     }
     
     

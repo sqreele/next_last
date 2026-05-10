@@ -9,6 +9,7 @@ import { Job, Property, JobStatus, JobPriority } from '@/app/lib/types';
 import Image from 'next/image';
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
 import { JobHeroImage, GalleryImage } from '@/app/components/ui/OptimizedImageEnhanced';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 
 type Props = {
   params: Promise<{ jobId: string }>;
@@ -62,17 +63,6 @@ export default async function JobPage({ params }: Props) {
     }
 
     // Debug logging for job data
-    console.log('🔍 Job Detail Debug:', {
-      jobId,
-      hasImageUrls: !!job.image_urls,
-      imageUrlsLength: job.image_urls?.length || 0,
-      imageUrls: job.image_urls,
-      hasImages: !!job.images,
-      imagesLength: job.images?.length || 0,
-      images: job.images,
-      // Test fixImageUrl function
-      testImageUrl: job.image_urls?.[0] ? fixImageUrl(job.image_urls[0]) : 'No first image'
-    });
 
     const formatDate = (dateString: string) => {
       return new Date(dateString).toLocaleString('en-US', {
@@ -82,65 +72,6 @@ export default async function JobPage({ params }: Props) {
         hour: '2-digit',
         minute: '2-digit',
       });
-    };
-
-    const getUserDisplayName = (user: any): string => {
-      if (!user) return 'Unassigned';
-      
-      // Handle case where user is stringified object "[object Object]"
-      if (typeof user === 'string' && user === '[object Object]') {
-        return 'Unknown User';
-      }
-      
-      // Handle user as an object with various possible properties
-      if (typeof user === 'object' && user) {
-        // Priority 1: Check for full_name property (most important for display)
-        if ('full_name' in user && user.full_name && user.full_name.trim()) {
-          return user.full_name.trim();
-        }
-        // Priority 2: Check for first_name and last_name combination
-        if ('first_name' in user && 'last_name' in user) {
-          const firstName = user.first_name || '';
-          const lastName = user.last_name || '';
-          if (firstName || lastName) {
-            return `${firstName} ${lastName}`.trim();
-          }
-        }
-        // Priority 3: Check for name property
-        if ('name' in user && user.name) {
-          return user.name;
-        }
-        // Priority 4: Check for username property (clean Auth0 usernames)
-        if ('username' in user && user.username) {
-          let cleanUsername = user.username;
-          // Clean up Auth0 usernames for better display
-          if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
-            cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
-          }
-          return cleanUsername;
-        }
-        // Priority 5: Check for email property
-        if ('email' in user && user.email) {
-          return user.email.split('@')[0]; // Return part before @ as display name
-        }
-        // Priority 6: Check for id property (last resort)
-        if ('id' in user && user.id) {
-          return `User ${user.id}`;
-        }
-        return 'Unknown User';
-      }
-      
-      // Handle user as string or number - if it's a string, it might be a username
-      if (typeof user === 'string') {
-        // If it's a string that looks like an ID (numeric), show as User ID
-        if (/^\d+$/.test(user)) {
-          return `User ${user}`;
-        }
-        // Otherwise, treat it as a username
-        return user;
-      }
-      
-      return 'Unknown User';
     };
 
     return (
@@ -201,7 +132,7 @@ export default async function JobPage({ params }: Props) {
               <User className="w-4 h-4 text-[var(--pcms-text-muted)]" />
               <span>
                 <span className="font-semibold">Assigned to:</span>{' '}
-                {getUserDisplayName(job.user)}
+                {getDisplayName(job.user, job.technician_name || job.user_name || 'Unknown Technician')}
               </span>
             </div>
           )}
@@ -289,14 +220,6 @@ export default async function JobPage({ params }: Props) {
                   const imageUrl = fixImageUrl(url);
                   
                   // Debug logging for image URLs
-                  console.log('🔍 Job Detail Image Debug:', {
-                    originalUrl: url,
-                    fixedUrl: imageUrl,
-                    isExternal: imageUrl?.startsWith('http'),
-                    index,
-                    urlType: typeof url,
-                    urlLength: url?.length
-                  });
                   
                   // Use original URL if fixImageUrl returns null
                   const finalImageUrl = imageUrl || url;

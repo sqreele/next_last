@@ -39,24 +39,9 @@ export default function EditProfilePage() {
 
   const profileId = params.id as string;
 
-  console.log('🔍 EditProfilePage loaded with:', {
-    profileId,
-    hasUserProfile: !!userProfile,
-    userProfileData: userProfile,
-    loading,
-    params
-  });
-
   useEffect(() => {
-    console.log('🔍 useEffect triggered with userProfile:', userProfile);
     if (userProfile) {
-      console.log('🔍 User profile data loaded:', userProfile);
       setFormData({
-        username: userProfile.username || '',
-        email: userProfile.email || '',
-        positions: userProfile.positions || ''
-      });
-      console.log('🔍 Form data initialized:', {
         username: userProfile.username || '',
         email: userProfile.email || '',
         positions: userProfile.positions || ''
@@ -124,7 +109,6 @@ export default function EditProfilePage() {
     setMessage(null);
 
     try {
-      console.log('🔍 Form submission started with formData:', formData);
       
       // Create Auth0 profile data structure
       const auth0Profile = {
@@ -132,9 +116,6 @@ export default function EditProfilePage() {
         nickname: formData.username,
         name: formData.username
       };
-
-      console.log('🔍 Submitting profile update with data:', auth0Profile);
-      console.log('🔍 Current user profile for comparison:', userProfile);
 
       // Get the current session to extract the access token
       const sessionResponse = await fetch('/api/auth/session-compat', {
@@ -148,13 +129,6 @@ export default function EditProfilePage() {
       
       const session = await sessionResponse.json();
       const accessToken = session?.user?.accessToken;
-      
-      console.log('🔍 Session data retrieved:', {
-        hasSession: !!session,
-        hasUser: !!session?.user,
-        hasAccessToken: !!accessToken,
-        accessTokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none'
-      });
       
       if (!accessToken) {
         throw new Error('No access token available for profile update');
@@ -171,7 +145,6 @@ export default function EditProfilePage() {
         
         // Force refresh of user context data
         if (forceRefresh) {
-          console.log('🔄 Refreshing user context data...');
           await forceRefresh();
         }
         
@@ -239,9 +212,6 @@ export default function EditProfilePage() {
                 variant="outline" 
                 size="sm"
                 onClick={() => {
-                  console.log('🧪 Test button clicked');
-                  console.log('🧪 Current formData:', formData);
-                  console.log('🧪 Current userProfile:', userProfile);
                 }}
               >
                 Test Form Data

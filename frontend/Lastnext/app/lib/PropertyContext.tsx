@@ -42,7 +42,6 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       if (!selectedProperty && userProfile.properties.length > 0) {
         const firstProperty = userProfile.properties[0];
         const propertyId = String(firstProperty.property_id);
-        console.log('🔧 Auto-selecting first property:', propertyId);
         setStoreProperty(propertyId);
       }
     }
@@ -53,7 +52,6 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     if (storeProperties.length > 0 && !selectedProperty) {
       const firstProperty = storeProperties[0];
       const propertyId = String(firstProperty.property_id);
-      console.log('🔧 Ensuring property is selected:', propertyId);
       setStoreProperty(propertyId);
     }
   }, [storeProperties, selectedProperty, setStoreProperty]);

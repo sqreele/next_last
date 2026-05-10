@@ -21,6 +21,7 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import JobList from '@/app/components/jobs/jobList';
 import { Job, JobStatus } from '@/app/lib/types';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 import {
   EmptyState,
   KpiWidget,
@@ -59,9 +60,7 @@ const TAB_CONFIG = [
 ];
 
 function getUserName(user: Job['user']) {
-  if (!user) return 'Unassigned';
-  if (typeof user === 'string' || typeof user === 'number') return `Technician ${user}`;
-  return user.username || user.email || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Assigned technician';
+  return getDisplayName(user, 'Unknown Technician');
 }
 
 function getRoomOrArea(job: Job) {

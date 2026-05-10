@@ -19,11 +19,6 @@ function AuthErrorContent() {
     
     // Log all search params for debugging
     if (isDevelopment) {
-      console.log('🔍 Auth Error Page Debug:', {
-        error,
-        allSearchParams: Object.fromEntries(searchParams.entries()),
-        url: window.location.href
-      });
     }
   }, [error, searchParams, isDevelopment]);
 

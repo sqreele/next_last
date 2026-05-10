@@ -39,6 +39,7 @@ import { fetchAllJobsForProperty } from '@/app/lib/data.server';
 import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import { endOfDay, format, startOfDay } from 'date-fns';
 import { jobsToCSV, downloadCSV } from '@/app/lib/utils/csv-export';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 import type { UtilityConsumptionRow } from '@/app/dashboard/utility-consumption/types';
 
 const STATUS_FILTER_OPTIONS: Array<{ value: JobStatus | 'all'; label: string }> = [
@@ -90,26 +91,16 @@ function getJobUserKey(user: Job['user'] | undefined | null): string | null {
   return null;
 }
 
-function cleanAuthUsername(raw: string): string {
-  if (raw.includes('auth0_') || raw.includes('google-oauth2_')) {
-    return raw.replace(/^(auth0_|google-oauth2_)/, '');
-  }
-  return raw;
-}
-
 function getReportUserLabel(
   user: Job['user'] | undefined | null,
   detailedUsers: DetailedUser[],
   sessionUser: { id?: string; username?: string; first_name?: string | null; last_name?: string | null } | undefined
 ): string {
-  if (user === undefined || user === null) return 'Unassigned';
+  if (user === undefined || user === null) return 'Unknown Technician';
 
   if (typeof user === 'object' && user && 'username' in user) {
     const detailed = detailedUsers.find((u) => u.username === user.username);
-    if (detailed?.full_name?.trim()) return detailed.full_name.trim();
-    if (detailed?.username) return cleanAuthUsername(detailed.username);
-    const u = user.username ? cleanAuthUsername(String(user.username)) : '';
-    return u || 'Unknown user';
+    return getDisplayName(detailed || user, 'Unknown Technician');
   }
 
   if (typeof user === 'string' || typeof user === 'number') {
@@ -118,32 +109,30 @@ function getReportUserLabel(
       (u) =>
         u.id.toString() === userStr || u.username === userStr || u.email === userStr
     );
-    if (detailed?.full_name?.trim()) return detailed.full_name.trim();
-    if (detailed?.username) return cleanAuthUsername(detailed.username);
+    if (detailed) return getDisplayName(detailed, 'Unknown Technician');
 
     if (sessionUser?.id) {
       const sid = String(sessionUser.id).trim();
       if (userStr === sid || userStr.toLowerCase() === sid.toLowerCase()) {
         const fn = [sessionUser.first_name, sessionUser.last_name].filter(Boolean).join(' ').trim();
-        return fn || sessionUser.username || 'You';
+        return getDisplayName({ ...sessionUser, full_name: fn }, 'Unknown Technician');
       }
       if (userStr.includes('google-oauth2_') && sid.includes('google-oauth2_')) {
         if (userStr.replace('google-oauth2_', '') === sid.replace('google-oauth2_', '')) {
-          return sessionUser.username || 'You';
+          return getDisplayName(sessionUser, 'Unknown Technician');
         }
       }
       const un = parseInt(userStr, 10);
       const sn = parseInt(sid, 10);
       if (!Number.isNaN(un) && !Number.isNaN(sn) && un === sn) {
-        return sessionUser.username || 'You';
+        return getDisplayName(sessionUser, 'Unknown Technician');
       }
     }
 
-    if (!Number.isNaN(Number(userStr))) return `User #${userStr}`;
-    return `User ${userStr}`;
+    return getDisplayName(userStr, 'Unknown Technician');
   }
 
-  return 'Unknown user';
+  return 'Unknown Technician';
 }
 
 function jobIsPm(job: Job): boolean {
@@ -1007,23 +996,17 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         recordLoaderShown();
         setLoading(true);
         try {
-          console.log('🔍 JobsReport: Loading property jobs for:', selectedProperty);
-          console.log('🔍 JobsReport: Session available:', !!session);
-          console.log('🔍 JobsReport: Session user:', session?.user);
-          console.log('🔍 JobsReport: Access token available:', !!session?.user?.accessToken);
           
           // Try to get access token from session, or use a fallback
           let accessToken = session?.user?.accessToken;
           
           // If no access token in session, try to get it from the session endpoint
           if (!accessToken) {
-            console.log('🔍 JobsReport: No access token in session, trying to fetch from session endpoint...');
             try {
               const sessionResponse = await fetch('/api/auth/session-compat');
               if (sessionResponse.ok) {
                 const sessionData = await sessionResponse.json();
                 accessToken = sessionData?.user?.accessToken;
-                console.log('🔍 JobsReport: Access token from session endpoint:', !!accessToken);
               }
             } catch (sessionError) {
               console.error('❌ JobsReport: Error fetching session:', sessionError);
@@ -1036,7 +1019,6 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
           }
           
           const propertyJobs = await fetchAllJobsForProperty(selectedProperty, accessToken);
-          console.log(`✅ JobsReport: Loaded ${propertyJobs.length} jobs for property ${selectedProperty}`);
           setReportJobs(propertyJobs);
         } catch (error) {
           console.error('Error loading property jobs:', error);

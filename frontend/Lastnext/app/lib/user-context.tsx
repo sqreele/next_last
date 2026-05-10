@@ -59,7 +59,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      console.log('🔍 Fetching complete user profile from backend...');
       
       // First, try to get the full user profile from the backend
       try {
@@ -71,7 +70,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         if (sessionResponse.ok) {
           const sessionData = await sessionResponse.json();
-          console.log('✅ Session data received:', sessionData);
           
           // Use the session data to create the profile
           const profile: UserProfile = {
@@ -86,9 +84,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             properties: sessionData.user.properties || []
           };
           
-          console.log('✅ Complete user profile created from session data:', profile);
-          console.log('✅ Properties count:', profile.properties.length);
-          
           setUserProfile(profile);
           setLastFetched(Date.now());
           setError(null);
@@ -99,7 +94,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             const propertyId = getPropertyId(firstProperty);
             if (propertyId) {
               setSelectedProperty(propertyId);
-              console.log('🔧 Auto-selected property in UserProvider:', propertyId);
             }
           }
 
@@ -110,7 +104,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
       
       // Fallback to session data if backend fetch fails
-      console.log('🔄 Using session data as fallback...');
       
       const profile: UserProfile = {
         id: session.user.id,
@@ -123,8 +116,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         created_at: session.user.created_at,
         properties: session.user.properties || []
       };
-      
-      console.log('🔄 User profile from session data (fallback):', profile);
 
       setUserProfile(profile);
       setLastFetched(Date.now());
@@ -136,7 +127,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const propertyId = getPropertyId(firstProperty);
         if (propertyId) {
           setSelectedProperty(propertyId);
-          console.log('🔧 Auto-selected property in UserProvider:', propertyId);
         }
       }
 
@@ -155,7 +145,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Force refresh session data and user profile
   const forceRefresh = useCallback(async () => {
     try {
-      console.log('🔄 Force refreshing session and user profile...');
       
       // Clear cache to force fresh fetch
       setLastFetched(0);
@@ -167,7 +156,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       });
       
       if (sessionResponse.ok) {
-        console.log('✅ Session refreshed, updating user profile...');
         await fetchUserProfile();
       }
     } catch (error) {

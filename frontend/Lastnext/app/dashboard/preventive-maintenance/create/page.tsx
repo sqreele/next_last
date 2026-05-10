@@ -26,13 +26,11 @@ function CreatePageContent() {
 
     // If property is already set correctly, no need to change
     if (queryPropertyId === selectedPropertyId) {
-      console.log('[PreventiveMaintenanceCreate] Property already set:', queryPropertyId);
       return;
     }
 
     // Wait until the user's accessible properties are loaded before attempting to sync
     if (!properties || properties.length === 0) {
-      console.log('[PreventiveMaintenanceCreate] Waiting for properties to load...');
       return;
     }
 
@@ -41,7 +39,6 @@ function CreatePageContent() {
     );
 
     if (hasAccessToProperty) {
-      console.log('[PreventiveMaintenanceCreate] Setting property from query param:', queryPropertyId);
       setSelectedPropertyId(queryPropertyId);
     } else {
       console.warn(
@@ -54,7 +51,6 @@ function CreatePageContent() {
   // Handle successful form submission
   const handleSuccess = (data: PreventiveMaintenance) => {
     // Log the full data structure for debugging
-    console.log('Form submitted successfully with data:', JSON.stringify(data));
     
     // Store the data in state for possible use in the UI
     setSubmittedData(data);
@@ -66,7 +62,6 @@ function CreatePageContent() {
         // Check if pm_id exists, with multiple safety checks
         if (data && typeof data === 'object' && 'pm_id' in data && data.pm_id) {
           const pmId = data.pm_id;
-          console.log(`Redirecting to PM details page: ${pmId}`);
           router.push(`/dashboard/preventive-maintenance/${pmId}`);
         } else {
           console.warn('PM ID is undefined or invalid, redirecting to dashboard instead');

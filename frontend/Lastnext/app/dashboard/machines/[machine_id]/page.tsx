@@ -33,6 +33,7 @@ import { fixImageUrl } from '@/app/lib/utils/image-utils';
 import Link from 'next/link';
 import { useUser } from '@/app/lib/stores/mainStore';
 import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 import dynamic from 'next/dynamic';
 
 // Dynamically import QRCode to avoid SSR issues
@@ -108,10 +109,7 @@ const getUserDisplayName = (userDetails?: {
   last_name?: string;
   full_name?: string;
 }) => {
-  if (!userDetails) return 'Unassigned';
-  return userDetails.full_name || 
-         [userDetails.first_name, userDetails.last_name].filter(Boolean).join(' ').trim() || 
-         userDetails.username;
+  return getDisplayName(userDetails, 'Unknown Technician');
 };
 
 export default function MachineDetailPage({ params }: { params: Promise<{ machine_id: string }> }) {
@@ -166,14 +164,11 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
     setError(null);
     try {
       const response = await apiClient.get(`/api/v1/machines/${unwrappedParams.machine_id}/`);
-      console.log('Machine details:', response.data);
       setMachine(response.data);
       
       // Extract PM history from the machine data
       if (response.data.preventive_maintenances) {
         const historyData = response.data.preventive_maintenances;
-        console.log('🔍 [MACHINE] PM History from machine data:', historyData);
-        console.log('🔍 [MACHINE] Sample PM record:', historyData[0]);
         // Sort by scheduled date (most recent first)
         historyData.sort((a: PMHistory, b: PMHistory) => 
           new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime()
@@ -204,18 +199,11 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
         }
       });
 
-      console.log('🔍 [MACHINE] Fallback PM History response:', response.data);
-
       let historyData: PMHistory[] = [];
       if (Array.isArray(response.data)) {
         historyData = response.data;
       } else if (response.data && 'results' in response.data) {
         historyData = response.data.results || [];
-      }
-
-      console.log('🔍 [MACHINE] Fallback PM History count:', historyData.length);
-      if (historyData[0]) {
-        console.log('🔍 [MACHINE] Fallback sample record:', historyData[0]);
       }
 
       // Sort by scheduled date (most recent first)
@@ -803,4 +791,3 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
     </div>
   );
 }
-

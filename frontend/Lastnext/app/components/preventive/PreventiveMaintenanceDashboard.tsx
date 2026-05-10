@@ -103,17 +103,11 @@ export default function PreventiveMaintenanceDashboard() {
   const [upcomingLoading, setUpcomingLoading] = useState(false);
 
   // Debug: Log what's available in the context
-  console.log('🔍 Dashboard context:', {
-    hasFetchMaintenanceItems: typeof fetchMaintenanceItems === 'function',
-    contextKeys: Object.keys(context),
-    maintenanceItemsCount: maintenanceItems?.length || 0
-  });
 
   // Function to fetch upcoming maintenance with pagination
   const fetchUpcomingMaintenance = useCallback(async (page: number = 1, pageSize: number = 10) => {
     setUpcomingLoading(true);
     try {
-      console.log('🔍 Fetching upcoming maintenance with pagination:', { page, pageSize });
       
       const params = {
         status: 'pending',
@@ -141,7 +135,6 @@ export default function PreventiveMaintenanceDashboard() {
         const filtered = items.filter((it) => !isAllPMItem(it));
         setUpcomingItems(filtered);
         setUpcomingTotal(filtered.length);
-        console.log('✅ Upcoming maintenance fetched:', { items: items.length, total });
       } else {
         console.error('❌ Failed to fetch upcoming maintenance:', response.message);
         setUpcomingItems([]);
@@ -187,32 +180,23 @@ export default function PreventiveMaintenanceDashboard() {
 
   // Fetch maintenance data on component mount
   useEffect(() => {
-    console.log('🔍 Dashboard: Fetching maintenance data...');
-    console.log('🔍 fetchMaintenanceItems type:', typeof fetchMaintenanceItems);
-    console.log('🔍 fetchMaintenanceItems value:', fetchMaintenanceItems);
-    console.log('🔍 Full context object:', context);
     
     if (maintenanceItems.length === 0 && !isLoading) {
       if (typeof fetchMaintenanceItems === 'function') {
-        console.log('🔍 Calling fetchMaintenanceItems...');
         fetchMaintenanceItems();
       } else {
         console.error('❌ fetchMaintenanceItems is not available:', fetchMaintenanceItems);
-        console.log('🔍 Available context keys:', Object.keys(context));
         
         // Try to access the function directly from context
         if (context && typeof context.fetchMaintenanceItems === 'function') {
-          console.log('🔍 Found fetchMaintenanceItems in context, calling it...');
           context.fetchMaintenanceItems();
         } else {
           console.error('❌ fetchMaintenanceItems not found in context either');
           // Try to manually fetch data using the service directly
-          console.log('🔍 Attempting manual data fetch...');
           const manualFetch = async () => {
             try {
               const response = await preventiveMaintenanceService.getAllPreventiveMaintenance();
               if (response.success && response.data) {
-                console.log('✅ Manual fetch successful:', response.data);
                 // Note: This won't update the context, but will show data is available
               }
             } catch (error) {
@@ -227,15 +211,7 @@ export default function PreventiveMaintenanceDashboard() {
 
   // Debug effect to log data
   useEffect(() => {
-    console.log('=== DASHBOARD DEBUG ===');
-    console.log('Maintenance items count:', maintenanceItems?.length || 0);
-    console.log('Is loading:', isLoading);
-    console.log('Error:', error);
-    console.log('Statistics object:', statistics);
     if (statistics) {
-      console.log('Upcoming array:', statistics.upcoming);
-      console.log('Upcoming length:', statistics.upcoming?.length);
-      console.log('Avg completion times:', statistics.avg_completion_times);
     }
   }, [maintenanceItems, isLoading, error, statistics]);
 

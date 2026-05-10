@@ -10,9 +10,7 @@ try {
   const auth0 = require('@auth0/nextjs-auth0');
   useUser = auth0.useUser;
   getAccessToken = auth0.getAccessToken;
-  console.log('✅ Auth0 hooks loaded successfully');
 } catch (error) {
-  console.log('⚠️ Auth0 hooks not available, using fallback system');
 }
 
 export function useClientAuth0() {
@@ -79,7 +77,6 @@ export function useClientAuth0() {
 
   // No fallback system - Auth0 only
   const useMockSystem = () => {
-    console.log('🚫 No authentication fallback - Auth0 only');
     setError(new Error('Auth0 authentication required'));
     setIsLoading(false);
   };

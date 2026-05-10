@@ -59,7 +59,6 @@ const apiClient: AxiosInstance = axios.create({
 // Enable request debugging in development
 if (process.env.NODE_ENV === 'development') {
   apiClient.interceptors.request.use((request: any) => {
-    console.log('[API Request]', request.method?.toUpperCase(), request.url);
     return request;
   });
   
@@ -80,7 +79,6 @@ const pendingRequests: Array<(token: string | null) => void> = [];
 
 // Function to process queued requests after token refresh attempt
 const processPendingRequests = (token: string | null): void => {
-  console.log(`[Auth] Processing ${pendingRequests.length} pending requests with ${token ? 'new token' : 'no token'}`);
   pendingRequests.forEach(callback => callback(token));
   pendingRequests.length = 0; // Clear the queue
 };
@@ -88,7 +86,6 @@ const processPendingRequests = (token: string | null): void => {
 // Function to attempt token refresh
 async function refreshToken(refreshTokenValue: string): Promise<string | null> {
   try {
-    console.log("[Auth] Attempting to refresh access token...");
     // Use standard fetch or a separate axios instance to avoid interceptor loops
     const djangoBaseURL = process.env.NEXT_PUBLIC_API_URL ||
       (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "https://pcms.live");
@@ -111,8 +108,6 @@ async function refreshToken(refreshTokenValue: string): Promise<string | null> {
     if (!refreshedTokens.access) {
       throw new Error('Refresh response did not contain access token');
     }
-
-    console.log("[Auth] Token refreshed successfully.");
     return refreshedTokens.access; // Return only the new access token
   } catch (error) {
     console.error('[Auth] Error during token refresh:', error);
@@ -127,7 +122,6 @@ apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     // Skip interceptor logic for token refresh endpoint itself
     if (config.url?.includes('/api/v1/token/refresh/') || config.url?.includes('/api/token/refresh/')) {
-        console.log("[RequestInterceptor] Skipping token logic for refresh request.");
         return config;
     }
 
@@ -138,7 +132,6 @@ apiClient.interceptors.request.use(
     if (isFormData) {
       delete config.headers['Content-Type'];
       delete config.headers['content-type'];
-      console.log("[RequestInterceptor] FormData detected - removed Content-Type header to let browser set boundary");
     }
 
     // For Auth0, we need to get the current access token from the session
@@ -156,7 +149,6 @@ apiClient.interceptors.request.use(
         if (sessionData?.user?.accessToken) {
           // Add the access token to the request headers
           config.headers.Authorization = `Bearer ${sessionData.user.accessToken}`;
-          console.log("[RequestInterceptor] Added access token to request headers");
         } else {
           console.warn("[RequestInterceptor] No access token found in session");
         }
@@ -176,7 +168,6 @@ apiClient.interceptors.request.use(
         if (Object.keys(csrfHeaders).length) {
           config.headers = config.headers || {};
           Object.assign(config.headers, csrfHeaders);
-          console.log("[RequestInterceptor] Added CSRF headers to request");
         } else {
           console.warn("[RequestInterceptor] CSRF headers unavailable for request");
         }
@@ -223,7 +214,6 @@ apiClient.interceptors.response.use(
     
     // Check for timeout errors specifically
     if (error.code === 'ECONNABORTED' && originalRequest._retry < MAX_RETRIES) {
-      console.log(`[ResponseInterceptor] Request timeout, attempt ${originalRequest._retry + 1}/${MAX_RETRIES}.`);
       originalRequest._retry++;
       
       // Add an increasing delay between retries
@@ -233,7 +223,6 @@ apiClient.interceptors.response.use(
     
     // Check if it's a 401 error - for Auth0, this usually means the token is expired or invalid
     if (error.response?.status === 401 && originalRequest._retry < MAX_RETRIES) {
-      console.log(`[ResponseInterceptor] Received 401, attempt ${originalRequest._retry + 1}/${MAX_RETRIES}.`);
       originalRequest._retry++;
 
       // For Auth0, we don't handle token refresh manually
@@ -252,7 +241,6 @@ apiClient.interceptors.response.use(
     // Network errors - retry with backoff for non-401 responses
     // Only retry if we got a response (not a network error without response)
     if (error.response && [502, 503, 504].includes(error.response.status) && originalRequest._retry < MAX_RETRIES) {
-      console.log(`[ResponseInterceptor] Network error ${error.response.status}, attempt ${originalRequest._retry + 1}/${MAX_RETRIES}.`);
       originalRequest._retry++;
       
       // Add an increasing delay between retries
@@ -364,7 +352,6 @@ export async function fetchData<T>(url: string, config?: AxiosRequestConfig): Pr
     
     // Production mode: Make real API call
     const response = await apiClient.get<T>(url, config);
-    console.log(`[fetchData] Response for ${url}: Status=${response.status}`);
     return response.data;
   } catch (error) {
     console.error(`[fetchData] Error caught for ${url}. Propagating processed error.`);
@@ -457,14 +444,11 @@ export async function uploadMultipartData<T>(
 
     // Log debug info in development
     if (process.env.NODE_ENV === 'development') {
-      console.log('[uploadMultipartData] Uploading to:', url);
-      console.log('[uploadMultipartData] FormData keys:', Array.from(formData.keys()));
     }
 
     const response = await apiClient.post<T>(url, formData, config);
     
     if (process.env.NODE_ENV === 'development') {
-      console.log('[uploadMultipartData] Upload successful:', response.status);
     }
     
     return response;
@@ -486,7 +470,6 @@ const handleSubmit = async (e: React.FormEvent) => {
     const response = await uploadMultipartData('/api/preventive-maintenance/', formData, {
       onUploadProgress: (progressEvent) => {
         const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        console.log(`Upload Progress: ${percentCompleted}%`);
       }
     });
     

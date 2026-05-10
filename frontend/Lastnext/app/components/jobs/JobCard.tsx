@@ -22,6 +22,7 @@ import { MissingImage } from "@/app/components/jobs/MissingImage";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
 import { formatDateTime } from "@/app/lib/utils/date-utils";
 import { useSession } from "@/app/lib/session.client";
+import { getDisplayName } from "@/app/lib/utils/display-name";
 
 interface JobCardProps {
   job: Job;
@@ -198,83 +199,8 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
 
   // Helper functions to get user display information
   const getUserDisplayName = useCallback((user: Job['user'] | undefined) => {
-    if (!user) return 'Unassigned';
-    
-    // Handle user as an object with various possible properties
-    if (typeof user === 'object' && user) {
-      // Priority 1: Check for full_name property (most important for display)
-      if ('full_name' in user && user.full_name && typeof user.full_name === 'string' && user.full_name.trim()) {
-        return user.full_name.trim();
-      }
-      // Priority 2: Check for first_name and last_name combination
-      if ('first_name' in user && 'last_name' in user) {
-        const firstName = user.first_name || '';
-        const lastName = user.last_name || '';
-        if (firstName || lastName) {
-          return `${firstName} ${lastName}`.trim();
-        }
-      }
-      // Priority 3: Check for name property
-      if ('name' in user && user.name) {
-        return user.name;
-      }
-      // Priority 4: Check for username property (clean Auth0 usernames)
-      if ('username' in user && user.username) {
-        let cleanUsername = user.username;
-        // Clean up Auth0 usernames for better display
-        if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
-          cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
-        }
-        return cleanUsername;
-      }
-      // Priority 5: Check for email property
-      if ('email' in user && user.email) {
-        return user.email.split('@')[0]; // Return part before @ as display name
-      }
-      // Priority 6: Check for id property (continue with ID-based logic below)
-      if ('id' in user && user.id) {
-        user = user.id; // Continue with ID-based logic below
-      } else {
-        return 'Unknown User'; // Can't extract meaningful info from object
-      }
-    }
-    
-    // Use session data passed from component level
-    if (!session?.user) return typeof user === 'string' ? `User ${user}` : 'Unknown User';
-    
-    // Normalize user IDs for comparison (handle different formats)
-    const jobUserId = String(user).trim();
-    const sessionUserId = String(session.user.id || '').trim();
-    
-    
-    // Try multiple comparison methods
-    // Exact match
-    if (jobUserId === sessionUserId) {
-      return session.user.username || 'You';
-    }
-    
-    // Case-insensitive match
-    if (jobUserId.toLowerCase() === sessionUserId.toLowerCase()) {
-      return session.user.username || 'You';
-    }
-    
-    // Check if both are Google OAuth IDs (might have different formats)
-    if (jobUserId.includes('google-oauth2_') && sessionUserId.includes('google-oauth2_')) {
-      // Extract the numeric part and compare
-      const jobNumeric = jobUserId.replace('google-oauth2_', '');
-      const sessionNumeric = sessionUserId.replace('google-oauth2_', '');
-      if (jobNumeric === sessionNumeric) {
-        console.log('✅ Google OAuth numeric match found');
-        return session.user.username || 'You';
-      }
-    }
-    
-    // If user is just an ID, try to get username from session or return a formatted ID
-    if (typeof user === 'string' && user.includes('google-oauth2_')) {
-      return 'Google User'; // Generic name for Google OAuth users
-    }
-    return `User ${String(user)}`;
-  }, [session]);
+    return getDisplayName(user, job.technician_name || job.user_name || 'Unknown Technician');
+  }, [job.technician_name, job.user_name]);
 
   const getUserDisplayPosition = useCallback((user: Job['user'] | undefined) => {
     if (!user) return 'Staff';

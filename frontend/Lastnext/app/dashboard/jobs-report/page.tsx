@@ -7,6 +7,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Building2, Info, FileText, Download, CalendarRange } from 'lucide-react';
 import JobsReport from '@/app/components/jobs/JobsReport';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 
 export default function JobsReportPage() {
   const { selectedPropertyId: selectedProperty, userProfile } = useUser();
@@ -72,7 +73,7 @@ export default function JobsReportPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-700">Username</p>
-                <p className="text-sm text-gray-600">{userProfile?.username || 'N/A'}</p>
+                <p className="text-sm text-gray-600">{userProfile ? getDisplayName(userProfile, 'Unknown Technician') : 'N/A'}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-700">Position</p>

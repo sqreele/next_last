@@ -6,6 +6,7 @@ import { Job, Property } from '@/app/lib/types';
 import { useSession } from '@/app/lib/session.client';
 import { Building, Calendar } from 'lucide-react';
 import { MobileTopBar } from '@/app/components/ui/mobile-nav';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 
 interface DashboardClientProps {
   jobs: Job[];
@@ -36,7 +37,7 @@ export default function DashboardClient({ jobs, properties }: DashboardClientPro
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-2">
             <h1 className="text-2xl font-black tracking-[-0.03em] text-[var(--pcms-text)] sm:text-4xl">
-              Welcome back, {session?.user?.username || 'User'}! 👋
+              Welcome back, {getDisplayName(session?.user, 'User')}! 👋
             </h1>
             <p className="text-[var(--pcms-text-muted)] text-sm font-medium sm:text-base">
               Manage your maintenance jobs and property operations
@@ -118,4 +119,4 @@ export default function DashboardClient({ jobs, properties }: DashboardClientPro
       
     </div>
   );
-} 
+}

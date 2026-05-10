@@ -5,19 +5,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const returnTo = searchParams.get('returnTo') || '/';
     
-    console.log('🚪 Logout API called with returnTo:', returnTo);
-    
     // Use server-side environment variables
     const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
     const auth0Domain = process.env.AUTH0_DOMAIN;
     const clientId = process.env.AUTH0_CLIENT_ID;
-    
-    console.log('🔍 Logout configuration:', {
-      baseUrl,
-      auth0Domain,
-      clientId: clientId ? '***' : 'missing',
-      returnTo
-    });
     
     if (!auth0Domain || !clientId) {
       console.error('Missing Auth0 configuration');
@@ -29,8 +20,6 @@ export async function GET(request: NextRequest) {
       client_id: clientId,
       returnTo: `${baseUrl}${returnTo}`,
     });
-    
-    console.log('🚪 Redirecting to Auth0 logout:', auth0LogoutUrl);
     
     // Create response and clear session cookie
     const response = NextResponse.redirect(auth0LogoutUrl);
@@ -46,8 +35,6 @@ export async function GET(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
     });
-    
-    console.log('✅ Logout response created, cookies cleared');
     
     return response;
     

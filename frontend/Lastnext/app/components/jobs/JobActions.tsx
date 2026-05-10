@@ -222,7 +222,6 @@ export default function JobActions({
               }
             }
           } catch (fallbackError) {
-            console.log('⚠️ Fallback request error:', fallbackError);
             setRooms([]);
           }
         }
@@ -417,18 +416,13 @@ export default function JobActions({
             {process.env.NODE_ENV === 'development' && (
               <DropdownMenuItem 
                 onClick={async () => {
-                  console.log('🔍 DEBUG: Manual rooms API test...');
                   try {
                     const response = await fetch('/api/rooms');
-                    console.log('🔍 DEBUG: Manual test response:', response.status, response.statusText);
                     if (response.ok) {
                       const rooms = await response.json();
-                      console.log('🔍 DEBUG: Manual test rooms:', rooms);
                     } else {
-                      console.log('🔍 DEBUG: Response not OK:', response.status, response.statusText);
                     }
                   } catch (error) {
-                    console.log('🔍 DEBUG: Manual test error:', error);
                   }
                 }}
                 className={menuItemClass}

@@ -21,12 +21,6 @@ const HeaderPropertyList = React.memo(() => {
   
   // Debug logging to help identify infinite loops
   useEffect(() => {
-    console.log('HeaderPropertyList render:', {
-      selectedProperty,
-      propertiesCount: userProperties?.length || 0,
-      propertyLoading,
-      timestamp: Date.now()
-    });
   }, [selectedProperty, userProperties?.length, propertyLoading]);
   
   // Check if user has properties - memoized to prevent unnecessary recalculations
@@ -76,7 +70,6 @@ const HeaderPropertyList = React.memo(() => {
     (property: any) => {
       const propId = getPropertyId(property);
       if (propId && propId !== selectedProperty) {
-        console.log('Setting selected property:', propId);
         setSelectedProperty(propId);
       }
     },

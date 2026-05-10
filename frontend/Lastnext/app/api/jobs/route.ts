@@ -5,27 +5,15 @@ import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
 export async function GET(request: NextRequest) {
   try {
     if (DEBUG_CONFIG.logApiCalls) {
-      console.log('🔍 Jobs API - Starting request...');
     }
     
     // Get session to verify authentication
     const session = await getServerSession();
     
     if (DEBUG_CONFIG.logSessions) {
-      console.log('🔍 Jobs API Debug:', {
-        hasSession: !!session,
-        hasUser: !!session?.user,
-        hasAccessToken: !!session?.user?.accessToken,
-        userId: session?.user?.id,
-        username: session?.user?.username,
-        accessTokenLength: session?.user?.accessToken?.length,
-        sessionKeys: session ? Object.keys(session) : [],
-        userKeys: session?.user ? Object.keys(session.user) : []
-      });
     }
     
     if (!session?.user?.accessToken) {
-      console.log('❌ No access token in session');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -34,12 +22,6 @@ export async function GET(request: NextRequest) {
 
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/jobs/${queryString ? `?${queryString}` : ''}`;
     if (DEBUG_CONFIG.logApiCalls) {
-      console.log('🔍 Jobs API calling:', apiUrl);
-      console.log('🔍 Jobs API headers:', {
-        hasAuth: !!session.user.accessToken,
-        authLength: session.user.accessToken?.length,
-        contentType: 'application/json'
-      });
     }
 
     // Fetch jobs from the external API

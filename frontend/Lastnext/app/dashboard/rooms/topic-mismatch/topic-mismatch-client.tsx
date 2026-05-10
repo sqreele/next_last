@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { downloadCSV } from '@/app/lib/utils/csv-export';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/app/components/ui/command';
@@ -117,24 +118,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
   }, []);
 
   const getUserLabel = React.useCallback((user: Job['user'] | undefined | null) => {
-    if (user === null || user === undefined) return 'Unassigned';
-    if (typeof user === 'string' || typeof user === 'number') {
-      const text = String(user);
-      return /^\d+$/.test(text) ? `User #${text}` : text;
-    }
-    if (typeof user === 'object') {
-      const u = user as {
-        full_name?: string; first_name?: string; last_name?: string;
-        username?: string; email?: string; id?: string | number;
-      };
-      if (u.full_name && String(u.full_name).trim()) return String(u.full_name).trim();
-      const full = `${u.first_name || ''} ${u.last_name || ''}`.trim();
-      if (full) return full;
-      if (u.username && String(u.username).trim()) return String(u.username).trim().replace(/^(auth0_|google-oauth2_)/, '');
-      if (u.email && String(u.email).trim()) return String(u.email).split('@')[0];
-      if (u.id != null) return `User #${String(u.id)}`;
-    }
-    return 'Unknown User';
+    return getDisplayName(user as any, 'Unknown Technician');
   }, []);
 
   const userOptions = React.useMemo(() => {

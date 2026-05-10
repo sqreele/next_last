@@ -58,7 +58,6 @@ export default function RegisterForm() {
       }
      } catch (error) {
       if (axios.isAxiosError(error)) {
-        console.log('Error response:', error.response?.data);
         const errors = error.response?.data;
         
         if (typeof errors === 'object') {

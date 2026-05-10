@@ -125,7 +125,6 @@ export function UniversalImage({
 
   // Handle image load
   const handleLoad = useCallback(() => {
-    console.log('✅ Image loaded successfully:', src);
     setIsLoaded(true);
     onLoad?.();
   }, [onLoad, src]);
@@ -184,8 +183,6 @@ export function UniversalImage({
   
   // Debug logging
   if (process.env.NODE_ENV === 'development' && isExternalImage) {
-    console.log('External image detected:', src, 'shouldUnoptimize:', shouldUnoptimize);
-    console.log('Image component props:', { src, alt, className, width, height, fill });
   }
 
   // Error state with fallback

@@ -240,12 +240,8 @@ function DesktopHeader({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-72 bg-white border-gray-200">
             <DropdownMenuItem className="flex flex-col items-start hover:bg-gray-100">
-              <span className="font-semibold">New Maintenance Request</span>
-              <span className="text-xs text-gray-500">Room 204 needs attention</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex flex-col items-start hover:bg-gray-100">
-              <span className="font-semibold">Job Status Updated</span>
-              <span className="text-xs text-gray-500">Job #123 is now in progress</span>
+              <span className="font-semibold">No new notifications</span>
+              <span className="text-xs text-gray-500">Job updates will appear here.</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
 
     // Fallback to regular properties endpoint if 'all' doesn't exist
     if (!response.ok && response.status === 404) {
-      console.log('🔍 Falling back to regular properties endpoint');
       response = await fetch(`${API_CONFIG.baseUrl}/api/v1/properties/`, {
         method: 'GET',
         headers: {
@@ -56,10 +55,6 @@ export async function GET(request: NextRequest) {
     }
 
     const properties = await response.json();
-    
-    console.log('🔍 Onboarding properties fetched:', {
-      count: Array.isArray(properties) ? properties.length : 0
-    });
 
     return NextResponse.json({
       properties: Array.isArray(properties) ? properties : [],

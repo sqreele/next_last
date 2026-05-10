@@ -114,7 +114,6 @@ export default class MachineService {
         ...(propertyId ? { property_id: propertyId } : {}),
         page_size: String(DEFAULT_MACHINE_PAGE_SIZE),
       };
-      console.log('Fetching machines with params:', initialParams);
 
       const useProxy = !accessToken;
       if (!useProxy && !accessToken) {
@@ -140,8 +139,6 @@ export default class MachineService {
 
         const queryString = buildQueryString(params);
         const targetUrl = `${urlOverride || '/api/machines/'}${queryString}`;
-
-        console.log('🔍 Fetching from Next.js API:', targetUrl);
         const res = await fetch(targetUrl, { credentials: 'include' });
         
         if (!res.ok) {
@@ -185,11 +182,6 @@ export default class MachineService {
           nextUrl = next;
         }
       }
-
-      console.log('✅ Machines retrieved (combined pages):', {
-        total: accumulatedMachines.length,
-        pagesFetched: pageCounter,
-      });
 
       return { success: true, data: accumulatedMachines };
     } catch (error: any) {

@@ -549,10 +549,7 @@ export default function InventoryPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
-              <Button onClick={() => {
-                // TODO: Implement add functionality
-                setShowAddDialog(false);
-              }}>Add Item</Button>
+              <Button onClick={() => setShowAddDialog(false)}>Add Item</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1269,4 +1266,3 @@ export default function InventoryPage() {
     </div>
   );
 }
-

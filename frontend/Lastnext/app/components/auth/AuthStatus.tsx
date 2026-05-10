@@ -5,6 +5,7 @@ import { useAuth } from '@/app/lib/hooks/useAuth';
 import { appSignOut } from '@/app/lib/logout';
 import { ROUTES } from '@/app/lib/config';
 import { ProfileImage } from '@/app/components/ui/UniversalImage';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 
 interface AuthStatusProps {
   showUserInfo?: boolean;
@@ -67,7 +68,7 @@ export default function AuthStatus({
           {user.profile_image ? (
             <ProfileImage
               src={user.profile_image}
-              alt={user.username}
+              alt={getDisplayName(user, 'User')}
               className="h-6 w-6 rounded-full object-cover"
               width={24}
               height={24}
@@ -75,12 +76,12 @@ export default function AuthStatus({
           ) : (
             <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center">
               <span className="text-xs font-medium text-indigo-600">
-                {user.username.charAt(0).toUpperCase()}
+                {getDisplayName(user, 'U').charAt(0).toUpperCase()}
               </span>
             </div>
           )}
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-gray-900">{user.username}</span>
+            <span className="text-sm font-medium text-gray-900">{getDisplayName(user, 'Unknown Technician')}</span>
             <span className="text-xs text-gray-500">{user.positions}</span>
           </div>
         </div>
@@ -96,4 +97,4 @@ export default function AuthStatus({
       )}
     </div>
   );
-} 
+}

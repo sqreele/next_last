@@ -103,8 +103,6 @@ class JobsRealTimeUpdates {
       
       // For now, disable real-time updates if the endpoint doesn't exist
       // You can enable this later when you implement the stream endpoint
-      console.log('⚠️ Real-time updates temporarily disabled - stream endpoint not implemented');
-      console.log('🔍 Would connect to:', url);
       return;
       
       // Uncomment this when you implement the stream endpoint:
@@ -125,7 +123,6 @@ class JobsRealTimeUpdates {
       // };
 
       // this.eventSource.onopen = () => {
-      //   console.log('Real-time connection established');
       //   this.reconnectAttempts = 0;
       // };
     } catch (error) {
@@ -159,7 +156,6 @@ class JobsRealTimeUpdates {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       setTimeout(() => {
-        console.log(`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
         this.connect(token);
       }, this.reconnectDelay * this.reconnectAttempts);
     } else {
@@ -219,7 +215,6 @@ export class JobsApiService {
       }
 
       if (retries > 0) {
-        console.log(`Retrying request (${retries} attempts left)`);
         await new Promise(resolve => setTimeout(resolve, 1000));
         return this.fetchWithRetry(url, token, options, retries - 1);
       }

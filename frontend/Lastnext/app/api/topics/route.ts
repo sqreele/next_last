@@ -7,27 +7,14 @@ import { getErrorMessage } from '@/app/lib/utils/error-utils';
 export async function GET(request: NextRequest) {
   try {
     if (DEBUG_CONFIG.logApiCalls) {
-      console.log('🔍 Topics API - Request started');
-      console.log('🔍 Request URL:', request.url);
-      console.log('🔍 API_CONFIG.baseUrl:', API_CONFIG.baseUrl);
     }
 
     const session = await getServerSession();
 
     if (DEBUG_CONFIG.logSessions) {
-      console.log('🔍 Topics API Session Debug:', {
-        hasSession: !!session,
-        hasUser: !!session?.user,
-        hasAccessToken: !!session?.user?.accessToken,
-        userId: session?.user?.id,
-        username: session?.user?.username,
-        accessTokenLength: session?.user?.accessToken?.length,
-        sessionError: session?.error,
-      });
     }
 
     if (!session?.user?.accessToken) {
-      console.log('❌ No access token in topics API session');
       return NextResponse.json(
         {
           error: 'Unauthorized',
@@ -51,8 +38,6 @@ export async function GET(request: NextRequest) {
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/topics/${search ?? ''}`;
 
     if (DEBUG_CONFIG.logApiCalls) {
-      console.log('🔍 Calling Django API (topics):', apiUrl);
-      console.log('🔍 With token length:', session.user.accessToken.length);
     }
 
     const response = await fetch(apiUrl, {
@@ -65,7 +50,6 @@ export async function GET(request: NextRequest) {
     });
 
     if (DEBUG_CONFIG.logApiCalls) {
-      console.log('🔍 Django API response (topics):', response.status, response.statusText);
     }
 
     if (!response.ok) {
@@ -85,7 +69,6 @@ export async function GET(request: NextRequest) {
     const topics = await response.json();
 
     if (DEBUG_CONFIG.logApiCalls) {
-      console.log('✅ Topics fetched successfully:', Array.isArray(topics) ? topics.length : 'Not an array');
     }
 
     return NextResponse.json(topics);

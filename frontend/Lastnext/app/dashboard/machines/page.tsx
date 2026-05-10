@@ -113,8 +113,6 @@ export default function MachinesListPage() {
 
       const response = await apiClient.get('/api/v1/machines/', { params });
       
-      console.log('Machines API response:', response.data);
-      
       let machinesData: Machine[] = [];
       let total = 0;
       
@@ -128,9 +126,6 @@ export default function MachinesListPage() {
       
       // Debug: Log first machine to check property_name
       if (machinesData.length > 0) {
-        console.log('First machine data:', machinesData[0]);
-        console.log('Property name:', machinesData[0].property_name);
-        console.log('Property object:', machinesData[0].property);
       }
       
       setTotalCount(total);

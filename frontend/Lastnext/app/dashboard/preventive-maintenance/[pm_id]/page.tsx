@@ -43,7 +43,6 @@ function renderMachines(machines: any[] | null | undefined) {
 
 // MODIFIED Function to fetch Preventive Maintenance from API (Server Component)
 async function getPreventiveMaintenance(pmId: string): Promise<PreventiveMaintenance | null> {
-  console.log(`[SERVER_FETCH] Initiating fetch for PM ID: ${pmId}`);
 
   // 1. Get the server-side session
   const session = await getServerSession();
@@ -60,7 +59,6 @@ async function getPreventiveMaintenance(pmId: string): Promise<PreventiveMainten
   }
 
   const targetUrl = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.preventiveMaintenance}${pmId}/`;
-  console.log(`[SERVER_FETCH] Fetching URL: ${targetUrl} with token.`);
 
   try {
     const response = await fetch(targetUrl, {
@@ -84,25 +82,6 @@ async function getPreventiveMaintenance(pmId: string): Promise<PreventiveMainten
     }
 
     const data = await response.json();
-    console.log("[SERVER_FETCH] Received maintenance data:", JSON.stringify(data, null, 2));
-    console.log("[SERVER_FETCH] procedure_template fields:", {
-      procedure_template: data.procedure_template,
-      procedure_template_id: data.procedure_template_id,
-      procedure_template_name: data.procedure_template_name
-    });
-    console.log("[SERVER_FETCH] assigned_to fields:", {
-      assigned_to: data.assigned_to,
-      assigned_to_type: typeof data.assigned_to,
-      assigned_to_details: data.assigned_to_details,
-      has_assigned_to_details: !!data.assigned_to_details
-    });
-    console.log("[SERVER_FETCH] machines fields:", {
-      machines: data.machines,
-      machines_type: typeof data.machines,
-      machines_is_array: Array.isArray(data.machines),
-      machines_length: Array.isArray(data.machines) ? data.machines.length : 'N/A',
-      has_machines: data.machines && Array.isArray(data.machines) && data.machines.length > 0
-    });
     return data as PreventiveMaintenance;
   } catch (error) {
     console.error(`[SERVER_FETCH] Exception while fetching maintenance data for ${pmId}:`, error);

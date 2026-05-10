@@ -35,9 +35,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CreateJobPage() {
-  // Server-side session check
   const session = await getServerSession();
-  console.log('Server session:', session); // Debug log
 
   if (!session) {
     redirect('/auth/login');

@@ -25,6 +25,7 @@ import {
   User
 } from 'lucide-react';
 import Link from 'next/link';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 
 interface MaintenanceTask {
   id: number;
@@ -100,10 +101,6 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
 
   // Debug logging for property changes
   useEffect(() => {
-    console.log('=== MAINTENANCE TASK DETAIL - PROPERTY CHANGE DEBUG ===');
-    console.log('[Property Change] Selected Property:', selectedProperty);
-    console.log('[Property Change] Task ID:', unwrappedParams.id);
-    console.log('[Property Change] Current task:', task?.id, task?.name);
   }, [selectedProperty, unwrappedParams.id, task?.id, task?.name]);
 
   useEffect(() => {
@@ -116,16 +113,11 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
   const fetchMaintenanceHistory = useCallback(async (taskTemplateId: number) => {
     setLoadingHistory(true);
     try {
-      console.log('=== MAINTENANCE HISTORY DEBUG START ===');
-      console.log('[Maintenance History] Fetching for task template ID:', taskTemplateId);
-      console.log('[Maintenance History] Task template ID type:', typeof taskTemplateId);
-      console.log('[Maintenance History] Selected Property:', selectedProperty);
       
       // Build API params
       const apiParams: any = { page_size: 100 };
       if (selectedProperty) {
         apiParams.property_id = selectedProperty;
-        console.log('[Maintenance History] Adding property_id filter:', selectedProperty);
       }
       
       // Fetch preventive maintenance records (filtered by property if selected)
@@ -133,52 +125,26 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
         params: apiParams
       });
       
-      console.log('[Maintenance History] API URL:', '/api/v1/preventive-maintenance/', apiParams);
-      console.log('[Maintenance History] Raw API response:', response.data);
-      console.log('[Maintenance History] Response type:', typeof response.data);
-      console.log('[Maintenance History] Is array?', Array.isArray(response.data));
-      console.log('[Maintenance History] Has results?', 'results' in (response.data || {}));
-      
       // Handle both array and paginated response
       let historyData: MaintenanceHistory[] = [];
       if (Array.isArray(response.data)) {
         historyData = response.data;
-        console.log('[Maintenance History] Using direct array');
       } else if (response.data && 'results' in response.data) {
         historyData = response.data.results || [];
-        console.log('[Maintenance History] Using paginated results');
-        console.log('[Maintenance History] Total count:', response.data.count);
       }
       
-      console.log('[Maintenance History] Parsed data:', historyData);
-      console.log('[Maintenance History] Number of records:', historyData.length);
-      
       if (historyData.length > 0) {
-        console.log('[Maintenance History] Sample record structure:', historyData[0]);
-        console.log('[Maintenance History] Sample machines data:', historyData[0].machines);
       }
       
       // Filter to show records that use this task template
       const filtered = historyData.filter((record: any) => {
-        console.log(`[Maintenance History] Checking record ${record.pm_id}:`, {
-          procedure_template: record.procedure_template,
-          procedure_template_id: record.procedure_template_id,
-          property_id: record.property_id,
-          matches_template: record.procedure_template === taskTemplateId || record.procedure_template_id === taskTemplateId
-        });
         
         // Match by procedure_template or procedure_template_id
         const matchesTemplate = record.procedure_template === taskTemplateId || record.procedure_template_id === taskTemplateId;
-        console.log(`  Record ${record.pm_id} uses task template ${taskTemplateId}: ${matchesTemplate}`);
         return matchesTemplate;
       });
-      
-      console.log('[Maintenance History] Filtered records:', filtered);
-      console.log('[Maintenance History] Filtered count:', filtered.length);
       if (filtered.length > 0) {
-        console.log('[Maintenance History] PM IDs found:', filtered.map(r => r.pm_id));
       }
-      console.log('=== MAINTENANCE HISTORY DEBUG END ===');
       
       setMaintenanceHistory(filtered);
     } catch (err: any) {
@@ -193,18 +159,14 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
 
   // Memoize fetchTask to prevent infinite loops
   const fetchTask = useCallback(async () => {
-    console.log('[Fetch Task] Starting fetch for task ID:', unwrappedParams.id);
-    console.log('[Fetch Task] Selected Property:', selectedProperty);
     recordLoaderShown();
     setLoading(true);
     setError(null);
     try {
       const response = await apiClient.get<MaintenanceTask>(`/api/v1/maintenance-procedures/${unwrappedParams.id}/`);
-      console.log('Fetched maintenance task:', response.data);
       setTask(response.data);
       
       // Fetch maintenance history for this task template
-      console.log('[Maintenance History] Will fetch for task template ID:', response.data.id);
       fetchMaintenanceHistory(response.data.id);
     } catch (err: any) {
       console.error('Error fetching task:', err);
@@ -215,12 +177,6 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
   }, [unwrappedParams.id, selectedProperty, fetchMaintenanceHistory, recordLoaderShown, clearLoadingAfterMinTime]); // Add selectedProperty
 
   useEffect(() => {
-    console.log('[useEffect - fetchTask] Trigger check:', {
-      status,
-      id: unwrappedParams.id,
-      selectedProperty,
-      willFetch: status === 'authenticated' && unwrappedParams.id
-    });
     
     if (status === 'authenticated' && unwrappedParams.id) {
       fetchTask();
@@ -494,13 +450,9 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
                           {(record.assigned_to_details || record.assigned_to) && (() => {
                             const assignedUser = record.assigned_to_details || 
                               (typeof record.assigned_to === 'object' ? record.assigned_to : null);
-                            const displayName = assignedUser 
-                              ? (assignedUser.full_name || 
-                                 [assignedUser.first_name, assignedUser.last_name].filter(Boolean).join(' ').trim() || 
-                                 assignedUser.username)
-                              : (typeof record.assigned_to === 'number' || typeof record.assigned_to === 'string' 
-                                 ? `User ${record.assigned_to}` 
-                                 : 'Unassigned');
+                            const displayName = assignedUser
+                              ? getDisplayName(assignedUser, 'Unknown Technician')
+                              : getDisplayName(record.assigned_to as any, 'Unknown Technician');
                             return (
                               <div className="flex items-center gap-1 text-gray-600">
                                 <User className="h-4 w-4 text-sky-500" />
@@ -517,7 +469,7 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
                               <div>
                                 <span className="text-xs text-gray-500">Created By:</span>
                                 <p className="font-medium text-gray-900">
-                                  {typeof record.created_by === 'object' ? record.created_by.username : `User ${record.created_by}`}
+                                  {getDisplayName(record.created_by as any, 'Unknown Technician')}
                                 </p>
                               </div>
                             </div>
@@ -599,4 +551,3 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
     </div>
   );
 }
-

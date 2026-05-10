@@ -26,13 +26,6 @@ export async function GET() {
 
     // Debug: Log session structure
     if (DEBUG_CONFIG.logSessions) {
-      console.log('🔍 Session structure:', {
-        hasUser: !!session.user,
-        username: session.user.username,
-        hasAccessToken: !!session.user.accessToken,
-        hasRefreshToken: !!session.user.refreshToken,
-        userKeys: Object.keys(session.user)
-      });
     }
 
     // Fetch properties for the user if they have an access token.
@@ -43,11 +36,9 @@ export async function GET() {
     if (session.user.accessToken) {
       try {
         if (DEBUG_CONFIG.logApiCalls) {
-          console.log('🔍 Fetching properties for session user:', session.user.username);
         }
         properties = await fetchProperties(session.user.accessToken);
         if (DEBUG_CONFIG.logApiCalls) {
-          console.log('✅ Properties fetched for session:', properties.length);
         }
       } catch (error) {
         console.error('❌ Error fetching properties for session:', error);
@@ -72,7 +63,6 @@ export async function GET() {
         console.error('❌ Error fetching user profile for session:', profileError);
       }
     } else if (DEBUG_CONFIG.logSessions) {
-      console.log('⚠️ No access token in session, cannot fetch properties');
     }
 
     const profileProperties = Array.isArray(profileData?.properties) ? profileData.properties : [];
@@ -93,8 +83,6 @@ export async function GET() {
     // Note: Profile updates should be done explicitly, not automatically
     // This prevents issues with session cookie access and unnecessary updates
     if (session.user.auth0_profile && DEBUG_CONFIG.logAuth) {
-      console.log('ℹ️ Auth0 profile data available for user:', session.user.username);
-      console.log('ℹ️ Profile updates should be done explicitly via edit profile page');
     }
 
     // Update the session with properties data
@@ -114,11 +102,6 @@ export async function GET() {
     };
 
     if (DEBUG_CONFIG.logSessions) {
-      console.log('🔍 Session response with properties:', {
-        userId: updatedSession.user.id,
-        username: updatedSession.user.username,
-        propertiesCount: updatedSession.user.properties.length
-      });
     }
 
     return NextResponse.json(updatedSession ?? { user: undefined }, { 

@@ -50,7 +50,7 @@ wait_for_db() {
     local attempt=1
     
     while [ $attempt -le $max_attempts ]; do
-        if docker-compose -f docker-compose.dev.yml exec -T db pg_isready -U mylubd_user -d mylubd_db >/dev/null 2>&1; then
+        if docker-compose -f docker-compose.dev.yml exec -T db pg_isready -U "${POSTGRES_USER:-mylubd_user}" -d "${POSTGRES_DB:-mylubd_db}" >/dev/null 2>&1; then
             print_success "Database is ready!"
             return 0
         fi
@@ -91,8 +91,9 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(username='admin').exists():
     print('Creating superuser...')
-    User.objects.create_superuser(username='admin', email='admin@example.com', password='sqreele1234')
-    print('Superuser created: admin/sqreele1234')
+    password = os.environ.get('DJANGO_SUPERUSER_PASSWORD', 'change-me')
+    User.objects.create_superuser(username='admin', email='admin@example.com', password=password)
+    print('Superuser created: admin')
 else:
     print('Superuser already exists')
 " 2>/dev/null || true
@@ -134,9 +135,9 @@ show_urls() {
     echo -e "${GREEN}⚙️  Admin Panel:${NC}  http://localhost:8000/admin"
     echo -e "${GREEN}🗄️  Database:${NC}    localhost:5432"
     echo ""
-    echo -e "${BLUE}Default admin credentials:${NC}"
+    echo -e "${BLUE}Default admin user:${NC}"
     echo -e "Username: admin"
-    echo -e "Password: sqreele1234"
+    echo -e "Password: set DJANGO_SUPERUSER_PASSWORD before running for a custom password"
     echo ""
     echo -e "${YELLOW}Useful commands:${NC}"
     echo -e "  View logs:     docker-compose -f docker-compose.dev.yml logs -f"

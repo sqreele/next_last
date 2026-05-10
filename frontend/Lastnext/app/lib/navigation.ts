@@ -6,11 +6,6 @@ import {
   Users,
   Settings,
   Building2,
-  Calendar,
-  Wrench,
-  Package,
-  Zap,
-  Activity,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -37,10 +32,4 @@ export const dashboardNavigationItems: AppNavigationItem[] = [
   { name: 'Reports', href: '/dashboard/jobs-report', icon: FileText },
   { name: 'Users', href: '/roster', icon: Users },
   { name: 'Settings', href: '/dashboard/profile', icon: Settings },
-  { name: 'Preventive Maintenance', href: '/dashboard/preventive-maintenance', icon: Activity },
-  { name: 'Maintenance Procedures', href: '/dashboard/maintenance-tasks', icon: Wrench },
-  { name: 'Machines', href: '/dashboard/machines', icon: Wrench },
-  { name: 'Inventory', href: '/dashboard/inventory', icon: Package },
-  { name: 'Utility Consumption', href: '/dashboard/utility-consumption', icon: Zap },
-  { name: 'Roster Calendar', href: '/roster', icon: Calendar },
 ];

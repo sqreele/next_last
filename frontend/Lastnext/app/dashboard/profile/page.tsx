@@ -10,6 +10,7 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 import Image from 'next/image';
 
 export default function ProfilePage() {
@@ -22,6 +23,7 @@ export default function ProfilePage() {
 
   // Process profile image URL
   const profileImageUrl = user?.profile_image ? fixImageUrl(user.profile_image) : null;
+  const displayName = getDisplayName(user, 'User');
 
   // Fetch user properties when component mounts
   useEffect(() => {
@@ -34,7 +36,6 @@ export default function ProfilePage() {
     try {
       recordLoaderShown();
       setLoadingProperties(true);
-      console.log('🔍 Fetching user properties...');
       
       // Fetch properties from the API
       const response = await fetch('/api/properties/', {
@@ -44,12 +45,6 @@ export default function ProfilePage() {
         },
       });
 
-      console.log('🔍 Properties API response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Properties API error response:', errorText);
@@ -57,8 +52,6 @@ export default function ProfilePage() {
       }
 
       const properties = await response.json();
-      console.log('✅ Properties fetched successfully:', properties);
-      console.log('✅ Properties count:', properties?.length || 0);
       
       if (Array.isArray(properties)) {
         setUserProperties(properties);
@@ -75,7 +68,6 @@ export default function ProfilePage() {
       
       // Try to use properties from user session as fallback
       if (user?.properties && Array.isArray(user.properties)) {
-        console.log('🔄 Using properties from user session as fallback:', user.properties);
         setUserProperties(user.properties);
       } else {
         setUserProperties([]);
@@ -180,7 +172,7 @@ export default function ProfilePage() {
                     <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-blue-200">
                       <Image 
                         src={profileImageUrl} 
-                        alt={`${user.username || 'User'}'s profile`}
+                        alt={`${displayName}'s profile`}
                         fill
                         className="object-cover"
                         quality={75}
@@ -193,19 +185,19 @@ export default function ProfilePage() {
                       />
                       <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200 hidden">
                         <span className="text-2xl font-bold text-blue-600">
-                          {getUserInitials(user.username || user.email || 'User')}
+                          {getUserInitials(displayName)}
                         </span>
                       </div>
                     </div>
                   ) : (
                     <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200">
                       <span className="text-2xl font-bold text-blue-600">
-                        {getUserInitials(user.username || user.email || 'User')}
+                        {getUserInitials(displayName)}
                       </span>
                     </div>
                   )}
                   <div>
-                    <h3 className="text-lg font-semibold">{user.username || 'User'}</h3>
+                    <h3 className="text-lg font-semibold">{displayName}</h3>
                     <Badge variant="secondary">{user.positions || 'User'}</Badge>
                   </div>
                 </div>

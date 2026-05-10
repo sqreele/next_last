@@ -54,6 +54,27 @@ from .services import NotificationService, PreventiveMaintenanceService
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
+RAW_AUTH_PREFIXES = ('google-oauth2_', 'auth0_', 'auth0|')
+
+
+def is_raw_auth_identifier(value):
+    if value is None:
+        return False
+    text = str(value).strip()
+    return (
+        text.startswith(RAW_AUTH_PREFIXES)
+        or text.lower() in {'null', 'undefined', '[object object]'}
+    )
+
+
+def display_name_from_user_values(first_name='', last_name='', email='', username='', fallback='Unknown Technician'):
+    full_name = f"{first_name or ''} {last_name or ''}".strip()
+    for candidate in (full_name, email, username):
+        value = str(candidate or '').strip()
+        if value and not is_raw_auth_identifier(value):
+            return value
+    return fallback
+
 # Pagination class
 class MaintenancePagination(PageNumberPagination):
     page_size = 10
@@ -2485,96 +2506,6 @@ def get_preventive_maintenance_topics(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def debug_rooms(request):
-    """Debug endpoint to show all rooms without permission checks"""
-    logger.info(f"Debug rooms endpoint called by user: {request.user.username}")
-    
-    # Get all rooms
-    all_rooms = Room.objects.all()
-    logger.info(f"Total rooms in database: {all_rooms.count()}")
-    
-    # Get user's properties
-    user_properties = Property.objects.filter(users=request.user)
-    logger.info(f"User {request.user.username} has access to {user_properties.count()} properties")
-    
-    # Get rooms for user's properties
-    user_rooms = Room.objects.filter(properties__in=user_properties).distinct()
-    logger.info(f"Rooms accessible to user: {user_rooms.count()}")
-    
-    # Get property filter if provided
-    property_id = request.query_params.get('property')
-    if property_id:
-        logger.info(f"Property filter requested: {property_id}")
-        property_rooms = Room.objects.filter(properties__property_id=property_id)
-        logger.info(f"Rooms for property {property_id}: {property_rooms.count()}")
-        
-        # Check if user has access to this property
-        try:
-            property_obj = user_properties.get(property_id=property_id)
-            logger.info(f"User has access to property: {property_obj.name}")
-        except Property.DoesNotExist:
-            logger.warning(f"User does NOT have access to property: {property_id}")
-    
-    # Return debug information
-    debug_data = {
-        'total_rooms': all_rooms.count(),
-        'user_properties': [{'property_id': p.property_id, 'name': p.name} for p in user_properties],
-        'user_accessible_rooms': user_rooms.count(),
-        'property_filter': property_id,
-        'rooms_for_property': Room.objects.filter(properties__property_id=property_id).count() if property_id else None,
-        'user_has_property_access': property_id in [p.property_id for p in user_properties] if property_id else None,
-        'all_rooms_sample': [
-            {
-                'room_id': r.room_id,
-                'name': r.name,
-                'room_type': r.room_type,
-                'properties': [{'property_id': p.property_id, 'name': p.name} for p in r.properties.all()]
-            } for r in all_rooms[:5]  # Show first 5 rooms
-        ],
-        'debug_queries': {
-            'query1_properties_in': Room.objects.filter(properties__in=user_properties).distinct().count(),
-            'query2_property_id_in': Room.objects.filter(properties__property_id__in=[p.property_id for p in user_properties]).distinct().count(),
-            'query3_explicit_ids': Room.objects.filter(properties__property_id__in=[p.property_id for p in user_properties]).distinct().count()
-        },
-        'room_property_details': [
-            {
-                'room_name': r.name,
-                'room_properties': [{'property_id': p.property_id, 'name': p.name} for p in r.properties.all()]
-            } for r in all_rooms
-        ],
-        'property_room_details': [
-            {
-                'property_name': p.name,
-                'property_id': p.property_id,
-                'rooms': [{'room_id': r.room_id, 'name': r.name} for r in p.rooms.all()]
-            } for p in user_properties
-        ]
-    }
-    
-    return Response(debug_data)
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def test_rooms_all(request):
-    """Test endpoint to return all rooms without permission checks"""
-    logger.info(f"Test rooms all endpoint called by user: {request.user.username}")
-    
-    # Get all rooms
-    all_rooms = Room.objects.all()
-    logger.info(f"Total rooms in database: {all_rooms.count()}")
-    
-    # Return all rooms
-    serializer = RoomSerializer(all_rooms, many=True)
-    return Response({
-        'message': 'All rooms returned without permission checks',
-        'total_rooms': all_rooms.count(),
-        'rooms': serializer.data
-    })
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
 def property_is_preventivemaintenance(request, property_id):
     """Check if a property has preventive maintenance jobs"""
     
@@ -2705,21 +2636,23 @@ def get_dashboard_summary(request):
         'user__username',
         'user__first_name',
         'user__last_name',
+        'user__email',
     ).annotate(
         pm=Count('id', filter=Q(is_preventivemaintenance=True), distinct=True),
         non_pm=Count('id', filter=Q(is_preventivemaintenance=False), distinct=True),
     ).order_by('year', 'month', 'user__username')
 
     for item in top_users:
-        first_name = (item['user__first_name'] or '').strip()
-        last_name = (item['user__last_name'] or '').strip()
-        full_name = f"{first_name} {last_name}".strip()
-        username = item['user__username'] or 'Unknown'
         month_label = month_labels[item['month'] - 1]
         top_users_by_month.append({
             'month': month_label,
             'year': item['year'],
-            'user': full_name if full_name else username,
+            'user': display_name_from_user_values(
+                item.get('user__first_name'),
+                item.get('user__last_name'),
+                item.get('user__email'),
+                item.get('user__username'),
+            ),
             'pm': item['pm'],
             'nonPm': item['non_pm'],
         })

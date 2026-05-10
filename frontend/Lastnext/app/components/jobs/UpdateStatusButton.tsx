@@ -72,14 +72,6 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
     e.preventDefault();
     
     // Debug logging
-    console.log('🔍 UpdateStatusButton - Session Debug:', {
-      status,
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      hasAccessToken: !!session?.user?.accessToken,
-      sessionKeys: session ? Object.keys(session) : 'no session',
-      userKeys: session?.user ? Object.keys(session.user) : 'no user'
-    });
     
     // Check session status first
     if (status === 'loading') {

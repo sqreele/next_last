@@ -7,28 +7,15 @@ import { getErrorMessage } from '@/app/lib/utils/error-utils';
 export async function GET(request: NextRequest) {
   try {
     if (DEBUG_CONFIG.logApiCalls) {
-      console.log('🔍 Rooms API - Request started');
-      console.log('🔍 Request URL:', request.url);
-      console.log('🔍 API_CONFIG.baseUrl:', API_CONFIG.baseUrl);
     }
 
     // ✅ Get session with proper error handling
     const session = await getServerSession();
     
     if (DEBUG_CONFIG.logSessions) {
-      console.log('🔍 Rooms API Session Debug:', {
-        hasSession: !!session,
-        hasUser: !!session?.user,
-        hasAccessToken: !!session?.user?.accessToken,
-        userId: session?.user?.id,
-        username: session?.user?.username,
-        accessTokenLength: session?.user?.accessToken?.length,
-        sessionError: session?.error,
-      });
     }
 
     if (!session?.user?.accessToken) {
-      console.log('❌ No access token in rooms API session');
       return NextResponse.json({ 
         error: 'Unauthorized',
         debug: DEBUG_CONFIG.logSessions ? {
@@ -50,8 +37,6 @@ export async function GET(request: NextRequest) {
       : `${API_CONFIG.baseUrl}/api/v1/rooms/`;
     
     if (DEBUG_CONFIG.logApiCalls) {
-      console.log('🔍 Calling Django API:', apiUrl, propertyId ? `(filtered by property ${propertyId})` : '(no property filter)');
-      console.log('🔍 With token length:', session.user.accessToken.length);
     }
 
     // Fetch rooms from the external API
@@ -66,7 +51,6 @@ export async function GET(request: NextRequest) {
     });
 
     if (DEBUG_CONFIG.logApiCalls) {
-      console.log('🔍 Django API response:', response.status, response.statusText);
     }
 
     if (!response.ok) {
@@ -86,7 +70,6 @@ export async function GET(request: NextRequest) {
     const rooms = await response.json();
     
     if (DEBUG_CONFIG.logApiCalls) {
-      console.log('✅ Rooms fetched successfully:', Array.isArray(rooms) ? rooms.length : 'Not an array');
     }
     
     return NextResponse.json(rooms);

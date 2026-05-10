@@ -129,42 +129,13 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const [loadingTopics, setLoadingTopics] = useState<boolean>(true);
   const [loadingMachines, setLoadingMachines] = useState<boolean>(true);
   const [loadingMaintenanceTasks, setLoadingMaintenanceTasks] = useState<boolean>(true);
-  const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false);
-  const [debugLogs, setDebugLogs] = useState<Array<{timestamp: string, level: string, message: string, data?: any}>>([]);
-
-  // Debug logging function - defined early so it can be used in useEffect hooks
-  const addDebugLog = useCallback((level: 'info' | 'warn' | 'error' | 'success', message: string, data?: any) => {
-    const timestamp = new Date().toISOString();
-    setDebugLogs(prev => [...prev, { timestamp, level, message, data }]);
-    console.log(`[DEBUG ${level.toUpperCase()}] ${message}`, data || '');
-  }, []);
-
-  // Debug: Log user info
-  React.useEffect(() => {
-    const userInfo = {
-      hasUser: !!user,
-      userId: user?.id,
-      userIdType: typeof user?.id,
-      username: user?.username
-    };
-    console.log('[PreventiveMaintenanceForm] User info:', userInfo);
-    addDebugLog('info', 'Component initialized - User info', userInfo);
-  }, [user, addDebugLog]);
 
   // Set access token on service when available
   React.useEffect(() => {
     if (accessToken) {
-      console.log('[PreventiveMaintenanceForm] Setting access token on service');
-      addDebugLog('info', 'Access token set on service', {
-        hasToken: !!accessToken,
-        tokenLength: accessToken.length,
-        tokenPreview: accessToken.substring(0, 20) + '...'
-      });
       setPreventiveMaintenanceServiceToken(accessToken);
-    } else {
-      addDebugLog('warn', 'No access token available');
     }
-  }, [accessToken, addDebugLog]);
+  }, [accessToken]);
 
   const formatDateForInput = useCallback((date: Date): string => {
     // Use local methods to match the user's timezone for datetime-local inputs
@@ -174,7 +145,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
     const result = `${year}-${month}-${day}T${hours}:${minutes}`;
-    console.log('[formatDateForInput] Input Date:', date, 'Output:', result);
     return result;
   }, []);
 
@@ -245,10 +215,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   // Helper function to convert datetime-local values to ISO 8601 format
   const convertToISO8601 = useCallback((dateTimeLocal: string): string => {
-    console.log('[convertToISO8601] Input:', dateTimeLocal, 'Type:', typeof dateTimeLocal);
     
     if (!dateTimeLocal) {
-      console.log('[convertToISO8601] Empty input, returning empty string');
       return '';
     }
     
@@ -256,7 +224,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       // Create a Date object from the datetime-local value
       // This assumes the datetime-local value is in the user's local timezone
       const date = new Date(dateTimeLocal);
-      console.log('[convertToISO8601] Created Date object:', date, 'Valid:', !isNaN(date.getTime()));
       
       // Check if the date is valid
       if (isNaN(date.getTime())) {
@@ -272,26 +239,17 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       const minutes = String(date.getMinutes()).padStart(2, '0');
       
       const isoString = `${year}-${month}-${day}T${hours}:${minutes}`;
-      
-      console.log('[convertToISO8601] Successfully converted to ISO 8601:', { 
-        input: dateTimeLocal, 
-        output: isoString,
-        localDate: date.toString(),
-        utcDate: date.toUTCString()
-      });
       return isoString;
     } catch (error) {
       console.error('[convertToISO8601] Error converting datetime-local to ISO 8601:', error, 'Input:', dateTimeLocal);
       
       // If it's already in ISO format, return as is
       if (dateTimeLocal.includes('T') && (dateTimeLocal.includes('Z') || dateTimeLocal.includes('+'))) {
-        console.log('[convertToISO8601] Input already in ISO format, returning as is:', dateTimeLocal);
         return dateTimeLocal;
       }
       
       // If it's in YYYY-MM-DDTHH:mm format, add seconds and convert to ISO
       if (dateTimeLocal.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
-        console.log('[convertToISO8601] Input in YYYY-MM-DDTHH:mm format, adding seconds and converting to ISO');
         const fallbackDate = new Date(dateTimeLocal + ':00');
         if (!isNaN(fallbackDate.getTime())) {
           // Use the same format: YYYY-MM-DDThh:mm
@@ -302,7 +260,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           const minutes = String(fallbackDate.getMinutes()).padStart(2, '0');
           
           const fallbackISO = `${year}-${month}-${day}T${hours}:${minutes}`;
-          console.log('[convertToISO8601] Fallback conversion successful:', fallbackISO);
           return fallbackISO;
         }
       }
@@ -320,40 +277,32 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     // Our format: YYYY-MM-DDThh:mm (local time, no timezone, no seconds)
     const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
     const isValid = isoRegex.test(isoString);
-    console.log('[validateISO8601Format]', { isoString, isValid });
     return isValid;
   }, []);
 
   // Helper function to ensure datetime-local input format
   const ensureDateTimeLocalFormat = useCallback((dateString: string): string => {
-    console.log('[ensureDateTimeLocalFormat] Input:', dateString, 'Type:', typeof dateString);
     
     if (!dateString) {
-      console.log('[ensureDateTimeLocalFormat] Empty input, returning empty string');
       return '';
     }
     
     // If it's already in datetime-local format, return as is
     if (dateString.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
-      console.log('[ensureDateTimeLocalFormat] Input already in datetime-local format, returning as is:', dateString);
       return dateString;
     }
     
     // If it's a Date object or ISO string, convert to datetime-local format
     try {
       const date = new Date(dateString);
-      console.log('[ensureDateTimeLocalFormat] Created Date object:', date, 'Valid:', !isNaN(date.getTime()));
       
       if (!isNaN(date.getTime())) {
         const formattedDate = formatDateForInput(date);
-        console.log('[ensureDateTimeLocalFormat] Successfully formatted to datetime-local:', formattedDate);
         return formattedDate;
       }
     } catch (error) {
       console.error('[ensureDateTimeLocalFormat] Error ensuring datetime-local format:', error);
     }
-    
-    console.log('[ensureDateTimeLocalFormat] Could not convert, returning original:', dateString);
     return dateString;
   }, [formatDateForInput]);
 
@@ -367,7 +316,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     const defaultDate = `${year}-${month}-${day}T09:00`;
-    console.log('[useEffect] Setting default scheduled date:', defaultDate);
     setDefaultScheduledDate(defaultDate);
   }, []);
 
@@ -467,13 +415,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     const currentData = actualInitialData;
 
     if (currentData) {
-      console.log('[getInitialValues] currentData:', currentData);
-      console.log('[getInitialValues] Date fields from currentData:', {
-        scheduled_date: currentData.scheduled_date,
-        scheduled_date_type: typeof currentData.scheduled_date,
-        completed_date: currentData.completed_date,
-        completed_date_type: typeof currentData.completed_date
-      });
       
       const topicIds: number[] = currentData.topics
         ?.map((topic: Topic | number) =>
@@ -514,13 +455,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         ? ensureDateTimeLocalFormat(currentData.completed_date)
         : '';
 
-      console.log('[getInitialValues] Processed date fields:', {
-        scheduled_date: scheduledDate,
-        scheduled_date_type: typeof scheduledDate,
-        completed_date: completedDate,
-        completed_date_type: typeof completedDate
-      });
-
         let assignedToId = '';
         if (currentData.assigned_to_details?.id) {
           assignedToId = String(currentData.assigned_to_details.id);
@@ -556,11 +490,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
     // For new records, assign to the current user
     const currentUserId = user?.id;
-    console.log('[getInitialValues] Current user ID for new record:', {
-      userId: currentUserId,
-      type: typeof currentUserId,
-      hasUser: !!user
-    });
     
     return {
       pmtitle: '',
@@ -651,11 +580,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   // Fetch available maintenance tasks (templates) - filtered by selected machines
   const fetchAvailableMaintenanceTasks = useCallback(async (machineIds?: string[]) => {
-    console.log('[PreventiveMaintenanceForm] ===== fetchAvailableMaintenanceTasks CALLED =====');
-    console.log('[PreventiveMaintenanceForm] machineIds parameter:', machineIds);
-    console.log('[PreventiveMaintenanceForm] machineIds type:', typeof machineIds);
-    console.log('[PreventiveMaintenanceForm] machineIds is array?', Array.isArray(machineIds));
-    console.log('[PreventiveMaintenanceForm] machineIds length:', machineIds?.length);
     
     const normalizeGroupId = (value: unknown): string | null => {
       if (value === null || value === undefined) {
@@ -680,7 +604,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       let tasks: MaintenanceProcedureTemplate[] = [];
       
       if (machineIds && machineIds.length > 0) {
-        console.log('[PreventiveMaintenanceForm] ✓ Processing', machineIds.length, 'machine(s) for filtering:', machineIds);
         // Fetch procedures for each selected machine
         const allProcedureIds = new Set<number>();
         const machineGroupIdsRaw = new Set<string>();
@@ -689,31 +612,15 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         // Fetch machine details to get their maintenance procedures and group_id
         for (const machineId of machineIds) {
           try {
-            console.log(`[PreventiveMaintenanceForm] Fetching machine ${machineId}...`);
             const response = await apiClient.get(`/api/v1/machines/${machineId}/`);
             const machine = response.data as any;
-            
-            console.log(`[PreventiveMaintenanceForm] Machine ${machineId} full response:`, JSON.stringify(machine, null, 2));
-            console.log(`[PreventiveMaintenanceForm] Machine ${machineId} details:`, {
-              group_id: machine.group_id,
-              group_id_type: typeof machine.group_id,
-              group_id_value: machine.group_id,
-              group_id_is_null: machine.group_id === null,
-              group_id_is_undefined: machine.group_id === undefined,
-              group_id_is_empty_string: machine.group_id === '',
-              has_maintenance_procedures: !!machine.maintenance_procedures,
-              maintenance_procedures_count: machine.maintenance_procedures?.length || 0,
-              all_keys: Object.keys(machine)
-            });
             
             // Collect machine's group_id if it exists (check for null, undefined, and empty string)
             const normalizedMachineGroupId = normalizeGroupId(machine.group_id);
             if (normalizedMachineGroupId) {
               machineGroupIdsRaw.add(String(machine.group_id));
               machineGroupIdsNormalized.add(normalizedMachineGroupId);
-              console.log(`[PreventiveMaintenanceForm] ✓ Machine ${machineId} has group_id: "${machine.group_id}" (normalized: "${normalizedMachineGroupId}")`);
             } else {
-              console.log(`[PreventiveMaintenanceForm] ✗ Machine ${machineId} has NO group_id (value: ${machine.group_id}, type: ${typeof machine.group_id})`);
             }
             
             // Check if machine has maintenance_procedures field
@@ -723,27 +630,17 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   allProcedureIds.add(proc.id);
                 }
               });
-              console.log(`[PreventiveMaintenanceForm] Machine ${machineId} has ${machine.maintenance_procedures.length} linked procedures`);
             }
           } catch (err) {
             console.error(`[PreventiveMaintenanceForm] Failed to fetch machine ${machineId}:`, err);
           }
         }
         
-        console.log(`[PreventiveMaintenanceForm] Collected group_ids:`, {
-          raw: Array.from(machineGroupIdsRaw),
-          normalized: Array.from(machineGroupIdsNormalized),
-          count: machineGroupIdsNormalized.size,
-        });
-        console.log(`[PreventiveMaintenanceForm] Collected procedure_ids:`, Array.from(allProcedureIds), `(count: ${allProcedureIds.size})`);
-        
         // Fetch all available tasks
         const allTasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
-        console.log(`[PreventiveMaintenanceForm] Total available tasks: ${allTasks.length}`);
         
         // Log all tasks to show their group_ids for debugging
         const taskGroupIds = allTasks.map(t => ({ id: t.id, name: t.name, group_id: t.group_id }));
-        console.log(`[PreventiveMaintenanceForm] All tasks with group_ids:`, taskGroupIds);
         
         // Filter tasks based on:
         // 1. If machine has group_id, ONLY show tasks with matching group_id (strict match: machine.group_id === task.group_id)
@@ -754,7 +651,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               const normalizedTaskGroupId = normalizeGroupId(task.group_id);
               const matches = normalizedTaskGroupId ? machineGroupIdsNormalized.has(normalizedTaskGroupId) : false;
               if (matches) {
-                console.log(`[PreventiveMaintenanceForm] ✓ Task "${task.name}" (id: ${task.id}) matches group_id "${task.group_id}" (normalized "${normalizedTaskGroupId}")`);
               }
               return matches;
             })
@@ -768,18 +664,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
         if (combinedMatches.length > 0) {
           tasks = combinedMatches;
-          console.log(`[PreventiveMaintenanceForm] Filtered tasks by machine linkage`, {
-            viaGroupId: tasksMatchedByGroupId.length,
-            viaProcedures: tasksMatchedByProcedures.length,
-            combined: combinedMatches.length,
-            machine_group_ids_raw: Array.from(machineGroupIdsRaw),
-            machine_group_ids_normalized: Array.from(machineGroupIdsNormalized),
-            linked_procedure_ids: Array.from(allProcedureIds),
-          });
         } else if (machineGroupIdsNormalized.size === 0 && allProcedureIds.size === 0) {
           // No filtering clues available - show everything
           tasks = allTasks;
-          console.log(`[PreventiveMaintenanceForm] No group_id or linked procedures found, showing all ${tasks.length} tasks`);
         } else {
           // Filtering clues existed but nothing matched
           tasks = [];
@@ -788,10 +675,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       } else {
         // No machines selected, show all tasks
         tasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
-        console.log(`[PreventiveMaintenanceForm] No machines selected, showing all ${tasks.length} tasks`);
       }
-      
-      console.log(`[PreventiveMaintenanceForm] Final tasks to display: ${tasks.length}`);
       
       setAvailableMaintenanceTasks(
         tasks.map<MaintenanceTaskOption>((task: MaintenanceProcedureTemplate) => ({
@@ -865,7 +749,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           if (!mounted) return;
           
           if (response.success && response.data) {
-            console.log('[PreventiveMaintenanceForm] Fetched maintenance data:', response.data);
             setFetchedInitialData(response.data);
             if (response.data.before_image_url) setBeforeImagePreview(response.data.before_image_url);
             if (response.data.after_image_url) setAfterImagePreview(response.data.after_image_url);
@@ -891,7 +774,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           clearLoadingAfterMinTime();
         });
     } else if (initialDataProp) {
-      console.log('[PreventiveMaintenanceForm] Using initialDataProp:', initialDataProp);
       if (initialDataProp.before_image_url) setBeforeImagePreview(initialDataProp.before_image_url);
       if (initialDataProp.after_image_url) setAfterImagePreview(initialDataProp.after_image_url);
       if (!initialDataProp.property_id) {
@@ -979,38 +861,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     const { setSubmitting, resetForm } = formikHelpers;
     let isMounted = true;
 
-    addDebugLog('info', 'Form submission started', {
-      formValues: {
-        ...values,
-        scheduled_date: values.scheduled_date,
-        scheduled_date_type: typeof values.scheduled_date,
-        completed_date: values.completed_date,
-        completed_date_type: typeof values.completed_date,
-      },
-      hasAccessToken: !!accessToken,
-      hasUser: !!user,
-      userId: user?.id,
-      selectedProperty: values.property_id,
-      machineId_prop: machineId,
-      pmId_prop: pmId,
-    });
-
-    console.log('[FORM] handleSubmit called with values:', {
-      ...values,
-      scheduled_date: values.scheduled_date,
-      scheduled_date_type: typeof values.scheduled_date,
-      scheduled_date_length: values.scheduled_date?.length,
-      completed_date: values.completed_date,
-      completed_date_type: typeof values.completed_date,
-      completed_date_length: values.completed_date?.length,
-      machineId_prop: machineId,
-      pmId_prop: pmId,
-      selected_machine_ids: values.selected_machine_ids,
-      selected_machine_ids_type: typeof values.selected_machine_ids,
-      selected_machine_ids_isArray: Array.isArray(values.selected_machine_ids),
-      selected_machine_ids_length: values.selected_machine_ids?.length,
-    });
-
     clearError();
     setSubmitError(null);
     loaderShownAtRef.current = Date.now();
@@ -1065,39 +915,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         ? convertToISO8601(values.completed_date)
         : (values.status === 'completed' ? new Date().toISOString() : undefined);
 
-      // Debug: Log the exact date conversion process
-      console.log('[FORM] Date conversion debug:', {
-        original_scheduled_date: values.scheduled_date,
-        converted_scheduled_date: scheduledDateISO,
-        original_completed_date: values.completed_date,
-        converted_completed_date: completedDateISO,
-        scheduled_date_type: typeof scheduledDateISO,
-        completed_date_type: typeof completedDateISO
-      });
-
-      // Debug assigned_to before conversion
-      // Note: user.id from Auth0 is an OAuth2 string (e.g., 'google-oauth2_...')
-      // Backend expects numeric database primary key, so we only send it if it's numeric
       const assignedToValue = values.assigned_to;
       const assignedToNumber = assignedToValue && !isNaN(Number(assignedToValue)) && Number(assignedToValue) > 0 
         ? Number(assignedToValue) 
         : undefined;
-      
-      console.log('[FORM] assigned_to debug:', {
-        raw: assignedToValue,
-        type: typeof assignedToValue,
-        isEmpty: assignedToValue === '',
-        isNumeric: assignedToNumber !== undefined,
-        converted: assignedToNumber,
-        note: assignedToNumber === undefined ? 'Will not send assigned_to - backend will use created_by' : 'Will send assigned_to'
-      });
-
-      addDebugLog('info', 'Processing assigned_to field', {
-        rawValue: assignedToValue,
-        isNumeric: assignedToNumber !== undefined,
-        finalValue: assignedToNumber,
-        willSend: assignedToNumber !== undefined
-      });
 
       // Ensure machineId from prop is included if provided (defensive check)
       let finalMachineIds = Array.isArray(values.selected_machine_ids) && values.selected_machine_ids.length > 0 
@@ -1117,17 +938,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           });
           finalMachineIds = [machineIdStr, ...finalMachineIds];
         } else {
-          console.log('[PreventiveMaintenanceForm] ✅ machineId already in selected_machine_ids:', machineId);
         }
       }
-      
-      console.log('[PreventiveMaintenanceForm] Final machine_ids being sent:', {
-        machineId,
-        pmId,
-        valuesSelected: values.selected_machine_ids,
-        finalMachineIds,
-        finalMachineIdsLength: finalMachineIds.length
-      });
 
       const nextDueDate = (() => {
         const baseDate = values.scheduled_date ? new Date(values.scheduled_date) : new Date();
@@ -1170,70 +982,11 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         status: values.status,
         next_due_date: values.status === 'completed' ? nextDueDateISO : undefined,
       };
-
-      console.log('[FORM] handleSubmit - Data prepared for service:', JSON.stringify(dataForService, (key, value) => {
-        if (value instanceof File) {
-          return { name: value.name, size: value.size, type: value.type, _isAFile: true };
-        }
-        return value;
-      }, 2));
-      console.log('[FORM] procedure_template value:', {
-        original: values.procedure_template,
-        type: typeof values.procedure_template,
-        isEmpty: values.procedure_template === '',
-        converted: dataForService.procedure_template
-      });
-
-      // Log the final date formats being sent
-      console.log('[FORM] Final date formats:', {
-        scheduled_date: dataForService.scheduled_date,
-        completed_date: dataForService.completed_date,
-        scheduled_date_type: typeof dataForService.scheduled_date,
-        completed_date_type: typeof dataForService.completed_date
-      });
-
-      // Log the complete data being sent to the backend
-      console.log('[FORM] Complete data being sent to backend:', {
-        ...dataForService,
-        scheduled_date: dataForService.scheduled_date,
-        completed_date: dataForService.completed_date,
-        before_image: dataForService.before_image ? 'File present' : 'No file',
-        after_image: dataForService.after_image ? 'File present' : 'No file'
-      });
-
-      // Additional debugging: Check the exact string values being sent
-      console.log('[FORM] Raw date string values:', {
-        scheduled_date_raw: JSON.stringify(dataForService.scheduled_date),
-        completed_date_raw: JSON.stringify(dataForService.completed_date),
-        scheduled_date_length: dataForService.scheduled_date?.length,
-        completed_date_length: dataForService.completed_date?.length
-      });
-
       // Additional validation before sending to backend
-      console.log('[FORM] Data validation before sending:', {
-        pmtitle: dataForService.pmtitle,
-        scheduled_date: dataForService.scheduled_date,
-        frequency: dataForService.frequency,
-        custom_days: dataForService.custom_days,
-        // property_id not sent to backend - determined by machines
-        topic_ids: dataForService.topic_ids,
-        machine_ids: dataForService.machine_ids,
-        completed_date: dataForService.completed_date,
-        has_before_image: !!dataForService.before_image,
-        has_after_image: !!dataForService.after_image
-      });
 
       // Validate required fields
-      addDebugLog('info', 'Validating required fields', {
-        hasScheduledDate: !!dataForService.scheduled_date,
-        scheduledDate: dataForService.scheduled_date,
-        hasMachineIds: !!dataForService.machine_ids && dataForService.machine_ids.length > 0,
-        machineIdsCount: dataForService.machine_ids?.length || 0,
-        machineIds: dataForService.machine_ids,
-      });
 
       if (!dataForService.scheduled_date) {
-        addDebugLog('error', 'Validation failed: Scheduled date is required');
         throw new Error('Scheduled date is required');
       }
       // Frequency validation removed - defaults to 'monthly' if not provided
@@ -1243,60 +996,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       // if (dataForService.frequency === 'custom' && !dataForService.custom_days) {
       //   throw new Error('Custom days is required when frequency is custom');
       // }
-      // Note: property_id validation removed - it's determined by the machines assigned
-      // Topics are now optional
-      // if (!dataForService.topic_ids || dataForService.topic_ids.length === 0) {
-      //   throw new Error('At least one topic is required');
-      // }
-      // Machines are now optional - maintenance tasks can exist without specific machine assignments
-      // if (!dataForService.machine_ids || dataForService.machine_ids.length === 0) {
-      //   addDebugLog('error', 'Validation failed: At least one machine is required');
-      //   throw new Error('At least one machine is required');
-      // }
-
-      addDebugLog('success', 'All validations passed');
-
       const maintenanceIdToUpdate = pmId || (actualInitialData?.pm_id ?? null);
       let response: ServiceResponse<PreventiveMaintenance>;
 
-      addDebugLog('info', 'Preparing API call', {
-        isUpdate: !!maintenanceIdToUpdate,
-        maintenanceId: maintenanceIdToUpdate,
-        hasAccessToken: !!accessToken,
-        accessTokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none',
-        dataSummary: {
-          pmtitle: dataForService.pmtitle,
-          scheduled_date: dataForService.scheduled_date,
-          machine_ids_count: dataForService.machine_ids.length,
-          topic_ids_count: dataForService.topic_ids.length,
-          has_before_image: !!dataForService.before_image,
-          has_after_image: !!dataForService.after_image,
-          procedure_template: dataForService.procedure_template,
-        }
-      });
-
-      console.log('[FORM] About to call service:', {
-        isUpdate: !!maintenanceIdToUpdate,
-        maintenanceId: maintenanceIdToUpdate,
-        hasAccessToken: !!accessToken,
-        dataForService: {
-          ...dataForService,
-          before_image: dataForService.before_image ? 'File present' : 'No file',
-          after_image: dataForService.after_image ? 'File present' : 'No file',
-        }
-      });
-
       try {
         if (maintenanceIdToUpdate) {
-          addDebugLog('info', 'Calling updatePreventiveMaintenance API');
-          console.log('[FORM] Calling updatePreventiveMaintenance');
           response = await preventiveMaintenanceService.updatePreventiveMaintenance(
             maintenanceIdToUpdate,
             dataForService as UpdatePreventiveMaintenanceData
           );
         } else {
-          addDebugLog('info', 'Calling createPreventiveMaintenance API');
-          console.log('[FORM] Calling createPreventiveMaintenance');
           // FINAL CHECK: Ensure machineId is included if prop was provided
           if (machineId && !pmId && (!dataForService.machine_ids || dataForService.machine_ids.length === 0)) {
             const machineIdStr = String(machineId);
@@ -1304,47 +1013,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             dataForService.machine_ids = [machineIdStr];
           }
           
-          console.log('[PreventiveMaintenanceForm] 🚀 About to call API with final data:', {
-            machine_ids: dataForService.machine_ids,
-            machine_ids_length: dataForService.machine_ids?.length,
-            machineId_prop: machineId,
-            pmId_prop: pmId
-          });
-          
           response = await preventiveMaintenanceService.createPreventiveMaintenance(dataForService);
         }
       } catch (apiError: any) {
-        addDebugLog('error', 'API call failed', {
-          errorType: apiError.constructor?.name,
-          errorMessage: apiError.message,
-          hasResponse: !!apiError.response,
-          status: apiError.response?.status,
-          responseData: apiError.response?.data,
-        });
         // Re-throw to be caught by outer catch block
         throw apiError;
       }
 
       if (!isMounted) return;
 
-      addDebugLog('info', 'API call completed', {
-        success: response.success,
-        hasData: !!response.data,
-        message: response.message,
-        responseData: response.data ? {
-          pm_id: response.data.pm_id,
-          pmtitle: response.data.pmtitle,
-          scheduled_date: response.data.scheduled_date,
-        } : null,
-      });
-
-      console.log('[FORM] handleSubmit - Service response:', response);
-
       if (response.success && response.data) {
-        addDebugLog('success', 'Form submission successful', {
-          pm_id: response.data.pm_id,
-          pmtitle: response.data.pmtitle,
-        });
         toast.success(maintenanceIdToUpdate ? 'Maintenance record updated successfully' : 'Maintenance record created successfully');
         if (onSuccessAction) {
           onSuccessAction(response.data);
@@ -1378,8 +1056,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         stack: error.stack?.substring(0, 500), // Limit stack trace length
       };
       
-      addDebugLog('error', 'Form submission failed', errorDetails);
-      
       console.error('[FORM] handleSubmit - Error submitting form:', error);
       console.error('[FORM] Error details:', errorDetails);
       
@@ -1394,7 +1070,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       } else if (error.response?.data) {
         // HTTP error response from backend
         const responseData = error.response.data;
-        console.log('[FORM] Backend error response data:', responseData);
         
         if (typeof responseData === 'string') {
           errorMessage = responseData;
@@ -1423,8 +1098,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         // Fallback to string representation
         errorMessage = error.toString();
       }
-      
-      addDebugLog('error', 'Final error message', { errorMessage });
       setSubmitError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -1456,58 +1129,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   return (
     <div className="bg-white shadow-md rounded-lg p-3 sm:p-4 md:p-6">
-      {/* Debug Panel Toggle */}
-      <div className="mb-4 flex justify-end">
-        <button
-          type="button"
-          onClick={() => setShowDebugPanel(!showDebugPanel)}
-          className="px-3 py-1.5 text-xs bg-gray-200 hover:bg-gray-300 rounded-md text-gray-700 font-mono"
-        >
-          {showDebugPanel ? '▼ Hide Debug' : '▶ Show Debug'}
-        </button>
-      </div>
-
-      {/* Debug Panel */}
-      {showDebugPanel && (
-        <div className="mb-4 p-4 bg-gray-900 text-green-400 rounded-md font-mono text-xs max-h-96 overflow-y-auto">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-bold text-white">Debug Logs</h3>
-            <button
-              type="button"
-              onClick={() => setDebugLogs([])}
-              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs"
-            >
-              Clear
-            </button>
-          </div>
-          {debugLogs.length === 0 ? (
-            <p className="text-gray-500">No debug logs yet. Submit the form to see logs.</p>
-          ) : (
-            <div className="space-y-1">
-              {debugLogs.map((log, index) => (
-                <div key={index} className={`border-l-2 pl-2 ${
-                  log.level === 'error' ? 'border-red-500 text-red-400' :
-                  log.level === 'warn' ? 'border-yellow-500 text-yellow-400' :
-                  log.level === 'success' ? 'border-green-500 text-green-400' :
-                  'border-blue-500 text-blue-400'
-                }`}>
-                  <div className="flex items-start gap-2">
-                    <span className="text-gray-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                    <span className="font-bold">[{log.level.toUpperCase()}]</span>
-                    <span>{log.message}</span>
-                  </div>
-                  {log.data && (
-                    <pre className="mt-1 ml-4 text-xs overflow-x-auto bg-gray-800 p-2 rounded">
-                      {JSON.stringify(log.data, null, 2)}
-                    </pre>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {(error || submitError) && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4">
           <div className="flex justify-between items-start gap-2">
@@ -1529,39 +1150,17 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         validate={(values) => {
           const errors = validateForm(values);
           if (Object.keys(errors).length > 0) {
-            addDebugLog('warn', 'Form validation errors', { errors, values });
           }
           return errors;
         }}
         enableReinitialize
         onSubmit={(values, formikHelpers) => {
-          addDebugLog('info', 'Formik onSubmit triggered', {
-            ...values,
-            scheduled_date: values.scheduled_date,
-            scheduled_date_type: typeof values.scheduled_date,
-            scheduled_date_length: values.scheduled_date?.length,
-            completed_date: values.completed_date,
-            completed_date_type: typeof values.completed_date,
-            completed_date_length: values.completed_date?.length
-          });
           return handleSubmit(values, formikHelpers);
         }}
       >
           {({ values, errors, touched, isSubmitting, setFieldValue }) => {
           // Debug form values changes
           React.useEffect(() => {
-            console.log('[Formik] Form values changed:', {
-              scheduled_date: values.scheduled_date,
-              scheduled_date_type: typeof values.scheduled_date,
-              scheduled_date_length: values.scheduled_date?.length,
-              completed_date: values.completed_date,
-              completed_date_type: typeof values.completed_date,
-              completed_date_length: values.completed_date?.length,
-              selected_machine_ids: values.selected_machine_ids,
-              selected_machine_ids_length: values.selected_machine_ids?.length,
-              machineId_prop: machineId,
-              pmId_prop: pmId
-            });
           }, [values.scheduled_date, values.completed_date, values.selected_machine_ids, machineId, pmId]);
 
             React.useEffect(() => {
@@ -1582,10 +1181,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               
               // Wait for machines to finish loading before auto-selecting
               if (loadingMachines) {
-                console.log('[PreventiveMaintenanceForm] ⏳ Waiting for machines to load before auto-selecting:', {
-                  machineId: machineIdStr,
-                  loadingMachines
-                });
                 return;
               }
               
@@ -1596,17 +1191,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 if (machineExists) {
                   // Machine exists - select it if not already selected
                   if (!isAlreadySelected) {
-                    console.log('[PreventiveMaintenanceForm] ✅ Auto-selecting machine from prop:', {
-                      machineId,
-                      machineIdStr,
-                      currentSelected: values.selected_machine_ids,
-                      availableMachinesCount: availableMachines.length
-                    });
                     
                     const newMachineIds = [machineIdStr, ...values.selected_machine_ids.filter(id => id !== machineIdStr)];
                     setFieldValue('selected_machine_ids', newMachineIds, false);
                   } else {
-                    console.log('[PreventiveMaintenanceForm] ✅ Machine already selected:', machineIdStr);
                   }
                 } else {
                   // Machine doesn't exist in available machines - show warning
@@ -1620,7 +1208,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   
                   // Still try to select it (might be valid but not loaded yet, or might be from different property)
                   if (!isAlreadySelected) {
-                    console.log('[PreventiveMaintenanceForm] ⚠️ Machine not in available list, but selecting anyway:', machineIdStr);
                     const newMachineIds = [machineIdStr, ...values.selected_machine_ids.filter(id => id !== machineIdStr)];
                     setFieldValue('selected_machine_ids', newMachineIds, false);
                   }
@@ -1629,11 +1216,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 // Property is set but no machines loaded - might be loading or empty
                 // Still try to select the machine ID (will be validated on submit)
                 if (!isAlreadySelected) {
-                  console.log('[PreventiveMaintenanceForm] ⚠️ No machines loaded yet, but selecting machine ID anyway:', {
-                    machineId: machineIdStr,
-                    property_id: values.property_id,
-                    note: 'Will be validated when machines load or on submit'
-                  });
                   const newMachineIds = [machineIdStr, ...values.selected_machine_ids.filter(id => id !== machineIdStr)];
                   setFieldValue('selected_machine_ids', newMachineIds, false);
                 }
@@ -1642,18 +1224,11 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
             // Refetch maintenance tasks when selected machines change
             React.useEffect(() => {
-              console.log('[PreventiveMaintenanceForm] useEffect triggered:', {
-                pmId,
-                selected_machine_ids: values.selected_machine_ids,
-                length: values.selected_machine_ids.length
-              });
               
               if (!pmId && values.selected_machine_ids.length > 0) {
-                console.log('[PreventiveMaintenanceForm] Selected machines changed, refetching tasks:', values.selected_machine_ids);
                 fetchAvailableMaintenanceTasks(values.selected_machine_ids);
               } else if (!pmId && values.selected_machine_ids.length === 0) {
                 // No machines selected, show all tasks
-                console.log('[PreventiveMaintenanceForm] No machines selected, showing all tasks');
                 fetchAvailableMaintenanceTasks();
               }
             }, [values.selected_machine_ids, pmId, fetchAvailableMaintenanceTasks]);
@@ -2001,17 +1576,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   if (taskId) {
                     const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(taskId));
                     if (selectedTask) {
-                      console.log(`[Template Selection] Selected template:`, {
-                        id: selectedTask.id,
-                        name: selectedTask.name,
-                        frequency: selectedTask.frequency,
-                        custom_days: selectedTask.custom_days
-                      });
                       
                       // Auto-populate title if empty
                       if (!values.pmtitle || values.pmtitle.trim() === '') {
                         setFieldValue('pmtitle', selectedTask.name);
-                        console.log(`[Template Selection] Auto-filled title: ${selectedTask.name}`);
                       }
                       
                       // CRITICAL: Auto-set frequency and calculate scheduled_date based on template frequency
@@ -2022,7 +1590,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                         if (validFrequencies.includes(templateFrequency as FrequencyType)) {
                           // Set frequency from template
                           setFieldValue('frequency', templateFrequency as FrequencyType);
-                          console.log(`[Template Selection] Set frequency to: ${templateFrequency}`);
                           
                           // Calculate next scheduled date based on template frequency
                           const customDays = templateFrequency === 'custom' ? (selectedTask.custom_days ?? undefined) : undefined;
@@ -2031,16 +1598,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                           
                           // Always update scheduled_date when template is selected
                           setFieldValue('scheduled_date', formattedDate);
-                          console.log(`[Template Selection] Calculated scheduled_date for ${templateFrequency} frequency:`, {
-                            nextDate: nextDate.toISOString(),
-                            formattedDate: formattedDate,
-                            customDays: customDays
-                          });
                           
                           // Set custom_days if frequency is custom
                           if (templateFrequency === 'custom' && selectedTask.custom_days) {
                             setFieldValue('custom_days', selectedTask.custom_days);
-                            console.log(`[Template Selection] Set custom_days to: ${selectedTask.custom_days}`);
                           } else if (templateFrequency !== 'custom') {
                             // Clear custom_days if not custom frequency
                             setFieldValue('custom_days', '');
@@ -2056,7 +1617,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                     }
                   } else {
                     // Template deselected - reset to defaults
-                    console.log(`[Template Selection] Template deselected, resetting to defaults`);
                     setFieldValue('frequency', 'monthly');
                     setFieldValue('custom_days', '');
                   }

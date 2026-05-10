@@ -18,6 +18,7 @@ import { ProfileImage } from "@/app/components/profile/ProfileImage";
 import { useUser, useProperties } from "@/app/lib/stores/mainStore";
 import { UserProfile, Property } from "@/app/lib/types";
 import { cn } from "@/app/lib/utils/cn";
+import { getDisplayName } from "@/app/lib/utils/display-name";
 
 // Define PropertyCardProps
 interface PropertyCardProps {
@@ -194,21 +195,12 @@ export default function ProfileDisplay() {
   // Check if user has properties
   const hasProperties = userProperties && userProperties.length > 0;
 
-  console.log('🔍 ProfileDisplay component loaded with:', {
-    userProfile,
-    loading,
-    hasUserProfile: !!userProfile,
-    userProfileId: userProfile?.id,
-    editLinkUrl: userProfile ? `/dashboard/profile/edit/${userProfile.id}` : 'none'
-  });
-
   if (loading) {
     return <LoadingSkeleton />;
   }
 
   useEffect(() => {
     if (!loading && !userProfile) {
-      console.log('❌ No userProfile, redirecting to login');
       router.replace("/auth/login");
     }
   }, [loading, userProfile, router]);
@@ -239,11 +231,11 @@ export default function ProfileDisplay() {
           <div className="flex flex-col items-center justify-center space-y-4">
             <ProfileImage
               src={userProfile.profile_image}
-              alt={`${userProfile.username}'s profile`}
+              alt={`${getDisplayName(userProfile, 'User')}'s profile`}
               size="md"
             />
             <div className="text-center">
-              <h3 className="text-lg sm:text-xl font-semibold">{userProfile.username}</h3>
+              <h3 className="text-lg sm:text-xl font-semibold">{getDisplayName(userProfile, 'Unknown Technician')}</h3>
               <Badge variant="secondary" className="mt-2">
                 {userProfile.positions}
               </Badge>

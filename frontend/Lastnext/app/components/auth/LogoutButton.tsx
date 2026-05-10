@@ -8,7 +8,6 @@ export default function LogoutButton({ className = '' }: { className?: string })
       
       if (response.ok) {
         // Clear any local state if needed
-        console.log('✅ Logout successful');
         
         // The API will redirect to Auth0 logout, so we don't need to redirect here
       } else {

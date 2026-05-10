@@ -156,8 +156,6 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
         apiClient.get<Room[]>(`/api/rooms/?property=${currentPropertyId}`),
         apiClient.get<TopicFromAPI[]>(`/api/topics/`),
       ]);
-      console.log(`Workspaceed rooms for property ${currentPropertyId}:`, roomsResponse.data);
-      console.log('Fetched topics:', topicsResponse.data);
       setRooms(roomsResponse.data ?? []);
       setTopics(topicsResponse.data ?? []);
     } catch (error) {
@@ -172,7 +170,6 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
   const handleSubmit = async (values: FormValues, { resetForm }: { resetForm: () => void }) => {
     // Prevent double submission
     if (isSubmitting) {
-      console.log('⚠️ Submission already in progress, ignoring duplicate submit');
       return;
     }
 
@@ -242,8 +239,6 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
           Authorization: `Bearer ${session.user.accessToken}`,
         },
       });
-
-      console.log('Job created:', response.data);
       setOpen(false); // Close dialog on success
       resetForm(); // Reset form fields
       onJobCreated?.(); // Call the callback passed from MyJobs

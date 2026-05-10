@@ -87,9 +87,6 @@ export async function GET(request: NextRequest) {
       let userResponse = null;
       
       try {
-        console.log('🔍 Attempting to fetch user info from Auth0...');
-        console.log('🔍 Domain:', domain);
-        console.log('🔍 Access token length:', tokens.access_token?.length);
         
         userResponse = await fetch(`https://${domain}/userinfo`, {
           headers: {
@@ -97,26 +94,12 @@ export async function GET(request: NextRequest) {
           },
         });
 
-        console.log('🔍 Userinfo response status:', userResponse.status);
-        console.log('🔍 Userinfo response headers:', Object.fromEntries(userResponse.headers.entries()));
-
         if (userResponse.ok) {
           userInfo = await userResponse.json();
-          console.log('🔍 Auth0 user info received:', {
-            sub: userInfo?.sub,
-            nickname: userInfo?.nickname,
-            name: userInfo?.name,
-            email: userInfo?.email,
-            picture: userInfo?.picture,
-            positions: userInfo?.positions
-          });
           
           // Log all available fields from Auth0
-          console.log('🔍 All Auth0 user fields:', Object.keys(userInfo));
-          console.log('🔍 Full Auth0 user data:', JSON.stringify(userInfo, null, 2));
         } else if (userResponse.status === 429) {
           // Rate limited - wait a bit and retry once
-          console.log('Rate limited by Auth0, waiting 2 seconds before retry...');
           await new Promise(resolve => setTimeout(resolve, 2000));
           
           userResponse = await fetch(`https://${domain}/userinfo`, {
@@ -127,12 +110,6 @@ export async function GET(request: NextRequest) {
           
           if (userResponse.ok) {
             userInfo = await userResponse.json();
-            console.log('🔍 Auth0 user info received (retry):', {
-              sub: userInfo?.sub,
-              nickname: userInfo?.nickname,
-              name: userInfo?.name,
-              email: userInfo?.email
-            });
           } else {
             console.error('🔍 Retry failed with status:', userResponse.status);
             const errorText = await userResponse.text();
@@ -151,12 +128,10 @@ export async function GET(request: NextRequest) {
       // If userinfo failed, try to extract basic info from the ID token
       if (!userInfo && tokens.id_token) {
         try {
-          console.log('🔍 Attempting to decode ID token for user info...');
           // Simple base64 decode of JWT payload (this is safe for public claims)
           const payload = tokens.id_token.split('.')[1];
           if (payload) {
             const decoded = JSON.parse(Buffer.from(payload, 'base64').toString());
-            console.log('🔍 ID token payload:', decoded);
             
             // Use ID token data as fallback
             userInfo = {
@@ -169,7 +144,6 @@ export async function GET(request: NextRequest) {
               picture: decoded.picture,
               email_verified: decoded.email_verified
             };
-            console.log('🔍 Using ID token data as fallback:', userInfo);
           }
         } catch (decodeError) {
           console.error('🔍 Failed to decode ID token:', decodeError);
@@ -177,22 +151,6 @@ export async function GET(request: NextRequest) {
       }
 
       // Debug: Log what we have before creating session
-      console.log('🔍 Before creating session - available data:', {
-        hasUserInfo: !!userInfo,
-        userInfoKeys: userInfo ? Object.keys(userInfo) : [],
-        sub: userInfo?.sub,
-        nickname: userInfo?.nickname,
-        name: userInfo?.name,
-        email: userInfo?.email,
-        picture: userInfo?.picture,
-        profile_image_mapping: userInfo?.picture || 'No picture field',
-        tokens: {
-          hasAccessToken: !!tokens.access_token,
-          accessTokenLength: tokens.access_token?.length,
-          hasRefreshToken: !!tokens.refresh_token,
-          hasIdToken: !!tokens.id_token
-        }
-      });
 
       // Create session data with proper user structure
       const sessionData = {
@@ -236,16 +194,6 @@ export async function GET(request: NextRequest) {
       }
 
       // Debug log the session data being created
-      console.log('🔍 Creating session with user data:', {
-        id: sessionData.user.id,
-        username: sessionData.user.username,
-        email: sessionData.user.email,
-        profile_image: sessionData.user.profile_image,
-        hasProfileImage: !!sessionData.user.profile_image,
-        hasAccessToken: !!sessionData.user.accessToken,
-        accessTokenLength: sessionData.user.accessToken?.length,
-        note: 'Properties will be fetched by session-compat API'
-      });
 
       // Check if user is new by querying the backend for their properties
       let isNewUser = true;
@@ -253,7 +201,6 @@ export async function GET(request: NextRequest) {
       
       try {
         const backendUrl = process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
-        console.log('🔍 Checking if user is new by fetching properties from backend...');
         
         const propertiesResponse = await fetch(`${backendUrl}/api/v1/properties/`, {
           method: 'GET',
@@ -265,15 +212,10 @@ export async function GET(request: NextRequest) {
 
         if (propertiesResponse.ok) {
           userProperties = await propertiesResponse.json();
-          console.log('🔍 User properties response:', {
-            count: Array.isArray(userProperties) ? userProperties.length : 0,
-            isArray: Array.isArray(userProperties)
-          });
           
           // User is NOT new if they have properties assigned
           isNewUser = !Array.isArray(userProperties) || userProperties.length === 0;
         } else {
-          console.log('🔍 Failed to fetch properties, treating as new user');
           isNewUser = true;
         }
       } catch (propertiesError) {
@@ -282,20 +224,13 @@ export async function GET(request: NextRequest) {
         isNewUser = true;
       }
 
-      console.log('🔍 User status:', {
-        isNewUser,
-        propertiesCount: userProperties.length
-      });
-
       // Determine redirect destination
       let redirectUrl = `${baseUrl}/dashboard`;
       
       if (isNewUser) {
         // New user - redirect to onboarding
         redirectUrl = `${baseUrl}/auth/onboarding`;
-        console.log('🔍 New user detected - redirecting to onboarding');
       } else {
-        console.log('🔍 Existing user with properties - redirecting to dashboard');
       }
 
       // Redirect with session cookie

@@ -7,6 +7,7 @@ import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { useToast } from '@/app/components/ui/use-toast';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 
 interface Property {
   id: number;
@@ -258,7 +259,7 @@ export default function OnboardingPage() {
               </div>
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span className="text-gray-600">Username</span>
-                <span className="font-medium text-gray-900">{session?.user?.username || 'Not set'}</span>
+                <span className="font-medium text-gray-900">{getDisplayName(session?.user, 'Not set')}</span>
               </div>
               {session?.user?.auth0_profile?.name && (
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -367,4 +368,3 @@ export default function OnboardingPage() {
     </div>
   );
 }
-

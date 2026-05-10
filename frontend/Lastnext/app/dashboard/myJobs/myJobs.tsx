@@ -1,4 +1,3 @@
-// MyJobs.js - Updated with Status Update functionality
 "use client";
 
 import * as React from "react";
@@ -33,6 +32,7 @@ import { useUser, useJobs } from "@/app/lib/stores/mainStore";
 import { useJobsData } from "@/app/lib/hooks/useJobsData";
 import { Job, JobStatus, JobPriority, Topic } from "@/app/lib/types";
 import { fetchTopics, deleteJob as deleteJobApi } from "@/app/lib/data.server";
+import { getDisplayName } from "@/app/lib/utils/display-name";
 // --- Component Imports ---
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import JobFilters, { FilterState } from "@/app/components/jobs/JobFilters";
@@ -548,15 +548,13 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({ isOpen, onClose, onConfirm,
 );
 DeleteDialog.displayName = 'DeleteDialog';
 
-// --- Main MyJobs component ---
 const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) => {
   const { toast } = useToast();
   const { data: session, status: sessionStatus } = useSession();
   const { userProfile, selectedPropertyId: selectedProperty } = useUser();
   const { updateJob: storeUpdateJob, deleteJob: storeDeleteJob } = useJobs();
   
-  // Since we don't have loading state in the new store, we'll handle it differently
-  const userLoading = false; // TODO: Add loading state to store if needed
+  const userLoading = false;
   const router = useRouter();
 
   // Local state for UI
@@ -573,18 +571,6 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
   const [availableTopics, setAvailableTopics] = React.useState<Topic[]>([]);
   const [selectedTopics, setSelectedTopics] = React.useState<Topic[]>([]);
   const [topicsLoading, setTopicsLoading] = React.useState(false);
-
-  // Get current user ID for filtering
-  const currentUserId = session?.user?.id;
-  const currentUsername = session?.user?.username;
-
-  // Debug logging
-  React.useEffect(() => {
-    console.log('MyJobs: Session status:', sessionStatus);
-    console.log('MyJobs: Current user ID:', currentUserId);
-    console.log('MyJobs: Current username:', currentUsername);
-    console.log('MyJobs: Selected property:', selectedProperty);
-  }, [sessionStatus, currentUserId, currentUsername, selectedProperty]);
 
   // Use the hook for data fetching - always fetch user's jobs, not property-specific jobs
   // Note: Backend's my_jobs endpoint already filters by authenticated user, 
@@ -606,30 +592,12 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     }
   });
 
-  // Debug logging for jobs
-  React.useEffect(() => {
-    console.log('MyJobs: Jobs fetched:', jobs?.length || 0);
-    console.log('MyJobs: Is loading:', isLoading);
-    console.log('MyJobs: Error:', error);
-    if (jobs && jobs.length > 0) {
-      console.log('MyJobs: First job sample:', {
-        job_id: jobs[0]?.job_id,
-        user: jobs[0]?.user,
-        status: jobs[0]?.status,
-        description: jobs[0]?.description?.substring(0, 50)
-      });
-    }
-  }, [jobs, isLoading, error]);
-
   // Filter jobs based on local state
   // Note: Backend already filters by user, so we don't need to check job.user here
   const filteredJobs = React.useMemo(() => {
     if (!Array.isArray(jobs)) {
-      console.log('MyJobs: jobs is not an array:', jobs);
       return [];
     }
-    
-    console.log(`MyJobs: Filtering ${jobs.length} jobs with filters:`, filters);
     
     const filtered = jobs.filter((job) => {
       // Apply search filter
@@ -648,8 +616,6 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
 
       return matchesSearch && matchesStatus && matchesPriority;
     });
-    
-    console.log(`MyJobs: Filtered to ${filtered.length} jobs`);
     return filtered;
   }, [jobs, filters]);
 
@@ -874,7 +840,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                   Maintenance Jobs
                 </h1>
                 <p className="mt-1 text-sm font-semibold text-[var(--pcms-text-muted)]">
-                  {userProfile?.username ? `Welcome back, ${userProfile.username}` : 'Manage hotel maintenance jobs'}
+                  {userProfile ? `Welcome back, ${getDisplayName(userProfile, 'User')}` : 'Manage hotel maintenance jobs'}
                 </p>
               </div>
             </div>

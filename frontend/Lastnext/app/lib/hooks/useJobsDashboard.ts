@@ -138,7 +138,6 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     
     // Prevent concurrent calls
     if (isLoadingRef.current) {
-      console.log('useJobsDashboard: Already loading, skipping duplicate call');
       return;
     }
     
@@ -146,7 +145,6 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     const now = Date.now();
     const timeSinceLastCall = now - lastCallTimeRef.current;
     if (timeSinceLastCall < MIN_CALL_INTERVAL) {
-      console.log(`useJobsDashboard: Rate limiting - ${timeSinceLastCall}ms since last call`);
       return;
     }
     

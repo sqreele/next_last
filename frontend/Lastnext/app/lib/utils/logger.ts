@@ -29,7 +29,6 @@ class Logger {
    */
   debug(message: string, context?: LogContext | unknown): void {
     if (this.isDevelopment) {
-      console.log(`[DEBUG] ${message}`, context || '');
     }
   }
 
@@ -67,7 +66,6 @@ class Logger {
   api(method: string, url: string, status?: number, context?: LogContext): void {
     if (this.isDevelopment) {
       const statusText = status ? `[${status}]` : '';
-      console.log(`[API] ${method.toUpperCase()} ${url} ${statusText}`, context || '');
     }
   }
 

@@ -82,14 +82,8 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
 
   // Set the access token on the singleton service whenever it changes
   useEffect(() => {
-    console.log('🔍 PreventiveContext - accessToken changed:', {
-      hasAccessToken: !!accessToken,
-      tokenLength: accessToken?.length,
-      tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : 'none'
-    });
     
     if (accessToken) {
-      console.log('🔧 Setting token on preventive maintenance service...');
       setPreventiveMaintenanceServiceToken(accessToken);
     } else {
       console.warn('⚠️ No access token available in PreventiveContext');
@@ -100,12 +94,10 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
   const fetchMachines = useCallback(async (propertyId?: string) => {
     try {
       // Production mode: Always make real API calls
-      console.log('🏭 Fetching machines...');
       const machineService = new MachineService();
       const response = await machineService.getMachines(propertyId || selectedProperty || undefined, accessToken || undefined);
 
       if (response.success && response.data) {
-        console.log(`✅ Loaded ${response.data.length} machines:`, response.data);
         setMachines(response.data);
       } else {
         console.warn('⚠️ Failed to fetch machines:', response.message);
@@ -133,19 +125,12 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
 
   // Fetch maintenance items
   const fetchMaintenanceItems = useCallback(async (params?: SearchParams) => {
-    console.log('🔍 fetchMaintenanceItems called with:', {
-      hasAccessToken: !!accessToken,
-      tokenLength: accessToken?.length,
-      selectedProperty,
-      filterParams
-    });
     
     setLoading(true);
     clearStoreError();
 
     try {
       const fetchParams = { ...filterParams, property_id: selectedProperty || filterParams.property_id, ...params };
-      console.log('🔄 Fetching maintenance items with params:', fetchParams);
 
       const response = await preventiveMaintenanceService.getAllPreventiveMaintenance(fetchParams);
       
@@ -304,14 +289,10 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
 
   // Debug functions
   const debugMachineFilter = useCallback(async (machineId: string) => {
-    console.log('🔍 Debug machine filter for:', machineId);
     await fetchMaintenanceByMachine(machineId);
   }, [fetchMaintenanceByMachine]);
 
   const testMachineFiltering = useCallback(() => {
-    console.log('🧪 Testing machine filtering...');
-    console.log('Current machines:', machines);
-    console.log('Current filter params:', filterParams);
   }, [machines, filterParams]);
 
   // Initialize data
@@ -351,12 +332,6 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
   };
 
   // Debug: Log context value
-  console.log('🔍 PreventiveContext - contextValue:', {
-    hasFetchMaintenanceItems: typeof fetchMaintenanceItems === 'function',
-    fetchMaintenanceItemsType: typeof fetchMaintenanceItems,
-    contextKeys: Object.keys(contextValue),
-    maintenanceItemsCount: maintenanceItems?.length || 0
-  });
 
   return (
     <PreventiveMaintenanceContext.Provider value={contextValue}>

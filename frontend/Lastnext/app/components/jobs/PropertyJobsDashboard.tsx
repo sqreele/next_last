@@ -28,6 +28,7 @@ import { appSignOut } from "@/app/lib/logout";
 import { useDetailedUsers, DetailedUser } from "@/app/lib/hooks/useDetailedUsers";
 import { User, Property } from "@/app/lib/types";
 import { logger } from "@/app/lib/utils/logger";
+import { getDisplayName } from "@/app/lib/utils/display-name";
 
 // Proper session type based on auth-client
 interface Session {
@@ -430,158 +431,19 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     });
   }, [filteredJobs]);
 
-  // Helper function to extract user display name with detailed user data
   const getUserDisplayName = (user: User | number | string | { username?: string; id?: string | number; [key: string]: unknown } | null | undefined): string => {
-    if (!user) {
-      return 'Unknown User';
+    const userStr = user === null || user === undefined ? '' : String(typeof user === 'object' ? user.id || user.username || '' : user);
+    const detailedUser = detailedUsers.find(u =>
+      u.id.toString() === userStr ||
+      u.username === userStr ||
+      u.email === userStr ||
+      (typeof user === 'object' && user && 'username' in user && u.username === user.username)
+    );
+    if (detailedUser) return getDisplayName(detailedUser, 'Unknown Technician');
+    if (session?.user && userStr && String(session.user.id || '').trim() === userStr) {
+      return getDisplayName(session.user, 'Unknown Technician');
     }
-    
-    // If it's an object with username field, try to find detailed user info
-    if (typeof user === 'object' && user && 'username' in user) {
-      // Try to find in detailed users first
-      const detailedUser = detailedUsers.find(u => u.username === user.username);
-      if (detailedUser) {
-        // Use full name if available, otherwise clean up the username
-        if (detailedUser.full_name && detailedUser.full_name.trim()) {
-          return detailedUser.full_name;
-        }
-        // Clean up Auth0 usernames for better display
-        let cleanUsername = detailedUser.username;
-        if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
-          cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
-        }
-        return cleanUsername;
-      }
-      // Clean up Auth0 usernames for better display
-      let cleanUsername: string = user.username || '';
-      if (cleanUsername && (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_'))) {
-        cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
-      }
-      return cleanUsername || 'Unknown User';
-    }
-    
-    // If it's a string or number, try to match with detailed users
-    if (typeof user === 'string' || typeof user === 'number') {
-      const userStr = String(user);
-      
-      // Try to match with detailed users by ID
-      const detailedUser = detailedUsers.find(u => 
-        u.id.toString() === userStr || 
-        u.username === userStr ||
-        u.email === userStr
-      );
-      
-      if (detailedUser) {
-        // Use full name if available, otherwise clean up the username
-        if (detailedUser.full_name && detailedUser.full_name.trim()) {
-          return detailedUser.full_name;
-        }
-        // Clean up Auth0 usernames for better display
-        let cleanUsername = detailedUser.username;
-        if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
-          cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
-        }
-        return cleanUsername;
-      }
-      
-      // Try to match with session data as fallback
-      if (session?.user) {
-        const sessionUserId = String(session.user.id || '').trim();
-        const sessionUsername = session.user.username || 'You';
-        
-        // Exact match
-        if (userStr === sessionUserId) {
-          return sessionUsername;
-        }
-        
-        // Case-insensitive match
-        if (userStr.toLowerCase() === sessionUserId.toLowerCase()) {
-          return sessionUsername;
-        }
-        
-        // Google OAuth ID matching
-        if (userStr.includes('google-oauth2_') && sessionUserId.includes('google-oauth2_')) {
-          const userNumeric = userStr.replace('google-oauth2_', '');
-          const sessionNumeric = sessionUserId.replace('google-oauth2_', '');
-          if (userNumeric === sessionNumeric) {
-            return sessionUsername;
-          }
-        }
-        
-        // Try to match numeric IDs (common case where job user is numeric ID)
-        const userNumeric = parseInt(userStr);
-        const sessionNumeric = parseInt(sessionUserId);
-        if (!isNaN(userNumeric) && !isNaN(sessionNumeric) && userNumeric === sessionNumeric) {
-          return sessionUsername;
-        }
-        
-        // Try to match with first_name and last_name if available
-        if (session.user.first_name || session.user.last_name) {
-          const fullName = `${session.user.first_name || ''} ${session.user.last_name || ''}`.trim();
-          if (fullName) {
-            return fullName;
-          }
-        }
-        
-        // If we have session data but no match, try to use session username as fallback
-        if (session.user.username) {
-          return session.user.username;
-        }
-      }
-      
-      // If it's a numeric ID, try to show it as "User #123" instead of "User 123"
-      if (!isNaN(Number(userStr))) {
-        return `User #${userStr}`;
-      }
-      
-      return `User ${userStr}`;
-    }
-    
-    if (typeof user === 'object') {
-      // Try different possible fields for username
-      const username = user.username || user.name || user.email || user.id;
-      if (username) {
-        // Try to find in detailed users
-        const detailedUser = detailedUsers.find(u => 
-          u.username === username || 
-          u.email === username ||
-          u.id.toString() === username
-        );
-        if (detailedUser) {
-          // Use full name if available, otherwise clean up the username
-          if (detailedUser.full_name && detailedUser.full_name.trim()) {
-            return detailedUser.full_name;
-          }
-          // Clean up Auth0 usernames for better display
-          let cleanUsername = detailedUser.username;
-          if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
-            cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
-          }
-          return cleanUsername;
-        }
-        return String(username);
-      }
-      
-      // If it's an object but no recognizable field, try to stringify it safely
-      try {
-        // Check if it has any enumerable properties
-        const keys = Object.keys(user);
-        if (keys.length > 0) {
-          // Try to get the first string value
-          for (const key of keys) {
-            const value = user[key];
-            if (typeof value === 'string' && value.trim()) {
-              return value;
-            }
-          }
-        }
-      } catch (error) {
-      }
-      
-      return 'Unknown User';
-    }
-    
-    return 'Unknown User';
+    return getDisplayName(user as any, 'Unknown Technician');
   };
 
   // ✅ PERFORMANCE OPTIMIZATION: Memoized jobs by user data to prevent expensive recalculations

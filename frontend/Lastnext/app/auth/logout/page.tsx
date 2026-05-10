@@ -10,16 +10,13 @@ function LogoutContent() {
   useEffect(() => {
     const performLogout = async () => {
       try {
-        console.log('🚪 Starting logout process...');
         
         // Get the returnTo parameter from the URL
         const returnTo = searchParams.get('returnTo') || '/';
-        console.log('🔍 Return to:', returnTo);
         
         // Instead of calling the API from the page, redirect directly to the logout API
         // This ensures the API handles the logout properly
         const logoutUrl = `/api/auth/logout?returnTo=${encodeURIComponent(returnTo)}`;
-        console.log('🔗 Redirecting to logout API:', logoutUrl);
         
         // Redirect to the logout API - this will handle the Auth0 logout and redirect
         window.location.href = logoutUrl;

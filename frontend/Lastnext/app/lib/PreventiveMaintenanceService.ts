@@ -93,7 +93,6 @@ class PreventiveMaintenanceService {
     const headers: Record<string, string> = {};
     if (this.accessToken) {
       headers.Authorization = `Bearer ${this.accessToken}`;
-      console.log('✅ Using access token for API request:', this.accessToken.substring(0, 20) + '...');
     } else {
       console.warn('⚠️ No access token provided for API request');
       console.warn('⚠️ Service instance:', this);
@@ -104,13 +103,7 @@ class PreventiveMaintenanceService {
 
   // Public method to set the access token
   public setAccessToken(accessToken: string): void {
-    console.log('🔧 Setting access token on PreventiveMaintenanceService instance:', {
-      oldToken: this.accessToken ? this.accessToken.substring(0, 20) + '...' : 'none',
-      newToken: accessToken.substring(0, 20) + '...',
-      tokenLength: accessToken.length
-    });
     this.accessToken = accessToken;
-    console.log('✅ Access token set on PreventiveMaintenanceService instance');
   }
 
   // Helper method to check if an item matches a machine
@@ -119,7 +112,6 @@ class PreventiveMaintenanceService {
 
     // Check direct machine_id property
     if (item.machine_id === machineId) {
-      console.log(`✅ Direct match: item.machine_id (${item.machine_id}) === ${machineId}`);
       return true;
     }
 
@@ -139,7 +131,6 @@ class PreventiveMaintenanceService {
         });
         
         if (arrayMatch) {
-          console.log(`✅ Array match found in machines:`, item.machines);
           return true;
         }
       } else if (typeof item.machines === 'object' && item.machines !== null) {
@@ -149,17 +140,10 @@ class PreventiveMaintenanceService {
                           machine.machineId === machineId;
         
         if (objectMatch) {
-          console.log(`✅ Object match found:`, machine);
           return true;
         }
       }
     }
-
-    console.log(`❌ No match for item:`, {
-      pm_id: item.pm_id,
-      machine_id: item.machine_id,
-      machines: item.machines
-    });
     return false;
   }
 
@@ -177,8 +161,6 @@ class PreventiveMaintenanceService {
     params?: Record<string, any>
   ): Promise<ServiceResponse<MaintenanceApiResponse>> {
     try {
-      console.log('=== FETCHING PREVENTIVE MAINTENANCE ===');
-      console.log('Input params:', params);
       
       // Create clean params object - remove empty strings and undefined values
       const cleanParams: Record<string, any> = {};
@@ -202,14 +184,9 @@ class PreventiveMaintenanceService {
       }
       
       // Log pagination params specifically
-      console.log('📄 Pagination params:', { 
-        page: cleanParams.page, 
-        page_size: cleanParams.page_size 
-      });
       
       // Log the machine_id specifically
       if (cleanParams.machine_id) {
-        console.log(`🔍 Filtering by machine_id: ${cleanParams.machine_id}`);
       }
 
             let response: any;
@@ -222,7 +199,6 @@ class PreventiveMaintenanceService {
         });
       } else {
         // Use Next.js API proxy to include auth automatically
-        console.log('🔄 Using Next.js API proxy for preventive maintenance request');
         
         const queryString = new URLSearchParams(cleanParams).toString();
         const url = `/api/preventive-maintenance/${queryString ? `?${queryString}` : ''}`;
@@ -237,33 +213,17 @@ class PreventiveMaintenanceService {
         response = { data };
       }
       
-      console.log('Raw API response:', response.data);
-      console.log('Response type:', typeof response.data);
-      console.log('Is array?', Array.isArray(response.data));
-      
       // Extract items for logging
       const { items, count } = this.extractItemsFromResponse(response.data);
       
       if (Array.isArray(response.data)) {
-        console.log(`✅ Got ${items.length} items (array format)`);
       } else {
-        console.log(`✅ Got ${items.length} items (paginated format, total: ${count})`);
       }
       
       // Log machine filtering results
       if (cleanParams.machine_id && items.length > 0) {
-        console.log('=== MACHINE FILTERING DEBUG ===');
-        console.log(`Looking for machine_id: ${cleanParams.machine_id}`);
         
         items.forEach((item, index) => {
-          console.log(`Item ${index + 1}:`, {
-            pm_id: item.pm_id,
-            title: item.pmtitle,
-            machine_id: item.machine_id,
-            machines: item.machines,
-            machines_type: typeof item.machines,
-            machines_length: Array.isArray(item.machines) ? item.machines.length : 'not array'
-          });
         });
       }
       
@@ -293,34 +253,26 @@ class PreventiveMaintenanceService {
       return { success: false, message: 'Machine ID is required to fetch related maintenance' };
     }
 
-    console.log(`=== FETCHING MAINTENANCE FOR MACHINE: ${machineId} ===`);
-
     try {
       // Strategy 1: Try the standard endpoint with machine_id parameter
-      console.log('📡 Strategy 1: Using machine_id parameter');
       const params = { machine_id: machineId, ...additionalParams };
       const response = await this.getAllPreventiveMaintenance(params);
       
       if (response.success && response.data) {
         // Extract items for validation
         const { items } = this.extractItemsFromResponse(response.data);
-
-        console.log(`✅ Strategy 1 returned ${items.length} items`);
         
         // Verify that the items actually match the machine
         const matchingItems = items.filter(item => this.itemMatchesMachine(item, machineId));
         
         if (matchingItems.length === items.length || items.length === 0) {
-          console.log(`✅ All items match the machine filter (or no items found)`);
           return response;
         } else {
-          console.log(`⚠️ Only ${matchingItems.length}/${items.length} items match - backend filtering may not be working`);
           // Continue to fallback strategies
         }
       }
 
       // Strategy 2: Try alternative parameter names
-      console.log('📡 Strategy 2: Trying alternative parameter names');
       const alternativeParams = [
         { machine: machineId, ...additionalParams },
         { machine_ids: machineId, ...additionalParams },
@@ -329,7 +281,6 @@ class PreventiveMaintenanceService {
 
       for (const altParams of alternativeParams) {
         try {
-          console.log('Trying params:', altParams);
           const altResponse = await this.getAllPreventiveMaintenance(altParams);
           
           if (altResponse.success && altResponse.data) {
@@ -337,24 +288,19 @@ class PreventiveMaintenanceService {
             const matchingAltItems = altItems.filter(item => this.itemMatchesMachine(item, machineId));
             
             if (matchingAltItems.length > 0) {
-              console.log(`✅ Strategy 2 success with ${matchingAltItems.length} matching items`);
               return altResponse;
             }
           }
         } catch (error) {
-          console.log('Alternative params failed:', (error as Error).message);
         }
       }
 
       // Strategy 3: Get all items and filter client-side
-      console.log('📡 Strategy 3: Client-side filtering fallback');
       const allResponse = await this.getAllPreventiveMaintenance(additionalParams);
       
       if (allResponse.success && allResponse.data) {
         const { items: allItems } = this.extractItemsFromResponse(allResponse.data);
         const filteredItems = allItems.filter(item => this.itemMatchesMachine(item, machineId));
-        
-        console.log(`✅ Strategy 3: Filtered ${allItems.length} -> ${filteredItems.length} items`);
         
         // Return in the same format as the original response
         if (Array.isArray(allResponse.data)) {
@@ -378,7 +324,6 @@ class PreventiveMaintenanceService {
       }
 
       // If all strategies fail
-      console.log('❌ All strategies failed');
       return { success: false, message: `No maintenance items found for machine ${machineId}` };
 
     } catch (error: any) {
@@ -389,42 +334,27 @@ class PreventiveMaintenanceService {
 
   // NEW: Debug method specifically for machine filtering
   async debugMachineFiltering(machineId: string): Promise<void> {
-    console.log(`=== DEBUGGING MACHINE FILTERING FOR: ${machineId} ===`);
     
     try {
       // Test 1: Get all maintenance items
-      console.log('🧪 Test 1: Getting all maintenance items');
       const allResponse = await this.getAllPreventiveMaintenance();
       
       if (allResponse.success && allResponse.data) {
         const { items: allItems } = this.extractItemsFromResponse(allResponse.data);
-
-        console.log(`📊 Total items: ${allItems.length}`);
         
         // Analyze machine data structure
-        console.log('🔍 Analyzing machine data structures:');
         allItems.slice(0, 5).forEach((item, index) => {
-          console.log(`Item ${index + 1}:`, {
-            pm_id: item.pm_id,
-            machine_id: item.machine_id,
-            machines: item.machines,
-            machines_type: typeof item.machines,
-            machines_isArray: Array.isArray(item.machines)
-          });
         });
 
         // Test client-side filtering
         const clientFiltered = allItems.filter(item => this.itemMatchesMachine(item, machineId));
-        console.log(`🎯 Client-side filtered: ${clientFiltered.length} items match machine ${machineId}`);
       }
 
       // Test 2: Try API filtering
-      console.log('🧪 Test 2: Testing API filtering');
       const apiFiltered = await this.getAllPreventiveMaintenance({ machine_id: machineId });
       
       if (apiFiltered.success && apiFiltered.data) {
         const { items: apiItems } = this.extractItemsFromResponse(apiFiltered.data);
-        console.log(`📡 API filtered: ${apiItems.length} items returned`);
       }
 
     } catch (error) {
@@ -436,19 +366,6 @@ class PreventiveMaintenanceService {
   async createPreventiveMaintenance(
     data: CreatePreventiveMaintenanceData
   ): Promise<ServiceResponse<PreventiveMaintenance>> {
-    console.log('=== CREATE PREVENTIVE MAINTENANCE ===');
-    console.log('Input data:', {
-      ...data,
-      before_image: data.before_image instanceof File
-        ? { name: data.before_image.name, size: data.before_image.size, type: data.before_image.type }
-        : (data.before_image === undefined ? 'undefined' : (data.before_image === null ? 'null' : typeof data.before_image)),
-      after_image: data.after_image instanceof File
-        ? { name: data.after_image.name, size: data.after_image.size, type: data.after_image.type }
-        : (data.after_image === undefined ? 'undefined' : (data.after_image === null ? 'null' : typeof data.after_image)),
-      machine_ids_type: typeof data.machine_ids,
-      machine_ids_isArray: Array.isArray(data.machine_ids),
-      machine_ids_length: data.machine_ids?.length,
-    });
 
     // Validate machine_ids is an array (but allow empty array - machines are optional)
     if (!Array.isArray(data.machine_ids)) {
@@ -461,11 +378,6 @@ class PreventiveMaintenanceService {
     }
     
     // Log machine_ids for debugging
-    console.log('[PreventiveMaintenanceService] machine_ids being sent:', {
-      machine_ids: data.machine_ids,
-      length: data.machine_ids.length,
-      isEmpty: data.machine_ids.length === 0,
-    });
 
     try {
       const formData = new FormData();
@@ -482,15 +394,7 @@ class PreventiveMaintenanceService {
             data.completed_date !== '' &&
             (typeof data.completed_date !== 'string' || data.completed_date.trim() !== '')) {
           formData.append('completed_date', data.completed_date);
-          console.log('✅ Adding completed_date to FormData:', data.completed_date);
         } else {
-          console.log('⏭️ Skipping completed_date (not provided, empty, or undefined):', {
-            value: data.completed_date,
-            type: typeof data.completed_date,
-            isUndefined: data.completed_date === undefined,
-            isNull: data.completed_date === null,
-            isEmpty: data.completed_date === ''
-          });
         }
         formData.append('frequency', data.frequency);
         if (data.custom_days != null) {
@@ -504,9 +408,7 @@ class PreventiveMaintenanceService {
         }
         if (data.procedure_template !== undefined && data.procedure_template !== null) {
           formData.append('procedure_template', String(data.procedure_template));
-          console.log('[SERVICE CREATE] Adding procedure_template to FormData:', data.procedure_template);
         } else {
-          console.log('[SERVICE CREATE] procedure_template not added:', { value: data.procedure_template, isUndefined: data.procedure_template === undefined, isNull: data.procedure_template === null });
         }
         if (data.assigned_to !== undefined && data.assigned_to !== null) {
           formData.append('assigned_to', String(data.assigned_to));
@@ -521,7 +423,6 @@ class PreventiveMaintenanceService {
         data.topic_ids.forEach((id) => {
           formData.append('topic_ids', String(id));
         });
-        console.log(`Added ${data.topic_ids.length} topic_ids to FormData`);
       }
       
       // CRITICAL: Ensure machine_ids is an array and append each ID individually
@@ -530,7 +431,6 @@ class PreventiveMaintenanceService {
           // Ensure ID is converted to string
           formData.append('machine_ids', String(id));
         });
-        console.log(`Added ${data.machine_ids.length} machine_ids to FormData:`, data.machine_ids);
       } else {
         console.error('ERROR: machine_ids is missing or not an array:', {
           machine_ids: data.machine_ids,
@@ -552,7 +452,6 @@ class PreventiveMaintenanceService {
       if (data.before_image !== undefined && data.before_image !== null) {
         if (data.before_image instanceof File && data.before_image.size > 0) {
           formData.append('before_image', data.before_image);
-          console.log(`✅ Adding before image: ${data.before_image.name} (${data.before_image.size} bytes)`);
         } else {
           console.warn('⚠️ Skipping before_image - not a valid file:', {
             isFile: data.before_image instanceof File,
@@ -568,7 +467,6 @@ class PreventiveMaintenanceService {
       if (data.after_image !== undefined && data.after_image !== null) {
         if (data.after_image instanceof File && data.after_image.size > 0) {
           formData.append('after_image', data.after_image);
-          console.log(`✅ Adding after image: ${data.after_image.name} (${data.after_image.size} bytes)`);
         } else {
           console.warn('⚠️ Skipping after_image - not a valid file:', {
             isFile: data.after_image instanceof File,
@@ -580,8 +478,6 @@ class PreventiveMaintenanceService {
           // DO NOT append anything - backend will reject non-file data
         }
       }
-
-      console.log('FormData entries (create):');
       const formDataEntries: Array<[string, any]> = [];
       for (const [key, value] of formData.entries()) {
         const displayValue = value instanceof File 
@@ -589,16 +485,8 @@ class PreventiveMaintenanceService {
           : typeof value === 'object' && value !== null
           ? `Object: ${JSON.stringify(value)}`
           : value;
-        console.log(`  ${key}: ${displayValue}`);
         formDataEntries.push([key, displayValue]);
       }
-      console.log('FormData summary:', {
-        totalEntries: formDataEntries.length,
-        hasBeforeImage: formDataEntries.some(([key]) => key === 'before_image'),
-        hasAfterImage: formDataEntries.some(([key]) => key === 'after_image'),
-        machineIdsCount: formDataEntries.filter(([key]) => key === 'machine_ids').length,
-        topicIdsCount: formDataEntries.filter(([key]) => key === 'topic_ids').length,
-      });
 
       // CRITICAL: Don't set Content-Type header - let axios/browser set it automatically with boundary
       // The apiClient interceptor will detect FormData and remove Content-Type header
@@ -609,16 +497,13 @@ class PreventiveMaintenanceService {
       });
 
       const responseData = createResponse.data;
-      console.log('Raw API response:', responseData);
 
       let actualRecord: PreventiveMaintenance;
 
       if ('data' in responseData && responseData.data && 'pm_id' in responseData.data) {
         actualRecord = responseData.data;
-        console.log('Found record in nested data structure:', actualRecord.pm_id);
       } else if ('pm_id' in responseData) {
         actualRecord = responseData;
-        console.log('Found record directly in response:', actualRecord.pm_id);
       } else if (
         responseData &&
         typeof responseData === 'object' &&
@@ -645,7 +530,6 @@ class PreventiveMaintenanceService {
     pmId: string,
     data: UploadImagesData
   ): Promise<ServiceResponse<null>> {
-    console.log(`=== UPLOAD IMAGES FOR PM ${pmId} ===`);
 
     if (!pmId) {
       console.error('Cannot upload images: PM ID is undefined or empty');
@@ -656,7 +540,6 @@ class PreventiveMaintenanceService {
     const hasAfter = data.after_image instanceof File;
 
     if (!hasBefore && !hasAfter) {
-      console.log('No images to upload');
       return { success: true, data: null, message: 'No images provided' };
     }
 
@@ -664,16 +547,11 @@ class PreventiveMaintenanceService {
       const imageFormData = new FormData();
       if (hasBefore) {
         imageFormData.append('before_image', data.before_image!);
-        console.log(`Adding before image: ${data.before_image!.name} (${data.before_image!.size} bytes)`);
       }
       if (hasAfter) {
         imageFormData.append('after_image', data.after_image!);
-        console.log(`Adding after image: ${data.after_image!.name} (${data.after_image!.size} bytes)`);
       }
-
-      console.log('FormData entries:');
       for (const [key, value] of imageFormData.entries()) {
-        console.log(`  ${key}: ${value instanceof File ? `${value.name} (${value.size} bytes)` : value}`);
       }
 
       await apiClient.post(`${this.baseUrl}/${pmId}/upload-images/`, imageFormData, {
@@ -682,8 +560,6 @@ class PreventiveMaintenanceService {
           ...this.getAuthHeaders()
         },
       });
-
-      console.log('Images uploaded successfully');
       return { success: true, data: null, message: 'Images uploaded successfully' };
     } catch (error: any) {
       console.error(`Service error uploading images for PM ${pmId}:`, error);
@@ -695,16 +571,6 @@ class PreventiveMaintenanceService {
     id: string,
     data: UpdatePreventiveMaintenanceData
   ): Promise<ServiceResponse<PreventiveMaintenance>> {
-    console.log('=== UPDATE PREVENTIVE MAINTENANCE ===');
-    console.log('Update data:', {
-      ...data,
-      before_image: data.before_image
-        ? { name: data.before_image.name, size: data.before_image.size, type: data.before_image.type }
-        : undefined,
-      after_image: data.after_image
-        ? { name: data.after_image.name, size: data.after_image.size, type: data.after_image.type }
-        : undefined,
-    });
 
     if (!id) {
       console.error('Cannot update: PM ID is undefined or empty');
@@ -728,9 +594,7 @@ class PreventiveMaintenanceService {
       if (data.procedure !== undefined) formData.append('procedure', data.procedure?.trim() || '');
       if (data.procedure_template !== undefined && data.procedure_template !== null) {
         formData.append('procedure_template', String(data.procedure_template));
-        console.log('[SERVICE UPDATE] Adding procedure_template to FormData:', data.procedure_template);
       } else {
-        console.log('[SERVICE UPDATE] procedure_template not added:', { value: data.procedure_template, isUndefined: data.procedure_template === undefined, isNull: data.procedure_template === null });
       }
         if (data.assigned_to !== undefined) {
           if (data.assigned_to === null) {
@@ -764,17 +628,12 @@ class PreventiveMaintenanceService {
       // Add image files directly to the formData
       if (data.before_image instanceof File) {
         formData.append('before_image', data.before_image);
-        console.log(`Adding before image: ${data.before_image.name} (${data.before_image.size} bytes)`);
       }
       
       if (data.after_image instanceof File) {
         formData.append('after_image', data.after_image);
-        console.log(`Adding after image: ${data.after_image.name} (${data.after_image.size} bytes)`);
       }
-
-      console.log('FormData entries (update):');
       for (const [key, value] of formData.entries()) {
-        console.log(`  ${key}: ${value instanceof File ? `${value.name} (${value.size} bytes)` : value}`);
       }
 
       const response = await apiClient.put<PreventiveMaintenance>(
@@ -799,7 +658,6 @@ class PreventiveMaintenanceService {
     id: string,
     data: CompletePreventiveMaintenanceData
   ): Promise<ServiceResponse<PreventiveMaintenance>> {
-    console.log('=== COMPLETE PREVENTIVE MAINTENANCE ===');
 
     if (!id) {
       console.error('Cannot complete: PM ID is undefined or empty');
@@ -820,12 +678,8 @@ class PreventiveMaintenanceService {
       // Add after image directly to the completion request
       if (data.after_image instanceof File) {
         formData.append('after_image', data.after_image);
-        console.log(`Adding after image: ${data.after_image.name} (${data.after_image.size} bytes)`);
       }
-
-      console.log('FormData entries (complete):');
       for (const [key, value] of formData.entries()) {
-        console.log(`  ${key}: ${value instanceof File ? `${value.name} (${value.size} bytes)` : value}`);
       }
 
       const response = await apiClient.post<PreventiveMaintenance>(
@@ -883,11 +737,6 @@ class PreventiveMaintenanceService {
         params,
         headers: this.getAuthHeaders()
       });
-      console.log('=== MAINTENANCE STATISTICS DEBUG ===');
-      console.log('Raw stats response:', response.data);
-      console.log('Frequency distribution:', response.data.frequency_distribution);
-      console.log('Upcoming tasks:', response.data.upcoming);
-      console.log('Avg completion times:', response.data.avg_completion_times);
       
       return { success: true, data: response.data, message: 'Statistics fetched successfully' };
     } catch (error: any) {
@@ -895,7 +744,6 @@ class PreventiveMaintenanceService {
       
       // Handle the case where no data exists (404 error)
       if (error.status === 404 || (error.response && error.response.status === 404)) {
-        console.log('No maintenance data found, returning empty statistics');
         const emptyStats: DashboardStats = {
           counts: {
             total: 0,
@@ -916,8 +764,6 @@ class PreventiveMaintenanceService {
 
   async getUpcomingMaintenance(days: number = 30): Promise<ServiceResponse<PreventiveMaintenance[]>> {
     try {
-      console.log(`=== FETCHING UPCOMING MAINTENANCE ===`);
-      console.log(`Fetching upcoming maintenance for next ${days} days`);
       
       const response = await apiClient.get<PreventiveMaintenance[]>(
         `${this.baseUrl}/upcoming/`,
@@ -926,9 +772,6 @@ class PreventiveMaintenanceService {
           headers: this.getAuthHeaders()
         }
       );
-      
-      console.log(`Found ${response.data.length} upcoming maintenance tasks`);
-      console.log('Upcoming tasks:', response.data);
       
       return { success: true, data: response.data, message: 'Upcoming maintenance fetched successfully' };
     } catch (error: any) {
@@ -939,7 +782,6 @@ class PreventiveMaintenanceService {
 
   async getEnhancedStatistics(upcomingDays: number = 30): Promise<ServiceResponse<DashboardStats>> {
     try {
-      console.log('=== FETCHING ENHANCED STATISTICS ===');
       
       const statsResponse = await this.getMaintenanceStatistics();
       if (!statsResponse.success || !statsResponse.data) {
@@ -953,8 +795,6 @@ class PreventiveMaintenanceService {
           ...statsResponse.data,
           upcoming: upcomingResponse.data
         };
-        
-        console.log(`Enhanced stats: ${enhancedStats.upcoming.length} upcoming tasks (${upcomingDays} days)`);
         return { success: true, data: enhancedStats, message: 'Enhanced statistics fetched successfully' };
       }
       
@@ -967,24 +807,18 @@ class PreventiveMaintenanceService {
 
   async debugMaintenanceData(): Promise<void> {
     try {
-      console.log('=== DEBUG MAINTENANCE DATA ===');
       
       const statsResponse = await apiClient.get<any>(`${this.baseUrl}/stats/`, {
         headers: this.getAuthHeaders()
       });
-      console.log('Stats response:', statsResponse.data);
-      console.log('Stats upcoming length:', statsResponse.data.upcoming?.length || 0);
       
       const upcomingResponse = await apiClient.get<any>(`${this.baseUrl}/upcoming/?days=30`, {
         headers: this.getAuthHeaders()
       });
-      console.log('Upcoming endpoint response length:', upcomingResponse.data?.length || 0);
-      console.log('Upcoming endpoint response:', upcomingResponse.data);
       
       const allResponse = await apiClient.get<any>(`${this.baseUrl}/`, {
         headers: this.getAuthHeaders()
       });
-      console.log('All maintenance count:', allResponse.data?.length || 0);
       
     } catch (error) {
       console.error('Debug error:', error);
@@ -998,14 +832,10 @@ class PreventiveMaintenanceService {
     }
 
     try {
-      console.log(`=== DELETE PREVENTIVE MAINTENANCE ===`);
-      console.log(`Attempting to delete preventive maintenance with ID: ${id}`);
       
       const response = await apiClient.delete(`${this.baseUrl}/${id}/`, {
         headers: this.getAuthHeaders()
       });
-      
-      console.log(`Successfully deleted preventive maintenance with ID: ${id}`);
       return { success: true, data: null, message: 'Maintenance deleted successfully' };
     } catch (error: any) {
       console.error(`Service error deleting maintenance ${id}:`, error);
@@ -1035,7 +865,6 @@ class PreventiveMaintenanceService {
     }
   }
   async debugAPIEndpoint(machineId: string): Promise<void> {
-    console.log(`=== DEBUGGING API ENDPOINT FOR MACHINE: ${machineId} ===`);
     
     try {
       // Test different parameter formats
@@ -1047,7 +876,6 @@ class PreventiveMaintenanceService {
       ];
   
       for (const params of testParams) {
-        console.log(`\n🧪 Testing params:`, params);
         
         try {
           const response = await apiClient.get<any>(`${this.baseUrl}/`, { 
@@ -1056,15 +884,8 @@ class PreventiveMaintenanceService {
           });
           const { items } = this.extractItemsFromResponse(response.data);
           
-          console.log(`📊 Returned ${items.length} items`);
-          
           // Check first few items
           items.slice(0, 3).forEach((item, index) => {
-            console.log(`Item ${index + 1}:`, {
-              pm_id: item.pm_id,
-              machine_id: item.machine_id,
-              machines: item.machines?.map(m => ({ id: m.machine_id, name: m.name }))
-            });
           });
           
           // Check if target machine is in results
@@ -1073,15 +894,8 @@ class PreventiveMaintenanceService {
           );
           
           if (hasTargetMachine) {
-            console.log(`✅ Found target machine ${machineId} in results`);
           } else {
-            console.log(`❌ Target machine ${machineId} NOT found in results`);
           }
-          console.log(`\n🔍 Checking machine data structure:`, {
-            machineId,
-            params,
-            responseData: response.data
-          });
         } catch (error) {
           console.error('Error in debugMachineFiltering:', error);
         }
@@ -1101,5 +915,4 @@ export const preventiveMaintenanceService = new PreventiveMaintenanceService();
 // Add a method to set the access token on the singleton
 export const setPreventiveMaintenanceServiceToken = (accessToken: string) => {
   preventiveMaintenanceService.setAccessToken(accessToken);
-  console.log('✅ Access token set on preventiveMaintenanceService singleton');
 };

@@ -7,6 +7,9 @@ export interface User {
   email: string | null;
   first_name?: string;
   last_name?: string;
+  full_name?: string;
+  display_name?: string;
+  name?: string;
   profile_image: string | null;
   positions: string;
   uses_roster?: boolean;
@@ -29,6 +32,10 @@ export interface UserProfile {
   user?: string;
   username: string;
   email: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  full_name?: string | null;
+  display_name?: string | null;
   profile_image: string | null;
   positions: string;
   properties: Property[];
@@ -90,6 +97,10 @@ export interface Job {
   updated_at: string;
   completed_at: string | null;
   user: number | string | User;
+  user_name?: string;
+  technician_name?: string;
+  created_by_name?: string;
+  updated_by_name?: string;
   updated_by?: number | string | User | null;
   profile_image?: ProfileImage | null;
   images?: JobImage[];

@@ -3,6 +3,7 @@
  */
 
 import { Job, Property } from '@/app/lib/types';
+import { getDisplayName, getUserEmail } from '@/app/lib/utils/display-name';
 
 export interface CSVExportOptions {
   filename?: string;
@@ -52,44 +53,9 @@ export function jobToCSVRow(
     }
   };
 
-  const getUserDisplayName = (user: any): string => {
-    if (!user) return 'Unassigned';
-    
-    if (typeof user === 'object' && user) {
-      if (user.full_name && user.full_name.trim()) {
-        return user.full_name.trim();
-      }
-      if (user.first_name && user.last_name) {
-        return `${user.first_name} ${user.last_name}`.trim();
-      }
-      if (user.name) return user.name;
-      if (user.username) {
-        let cleanUsername = user.username;
-        if (cleanUsername.includes('auth0_') || cleanUsername.includes('google-oauth2_')) {
-          cleanUsername = cleanUsername.replace(/^(auth0_|google-oauth2_)/, '');
-        }
-        return cleanUsername;
-      }
-      if (user.email) return user.email.split('@')[0];
-      if (user.id) return `User ${user.id}`;
-    }
-    
-    if (typeof user === 'string') {
-      if (/^\d+$/.test(user)) return `User ${user}`;
-      return user;
-    }
-    
-    return 'Unknown User';
-  };
-
   const getUserPosition = (user: any): string => {
     if (!user || typeof user !== 'object') return 'Staff';
     return user.positions || user.role || 'Staff';
-  };
-
-  const getUserEmail = (user: any): string => {
-    if (!user || typeof user !== 'object') return '';
-    return user.email || '';
   };
 
   const getPropertyName = (propertyId: any): string => {
@@ -155,7 +121,7 @@ export function jobToCSVRow(
   // User information
   if (includeUserDetails) {
     row.push(
-      getUserDisplayName(job.user),
+      getDisplayName(job.user, job.technician_name || job.user_name || 'Unknown Technician'),
       getUserPosition(job.user),
       getUserEmail(job.user)
     );

@@ -23,14 +23,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { property_ids, email, username, auth0_sub } = body;
 
-    console.log('🔍 Onboarding complete request:', {
-      email,
-      username,
-      auth0_sub,
-      property_ids,
-      property_count: property_ids?.length
-    });
-
     if (!property_ids || !Array.isArray(property_ids) || property_ids.length === 0) {
       return NextResponse.json(
         { error: 'At least one property must be selected' },
@@ -53,7 +45,6 @@ export async function POST(request: NextRequest) {
       console.error('Failed to assign properties:', assignResponse.status, errorText);
       
       // Fallback: Try to assign properties one by one using add_user endpoint
-      console.log('🔍 Trying fallback: assign properties one by one');
       
       // First, get all properties to map IDs to property_ids
       const allPropsResponse = await fetch(`${API_CONFIG.baseUrl}/api/v1/properties/all/`, {
@@ -109,11 +100,6 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      console.log('✅ Onboarding complete (fallback method):', {
-        assignedCount: successCount,
-        totalRequested: property_ids.length
-      });
-
       return NextResponse.json({
         success: true,
         message: `Successfully assigned ${successCount} properties`,
@@ -123,11 +109,6 @@ export async function POST(request: NextRequest) {
     }
 
     const assignResult = await assignResponse.json();
-
-    console.log('✅ Onboarding complete:', {
-      assigned: assignResult.assigned?.length || 0,
-      errors: assignResult.errors?.length || 0
-    });
 
     return NextResponse.json({
       success: true,

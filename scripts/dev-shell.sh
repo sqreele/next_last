@@ -11,7 +11,7 @@ case "$1" in
         ;;
     db|database)
         echo "🗄️ Accessing database shell..."
-        docker-compose -f docker-compose.dev.yml exec db psql -U mylubd_user -d mylubd_db
+        docker-compose -f docker-compose.dev.yml exec db psql -U "${POSTGRES_USER:-mylubd_user}" -d "${POSTGRES_DB:-mylubd_db}"
         ;;
     *)
         echo "Usage: $0 [frontend|backend|db]"

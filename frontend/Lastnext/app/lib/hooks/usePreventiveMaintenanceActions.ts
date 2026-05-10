@@ -135,24 +135,10 @@ export function usePreventiveMaintenanceActions() {
         ...params 
       };
       
-      console.log('=== PREVENTIVE MAINTENANCE FETCH DEBUG ===');
-      console.log('[PM Fetch] Selected Property:', selectedProperty);
-      console.log('[PM Fetch] Filter Params:', filterParams);
-      console.log('[PM Fetch] Final Fetch Params:', fetchParams);
-      console.log('[PM Fetch] Property ID being sent:', fetchParams.property_id);
-      
       logger.debug('Fetching maintenance items with params', fetchParams);
 
       const service = createPreventiveMaintenanceService(accessToken);
       const response = await service.getAllPreventiveMaintenance(fetchParams);
-      
-      console.log('[PM Fetch] API Response:', {
-        success: response.success,
-        count: Array.isArray(response.data) 
-          ? response.data.length 
-          : (response.data as { count?: number })?.count,
-        hasData: !!response.data
-      });
       
       if (response.success && response.data) {
         let items: any[];
@@ -182,25 +168,10 @@ export function usePreventiveMaintenanceActions() {
           total = paginatedResponse.count || 0;
           totalPages = paginatedResponse.total_pages;
           currentPage = paginatedResponse.current_page;
-          
-          console.log('[PM Fetch] Paginated response:', {
-            items: items.length,
-            total,
-            totalPages,
-            currentPage,
-            pageSize: paginatedResponse.page_size
-          });
         }
         
         setMaintenanceItems(items);
         setTotalCount(total);
-        
-        console.log('[PM Fetch] Setting state:', {
-          itemsCount: items.length,
-          totalCount: total,
-          totalPages,
-          currentPage
-        });
         
         // Update filter params with current page if paginated (but don't trigger another fetch)
         // This ensures the UI state matches the backend response
@@ -225,13 +196,6 @@ export function usePreventiveMaintenanceActions() {
             // Only update if different to avoid infinite loops
             const currentFilterParams = filterParams;
             if (currentFilterParams.page !== validCurrentPage || currentFilterParams.page_size !== paginatedData.page_size) {
-              console.log('[PM Fetch] Updating filter params to match response:', {
-                oldPage: currentFilterParams.page,
-                newPage: validCurrentPage,
-                oldPageSize: currentFilterParams.page_size,
-                newPageSize: paginatedData.page_size,
-                totalPages
-              });
               setFilterParams({ 
                 page: validCurrentPage,
                 page_size: paginatedData.page_size

@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
 import { MaintenanceImage } from '@/app/components/ui/UniversalImage';
+import { getDisplayName, getUserEmail } from '@/app/lib/utils/display-name';
 
 interface PreventiveMaintenanceClientProps {
   maintenanceData: PreventiveMaintenance;
@@ -289,97 +290,49 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   };
 
   // Debug: Log the full maintenance data structure
-  console.log('🔍 Debug - Full maintenance data:', maintenanceData);
-  console.log('🔍 Debug - Image fields:', {
-    before_image_url: maintenanceData.before_image_url,
-    after_image_url: maintenanceData.after_image_url
-  });
-  console.log('🔍 Debug - Machines field:', {
-    machines: maintenanceData.machines,
-    machines_type: typeof maintenanceData.machines,
-    is_array: Array.isArray(maintenanceData.machines),
-    length: maintenanceData.machines?.length,
-    is_null: maintenanceData.machines === null,
-    is_undefined: maintenanceData.machines === undefined
-  });
 
   const beforeImageUrl = getBeforeImageUrl();
   const afterImageUrl = getAfterImageUrl();
   
   const assignedUserInfo = useMemo(() => {
+    if (maintenanceData.assigned_to_name || maintenanceData.technician_name) {
+      return {
+        display: maintenanceData.assigned_to_name || maintenanceData.technician_name || 'Unknown Technician',
+        email: getUserEmail(maintenanceData.assigned_to_details || maintenanceData.assigned_to),
+      };
+    }
+
     if (maintenanceData.assigned_to_details) {
       const details = maintenanceData.assigned_to_details;
-      const combinedName = [
-        details.full_name,
-        [details.first_name, details.last_name].filter(Boolean).join(' ').trim(),
-        details.username,
-      ].find((value) => value && value.length > 0);
       return {
-        display: combinedName || `User #${details.id}`,
+        display: getDisplayName(details, 'Unknown Technician'),
         email: details.email,
       };
     }
 
     const assignee = maintenanceData.assigned_to as any;
     if (assignee && typeof assignee === 'object') {
-      const combinedName = [
-        assignee.full_name,
-        [assignee.first_name, assignee.last_name].filter(Boolean).join(' ').trim(),
-        assignee.username,
-      ].find((value: string | undefined) => value && value.length > 0);
       return {
-        display: combinedName || (assignee.id ? `User #${assignee.id}` : 'Assigned User'),
+        display: getDisplayName(assignee, 'Unknown Technician'),
         email: assignee.email,
       };
     }
 
     if (typeof maintenanceData.assigned_to === 'number' || typeof maintenanceData.assigned_to === 'string') {
       return {
-        display: `User #${maintenanceData.assigned_to}`,
+        display: getDisplayName(maintenanceData.assigned_to, 'Unknown Technician'),
         email: undefined,
       };
     }
 
     return null;
-  }, [maintenanceData.assigned_to, maintenanceData.assigned_to_details]);
+  }, [maintenanceData.assigned_to, maintenanceData.assigned_to_details, maintenanceData.assigned_to_name, maintenanceData.technician_name]);
   
   // Debug logging in useEffect to avoid hydration issues
   useEffect(() => {
-    console.log('[CLIENT] Received maintenanceData procedure_template:', {
-      procedure_template: maintenanceData.procedure_template,
-      procedure_template_id: maintenanceData.procedure_template_id,
-      procedure_template_name: maintenanceData.procedure_template_name,
-      has_template: !!(maintenanceData.procedure_template_id || maintenanceData.procedure_template)
-    });
-    console.log('🔍 Debug - Full maintenance data:', maintenanceData);
-    console.log('🔍 Debug - Image fields:', {
-      before_image_url: maintenanceData.before_image_url,
-      after_image_url: maintenanceData.after_image_url
-    });
-    console.log('🔍 Debug - Machines field:', {
-      machines: maintenanceData.machines,
-      machines_type: typeof maintenanceData.machines,
-      is_array: Array.isArray(maintenanceData.machines),
-      length: maintenanceData.machines?.length,
-      is_null: maintenanceData.machines === null,
-      is_undefined: maintenanceData.machines === undefined
-    });
-    console.log('🔍 [CLIENT] Debug assigned_to data:', {
-      assigned_to: maintenanceData.assigned_to,
-      assigned_to_type: typeof maintenanceData.assigned_to,
-      assigned_to_details: maintenanceData.assigned_to_details,
-      has_assigned_to_details: !!maintenanceData.assigned_to_details,
-      assignedUserInfo_result: assignedUserInfo
-    });
     if (!assignedUserInfo) {
       console.warn('⚠️ [CLIENT] No assigned user info found. Check if assigned_to or assigned_to_details is populated in API response.');
     }
-    console.log('🔍 Final image URLs:', {
-      beforeImageUrl,
-      afterImageUrl,
-      beforeImageUrlType: typeof beforeImageUrl,
-      afterImageUrlType: typeof afterImageUrl
-    });
   }, [maintenanceData, beforeImageUrl, afterImageUrl, assignedUserInfo]);
   
   // Helper function to format dates
@@ -495,15 +448,6 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
     const hasMachines = !!machinesList && machinesList.length > 0;
     
     // Debug logging to help diagnose machine assignment issues
-    console.log('[PreventiveMaintenanceClient] Machine check:', {
-      pm_id: maintenanceData.pm_id,
-      machines_raw: machines,
-      machines_type: typeof machines,
-      is_array: Array.isArray(machines),
-      length: Array.isArray(machines) ? machines.length : 'N/A',
-      hasMachines,
-      machines_data: machines
-    });
     
     if (!machinesList || machinesList.length === 0) {
       return (
@@ -910,7 +854,6 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       style={{ width: '100%', height: '100%' }}
                       onLoad={() => {
                         if (process.env.NODE_ENV === 'development') {
-                          console.log('✅ Before image loaded successfully from:', beforeImageUrl);
                         }
                       }}
                       onError={(e) => {
@@ -959,7 +902,6 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       style={{ width: '100%', height: '100%' }}
                       onLoad={() => {
                         if (process.env.NODE_ENV === 'development') {
-                          console.log('✅ After image loaded successfully from:', afterImageUrl);
                         }
                       }}
                       onError={(e) => {

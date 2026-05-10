@@ -15,6 +15,7 @@ import { User2, LogOut, Settings, ChevronDown } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
 import Link from 'next/link';
 import { ProfileImage } from '@/app/components/ui/UniversalImage';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 
 const User: React.FC = () => {
   const { data: session } = useSession();
@@ -23,7 +24,8 @@ const User: React.FC = () => {
     return null;
   }
 
-  const initials = session.user.username
+  const displayName = getDisplayName(session.user, 'User');
+  const initials = displayName
     ?.split(' ')
     .map((n) => n[0])
     .join('')
@@ -45,7 +47,7 @@ const User: React.FC = () => {
               {session.user.profile_image && session.user.profile_image !== '' ? (
                 <ProfileImage 
                   src={session.user.profile_image} 
-                  alt={session.user.username} 
+                  alt={displayName}
                   width={40}
                   height={40}
                   className="h-full w-full object-cover" 
@@ -57,7 +59,7 @@ const User: React.FC = () => {
             </div>
             <div className="flex flex-col text-left">
               <span className="font-medium text-sm text-gray-800">
-                {session.user.username}
+                {displayName}
               </span>
               <span className="text-xs text-gray-500">
                 {session.user.positions || 'User'}
@@ -80,7 +82,7 @@ const User: React.FC = () => {
               {session.user.profile_image && session.user.profile_image !== '' ? (
                 <ProfileImage 
                   src={session.user.profile_image} 
-                  alt={session.user.username} 
+                  alt={displayName}
                   className="h-full w-full object-cover" 
                   width={40}
                   height={40}
@@ -92,7 +94,7 @@ const User: React.FC = () => {
             </div>
             <div className="flex flex-col text-left">
               <span className="font-medium text-sm text-gray-800">
-                {session.user.username}
+                {displayName}
               </span>
               <span className="text-xs text-gray-500">
                 {session.user.email || ''}

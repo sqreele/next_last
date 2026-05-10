@@ -97,7 +97,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // Effect to fetch profile when session status changes to authenticated
   useEffect(() => {
     if (status === 'authenticated') {
-        console.log("User authenticated, fetching profile...");
         fetchUserProfile();
     } else {
         // Clear profile and reset state if user logs out or session is invalid

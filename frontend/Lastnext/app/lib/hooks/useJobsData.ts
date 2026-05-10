@@ -72,7 +72,6 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
   const refreshJobs = useCallback(async (showToast = false): Promise<boolean> => {
     // Prevent concurrent calls
     if (isLoadingRef.current) {
-      console.log('useJobsData: Already loading, skipping duplicate call');
       return false;
     }
     
@@ -80,7 +79,6 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
     const now = Date.now();
     const timeSinceLastCall = now - lastCallTimeRef.current;
     if (timeSinceLastCall < MIN_CALL_INTERVAL) {
-      console.log(`useJobsData: Rate limiting - ${timeSinceLastCall}ms since last call`);
       return false;
     }
     
@@ -116,7 +114,6 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       let fetchedJobs: Job[] = [];
       // *** CHOOSE FETCH FUNCTION BASED ON PROPERTY ID ***
       if (activePropertyId) {
-        console.log(`useJobsData: Fetching jobs for property ${activePropertyId}`);
         // Build query parameters for additional filtering
         const queryParams = new URLSearchParams();
         const filters = options?.filters;
@@ -132,7 +129,6 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
         const queryString = queryParams.toString();
         fetchedJobs = await fetchAllJobsForProperty(activePropertyId, session.user.accessToken, queryString);
       } else {
-        console.log("useJobsData: Fetching my jobs (user-specific)");
         // Build query parameters for room filtering
         const queryParams = new URLSearchParams();
         const filters = options?.filters;
@@ -150,9 +146,6 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
         const queryString = queryParams.toString();
         fetchedJobs = await fetchAllMyJobs(session.user.accessToken, queryString);
       }
-
-      console.log(`useJobsData: Fetched ${fetchedJobs.length} jobs`);
-      console.log(`useJobsData: Jobs data:`, fetchedJobs);
 
       // *** NO NEED FOR CLIENT-SIDE USER FILTERING WHEN USING fetchMyJobs ***
       // The backend now handles user filtering automatically
@@ -226,7 +219,6 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
      if (matchesProperty && matchesUser) {
         setJobs(prevJobs => [newJob, ...prevJobs]);
      } else {
-        console.log("New job added but does not match current user/property filters.");
      }
   }, [activePropertyId, session?.user?.id, session?.user?.username]);
 

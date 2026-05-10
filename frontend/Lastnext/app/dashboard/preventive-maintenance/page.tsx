@@ -86,29 +86,10 @@ function PreventiveMaintenanceListPageContent() {
   // Now using real data from context - removed mock implementations
 
   // Debug logging
-  console.log('🔍 PreventiveMaintenanceListPage Debug:', {
-    maintenanceItemsCount: maintenanceItems?.length || 0,
-    machinesCount: machines?.length || 0,
-    totalCount,
-    isLoading,
-    error,
-    status,
-    frequency,
-    search,
-    start_date,
-    end_date,
-    machine_id,
-    page,
-    page_size,
-    totalPages: Math.ceil(totalCount / (page_size || 10))
-  });
 
   // Manual data fetching if no data is present - preserve current pagination
   useEffect(() => {
-    console.log('🔍 Component mounted, checking data...');
-    console.log('🔍 Selected Property:', selectedProperty);
     if (maintenanceItems.length === 0 && !isLoading && !error) {
-      console.log('🔍 No data found, manually fetching...');
       // Use current pagination params when fetching
       fetchMaintenanceItems({
         page: page || 1,
@@ -119,12 +100,8 @@ function PreventiveMaintenanceListPageContent() {
 
   // Re-fetch data when selectedProperty changes - preserve current pagination
   useEffect(() => {
-    console.log('=== PREVENTIVE MAINTENANCE LIST - PROPERTY CHANGE DEBUG ===');
-    console.log('[Property Change] Selected Property:', selectedProperty);
-    console.log('[Property Change] Will trigger data refetch');
     
     if (selectedProperty !== null && selectedProperty !== undefined) {
-      console.log('[Property Change] Fetching maintenance items for property:', selectedProperty);
       // Reset to page 1 when property changes, but preserve page_size
       fetchMaintenanceItems({
         page: 1, // Reset to first page when property changes
@@ -235,10 +212,6 @@ function PreventiveMaintenanceListPageContent() {
       if (!isSyncingRef.current && (currentPage !== pmPage || currentPageSize !== pmPageSize)) {
         isSyncingRef.current = true;
         const syncTimer = setTimeout(() => {
-          console.log('📄 Syncing PM store pagination back to filter store:', {
-            filterStore: { page: currentPage, page_size: currentPageSize },
-            pmStore: { page: pmPage, page_size: pmPageSize }
-          });
           setPage(pmPage);
           setPageSize(pmPageSize);
           // Reset sync flag after a delay to allow the main sync effect to run
@@ -277,10 +250,6 @@ function PreventiveMaintenanceListPageContent() {
       if (start_date) newParams.start_date = start_date;
       if (end_date) newParams.end_date = end_date;
       if (machine_id) newParams.machine_id = machine_id;
-
-      console.log('Filter sync - current values:', { status, frequency, search, start_date, end_date, machine_id, page, page_size });
-      console.log('Filter sync - newParams (cleaned):', newParams);
-      console.log('📄 Pagination:', { page: currentPage, page_size: currentPageSize });
 
       // Check if params actually changed before updating and fetching
       const currentPMParams = pmFilterParams;
@@ -354,7 +323,6 @@ function PreventiveMaintenanceListPageContent() {
 
   // Enhanced filter handlers - create a wrapper function
   const handleFilterChangeWrapper = useCallback((key: string, value: string | number) => {
-    console.log('Filter change:', key, value);
     
     // Map string keys to setter functions
     switch (key) {
@@ -386,7 +354,6 @@ function PreventiveMaintenanceListPageContent() {
   }, [setStatus, setFrequency, setSearch, setStartDate, setEndDate, setPage, setPageSize, setMachineId]);
 
   const clearAllFilters = useCallback(() => {
-    console.log('Clearing all filters');
     resetFilters();
     setSelectedItems([]);
   }, [resetFilters]);
@@ -412,7 +379,6 @@ function PreventiveMaintenanceListPageContent() {
 
   // Fixed sort change handler for FilterPanel
   const handleSortChangeAction = useCallback((field: SortField, order: 'asc' | 'desc') => {
-    console.log('Sort change:', field, order);
     setSortBy(field);
     setSortOrder(order);
   }, []);
@@ -460,7 +426,6 @@ function PreventiveMaintenanceListPageContent() {
 
   // Refresh handler - preserves current page and filters
   const handleRefresh = useCallback(async () => {
-    console.log('Refreshing data...', { currentPage: page, pageSize: page_size });
     // Refresh with current pagination and filter params
     await fetchMaintenanceItems({
       page: page || 1,
@@ -484,7 +449,6 @@ function PreventiveMaintenanceListPageContent() {
     if (!totalCount || totalCount === 0) return 1;
     const currentPageSize = page_size || 10;
     const calculated = Math.ceil(totalCount / currentPageSize);
-    console.log('📄 Calculating totalPages:', { totalCount, page_size: currentPageSize, calculated });
     return calculated;
   }, [totalCount, page_size]);
 
@@ -686,16 +650,6 @@ function PreventiveMaintenanceListPageContent() {
             ? Math.max(1, Math.min(currentPage, calculatedTotalPages))
             : 1;
           
-          console.log('📄 Pagination render check:', {
-            totalCount,
-            page_size: currentPageSize,
-            calculatedTotalPages,
-            shouldShow: shouldShowPagination,
-            currentPage: validCurrentPage,
-            originalPage: currentPage,
-            hasItems: maintenanceItems.length > 0
-          });
-          
           if (shouldShowPagination) {
             return (
               <Pagination
@@ -709,11 +663,9 @@ function PreventiveMaintenanceListPageContent() {
                     console.warn('📄 Invalid page requested:', { newPage, calculatedTotalPages, totalCount });
                     return;
                   }
-                  console.log('📄 Page change requested:', newPage);
                   handleFilterChangeWrapper('page', newPage);
                 }}
                 onPageSizeChange={(newSize) => {
-                  console.log('📄 Page size change requested:', newSize);
                   // Reset to page 1 when changing page size
                   handleFilterChangeWrapper('page', 1);
                   handleFilterChangeWrapper('pageSize', newSize);

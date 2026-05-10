@@ -72,13 +72,6 @@ const EditJobDialog: FC<EditDialogProps> = ({
   // For debugging
   useEffect(() => {
     if (job) {
-      console.log('Edit dialog job:', job);
-      console.log('Job status:', job.status);
-      console.log('Job timestamps:', {
-        created_at: job.created_at,
-        updated_at: job.updated_at,
-        completed_at: job.completed_at
-      });
     }
   }, [job]);
 

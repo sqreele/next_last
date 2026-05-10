@@ -5,6 +5,7 @@ import { useSession } from '@/app/lib/session.client';
 import { appSignOut } from '@/app/lib/logout';
 import { User as UserIcon } from 'lucide-react'; // Explicitly import User icon
 import Image from 'next/image';
+import { getDisplayName } from '@/app/lib/utils/display-name';
 
 // ✅ PERFORMANCE: Memoize component to prevent unnecessary re-renders
 const ClientDashboard = React.memo(function ClientDashboard() {
@@ -30,7 +31,7 @@ const ClientDashboard = React.memo(function ClientDashboard() {
 
   return (
     <div className="space-y-4 p-4 sm:p-0">
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">Welcome, {session.user?.username}</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">Welcome, {getDisplayName(session.user, 'User')}</h1>
       <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300">Positions: {session.user?.positions}</p>
       <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full mx-auto sm:mx-0 border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
         {session.user?.profile_image ? (

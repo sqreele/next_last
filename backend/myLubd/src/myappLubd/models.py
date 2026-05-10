@@ -318,7 +318,7 @@ class PreventiveMaintenance(models.Model):
             }
             
         except Exception as e:
-            print(f"Error processing image: {e}")
+            logger.warning("Error processing image: %s", e)
             return None, None
 
     def save(self, *args, **kwargs):
@@ -981,7 +981,7 @@ class UserProfile(models.Model):
                 
                 output.close()
             except Exception as e:
-                print(f"Error processing profile image: {e}")
+                logger.warning("Error processing profile image: %s", e)
 
         super().save(*args, **kwargs)
 

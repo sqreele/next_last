@@ -8,18 +8,9 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession();
     
     if (DEBUG_CONFIG.logSessions) {
-      console.log('🔍 Machines API Debug:', {
-        hasSession: !!session,
-        hasUser: !!session?.user,
-        hasAccessToken: !!session?.user?.accessToken,
-        userId: session?.user?.id,
-        username: session?.user?.username,
-        accessTokenLength: session?.user?.accessToken?.length
-      });
     }
     
     if (!session?.user?.accessToken) {
-      console.log('❌ No access token in machines session');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -31,12 +22,6 @@ export async function GET(request: NextRequest) {
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/machines/${queryString ? `?${queryString}` : ''}`;
     
     if (DEBUG_CONFIG.logApiCalls) {
-      console.log('🔍 Machines API calling:', apiUrl);
-      console.log('🔍 Machines API headers:', {
-        hasAuth: !!session.user.accessToken,
-        authLength: session.user.accessToken?.length,
-        contentType: 'application/json'
-      });
     }
 
     // Fetch machines from the external API

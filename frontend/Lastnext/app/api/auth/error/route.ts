@@ -6,16 +6,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const error = searchParams.get('error');
-    
-    console.log('🔐 Auth Error Handler:', {
-      error,
-      allParams: Object.fromEntries(searchParams.entries()),
-      url: request.url
-    });
 
     // If no error parameter, set a default one
     if (!error || error === 'undefined') {
-      console.log('🔐 No error parameter found, setting default error');
       const baseUrl =
         process.env.AUTH0_BASE_URL ||
         process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
@@ -35,8 +28,6 @@ export async function GET(request: NextRequest) {
       'https://pcms.live';
     const errorUrl = new URL('/auth/error', baseUrl);
     errorUrl.searchParams.set('error', error);
-    
-    console.log('🔐 Redirecting to error page with error:', error);
     return NextResponse.redirect(errorUrl);
 
   } catch (error) {

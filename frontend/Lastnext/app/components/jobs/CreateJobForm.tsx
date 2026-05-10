@@ -181,7 +181,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                         firstProperty.property_id || String(firstProperty.id);
       setSelectedProperty(propertyId);
       setCurrentPropertyId(propertyId);
-      console.log('🔧 Auto-selected property:', propertyId);
     } else if (selectedProperty) {
       setCurrentPropertyId(selectedProperty);
     }
@@ -208,7 +207,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   const handleSubmit = async (values: FormValues, { resetForm, setSubmitting }: { resetForm: () => void; setSubmitting: (isSubmitting: boolean) => void }) => {
     // Prevent double submission
     if (isSubmittingRef.current) {
-      console.log('⚠️ Submission already in progress, ignoring duplicate submit');
       return;
     }
 
@@ -309,7 +307,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
   const fetchData = useCallback(async () => {
     if (!session?.user?.accessToken) {
-      console.log('No session or access token available');
       return;
     }
 

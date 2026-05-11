@@ -2,7 +2,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Search, RefreshCw, Home, FileText, Settings, Plus } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
-import { normalizeStatus } from '@/app/components/StatusBadge';
+import { humanize, normalizeStatus } from '@/app/components/StatusBadge';
 export { StatusBadge, getStatusBadgeConfig, humanize, normalizeStatus } from '@/app/components/StatusBadge';
 
 

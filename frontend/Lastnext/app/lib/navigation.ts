@@ -6,6 +6,7 @@ import {
   Users,
   Settings,
   Building2,
+  MapPin,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -29,6 +30,7 @@ export const dashboardNavigationItems: AppNavigationItem[] = [
   { name: 'Maintenance Jobs', href: '/dashboard/my-jobs', icon: ClipboardList },
   { name: 'Create Job', href: '/dashboard/create-job', icon: Plus },
   { name: 'Rooms', href: '/dashboard/rooms/by-topics', icon: Building2 },
+  { name: 'Areas', href: '/dashboard/areas', icon: MapPin },
   { name: 'Reports', href: '/dashboard/jobs-report', icon: FileText },
   { name: 'Users', href: '/roster', icon: Users },
   { name: 'Settings', href: '/dashboard/profile', icon: Settings },

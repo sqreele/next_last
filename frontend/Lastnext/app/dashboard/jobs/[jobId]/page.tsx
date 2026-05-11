@@ -10,6 +10,7 @@ import Image from 'next/image';
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
 import { JobHeroImage, GalleryImage } from '@/app/components/ui/OptimizedImageEnhanced';
 import { getDisplayName } from '@/app/lib/utils/display-name';
+import JobCommentsSection from '@/app/components/jobs/JobCommentsSection';
 
 type Props = {
   params: Promise<{ jobId: string }>;
@@ -172,6 +173,17 @@ export default async function JobPage({ params }: Props) {
             </div>
           )}
 
+          {/* Area */}
+          {(job.area || job.area_name) && (
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-[var(--pcms-text-muted)]" />
+              <span className="font-semibold">Area:</span>
+              <Badge variant="outline" className="text-sm">
+                {job.area?.name || job.area_name}
+              </Badge>
+            </div>
+          )}
+
           {/* Properties */}
           {job.properties && job.properties.length > 0 && (
             <div className="space-y-1">
@@ -266,6 +278,9 @@ export default async function JobPage({ params }: Props) {
             </div>
           )}
         </div>
+
+        {/* Comments */}
+        <JobCommentsSection jobId={job.job_id} />
       </div>
     );
   } catch (error) {

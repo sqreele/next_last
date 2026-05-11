@@ -115,6 +115,10 @@ export interface Job {
   is_preventivemaintenance?: boolean;
   urgency?: string;
   category?: string;
+  area?: AreaSummary | null;
+  area_id?: number | null;
+  area_name?: string | null;
+  comments_count?: number;
 }
 
 export interface Property {
@@ -124,6 +128,38 @@ export interface Property {
   description?: string | null | undefined;
   created_at?: string;
   rooms?: Room[];
+}
+
+export interface Area {
+  id: number;
+  name: string;
+  description?: string | null;
+  is_active: boolean;
+  property: number;
+  property_name?: string;
+  property_uuid?: string;
+  jobs_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AreaSummary {
+  id: number;
+  name: string;
+  is_active: boolean;
+  property_id?: string;
+  property_name?: string;
+}
+
+export interface JobComment {
+  id: number;
+  job: number;
+  comment: string;
+  author_id?: number | null;
+  author_username?: string | null;
+  author_name?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface JobCardProps {

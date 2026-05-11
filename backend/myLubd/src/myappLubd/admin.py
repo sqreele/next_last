@@ -60,7 +60,9 @@ from .models import (
     UtilityConsumption,
     Inventory,
     WorkspaceReport,
-    RosterLeave
+    RosterLeave,
+    Area,
+    JobComment,
 )
 
 # Custom Date Joined Month Filter for Admin
@@ -5141,3 +5143,41 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
             return HttpResponse("Report not found", status=404)
         except Exception as e:
             return HttpResponse(f"Error generating PDF: {str(e)}", status=500)
+
+
+# ===== Area & JobComment admin =====
+
+@admin.register(Area)
+class AreaAdmin(admin.ModelAdmin):
+    list_per_page = 25
+    list_display = ['id', 'name', 'property', 'is_active', 'created_at', 'updated_at']
+    list_filter = ['is_active', 'property', 'created_at']
+    search_fields = ['name', 'description', 'property__name', 'property__property_id']
+    readonly_fields = ['created_at', 'updated_at']
+    autocomplete_fields = ['property']
+    actions = ['activate_areas', 'deactivate_areas']
+
+    def activate_areas(self, request, queryset):
+        updated = queryset.update(is_active=True)
+        self.message_user(request, f"{updated} areas activated.")
+    activate_areas.short_description = "Activate selected areas"
+
+    def deactivate_areas(self, request, queryset):
+        updated = queryset.update(is_active=False)
+        self.message_user(request, f"{updated} areas deactivated.")
+    deactivate_areas.short_description = "Deactivate selected areas"
+
+
+@admin.register(JobComment)
+class JobCommentAdmin(admin.ModelAdmin):
+    list_per_page = 25
+    list_display = ['id', 'job', 'author', 'short_comment', 'created_at']
+    list_filter = ['created_at', 'updated_at']
+    search_fields = ['comment', 'job__job_id', 'author__username']
+    readonly_fields = ['created_at', 'updated_at']
+    autocomplete_fields = ['job', 'author']
+
+    def short_comment(self, obj):
+        text = (obj.comment or '').strip()
+        return (text[:60] + '…') if len(text) > 60 else text
+    short_comment.short_description = 'Comment'

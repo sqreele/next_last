@@ -16,7 +16,7 @@ import { useSession, signIn } from '@/app/lib/session.client';
 import { Label } from "@/app/components/ui/label";
 import RoomAutocomplete from '@/app/components/jobs/RoomAutocomplete';
 import FileUpload from '@/app/components/jobs/FileUpload';
-import { Room, TopicFromAPI } from '@/app/lib/types';
+import { Room, TopicFromAPI, Area } from '@/app/lib/types';
 import { useRouter } from 'next/navigation';
 import { useUser, useJobs } from '@/app/lib/stores/mainStore';
 
@@ -35,6 +35,7 @@ interface FormValues {
     description: string;
   };
   room: Room | null;
+  area_id: number | null;
   files: File[];
   is_defective: boolean;
   is_preventivemaintenance: boolean;
@@ -84,6 +85,7 @@ const initialValues: FormValues = {
   remarks: '',
   topic: { title: '', description: '' },
   room: null,
+  area_id: null,
   files: [],
   is_defective: false,
   is_preventivemaintenance: false,
@@ -122,6 +124,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);
+  const [areas, setAreas] = useState<Area[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -271,6 +274,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       formData.append('property_id', selectedProperty);
       formData.append('is_defective', values.is_defective ? 'true' : 'false');
       formData.append('is_preventivemaintenance', values.is_preventivemaintenance ? 'true' : 'false');
+      if (values.area_id != null) {
+        formData.append('area_id', String(values.area_id));
+      }
       values.files.forEach(file => {
         formData.append('images', file);
       });
@@ -316,12 +322,19 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     
     try {
       const propertyParam = selectedProperty || currentPropertyId || undefined;
-      const [roomsResponse, topicsResponse] = await Promise.all([
+      const [roomsResponse, topicsResponse, areasResponse] = await Promise.all([
         axios.get(`/api/rooms/`, { withCredentials: true, params: propertyParam ? { property: propertyParam } : undefined }),
-        axios.get(`/api/topics/`, { withCredentials: true })
+        axios.get(`/api/topics/`, { withCredentials: true }),
+        axios.get(`/api/areas/`, {
+          withCredentials: true,
+          params: { is_active: 'true', ...(propertyParam ? { property_id: propertyParam } : {}) },
+        }),
       ]);
       setRooms(roomsResponse.data);
       setTopics(topicsResponse.data);
+      const areasData = areasResponse.data;
+      const areasList: Area[] = Array.isArray(areasData) ? areasData : (areasData?.results || []);
+      setAreas(areasList);
     } catch (error) {
       console.error('Error fetching data:', error);
       const errorMessage = formatApiError(error, 'Failed to fetch rooms and topics. Please try again.');
@@ -538,6 +551,34 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       {typeof errors.room === 'string' ? errors.room : (errors.room as FormikErrors<Room>).room_id}
                     </p>
                   )}
+                </div>
+
+                {/* Area Selection (optional) */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 sm:text-base">
+                    Area / Zone <span className="text-xs text-gray-400">(optional)</span>
+                  </Label>
+                  <Select
+                    value={values.area_id ? String(values.area_id) : 'none'}
+                    onValueChange={(value) => {
+                      setFieldValue('area_id', value === 'none' ? null : Number(value));
+                    }}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className="h-11 border-2 rounded-xl border-gray-200 sm:h-12">
+                      <SelectValue placeholder="Select an area (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No area</SelectItem>
+                      {areas.length ? areas.map(area => (
+                        <SelectItem key={area.id} value={String(area.id)}>
+                          {area.name}
+                        </SelectItem>
+                      )) : (
+                        <SelectItem value="empty" disabled>No areas configured</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Topic Selection */}

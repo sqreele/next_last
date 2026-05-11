@@ -400,8 +400,18 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
           {/* Mobile-friendly priority and status indicators */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <PriorityBadge priority={job.priority} />
-            <Badge 
-              variant="outline" 
+            {(job.area?.name || job.area_name) ? (
+              <Badge
+                variant="outline"
+                className="px-2 py-0.5 text-xs flex items-center gap-1 border-blue-200 bg-blue-50 text-blue-700"
+                aria-label="Area"
+              >
+                <MapPin className="w-3 h-3" />
+                <span>{job.area?.name || job.area_name}</span>
+              </Badge>
+            ) : null}
+            <Badge
+              variant="outline"
               className="px-2 py-0.5 text-xs flex items-center gap-1"
               aria-label="Created date"
             >

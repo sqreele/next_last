@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Badge } from "@/app/components/ui/badge";
 import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
 import { Button } from "@/app/components/ui/button";
-import { Job, JobStatus, Property } from "@/app/lib/types";
-import { Calendar, MapPin, CheckCircle2, Clock, AlertCircle, AlertTriangle, ClipboardList } from "lucide-react";
+import { Job, Property } from "@/app/lib/types";
+import { Calendar, MapPin, AlertTriangle } from "lucide-react";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
 
 type ViewMode = "grid" | "list";
@@ -20,17 +20,6 @@ interface ModernJobCardProps {
 }
 
 const isExternalImageUrl = (url: string) => /^https?:\/\//i.test(url) || url.startsWith('/media/');
-
-function getStatusConfig(status: JobStatus) {
-  const configs = {
-    completed: { icon: <CheckCircle2 className="w-3.5 h-3.5" />, color: "bg-green-100 text-green-700", label: "Completed" },
-    in_progress: { icon: <Clock className="w-3.5 h-3.5" />, color: "bg-blue-100 text-blue-700", label: "In Progress" },
-    pending: { icon: <AlertCircle className="w-3.5 h-3.5" />, color: "bg-yellow-100 text-yellow-700", label: "Pending" },
-    cancelled: { icon: <AlertTriangle className="w-3.5 h-3.5" />, color: "bg-red-100 text-red-700", label: "Cancelled" },
-    waiting_sparepart: { icon: <ClipboardList className="w-3.5 h-3.5" />, color: "bg-purple-100 text-purple-700", label: "Waiting Sparepart" },
-  } as const;
-  return (configs as any)[status] || configs.pending;
-}
 
 // ✅ PERFORMANCE: Wrap with React.memo to prevent unnecessary re-renders
 const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid" }: ModernJobCardProps) {
@@ -67,7 +56,6 @@ const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid"
     }
   }, [activeIdx, imageUrls, failed]);
 
-  const status = getStatusConfig(job.status);
   const createdAt = useMemo(() => {
     try {
       return new Date(job.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -159,4 +147,3 @@ const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid"
 });
 
 export default ModernJobCard;
-

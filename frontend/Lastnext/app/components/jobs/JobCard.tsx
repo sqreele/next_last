@@ -3,18 +3,18 @@
 import React, { useState, useCallback, useMemo, MouseEvent, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { UpdateStatusModal } from "./UpdateStatusModal";
-import { Job, JobStatus, Property } from "@/app/lib/types";
+import { Job, Property } from "@/app/lib/types";
 import { LazyImage } from "@/app/components/jobs/LazyImage";
 import { OptimizedImage, OptimizedThumbnail } from "@/app/components/ui/OptimizedImage";
 import { JobCardImage, ThumbnailImage, ProfileImage } from "@/app/components/ui/OptimizedImageEnhanced";
 import { 
-  Clock, Calendar, User, MapPin, MessageSquare, CheckCircle2, 
-  AlertCircle, ClipboardList, StickyNote, AlertTriangle, 
+  Clock, Calendar, User, MapPin, MessageSquare, CheckCircle2,
+  StickyNote, AlertTriangle,
   ChevronDown, ChevronUp 
 } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
 import { Badge } from "@/app/components/ui/badge";
-import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
+import { PriorityBadge, StatusBadge, getStatusBadgeConfig } from "@/app/components/pcms-ui";
 import { Button } from "@/app/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/app/lib/stores/mainStore";
@@ -144,17 +144,6 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
     return propertyFromList?.name || 'N/A';
   }, [job, selectedProperty, properties]);
 
-  const getStatusConfig = (status: JobStatus) => {
-    const configs = {
-      completed: { icon: <CheckCircle2 className="w-4 h-4" />, color: 'bg-green-100 text-green-800', label: 'Completed' },
-      in_progress: { icon: <Clock className="w-4 h-4" />, color: 'bg-blue-100 text-blue-800', label: 'In Progress' },
-      pending: { icon: <AlertCircle className="w-4 h-4" />, color: 'bg-yellow-100 text-yellow-800', label: 'Pending' },
-      cancelled: { icon: <AlertTriangle className="w-4 h-4" />, color: 'bg-red-100 text-red-800', label: 'Cancelled' },
-      waiting_sparepart: { icon: <ClipboardList className="w-4 h-4" />, color: 'bg-purple-100 text-purple-800', label: 'Waiting Sparepart' }
-    };
-    return configs[status] || configs.pending;
-  };
-
   const formatDateLabel = useCallback((dateString: string) => {
     try {
       return formatDateTime(dateString);
@@ -164,15 +153,15 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
     }
   }, []);
 
-  const statusConfig = useMemo(() => getStatusConfig(job.status), [job.status]);
   const statusAccentClass = useMemo(() => {
-    switch (job.status) {
-      case 'completed': return 'bg-green-500';
-      case 'in_progress': return 'bg-blue-500';
-      case 'pending': return 'bg-yellow-500';
-      case 'waiting_sparepart': return 'bg-purple-500';
-      case 'cancelled': return 'bg-red-500';
-      default: return 'bg-gray-300';
+    switch (getStatusBadgeConfig(job.status).tone) {
+      case 'green': return 'bg-emerald-500';
+      case 'blue': return 'bg-blue-500';
+      case 'amber': return 'bg-amber-500';
+      case 'orange': return 'bg-orange-500';
+      case 'purple': return 'bg-purple-500';
+      case 'red': return 'bg-red-500';
+      default: return 'bg-slate-300';
     }
   }, [job.status]);
 
@@ -356,8 +345,8 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
       <div className={cn("absolute left-0 top-0 h-full w-1", statusAccentClass)} />
       <CardHeader className="flex-shrink-0 p-3 sm:p-4 pb-2 sm:pb-3 border-b border-gray-100">
         <div className="flex flex-col gap-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="space-y-1 flex-grow min-w-0">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-[12rem] flex-1 space-y-1">
               <CardTitle className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 leading-tight">
                 {job.topics?.[0]?.title || 'No Topic'}
               </CardTitle>
@@ -391,7 +380,7 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
                 </span>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <div className="flex max-w-full flex-col items-start gap-1 sm:items-end">
               <StatusBadge status={job.status} />
               <span className="text-[11px] text-gray-500">ID #{String(job.job_id).slice(0, 8)}</span>
             </div>

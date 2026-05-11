@@ -23,6 +23,7 @@ import {
   Bell
 } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
+import { StatusBadge, getStatusBadgeConfig } from '@/app/components/StatusBadge';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -906,17 +907,6 @@ export default function PreventiveMaintenanceDashboard({
 
 // Enhanced Job Card Component
 function JobCard({ job }: { job: Job }) {
-  const getStatusColor = (status: string) => {
-    switch(status) {
-      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
-      case 'in_progress': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'waiting_sparepart': return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
   const getPriorityColor = (priority: string) => {
     switch(priority) {
       case 'high': return 'text-red-600';
@@ -930,16 +920,18 @@ function JobCard({ job }: { job: Job }) {
   const roomNames = job.rooms && job.rooms.length > 0
     ? job.rooms.map(room => `${room.name}${room.room_type ? ` (${room.room_type})` : ''}`).join(', ')
     : 'No room specified';
+  const statusTone = getStatusBadgeConfig(job.status).tone;
 
   return (
     <Card className="hover:shadow-md transition-shadow overflow-hidden">
       {/* Status indicator bar */}
       <div className={cn("h-1",
-        job.status === 'completed' ? 'bg-green-500' :
-        job.status === 'in_progress' ? 'bg-blue-500' :
-        job.status === 'pending' ? 'bg-yellow-500' :
-        job.status === 'waiting_sparepart' ? 'bg-purple-500' :
-        job.status === 'cancelled' ? 'bg-red-500' : 'bg-gray-500'
+        statusTone === 'green' ? 'bg-emerald-500' :
+        statusTone === 'blue' ? 'bg-blue-500' :
+        statusTone === 'amber' ? 'bg-amber-500' :
+        statusTone === 'orange' ? 'bg-orange-500' :
+        statusTone === 'purple' ? 'bg-purple-500' :
+        statusTone === 'red' ? 'bg-red-500' : 'bg-slate-400'
       )} />
 
       <CardContent className="p-4">
@@ -949,9 +941,7 @@ function JobCard({ job }: { job: Job }) {
               <h4 className="font-medium">
                 Job #{job.job_id.substring(0, 8)}...
               </h4>
-              <Badge className={cn("capitalize", getStatusColor(job.status))}>
-                {job.status.replace('_', ' ')}
-              </Badge>
+              <StatusBadge status={job.status} />
               {job.priority && (
                 <Badge variant="outline" className={cn(getPriorityColor(job.priority))}>
                   {job.priority}

@@ -223,8 +223,8 @@ const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
         </div>
       </div>
       <CardHeader className="pb-3">
-        <div className="flex justify-between items-start gap-3">
-          <div className="space-y-2">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-[10rem] flex-1 space-y-2">
             <div className="flex items-center gap-2">
               <div className="rounded-2xl bg-blue-100 p-2">
                 <Briefcase className="h-4 w-4 text-blue-600" />

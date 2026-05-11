@@ -2,6 +2,8 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Search, RefreshCw, Home, FileText, Settings, Plus } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
+import { normalizeStatus } from '@/app/components/StatusBadge';
+export { StatusBadge, getStatusBadgeConfig, humanize, normalizeStatus } from '@/app/components/StatusBadge';
 
 
 export function AppShell({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
@@ -92,32 +94,6 @@ export function SkeletonCard() {
       <em />
     </div>
   );
-}
-
-const statusAliases: Record<string, string> = {
-  pending: 'open',
-  waiting_sparepart: 'waiting_spare_part',
-  'waiting spare part': 'waiting_spare_part',
-  'waiting sparepart': 'waiting_spare_part',
-  'waiting vendor': 'waiting_vendor',
-  'in progress': 'in_progress',
-  'waiting fix defect': 'defect',
-  under_review: 'defect',
-};
-
-export function normalizeStatus(status?: string) {
-  const key = (status || 'open').trim().toLowerCase().replace(/[-\s]+/g, '_');
-  return statusAliases[key] || statusAliases[key.replace(/_/g, ' ')] || key;
-}
-
-export function humanize(value?: string) {
-  if (!value) return 'Unassigned';
-  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-export function StatusBadge({ status }: { status?: string }) {
-  const normalized = normalizeStatus(status);
-  return <span className={cn('pcms-status-badge', `pcms-status-badge--${normalized}`)}>{humanize(normalized)}</span>;
 }
 
 export function normalizePriority(priority?: string) {

@@ -27,12 +27,12 @@ interface ExtendedJob extends Job {
 
 const tabConfig = [
   { value: "all", label: "All Jobs", icon: Inbox, color: "bg-gray-100 text-gray-700" },
-  { value: "pending", label: "Pending", icon: Clock, color: "bg-yellow-100 text-yellow-700" },
-  { value: "in_progress", label: "In Progress", icon: Settings, color: "bg-blue-100 text-blue-700" },
+  { value: "pending", label: "Pending", icon: Clock, color: "bg-blue-100 text-blue-700" },
+  { value: "in_progress", label: "In Progress", icon: Settings, color: "bg-amber-100 text-amber-800" },
   { value: "waiting_sparepart", label: "Waiting Sparepart", icon: PlayCircle, color: "bg-orange-100 text-orange-700" },
   { value: "completed", label: "Completed", icon: CheckCircle2, color: "bg-green-100 text-green-700" },
   { value: "cancelled", label: "Cancelled", icon: XCircle, color: "bg-red-100 text-red-700" },
-  { value: "defect", label: "Defect", icon: AlertTriangle, color: "bg-red-100 text-red-700" },
+  { value: "defect", label: "Defect", icon: AlertTriangle, color: "bg-purple-100 text-purple-700" },
   { value: "preventive_maintenance", label: "Maintenance", icon: Wrench, color: "bg-purple-100 text-purple-700" },
 ] as const;
 

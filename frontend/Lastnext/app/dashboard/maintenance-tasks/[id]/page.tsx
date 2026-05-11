@@ -9,6 +9,7 @@ import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
+import { StatusBadge } from '@/app/components/StatusBadge';
 import {
   ArrowLeft,
   Wrench,
@@ -420,14 +421,7 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
                               </div>
                             )}
                           </div>
-                          <Badge className={
-                            record.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            record.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                            record.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
-                          }>
-                            {record.status ? record.status.replace('_', ' ').toUpperCase() : 'SCHEDULED'}
-                          </Badge>
+                          <StatusBadge status={record.status || 'scheduled'} />
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">

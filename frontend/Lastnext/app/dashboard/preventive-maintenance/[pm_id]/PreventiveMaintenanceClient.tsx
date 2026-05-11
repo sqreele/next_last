@@ -31,6 +31,7 @@ import {
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
 import { MaintenanceImage } from '@/app/components/ui/UniversalImage';
 import { getDisplayName, getUserEmail } from '@/app/lib/utils/display-name';
+import { StatusBadge } from '@/app/components/StatusBadge';
 
 interface PreventiveMaintenanceClientProps {
   maintenanceData: PreventiveMaintenance;
@@ -419,27 +420,6 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
   const getTaskStatus = taskStatus;
     
-  const statusInfo = useMemo(() => {
-    switch (taskStatus) {
-      case 'completed':
-        return { text: 'Completed', color: 'bg-green-100 text-green-800' };
-      case 'overdue':
-        return { text: 'Overdue', color: 'bg-red-100 text-red-800' };
-      default:
-        return { text: 'Scheduled', color: 'bg-yellow-100 text-yellow-800' };
-    }
-  }, [taskStatus]);
-
-  // Get status color for PDF
-  const getStatusColor = useMemo(() => {
-    switch (getTaskStatus) {
-      case 'completed': return 'text-green-600';
-      case 'pending': return 'text-yellow-600';
-      case 'overdue': return 'text-red-600';
-      default: return 'text-gray-600';
-    }
-  }, [getTaskStatus]);
-
   // Render machine list
   const renderMachines = () => {
     // More robust check for empty machines
@@ -544,9 +524,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             </div>
             
             <div className="flex items-center gap-3">
-              <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold shadow-sm ${statusInfo.color}`}>
-                {statusInfo.text}
-              </span>
+              <StatusBadge status={taskStatus} />
               
             </div>
           </div>
@@ -1025,9 +1003,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
               </h2>
               <p className="text-sm text-gray-600">ID: {maintenanceData.pm_id}</p>
             </div>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor}`}>
-              {getTaskStatus.toUpperCase()}
-            </span>
+            <StatusBadge status={getTaskStatus} />
           </div>
 
           {(maintenanceData as any).job_description && (

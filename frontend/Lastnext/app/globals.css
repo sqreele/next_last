@@ -12,13 +12,13 @@
   --status-assigned-bg: #2563EB;
   --status-assigned-text: #FFFFFF;
   --status-assigned-border: #1D4ED8;
-  --status-in-progress-bg: #F97316;
-  --status-in-progress-text: #FFFFFF;
-  --status-in-progress-border: #C2410C;
-  --status-waiting-spare-part-bg: #F59E0B;
+  --status-in-progress-bg: #F59E0B;
+  --status-in-progress-text: #111827;
+  --status-in-progress-border: #B45309;
+  --status-waiting-spare-part-bg: #F97316;
   --status-waiting-spare-part-text: #111827;
-  --status-waiting-spare-part-border: #B45309;
-  --status-waiting-vendor-bg: #D97706;
+  --status-waiting-spare-part-border: #C2410C;
+  --status-waiting-vendor-bg: #F97316;
   --status-waiting-vendor-text: #FFFFFF;
   --status-waiting-vendor-border: #92400E;
   --status-completed-bg: #16A34A;
@@ -451,9 +451,9 @@ body {
 
     --status-open-bg: #2563EB; --status-open-text: #FFFFFF; --status-open-border: #1D4ED8;
     --status-assigned-bg: #2563EB; --status-assigned-text: #FFFFFF; --status-assigned-border: #1D4ED8;
-    --status-in-progress-bg: #F97316; --status-in-progress-text: #FFFFFF; --status-in-progress-border: #C2410C;
-    --status-waiting-spare-part-bg: #F59E0B; --status-waiting-spare-part-text: #111827; --status-waiting-spare-part-border: #B45309;
-    --status-waiting-vendor-bg: #D97706; --status-waiting-vendor-text: #FFFFFF; --status-waiting-vendor-border: #92400E;
+    --status-in-progress-bg: #F59E0B; --status-in-progress-text: #111827; --status-in-progress-border: #B45309;
+    --status-waiting-spare-part-bg: #F97316; --status-waiting-spare-part-text: #111827; --status-waiting-spare-part-border: #C2410C;
+    --status-waiting-vendor-bg: #F97316; --status-waiting-vendor-text: #FFFFFF; --status-waiting-vendor-border: #C2410C;
     --status-completed-bg: #16A34A; --status-completed-text: #FFFFFF; --status-completed-border: #15803D;
     --status-verified-bg: #0D9488; --status-verified-text: #FFFFFF; --status-verified-border: #0F766E;
     --status-cancelled-bg: #DC2626; --status-cancelled-text: #FFFFFF; --status-cancelled-border: #B91C1C;
@@ -500,7 +500,7 @@ body {
   .pcms-status-badge--waiting_vendor { background: var(--status-waiting-vendor-bg); color: var(--status-waiting-vendor-text); border-color: var(--status-waiting-vendor-border); }
   .pcms-status-badge--completed, .pcms-status-badge--fixed { background: var(--status-completed-bg); color: var(--status-completed-text); border-color: var(--status-completed-border); }
   .pcms-status-badge--verified { background: var(--status-verified-bg); color: var(--status-verified-text); border-color: var(--status-verified-border); }
-  .pcms-status-badge--cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
+  .pcms-status-badge--cancelled, .pcms-status-badge--rejected, .pcms-status-badge--overdue { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
   .pcms-status-badge--defect, .pcms-status-badge--under_review, .pcms-status-badge--waiting_fix_defect { background: var(--status-defect-bg); color: var(--status-defect-text); border-color: var(--status-defect-border); }
   .pcms-priority-badge--low { background: var(--priority-low-bg); color: var(--priority-low-text); border-color: var(--priority-low-border); }
   .pcms-priority-badge--medium { background: var(--priority-medium-bg); color: var(--priority-medium-text); border-color: var(--priority-medium-border); }
@@ -588,9 +588,9 @@ body {
 
     --status-open-bg: #2563EB; --status-open-text: #FFFFFF; --status-open-border: #1D4ED8;
     --status-assigned-bg: #2563EB; --status-assigned-text: #FFFFFF; --status-assigned-border: #1D4ED8;
-    --status-in-progress-bg: #F97316; --status-in-progress-text: #FFFFFF; --status-in-progress-border: #C2410C;
-    --status-waiting-spare-part-bg: #F59E0B; --status-waiting-spare-part-text: #111827; --status-waiting-spare-part-border: #B45309;
-    --status-waiting-vendor-bg: #D97706; --status-waiting-vendor-text: #FFFFFF; --status-waiting-vendor-border: #92400E;
+    --status-in-progress-bg: #F59E0B; --status-in-progress-text: #111827; --status-in-progress-border: #B45309;
+    --status-waiting-spare-part-bg: #F97316; --status-waiting-spare-part-text: #111827; --status-waiting-spare-part-border: #C2410C;
+    --status-waiting-vendor-bg: #F97316; --status-waiting-vendor-text: #FFFFFF; --status-waiting-vendor-border: #C2410C;
     --status-completed-bg: #16A34A; --status-completed-text: #FFFFFF; --status-completed-border: #15803D;
     --status-verified-bg: #0D9488; --status-verified-text: #FFFFFF; --status-verified-border: #0F766E;
     --status-cancelled-bg: #DC2626; --status-cancelled-text: #FFFFFF; --status-cancelled-border: #B91C1C;
@@ -671,7 +671,7 @@ body {
   .pcms-status-badge--waiting_vendor { background: var(--status-waiting-vendor-bg); color: var(--status-waiting-vendor-text); border-color: var(--status-waiting-vendor-border); }
   .pcms-status-badge--completed, .pcms-status-badge--fixed { background: var(--status-completed-bg); color: var(--status-completed-text); border-color: var(--status-completed-border); }
   .pcms-status-badge--verified { background: var(--status-verified-bg); color: var(--status-verified-text); border-color: var(--status-verified-border); }
-  .pcms-status-badge--cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
+  .pcms-status-badge--cancelled, .pcms-status-badge--rejected, .pcms-status-badge--overdue { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
   .pcms-status-badge--defect, .pcms-status-badge--under_review, .pcms-status-badge--waiting_fix_defect { background: var(--status-defect-bg); color: var(--status-defect-text); border-color: var(--status-defect-border); }
 
   .pcms-status-summary-grid {
@@ -852,16 +852,16 @@ body {
     --status-open-bg: #2563EB;
     --status-open-text: #FFFFFF;
     --status-open-border: #1D4ED8;
-    --status-assigned-bg: #7C3AED;
+    --status-assigned-bg: #2563EB;
     --status-assigned-text: #FFFFFF;
-    --status-assigned-border: #6D28D9;
-    --status-in-progress-bg: #F97316;
-    --status-in-progress-text: #FFFFFF;
-    --status-in-progress-border: #C2410C;
-    --status-waiting-spare-part-bg: #F59E0B;
+    --status-assigned-border: #1D4ED8;
+    --status-in-progress-bg: #F59E0B;
+    --status-in-progress-text: #111827;
+    --status-in-progress-border: #B45309;
+    --status-waiting-spare-part-bg: #F97316;
     --status-waiting-spare-part-text: #111827;
-    --status-waiting-spare-part-border: #B45309;
-    --status-waiting-vendor-bg: #D97706;
+    --status-waiting-spare-part-border: #C2410C;
+    --status-waiting-vendor-bg: #F97316;
     --status-waiting-vendor-text: #FFFFFF;
     --status-waiting-vendor-border: #92400E;
     --status-completed-bg: #16A34A;
@@ -958,7 +958,7 @@ body {
   .pcms-status-badge--completed,
   .pcms-status-badge--fixed { background: var(--status-completed-bg); color: var(--status-completed-text); border-color: var(--status-completed-border); }
   .pcms-status-badge--verified { background: var(--status-verified-bg); color: var(--status-verified-text); border-color: var(--status-verified-border); }
-  .pcms-status-badge--cancelled { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
+  .pcms-status-badge--cancelled, .pcms-status-badge--rejected, .pcms-status-badge--overdue { background: var(--status-cancelled-bg); color: var(--status-cancelled-text); border-color: var(--status-cancelled-border); }
   .pcms-status-badge--defect,
   .pcms-status-badge--under_review,
   .pcms-status-badge--waiting_fix_defect { background: var(--status-defect-bg); color: var(--status-defect-text); border-color: var(--status-defect-border); }

@@ -8,6 +8,7 @@ import { CompletePreventiveMaintenanceData } from '@/app/lib/PreventiveMaintenan
 import { MaintenanceImage } from '@/app/lib/preventiveMaintenanceModels';
 import React from 'react';
 import { MaintenanceImage as OptimizedMaintenanceImage } from '@/app/components/ui/UniversalImage';
+import { StatusBadge } from '@/app/components/StatusBadge';
 import { 
   ArrowLeft, 
   CheckCircle, 
@@ -366,13 +367,7 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
                       <p className="text-xs text-gray-500">
                         ID: {record.id} | PM_ID: {record.pm_id}
                       </p>
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${
-                        record.status === 'Completed' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {record.status}
-                      </span>
+                      <StatusBadge status={record.status} className="mt-1" />
                     </div>
                     <Link 
                       href={`/preventive-maintenance/complete/${record.id}`}

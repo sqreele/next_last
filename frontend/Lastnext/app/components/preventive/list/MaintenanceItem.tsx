@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { Eye, Edit, Trash2, MoreVertical, CheckCircle, AlertCircle, Clock, Calendar, Wrench, Clipboard, CheckCircle2, XCircle } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
+import { StatusBadge } from '@/app/components/StatusBadge';
 
 interface MaintenanceItemProps {
   item: PreventiveMaintenance;
@@ -91,9 +92,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                 </div>
                 
                 <div className="flex items-center justify-between mt-3">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
-                    {statusInfo.text}
-                  </span>
+                  <StatusBadge status={statusInfo.text} />
                   
                   <div className="flex items-center space-x-2">
                     <Link
@@ -142,9 +141,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
               </div>
               
               <div>
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.color}`}>
-                  {statusInfo.text}
-                </span>
+                <StatusBadge status={statusInfo.text} />
               </div>
               
               <div className="text-sm text-gray-900 truncate">

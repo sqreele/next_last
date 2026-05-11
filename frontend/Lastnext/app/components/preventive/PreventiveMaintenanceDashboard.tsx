@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMaintenanceActions';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { preventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
+import { StatusBadge } from '@/app/components/StatusBadge';
 import Image from 'next/image';
 
 // Updated interface to match Django API response
@@ -246,18 +247,6 @@ export default function PreventiveMaintenanceDashboard() {
   const getCompletionRate = (): number => {
     if (!statistics?.counts?.total) return 0;
     return Math.round((statistics.counts.completed / statistics.counts.total) * 100);
-  };
-
-  // Status badge styling
-  const getStatusBadge = (status: string): string => {
-    switch (status) {
-      case 'completed':
-        return "bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium";
-      case 'overdue':
-        return "bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium";
-      default:
-        return "bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium";
-    }
   };
 
   // Get maintenance title with fallback
@@ -600,9 +589,7 @@ export default function PreventiveMaintenanceDashboard() {
                         {formatDate(item.next_due_date)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={getStatusBadge(status)}>
-                          {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </span>
+                        <StatusBadge status={status} />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex space-x-2">

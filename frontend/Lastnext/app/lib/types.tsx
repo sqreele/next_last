@@ -224,10 +224,10 @@ export interface JobsPDFProps {
 
 export const STATUS_COLORS: Record<JobStatus, string> = {
   pending: '#2563EB',
-  waiting_sparepart: '#F59E0B',
+  waiting_sparepart: '#F97316',
   completed: '#16A34A',
   cancelled: '#DC2626',
-  in_progress: '#F97316',
+  in_progress: '#F59E0B',
 };
 
 export const FILTER_TITLES: Record<TabValue, string> = {

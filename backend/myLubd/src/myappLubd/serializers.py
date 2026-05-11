@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage, UtilityConsumption, Inventory, RosterLeave
+from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage, UtilityConsumption, Inventory, RosterLeave, Area, JobComment
 from django.contrib.auth import get_user_model
 import logging
 
@@ -262,6 +262,69 @@ class TopicSerializer(serializers.ModelSerializer):
         fields = ['title', 'description', 'id', 'is_visible_in_create_job']
 
 
+# Area serializer
+class AreaSerializer(serializers.ModelSerializer):
+    property_id = serializers.PrimaryKeyRelatedField(
+        source='property',
+        queryset=Property.objects.all(),
+        write_only=True,
+    )
+    property_name = serializers.CharField(source='property.name', read_only=True)
+    property_uuid = serializers.CharField(source='property.property_id', read_only=True)
+    jobs_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Area
+        fields = [
+            'id', 'name', 'description', 'is_active',
+            'property', 'property_id', 'property_name', 'property_uuid',
+            'jobs_count', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'property', 'created_at', 'updated_at', 'jobs_count']
+
+    def get_jobs_count(self, obj):
+        return obj.jobs.count()
+
+
+# Area summary serializer (nested usage)
+class AreaSummarySerializer(serializers.ModelSerializer):
+    property_id = serializers.CharField(source='property.property_id', read_only=True)
+    property_name = serializers.CharField(source='property.name', read_only=True)
+
+    class Meta:
+        model = Area
+        fields = ['id', 'name', 'is_active', 'property_id', 'property_name']
+        read_only_fields = fields
+
+
+# Job comment serializer
+class JobCommentSerializer(serializers.ModelSerializer):
+    author_username = serializers.CharField(source='author.username', read_only=True)
+    author_name = serializers.SerializerMethodField()
+    author_id = serializers.IntegerField(source='author.id', read_only=True)
+
+    class Meta:
+        model = JobComment
+        fields = [
+            'id', 'job', 'comment',
+            'author_id', 'author_username', 'author_name',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'job', 'author_id', 'author_username', 'author_name',
+            'created_at', 'updated_at',
+        ]
+
+    def get_author_name(self, obj):
+        return get_user_display_name(obj.author)
+
+    def validate_comment(self, value):
+        text = (value or '').strip()
+        if not text:
+            raise serializers.ValidationError("Comment cannot be empty.")
+        return text
+
+
 class RosterLeaveSerializer(serializers.ModelSerializer):
     type = serializers.ChoiceField(source='leave_type', choices=RosterLeave.LEAVE_TYPE_CHOICES)
 
@@ -297,6 +360,13 @@ class JobSerializer(serializers.ModelSerializer):
     topic_data = serializers.JSONField(write_only=True)
     room_id = serializers.IntegerField(write_only=True)
     image_urls = serializers.SerializerMethodField()
+    area = AreaSummarySerializer(read_only=True)
+    area_id = serializers.PrimaryKeyRelatedField(
+        source='area', queryset=Area.objects.all(),
+        required=False, allow_null=True, write_only=True,
+    )
+    area_name = serializers.CharField(source='area.name', read_only=True)
+    comments_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -306,13 +376,17 @@ class JobSerializer(serializers.ModelSerializer):
             'updated_by', 'description', 'status', 'priority',
             'remarks', 'created_at', 'updated_at', 'completed_at', 'is_defective',
             'rooms', 'topics', 'images', 'profile_image', 'room_type', 'name',
-            'topic_data', 'room_id', 'image_urls', 'is_preventivemaintenance'
+            'topic_data', 'room_id', 'image_urls', 'is_preventivemaintenance',
+            'area', 'area_id', 'area_name', 'comments_count',
         ]
         read_only_fields = [
             'id', 'job_id', 'user', 'user_username', 'user_first_name', 'user_last_name',
             'user_email', 'user_name', 'technician_name', 'created_by_name',
-            'updated_by_name', 'images', 'topics'
+            'updated_by_name', 'images', 'topics', 'area', 'area_name', 'comments_count',
         ]
+
+    def get_comments_count(self, obj):
+        return obj.comments.count()
 
     def validate(self, data):
         """Validate timestamp fields to ensure logical order"""

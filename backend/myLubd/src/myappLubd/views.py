@@ -16,7 +16,7 @@ import math
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import models
-from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory, RosterLeave
+from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory, RosterLeave, Area, JobComment
 from django.urls import reverse
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .serializers import (
@@ -28,7 +28,8 @@ from .serializers import (
     MachineCreateSerializer, MachineUpdateSerializer, MachinePreventiveMaintenanceSerializer,
     MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer,
     UtilityConsumptionSerializer, UtilityConsumptionListSerializer,
-    InventorySerializer, InventoryListSerializer, RosterLeaveSerializer
+    InventorySerializer, InventoryListSerializer, RosterLeaveSerializer,
+    AreaSerializer, JobCommentSerializer,
 )
 from PIL import Image
 from io import BytesIO
@@ -1259,7 +1260,9 @@ class JobViewSet(viewsets.ModelViewSet):
         # Use prefetch_related for many-to-many and reverse foreign keys
         queryset = Job.objects.select_related(
             'user',           # Foreign key to User
-            'updated_by'      # Foreign key to User
+            'updated_by',     # Foreign key to User
+            'area',           # Foreign key to Area
+            'area__property',
         ).prefetch_related(
             'rooms__properties',  # Many-to-many through rooms
             'topics',            # Many-to-many relationship
@@ -1310,6 +1313,13 @@ class JobViewSet(viewsets.ModelViewSet):
 
         if room_name_filter:
             queryset = queryset.filter(rooms__name__icontains=room_name_filter)
+
+        area_filter = self.request.query_params.get('area') or self.request.query_params.get('area_id')
+        if area_filter and str(area_filter).lower() != 'all':
+            try:
+                queryset = queryset.filter(area_id=int(area_filter))
+            except (TypeError, ValueError):
+                queryset = queryset.filter(area__name__iexact=str(area_filter))
 
         # Optional: filter by assigned user (supports numeric id or username)
         if user_filter and str(user_filter).lower() != 'all':
@@ -1609,6 +1619,94 @@ class JobViewSet(viewsets.ModelViewSet):
         super().perform_destroy(instance)
         # Invalidate cache after deleting job
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
+
+    @action(detail=True, methods=['get', 'post'], url_path='comments')
+    def comments(self, request, job_id=None):
+        """List or create comments on a job. Tenant isolation is enforced via
+        the existing get_queryset(): the job must be reachable to the user.
+        """
+        job = self.get_object()
+
+        if request.method.lower() == 'get':
+            qs = job.comments.select_related('author').order_by('created_at')
+            serializer = JobCommentSerializer(qs, many=True, context={'request': request})
+            return Response({
+                'count': qs.count(),
+                'results': serializer.data,
+            }, status=status.HTTP_200_OK)
+
+        # POST
+        serializer = JobCommentSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        comment = JobComment.objects.create(
+            job=job,
+            author=request.user if request.user.is_authenticated else None,
+            comment=serializer.validated_data['comment'],
+        )
+        out = JobCommentSerializer(comment, context={'request': request})
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+
+class AreaViewSet(viewsets.ModelViewSet):
+    """CRUD for property areas/zones with tenant (property) isolation."""
+    permission_classes = [IsAuthenticated]
+    serializer_class = AreaSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = Area.objects.select_related('property').all()
+
+        if not (user.is_staff or user.is_superuser):
+            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
+            qs = qs.filter(property_id__in=accessible_property_ids)
+
+        property_filter = self.request.query_params.get('property_id') or self.request.query_params.get('property')
+        if property_filter:
+            property_q = Q(property__property_id=property_filter)
+            if str(property_filter).isdigit():
+                property_q |= Q(property_id=int(property_filter))
+            qs = qs.filter(property_q)
+
+        is_active = self.request.query_params.get('is_active')
+        if is_active is not None:
+            val = str(is_active).lower() in ['1', 'true', 'yes']
+            qs = qs.filter(is_active=val)
+
+        search = self.request.query_params.get('search')
+        if search:
+            qs = qs.filter(Q(name__icontains=search) | Q(description__icontains=search))
+
+        return qs.order_by('property__name', 'name')
+
+    def perform_create(self, serializer):
+        property_obj = serializer.validated_data.get('property')
+        user = self.request.user
+        if not (user.is_staff or user.is_superuser):
+            if not Property.objects.filter(id=property_obj.id, users=user).exists():
+                raise PermissionDenied("You do not have access to this property.")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        new_property = serializer.validated_data.get('property', instance.property)
+        user = self.request.user
+        if not (user.is_staff or user.is_superuser):
+            if not Property.objects.filter(id=new_property.id, users=user).exists():
+                raise PermissionDenied("You do not have access to this property.")
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        """Soft-delete: mark inactive rather than removing the row so historical
+        jobs keep their area reference."""
+        instance = self.get_object()
+        hard = str(request.query_params.get('hard', '')).lower() in ['1', 'true', 'yes']
+        if hard and (request.user.is_staff or request.user.is_superuser):
+            instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        instance.is_active = False
+        instance.save(update_fields=['is_active', 'updated_at'])
+        return Response(AreaSerializer(instance).data, status=status.HTTP_200_OK)
+
 
 class UserProfileViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]

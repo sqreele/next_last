@@ -606,7 +606,7 @@ class Room(models.Model):
 
 
 class Topic(models.Model):
-    id = models.AutoField(primary_key=True) 
+    id = models.AutoField(primary_key=True)
     title = models.CharField(
         max_length=160,
         unique=True,
@@ -628,6 +628,44 @@ class Topic(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Area(models.Model):
+    """
+    Represents a physical area/zone inside a Property (e.g. Lobby, Pump Room).
+    Tenant isolation is enforced via the related Property (users have
+    access to specific properties through Property.users).
+    """
+    id = models.AutoField(primary_key=True)
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='areas',
+        help_text='Property this area belongs to'
+    )
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Area'
+        verbose_name_plural = 'Areas'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['property', 'name'],
+                name='unique_area_name_per_property',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['property', 'is_active']),
+            models.Index(fields=['name']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.property.name})"
 
 
 class JobImage(models.Model):
@@ -797,14 +835,22 @@ class Job(models.Model):
         related_name='maintenance_jobs'
     )
     rooms = models.ManyToManyField(
-        Room, 
-        related_name='jobs', 
+        Room,
+        related_name='jobs',
         blank=True
     )
     topics = models.ManyToManyField(
-        Topic, 
-        related_name='jobs', 
+        Topic,
+        related_name='jobs',
         blank=True
+    )
+    area = models.ForeignKey(
+        'Area',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='jobs',
+        help_text='Optional area/zone where this job is performed'
     )
     is_defective = models.BooleanField(default=False)
     
@@ -899,6 +945,37 @@ class Job(models.Model):
             frequency=frequency,
             created_by=created_by or self.user
         )
+
+
+class JobComment(models.Model):
+    """A user comment posted on a Job."""
+    id = models.AutoField(primary_key=True)
+    job = models.ForeignKey(
+        Job,
+        on_delete=models.CASCADE,
+        related_name='comments',
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='job_comments',
+    )
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = 'Job Comment'
+        verbose_name_plural = 'Job Comments'
+        indexes = [
+            models.Index(fields=['job', 'created_at']),
+        ]
+
+    def __str__(self):
+        author_name = self.author.username if self.author else 'unknown'
+        return f"Comment on {self.job.job_id} by {author_name}"
 
 
 class UserProfile(models.Model):

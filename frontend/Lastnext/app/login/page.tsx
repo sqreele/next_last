@@ -2,27 +2,52 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader } from 'lucide-react';
+import { Building, Loader2, ShieldCheck } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/app/components/ui/card';
 
 export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to Auth0 login
     router.push('/api/auth/login');
   }, [router]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-[var(--pcms-app-bg)] bg-[image:var(--pcms-app-bg-gradient)] p-6 backdrop-blur-sm"
+    <main
+      className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6"
       aria-live="polite"
       aria-busy="true"
       role="status"
     >
-      <div className="flex h-20 w-20 items-center justify-center rounded-[2rem] bg-white/90 shadow-[var(--pcms-shadow)] ring-1 ring-[var(--pcms-border)]">
-        <Loader className="h-9 w-9 animate-spin text-[var(--pcms-primary)]" aria-hidden />
-      </div>
-      <div className="pcms-section-card max-w-sm p-6 text-center"><p className="pcms-eyebrow">Property Care Maintenance System</p><h1 className="mt-2 text-2xl font-black text-[var(--pcms-text)]">Hotel maintenance sign in</h1><p className="mt-2 text-sm font-semibold text-[var(--pcms-text-muted)]">Redirecting to secure PCMS sign in...</p></div>
-    </div>
+      <Card className="w-full max-w-sm border-slate-200/70 shadow-lg">
+        <CardHeader className="items-center text-center">
+          <div className="mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-600/30">
+            <Building className="h-6 w-6" />
+          </div>
+          <CardTitle className="text-xl font-bold tracking-tight">
+            Hotel maintenance sign in
+          </CardTitle>
+          <CardDescription className="text-sm">
+            Property Care Maintenance System
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center gap-4 pb-8">
+          <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+            <Loader2 className="h-4 w-4 animate-spin text-blue-600" aria-hidden />
+            Redirecting to secure sign in…
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
+            Encrypted authentication
+          </div>
+        </CardContent>
+      </Card>
+    </main>
   );
 }

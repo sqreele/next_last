@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, ChangeEventHandler } from "react";
 import Image from "next/image";
-import { Upload, X, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Upload, X, AlertCircle, CheckCircle2, Loader2, Camera, ImagePlus } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Progress } from "@/app/components/ui/progress";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -159,10 +159,46 @@ const FileUpload: React.FC<FileUploadProps> = ({
         </Alert>
       ) : null}
 
+      {/* Hidden file input — shared by all trigger buttons */}
+      <input
+        id="pcms-file-input"
+        type="file"
+        className="hidden"
+        multiple
+        accept="image/*"
+        onChange={handleFileChange}
+        disabled={disabled}
+      />
+
+      {/* Mobile: two large tap buttons (Camera / Gallery) */}
+      <div className="grid grid-cols-2 gap-3 sm:hidden">
+        <label
+          htmlFor="pcms-file-input"
+          className={cn(
+            "flex min-h-[80px] touch-manipulation flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50 px-3 py-4 text-center transition-colors active:bg-blue-100",
+            disabled ? "pointer-events-none opacity-50" : "cursor-pointer"
+          )}
+        >
+          <Camera className="h-7 w-7 text-blue-500" />
+          <span className="text-xs font-semibold text-blue-700">Camera / Gallery</span>
+        </label>
+        <label
+          htmlFor="pcms-file-input"
+          className={cn(
+            "flex min-h-[80px] touch-manipulation flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-center transition-colors active:bg-gray-100",
+            disabled ? "pointer-events-none opacity-50" : "cursor-pointer"
+          )}
+        >
+          <ImagePlus className="h-7 w-7 text-gray-400" />
+          <span className="text-xs font-semibold text-gray-600">Browse Files</span>
+        </label>
+      </div>
+
+      {/* Desktop: drag-and-drop zone */}
       <div
         className={cn(
-          "pcms-upload-dropzone rounded-xl border-2 border-dashed p-4 text-center transition-colors sm:p-6",
-          isDragging ? "border-[var(--pcms-primary)] bg-[var(--pcms-primary-soft)]" : "",
+          "hidden rounded-xl border-2 border-dashed p-6 text-center transition-colors sm:block",
+          isDragging ? "border-[var(--pcms-primary)] bg-[var(--pcms-primary-soft)]" : "border-gray-200",
           disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
         )}
         onDragOver={(e) => {
@@ -173,26 +209,19 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onDrop={handleDrop}
       >
         <label
+          htmlFor="pcms-file-input"
           className={cn(
-            "flex flex-col items-center gap-1.5 sm:gap-2",
-            disabled ? "pointer-events-none" : ""
+            "flex flex-col items-center gap-2",
+            disabled ? "pointer-events-none" : "cursor-pointer"
           )}
         >
-          <Upload className="h-6 w-6 text-muted-foreground sm:h-8 sm:w-8" />
-          <p className="px-2 text-xs text-muted-foreground sm:text-sm">
-            Drag and drop images or click to upload photos
+          <Upload className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            Drag &amp; drop images here, or <span className="font-semibold text-blue-600 underline">click to browse</span>
           </p>
-          <p className="text-[11px] text-muted-foreground sm:text-xs">
-            (Max {maxFiles} files, {maxSize}MB each)
+          <p className="text-xs text-muted-foreground">
+            Max {maxFiles} files · {maxSize}MB each · Images only
           </p>
-          <input
-            type="file"
-            className="hidden"
-            multiple
-            accept="image/*"
-            onChange={handleFileChange}
-            disabled={disabled}
-          />
         </label>
       </div>
 

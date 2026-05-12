@@ -7,7 +7,7 @@ import axios from 'axios';
 import { Button } from "@/app/components/ui/button";
 import { PageHeader, PriorityBadge, SectionCard } from '@/app/components/pcms-ui';
 import { Textarea } from "@/app/components/ui/textarea";
-import { Plus, ChevronDown, ChevronUp, Loader, AlertCircle, CheckCircle, Upload, X, Building } from 'lucide-react';
+import { Plus, Loader, AlertCircle, CheckCircle, Upload } from 'lucide-react';
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -433,8 +433,15 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     }
   }, [fetchData, session?.user?.accessToken, selectedProperty]);
 
+  const STEPS = [
+    { num: 1, label: 'Status', color: 'blue' },
+    { num: 2, label: 'Location', color: 'green' },
+    { num: 3, label: 'Details', color: 'purple' },
+    { num: 4, label: 'Evidence', color: 'amber' },
+  ];
+
   return (
-    <div className="space-y-4 pb-24 sm:space-y-6 sm:pb-24 md:space-y-8 md:pb-0">
+    <div className="space-y-4 pb-32 sm:space-y-6 sm:pb-32 md:space-y-8 md:pb-6">
       {/* Error Alert */}
       {error && (
         <Alert className="border-red-200 bg-red-50">
@@ -476,7 +483,26 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       >
         {({ values, errors, touched, submitCount, setFieldValue, setFieldTouched, isSubmitting }) => (
                   <Form className="relative space-y-5 sm:space-y-6 md:space-y-8">
-          <PageHeader title="Create Maintenance Job" description="Use the 3-step hotel workflow: Location, Job Details, then Assignment & Evidence." />
+          <PageHeader title="Create Maintenance Job" description="Fill in all 4 steps: Status & Priority, Location, Job Details, then Evidence." />
+
+          {/* Step Progress Indicator - mobile only */}
+          <div className="flex items-center justify-between xl:hidden">
+            {STEPS.map((step, i) => (
+              <React.Fragment key={step.num}>
+                <div className="flex flex-col items-center gap-1">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold sm:h-9 sm:w-9 sm:text-sm
+                    bg-${step.color}-100 text-${step.color}-700 border-2 border-${step.color}-300`}>
+                    {step.num}
+                  </div>
+                  <span className="text-[10px] font-medium text-gray-500 sm:text-xs">{step.label}</span>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className="mb-4 h-0.5 flex-1 bg-gray-200 mx-1" />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-5 sm:space-y-6 md:space-y-8">
           {/* Upload loading overlay */}
@@ -495,13 +521,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               </p>
             </div>
           )}
-          {/* 1. Location Section */}
+          {/* Step 1: Status & Priority */}
             <div className="rounded-[2rem] border border-[var(--pcms-border)] bg-white/88 p-4 shadow-[var(--pcms-shadow-card)] sm:p-6">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
-                <div className="rounded-lg bg-blue-100 p-1.5 sm:p-2">
-                  <Plus className="h-4 w-4 text-blue-600 sm:h-5 sm:w-5" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">1. Location</h3>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">1</div>
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Status &amp; Priority</h3>
               </div>
               
               <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
@@ -569,12 +593,18 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     Priority <span className="text-red-500">*</span>
                   </Label>
                   <div
-                    className={`pcms-priority-picker ${(touched.priority || submitCount > 0) && errors.priority ? 'pcms-priority-picker--error' : ''}`}
+                    className={`grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 ${(touched.priority || submitCount > 0) && errors.priority ? 'ring-1 ring-red-300 rounded-xl p-1' : ''}`}
                     role="radiogroup"
                     aria-label="Priority"
                   >
                     {PRIORITY_OPTIONS.map((option) => {
                       const active = values.priority === option.value;
+                      const colorMap: Record<string, string> = {
+                        low: active ? 'bg-green-500 text-white border-green-500 shadow-md' : 'border-green-200 text-green-700 hover:bg-green-50',
+                        medium: active ? 'bg-yellow-500 text-white border-yellow-500 shadow-md' : 'border-yellow-200 text-yellow-700 hover:bg-yellow-50',
+                        high: active ? 'bg-orange-500 text-white border-orange-500 shadow-md' : 'border-orange-200 text-orange-700 hover:bg-orange-50',
+                        critical: active ? 'bg-red-600 text-white border-red-600 shadow-md' : 'border-red-200 text-red-700 hover:bg-red-50',
+                      };
                       return (
                         <button
                           key={option.value}
@@ -586,7 +616,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                             setFieldValue('priority', option.value);
                             setFieldTouched('priority', true, false);
                           }}
-                          className={`pcms-priority-picker__option pcms-priority-picker__option--${option.value} ${active ? 'is-active' : ''}`}
+                          className={`min-h-[44px] touch-manipulation rounded-xl border-2 px-3 py-2 text-sm font-bold transition-all duration-150 active:scale-95 ${colorMap[option.value]}`}
                         >
                           {option.label}
                         </button>
@@ -603,13 +633,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               </div>
             </div>
 
-            {/* Assignment Section */}
+            {/* Step 2: Assignment & Location */}
             <div className="rounded-[2rem] border border-[var(--pcms-border)] bg-white/88 p-4 shadow-[var(--pcms-shadow-card)] sm:p-6">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
-                <div className="rounded-lg bg-green-100 p-1.5 sm:p-2">
-                  <Building className="h-4 w-4 text-green-600 sm:h-5 sm:w-5" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Assignment & Location</h3>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">2</div>
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Location &amp; Room</h3>
               </div>
               
               <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
@@ -767,13 +795,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               </div>
             </div>
 
-            {/* 2. Job Details Section */}
-            <div className="rounded-xl border border-purple-100 bg-gradient-to-r from-purple-50 to-violet-50 p-4 sm:rounded-2xl sm:p-6">
+            {/* Step 3: Job Details */}
+            <div className="rounded-[2rem] border border-purple-100 bg-gradient-to-r from-purple-50 to-violet-50 p-4 shadow-[var(--pcms-shadow-card)] sm:p-6">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
-                <div className="rounded-lg bg-purple-100 p-1.5 sm:p-2">
-                  <Plus className="h-4 w-4 text-purple-600 sm:h-5 sm:w-5" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">2. Job Details</h3>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">3</div>
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Job Details</h3>
               </div>
               
               <div className="space-y-4 sm:space-y-6">
@@ -833,13 +859,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               </div>
             </div>
 
-            {/* File Upload Section */}
+            {/* Step 4: Evidence Upload */}
             <div className="rounded-[2rem] border border-[var(--pcms-border)] bg-white/88 p-4 shadow-[var(--pcms-shadow-card)] sm:p-6">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
-                <div className="rounded-lg bg-amber-100 p-1.5 sm:p-2">
-                  <Upload className="h-4 w-4 text-amber-600 sm:h-5 sm:w-5" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">3. Assignment & Evidence</h3>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500 text-sm font-black text-white shadow sm:h-9 sm:w-9">4</div>
+                <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">Photo Evidence</h3>
               </div>
               
               <div className="space-y-2">
@@ -879,24 +903,26 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Submit Button */}
-            <div className="sticky bottom-24 z-20 -mx-2 border-t border-[var(--pcms-border)] bg-white/90 px-2 py-3 backdrop-blur supports-[backdrop-filter]:bg-white/80 sm:-mx-4 sm:px-4 md:static md:mx-0 md:border-t-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
-              <Button 
-                type="submit" 
-                disabled={isSubmitting} 
-                className="h-14 w-full rounded-full bg-[var(--pcms-accent-gradient)] text-base font-black text-white shadow-[var(--pcms-button-shadow)] transition-all duration-200 hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-50 sm:text-lg md:mx-auto md:max-w-md"
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center gap-3">
-                    <Loader className="h-5 w-5 animate-spin" />
-                    <span>Creating maintenance job...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <Plus className="h-5 w-5" />
-                    <span>Create Maintenance Job</span>
-                  </div>
-                )}
-              </Button>
+            <div className="fixed bottom-[4.5rem] left-0 right-0 z-20 border-t border-[var(--pcms-border)] bg-white/95 px-4 py-3 backdrop-blur-xl supports-[backdrop-filter]:bg-white/85 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:backdrop-blur-none" style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
+              <div className="mx-auto max-w-lg md:max-w-none">
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="h-14 w-full touch-manipulation rounded-2xl bg-[var(--pcms-accent-gradient)] text-base font-black text-white shadow-[var(--pcms-button-shadow)] transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:text-lg md:rounded-full"
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-3">
+                      <Loader className="h-5 w-5 animate-spin" />
+                      <span>Creating maintenance job...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Plus className="h-5 w-5" />
+                      <span>Create Maintenance Job</span>
+                    </div>
+                  )}
+                </Button>
+              </div>
             </div>
           </Form>
         )}

@@ -69,7 +69,7 @@ export default function DashboardLayout({
           className="
             flex-1 overflow-auto
             p-3 mobile:p-4 tablet:p-5 desktop:p-7
-            pb-28 mobile:pb-32 tablet:pb-8 desktop:pb-8
+            pb-32 mobile:pb-36 tablet:pb-8 desktop:pb-8
             transition-all duration-200
             scroll-smooth
             touch-pan-y
@@ -208,20 +208,24 @@ function DesktopNav({
 
 function MobileHeader() {
   return (
-    <header className="lg:hidden sticky top-0 z-[70] border-b shadow-[var(--pcms-shadow-sm)] bg-white/78 backdrop-blur-xl border-[var(--pcms-border)]">
-      <div className="flex items-center justify-between h-16 px-4">
-        <div className="flex items-center gap-3">
+    <header
+      id="mobile-app-header"
+      className="lg:hidden sticky top-0 z-[70] border-b shadow-[var(--pcms-shadow-sm)] bg-white/90 backdrop-blur-xl border-[var(--pcms-border)]"
+    >
+      {/* Row 1: nav, logo, actions */}
+      <div className="flex items-center justify-between h-14 px-3">
+        <div className="flex items-center gap-2">
           <MobileNav />
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Package2 className="h-6 w-6 text-blue-600" />
-            <span className="font-semibold text-gray-800">PCMS</span>
+          <Link href="/dashboard" className="flex items-center gap-1.5">
+            <Package2 className="h-5 w-5 text-blue-600" />
+            <span className="font-bold text-gray-800 text-sm">PCMS</span>
           </Link>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9"
+            className="h-9 w-9 touch-manipulation"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
@@ -230,12 +234,15 @@ function MobileHeader() {
         </div>
       </div>
 
-      <div className="flex items-center px-4 py-2 border-t border-gray-100">
-        <HeaderPropertyList />
-      </div>
-
-      <div className="px-4 py-2 border-t border-gray-100 overflow-x-auto scrollbar-none">
-        <MobileBreadcrumb />
+      {/* Row 2: property selector + breadcrumb in one compact row */}
+      <div className="flex items-center gap-2 border-t border-gray-100 px-3 py-1.5 overflow-x-auto scrollbar-none">
+        <div className="shrink-0">
+          <HeaderPropertyList />
+        </div>
+        <span className="text-gray-300 shrink-0">|</span>
+        <div className="min-w-0 flex-1 overflow-x-auto scrollbar-none">
+          <MobileBreadcrumb />
+        </div>
       </div>
     </header>
   );
@@ -352,7 +359,7 @@ function MobileNav() {
         id="mobile-navigation-drawer"
         aria-label="Primary navigation"
         className={cn(
-          "fixed bottom-0 left-0 top-[8.5rem] z-[60] flex w-[min(88vw,22rem)] max-w-sm flex-col overflow-hidden border-r border-white/70 bg-white/95 shadow-[0_24px_70px_rgba(15,23,42,.24)] backdrop-blur-2xl lg:hidden",
+          "fixed bottom-0 left-0 top-[6.75rem] z-[60] flex w-[min(88vw,22rem)] max-w-sm flex-col overflow-hidden border-r border-white/70 bg-white/95 shadow-[0_24px_70px_rgba(15,23,42,.24)] backdrop-blur-2xl lg:hidden",
           "transition-transform duration-300 ease-[cubic-bezier(.22,1,.36,1)]",
           open ? "translate-x-0" : "-translate-x-full",
         )}

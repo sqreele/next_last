@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { Button } from "@/app/components/ui/button";
-import { ClipboardEdit, Loader } from "lucide-react";
+import { ClipboardEdit } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -164,10 +164,11 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
         size={size}
         className={cn('h-11', className)}
         disabled={status === 'loading' || status === 'unauthenticated'}
+        isLoading={status === 'loading'}
+        loadingText="Loading..."
       >
         <ClipboardEdit className="h-4 w-4 mr-2" />
         {buttonText}
-        {status === 'loading' && <Loader className="ml-2 h-4 w-4 animate-spin" />}
       </Button>
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -214,8 +215,9 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
               <Button
                 type="submit"
                 disabled={isSubmitting || selectedStatus === job.status}
+                isLoading={isSubmitting}
+                loadingText="Saving..."
               >
-                {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                 Update
               </Button>
             </DialogFooter>

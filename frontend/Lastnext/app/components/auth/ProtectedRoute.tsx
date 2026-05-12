@@ -2,9 +2,10 @@
 
 import React, { ReactNode } from 'react';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
-import { Loader2, Shield, AlertTriangle } from 'lucide-react';
+import { Shield, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
+import { PageLoader } from '@/app/components/ui/loading';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -20,19 +21,7 @@ interface LoadingFallbackProps {
 }
 
 const LoadingFallback: React.FC<LoadingFallbackProps> = ({ message = 'Loading...' }) => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4">
-    <Card className="max-w-md w-full">
-      <CardContent className="p-8 text-center space-y-6">
-        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-          <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-xl font-semibold text-gray-900">Loading</h1>
-          <p className="text-gray-600">{message}</p>
-        </div>
-      </CardContent>
-    </Card>
-  </div>
+  <PageLoader label={message} description="Checking your secure PCMS session before opening the workspace." />
 );
 
 interface UnauthorizedFallbackProps {

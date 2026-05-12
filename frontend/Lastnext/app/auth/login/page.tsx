@@ -173,6 +173,8 @@ function LoginContent() {
               onClick={handleAuth0Login}
               className="w-full h-12 text-lg"
               size="lg"
+              isLoading={isRedirecting}
+              loadingText="Signing in..."
             >
               Sign in to PCMS
               <ArrowRight className="w-5 h-5 ml-2" />

@@ -120,6 +120,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingFormData, setIsLoadingFormData] = useState(false);
   const [showRemarks, setShowRemarks] = useState(false);
   const { data: session, status } = useSession();
 
@@ -146,6 +147,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
   const fetchData = async (currentPropertyId: string) => {
     // Clear previous errors/data
     setError(null);
+    setIsLoadingFormData(true);
     // Don't reset rooms/topics here if you want them to persist briefly while loading
     // setRooms([]);
     // setTopics([]);
@@ -164,6 +166,8 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
       // Clear data on error
        setRooms([]);
        setTopics([]);
+    } finally {
+      setIsLoadingFormData(false);
     }
   };
 
@@ -284,6 +288,12 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
         </DialogHeader>
 
         {/* Display API/Validation Error */}
+        {isLoadingFormData && (
+          <Alert className="my-4 border-cyan-200 bg-cyan-50 text-cyan-900">
+            <Loader className="h-4 w-4 animate-spin" />
+            <AlertDescription>Loading rooms and maintenance topics...</AlertDescription>
+          </Alert>
+        )}
         {error && (
           <Alert variant="destructive" className="my-4">
             <AlertDescription>{error}</AlertDescription>
@@ -477,9 +487,8 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={formikIsSubmitting || isSubmitting}>
-                             {(formikIsSubmitting || isSubmitting) && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-                            {(formikIsSubmitting || isSubmitting) ? 'Creating...' : 'Create Job'}
+                        <Button type="submit" disabled={formikIsSubmitting || isSubmitting} isLoading={formikIsSubmitting || isSubmitting} loadingText="Creating...">
+                            Create Job
                         </Button>
                     </div>
                 </Form>
@@ -489,7 +498,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
           // Show sign-in prompt if not authenticated
           <div className="py-4 text-center">
             <p className="mb-4">You need to be signed in to create a job.</p>
-            <Button onClick={() => signIn()}>Sign In</Button>
+            <Button onClick={() => signIn()} isLoading={status === 'loading'} loadingText="Loading...">Sign In</Button>
           </div>
         )}
       </DialogContent>

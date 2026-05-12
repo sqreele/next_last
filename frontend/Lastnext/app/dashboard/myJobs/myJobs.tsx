@@ -38,7 +38,8 @@ import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import JobFilters, { FilterState } from "@/app/components/jobs/JobFilters";
 import Pagination from "@/app/components/jobs/Pagination";
 import UpdateStatusButton from "@/app/components/jobs/UpdateStatusButton";
-import { EmptyState, FloatingActionButton, PageHeader, PageLoader, PriorityBadge, SectionCard, StatusBadge, WorkspaceCard } from '@/app/components/pcms-ui';
+import { EmptyState, FloatingActionButton, PageHeader, PriorityBadge, SectionCard, StatusBadge, WorkspaceCard } from '@/app/components/pcms-ui';
+import { PageLoader, SkeletonList, SkeletonTable } from '@/app/components/ui/loading';
 
 // Constants
 const ITEMS_PER_PAGE = 25;
@@ -804,20 +805,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
 
   // --- Render Logic ---
   if (sessionStatus === "loading" || (isLoading && !error && jobs.length === 0)) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="relative">
-            <Loader className="h-12 w-12 animate-spin text-blue-500 mx-auto" />
-            <Sparkles className="h-6 w-6 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
-          </div>
-          <div>
-            <p className="text-lg font-semibold text-gray-700">Loading maintenance jobs...</p>
-            <p className="text-sm text-gray-500 mt-1">Preparing your hotel maintenance workspace</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageLoader label="Loading maintenance jobs" description="Preparing job cards, filters, and pagination for your property." />;
   }
   
   if (sessionStatus === "unauthenticated") {
@@ -856,6 +844,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                 size="icon"
                 onClick={handleManualRefresh}
                 disabled={isLoading}
+                isLoading={isLoading}
                 className="rounded-full hover:bg-blue-50 hover:border-blue-300 transition-all"
                 title="Refresh jobs"
                 aria-label="Refresh jobs"
@@ -941,6 +930,8 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
                     onClick={() => refreshJobs(true)} 
                     variant="outline" 
                     size="sm"
+                    isLoading={isLoading}
+                    loadingText="Loading..."
                     className="bg-white hover:bg-red-50 border-red-300 text-red-700"
                   >
                     <RefreshCcw className="h-3 w-3 mr-2" />
@@ -955,16 +946,10 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
         {/* Job List or Empty State */}
         {!error && (
           isLoading && jobs.length === 0 ? (
-            <Card className="border-blue-100">
-              <CardContent className="pt-12 pb-12 text-center">
-                <div className="relative inline-block mb-4">
-                  <Loader className="h-12 w-12 animate-spin text-blue-500 mx-auto" />
-                  <Sparkles className="h-6 w-6 text-yellow-400 absolute -top-1 -right-1 animate-pulse" />
-                </div>
-                <p className="text-base font-medium text-gray-700">Loading maintenance jobs...</p>
-                <p className="text-sm text-gray-500 mt-1">Preparing the hotel maintenance workspace</p>
-              </CardContent>
-            </Card>
+            <>
+              <div className="hidden md:block"><SkeletonTable rows={8} columns={6} /></div>
+              <SkeletonList rows={5} className="md:hidden" />
+            </>
           ) : filteredJobs.length > 0 ? (
             <>
               {/* Table for Desktop */}

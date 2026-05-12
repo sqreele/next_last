@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/app/components/ui/button';
+import { PageLoader } from '@/app/components/ui/loading';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import {
   FileText,
@@ -1154,22 +1155,7 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
   }
 
   if (loading) {
-    return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Loading Jobs Report...
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-2 text-gray-500">Loading jobs for {currentProperty?.name}</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    return <PageLoader label="Loading jobs report" description={`Loading report rows${currentProperty?.name ? ` for ${currentProperty.name}` : ''}.`} />;
   }
 
   return (
@@ -1195,20 +1181,13 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
               <Button 
                 onClick={handleGenerateCSV} 
                 disabled={isGeneratingCsv || filteredReportJobs.length === 0}
+                isLoading={isGeneratingCsv}
+                loadingText="Downloading..."
                 variant="outline"
                 className="flex items-center gap-2"
               >
-                {isGeneratingCsv ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                    Exporting...
-                  </>
-                ) : (
-                  <>
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Export CSV ({filteredReportJobs.length})
-                  </>
-                )}
+                <FileSpreadsheet className="h-4 w-4" />
+                Export CSV ({filteredReportJobs.length})
               </Button>
             </div>
           </div>

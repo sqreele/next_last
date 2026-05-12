@@ -1,8 +1,10 @@
+import { Suspense } from 'react';
 import { type Metadata } from 'next';
 import localFont from 'next/font/local';
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from '@/app/providers';
 import { Toaster } from '@/app/components/ui/toaster';
+import { RouteTransitionLoader } from '@/app/components/ui/loading/RouteTransitionLoader';
 import { StoreProvider } from '@/app/lib/providers/StoreProvider';
 import { SWRProvider } from '@/app/lib/swr-config'; // ✅ PERFORMANCE: Global SWR caching
 import './globals.css';
@@ -107,6 +109,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <SWRProvider>
           <AuthProvider>
             <StoreProvider>
+              <Suspense fallback={null}>
+                <RouteTransitionLoader />
+              </Suspense>
               <main id="main-content" className="flex min-h-screen w-full flex-col">
                 {children}
               </main>

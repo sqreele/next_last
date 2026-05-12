@@ -2,6 +2,7 @@
 import { Suspense } from 'react';
 import { Metadata } from 'next';
 import DashboardWithAuth from '@/app/dashboard/DashboardWithAuth';
+import { PageLoader } from '@/app/components/ui/loading';
 import { generatePageMetadata } from '@/app/lib/seo-config';
 
 export const dynamic = 'force-dynamic'; // Ensure dynamic rendering
@@ -14,14 +15,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-[var(--pcms-app-bg)]">
       <div className="mx-auto max-w-7xl desktop:max-w-[96rem]">
         <Suspense
-          fallback={
-            <div className="flex items-center justify-center min-h-screen">
-              <div className="text-center space-y-4">
-                <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto"></div>
-                <p className="text-sm font-semibold text-gray-500">Loading dashboard...</p>
-              </div>
-            </div>
-          }
+          fallback={<PageLoader label="Loading dashboard" description="Preparing KPI cards and recent maintenance jobs." />}
         >
           <DashboardWithAuth />
         </Suspense>

@@ -3,6 +3,7 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/app/lib/utils/cn';
+import { Spinner } from '@/app/components/ui/loading/Spinner';
 
 const buttonVariants = cva(
   'pcms-btn whitespace-nowrap focus-visible:outline-none disabled:pointer-events-none touch-manipulation',
@@ -38,17 +39,28 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   formAction?: any;
+  isLoading?: boolean;
+  loadingText?: string;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, isLoading = false, loadingText, disabled, children, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button';
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
+        className={cn(buttonVariants({ variant, size, className }), isLoading && 'cursor-wait')}
         ref={ref}
+        aria-busy={isLoading || undefined}
+        disabled={!asChild ? disabled || isLoading : undefined}
         {...props}
-      />
+      >
+        {isLoading ? (
+          <span className="inline-flex items-center justify-center gap-2">
+            <Spinner size="sm" />
+            {loadingText ?? children}
+          </span>
+        ) : children}
+      </Comp>
     );
   }
 );

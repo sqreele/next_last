@@ -12,9 +12,12 @@
   --status-assigned-bg: #2563eb;
   --status-assigned-text: #ffffff;
   --status-assigned-border: #1d4ed8;
-  --status-in-progress-bg: #f59e0b;
-  --status-in-progress-text: #111827;
-  --status-in-progress-border: #b45309;
+  --status-in-progress-bg: #6366f1;
+  --status-in-progress-text: #ffffff;
+  --status-in-progress-border: #4f46e5;
+  --status-waiting-fix-defect-bg: #f59e0b;
+  --status-waiting-fix-defect-text: #111827;
+  --status-waiting-fix-defect-border: #b45309;
   --status-waiting-spare-part-bg: #f97316;
   --status-waiting-spare-part-text: #111827;
   --status-waiting-spare-part-border: #c2410c;
@@ -2795,5 +2798,448 @@ body {
   .pcms-responsive-actions > *,
   .pcms-page-actions > * {
     width: 100%;
+  }
+}
+
+/* ============================================================================
+ * MODERN POLISH (2026 redesign) — appended overrides for cleaner, more
+ * consistent UI across the whole site. Adds: refined focus rings, button
+ * hover/active/disabled/loading polish, status colors aligned to spec,
+ * card shadows, table rows, empty states, form-field error visuals,
+ * dot-pulse animation, and mobile-first touch-target enforcement.
+ * ============================================================================ */
+
+@layer base {
+  :root {
+    /* Spec-aligned status palette */
+    --status-open-bg: #2563eb;
+    --status-open-text: #ffffff;
+    --status-open-border: #1d4ed8;
+    --status-pending-bg: #2563eb;
+    --status-pending-text: #ffffff;
+    --status-pending-border: #1d4ed8;
+    --status-in-progress-bg: #6366f1;
+    --status-in-progress-text: #ffffff;
+    --status-in-progress-border: #4f46e5;
+    --status-waiting-spare-part-bg: #f97316;
+    --status-waiting-spare-part-text: #ffffff;
+    --status-waiting-spare-part-border: #c2410c;
+    --status-waiting-vendor-bg: #f97316;
+    --status-waiting-vendor-text: #ffffff;
+    --status-waiting-vendor-border: #c2410c;
+    --status-waiting-fix-defect-bg: #f59e0b;
+    --status-waiting-fix-defect-text: #111827;
+    --status-waiting-fix-defect-border: #b45309;
+    --status-completed-bg: #16a34a;
+    --status-completed-text: #ffffff;
+    --status-completed-border: #15803d;
+    --status-verified-bg: #0d9488;
+    --status-verified-text: #ffffff;
+    --status-verified-border: #0f766e;
+    --status-cancelled-bg: #dc2626;
+    --status-cancelled-text: #ffffff;
+    --status-cancelled-border: #b91c1c;
+    --status-defect-bg: #f59e0b;
+    --status-defect-text: #111827;
+    --status-defect-border: #b45309;
+
+    /* Stock palette */
+    --stock-available-bg: #16a34a;
+    --stock-available-text: #ffffff;
+    --stock-low-bg: #f97316;
+    --stock-low-text: #ffffff;
+    --stock-none-bg: #dc2626;
+    --stock-none-text: #ffffff;
+  }
+}
+
+@layer components {
+  /* Unified button base — overrides earlier definitions for consistent height,
+   * radius, focus, hover, active, disabled, and loading states. */
+  .pcms-btn,
+  .pcms-action-button,
+  .pcms-secondary-button,
+  .pcms-danger-button,
+  .pcms-status-update-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0 1.1rem;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    font-size: 0.9rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.005em;
+    transition:
+      background-color 0.16s ease,
+      border-color 0.16s ease,
+      color 0.16s ease,
+      box-shadow 0.16s ease,
+      transform 0.12s ease,
+      opacity 0.16s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pcms-btn:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px #fff,
+      0 0 0 5px rgba(99, 102, 241, 0.55);
+  }
+  .pcms-btn:hover:not(:disabled):not([aria-disabled="true"]) {
+    transform: translateY(-1px);
+  }
+  .pcms-btn:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: translateY(0);
+  }
+  .pcms-btn:disabled,
+  .pcms-btn[aria-disabled="true"],
+  .pcms-btn[aria-busy="true"] {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+    box-shadow: none;
+  }
+  .pcms-btn[aria-busy="true"] {
+    opacity: 0.85;
+    cursor: progress;
+  }
+
+  /* Primary — blue, used for Create/Save/Submit */
+  .pcms-btn-primary,
+  .pcms-action-button {
+    background: var(--pcms-primary);
+    border-color: var(--pcms-primary);
+    color: #fff;
+    box-shadow:
+      0 6px 14px rgba(21, 94, 239, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+  .pcms-btn-primary:hover:not(:disabled),
+  .pcms-action-button:hover:not(:disabled) {
+    background: var(--pcms-primary-hover);
+    border-color: var(--pcms-primary-hover);
+    box-shadow:
+      0 10px 22px rgba(21, 94, 239, 0.28),
+      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  }
+
+  /* Secondary — neutral white with border */
+  .pcms-btn-secondary,
+  .pcms-secondary-button {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #1e293b;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+  }
+  .pcms-btn-secondary:hover:not(:disabled),
+  .pcms-secondary-button:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #94a3b8;
+    color: #0f172a;
+  }
+
+  /* Success — green, for completed / confirm */
+  .pcms-btn-success {
+    background: var(--pcms-success);
+    border-color: var(--pcms-success);
+    color: #fff;
+    box-shadow:
+      0 6px 14px rgba(22, 163, 74, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .pcms-btn-success:hover:not(:disabled) {
+    background: var(--pcms-success-hover);
+    border-color: var(--pcms-success-hover);
+  }
+
+  /* Warning — orange */
+  .pcms-btn-warning {
+    background: var(--pcms-warning);
+    border-color: var(--pcms-warning);
+    color: #fff;
+    box-shadow:
+      0 6px 14px rgba(249, 115, 22, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .pcms-btn-warning:hover:not(:disabled) {
+    background: var(--pcms-warning-hover);
+    border-color: var(--pcms-warning-hover);
+  }
+
+  /* Danger — red */
+  .pcms-btn-danger,
+  .pcms-danger-button {
+    background: var(--pcms-danger);
+    border-color: var(--pcms-danger);
+    color: #fff;
+    box-shadow:
+      0 6px 14px rgba(220, 38, 38, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .pcms-btn-danger:hover:not(:disabled),
+  .pcms-danger-button:hover:not(:disabled) {
+    background: var(--pcms-danger-hover);
+    border-color: var(--pcms-danger-hover);
+  }
+
+  /* Ghost — minimal */
+  .pcms-btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: #1e293b;
+    box-shadow: none;
+  }
+  .pcms-btn-ghost:hover:not(:disabled) {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+
+  /* Status update buttons — spec-aligned colors */
+  .pcms-status-update-button {
+    color: #fff;
+    background: var(--status-pending-bg);
+    border-color: var(--status-pending-border);
+  }
+  .pcms-status-update-button--open,
+  .pcms-status-update-button--pending {
+    background: var(--status-open-bg);
+    color: var(--status-open-text);
+    border-color: var(--status-open-border);
+  }
+  .pcms-status-update-button--in_progress {
+    background: var(--status-in-progress-bg);
+    color: var(--status-in-progress-text);
+    border-color: var(--status-in-progress-border);
+  }
+  .pcms-status-update-button--waiting_spare_part,
+  .pcms-status-update-button--waiting_sparepart {
+    background: var(--status-waiting-spare-part-bg);
+    color: var(--status-waiting-spare-part-text);
+    border-color: var(--status-waiting-spare-part-border);
+  }
+  .pcms-status-update-button--waiting_vendor {
+    background: var(--status-waiting-vendor-bg);
+    color: var(--status-waiting-vendor-text);
+    border-color: var(--status-waiting-vendor-border);
+  }
+  .pcms-status-update-button--waiting_fix_defect {
+    background: var(--status-waiting-fix-defect-bg);
+    color: var(--status-waiting-fix-defect-text);
+    border-color: var(--status-waiting-fix-defect-border);
+  }
+  .pcms-status-update-button--completed {
+    background: var(--status-completed-bg);
+    color: var(--status-completed-text);
+    border-color: var(--status-completed-border);
+  }
+  .pcms-status-update-button--verified {
+    background: var(--status-verified-bg);
+    color: var(--status-verified-text);
+    border-color: var(--status-verified-border);
+  }
+  .pcms-status-update-button--cancelled,
+  .pcms-status-update-button--rejected {
+    background: var(--status-cancelled-bg);
+    color: var(--status-cancelled-text);
+    border-color: var(--status-cancelled-border);
+  }
+
+  /* Status badge — spec colors via dot + soft background */
+  .pcms-status-badge--in_progress {
+    background: #eef2ff !important;
+    color: #3730a3 !important;
+    border-color: #c7d2fe !important;
+  }
+  .pcms-status-badge--waiting_fix_defect {
+    background: #fffbeb !important;
+    color: #92400e !important;
+    border-color: #fde68a !important;
+  }
+  .pcms-status-badge--pending {
+    background: #eff6ff !important;
+    color: #1e40af !important;
+    border-color: #bfdbfe !important;
+  }
+
+  /* Modern cards: tighter radius, soft shadow, hover lift */
+  .pcms-card-modern {
+    background: #ffffff;
+    border: 1px solid var(--pcms-border);
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease,
+      border-color 0.18s ease;
+  }
+  .pcms-card-modern:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    border-color: var(--pcms-border-strong);
+  }
+
+  /* Form field — clear required marker + error visuals */
+  .pcms-field {
+    display: grid;
+    gap: 0.4rem;
+  }
+  .pcms-field-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  .pcms-field-label--required::after {
+    content: "*";
+    color: #dc2626;
+    font-weight: 800;
+  }
+  .pcms-field-hint {
+    font-size: 0.78rem;
+    color: var(--pcms-text-muted);
+    line-height: 1.35;
+  }
+  .pcms-field-error {
+    font-size: 0.78rem;
+    color: #b91c1c;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    line-height: 1.35;
+  }
+  .pcms-field--invalid input,
+  .pcms-field--invalid textarea,
+  .pcms-field--invalid select,
+  .pcms-input-invalid {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+  }
+
+  /* Animated status dot for live operations */
+  .pcms-dot-pulse {
+    position: relative;
+  }
+  .pcms-dot-pulse::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: currentColor;
+    opacity: 0.6;
+    animation: pcms-pulse 1.6s ease-out infinite;
+  }
+  @keyframes pcms-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.45;
+    }
+    100% {
+      transform: scale(2.4);
+      opacity: 0;
+    }
+  }
+
+  /* Empty state — friendly, centered */
+  .pcms-empty-state {
+    display: grid;
+    place-items: center;
+    gap: 0.6rem;
+    padding: 2.5rem 1.25rem;
+    text-align: center;
+    border-radius: 20px;
+    border: 1px dashed var(--pcms-border-strong);
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+  }
+  .pcms-empty-state__mark {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+    border: 1px solid #dbeafe;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+  .pcms-empty-state h3 {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+  }
+  .pcms-empty-state p {
+    color: var(--pcms-text-muted);
+    font-size: 0.9rem;
+    max-width: 32rem;
+    margin: 0;
+  }
+
+  /* Filter chip — for status filters across list pages */
+  .pcms-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 36px;
+    padding: 0.25rem 0.8rem;
+    border-radius: 9999px;
+    border: 1px solid var(--pcms-border);
+    background: #ffffff;
+    color: #334155;
+    font-weight: 700;
+    font-size: 0.82rem;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+    cursor: pointer;
+  }
+  .pcms-chip:hover {
+    background: #f8fafc;
+    border-color: #94a3b8;
+  }
+  .pcms-chip[aria-pressed="true"],
+  .pcms-chip--active {
+    background: var(--pcms-primary-soft);
+    color: var(--pcms-primary-strong);
+    border-color: #bfdbfe;
+  }
+}
+
+/* Mobile-first refinements applied site-wide */
+@media (max-width: 640px) {
+  .pcms-btn,
+  .pcms-action-button,
+  .pcms-secondary-button,
+  .pcms-danger-button {
+    font-size: 0.95rem;
+  }
+  /* Ensure tap targets on all interactive elements */
+  a[role="button"],
+  button:not(.pcms-link) {
+    min-height: 44px;
+  }
+  /* Reduce overall card padding for tighter mobile feel */
+  .pcms-section-card {
+    padding: 0.9rem !important;
+  }
+  /* Prevent horizontal scroll bleed */
+  html, body {
+    overflow-x: hidden;
+  }
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .pcms-btn,
+  .pcms-card-modern,
+  .card-transition {
+    transition: none !important;
+  }
+  .pcms-dot-pulse::after,
+  .spinner,
+  .pcms-loader-ring {
+    animation: none !important;
   }
 }

@@ -4,6 +4,7 @@ import { cn } from "@/app/lib/utils/cn";
 type StatusTone =
   | "green"
   | "blue"
+  | "indigo"
   | "amber"
   | "orange"
   | "purple"
@@ -36,11 +37,11 @@ const statusConfig: Record<string, StatusBadgeConfig> = {
   verified: { label: "Verified", tone: "green" },
   open: { label: "Open", tone: "blue" },
   scheduled: { label: "Scheduled", tone: "gray" },
-  pending: { label: "Pending", tone: "gray" },
-  in_progress: { label: "In Progress", tone: "blue" },
+  pending: { label: "Pending", tone: "blue" },
+  in_progress: { label: "In Progress", tone: "indigo" },
   waiting_sparepart: { label: "Waiting Sparepart", tone: "orange" },
   waiting_vendor: { label: "Waiting Vendor", tone: "orange" },
-  waiting_fix_defect: { label: "Waiting Fix Defect", tone: "red" },
+  waiting_fix_defect: { label: "Waiting Fix Defect", tone: "amber" },
   cancelled: { label: "Cancelled", tone: "red" },
   rejected: { label: "Rejected", tone: "red" },
   overdue: { label: "Overdue", tone: "red" },
@@ -49,6 +50,7 @@ const statusConfig: Record<string, StatusBadgeConfig> = {
 const toneClasses: Record<StatusTone, string> = {
   green: "border-emerald-200 bg-emerald-50 text-emerald-800",
   blue: "border-blue-200 bg-blue-50 text-blue-800",
+  indigo: "border-indigo-200 bg-indigo-50 text-indigo-800",
   amber: "border-amber-200 bg-amber-50 text-amber-800",
   orange: "border-orange-200 bg-orange-50 text-orange-800",
   purple: "border-purple-200 bg-purple-50 text-purple-800",
@@ -59,6 +61,7 @@ const toneClasses: Record<StatusTone, string> = {
 const dotClasses: Record<StatusTone, string> = {
   green: "bg-emerald-500",
   blue: "bg-blue-500",
+  indigo: "bg-indigo-500",
   amber: "bg-amber-500",
   orange: "bg-orange-500",
   purple: "bg-purple-500",

@@ -97,106 +97,136 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--pcms-app-bg)] p-4">
-      <div className="w-full max-w-4xl">
-        {/* Success message from onboarding */}
-        {message === 'onboarding_complete' && (
-          <Alert className="mb-6 max-w-md mx-auto bg-green-50 border-green-200">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <AlertDescription className="text-green-800 ml-2">
-              <strong>Account setup complete!</strong> Please sign in to access your dashboard with your new permissions.
-            </AlertDescription>
-          </Alert>
-        )}
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Decorative orbs */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full bg-blue-200/40 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-24 bottom-0 h-96 w-96 rounded-full bg-indigo-200/40 blur-3xl"
+      />
 
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="p-4 bg-blue-100 rounded-full">
-              <Building className="w-12 h-12 text-blue-600" />
+      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-8 sm:px-6 lg:px-8">
+        {/* Top brand bar */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-600/30">
+              <Building className="h-5 w-5" />
+            </div>
+            <span className="text-lg font-extrabold tracking-tight text-slate-900">
+              PCMS
+            </span>
+          </div>
+          <span className="hidden text-xs font-semibold text-slate-500 sm:inline">
+            Hotel maintenance operations
+          </span>
+        </div>
+
+        <div className="flex flex-1 items-center justify-center py-10">
+          <div className="w-full max-w-5xl">
+            {message === 'onboarding_complete' && (
+              <Alert className="mx-auto mb-6 max-w-md border-emerald-200 bg-emerald-50">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                <AlertDescription className="ml-2 text-emerald-800">
+                  <strong>Account setup complete.</strong> Sign in to access your dashboard.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="grid items-center gap-10 lg:grid-cols-2">
+              {/* Left: pitch */}
+              <div className="space-y-6 lg:pr-6">
+                <div className="inline-flex items-center gap-2 rounded-full border border-blue-200/70 bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wide text-blue-700 backdrop-blur">
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                  Property Care Maintenance System
+                </div>
+                <h1 className="text-balance text-4xl font-black leading-tight tracking-tight text-slate-900 sm:text-5xl">
+                  Hotel maintenance,{' '}
+                  <span className="bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    organized clearly.
+                  </span>
+                </h1>
+                <p className="max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
+                  Track jobs across rooms and areas, capture before/after photos,
+                  and give Chief Engineers, Technicians and GMs a single source of
+                  truth for every issue.
+                </p>
+
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  <li className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3 shadow-sm backdrop-blur">
+                    <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-emerald-100 text-emerald-700">
+                      <Wrench className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900">Workflow</p>
+                      <p className="text-xs text-slate-600">Clear status, priority and photos for every job.</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3 shadow-sm backdrop-blur">
+                    <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-indigo-100 text-indigo-700">
+                      <Users className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900">Visibility</p>
+                      <p className="text-xs text-slate-600">KPI dashboard and PDF reports for leadership.</p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Right: sign-in card */}
+              <Card className="mx-auto w-full max-w-md border-slate-200/80 bg-white/95 shadow-xl shadow-slate-900/[0.06] backdrop-blur">
+                <CardHeader className="space-y-3 text-center">
+                  <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-blue-100 text-blue-700">
+                    <Shield className="h-6 w-6" />
+                  </div>
+                  <CardTitle className="text-2xl text-slate-900">
+                    Sign in to PCMS
+                  </CardTitle>
+                  <p className="text-sm text-slate-600">
+                    Access your maintenance dashboard and properties.
+                  </p>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  <Button
+                    onClick={handleAuth0Login}
+                    className="w-full"
+                    size="lg"
+                    isLoading={isRedirecting}
+                    loadingText="Signing in…"
+                  >
+                    Continue with single sign-on
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+
+                  <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+                    <Shield className="h-3.5 w-3.5" />
+                    Secure authentication powered by Auth0
+                  </div>
+
+                  <div className="border-t border-slate-200 pt-4">
+                    <p className="text-center text-sm text-slate-600">
+                      Don&apos;t have an account?{' '}
+                      <Link
+                        href="/auth/register"
+                        className="font-semibold text-blue-600 underline-offset-2 hover:text-blue-700 hover:underline"
+                      >
+                        Contact your administrator
+                      </Link>
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Welcome to PCMS
-          </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            A hotel maintenance SaaS for Chief Engineers, Technicians, GMs, and Owners to manage rooms, areas, properties, PDF reports, and maintenance jobs.
-          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 p-3 bg-green-100 rounded-full w-16 h-16 flex items-center justify-center">
-                <Wrench className="w-8 h-8 text-green-600" />
-              </div>
-              <CardTitle className="text-xl">Hotel Maintenance Workflow</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-gray-600">
-                Track room and area maintenance jobs with clear status, priority, before photo, after photo, and technician visibility.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 p-3 bg-purple-100 rounded-full w-16 h-16 flex items-center justify-center">
-                <Users className="w-8 h-8 text-purple-600" />
-              </div>
-              <CardTitle className="text-xl">Operations Visibility</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-gray-600">
-                Give hotel leadership a clean KPI Dashboard, management reports, and a professional job record for every issue.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="max-w-md mx-auto">
-          <CardHeader className="text-center space-y-2">
-            <div className="flex justify-center mb-4">
-              <div className="p-3 bg-blue-100 rounded-full">
-                <Shield className="w-8 h-8 text-blue-600" />
-              </div>
-            </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">
-              Sign in to your account
-            </CardTitle>
-            <p className="text-gray-600">
-              Access your PCMS maintenance dashboard and manage your properties
-            </p>
-          </CardHeader>
-          
-          <CardContent className="space-y-4">
-            <Button 
-              onClick={handleAuth0Login}
-              className="w-full h-12 text-lg"
-              size="lg"
-              isLoading={isRedirecting}
-              loadingText="Signing in..."
-            >
-              Sign in to PCMS
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-            
-            <div className="text-center text-sm text-gray-500">
-              Secure authentication powered by Auth0
-            </div>
-            
-            <div className="border-t pt-4">
-              <div className="text-center text-sm text-gray-600">
-                Don&apos;t have an account?{' '}
-                <Link 
-                  href="/auth/register" 
-                  className="text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Contact your administrator
-                </Link>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <footer className="mt-auto text-center text-xs text-slate-500">
+          © {new Date().getFullYear()} PCMS · Hotel maintenance operations
+        </footer>
       </div>
     </div>
   );

@@ -169,13 +169,44 @@ export function StatusUpdateButton({ status, className, children, ...props }: Re
   return <button className={cn('pcms-status-update-button', `pcms-status-update-button--${normalized}`, className)} {...props}>{children}</button>;
 }
 
-export function FormField({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <label className="grid gap-2 text-sm font-bold text-slate-700">
-      <span>{label}</span>
-      {children}
-      {hint ? <span className="text-xs font-medium text-slate-500">{hint}</span> : null}
-    </label>
+export function FormField({
+  label,
+  hint,
+  error,
+  required,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  error?: string | null;
+  required?: boolean;
+  htmlFor?: string;
+  children: React.ReactNode;
+}) {
+  const labelClass = cn('pcms-field-label', required && 'pcms-field-label--required');
+  const body = (
+    <>
+      {htmlFor ? (
+        <label htmlFor={htmlFor} className={labelClass}>{label}</label>
+      ) : (
+        <span className={labelClass}>{label}</span>
+      )}
+      <div className={cn(error && 'pcms-field--invalid')}>{children}</div>
+      {error ? (
+        <span className="pcms-field-error" role="alert">
+          <span aria-hidden="true">⚠</span>
+          {error}
+        </span>
+      ) : hint ? (
+        <span className="pcms-field-hint">{hint}</span>
+      ) : null}
+    </>
+  );
+  return htmlFor ? (
+    <div className="pcms-field" data-invalid={error ? 'true' : undefined}>{body}</div>
+  ) : (
+    <label className="pcms-field" data-invalid={error ? 'true' : undefined}>{body}</label>
   );
 }
 

@@ -331,10 +331,10 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
   }, [job.job_id, router]);
 
   return (
-    <Card 
-      className={`w-full flex flex-col transition-all duration-200 bg-white shadow hover:shadow-md cursor-pointer mobile-card relative overflow-hidden ${
-        viewMode === 'list' 
-          ? "max-w-none" 
+    <Card
+      className={`w-full flex flex-col transition-all duration-200 bg-white border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 cursor-pointer mobile-card relative overflow-hidden rounded-xl ${
+        viewMode === 'list'
+          ? "max-w-none"
           : "max-w-none sm:w-full mx-auto"
       }`}
       onClick={handleCardClick}
@@ -342,16 +342,16 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
       role="button"
       tabIndex={0}
     >
-      <div className={cn("absolute left-0 top-0 h-full w-1", statusAccentClass)} />
-      <CardHeader className="flex-shrink-0 p-3 sm:p-4 pb-2 sm:pb-3 border-b border-gray-100">
+      <div className={cn("absolute left-0 top-0 h-full w-1.5", statusAccentClass)} />
+      <CardHeader className="flex-shrink-0 p-4 pb-3 border-b border-slate-100 pl-5">
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="min-w-[12rem] flex-1 space-y-1">
-              <CardTitle className="text-sm sm:text-base font-semibold text-gray-900 line-clamp-2 leading-tight">
+            <div className="min-w-[12rem] flex-1 space-y-1.5">
+              <CardTitle className="text-base sm:text-lg font-bold text-slate-900 line-clamp-2 leading-snug">
                 {job.topics?.[0]?.title || 'No Topic'}
               </CardTitle>
-              <div className="flex items-center gap-1 text-xs text-gray-600">
-                <MapPin className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-slate-700">
+                <MapPin className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
                 <span className="truncate max-w-full">
                   {(() => {
                     if (!job.rooms || job.rooms.length === 0) {
@@ -382,7 +382,7 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
             </div>
             <div className="flex max-w-full flex-col items-start gap-1 sm:items-end">
               <StatusBadge status={job.status} />
-              <span className="text-[11px] text-gray-500">ID #{String(job.job_id).slice(0, 8)}</span>
+              <span className="text-[11px] font-semibold text-slate-600">ID #{String(job.job_id).slice(0, 8)}</span>
             </div>
           </div>
           
@@ -392,7 +392,7 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
             {(job.area?.name || job.area_name) ? (
               <Badge
                 variant="outline"
-                className="px-2 py-0.5 text-xs flex items-center gap-1 border-blue-200 bg-blue-50 text-blue-700"
+                className="px-2 py-0.5 text-xs flex items-center gap-1 border-blue-300 bg-blue-50 text-blue-800 font-semibold"
                 aria-label="Area"
               >
                 <MapPin className="w-3 h-3" />
@@ -401,7 +401,7 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
             ) : null}
             <Badge
               variant="outline"
-              className="px-2 py-0.5 text-xs flex items-center gap-1"
+              className="px-2 py-0.5 text-xs flex items-center gap-1 border-slate-300 bg-slate-50 text-slate-800 font-semibold"
               aria-label="Created date"
             >
               <Calendar className="w-3.5 h-3.5" />
@@ -418,9 +418,9 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
               </Badge>
             )}
             {job.is_preventivemaintenance && (
-              <Badge 
-                variant="secondary" 
-                className="px-2 py-0.5 text-xs bg-blue-50 text-blue-700"
+              <Badge
+                variant="secondary"
+                className="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-800 border-indigo-300 font-bold"
                 aria-label="Preventive Maintenance"
               >
                 PM
@@ -506,52 +506,52 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
           )}
         </div>
 
-        <div className={`flex items-start gap-2 bg-gray-50 p-2 sm:p-3 rounded-lg ${
+        <div className={`flex items-start gap-2 bg-slate-50 border border-slate-200 p-3 rounded-lg ${
           viewMode === 'list' ? "flex-1" : ""
         }`}>
-          <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5 flex-shrink-0" />
-          <p className="text-xs sm:text-sm text-gray-700 leading-relaxed line-clamp-3 sm:line-clamp-2">
+          <MessageSquare className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-slate-800 leading-relaxed line-clamp-3 sm:line-clamp-2">
             {job.description || 'No description provided'}
           </p>
         </div>
 
         {job.remarks && (
-          <div className="border-t border-gray-100 pt-2 sm:pt-3">
+          <div className="border-t border-slate-100 pt-3">
             <Button
               variant="ghost"
-              className="w-full flex justify-between items-center p-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-50 rounded-md touch-target"
+              className="w-full flex justify-between items-center p-2 text-sm font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900 rounded-md touch-target"
               onClick={(e) => toggleSection('remarks', e)}
             >
               <span className="font-medium flex items-center gap-2">
-                <StickyNote className="w-4 h-4 text-gray-400" />
+                <StickyNote className="w-4 h-4 text-slate-500" />
                 <span className="hidden xs:inline">Remarks</span>
                 <span className="xs:hidden">Notes</span>
               </span>
               {expandedSections.remarks ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </Button>
             {expandedSections.remarks && (
-              <div className="mt-2 p-2 sm:p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{job.remarks}</p>
+              <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                <p className="text-sm text-slate-800 leading-relaxed">{job.remarks}</p>
               </div>
             )}
           </div>
         )}
 
-        <div className="border-t border-gray-100 pt-2 sm:pt-3">
+        <div className="border-t border-slate-100 pt-3">
           <Button
             variant="ghost"
             className="w-full flex justify-between items-center p-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-50 rounded-md touch-target"
             onClick={(e) => toggleSection('details', e)}
           >
             <span className="font-medium flex items-center gap-2">
-              <User className="w-4 h-4 text-gray-400" />
+              <User className="w-4 h-4 text-slate-500" />
               <span className="hidden xs:inline">Staff Details</span>
               <span className="xs:hidden">Staff</span>
             </span>
             {expandedSections.details ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
           {expandedSections.details && (
-            <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 mt-2 bg-gray-50 rounded-lg">
+            <div className="flex items-center gap-3 p-3 mt-2 bg-slate-50 border border-slate-200 rounded-lg">
               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border border-gray-100 flex-shrink-0 bg-white">
                 {job.profile_image && job.profile_image.profile_image && !profileImageError ? (
                   <ProfileImage
@@ -594,7 +594,7 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
                 )}
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-semibold text-gray-700">
+                <p className="text-sm font-bold text-slate-900">
                   {(() => {
                     try {
                       // Additional safety check for job.user
@@ -610,7 +610,7 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
                     }
                   })()}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs font-medium text-slate-600">
                   {(() => {
                     try {
                       // Additional safety check for job.user
@@ -630,57 +630,66 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
           )}
         </div>
 
-        <div className="border-t border-gray-100 pt-2 sm:pt-3">
+        <div className="border-t border-slate-100 pt-3">
           <Button
             variant="ghost"
             className="w-full flex justify-between items-center p-2 text-xs sm:text-sm text-gray-700 hover:bg-gray-50 rounded-md touch-target"
             onClick={(e) => toggleSection('timestamps', e)}
           >
             <span className="font-medium flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-400" />
+              <Clock className="w-4 h-4 text-slate-500" />
               <span className="hidden xs:inline">Timestamps</span>
               <span className="xs:hidden">Time</span>
             </span>
             {expandedSections.timestamps ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </Button>
           {expandedSections.timestamps && (
-            <div className="space-y-2 mt-2 p-2 sm:p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
-                <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <span className="truncate"><span className="font-medium">Created:</span> {formatDateLabel(job.created_at)}</span>
+            <div className="space-y-2 mt-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+              <div className="flex items-center gap-2 text-sm text-slate-800">
+                <Calendar className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                <span className="truncate"><span className="font-semibold">Created:</span> {formatDateLabel(job.created_at)}</span>
               </div>
-              <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
-                <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <span className="truncate"><span className="font-medium">Updated:</span> {formatDateLabel(job.updated_at)}</span>
+              <div className="flex items-center gap-2 text-sm text-slate-800">
+                <Clock className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                <span className="truncate"><span className="font-semibold">Updated:</span> {formatDateLabel(job.updated_at)}</span>
               </div>
               {job.completed_at && (
-                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
-                  <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  <span className="truncate"><span className="font-medium">Completed:</span> {formatDateLabel(job.completed_at)}</span>
+                <div className="flex items-center gap-2 text-sm text-slate-800">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span className="truncate"><span className="font-semibold">Completed:</span> {formatDateLabel(job.completed_at)}</span>
                 </div>
               )}
               {job.status === "in_progress" && (
-                <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0"></span>
-                  <span className="truncate">In progress since {formatDateLabel(job.updated_at)}</span>
+                <div className="flex items-center gap-2 text-sm text-slate-800">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse flex-shrink-0"></span>
+                  <span className="truncate font-medium">In progress since {formatDateLabel(job.updated_at)}</span>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <div className="pt-2 sm:pt-3 border-t border-gray-100">
-          <UpdateStatusModal 
+        <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-sm h-10 font-bold border-slate-300 text-slate-800 hover:bg-slate-100 hover:text-slate-900 hover:border-slate-400 transition-colors touch-target"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/dashboard/jobs/${job.job_id}`);
+            }}
+          >
+            View Detail
+          </Button>
+          <UpdateStatusModal
             job={job}
             onComplete={handleStatusUpdateComplete}
           >
-            <Button 
-              variant="outline" 
+            <Button
               size="sm"
-              className="w-full text-xs sm:text-sm h-8 sm:h-9 font-medium hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors touch-target"
+              className="w-full text-sm h-10 font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-600/20 transition-colors touch-target"
             >
-              <span className="hidden xs:inline">Update Status</span>
-              <span className="xs:hidden">Update</span>
+              Update Status
             </Button>
           </UpdateStatusModal>
         </div>

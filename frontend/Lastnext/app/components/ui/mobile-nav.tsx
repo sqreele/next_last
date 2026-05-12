@@ -6,6 +6,7 @@ import { Search, Bell } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { primaryNavigationItems } from "@/app/lib/navigation";
+import { cn } from "@/app/lib/utils/cn";
 
 interface MobileNavProps {
   className?: string;
@@ -22,12 +23,15 @@ export function MobileNav({ className }: MobileNavProps) {
 
   return (
     <nav
-      className={`fixed left-3 right-3 z-50 rounded-[2rem] border border-[var(--pcms-border)] bg-white/92 shadow-[var(--pcms-shadow)] backdrop-blur-xl md:hidden ${className || ""}`}
-      style={{ bottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+      className={cn(
+        "fixed left-3 right-3 z-50 rounded-2xl border border-slate-200 bg-white shadow-[0_-4px_20px_rgba(15,23,42,0.10)] md:hidden",
+        className,
+      )}
+      style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}
       role="navigation"
       aria-label="Mobile navigation"
     >
-      <div className="flex items-center justify-around gap-1 px-2 py-2">
+      <div className="flex items-center justify-around gap-1 px-2 py-1.5">
         {navigationItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -37,27 +41,31 @@ export function MobileNav({ className }: MobileNavProps) {
             <Link
               key={item.name}
               href={item.href}
-              className="flex-1 rounded-2xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/45"
+              className="flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              aria-current={isActive ? "page" : undefined}
+              aria-label={`Navigate to ${item.name}`}
             >
               <div
-                className={`
-                  flex flex-col items-center gap-1 px-2 py-2.5
-                  rounded-2xl transition-all duration-200 ease-in-out active:scale-95
-                  touch-manipulation relative min-h-[56px] justify-center
-                  ${
-                    isActive
-                      ? "bg-[var(--pcms-accent-gradient)] text-white shadow-[var(--pcms-button-shadow)]"
-                      : "text-slate-500 hover:bg-[var(--pcms-primary-soft)] hover:text-[var(--pcms-primary-strong)] active:bg-[var(--pcms-primary-soft)]"
-                  }
-                `}
-                aria-label={`Navigate to ${item.name}`}
-                aria-current={isActive ? "page" : undefined}
+                className={cn(
+                  "flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all duration-150 ease-out active:scale-95 touch-manipulation min-h-[56px] justify-center",
+                  isActive
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                    : "text-slate-700 hover:bg-slate-100 active:bg-slate-100",
+                )}
               >
                 <Icon
-                  className={`h-6 w-6 transition-all duration-200 ${isActive ? "text-white" : "text-slate-500"}`}
+                  className={cn(
+                    "h-6 w-6 transition-colors",
+                    isActive ? "text-white" : "text-slate-700",
+                  )}
                   aria-hidden={true}
                 />
-                <span className={`text-[10px] font-semibold leading-tight ${isActive ? "text-white" : "text-slate-500"}`}>
+                <span
+                  className={cn(
+                    "text-[11px] font-bold leading-tight",
+                    isActive ? "text-white" : "text-slate-700",
+                  )}
+                >
                   {item.shortName}
                 </span>
               </div>
@@ -87,7 +95,10 @@ export function MobileTopBar({ className }: MobileNavProps) {
 
   return (
     <header
-      className={`sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm tablet:hidden safe-area-inset ${className || ""}`}
+      className={cn(
+        "sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm tablet:hidden safe-area-inset",
+        className,
+      )}
       role="banner"
     >
       <div className="flex items-center justify-between px-4 py-3">
@@ -95,14 +106,14 @@ export function MobileTopBar({ className }: MobileNavProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="p-2 min-h-touch-target min-w-touch-target touch-manipulation hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+            className="p-2 min-h-touch-target min-w-touch-target touch-manipulation hover:bg-slate-100 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
             aria-label="Search"
           >
-            <Search className="w-5 h-5 text-gray-600" aria-hidden={true} />
+            <Search className="w-5 h-5 text-slate-700" aria-hidden={true} />
           </Button>
         </div>
 
-        <h1 className="text-lg font-semibold text-blue-700 text-balance truncate max-w-48">
+        <h1 className="text-lg font-bold text-slate-900 text-balance truncate max-w-48">
           {getPageTitle()}
         </h1>
 
@@ -110,10 +121,10 @@ export function MobileTopBar({ className }: MobileNavProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="p-2 relative min-h-touch-target min-w-touch-target touch-manipulation hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+            className="p-2 relative min-h-touch-target min-w-touch-target touch-manipulation hover:bg-slate-100 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
             aria-label="Notifications"
           >
-            <Bell className="w-5 h-5 text-gray-600" aria-hidden={true} />
+            <Bell className="w-5 h-5 text-slate-700" aria-hidden={true} />
             <span
               className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full animate-pulse"
               aria-label="You have new notifications"

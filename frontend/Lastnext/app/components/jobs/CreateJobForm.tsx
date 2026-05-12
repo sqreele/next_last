@@ -36,6 +36,7 @@ interface FormValues {
   };
   room: Room | null;
   area_id: number | null;
+  floor: string | null;
   files: File[];
   is_defective: boolean;
   is_preventivemaintenance: boolean;
@@ -86,6 +87,7 @@ const initialValues: FormValues = {
   topic: { title: '', description: '' },
   room: null,
   area_id: null,
+  floor: null,
   files: [],
   is_defective: false,
   is_preventivemaintenance: false,
@@ -125,11 +127,35 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   const [rooms, setRooms] = useState<Room[]>([]);
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
+  const [floors, setFloors] = useState<string[]>([]);
+  const [isFloorLoading, setIsFloorLoading] = useState(false);
+  const [isRoomLoading, setIsRoomLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPropertyId, setCurrentPropertyId] = useState<string | null>(null);
+
+  const normalizeRoomsResponse = useCallback((data: unknown): Room[] => {
+    if (Array.isArray(data)) return data as Room[];
+    if (data && typeof data === 'object' && Array.isArray((data as { results?: unknown }).results)) {
+      return (data as { results: Room[] }).results;
+    }
+    return [];
+  }, []);
+
+  const normalizeFloorsResponse = useCallback((data: unknown): string[] => {
+    const rawFloors = Array.isArray(data)
+      ? data
+      : data && typeof data === 'object' && Array.isArray((data as { floors?: unknown }).floors)
+        ? (data as { floors: unknown[] }).floors
+        : [];
+
+    return rawFloors
+      .map((floor) => String(floor ?? '').trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  }, []);
 
   const formatApiError = (error: unknown, fallbackMessage: string): string => {
     if (!axios.isAxiosError(error)) {
@@ -164,13 +190,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     return parts.length ? parts.join(' | ') : fallbackMessage;
   };
 
-  const showErrorToast = (message: string) => {
+  const showErrorToast = useCallback((message: string) => {
     toast({
       title: 'Error',
       description: message,
       variant: 'destructive',
     });
-  };
+  }, [toast]);
 
   // Check if user has properties
   const hasProperties = userProfile?.properties && userProfile.properties.length > 0;
@@ -311,6 +337,61 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     }
   };
 
+  const fetchRooms = useCallback(async (areaId?: number | null, floor?: string | null) => {
+    if (!session?.user?.accessToken) return;
+
+    const propertyParam = selectedProperty || currentPropertyId || undefined;
+    setIsRoomLoading(true);
+    try {
+      const response = await axios.get(`/api/rooms/`, {
+        withCredentials: true,
+        params: {
+          ...(propertyParam ? { property: propertyParam } : {}),
+          ...(areaId ? { area_id: areaId } : {}),
+          ...(floor ? { floor } : {}),
+        },
+      });
+      setRooms(normalizeRoomsResponse(response.data));
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
+      const errorMessage = formatApiError(error, 'Failed to fetch rooms. Please try again.');
+      setError(errorMessage);
+      showErrorToast(errorMessage);
+      setRooms([]);
+    } finally {
+      setIsRoomLoading(false);
+    }
+  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, normalizeRoomsResponse, showErrorToast]);
+
+  const fetchFloorsForArea = useCallback(async (areaId: number | null) => {
+    if (!session?.user?.accessToken || !areaId) {
+      setFloors([]);
+      return;
+    }
+
+    const propertyParam = selectedProperty || currentPropertyId || undefined;
+    setIsFloorLoading(true);
+    try {
+      const response = await axios.get(`/api/rooms/`, {
+        withCredentials: true,
+        params: {
+          floors_only: 'true',
+          area_id: areaId,
+          ...(propertyParam ? { property: propertyParam } : {}),
+        },
+      });
+      setFloors(normalizeFloorsResponse(response.data));
+    } catch (error) {
+      console.error('Error fetching floors:', error);
+      const errorMessage = formatApiError(error, 'Failed to fetch floors. Please try again.');
+      setError(errorMessage);
+      showErrorToast(errorMessage);
+      setFloors([]);
+    } finally {
+      setIsFloorLoading(false);
+    }
+  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, normalizeFloorsResponse, showErrorToast]);
+
   const fetchData = useCallback(async () => {
     if (!session?.user?.accessToken) {
       return;
@@ -319,6 +400,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     loaderShownAtRef.current = Date.now();
     setIsLoading(true);
     setError(null);
+    setFloors([]);
     
     try {
       const propertyParam = selectedProperty || currentPropertyId || undefined;
@@ -330,7 +412,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
           params: { is_active: 'true', ...(propertyParam ? { property_id: propertyParam } : {}) },
         }),
       ]);
-      setRooms(roomsResponse.data);
+      setRooms(normalizeRoomsResponse(roomsResponse.data));
       setTopics(topicsResponse.data);
       const areasData = areasResponse.data;
       const areasList: Area[] = Array.isArray(areasData) ? areasData : (areasData?.results || []);
@@ -343,7 +425,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     } finally {
       clearLoadingAfterMinTime();
     }
-  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, clearLoadingAfterMinTime]);
+  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, clearLoadingAfterMinTime, normalizeRoomsResponse, showErrorToast]);
 
   useEffect(() => {
     if (session?.user?.accessToken) {
@@ -531,37 +613,27 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               </div>
               
               <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
-                {/* Room Selection */}
-                <div className="md:col-span-2 space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 sm:text-base">
-                    Room <span className="text-red-500">*</span>
-                  </Label>
-                  <RoomAutocomplete
-                    rooms={rooms}
-                    selectedRoom={values.room}
-                    onSelect={(selectedRoom) => {
-                      setFieldValue('room', selectedRoom);
-                      setFieldTouched('room', true, false);
-                    }}
-                    disabled={isSubmitting}
-                  />
-                  {(touched.room || submitCount > 0) && errors.room && (
-                    <p className="text-sm text-red-600 flex items-center gap-1">
-                      <AlertCircle className="h-4 w-4" />
-                      {typeof errors.room === 'string' ? errors.room : (errors.room as FormikErrors<Room>).room_id}
-                    </p>
-                  )}
-                </div>
-
                 {/* Area Selection (optional) */}
-                <div className="md:col-span-2 space-y-2">
+                <div className="space-y-2">
                   <Label className="text-sm font-medium text-gray-700 sm:text-base">
                     Area / Zone <span className="text-xs text-gray-400">(optional)</span>
                   </Label>
                   <Select
                     value={values.area_id ? String(values.area_id) : 'none'}
                     onValueChange={(value) => {
-                      setFieldValue('area_id', value === 'none' ? null : Number(value));
+                      const nextAreaId = value === 'none' ? null : Number(value);
+                      setFieldValue('area_id', nextAreaId);
+                      setFieldValue('floor', null);
+                      setFieldValue('room', null);
+                      setFieldTouched('room', false, false);
+                      setFloors([]);
+                      setRooms([]);
+
+                      if (nextAreaId) {
+                        void fetchFloorsForArea(nextAreaId);
+                      } else {
+                        void fetchRooms(null, null);
+                      }
                     }}
                     disabled={isSubmitting}
                   >
@@ -579,6 +651,79 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       )}
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Floor Selection */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 sm:text-base">
+                    Floor <span className="text-xs text-gray-400">(select area first)</span>
+                  </Label>
+                  <Select
+                    value={values.floor || 'none'}
+                    onValueChange={(value) => {
+                      const nextFloor = value === 'none' ? null : value;
+                      setFieldValue('floor', nextFloor);
+                      setFieldValue('room', null);
+                      setFieldTouched('room', false, false);
+                      setRooms([]);
+
+                      if (values.area_id && nextFloor) {
+                        void fetchRooms(values.area_id, nextFloor);
+                      }
+                    }}
+                    disabled={isSubmitting || isFloorLoading || !values.area_id}
+                  >
+                    <SelectTrigger className="h-11 border-2 rounded-xl border-gray-200 sm:h-12">
+                      {isFloorLoading ? (
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          <Loader className="h-4 w-4 animate-spin" /> Loading floors...
+                        </span>
+                      ) : (
+                        <SelectValue placeholder="Select a floor" />
+                      )}
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Select a floor</SelectItem>
+                      {floors.length ? floors.map(floor => (
+                        <SelectItem key={floor} value={floor}>
+                          Floor {floor}
+                        </SelectItem>
+                      )) : (
+                        <SelectItem value="empty" disabled>No floors found for this area</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {values.area_id && !isFloorLoading && floors.length === 0 && (
+                    <p className="text-sm text-gray-500">No floors found for this area</p>
+                  )}
+                </div>
+
+                {/* Room Selection */}
+                <div className="md:col-span-2 space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 sm:text-base">
+                    Room Number <span className="text-red-500">*</span>
+                  </Label>
+                  <RoomAutocomplete
+                    rooms={rooms}
+                    selectedRoom={values.room}
+                    onSelect={(selectedRoom) => {
+                      setFieldValue('room', selectedRoom);
+                      setFieldTouched('room', true, false);
+                    }}
+                    disabled={isSubmitting || Boolean(values.area_id && !values.floor)}
+                    loading={isRoomLoading}
+                    emptyText="No rooms found for this floor"
+                    placeholder={values.area_id && !values.floor ? 'Select floor first...' : 'Select room number...'}
+                  />
+                  {values.floor && !isRoomLoading && rooms.length === 0 && (
+                    <p className="text-sm text-gray-500">No rooms found for this floor</p>
+                  )}
+                  {(touched.room || submitCount > 0) && errors.room && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {typeof errors.room === 'string' ? errors.room : (errors.room as FormikErrors<Room>).room_id}
+                    </p>
+                  )}
                 </div>
 
                 {/* Topic Selection */}

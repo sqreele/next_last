@@ -1108,103 +1108,101 @@ class RoomViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = RoomSerializer
 
+    @staticmethod
+    def _floor_from_room_name(room_name):
+        code = str(room_name or '').strip()
+        if not code.isdigit():
+            return None
+        if len(code) == 4 and code.startswith('1'):
+            return code[1]
+        if len(code) >= 3:
+            return code[0]
+        return None
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        if str(request.query_params.get('floors_only', '')).lower() in ['1', 'true', 'yes']:
+            floors = sorted(
+                {floor for floor in (self._floor_from_room_name(room.name) for room in queryset) if floor},
+                key=lambda floor: int(floor) if str(floor).isdigit() else str(floor)
+            )
+            return Response({'floors': floors})
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
     def get_queryset(self):
         """
         Return rooms that belong to properties the user has access to.
+        Supports dependent Create Job dropdown filters:
+        - property/property_id scoping
+        - area_id validation/scoping to the area's property
+        - floor filtering derived from room number format
         """
         user = self.request.user
         logger.info(f"User {user.username} requesting rooms")
-        
-        # ✅ PERFORMANCE: Optimize query with prefetch_related
+
         base_queryset = Room.objects.prefetch_related('properties')
-        
-        # Check if user is admin/superuser - give access to all properties and rooms
-        if user.is_superuser or user.is_staff:
-            logger.info(f"User {user.username} is admin/staff - returning all rooms")
-            property_id = self.request.query_params.get('property')
-            if property_id:
-                queryset = base_queryset.filter(properties__property_id=property_id)
-                logger.info(f"Found {queryset.count()} rooms for property {property_id}")
+        property_id = self.request.query_params.get('property') or self.request.query_params.get('property_id')
+        area_id = self.request.query_params.get('area_id') or self.request.query_params.get('area')
+        floor = self.request.query_params.get('floor')
+        is_active = self.request.query_params.get('is_active')
+
+        if area_id:
+            area_qs = Area.objects.select_related('property').filter(id=area_id)
+            if not (user.is_staff or user.is_superuser or user.username == 'admin'):
+                area_qs = area_qs.filter(property__users=user)
+            area_obj = area_qs.first()
+            if not area_obj:
+                return Room.objects.none()
+            if property_id and str(property_id) not in {str(area_obj.property.property_id), str(area_obj.property_id)}:
+                return Room.objects.none()
+            property_id = area_obj.property.property_id
+
+        if is_active is not None:
+            active_value = str(is_active).lower() in ['1', 'true', 'yes']
+            base_queryset = base_queryset.filter(is_active=active_value)
+
+        def apply_floor_filter(queryset):
+            if not floor:
                 return queryset
-            return base_queryset
-        
-        # Special case for admin username
-        if user.username == 'admin':
-            logger.info(f"Admin username {user.username} - returning all rooms")
-            property_id = self.request.query_params.get('property')
-            if property_id:
-                queryset = base_queryset.filter(properties__property_id=property_id)
-                logger.info(f"Found {queryset.count()} rooms for property {property_id}")
+            floor_str = str(floor).strip()
+            if not floor_str:
                 return queryset
-            return base_queryset
-        
-        # Get properties the user has access to
+            return queryset.filter(
+                Q(name__regex=rf'^1{floor_str}[0-9]{{2}}$') |
+                Q(name__regex=rf'^{floor_str}[0-9]{{2,}}$')
+            )
+
+        def apply_property_filter(queryset, prop_value):
+            if not prop_value:
+                return queryset
+            property_q = Q(properties__property_id=prop_value)
+            if str(prop_value).isdigit():
+                property_q |= Q(properties__id=int(prop_value))
+            return queryset.filter(property_q)
+
+        if user.is_superuser or user.is_staff or user.username == 'admin':
+            queryset = apply_property_filter(base_queryset, property_id)
+            return apply_floor_filter(queryset).distinct()
+
         user_properties = Property.objects.filter(users=user)
         logger.info(f"User has access to {user_properties.count()} properties")
-        
-        # Filter rooms by property parameter if provided
-        property_id = self.request.query_params.get('property')
+
         if property_id:
-            logger.info(f"Filtering rooms by property: {property_id}")
-            
-            # First, try to find rooms by property_id (more permissive approach)
-            try:
-                # Check if user has access to this specific property
-                property_obj = user_properties.get(property_id=property_id)
-                logger.info(f"Found property object: {property_obj.name} ({property_obj.property_id})")
-                
-                # Try different query approaches for debugging
-                queryset1 = Room.objects.filter(properties=property_obj)
-                logger.info(f"Query 1 (properties=property_obj): {queryset1.count()} rooms")
-                
-                queryset2 = Room.objects.filter(properties__property_id=property_id)
-                logger.info(f"Query 2 (properties__property_id): {queryset2.count()} rooms")
-                
-                # Use the second approach as it's more explicit
-                queryset = queryset2
-                logger.info(f"Final result: {queryset.count()} rooms for property {property_id}")
-                
-                # Return the queryset (even if empty)
-                return queryset
-                
-            except Property.DoesNotExist:
+            property_lookup = Q(property_id=property_id)
+            if str(property_id).isdigit():
+                property_lookup |= Q(id=int(property_id))
+            property_qs = user_properties.filter(property_lookup)
+            if not property_qs.exists():
                 logger.warning(f"User {user.username} doesn't have access to property {property_id}")
-                # Return empty queryset if user doesn't have access to the requested property
                 return Room.objects.none()
-        
-        # If no property filter, return all rooms from user's properties
-        logger.info(f"User properties: {[p.property_id for p in user_properties]}")
-        
-        # Try different query approaches for debugging
-        queryset1 = Room.objects.filter(properties__in=user_properties).distinct()
-        logger.info(f"Query 1 (properties__in): {queryset1.count()} rooms")
-        
-        queryset2 = Room.objects.filter(properties__property_id__in=[p.property_id for p in user_properties]).distinct()
-        logger.info(f"Query 2 (properties__property_id__in): {queryset2.count()} rooms")
-        
-        # Try a third approach - get all rooms that have any of the user's properties
-        property_ids = [p.property_id for p in user_properties]
-        logger.info(f"Property IDs to filter by: {property_ids}")
-        
-        queryset3 = Room.objects.filter(properties__property_id__in=property_ids).distinct()
-        logger.info(f"Query 3 (properties__property_id__in with explicit IDs): {queryset3.count()} rooms")
-        
-        # Use the most reliable approach
-        if queryset1.count() > 0:
-            queryset = queryset1
-            logger.info(f"Using Query 1 (properties__in): {queryset.count()} rooms")
-        elif queryset3.count() > 0:
-            queryset = queryset3
-            logger.info(f"Using Query 3 (properties__property_id__in with explicit IDs): {queryset.count()} rooms")
+            queryset = Room.objects.filter(properties__in=property_qs)
         else:
-            queryset = queryset2
-            logger.info(f"Using Query 2 (properties__property_id__in): {queryset.count()} rooms")
-        
-        logger.info(f"Final result: {queryset.count()} total rooms for user")
-        
-        # Return the filtered queryset (even if empty)
-        # Users should only see rooms they have access to
-        return queryset
+            queryset = Room.objects.filter(properties__in=user_properties)
+
+        return apply_floor_filter(queryset).distinct()
 
 class TopicViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]

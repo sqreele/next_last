@@ -111,20 +111,22 @@ function DesktopNav({
     >
       <div
         className={cn(
-          "p-4 border-b flex items-center border-gray-200",
+          "h-16 px-4 border-b flex items-center border-slate-200/80",
           collapsed ? "justify-center" : "justify-between",
         )}
       >
         <Link
           href="/dashboard"
           className={cn(
-            "flex items-center gap-2 group",
+            "flex items-center gap-2.5 group focus-visible:outline-none",
             collapsed && "justify-center",
           )}
         >
-          <Package2 className="h-6 w-6 text-blue-600 group-hover:text-blue-700 transition-colors" />
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/25 transition-transform group-hover:scale-105">
+            <Package2 className="h-5 w-5" />
+          </span>
           {!collapsed && (
-            <span className="font-semibold text-lg text-gray-800 group-hover:text-blue-700 transition-colors">
+            <span className="font-extrabold text-lg tracking-tight text-slate-900 group-hover:text-blue-700 transition-colors">
               PCMS
             </span>
           )}
@@ -148,19 +150,34 @@ function DesktopNav({
               <Link
                 key={item.name}
                 href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200 ease-in-out",
+                  "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all duration-200 ease-out",
+                  "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30",
                   collapsed ? "justify-center" : "",
                   isActive
-                    ? "bg-[var(--pcms-accent-gradient)] text-white shadow-[var(--pcms-button-shadow)] font-extrabold"
-                    : "text-slate-600 hover:bg-white/80 hover:text-[var(--pcms-primary-strong)]",
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                 )}
                 title={collapsed ? item.name : undefined}
               >
-                <item.icon
-                  className={cn("h-5 w-5", collapsed ? "flex-shrink-0" : "")}
-                />
-                {!collapsed && <span>{item.name}</span>}
+                {isActive && !collapsed && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute -left-2 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-blue-600"
+                  />
+                )}
+                <span
+                  className={cn(
+                    "grid h-7 w-7 flex-none place-items-center rounded-lg transition-colors",
+                    isActive
+                      ? "bg-white/15 text-white"
+                      : "bg-transparent text-slate-500 group-hover:text-slate-800",
+                  )}
+                >
+                  <item.icon className="h-[18px] w-[18px]" />
+                </span>
+                {!collapsed && <span className="truncate">{item.name}</span>}
               </Link>
             );
           })}

@@ -1,27 +1,30 @@
-import * as React from "react"
-import { cn } from "@/app/lib/utils/cn"
+import * as React from "react";
+import { cn } from "@/app/lib/utils/cn";
 
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & {
-    variant?: 'default' | 'mobile' | 'tablet' | 'interactive';
+    variant?: "default" | "mobile" | "tablet" | "interactive";
   }
->(({ className, variant = 'default', ...props }, ref) => (
+>(({ className, variant = "default", ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "w-full max-w-none rounded-lg border bg-card text-card-foreground shadow-sm transition-all duration-200",
+      "w-full max-w-none rounded-[var(--pcms-radius)] border border-[var(--pcms-border)] bg-white/95 text-[var(--pcms-text)] shadow-[var(--pcms-shadow-card)] backdrop-blur-sm transition-all duration-200",
       {
-        'mobile:rounded-xl mobile:mx-2 mobile:shadow-md': variant === 'mobile',
-        'tablet:rounded-2xl tablet:shadow-lg tablet:hover:shadow-xl': variant === 'tablet',
-        'hover:shadow-md hover:-translate-y-0.5 cursor-pointer touch-manipulation': variant === 'interactive',
+        "rounded-[1.25rem] shadow-[var(--pcms-shadow-sm)]":
+          variant === "mobile",
+        "tablet:rounded-[1.5rem] tablet:shadow-[var(--pcms-shadow)]":
+          variant === "tablet",
+        "cursor-pointer touch-manipulation hover:-translate-y-0.5 hover:border-[var(--pcms-border-strong)] hover:shadow-[var(--pcms-shadow)] active:translate-y-0":
+          variant === "interactive",
       },
-      className
+      className,
     )}
     {...props}
   />
-))
-Card.displayName = "Card"
+));
+Card.displayName = "Card";
 
 const CardHeader = React.forwardRef<
   HTMLDivElement,
@@ -30,14 +33,14 @@ const CardHeader = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "flex flex-col space-y-1.5", 
-      "p-4 mobile:p-5 tablet:p-6 desktop:p-6",
-      className
+      "flex flex-col space-y-1.5",
+      "p-4 mobile:p-5 tablet:p-6",
+      className,
     )}
     {...props}
   />
-))
-CardHeader.displayName = "CardHeader"
+));
+CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<
   HTMLParagraphElement,
@@ -46,13 +49,13 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-lg mobile:text-xl tablet:text-2xl font-semibold leading-none tracking-tight text-balance",
-      className
+      "text-lg mobile:text-xl tablet:text-2xl font-black leading-tight tracking-[-0.025em] text-balance text-[var(--pcms-text)]",
+      className,
     )}
     {...props}
   />
-))
-CardTitle.displayName = "CardTitle"
+));
+CardTitle.displayName = "CardTitle";
 
 const CardDescription = React.forwardRef<
   HTMLParagraphElement,
@@ -60,27 +63,23 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm leading-6 text-[var(--pcms-text-muted)]", className)}
     {...props}
   />
-))
-CardDescription.displayName = "CardDescription"
+));
+CardDescription.displayName = "CardDescription";
 
 const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div 
-    ref={ref} 
-    className={cn(
-      "pt-0",
-      "p-4 mobile:p-5 tablet:p-6 desktop:p-6",
-      className
-    )} 
-    {...props} 
+  <div
+    ref={ref}
+    className={cn("pt-0", "p-4 mobile:p-5 tablet:p-6", className)}
+    {...props}
   />
-))
-CardContent.displayName = "CardContent"
+));
+CardContent.displayName = "CardContent";
 
 const CardFooter = React.forwardRef<
   HTMLDivElement,
@@ -90,13 +89,20 @@ const CardFooter = React.forwardRef<
     ref={ref}
     className={cn(
       "flex items-center pt-0",
-      "p-4 mobile:p-5 tablet:p-6 desktop:p-6",
+      "p-4 mobile:p-5 tablet:p-6",
       "flex-col mobile:flex-row gap-2 mobile:gap-4",
-      className
+      className,
     )}
     {...props}
   />
-))
-CardFooter.displayName = "CardFooter"
+));
+CardFooter.displayName = "CardFooter";
 
-export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
+export {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+};

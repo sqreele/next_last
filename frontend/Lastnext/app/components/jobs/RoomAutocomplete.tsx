@@ -5,7 +5,7 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/app/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover";
 import { Button } from "@/app/components/ui/button";
-import { Check, ChevronsUpDown, Building } from "lucide-react";
+import { Check, ChevronsUpDown, Building, Loader } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
 import { useUser, useProperties } from "@/app/lib/stores/mainStore";
 import { Room } from "@/app/lib/types";
@@ -15,6 +15,9 @@ interface RoomAutocompleteProps {
   selectedRoom: Room | null;
   onSelect: (room: Room | null) => void;
   disabled?: boolean;
+  loading?: boolean;
+  emptyText?: string;
+  placeholder?: string;
   debug?: boolean;
 }
 
@@ -23,6 +26,9 @@ const RoomAutocomplete = ({
   selectedRoom,
   onSelect,
   disabled = false,
+  loading = false,
+  emptyText = "No rooms available.",
+  placeholder = "Select room...",
   debug = false, // Set default to false in production
 }: RoomAutocompleteProps) => {
   const [open, setOpen] = useState(false);
@@ -215,7 +221,7 @@ const RoomAutocomplete = ({
         <Building className="mt-0.5 h-3 w-3 shrink-0" />
         <span className="min-w-0 break-words">
           Showing rooms for: <span className="font-medium text-gray-700">{getPropertyName()}</span>
-          {(selectedProperty || searchQuery) && (<span className="ml-1">({filteredRooms.length} found)</span>)}
+          {loading ? <span className="ml-1">(loading...)</span> : (selectedProperty || searchQuery) && (<span className="ml-1">({filteredRooms.length} found)</span>)}
         </span>
       </div>
 
@@ -234,7 +240,7 @@ const RoomAutocomplete = ({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            disabled={disabled || safeRooms.length === 0}
+            disabled={disabled || loading}
             className={cn(
               "h-11 w-full justify-between border-gray-300 bg-white px-3 text-left text-sm font-normal sm:text-base",
               !selectedRoom?.name && "text-muted-foreground"
@@ -242,11 +248,17 @@ const RoomAutocomplete = ({
             data-testid="room-select-button"
           >
             <span className="truncate">
-              {selectedRoom?.name
-                ? `${selectedRoom.name}${selectedRoom.room_type ? ` (${selectedRoom.room_type})` : ''}`
-                : "Select room..."}
+              {loading
+                ? "Loading rooms..."
+                : selectedRoom?.name
+                  ? `${selectedRoom.name}${selectedRoom.room_type ? ` (${selectedRoom.room_type})` : ''}`
+                  : placeholder}
             </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            {loading ? (
+              <Loader className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-70" />
+            ) : (
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            )}
           </Button>
         </PopoverTrigger>
         <PopoverContent
@@ -263,7 +275,7 @@ const RoomAutocomplete = ({
             />
             <CommandList>
               <CommandEmpty className="py-4 px-4 text-sm text-center text-muted-foreground">
-                {safeRooms.length === 0 ? "No rooms available." :
+                {safeRooms.length === 0 ? emptyText :
                  filteredRooms.length === 0 && (selectedProperty || searchQuery) ? `No rooms match criteria.` :
                  "No rooms found."}
               </CommandEmpty>

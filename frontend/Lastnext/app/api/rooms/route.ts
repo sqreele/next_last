@@ -29,12 +29,15 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const propertyId = searchParams.get('property');
+    const backendParams = new URLSearchParams();
+    ['property', 'area_id', 'area', 'floor', 'floors_only', 'is_active'].forEach((key) => {
+      const value = searchParams.get(key);
+      if (value) backendParams.set(key, value);
+    });
+    const queryString = backendParams.toString();
     
     // ✅ Use the config for API URL construction
-    const apiUrl = propertyId
-      ? `${API_CONFIG.baseUrl}/api/v1/rooms/?property=${encodeURIComponent(propertyId)}`
-      : `${API_CONFIG.baseUrl}/api/v1/rooms/`;
+    const apiUrl = `${API_CONFIG.baseUrl}/api/v1/rooms/${queryString ? `?${queryString}` : ''}`;
     
     if (DEBUG_CONFIG.logApiCalls) {
     }

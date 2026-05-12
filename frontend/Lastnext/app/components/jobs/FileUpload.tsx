@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, ChangeEventHandler } from "react";
 import Image from "next/image";
-import { Upload, X, AlertCircle } from "lucide-react";
+import { Upload, X, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Progress } from "@/app/components/ui/progress";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -30,6 +30,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [fileProgress, setFileProgress] = useState<{ [key: string]: number }>({});
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [loadedPreviews, setLoadedPreviews] = useState<Record<string, boolean>>({});
 
   const validateFiles = useCallback(
     (files: File[]): string | null => {
@@ -60,6 +61,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
       if (!currentError) {
         const newFiles = [...selectedFiles, ...files].slice(0, maxFiles);
         setSelectedFiles(newFiles);
+        setLoadedPreviews((prev) => ({
+          ...prev,
+          ...Object.fromEntries(files.map((file) => [file.name, false])),
+        }));
         onFileSelect(newFiles);
 
         // Simulate progress
@@ -101,7 +106,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
     (index: number) => {
       if (disabled) return;
       setSelectedFiles((prev) => {
+        const removedFile = prev[index];
         const newFiles = prev.filter((_, i) => i !== index);
+        if (removedFile) {
+          setLoadedPreviews((current) => {
+            const next = { ...current };
+            delete next[removedFile.name];
+            return next;
+          });
+        }
         onFileSelect(newFiles);
         return newFiles;
       });
@@ -192,13 +205,19 @@ const FileUpload: React.FC<FileUploadProps> = ({
               className="group relative flex items-start gap-2.5 rounded-lg border bg-background p-2.5 sm:items-center sm:gap-3 sm:p-3"
             >
               {/* Image Preview */}
-              <div className="relative h-14 w-14 flex-shrink-0 sm:h-16 sm:w-16">
+              <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded bg-slate-100 sm:h-16 sm:w-16">
+                {!loadedPreviews[file.name] && (
+                  <div className="absolute inset-0 z-10 grid place-items-center bg-slate-100">
+                    <Loader2 className="h-4 w-4 animate-spin text-cyan-600" />
+                  </div>
+                )}
                 <Image
                   src={getFilePreview(file)}
                   alt={`Preview ${index}`}
                   fill
-                  className="object-cover rounded"
+                  className={cn("object-cover transition-opacity duration-200", loadedPreviews[file.name] ? "opacity-100" : "opacity-0")}
                   sizes="(max-width: 640px) 56px, 64px"
+                  onLoad={() => setLoadedPreviews((prev) => ({ ...prev, [file.name]: true }))}
                 />
               </div>
               {/* File Info & Progress */}
@@ -209,10 +228,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 <p className="text-[11px] text-muted-foreground sm:text-xs">
                   {(file.size / (1024 * 1024)).toFixed(2)}MB
                 </p>
-                <Progress
-                  value={fileProgress[file.name] || (file ? 100 : 0)}
-                  className="mt-1 h-1"
-                />
+                <div className="mt-1 flex items-center gap-2">
+                  <Progress
+                    value={fileProgress[file.name] || (file ? 100 : 0)}
+                    className="h-1 flex-1"
+                  />
+                  {(fileProgress[file.name] || 0) >= 100 ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-label="Ready" />
+                  ) : (
+                    <span className="text-[10px] font-semibold text-cyan-700">{fileProgress[file.name] || 0}%</span>
+                  )}
+                </div>
               </div>
               {/* Remove Button */}
               {!disabled && (

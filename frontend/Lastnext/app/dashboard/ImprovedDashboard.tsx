@@ -35,6 +35,7 @@ import {
   normalizePriority,
   normalizeStatus,
 } from '@/app/components/pcms-ui';
+import { SkeletonList, SkeletonTable } from '@/app/components/ui/loading';
 
 const STATUS_SUMMARY = [
   { value: 'pending', label: 'Open' },
@@ -250,8 +251,8 @@ export default function ImprovedDashboard() {
             <Link href="/dashboard/jobs-report" className="pcms-secondary-button inline-flex items-center gap-2">
               <FileText className="h-4 w-4" /> View Reports
             </Link>
-            <button onClick={() => refreshJobs()} className="pcms-secondary-button inline-flex items-center gap-2" aria-label="Refresh dashboard data">
-              <RefreshCw className="h-4 w-4" /> Refresh
+            <button onClick={() => refreshJobs()} disabled={loading} className="pcms-secondary-button inline-flex items-center gap-2 disabled:cursor-wait disabled:opacity-70" aria-label="Refresh dashboard data">
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> {loading ? 'Loading...' : 'Refresh'}
             </button>
           </div>
         }
@@ -363,8 +364,8 @@ export default function ImprovedDashboard() {
                 <h2>Recent Maintenance Jobs</h2>
                 <p>Clean job list for daily engineering standups and owner visibility.</p>
               </div>
-              <button onClick={() => exportJobs('csv')} className="pcms-secondary-button inline-flex items-center gap-2" aria-label="Export maintenance jobs as CSV">
-                <Download className="h-4 w-4" /> Export CSV
+              <button onClick={() => exportJobs('csv')} disabled={loading || jobs.length === 0} className="pcms-secondary-button inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-60" aria-label="Export maintenance jobs as CSV">
+                <Download className="h-4 w-4" /> {loading ? 'Loading...' : 'Export CSV'}
               </button>
             </div>
 
@@ -384,7 +385,7 @@ export default function ImprovedDashboard() {
               ))}
             </div>
 
-            <div className="pcms-recent-table" aria-label="Recent maintenance jobs overview">
+            {loading ? <SkeletonTable rows={6} columns={6} className="hidden md:block" /> : <div className="pcms-recent-table" aria-label="Recent maintenance jobs overview">
               <div className="pcms-recent-table__head">
                 <span>Job</span><span>Room / Area</span><span>Status</span><span>Priority</span><span>Technician</span><span>Created</span>
               </div>
@@ -398,9 +399,9 @@ export default function ImprovedDashboard() {
                   <span>{formatDate(job.created_at)}</span>
                 </Link>
               ))}
-            </div>
+            </div>}
 
-            <div className="pcms-recent-mobile-list">
+            {loading ? <SkeletonList rows={4} className="md:hidden" /> : <div className="pcms-recent-mobile-list">
               {dashboardMetrics.recentJobs.map((job) => (
                 <Link key={job.job_id || job.id} href={`/dashboard/jobs/${job.job_id}`} className="pcms-recent-mobile-card">
                   <div className="pcms-recent-mobile-card__top">
@@ -416,7 +417,7 @@ export default function ImprovedDashboard() {
                   <div className="pcms-recent-mobile-card__footer"><PriorityBadge priority={job.urgency || job.priority} /><ArrowRight className="h-4 w-4" /></div>
                 </Link>
               ))}
-            </div>
+            </div>}
 
             <div className="pcms-job-board-wrap">
               <div className="pcms-job-board-wrap__title">
@@ -441,7 +442,7 @@ export default function ImprovedDashboard() {
 
             {hasMoreJobs && (
               <div className="pcms-load-more-row">
-                <button onClick={() => setPage(pagination.page + 1)} disabled={isLoadingMore} className="pcms-secondary-button">
+                <button onClick={() => setPage(pagination.page + 1)} disabled={isLoadingMore} className="pcms-secondary-button disabled:cursor-wait disabled:opacity-70">
                   {isLoadingMore ? 'Loading maintenance jobs...' : 'Load more maintenance jobs'}
                 </button>
               </div>

@@ -10,7 +10,6 @@ import {
   PanelLeft,
   Search,
   Menu,
-  X,
   LogOut,
   Bell,
   ChevronDown,
@@ -35,6 +34,11 @@ import {
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
 import { MobileNav as BottomNav } from "@/app/components/ui/mobile-nav";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/app/components/ui/sheet";
 import { dashboardNavigationItems } from "@/app/lib/navigation";
 
 function isNavItemActive(pathname: string, href: string) {
@@ -227,7 +231,7 @@ function MobileHeader() {
   return (
     <header
       id="mobile-app-header"
-      className="lg:hidden sticky top-0 z-[70] border-b shadow-[var(--pcms-shadow-sm)] bg-white/90 backdrop-blur-xl border-[var(--pcms-border)]"
+      className="lg:hidden sticky top-0 z-[70] border-b border-slate-200 shadow-sm bg-white"
     >
       {/* Row 1: nav, logo, actions */}
       <div className="flex items-center justify-between h-14 px-3">
@@ -235,14 +239,14 @@ function MobileHeader() {
           <MobileNav />
           <Link href="/dashboard" className="flex items-center gap-1.5">
             <Package2 className="h-5 w-5 text-blue-600" />
-            <span className="font-bold text-gray-800 text-sm">PCMS</span>
+            <span className="font-bold text-slate-900 text-sm">PCMS</span>
           </Link>
         </div>
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 touch-manipulation"
+            className="h-9 w-9 touch-manipulation text-slate-700 hover:bg-slate-100 hover:text-slate-900"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
@@ -252,11 +256,11 @@ function MobileHeader() {
       </div>
 
       {/* Row 2: property selector + breadcrumb in one compact row */}
-      <div className="flex items-center gap-2 border-t border-gray-100 px-3 py-1.5 overflow-x-auto scrollbar-none">
+      <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-1.5 overflow-x-auto scrollbar-none">
         <div className="shrink-0">
           <HeaderPropertyList />
         </div>
-        <span className="text-gray-300 shrink-0">|</span>
+        <span className="text-slate-300 shrink-0">|</span>
         <div className="min-w-0 flex-1 overflow-x-auto scrollbar-none">
           <MobileBreadcrumb />
         </div>
@@ -312,158 +316,113 @@ function MobileNav() {
     setOpen(false);
   }, [pathname]);
 
-  React.useEffect(() => {
-    if (!open) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
-
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={open ? "Close navigation menu" : "Open navigation menu"}
-        aria-expanded={open}
-        aria-controls="mobile-navigation-drawer"
-        onClick={() => setOpen((current) => !current)}
-        className={cn(
-          "relative z-[70] h-11 w-11 rounded-2xl border border-white/70 bg-white/75 text-slate-700 shadow-[0_8px_18px_rgba(15,23,42,.10)] backdrop-blur-xl",
-          "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-white hover:text-[var(--pcms-primary-strong)] hover:shadow-[0_12px_26px_rgba(15,23,42,.14)]",
-          "active:translate-y-0 active:scale-95 active:bg-[var(--pcms-primary-soft)]",
-          "focus-visible:ring-4 focus-visible:ring-cyan-300/45 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
-          open &&
-            "bg-[var(--pcms-primary-soft)] text-[var(--pcms-primary-strong)] ring-1 ring-[var(--pcms-border-strong)]",
-        )}
-      >
-        <Menu
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Open navigation menu"
           className={cn(
-            "absolute h-5 w-5 transition-all duration-200 ease-out",
-            open
-              ? "rotate-90 scale-75 opacity-0"
-              : "rotate-0 scale-100 opacity-100",
+            "relative h-11 w-11 rounded-xl border border-slate-300 bg-white text-slate-900",
+            "shadow-sm transition-all duration-150 ease-out",
+            "hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300",
+            "active:scale-95",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
           )}
-          aria-hidden="true"
-        />
-        <X
-          className={cn(
-            "absolute h-5 w-5 transition-all duration-200 ease-out",
-            open
-              ? "rotate-0 scale-100 opacity-100"
-              : "-rotate-90 scale-75 opacity-0",
-          )}
-          aria-hidden="true"
-        />
-      </Button>
-
-      <div
-        aria-hidden="true"
-        onClick={() => setOpen(false)}
-        className={cn(
-          "fixed inset-0 z-40 bg-slate-950/45 backdrop-blur-[2px] transition-opacity duration-300 lg:hidden",
-          open
-            ? "pointer-events-auto opacity-100"
-            : "pointer-events-none opacity-0",
-        )}
-      />
-
-      <aside
-        id="mobile-navigation-drawer"
-        aria-label="Primary navigation"
-        className={cn(
-          "fixed bottom-0 left-0 top-[6.75rem] z-[60] flex w-[min(88vw,22rem)] max-w-sm flex-col overflow-hidden border-r border-white/70 bg-white/95 shadow-[0_24px_70px_rgba(15,23,42,.24)] backdrop-blur-2xl lg:hidden",
-          "transition-transform duration-300 ease-[cubic-bezier(.22,1,.36,1)]",
-          open ? "translate-x-0" : "-translate-x-full",
-        )}
-      >
-        <div className="border-b border-[var(--pcms-border)] bg-gradient-to-br from-white via-sky-50 to-cyan-50 px-5 py-5">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3"
-            onClick={() => setOpen(false)}
-          >
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--pcms-accent-gradient)] text-white shadow-[var(--pcms-button-shadow)]">
-              <Package2 className="h-5 w-5" />
-            </span>
-            <span>
-              <span className="block text-lg font-black leading-tight text-[var(--pcms-text)]">
-                PCMS
-              </span>
-              <span className="block text-xs font-bold text-[var(--pcms-text-muted)]">
-                Hotel maintenance operations
-              </span>
-            </span>
-          </Link>
-        </div>
-
-        <div className="border-b border-[var(--pcms-border)] bg-white/75 p-4">
-          <div className="rounded-2xl border border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] p-3 shadow-sm">
-            <User />
-          </div>
-        </div>
-
-        <nav
-          className="flex-1 space-y-1 overflow-y-auto px-3 py-4"
-          aria-label="Mobile menu links"
         >
-          {dashboardNavigationItems.map((item) => {
-            const isActive = isNavItemActive(pathname, item.href);
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "group flex min-h-12 items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-extrabold transition-all duration-200 ease-out",
-                  "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/45",
-                  isActive
-                    ? "bg-[var(--pcms-accent-gradient)] text-white shadow-[var(--pcms-button-shadow)]"
-                    : "text-slate-600 hover:bg-[var(--pcms-primary-soft)] hover:text-[var(--pcms-primary-strong)] active:scale-[.98]",
-                )}
-              >
-                <span
+          <Menu className="h-6 w-6" aria-hidden="true" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent
+        side="left"
+        className="w-[min(88vw,20rem)] max-w-sm border-r border-slate-200 bg-white p-0 [&>button]:right-3 [&>button]:top-3 [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-lg [&>button]:bg-slate-100 [&>button]:opacity-100 [&>button]:flex [&>button]:items-center [&>button]:justify-center [&>button]:text-slate-900 [&>button]:hover:bg-slate-200 [&>button>svg]:h-5 [&>button>svg]:w-5"
+      >
+        <div className="flex h-full flex-col">
+          <div className="border-b border-slate-200 bg-white px-5 py-5">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-3"
+              onClick={() => setOpen(false)}
+            >
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/30">
+                <Package2 className="h-5 w-5" />
+              </span>
+              <span>
+                <span className="block text-lg font-bold leading-tight text-slate-900">
+                  PCMS
+                </span>
+                <span className="block text-xs font-semibold text-slate-600">
+                  Hotel maintenance operations
+                </span>
+              </span>
+            </Link>
+          </div>
+
+          <div className="border-b border-slate-200 bg-white p-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <User />
+            </div>
+          </div>
+
+          <nav
+            className="flex-1 space-y-1 overflow-y-auto px-3 py-4 bg-white"
+            aria-label="Mobile menu links"
+          >
+            {dashboardNavigationItems.map((item) => {
+              const isActive = isNavItemActive(pathname, item.href);
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
-                    "grid h-9 w-9 flex-none place-items-center rounded-xl transition-colors",
+                    "group flex min-h-12 items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-bold transition-colors duration-150 ease-out",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
                     isActive
-                      ? "bg-white/20 text-white"
-                      : "bg-white text-slate-500 shadow-sm group-hover:text-[var(--pcms-primary-strong)]",
+                      ? "bg-blue-600 text-white shadow-sm shadow-blue-600/30"
+                      : "text-slate-800 hover:bg-blue-50 hover:text-blue-700 active:bg-blue-100",
                   )}
                 >
-                  <item.icon className="h-5 w-5" />
-                </span>
-                <span className="min-w-0 flex-1 truncate">{item.name}</span>
-                {isActive && (
                   <span
-                    className="h-2 w-2 rounded-full bg-white/90"
-                    aria-hidden="true"
-                  />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+                    className={cn(
+                      "grid h-9 w-9 flex-none place-items-center rounded-lg transition-colors",
+                      isActive
+                        ? "bg-white/20 text-white"
+                        : "bg-slate-100 text-slate-700 group-hover:bg-blue-100 group-hover:text-blue-700",
+                    )}
+                  >
+                    <item.icon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                  {isActive && (
+                    <span
+                      className="h-2 w-2 rounded-full bg-white"
+                      aria-hidden="true"
+                    />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
 
-        <div className="border-t border-[var(--pcms-border)] bg-white/90 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-          <Button
-            variant="outline"
-            className="w-full justify-center gap-2 border-red-200 bg-red-50 text-sm font-extrabold text-red-600 hover:border-red-300 hover:bg-red-100 hover:text-red-700"
-            onClick={() => {
-              setOpen(false);
-              appSignOut({ callbackUrl: "/auth/login" });
-            }}
-          >
-            <LogOut className="h-4 w-4" />
-            Logout
-          </Button>
+          <div className="border-t border-slate-200 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+            <Button
+              variant="outline"
+              className="w-full justify-center gap-2 border-red-300 bg-red-50 text-sm font-bold text-red-700 hover:border-red-400 hover:bg-red-100 hover:text-red-800"
+              onClick={() => {
+                setOpen(false);
+                appSignOut({ callbackUrl: "/auth/login" });
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
-      </aside>
-    </>
+      </SheetContent>
+    </Sheet>
   );
 }
 

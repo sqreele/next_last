@@ -53,11 +53,30 @@ const validationSchema = Yup.object().shape({
   }).required(),
   room: Yup.object()
     .nullable()
-    .required('Room selection is required')
     .shape({
-      room_id: Yup.number().typeError('Invalid Room ID').required('Room ID missing').min(1, 'Room must be selected'),
-      name: Yup.string().required('Room name missing'),
-    }),
+      room_id: Yup.number().typeError('Invalid Room ID').min(1, 'Room must be selected'),
+      name: Yup.string(),
+    })
+    .test(
+      'room-or-area',
+      'Select either a room or an area',
+      function (value) {
+        const areaId = this.parent.area_id;
+        if (areaId) return true;
+        return Boolean(value && (value as { room_id?: number }).room_id);
+      },
+    ),
+  area_id: Yup.number()
+    .nullable()
+    .test(
+      'area-or-room',
+      'Select either an area or a room',
+      function (value) {
+        const room = this.parent.room as { room_id?: number } | null;
+        if (room && room.room_id) return true;
+        return value != null;
+      },
+    ),
   files: Yup.array()
     .of(
       Yup.mixed<File>()
@@ -265,8 +284,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         return;
       }
 
-      if (!values.room || !values.room.room_id) {
-        const message = 'Please select a valid room';
+      const hasRoom = Boolean(values.room && values.room.room_id);
+      const hasArea = values.area_id != null;
+      if (!hasRoom && !hasArea) {
+        const message = 'Please select either a room or an area';
         setError(message);
         showErrorToast(message);
         isSubmittingRef.current = false;
@@ -288,7 +309,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       formData.append('description', values.description.trim());
       formData.append('status', values.status);
       formData.append('priority', values.priority);
-      formData.append('room_id', values.room.room_id.toString());
+      if (values.room && values.room.room_id) {
+        formData.append('room_id', values.room.room_id.toString());
+      }
       formData.append('topic_data', JSON.stringify({
         title: values.topic.title.trim(),
         description: values.topic.description.trim() || '',
@@ -640,10 +663,14 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               </div>
               
               <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
-                {/* Area Selection (optional) */}
+                {/* Area Selection - required if no room selected */}
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Area / Zone <span className="text-xs font-medium text-slate-600">(optional)</span>
+                    Area / Zone {values.room && values.room.room_id ? (
+                      <span className="text-xs font-medium text-slate-600">(optional)</span>
+                    ) : (
+                      <span className="text-red-500">*</span>
+                    )}
                   </Label>
                   <Select
                     value={values.area_id ? String(values.area_id) : 'none'}
@@ -658,6 +685,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
                       if (nextAreaId) {
                         void fetchFloorsForArea(nextAreaId);
+                        void fetchRooms(nextAreaId, null);
                       } else {
                         void fetchRooms(null, null);
                       }
@@ -728,7 +756,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 {/* Room Selection */}
                 <div className="md:col-span-2 space-y-2">
                   <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Room Number <span className="text-red-500">*</span>
+                    Room Number {values.area_id ? (
+                      <span className="text-xs font-medium text-slate-600">(optional)</span>
+                    ) : (
+                      <span className="text-red-500">*</span>
+                    )}
                   </Label>
                   <RoomAutocomplete
                     rooms={rooms}
@@ -737,10 +769,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       setFieldValue('room', selectedRoom);
                       setFieldTouched('room', true, false);
                     }}
-                    disabled={isSubmitting || Boolean(values.area_id && !values.floor)}
+                    disabled={isSubmitting}
                     loading={isRoomLoading}
-                    emptyText="No rooms found for this floor"
-                    placeholder={values.area_id && !values.floor ? 'Select floor first...' : 'Select room number...'}
+                    emptyText={values.area_id && values.floor ? 'No rooms found for this floor' : 'No rooms found'}
+                    placeholder={values.area_id && !values.floor ? 'Select floor or pick a room...' : 'Select room number...'}
                   />
                   {values.floor && !isRoomLoading && rooms.length === 0 && (
                     <p className="text-sm font-medium text-slate-600">No rooms found for this floor</p>

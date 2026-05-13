@@ -358,7 +358,7 @@ class JobSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='room.name', read_only=True)
     rooms = RoomSummarySerializer(many=True, read_only=True)
     topic_data = serializers.JSONField(write_only=True)
-    room_id = serializers.IntegerField(write_only=True)
+    room_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     image_urls = serializers.SerializerMethodField()
     area = AreaSummarySerializer(read_only=True)
     area_id = serializers.PrimaryKeyRelatedField(
@@ -479,15 +479,18 @@ class JobSerializer(serializers.ModelSerializer):
 
         topic_data = validated_data.pop('topic_data', None)
         room_id = validated_data.pop('room_id', None)
+        area = validated_data.get('area')
 
-        if not room_id:
-            raise serializers.ValidationError({'room_id': 'This field is required.'})
+        if not room_id and not area:
+            raise serializers.ValidationError(
+                {'non_field_errors': 'Either room_id or area_id is required.'}
+            )
         if not topic_data or 'title' not in topic_data:
             raise serializers.ValidationError({'topic_data': 'This field is required and must include a title.'})
 
         try:
             with transaction.atomic():
-                room = Room.objects.get(room_id=room_id)
+                room = Room.objects.get(room_id=room_id) if room_id else None
                 topic, _ = Topic.objects.get_or_create(
                     title=topic_data['title'],
                     defaults={'description': topic_data.get('description', '')}
@@ -496,7 +499,8 @@ class JobSerializer(serializers.ModelSerializer):
                     **validated_data,
                     user=request.user
                 )
-                job.rooms.add(room)
+                if room:
+                    job.rooms.add(room)
                 job.topics.add(topic)
 
                 images = request.FILES.getlist('images', [])

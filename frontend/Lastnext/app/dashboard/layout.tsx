@@ -34,12 +34,15 @@ import {
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
 import { MobileNav as BottomNav } from "@/app/components/ui/mobile-nav";
+import { PageTransition } from "@/app/components/ui/page-transition";
+import { PullToRefresh } from "@/app/components/ui/pull-to-refresh";
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
 } from "@/app/components/ui/sheet";
 import { dashboardNavigationItems } from "@/app/lib/navigation";
+import { useScrollDirection } from "@/app/lib/hooks/useScrollDirection";
 
 function isNavItemActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -50,7 +53,20 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [isSidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const mainRef = React.useRef<HTMLElement | null>(null);
+  const { direction, isAtTop } = useScrollDirection({
+    threshold: 8,
+    topOffset: 16,
+    targetRef: mainRef,
+  });
+  const headerHidden = direction === "down" && !isAtTop;
+
+  const handleRefresh = React.useCallback(async () => {
+    router.refresh();
+    await new Promise((resolve) => setTimeout(resolve, 650));
+  }, [router]);
 
   return (
     <div className="pcms-app-shell flex min-h-screen-safe w-full text-[var(--pcms-text)] overscroll-none">
@@ -63,13 +79,14 @@ export default function DashboardLayout({
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Mobile Header - Hidden on desktop */}
-        <MobileHeader />
+        <MobileHeader hidden={headerHidden} />
 
         {/* Desktop Header - Hidden on mobile, shown on tablet+ */}
         <DesktopHeader sidebarCollapsed={isSidebarCollapsed} />
 
         {/* Main Content */}
         <main
+          ref={mainRef}
           className="
             flex-1 overflow-auto
             p-3 mobile:p-4 tablet:p-5 desktop:p-7
@@ -79,19 +96,22 @@ export default function DashboardLayout({
             touch-pan-y
           "
         >
-          <div
+          <PullToRefresh
+            onRefresh={handleRefresh}
+            scrollTargetRef={mainRef}
             className="
-              mx-auto w-full 
+              mx-auto w-full
               max-w-[430px] mobile:max-w-full tablet:max-w-7xl desktop:max-w-[96rem]
-              space-y-4 mobile:space-y-5 tablet:space-y-6
             "
           >
-            {children}
-          </div>
+            <PageTransition className="space-y-4 mobile:space-y-5 tablet:space-y-6">
+              {children}
+            </PageTransition>
+          </PullToRefresh>
         </main>
 
         {/* Mobile Bottom Navigation */}
-        <BottomNav />
+        <BottomNav hidden={headerHidden} />
       </div>
     </div>
   );
@@ -227,11 +247,16 @@ function DesktopNav({
   );
 }
 
-function MobileHeader() {
+function MobileHeader({ hidden = false }: { hidden?: boolean }) {
   return (
     <header
       id="mobile-app-header"
-      className="lg:hidden sticky top-0 z-[70] border-b border-slate-200 shadow-sm bg-white"
+      className={cn(
+        "lg:hidden sticky top-0 z-[70] border-b border-slate-200 shadow-sm bg-white/95 backdrop-blur-md",
+        "transition-transform duration-200 ease-out will-change-transform",
+        hidden ? "-translate-y-full" : "translate-y-0",
+      )}
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       {/* Row 1: nav, logo, actions */}
       <div className="flex items-center justify-between h-14 px-3">

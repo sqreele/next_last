@@ -7,9 +7,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { primaryNavigationItems } from "@/app/lib/navigation";
 import { cn } from "@/app/lib/utils/cn";
+import { triggerHaptic } from "@/app/lib/hooks/useHaptic";
 
 interface MobileNavProps {
   className?: string;
+  hidden?: boolean;
 }
 
 const navigationItems = primaryNavigationItems.filter((item) =>
@@ -18,13 +20,15 @@ const navigationItems = primaryNavigationItems.filter((item) =>
   ),
 );
 
-export function MobileNav({ className }: MobileNavProps) {
+export function MobileNav({ className, hidden = false }: MobileNavProps) {
   const pathname = usePathname();
 
   return (
     <nav
       className={cn(
-        "fixed left-3 right-3 z-50 rounded-2xl border border-slate-200 bg-white shadow-[0_-4px_20px_rgba(15,23,42,0.10)] md:hidden",
+        "fixed left-3 right-3 z-50 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(15,23,42,0.10)] md:hidden",
+        "transition-transform duration-200 ease-out will-change-transform",
+        hidden ? "translate-y-[calc(100%+1rem)]" : "translate-y-0",
         className,
       )}
       style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}
@@ -41,6 +45,7 @@ export function MobileNav({ className }: MobileNavProps) {
             <Link
               key={item.name}
               href={item.href}
+              onClick={() => triggerHaptic("selection")}
               className="flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               aria-current={isActive ? "page" : undefined}
               aria-label={`Navigate to ${item.name}`}

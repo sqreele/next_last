@@ -2,6 +2,8 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
+import { cn } from "@/app/lib/utils/cn"
+
 const Dialog = DialogPrimitive.Root
 
 const DialogTrigger = DialogPrimitive.Trigger
@@ -20,17 +22,46 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+interface DialogContentProps
+  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+  mobileFullscreen?: boolean;
+}
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  DialogContentProps
+>(({ className, children, mobileFullscreen = true, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
-      className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg"
+      className={cn(
+        "fixed z-50 grid gap-4 border bg-background shadow-lg duration-200",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        mobileFullscreen
+          ? [
+              "mobile:inset-x-0 mobile:bottom-0 mobile:top-auto mobile:left-0 mobile:right-0",
+              "mobile:max-h-[92vh] mobile:w-full mobile:max-w-full mobile:rounded-t-3xl mobile:rounded-b-none",
+              "mobile:p-5 mobile:pb-[calc(env(safe-area-inset-bottom)+1rem)]",
+              "mobile:overflow-y-auto mobile:overscroll-contain",
+              "mobile:data-[state=closed]:slide-out-to-bottom mobile:data-[state=open]:slide-in-from-bottom",
+              "mobile:data-[state=open]:duration-300 mobile:data-[state=closed]:duration-200",
+            ].join(" ")
+          : "",
+        "tablet:left-[50%] tablet:top-[50%] tablet:w-full tablet:max-w-lg tablet:translate-x-[-50%] tablet:translate-y-[-50%] tablet:rounded-lg tablet:p-6",
+        "desktop:left-[50%] desktop:top-[50%] desktop:w-full desktop:max-w-lg desktop:translate-x-[-50%] desktop:translate-y-[-50%] desktop:rounded-lg desktop:p-6",
+        "tablet:data-[state=closed]:zoom-out-95 tablet:data-[state=open]:zoom-in-95 tablet:data-[state=closed]:slide-out-to-left-1/2 tablet:data-[state=closed]:slide-out-to-top-[48%] tablet:data-[state=open]:slide-in-from-left-1/2 tablet:data-[state=open]:slide-in-from-top-[48%]",
+        "desktop:data-[state=closed]:zoom-out-95 desktop:data-[state=open]:zoom-in-95 desktop:data-[state=closed]:slide-out-to-left-1/2 desktop:data-[state=closed]:slide-out-to-top-[48%] desktop:data-[state=open]:slide-in-from-left-1/2 desktop:data-[state=open]:slide-in-from-top-[48%]",
+        className,
+      )}
       {...props}
     >
+      {mobileFullscreen && (
+        <div
+          aria-hidden="true"
+          className="mx-auto hidden h-1.5 w-12 rounded-full bg-slate-300 mobile:block"
+        />
+      )}
       {children}
       <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
         <X className="h-4 w-4" />

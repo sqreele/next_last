@@ -8,6 +8,7 @@ import {
   Building2,
   MapPin,
   Package,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -24,6 +25,7 @@ export const primaryNavigationItems: AppNavigationItem[] = [
   { name: 'Create Job', href: '/dashboard/create-job', icon: Plus, shortName: 'Create' },
   { name: 'Rooms', href: '/dashboard/rooms/by-topics', icon: Building2, shortName: 'Rooms' },
   { name: 'Inventory', href: '/dashboard/inventory', icon: Package, shortName: 'Stock' },
+  { name: 'Electricity', href: '/dashboard/utility-consumption', icon: Zap, shortName: 'Power' },
   { name: 'Reports', href: '/dashboard/jobs-report', icon: FileText, shortName: 'Reports' },
 ];
 
@@ -34,6 +36,7 @@ export const dashboardNavigationItems: AppNavigationItem[] = [
   { name: 'Rooms', href: '/dashboard/rooms/by-topics', icon: Building2 },
   { name: 'Areas', href: '/dashboard/areas', icon: MapPin },
   { name: 'Inventory', href: '/dashboard/inventory', icon: Package },
+  { name: 'Electricity', href: '/dashboard/utility-consumption', icon: Zap },
   { name: 'Reports', href: '/dashboard/jobs-report', icon: FileText },
   { name: 'Users', href: '/roster', icon: Users },
   { name: 'Settings', href: '/dashboard/profile', icon: Settings },

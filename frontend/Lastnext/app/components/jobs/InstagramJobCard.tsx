@@ -71,7 +71,9 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
   }, [job.images, job.image_urls]);
 
   const assignedTechnicianName = useMemo(() => {
-    return getDisplayName(job.user, job.technician_name || job.user_name || "Chief Engineer review");
+    const fallbackName = "Chief Engineer review";
+    const displayName = getDisplayName(job.user, job.technician_name || job.user_name || fallbackName);
+    return displayName === fallbackName ? fallbackName : displayName.split(/\s+/)[0] || displayName;
   }, [job.user, job.technician_name, job.user_name]);
 
   const [activeIdx, setActiveIdx] = useState(0);

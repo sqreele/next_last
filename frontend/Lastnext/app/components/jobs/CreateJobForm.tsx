@@ -925,7 +925,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Room / Area</dt><dd className="font-semibold text-slate-900">{values.room?.name || 'Select room'}</dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Category</dt><dd className="font-semibold text-slate-900">{values.topic.title || 'Select category'}</dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Priority</dt><dd><PriorityBadge priority={values.priority} /></dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Assigned to</dt><dd className="font-semibold text-slate-900">Chief Engineer review</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Assigned to</dt><dd className="font-semibold text-slate-900">{[session?.user?.first_name, session?.user?.last_name].filter(Boolean).join(' ') || session?.user?.username || 'Chief Engineer review'}</dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Before photo count</dt><dd className="font-semibold text-slate-900">{values.files.length}</dd></div>
                   </dl>
                 </SectionCard>

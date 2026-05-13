@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { Job } from "@/app/lib/types";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
 import { Clock, Calendar, MessageSquare, MapPin, ImageIcon, UserRound } from "lucide-react";
-import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
+import { StatusBadge } from "@/app/components/pcms-ui";
+import { getDisplayName } from "@/app/lib/utils/display-name";
 
 type ViewMode = "grid" | "list";
 
@@ -68,6 +69,10 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
     // Limit to a maximum of 2 images for display
     return urls.slice(0, 2);
   }, [job.images, job.image_urls]);
+
+  const assignedTechnicianName = useMemo(() => {
+    return getDisplayName(job.user, job.technician_name || job.user_name || "Chief Engineer review");
+  }, [job.user, job.technician_name, job.user_name]);
 
   const [activeIdx, setActiveIdx] = useState(0);
   const [failed, setFailed] = useState<Set<number>>(new Set());
@@ -148,7 +153,6 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
               {job.topics?.[0]?.title || "Maintenance Job"}
             </h2>
           </div>
-          <PriorityBadge priority={job.priority} />
         </div>
 
         <p className="line-clamp-2 text-xs font-medium leading-relaxed text-[var(--pcms-text-muted)] sm:line-clamp-3 sm:text-sm">
@@ -162,7 +166,7 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
           </div>
           <div className="flex min-w-0 items-center gap-2">
             <UserRound className="h-3.5 w-3.5 shrink-0 text-blue-600" />
-            <span className="truncate">Technician: {job.user ? "Assigned" : "Chief Engineer review"}</span>
+            <span className="truncate">Technician: {assignedTechnicianName}</span>
           </div>
           <div className="flex min-w-0 items-center gap-2">
             <Clock className="h-3.5 w-3.5 shrink-0 text-orange-500" />

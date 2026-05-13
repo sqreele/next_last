@@ -515,6 +515,22 @@ export const JobCard = React.memo(function JobCard({ job, properties = [], viewM
           </p>
         </div>
 
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-700">
+          <User className="w-4 h-4 text-slate-500 flex-shrink-0" />
+          <span className="font-semibold text-slate-600">Assigned to:</span>
+          <span className="font-bold text-slate-900 truncate">
+            {(() => {
+              try {
+                if (!job.user) return 'Unassigned';
+                const displayName = getUserDisplayName(job.user);
+                return typeof displayName === 'string' ? displayName : 'Unknown User';
+              } catch {
+                return 'Unknown User';
+              }
+            })()}
+          </span>
+        </div>
+
         {job.remarks && (
           <div className="border-t border-slate-100 pt-3">
             <Button

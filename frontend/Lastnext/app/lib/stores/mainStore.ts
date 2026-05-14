@@ -2,6 +2,7 @@ import { create, type StateCreator } from 'zustand';
 import { devtools, persist, type PersistOptions } from 'zustand/middleware';
 import { UserProfile, Property, Job, JobStatus, JobPriority } from '../types';
 import { logger } from '../utils/logger';
+import { useAuthStore } from './useAuthStore';
 
 // Only enable devtools in development and on client-side
 const isDevtoolsEnabled = typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
@@ -160,12 +161,13 @@ const storeImplementation: StateCreator<MainStore, [], []> = (set, get) => ({
     // ✅ SECURITY: Validate property access before setting
     if (propertyId === null) {
       set({ selectedPropertyId: null });
+      try { useAuthStore.getState().setSelectedProperty(null); } catch {}
       return;
     }
-    
+
     const state = get();
     const userProps = state.properties;
-    
+
     // Verify user has access to this property
     const hasAccess = userProps.some((p: Property) => p.property_id === propertyId);
     if (!hasAccess) {
@@ -176,8 +178,10 @@ const storeImplementation: StateCreator<MainStore, [], []> = (set, get) => ({
       // Don't set the unauthorized property
       return;
     }
-    
+
     set({ selectedPropertyId: propertyId });
+    // Mirror to useAuthStore so consumers reading selectedProperty (e.g. preventive-maintenance) re-fetch
+    try { useAuthStore.getState().setSelectedProperty(propertyId); } catch {}
   },
   setAuthTokens: (access: string, refresh: string) => set({ accessToken: access, refreshToken: refresh }),
   logout: () => set({ 

@@ -259,7 +259,7 @@ export default function SearchContent() {
           {filteredJobs.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-gray-700">Jobs</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 {filteredJobs.slice(0, 3).map(job => (
                   <JobCard key={job.job_id} job={job} query={query} highlightMatch={highlightMatch} properties={properties} />
                 ))}
@@ -274,7 +274,7 @@ export default function SearchContent() {
           {filteredProperties.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-gray-700">Properties</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 {filteredProperties.slice(0, 3).map(property => (
                   <PropertyCard key={property.property_id} property={property} query={query} highlightMatch={highlightMatch} />
                 ))}
@@ -289,7 +289,7 @@ export default function SearchContent() {
           {filteredRooms.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-gray-700">Rooms</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 {filteredRooms.slice(0, 3).map(room => {
                   const relatedJob = jobs.find(job => 
                     job?.rooms?.some(r => String(r?.room_id || '') === String(room?.room_id || ''))
@@ -311,23 +311,23 @@ export default function SearchContent() {
         </TabsContent>
         
         <TabsContent value="jobs" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {filteredJobs.map(job => (
               <JobCard key={job.job_id} job={job} query={query} highlightMatch={highlightMatch} properties={properties} />
             ))}
           </div>
         </TabsContent>
-        
+
         <TabsContent value="properties" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {filteredProperties.map(property => (
               <PropertyCard key={property.property_id} property={property} query={query} highlightMatch={highlightMatch} />
             ))}
           </div>
         </TabsContent>
-        
+
         <TabsContent value="rooms" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {filteredRooms.map(room => {
               const relatedJob = jobs.find(job => 
                 job?.rooms?.some(r => String(r?.room_id || '') === String(room?.room_id || ''))

@@ -813,10 +813,12 @@ export default function PreventiveMaintenanceDashboard({
               {/* Job cards or empty state */}
               {paginatedJobs.length > 0 ? (
                 <div className="space-y-4">
-                  {paginatedJobs.map((job) => (
-                    <JobCard key={job.job_id} job={job} />
-                  ))}
-                  
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
+                    {paginatedJobs.map((job) => (
+                      <JobCard key={job.job_id} job={job} />
+                    ))}
+                  </div>
+
                   {/* Pagination */}
                   {totalPages > 1 && (
                     <Pagination className="mt-6">

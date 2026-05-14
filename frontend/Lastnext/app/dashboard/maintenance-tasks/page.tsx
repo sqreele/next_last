@@ -265,7 +265,7 @@ export default function MaintenanceTasksPage() {
   if (status === 'loading' || loading) {
     return (
       <div
-        className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+        className="flex min-h-[60vh] flex-col items-center justify-center gap-5"
         aria-live="polite"
         aria-busy="true"
         role="status"

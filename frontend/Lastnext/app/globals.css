@@ -1508,7 +1508,7 @@ body {
   }
   @media (min-width: 1280px) {
     .pcms-job-grid {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
@@ -1591,7 +1591,7 @@ body {
 
 @media (min-width: 1280px) {
   .pcms-job-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -3420,6 +3420,12 @@ body {
 
 .sneat-card--pad-lg {
   padding: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .sneat-card--pad-lg {
+    padding: 1.25rem;
+  }
 }
 
 .sneat-card__head {

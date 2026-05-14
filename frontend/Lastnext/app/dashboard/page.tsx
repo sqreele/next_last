@@ -13,13 +13,11 @@ export const metadata: Metadata = generatePageMetadata('dashboard');
 export default function DashboardPage() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--sneat-body-bg)' }}>
-      <div className="mx-auto max-w-7xl desktop:max-w-[96rem]">
-        <Suspense
-          fallback={<PageLoader label="Loading dashboard" description="Preparing KPI cards and recent maintenance jobs." />}
-        >
-          <DashboardWithAuth />
-        </Suspense>
-      </div>
+      <Suspense
+        fallback={<PageLoader label="Loading dashboard" description="Preparing KPI cards and recent maintenance jobs." />}
+      >
+        <DashboardWithAuth />
+      </Suspense>
     </div>
   );
 }

@@ -15,7 +15,7 @@ interface MobileNavProps {
 }
 
 const navigationItems = primaryNavigationItems.filter((item) =>
-  ["Dashboard", "Maintenance Jobs", "Create Job", "Reports"].includes(
+  ["Dashboard", "Maintenance Jobs", "Create Job", "Inventory", "Reports"].includes(
     item.name,
   ),
 );

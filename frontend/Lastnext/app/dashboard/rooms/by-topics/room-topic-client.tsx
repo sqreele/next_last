@@ -10,49 +10,14 @@ import { Button } from '@/app/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/app/components/ui/command';
 import { ChevronDown, Filter, X } from 'lucide-react';
-import { useUser } from '@/app/lib/user-context';
+import { useUser } from '@/app/lib/stores/mainStore';
+import { filterRoomsByProperty, filterJobsByProperty } from '@/app/lib/utils/property-filter';
 
 type Props = {
   rooms: Room[];
   topics: Topic[];
   properties: Property[];
   jobs?: Job[]; // provided from server to compute counts
-};
-
-const roomBelongsToProperty = (room: Room, propertyId: string): boolean => {
-  if (room.property_id != null && String(room.property_id) === propertyId) return true;
-  if (Array.isArray(room.properties)) {
-    return room.properties.some((p: any) => {
-      if (p == null) return false;
-      if (typeof p === 'string' || typeof p === 'number') return String(p) === propertyId;
-      if (typeof p === 'object') {
-        if (p.property_id != null && String(p.property_id) === propertyId) return true;
-        if (p.id != null && String(p.id) === propertyId) return true;
-      }
-      return false;
-    });
-  }
-  return false;
-};
-
-const jobBelongsToProperty = (job: Job, propertyId: string): boolean => {
-  if (job.property_id != null && String(job.property_id) === propertyId) return true;
-  if (Array.isArray(job.properties)) {
-    const hit = job.properties.some((p: any) => {
-      if (p == null) return false;
-      if (typeof p === 'string' || typeof p === 'number') return String(p) === propertyId;
-      if (typeof p === 'object') {
-        if (p.property_id != null && String(p.property_id) === propertyId) return true;
-        if (p.id != null && String(p.id) === propertyId) return true;
-      }
-      return false;
-    });
-    if (hit) return true;
-  }
-  if (Array.isArray(job.rooms)) {
-    return job.rooms.some((r: any) => r && typeof r === 'object' && roomBelongsToProperty(r as Room, propertyId));
-  }
-  return false;
 };
 
 export default function RoomsByTopicClient({ rooms, topics, properties, jobs }: Props) {
@@ -69,16 +34,15 @@ export default function RoomsByTopicClient({ rooms, topics, properties, jobs }: 
   }, [properties, selectedPropertyId]);
 
   // Limit rooms and jobs to the globally selected property (if any)
-  const propertyRooms = React.useMemo(() => {
-    if (!selectedPropertyId) return rooms;
-    return rooms.filter(r => roomBelongsToProperty(r, String(selectedPropertyId)));
-  }, [rooms, selectedPropertyId]);
+  const propertyRooms = React.useMemo(
+    () => filterRoomsByProperty(rooms, selectedPropertyId),
+    [rooms, selectedPropertyId]
+  );
 
-  const propertyJobs = React.useMemo(() => {
-    if (!selectedPropertyId) return jobs;
-    if (!Array.isArray(jobs)) return jobs;
-    return jobs.filter(j => jobBelongsToProperty(j, String(selectedPropertyId)));
-  }, [jobs, selectedPropertyId]);
+  const propertyJobs = React.useMemo(
+    () => filterJobsByProperty(jobs, selectedPropertyId),
+    [jobs, selectedPropertyId]
+  );
 
   // Build counts: topicId -> number of unique rooms that have at least one job with that topic
   const { topicCounts, topicToRoomIds } = React.useMemo(() => {

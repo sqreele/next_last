@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
 import { PriorityBadge, StatusBadge } from '@/app/components/pcms-ui';
+import { getJobPropertyName, getRoomPropertyName } from '@/app/lib/utils/property-filter';
 
 export default function SearchContent() {
   const searchParams = useSearchParams();
@@ -346,68 +347,8 @@ export default function SearchContent() {
 }
 
 // Updated JobCard with safer property access
-function JobCard({ job, query, highlightMatch, properties }: JobCardProps) {
-  const router = useRouter();
-  const { selectedPropertyId: selectedProperty } = useUser();
+function JobCard({ job, query, highlightMatch }: JobCardProps) {
   const displayId = typeof job?.job_id === 'number' ? `#${job.job_id}` : job?.job_id;
-
-  const getPropertyName = () => {
-    try {
-      const jobProperties = [
-        ...(job.profile_image?.properties || []),
-        ...(job.properties || []),
-        ...(job.rooms?.flatMap(room => room?.properties || []) || []),
-      ];
-
-      if (selectedProperty) {
-        const matchingProperty = jobProperties.find(prop => {
-          if (!prop) return false;
-          if (typeof prop === 'string' || typeof prop === 'number') {
-            return String(prop) === selectedProperty;
-          }
-          if (typeof prop === 'object') {
-            const propId = 'property_id' in prop ? prop.property_id : ('id' in prop ? prop.id : undefined);
-            return String(propId) === selectedProperty;
-          }
-          return false;
-        });
-
-        if (matchingProperty) {
-          if (typeof matchingProperty === 'object' && 'name' in matchingProperty) {
-            return matchingProperty.name;
-          }
-          const fullProperty = properties?.find(p => String(p?.property_id) === selectedProperty);
-          return fullProperty?.name || 'N/A';
-        }
-      }
-
-      const firstMatchingProperty = jobProperties.find(prop => {
-        return typeof prop === 'object' && 'name' in prop;
-      });
-
-      if (firstMatchingProperty && typeof firstMatchingProperty === 'object' && 'name' in firstMatchingProperty) {
-        return firstMatchingProperty.name;
-      }
-
-      const propertyFromList = properties?.find(p =>
-        jobProperties.some(jobProp => {
-          if (typeof jobProp === 'string' || typeof jobProp === 'number') {
-            return String(jobProp) === String(p?.property_id);
-          }
-          if (typeof jobProp === 'object') {
-            const propId = 'property_id' in jobProp ? jobProp.property_id : ('id' in jobProp ? jobProp.id : undefined);
-            return String(propId) === String(p?.property_id);
-          }
-          return false;
-        })
-      );
-
-      return propertyFromList?.name || 'N/A';
-    } catch (error) {
-      console.error('Error in getPropertyName:', error);
-      return 'N/A';
-    }
-  };
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
@@ -445,64 +386,6 @@ function RoomOnlyJobCard({ job, properties }: RoomOnlyJobCardProps) {
   const { selectedPropertyId: selectedProperty } = useUser();
   const room = job?.rooms?.[0] as Room | undefined;
 
-  const getPropertyName = () => {
-    try {
-      const jobProperties = [
-        ...(job.profile_image?.properties || []),
-        ...(job.properties || []),
-        ...(job.rooms?.flatMap(room => room?.properties || []) || []),
-      ];
-
-      if (selectedProperty) {
-        const matchingProperty = jobProperties.find(prop => {
-          if (!prop) return false;
-          if (typeof prop === 'string' || typeof prop === 'number') {
-            return String(prop) === selectedProperty;
-          }
-          if (typeof prop === 'object') {
-            const propId = 'property_id' in prop ? prop.property_id : ('id' in prop ? prop.id : undefined);
-            return String(propId) === selectedProperty;
-          }
-          return false;
-        });
-
-        if (matchingProperty) {
-          if (typeof matchingProperty === 'object' && 'name' in matchingProperty) {
-            return matchingProperty.name;
-          }
-          const fullProperty = properties?.find(p => String(p?.property_id) === selectedProperty);
-          return fullProperty?.name || 'N/A';
-        }
-      }
-
-      const firstMatchingProperty = jobProperties.find(prop => {
-        return typeof prop === 'object' && 'name' in prop;
-      });
-
-      if (firstMatchingProperty && typeof firstMatchingProperty === 'object' && 'name' in firstMatchingProperty) {
-        return firstMatchingProperty.name;
-      }
-
-      const propertyFromList = properties?.find(p =>
-        jobProperties.some(jobProp => {
-          if (typeof jobProp === 'string' || typeof jobProp === 'number') {
-            return String(jobProp) === String(p?.property_id);
-          }
-          if (typeof jobProp === 'object') {
-            const propId = 'property_id' in jobProp ? jobProp.property_id : ('id' in jobProp ? jobProp.id : undefined);
-            return String(propId) === String(p?.property_id);
-          }
-          return false;
-        })
-      );
-
-      return propertyFromList?.name || 'N/A';
-    } catch (error) {
-      console.error('Error in getPropertyName:', error);
-      return 'N/A';
-    }
-  };
-
   if (!room) return null;
 
   return (
@@ -516,7 +399,7 @@ function RoomOnlyJobCard({ job, properties }: RoomOnlyJobCardProps) {
         <div className="flex items-center gap-1.5 text-xs text-gray-600">
           <MapPin className="w-3 h-3 flex-shrink-0 text-gray-400" />
           <span className="font-medium line-clamp-1">
-            {`${getPropertyName()} - Room ${room?.name || 'N/A'}${room?.room_type ? ` (${room.room_type})` : ''}`}
+            {`${getJobPropertyName(job, selectedProperty, properties)} - Room ${room?.name || 'N/A'}${room?.room_type ? ` (${room.room_type})` : ''}`}
           </span>
         </div>
         <div className="pt-2 border-t">
@@ -570,22 +453,7 @@ function RoomCard({ room, query, highlightMatch, properties }: RoomCardProps) {
   
   const displayId = typeof room.room_id === 'number' ? `#${room.room_id}` : room.room_id;
 
-  const getPropertyName = () => {
-    if (room.properties && room.properties.length > 0) {
-      const prop = room.properties[0];
-      let propId: string | number;
-      if (typeof prop === 'string' || typeof prop === 'number') {
-        propId = String(prop);
-      } else if (typeof prop === 'object' && prop !== null) {
-        propId = String(prop.property_id || prop.id || '');
-      } else {
-        return 'N/A';
-      }
-      const property = properties?.find(p => String(p.property_id) === propId);
-      return property?.name || 'N/A';
-    }
-    return 'N/A';
-  };
+  const getPropertyName = () => getRoomPropertyName(room, properties);
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">

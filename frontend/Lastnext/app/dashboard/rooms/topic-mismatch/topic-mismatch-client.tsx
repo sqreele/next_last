@@ -10,6 +10,7 @@ import { Button } from '@/app/components/ui/button';
 import { downloadCSV } from '@/app/lib/utils/csv-export';
 import { getDisplayName } from '@/app/lib/utils/display-name';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
+import { filterRoomsByProperty, filterJobsByProperty } from '@/app/lib/utils/property-filter';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/app/components/ui/command';
 import { ChevronDown, Filter, X, AlertTriangle, Download, ArrowUpRight, CheckCircle2 } from 'lucide-react';
@@ -47,63 +48,15 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
     return userProperties.find((p) => String(p.property_id) === String(selectedProperty)) || null;
   }, [selectedProperty, userProperties]);
 
-  const propertyScopedRooms = React.useMemo(() => {
-    if (!selectedProperty) return rooms;
-    return (rooms || []).filter((room) => {
-      if (room.property_id != null && String(room.property_id) === String(selectedProperty)) return true;
-      if (!Array.isArray(room.properties)) return false;
-      return room.properties.some((prop) => {
-        if (typeof prop === 'string' || typeof prop === 'number') {
-          return String(prop) === String(selectedProperty);
-        }
-        if (typeof prop === 'object' && prop !== null) {
-          return (
-            String((prop as { property_id?: string | number }).property_id ?? '') === String(selectedProperty) ||
-            String((prop as { id?: string | number }).id ?? '') === String(selectedProperty)
-          );
-        }
-        return false;
-      });
-    });
-  }, [rooms, selectedProperty]);
+  const propertyScopedRooms = React.useMemo(
+    () => filterRoomsByProperty(rooms, selectedProperty),
+    [rooms, selectedProperty]
+  );
 
-  const propertyScopedJobs = React.useMemo(() => {
-    if (!selectedProperty) return jobs || [];
-    return (jobs || []).filter((job) => {
-      if (job.property_id != null && String(job.property_id) === String(selectedProperty)) return true;
-
-      if (Array.isArray(job.properties)) {
-        const matched = job.properties.some((prop) => {
-          if (typeof prop === 'string' || typeof prop === 'number') {
-            return String(prop) === String(selectedProperty);
-          }
-          if (typeof prop === 'object' && prop !== null) {
-            return (
-              String((prop as { property_id?: string | number }).property_id ?? '') === String(selectedProperty) ||
-              String((prop as { id?: string | number }).id ?? '') === String(selectedProperty)
-            );
-          }
-          return false;
-        });
-        if (matched) return true;
-      }
-
-      if (job.profile_image?.properties && Array.isArray(job.profile_image.properties)) {
-        const matched = job.profile_image.properties.some((prop) => String(prop) === String(selectedProperty));
-        if (matched) return true;
-      }
-
-      if (Array.isArray(job.rooms)) {
-        const matched = job.rooms.some((room) => {
-          if (!Array.isArray(room.properties)) return false;
-          return room.properties.some((prop) => String(prop) === String(selectedProperty));
-        });
-        if (matched) return true;
-      }
-
-      return false;
-    });
-  }, [jobs, selectedProperty]);
+  const propertyScopedJobs = React.useMemo(
+    () => filterJobsByProperty(jobs, selectedProperty),
+    [jobs, selectedProperty]
+  );
 
   const getUserKey = React.useCallback((user: Job['user'] | undefined | null) => {
     if (user === null || user === undefined) return null;

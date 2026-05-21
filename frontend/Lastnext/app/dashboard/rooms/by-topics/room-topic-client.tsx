@@ -10,6 +10,8 @@ import { Button } from '@/app/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/app/components/ui/command';
 import { ChevronDown, Filter, X } from 'lucide-react';
+import { useUser } from '@/app/lib/stores/mainStore';
+import { filterRoomsByProperty, filterJobsByProperty } from '@/app/lib/utils/property-filter';
 
 type Props = {
   rooms: Room[];
@@ -20,14 +22,34 @@ type Props = {
 
 export default function RoomsByTopicClient({ rooms, topics, properties, jobs }: Props) {
   const [selectedTopicId, setSelectedTopicId] = React.useState<number | null>(null);
+  const { selectedPropertyId } = useUser();
   const getVariant = (active: boolean): 'default' | 'outline' => (active ? 'default' : 'outline');
+
+  const selectedPropertyName = React.useMemo(() => {
+    if (!selectedPropertyId) return null;
+    const match = properties.find(
+      (p: any) => String(p?.property_id ?? p?.id) === String(selectedPropertyId)
+    );
+    return (match as any)?.name || null;
+  }, [properties, selectedPropertyId]);
+
+  // Limit rooms and jobs to the globally selected property (if any)
+  const propertyRooms = React.useMemo(
+    () => filterRoomsByProperty(rooms, selectedPropertyId),
+    [rooms, selectedPropertyId]
+  );
+
+  const propertyJobs = React.useMemo(
+    () => filterJobsByProperty(jobs, selectedPropertyId),
+    [jobs, selectedPropertyId]
+  );
 
   // Build counts: topicId -> number of unique rooms that have at least one job with that topic
   const { topicCounts, topicToRoomIds } = React.useMemo(() => {
     const counts = new Map<number, number>();
     const mapping = new Map<number, Set<number>>();
-    if (Array.isArray(jobs)) {
-      for (const job of jobs) {
+    if (Array.isArray(propertyJobs)) {
+      for (const job of propertyJobs) {
         const jobTopics = Array.isArray(job.topics) ? job.topics : [];
         const jobRooms = Array.isArray(job.rooms) ? job.rooms : [];
         if (jobTopics.length === 0 || jobRooms.length === 0) continue;
@@ -52,18 +74,18 @@ export default function RoomsByTopicClient({ rooms, topics, properties, jobs }: 
       counts.set(topicId, roomSet.size);
     }
     return { topicCounts: counts, topicToRoomIds: mapping };
-  }, [jobs]);
+  }, [propertyJobs]);
 
-  const allCount = React.useMemo(() => Array.isArray(rooms) ? rooms.length : 0, [rooms]);
+  const allCount = React.useMemo(() => Array.isArray(propertyRooms) ? propertyRooms.length : 0, [propertyRooms]);
   const selectedTopic = React.useMemo(() => topics.find(t => t.id === selectedTopicId) || null, [topics, selectedTopicId]);
 
   // Filter rooms to those that are linked to the selected topic via jobs
   const filteredRooms = React.useMemo(() => {
-    if (!selectedTopicId) return rooms;
+    if (!selectedTopicId) return propertyRooms;
     const ids = topicToRoomIds.get(selectedTopicId);
     if (!ids || ids.size === 0) return [];
-    return rooms.filter(r => typeof r.room_id === 'number' && ids.has(r.room_id));
-  }, [rooms, selectedTopicId, topicToRoomIds]);
+    return propertyRooms.filter(r => typeof r.room_id === 'number' && ids.has(r.room_id));
+  }, [propertyRooms, selectedTopicId, topicToRoomIds]);
 
   return (
     <div className="space-y-4">
@@ -75,6 +97,7 @@ export default function RoomsByTopicClient({ rooms, topics, properties, jobs }: 
               <h2 className="text-lg font-semibold text-gray-900">Rooms by Topic</h2>
               <p className="text-xs text-gray-500">
                 {selectedTopic ? `${selectedTopic.title} • ${topicCounts.get(selectedTopic.id) || 0} rooms` : `${allCount} total rooms`}
+                {selectedPropertyId ? ` • Property: ${selectedPropertyName || selectedPropertyId}` : ''}
               </p>
             </div>
 

@@ -50,11 +50,10 @@ function getErrorMessage(err: unknown, fallback: string): string {
 }
 
 const AreasClient: React.FC = () => {
-  const { userProfile } = useUser();
+  const { userProfile, selectedPropertyId } = useUser();
   const { toast } = useToast();
   const [areas, setAreas] = useState<Area[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [propertyFilter, setPropertyFilter] = useState<string>('all');
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -71,12 +70,35 @@ const AreasClient: React.FC = () => {
     return profProps as Property[];
   }, [properties, userProfile]);
 
+  // Map the globally selected property_id (string like "P1A2B3C4") to the
+  // integer PK that the areas API expects.
+  const selectedPropertyPk = useMemo<string | null>(() => {
+    if (!selectedPropertyId) return null;
+    const match = propertyOptions.find(
+      (p: any) =>
+        String(p?.property_id ?? '') === String(selectedPropertyId) ||
+        String(p?.id ?? '') === String(selectedPropertyId)
+    );
+    if (!match) return null;
+    return (match as any).id != null ? String((match as any).id) : null;
+  }, [selectedPropertyId, propertyOptions]);
+
+  const selectedPropertyName = useMemo(() => {
+    if (!selectedPropertyId) return null;
+    const match = propertyOptions.find(
+      (p: any) =>
+        String(p?.property_id ?? '') === String(selectedPropertyId) ||
+        String(p?.id ?? '') === String(selectedPropertyId)
+    );
+    return (match as any)?.name || null;
+  }, [selectedPropertyId, propertyOptions]);
+
   const fetchAreas = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const params: Record<string, string> = {};
-      if (propertyFilter !== 'all') params.property_id = propertyFilter;
+      if (selectedPropertyPk) params.property_id = selectedPropertyPk;
       if (activeFilter !== 'all') params.is_active = String(activeFilter === 'active');
       if (search.trim()) params.search = search.trim();
 
@@ -89,7 +111,7 @@ const AreasClient: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [propertyFilter, activeFilter, search]);
+  }, [selectedPropertyPk, activeFilter, search]);
 
   const fetchProperties = useCallback(async () => {
     try {
@@ -108,9 +130,8 @@ const AreasClient: React.FC = () => {
   const openCreate = () => {
     setForm({
       ...emptyForm,
-      property_id: propertyFilter !== 'all'
-        ? propertyFilter
-        : (propertyOptions[0]?.id != null ? String(propertyOptions[0].id) : ''),
+      property_id: selectedPropertyPk
+        || (propertyOptions[0]?.id != null ? String(propertyOptions[0].id) : ''),
     });
     setDialogOpen(true);
   };
@@ -185,26 +206,23 @@ const AreasClient: React.FC = () => {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Areas</h1>
-          <p className="text-sm text-gray-500">Manage property areas / zones used in maintenance jobs.</p>
+          <p className="text-sm text-gray-500">
+            Manage property areas / zones used in maintenance jobs.
+            {selectedPropertyId ? (
+              <span className="ml-1 text-gray-700">
+                Property: <strong>{selectedPropertyName || selectedPropertyId}</strong>
+              </span>
+            ) : (
+              <span className="ml-1 text-gray-500">Showing all properties</span>
+            )}
+          </p>
         </div>
         <Button onClick={openCreate} className="gap-1">
           <Plus className="h-4 w-4" /> Add Area
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div>
-          <Label className="text-xs text-gray-500">Property</Label>
-          <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-            <SelectTrigger><SelectValue placeholder="All properties" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All properties</SelectItem>
-              {propertyOptions.map((p) => (
-                <SelectItem key={String(p.id)} value={String(p.id)}>{p.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label className="text-xs text-gray-500">Status</Label>
           <Select value={activeFilter} onValueChange={(v) => setActiveFilter(v as any)}>

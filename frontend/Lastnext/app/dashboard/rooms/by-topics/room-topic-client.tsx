@@ -35,13 +35,13 @@ export default function RoomsByTopicClient({ rooms, topics, properties, jobs }: 
 
   // Limit rooms and jobs to the globally selected property (if any)
   const propertyRooms = React.useMemo(
-    () => filterRoomsByProperty(rooms, selectedPropertyId),
-    [rooms, selectedPropertyId]
+    () => filterRoomsByProperty(rooms, selectedPropertyId, properties),
+    [rooms, selectedPropertyId, properties]
   );
 
   const propertyJobs = React.useMemo(
-    () => filterJobsByProperty(jobs, selectedPropertyId),
-    [jobs, selectedPropertyId]
+    () => filterJobsByProperty(jobs, selectedPropertyId, properties),
+    [jobs, selectedPropertyId, properties]
   );
 
   // Build counts: topicId -> number of unique rooms that have at least one job with that topic

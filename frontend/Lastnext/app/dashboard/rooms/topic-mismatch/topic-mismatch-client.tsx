@@ -49,13 +49,13 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
   }, [selectedProperty, userProperties]);
 
   const propertyScopedRooms = React.useMemo(
-    () => filterRoomsByProperty(rooms, selectedProperty),
-    [rooms, selectedProperty]
+    () => filterRoomsByProperty(rooms, selectedProperty, userProperties),
+    [rooms, selectedProperty, userProperties]
   );
 
   const propertyScopedJobs = React.useMemo(
-    () => filterJobsByProperty(jobs, selectedProperty),
-    [jobs, selectedProperty]
+    () => filterJobsByProperty(jobs, selectedProperty, userProperties),
+    [jobs, selectedProperty, userProperties]
   );
 
   const getUserKey = React.useCallback((user: Job['user'] | undefined | null) => {

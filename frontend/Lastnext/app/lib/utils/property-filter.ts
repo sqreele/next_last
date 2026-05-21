@@ -93,3 +93,98 @@ export const filterJobsByProperty = (
   const idSet = buildPropertyIdSet(String(propertyId), properties);
   return jobs.filter((job) => jobBelongsToProperty(job, idSet));
 };
+
+/**
+ * Resolve a display name for the property associated with a room.
+ * Handles both string property_id and integer PK forms in room.properties.
+ */
+export const getRoomPropertyName = (
+  room: Room,
+  properties?: Property[] | null,
+  fallback = 'N/A'
+): string => {
+  const entries: PropertyLike[] = [];
+  if (room?.property_id != null) entries.push(room.property_id as PropertyLike);
+  if (Array.isArray(room?.properties)) {
+    for (const p of room.properties) entries.push(p as PropertyLike);
+  }
+  if (entries.length === 0) return fallback;
+
+  for (const entry of entries) {
+    if (entry && typeof entry === 'object' && 'name' in entry) {
+      const name = (entry as { name?: string }).name;
+      if (name) return name;
+    }
+  }
+
+  if (Array.isArray(properties)) {
+    for (const entry of entries) {
+      if (entry == null) continue;
+      const idSet = new Set<string>();
+      if (typeof entry === 'string' || typeof entry === 'number') {
+        idSet.add(String(entry));
+      } else if (typeof entry === 'object') {
+        if (entry.property_id != null) idSet.add(String(entry.property_id));
+        if (entry.id != null) idSet.add(String(entry.id));
+      }
+      const match = properties.find(
+        (p: any) => idSet.has(String(p?.property_id)) || idSet.has(String(p?.id))
+      );
+      if (match?.name) return match.name;
+    }
+  }
+
+  return fallback;
+};
+
+/**
+ * Resolve a display name for the property associated with a job.
+ * Prefers (in order): the globally selected property's name; the first nested
+ * property object with a name; any property in `properties` that matches an
+ * id referenced by the job.
+ */
+export const getJobPropertyName = (
+  job: Job,
+  selectedPropertyId: string | null | undefined,
+  properties?: Property[] | null,
+  fallback = 'N/A'
+): string => {
+  const jobPropertyEntries: PropertyLike[] = [
+    ...(((job.profile_image as { properties?: PropertyLike[] } | null | undefined)?.properties) || []),
+    ...((job.properties as PropertyLike[] | undefined) || []),
+    ...((job.rooms?.flatMap((r) => (r?.properties as PropertyLike[] | undefined) || []) || []) as PropertyLike[]),
+  ];
+
+  if (selectedPropertyId) {
+    const idSet = buildPropertyIdSet(String(selectedPropertyId), properties);
+    const matched = jobPropertyEntries.find((p) => matchesPropertyEntry(p, idSet));
+    if (matched) {
+      if (typeof matched === 'object' && matched && 'name' in matched) {
+        const name = (matched as { name?: string }).name;
+        if (name) return name;
+      }
+      const full = (properties || []).find(
+        (p: any) => idSet.has(String(p?.property_id)) || idSet.has(String(p?.id))
+      );
+      if (full?.name) return full.name;
+    }
+  }
+
+  const firstNamed = jobPropertyEntries.find(
+    (p) => typeof p === 'object' && p !== null && 'name' in (p as object)
+  );
+  if (firstNamed && typeof firstNamed === 'object' && 'name' in firstNamed) {
+    const name = (firstNamed as { name?: string }).name;
+    if (name) return name;
+  }
+
+  if (Array.isArray(properties)) {
+    const fromList = properties.find((p: any) => {
+      const candidates = buildPropertyIdSet(String(p?.property_id ?? p?.id ?? ''), properties);
+      return jobPropertyEntries.some((entry) => matchesPropertyEntry(entry, candidates));
+    });
+    if (fromList?.name) return fromList.name;
+  }
+
+  return fallback;
+};

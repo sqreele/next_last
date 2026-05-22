@@ -88,6 +88,23 @@ const en = {
   'empty.noJobsHint': 'Adjust the filters or create a new job to see it here.',
   'empty.offline': "You're offline",
   'empty.offlineHint': 'Cached pages remain available. Updates will sync once you reconnect.',
+  'empty.offlineRetry': 'Try again',
+  'empty.offlineHome': 'Back to dashboard',
+
+  // PWA
+  'pwa.installTitle': 'Install PCMS',
+  'pwa.installBody': 'Add to your home screen for one-tap access to work orders.',
+  'pwa.installButton': 'Install',
+  'pwa.updateTitle': 'A new version is ready',
+  'pwa.updateBody': 'Reload to pick up the latest features and fixes.',
+  'pwa.updateButton': 'Reload',
+
+  // Network
+  'network.offline': 'Offline — changes will retry when you reconnect.',
+  'network.online': 'Back online — syncing latest jobs.',
+  'network.retryNow': 'Retry now',
+  'network.queuedSync': 'pending sync',
+  'network.syncing': 'Syncing queued updates…',
 } as const;
 
 type DictKey = keyof typeof en;
@@ -157,6 +174,21 @@ const th: Record<DictKey, string> = {
   'empty.noJobsHint': 'ปรับตัวกรองหรือสร้างงานใหม่เพื่อให้แสดงที่นี่',
   'empty.offline': 'คุณออฟไลน์อยู่',
   'empty.offlineHint': 'หน้าที่แคชไว้ยังเปิดได้ การอัพเดทจะ sync เมื่อกลับมาออนไลน์',
+  'empty.offlineRetry': 'ลองใหม่',
+  'empty.offlineHome': 'กลับหน้าหลัก',
+
+  'pwa.installTitle': 'ติดตั้ง PCMS',
+  'pwa.installBody': 'เพิ่มไว้หน้าจอหลักเพื่อเข้าถึงงานซ่อมได้รวดเร็ว',
+  'pwa.installButton': 'ติดตั้ง',
+  'pwa.updateTitle': 'มีเวอร์ชันใหม่พร้อมแล้ว',
+  'pwa.updateBody': 'โหลดใหม่เพื่อใช้ฟีเจอร์และแก้ไขล่าสุด',
+  'pwa.updateButton': 'โหลดใหม่',
+
+  'network.offline': 'ออฟไลน์ — จะลองใหม่อัตโนมัติเมื่อต่อกลับมา',
+  'network.online': 'กลับมาออนไลน์ — กำลังซิงค์งานล่าสุด',
+  'network.retryNow': 'ลองตอนนี้',
+  'network.queuedSync': 'รอซิงค์',
+  'network.syncing': 'กำลังซิงค์งานที่ค้าง…',
 };
 
 export type LocaleDictionary = Record<DictKey, string>;

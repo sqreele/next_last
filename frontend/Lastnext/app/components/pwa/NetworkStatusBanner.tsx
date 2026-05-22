@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { WifiOff, Wifi, Loader2 } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
 import { useOfflineQueue } from '@/app/lib/hooks/useOfflineQueue';
+import { useT } from '@/app/lib/i18n/LocaleProvider';
 
 /**
  * Slim sticky banner that surfaces network state plus any work queued
@@ -12,6 +13,7 @@ import { useOfflineQueue } from '@/app/lib/hooks/useOfflineQueue';
  * caught up. Silent on the happy path.
  */
 export function NetworkStatusBanner() {
+  const t = useT();
   const [online, setOnline] = useState(true);
   const [recentlyRecovered, setRecentlyRecovered] = useState(false);
   const { count, drain, isDraining } = useOfflineQueue();
@@ -68,18 +70,18 @@ export function NetworkStatusBanner() {
         <Icon className={cn('h-3.5 w-3.5', tone === 'syncing' && isDraining && 'animate-spin')} />
         {tone === 'offline' && (
           <>
-            Offline — changes will retry when you reconnect.
-            {hasQueuedWork && ` (${count} queued)`}
+            {t('network.offline')}
+            {hasQueuedWork && ` (${count})`}
           </>
         )}
         {tone === 'syncing' && (
           <>
             {isDraining
-              ? `Syncing ${count} queued update${count === 1 ? '' : 's'}…`
-              : `${count} update${count === 1 ? '' : 's'} pending sync`}
+              ? `${t('network.syncing')} (${count})`
+              : `${count} · ${t('network.queuedSync')}`}
           </>
         )}
-        {tone === 'online' && !hasQueuedWork && 'Back online — syncing latest jobs.'}
+        {tone === 'online' && !hasQueuedWork && t('network.online')}
       </span>
       {tone === 'syncing' && !isDraining && (
         <button
@@ -87,7 +89,7 @@ export function NetworkStatusBanner() {
           onClick={() => drain().catch(() => undefined)}
           className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider hover:bg-white/30"
         >
-          Retry now
+          {t('network.retryNow')}
         </button>
       )}
     </div>

@@ -14,6 +14,7 @@ import {
 import { useSession } from '@/app/lib/session.client';
 import { fetchWithToken } from '@/app/lib/data.server';
 import { Button } from '@/app/components/ui/button';
+import { useT } from '@/app/lib/i18n/LocaleProvider';
 import { cn } from '@/app/lib/utils/cn';
 
 const API_BASE_URL =
@@ -102,6 +103,7 @@ const KIND_STYLES = {
 
 export function NotificationBell({ variant = 'compact', className }: NotificationBellProps) {
   const { data: session } = useSession();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<NotificationsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -209,10 +211,10 @@ export function NotificationBell({ variant = 'compact', className }: Notificatio
         >
           <header className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
             <div>
-              <p className="text-sm font-bold text-slate-900">Notifications</p>
+              <p className="text-sm font-bold text-slate-900">{t('notifications.title')}</p>
               <p className="text-[11px] font-semibold text-slate-500">
                 {data
-                  ? `${data.overdue_count} overdue · ${data.upcoming_count} upcoming`
+                  ? `${data.overdue_count} ${t('notifications.overdue').toLowerCase()} · ${data.upcoming_count} ${t('notifications.upcoming').toLowerCase()}`
                   : 'Loading…'}
               </p>
             </div>
@@ -236,9 +238,9 @@ export function NotificationBell({ variant = 'compact', className }: Notificatio
                 <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-100 text-emerald-700">
                   <CheckCircle2 className="h-5 w-5" />
                 </span>
-                <p className="text-sm font-bold text-slate-900">All caught up</p>
+                <p className="text-sm font-bold text-slate-900">{t('notifications.empty')}</p>
                 <p className="text-xs font-medium text-slate-500">
-                  No overdue or upcoming PM tasks this week.
+                  {t('notifications.emptyHint')}
                 </p>
               </div>
             ) : (
@@ -305,14 +307,14 @@ export function NotificationBell({ variant = 'compact', className }: Notificatio
               className="text-slate-700 hover:underline"
               disabled={!data || data.results.length === 0}
             >
-              Mark all read
+              {t('action.markAllRead')}
             </button>
             <Link
               href="/dashboard/preventive-maintenance/schedule"
               onClick={() => setOpen(false)}
               className="inline-flex items-center gap-1 text-blue-700 hover:underline"
             >
-              View calendar <ArrowRight className="h-3 w-3" />
+              {t('action.viewAll')} <ArrowRight className="h-3 w-3" />
             </Link>
           </footer>
         </div>

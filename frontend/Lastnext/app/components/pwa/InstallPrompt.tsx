@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Download, X } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
+import { useT } from '@/app/lib/i18n/LocaleProvider';
 
 const DISMISSED_KEY = 'pcms-install-prompt-dismissed';
 const DISMISS_DAYS = 14;
@@ -27,6 +28,7 @@ function shouldShow(): boolean {
  * iOS does not fire `beforeinstallprompt`; we leave Safari's native UI alone.
  */
 export function InstallPrompt() {
+  const t = useT();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
 
@@ -81,14 +83,14 @@ export function InstallPrompt() {
       </div>
       <div className="min-w-0 flex-1">
         <p id="pcms-install-title" className="text-sm font-bold text-slate-900">
-          Install PCMS
+          {t('pwa.installTitle')}
         </p>
         <p className="text-xs text-slate-600">
-          Add to your home screen for one-tap access to work orders.
+          {t('pwa.installBody')}
         </p>
       </div>
       <Button size="sm" onClick={install} className="bg-blue-600 text-white hover:bg-blue-700">
-        Install
+        {t('pwa.installButton')}
       </Button>
       <button
         type="button"

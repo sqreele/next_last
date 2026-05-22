@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Sparkles, X } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
+import { useT } from '@/app/lib/i18n/LocaleProvider';
 
 /**
  * Registers /sw.js in production. Skipped in dev so HMR is not poisoned by
@@ -13,6 +14,7 @@ import { Button } from '@/app/components/ui/button';
  * downloading so the user can apply it without manually hard-reloading.
  */
 export function ServiceWorkerRegistrar() {
+  const t = useT();
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -85,17 +87,15 @@ export function ServiceWorkerRegistrar() {
         <Sparkles className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-slate-900">A new version is ready</p>
-        <p className="text-xs font-medium text-slate-600">
-          Reload to pick up the latest features and fixes.
-        </p>
+        <p className="text-sm font-bold text-slate-900">{t('pwa.updateTitle')}</p>
+        <p className="text-xs font-medium text-slate-600">{t('pwa.updateBody')}</p>
       </div>
       <Button
         size="sm"
         onClick={() => waitingWorker.postMessage({ type: 'SKIP_WAITING' })}
         className="bg-blue-600 text-white hover:bg-blue-700"
       >
-        Reload
+        {t('pwa.updateButton')}
       </Button>
       <button
         type="button"

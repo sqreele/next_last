@@ -422,6 +422,103 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         serializer = PreventiveMaintenanceListSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], url_path='schedule')
+    def schedule(self, request):
+        """
+        Calendar-friendly view of preventive maintenance work.
+
+        Groups PMs into per-day buckets so the frontend can render a calendar
+        without doing the bucketing client-side. Buckets are ordered by date
+        and include both open and recently-completed PMs so users can see
+        what was done in the visible window.
+
+        Query params:
+            from   ISO date (default = today).
+            days   Window length in days (default 30, capped at 180).
+            status `open` (default) | `completed` | `all`.
+        """
+        from datetime import datetime
+
+        days_param = request.query_params.get('days', '30')
+        try:
+            days = max(1, min(int(days_param), 180))
+        except (TypeError, ValueError):
+            days = 30
+
+        from_param = request.query_params.get('from')
+        if from_param:
+            try:
+                start_dt = datetime.fromisoformat(from_param.replace('Z', '+00:00'))
+                if timezone.is_naive(start_dt):
+                    start_dt = timezone.make_aware(start_dt, timezone.get_current_timezone())
+            except ValueError:
+                start_dt = timezone.now()
+        else:
+            start_dt = timezone.now()
+        start_dt = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_dt = start_dt + timedelta(days=days)
+
+        status_filter = (request.query_params.get('status') or 'open').lower()
+        qs = self.get_queryset().filter(scheduled_date__gte=start_dt, scheduled_date__lt=end_dt)
+        if status_filter == 'open':
+            qs = qs.filter(completed_date__isnull=True)
+        elif status_filter == 'completed':
+            qs = qs.filter(completed_date__isnull=False)
+        qs = qs.order_by('scheduled_date')
+
+        serializer = PreventiveMaintenanceListSerializer(qs, many=True, context={'request': request})
+        items = serializer.data
+
+        # Bucket by local date string YYYY-MM-DD. We pre-build every day in the
+        # range so the client can render an even calendar without filling gaps.
+        bucket_index = {}
+        days_out = []
+        cursor = start_dt
+        for _ in range(days):
+            key = cursor.date().isoformat()
+            bucket = {
+                'date': key,
+                'weekday': cursor.strftime('%a'),
+                'items': [],
+                'overdue_count': 0,
+                'open_count': 0,
+                'completed_count': 0,
+            }
+            bucket_index[key] = bucket
+            days_out.append(bucket)
+            cursor += timedelta(days=1)
+
+        now = timezone.now()
+        for pm in qs:
+            key = pm.scheduled_date.date().isoformat()
+            bucket = bucket_index.get(key)
+            if bucket is None:
+                continue
+            bucket['items'].append(
+                next(
+                    (i for i in items if str(i.get('pm_id')) == str(pm.pm_id)),
+                    None,
+                )
+            )
+            if pm.completed_date is not None:
+                bucket['completed_count'] += 1
+            elif pm.scheduled_date < now:
+                bucket['overdue_count'] += 1
+            else:
+                bucket['open_count'] += 1
+
+        # Drop None entries that snuck in from missing pm_id matches.
+        for bucket in days_out:
+            bucket['items'] = [item for item in bucket['items'] if item]
+
+        return Response({
+            'from': start_dt.date().isoformat(),
+            'to': (end_dt - timedelta(days=1)).date().isoformat(),
+            'days': days_out,
+            'total': qs.count(),
+            'status': status_filter,
+        })
+
     @action(detail=False, methods=['get'])
     def overdue(self, request):
         """
@@ -1590,17 +1687,60 @@ class JobViewSet(viewsets.ModelViewSet):
         logger.info(f"Returning {len(serializer.data)} jobs to user {user.username} (no pagination)")
         return Response(response_data, status=status.HTTP_200_OK)
 
+    def _accessible_property_ids(self):
+        """Property PKs the current user can write against."""
+        user = self.request.user
+        if not user.is_authenticated:
+            return set()
+        if user.is_staff or user.is_superuser:
+            return None  # sentinel meaning "all"
+        return set(
+            Property.objects.filter(users=user).values_list('id', flat=True)
+        )
+
+    def _validate_tenant_scope(self, serializer):
+        """Reject writes that point at rooms or areas outside the user's tenant.
+
+        Multi-tenant guarding for reads is already handled in `get_queryset`;
+        this complements that on the write path so a forged room_id in the
+        request body can't cross-tenant.
+        """
+        accessible = self._accessible_property_ids()
+        if accessible is None:
+            return  # staff/superuser bypass
+
+        # Rooms come in as a list of Room model instances after validation
+        rooms = serializer.validated_data.get('rooms')
+        if rooms:
+            for room in rooms:
+                room_property_ids = set(
+                    room.properties.values_list('id', flat=True)
+                )
+                if not room_property_ids & accessible:
+                    raise PermissionDenied(
+                        f"You don't have access to a property containing room '{room.name}'."
+                    )
+
+        area = serializer.validated_data.get('area')
+        if area is not None and getattr(area, 'property_id', None) is not None:
+            if area.property_id not in accessible:
+                raise PermissionDenied(
+                    "You don't have access to that area's property."
+                )
+
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
+            self._validate_tenant_scope(serializer)
             serializer.save(user=self.request.user, updated_by=self.request.user)
         else:
             serializer.save()
-        
+
         # Invalidate cache after creating job
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
 
     def perform_update(self, serializer):
         if self.request.user.is_authenticated:
+            self._validate_tenant_scope(serializer)
             instance = self.get_object()
             data = serializer.validated_data
             if 'status' in data and data['status'] == 'completed' and instance.status != 'completed':
@@ -1609,10 +1749,10 @@ class JobViewSet(viewsets.ModelViewSet):
                 serializer.save(updated_by=self.request.user)
         else:
             serializer.save()
-        
+
         # Invalidate cache after updating job
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
-    
+
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
         # Invalidate cache after deleting job
@@ -1643,6 +1783,92 @@ class JobViewSet(viewsets.ModelViewSet):
         )
         out = JobCommentSerializer(comment, context={'request': request})
         return Response(out.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'], url_path='audit-log')
+    def audit_log(self, request, job_id=None):
+        """Synthetic activity log derived from existing job state and comments.
+
+        Until a dedicated AuditLog model lands (which would require a
+        migration), we surface the auditable timestamps already on the model:
+        creation, completion, image uploads, comments, and remark notes (the
+        UpdateStatusModal prepends `[ts · user → new_status] message` lines
+        which we parse out here). The response is a chronological list of
+        events the frontend can render as a timeline.
+        """
+        job = self.get_object()
+        events = []
+
+        creator_name = getattr(job.user, 'username', None) or getattr(job.user, 'first_name', None) or 'system'
+        events.append({
+            'kind': 'created',
+            'at': job.created_at.isoformat() if job.created_at else None,
+            'actor': creator_name,
+            'message': 'Job created',
+        })
+
+        if job.completed_at:
+            updater_name = getattr(job.updated_by, 'username', None) or 'unknown'
+            events.append({
+                'kind': 'completed',
+                'at': job.completed_at.isoformat(),
+                'actor': updater_name,
+                'message': 'Job completed',
+            })
+
+        # Image uploads — JobImage has uploaded_at and uploaded_by
+        for image in job.job_images.all().order_by('uploaded_at'):
+            uploaded_by = getattr(image.uploaded_by, 'username', None) if image.uploaded_by else None
+            events.append({
+                'kind': 'photo_uploaded',
+                'at': image.uploaded_at.isoformat() if image.uploaded_at else None,
+                'actor': uploaded_by or 'unknown',
+                'message': 'Photo uploaded',
+                'image_url': image.image_url.url if hasattr(image.image_url, 'url') else None,
+            })
+
+        # Comments
+        for comment in job.comments.select_related('author').order_by('created_at'):
+            author = getattr(comment.author, 'username', None) or 'unknown'
+            events.append({
+                'kind': 'comment',
+                'at': comment.created_at.isoformat() if comment.created_at else None,
+                'actor': author,
+                'message': comment.comment,
+            })
+
+        # Parse status-change lines that UpdateStatusModal appends to remarks.
+        # Format: `[YYYY-MM-DD HH:MM · username → status] message`
+        if job.remarks:
+            import re
+
+            pattern = re.compile(
+                r'\[(?P<ts>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2})\s*[·-]\s*(?P<actor>[^→]+?)\s*→\s*(?P<status>[a-z_]+)\]\s*(?P<msg>.*)',
+                re.IGNORECASE,
+            )
+            for line in job.remarks.splitlines():
+                match = pattern.search(line)
+                if not match:
+                    continue
+                events.append({
+                    'kind': 'status_change',
+                    'at': match.group('ts').replace(' ', 'T') + ':00',
+                    'actor': match.group('actor').strip(),
+                    'message': f"Status → {match.group('status')}",
+                    'note': match.group('msg').strip() or None,
+                    'new_status': match.group('status'),
+                })
+
+        # Sort: missing timestamps last
+        def _sort_key(event):
+            return event.get('at') or '9999-12-31T23:59:59'
+
+        events.sort(key=_sort_key)
+
+        return Response({
+            'job_id': job.job_id,
+            'count': len(events),
+            'events': events,
+        })
 
 
 class AreaViewSet(viewsets.ModelViewSet):

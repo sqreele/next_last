@@ -43,6 +43,7 @@ import {
 } from "@/app/components/ui/sheet";
 import { dashboardNavigationItems } from "@/app/lib/navigation";
 import { useScrollDirection } from "@/app/lib/hooks/useScrollDirection";
+import { NotificationBell } from "@/app/components/notifications/NotificationBell";
 
 function isNavItemActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -268,14 +269,7 @@ function MobileHeader({ hidden = false }: { hidden?: boolean }) {
           </Link>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 touch-manipulation text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-          </Button>
+          <NotificationBell />
           <MobileSearch />
         </div>
       </div>
@@ -301,31 +295,7 @@ function DesktopHeader({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
         <DashboardBreadcrumb />
       </div>
       <div className="flex items-center gap-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 relative"
-              title="Notifications"
-              aria-label="Open notifications"
-            >
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="w-72 bg-white border-gray-200"
-          >
-            <DropdownMenuItem className="flex flex-col items-start hover:bg-gray-100">
-              <span className="font-semibold">No new notifications</span>
-              <span className="text-xs text-gray-500">
-                Job updates will appear here.
-              </span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <NotificationBell variant="full" />
         <SearchInput />
         <HeaderPropertyList />
       </div>

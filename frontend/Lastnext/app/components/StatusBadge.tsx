@@ -1,5 +1,20 @@
 import * as React from "react";
 import { cn } from "@/app/lib/utils/cn";
+import { useLocale } from "@/app/lib/i18n/LocaleProvider";
+import type { DictKey } from "@/app/lib/i18n/dictionary";
+
+// Map normalized status keys -> dictionary keys. Anything not in this map
+// keeps the English label from the existing statusConfig fallback.
+const STATUS_I18N: Record<string, DictKey> = {
+  completed: "status.completed",
+  verified: "status.verified",
+  open: "status.open",
+  pending: "status.pending",
+  in_progress: "status.inProgress",
+  waiting_sparepart: "status.waitingSparepart",
+  cancelled: "status.cancelled",
+  overdue: "status.overdue",
+};
 
 type StatusTone =
   | "green"
@@ -116,6 +131,9 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   const normalized = normalizeStatus(status);
   const config = getStatusBadgeConfig(status);
+  const { t } = useLocale();
+  const i18nKey = STATUS_I18N[normalized];
+  const label = i18nKey ? t(i18nKey) : config.label;
   const shouldPulse =
     pulse ?? (ACTIVE_STATUSES.has(normalized) || URGENT_STATUSES.has(normalized));
   const isUrgent = URGENT_STATUSES.has(normalized);
@@ -133,7 +151,7 @@ export function StatusBadge({
         `pcms-status-badge--${normalized}`,
         className,
       )}
-      title={config.label}
+      title={label}
       {...props}
     >
       <span className="relative flex h-2 w-2 flex-none items-center justify-center">
@@ -151,7 +169,7 @@ export function StatusBadge({
           aria-hidden="true"
         />
       </span>
-      <span className="min-w-0">{config.label}</span>
+      <span className="min-w-0">{label}</span>
     </span>
   );
 }

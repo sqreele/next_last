@@ -6,6 +6,7 @@ import * as Yup from 'yup';
 import axios from 'axios';
 import { Button } from "@/app/components/ui/button";
 import { PageHeader, PriorityBadge, SectionCard } from '@/app/components/pcms-ui';
+import { useT } from '@/app/lib/i18n/LocaleProvider';
 import { Textarea } from "@/app/components/ui/textarea";
 import { Plus, Loader, AlertCircle, CheckCircle, Upload } from 'lucide-react';
 import { Checkbox } from "@/app/components/ui/checkbox";
@@ -115,6 +116,7 @@ const initialValues: FormValues = {
 const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }) => {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const t = useT();
   const isSubmittingRef = React.useRef(false); // Prevent double submission
   const loaderShownAtRef = useRef<number | null>(null);
 
@@ -457,10 +459,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   }, [fetchData, session?.user?.accessToken, selectedProperty]);
 
   const STEPS = [
-    { num: 1, label: 'Status', bgClass: 'bg-blue-100 text-blue-800 border-blue-400' },
-    { num: 2, label: 'Location', bgClass: 'bg-emerald-100 text-emerald-800 border-emerald-400' },
-    { num: 3, label: 'Details', bgClass: 'bg-purple-100 text-purple-800 border-purple-400' },
-    { num: 4, label: 'Evidence', bgClass: 'bg-amber-100 text-amber-800 border-amber-400' },
+    { num: 1, label: t('createJob.step.status'), bgClass: 'bg-blue-100 text-blue-800 border-blue-400' },
+    { num: 2, label: t('createJob.step.location'), bgClass: 'bg-emerald-100 text-emerald-800 border-emerald-400' },
+    { num: 3, label: t('createJob.step.details'), bgClass: 'bg-purple-100 text-purple-800 border-purple-400' },
+    { num: 4, label: t('createJob.step.evidence'), bgClass: 'bg-amber-100 text-amber-800 border-amber-400' },
   ];
 
   return (
@@ -506,7 +508,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       >
         {({ values, errors, touched, submitCount, setFieldValue, setFieldTouched, isSubmitting }) => (
                   <Form className="relative space-y-5 sm:space-y-6 md:space-y-8">
-          <PageHeader title="Create Maintenance Job" description="Fill in all 4 steps: Status & Priority, Location, Job Details, then Evidence." />
+          <PageHeader title={t('createJob.title')} description={t('createJob.subtitle')} />
 
           {/* Completion state per step — drives the stepper and the bottom CTA hint. */}
           {(() => {
@@ -593,7 +595,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
               </div>
               <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
-                Creating maintenance job...
+                {t('createJob.creating')}
               </p>
             </div>
           )}
@@ -1049,12 +1051,16 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       {isSubmitting ? (
                         <div className="flex items-center gap-3">
                           <Loader className="h-5 w-5 animate-spin" />
-                          <span>Creating maintenance job...</span>
+                          <span>{t('createJob.creating')}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-3">
                           <Plus className="h-5 w-5" />
-                          <span>{allReady ? 'Create Maintenance Job' : `Finish step ${firstIncomplete} to create job`}</span>
+                          <span>
+                            {allReady
+                              ? t('createJob.cta')
+                              : t('createJob.ctaFinishStep').replace('{n}', String(firstIncomplete))}
+                          </span>
                         </div>
                       )}
                     </Button>

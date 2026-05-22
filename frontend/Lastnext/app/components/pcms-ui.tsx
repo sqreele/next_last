@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { Search, RefreshCw, Home, FileText, Settings, Plus } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
 import { humanize, normalizeStatus } from '@/app/components/StatusBadge';
+import { useLocale } from '@/app/lib/i18n/LocaleProvider';
+import type { DictKey } from '@/app/lib/i18n/dictionary';
 export { StatusBadge, getStatusBadgeConfig, humanize, normalizeStatus } from '@/app/components/StatusBadge';
 
 
@@ -102,9 +104,23 @@ export function normalizePriority(priority?: string) {
   return key;
 }
 
+const PRIORITY_I18N: Record<string, DictKey> = {
+  low: 'priority.low',
+  medium: 'priority.medium',
+  high: 'priority.high',
+  critical: 'priority.critical',
+};
+
 export function PriorityBadge({ priority }: { priority?: string }) {
   const normalized = normalizePriority(priority);
-  return <span className={cn('pcms-priority-badge', `pcms-priority-badge--${normalized}`)}>{humanize(normalized)}</span>;
+  const { t } = useLocale();
+  const dictKey = PRIORITY_I18N[normalized];
+  const label = dictKey ? t(dictKey) : humanize(normalized);
+  return (
+    <span className={cn('pcms-priority-badge', `pcms-priority-badge--${normalized}`)} title={label}>
+      {label}
+    </span>
+  );
 }
 
 export function SearchInput({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {

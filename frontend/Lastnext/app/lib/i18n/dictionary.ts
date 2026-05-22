@@ -105,6 +105,38 @@ const en = {
   'network.retryNow': 'Retry now',
   'network.queuedSync': 'pending sync',
   'network.syncing': 'Syncing queued updates…',
+
+  // Priority
+  'priority.low': 'Low',
+  'priority.medium': 'Medium',
+  'priority.high': 'High',
+  'priority.critical': 'Critical',
+
+  // Forms (CreateJob)
+  'form.required': 'Required',
+  'form.optional': 'Optional',
+  'form.cancel': 'Cancel',
+  'form.save': 'Save',
+  'form.submitting': 'Submitting…',
+  'form.uploadPhoto': 'Upload photo',
+  'form.uploadHint': 'JPEG or PNG, up to 5MB.',
+  'createJob.title': 'Create maintenance job',
+  'createJob.subtitle': 'Fill in all 4 steps: Status & Priority, Location, Job Details, then Evidence.',
+  'createJob.step.status': 'Status',
+  'createJob.step.location': 'Location',
+  'createJob.step.details': 'Details',
+  'createJob.step.evidence': 'Evidence',
+  'createJob.cta': 'Create maintenance job',
+  'createJob.ctaFinishStep': 'Finish step {n} to create job',
+  'createJob.creating': 'Creating maintenance job…',
+
+  // Errors / generic
+  'error.signInRequired': 'Sign in again to continue.',
+  'error.networkRetry': 'Network issue — retrying when you reconnect.',
+  'error.generic': 'Something went wrong. Please try again.',
+  'error.notFound': 'Not found.',
+  'error.forbidden': 'You do not have access to that resource.',
+  'error.validation': 'Please check the highlighted fields.',
 } as const;
 
 type DictKey = keyof typeof en;
@@ -189,6 +221,35 @@ const th: Record<DictKey, string> = {
   'network.retryNow': 'ลองตอนนี้',
   'network.queuedSync': 'รอซิงค์',
   'network.syncing': 'กำลังซิงค์งานที่ค้าง…',
+
+  'priority.low': 'ต่ำ',
+  'priority.medium': 'ปานกลาง',
+  'priority.high': 'สูง',
+  'priority.critical': 'วิกฤต',
+
+  'form.required': 'จำเป็น',
+  'form.optional': 'ไม่บังคับ',
+  'form.cancel': 'ยกเลิก',
+  'form.save': 'บันทึก',
+  'form.submitting': 'กำลังส่ง…',
+  'form.uploadPhoto': 'อัปโหลดรูป',
+  'form.uploadHint': 'รองรับ JPEG หรือ PNG ไม่เกิน 5MB',
+  'createJob.title': 'สร้างงานซ่อมบำรุง',
+  'createJob.subtitle': 'กรอกครบ 4 ขั้น: สถานะ & ความสำคัญ → สถานที่ → รายละเอียด → หลักฐาน',
+  'createJob.step.status': 'สถานะ',
+  'createJob.step.location': 'สถานที่',
+  'createJob.step.details': 'รายละเอียด',
+  'createJob.step.evidence': 'หลักฐาน',
+  'createJob.cta': 'สร้างงานซ่อม',
+  'createJob.ctaFinishStep': 'กรอกขั้นที่ {n} ให้เสร็จก่อนสร้าง',
+  'createJob.creating': 'กำลังสร้างงาน…',
+
+  'error.signInRequired': 'กรุณาเข้าสู่ระบบใหม่อีกครั้ง',
+  'error.networkRetry': 'ขัดข้องชั่วคราว — ระบบจะลองใหม่อัตโนมัติเมื่อกลับมาออนไลน์',
+  'error.generic': 'มีบางอย่างผิดพลาด กรุณาลองใหม่',
+  'error.notFound': 'ไม่พบข้อมูล',
+  'error.forbidden': 'ไม่มีสิทธิ์เข้าถึงรายการนี้',
+  'error.validation': 'กรุณาตรวจสอบช่องที่ทำเครื่องหมาย',
 };
 
 export type LocaleDictionary = Record<DictKey, string>;

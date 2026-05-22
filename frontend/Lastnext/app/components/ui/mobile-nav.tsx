@@ -8,6 +8,21 @@ import { usePathname } from "next/navigation";
 import { primaryNavigationItems } from "@/app/lib/navigation";
 import { cn } from "@/app/lib/utils/cn";
 import { triggerHaptic } from "@/app/lib/hooks/useHaptic";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
+import type { DictKey } from "@/app/lib/i18n/dictionary";
+
+// Map nav item canonical names -> dictionary keys. Anything not in this map
+// keeps the existing English literal via the fallback in useT().
+const NAV_I18N: Record<string, DictKey> = {
+  Dashboard: "nav.dashboard",
+  "Maintenance Jobs": "nav.jobs",
+  "My Jobs": "nav.myJobs",
+  "Create Job": "nav.createJob",
+  Inventory: "nav.inventory",
+  Reports: "nav.reports",
+  Rooms: "nav.rooms",
+  Areas: "nav.areas",
+};
 
 interface MobileNavProps {
   className?: string;
@@ -22,6 +37,7 @@ const navigationItems = primaryNavigationItems.filter((item) =>
 
 export function MobileNav({ className, hidden = false }: MobileNavProps) {
   const pathname = usePathname();
+  const t = useT();
 
   return (
     <nav
@@ -71,7 +87,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
                     isActive ? "text-white" : "text-slate-700",
                   )}
                 >
-                  {item.shortName}
+                  {NAV_I18N[item.name] ? t(NAV_I18N[item.name]) : item.shortName}
                 </span>
               </div>
             </Link>
@@ -84,18 +100,19 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
 
 export function MobileTopBar({ className }: MobileNavProps) {
   const pathname = usePathname();
+  const t = useT();
 
   // Get page title based on current path
   const getPageTitle = () => {
     if (pathname.includes("/my-jobs") || pathname.includes("/myJobs"))
-      return "My Jobs";
+      return t("nav.myJobs");
     if (pathname.includes("/chartdashboard")) return "Analytics";
-    if (pathname.includes("/jobs-report")) return "Jobs Report";
+    if (pathname.includes("/jobs-report")) return t("nav.reports");
     if (pathname.includes("/create-job") || pathname.includes("/createJob"))
-      return "Create Job";
-    if (pathname.includes("/profile")) return "Profile";
-    if (pathname.includes("/preventive-maintenance")) return "Maintenance";
-    return "Dashboard";
+      return t("nav.createJob");
+    if (pathname.includes("/profile")) return t("nav.profile");
+    if (pathname.includes("/preventive-maintenance")) return t("nav.preventiveMaintenance");
+    return t("nav.dashboard");
   };
 
   return (

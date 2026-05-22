@@ -4,6 +4,7 @@ import { useState, ReactNode, MouseEvent } from 'react';
 import { useSession } from '@/app/lib/session.client';
 import { Job, JobStatus } from '@/app/lib/types';
 import { fetchWithToken } from '@/app/lib/data.server';
+import { enqueueRequest } from '@/app/lib/offline-queue';
 import {
   Dialog,
   DialogContent,
@@ -78,12 +79,49 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
         payload.completed_at = new Date().toISOString();
       }
 
-      await fetchWithToken<Job>(
-        `${API_BASE_URL}/api/v1/jobs/${job.job_id}/`,
-        accessToken,
-        'PATCH',
-        payload,
-      );
+      // Detect offline up front and queue without burning a failed request.
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        enqueueRequest({
+          kind: 'job-status-update',
+          label: `#${job.job_id} → ${selectedStatus}`,
+          endpoint: `/api/v1/jobs/${job.job_id}/`,
+          method: 'PATCH',
+          body: payload,
+        });
+        await delay(200);
+        setOpen(false);
+        reset();
+        onComplete?.();
+        return;
+      }
+
+      try {
+        await fetchWithToken<Job>(
+          `${API_BASE_URL}/api/v1/jobs/${job.job_id}/`,
+          accessToken,
+          'PATCH',
+          payload,
+        );
+      } catch (networkErr: any) {
+        // Treat fetch/TypeError or 5xx as transient — queue and let the
+        // offline-queue hook drain when the connection returns. Throw on
+        // explicit 4xx (validation, auth) so the user sees the real error.
+        const msg = String(networkErr?.message || '');
+        const isTransient =
+          msg.toLowerCase().includes('network') ||
+          msg.toLowerCase().includes('failed to fetch') ||
+          msg.toLowerCase().includes('timeout') ||
+          msg.toLowerCase().includes('aborted') ||
+          /\b5\d\d\b/.test(msg);
+        if (!isTransient) throw networkErr;
+        enqueueRequest({
+          kind: 'job-status-update',
+          label: `#${job.job_id} → ${selectedStatus}`,
+          endpoint: `/api/v1/jobs/${job.job_id}/`,
+          method: 'PATCH',
+          body: payload,
+        });
+      }
 
       await delay(200);
       setOpen(false);

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BarChart3, RefreshCw, Filter, Plus, Bug } from 'lucide-react';
+import { BarChart3, RefreshCw, Filter, Plus, Bug, CalendarDays } from 'lucide-react';
 
 interface DesktopHeaderProps {
   currentFilters: any;
@@ -68,6 +68,14 @@ export default function DesktopHeader({
           >
             <BarChart3 className="h-4 w-4 mr-2" />
             Dashboard
+          </Link>
+
+          <Link
+            href="/dashboard/preventive-maintenance/schedule"
+            className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <CalendarDays className="h-4 w-4 mr-2" />
+            Calendar
           </Link>
           
           <button

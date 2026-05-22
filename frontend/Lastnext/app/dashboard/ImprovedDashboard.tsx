@@ -42,6 +42,8 @@ import {
   normalizeStatus,
 } from '@/app/components/pcms-ui';
 import { SkeletonList, SkeletonTable } from '@/app/components/ui/loading';
+import { MobileKpiStrip } from '@/app/components/dashboard/MobileKpiStrip';
+import { RecentActivityFeed } from '@/app/components/dashboard/RecentActivityFeed';
 
 type StatTone = 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'secondary';
 
@@ -254,6 +256,51 @@ export default function ImprovedDashboard() {
     const weeklyMax = Math.max(1, ...buckets.map((b) => b.count));
     const peakIndex = buckets.reduce((idx, b, i) => (b.count > buckets[idx].count ? i : idx), 0);
 
+    // Week-over-week deltas: jobs created/completed/overdue in last 7 days vs the 7 days before.
+    const dayMs = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const last7Start = now - 7 * dayMs;
+    const prior7Start = now - 14 * dayMs;
+    let totalLast = 0;
+    let totalPrior = 0;
+    let openLast = 0;
+    let openPrior = 0;
+    let completedLast = 0;
+    let completedPrior = 0;
+    let overdueLast = 0;
+    let overduePrior = 0;
+    jobs.forEach((job) => {
+      const created = new Date(job.created_at).getTime();
+      if (!Number.isNaN(created)) {
+        if (created >= last7Start) totalLast += 1;
+        else if (created >= prior7Start) totalPrior += 1;
+      }
+      const status = normalizeStatus(job.status);
+      if (status === 'pending' || status === 'open') {
+        if (!Number.isNaN(created)) {
+          if (created >= last7Start) openLast += 1;
+          else if (created >= prior7Start) openPrior += 1;
+        }
+      }
+      if ((status === 'completed' || status === 'verified') && job.completed_at) {
+        const c = new Date(job.completed_at).getTime();
+        if (!Number.isNaN(c)) {
+          if (c >= last7Start) completedLast += 1;
+          else if (c >= prior7Start) completedPrior += 1;
+        }
+      }
+      if (isOverdue(job) && !Number.isNaN(created)) {
+        if (created >= last7Start) overdueLast += 1;
+        else if (created >= prior7Start) overduePrior += 1;
+      }
+    });
+    const deltas = {
+      total: totalLast - totalPrior,
+      open: openLast - openPrior,
+      completed: completedLast - completedPrior,
+      overdue: overdueLast - overduePrior,
+    };
+
     return {
       total,
       open: countByStatus.open || 0,
@@ -262,6 +309,7 @@ export default function ImprovedDashboard() {
       verified,
       overdue,
       completionRate,
+      deltas,
       statusCounts: countByStatus,
       priorityCounts,
       categoryRows: Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).slice(0, 5),
@@ -365,6 +413,18 @@ export default function ImprovedDashboard() {
         </div>
       ) : (
         <>
+          {/* New unified KPI strip — swipeable on mobile, grid on desktop. */}
+          <MobileKpiStrip
+            total={metrics.total}
+            open={metrics.open}
+            inProgress={metrics.inProgress}
+            completed={metrics.completed}
+            overdue={metrics.overdue}
+            waitingParts={metrics.statusCounts.waiting_spare_part || metrics.statusCounts.waiting_sparepart || 0}
+            completionRate={metrics.completionRate}
+            deltas={metrics.deltas}
+          />
+
           {/* Top row: Welcome card + 4 stat cards */}
           <div className="sneat-top-row">
             <div className="sneat-welcome-card">
@@ -591,50 +651,13 @@ export default function ImprovedDashboard() {
               </div>
             </div>
 
-            <div className="sneat-card sneat-card--pad-lg">
-              <div className="sneat-card__head">
-                <div>
-                  <h2>Recent Transactions</h2>
-                  <p className="sneat-card__subtitle">Latest maintenance job activity</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => exportJobs('csv')}
-                  disabled={loading || jobs.length === 0}
-                  className="sneat-btn sneat-btn--ghost"
-                  aria-label="Export maintenance jobs as CSV"
-                >
-                  <Download className="h-4 w-4" /> Export
-                </button>
-              </div>
-              {loading ? (
+            {loading ? (
+              <div className="sneat-card sneat-card--pad-lg">
                 <SkeletonList rows={4} />
-              ) : (
-                <div className="sneat-tx-list">
-                  {metrics.recentJobs.length === 0 ? (
-                    <p className="sneat-muted">No recent jobs to display.</p>
-                  ) : (
-                    metrics.recentJobs.map((job) => {
-                      const title = job.topics?.[0]?.title || job.title || 'Maintenance Job';
-                      const tech = getUserName(job.user);
-                      return (
-                        <Link key={job.job_id || job.id} href={`/dashboard/jobs/${job.job_id}`} className="sneat-tx-row">
-                          <span className="sneat-tx-row__avatar">{getInitials(tech)}</span>
-                          <div style={{ minWidth: 0 }}>
-                            <div className="sneat-tx-row__title">{title}</div>
-                            <div className="sneat-tx-row__caption">#{job.job_id} &middot; {getRoomOrArea(job)}</div>
-                          </div>
-                          <div className="sneat-tx-row__amount">
-                            <strong>{humanize(normalizeStatus(job.status))}</strong>
-                            <span>{relativeTime(job.created_at)}</span>
-                          </div>
-                        </Link>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <RecentActivityFeed jobs={jobs} limit={10} />
+            )}
           </div>
 
           {/* Categories + Technicians + Activity timeline */}

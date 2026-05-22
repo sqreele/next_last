@@ -1,0 +1,206 @@
+'use client';
+
+import React, { useEffect, useMemo } from 'react';
+import QRCode from 'react-qr-code';
+import { Printer, ArrowLeft } from 'lucide-react';
+import { Job, Property } from '@/app/lib/types';
+import { Button } from '@/app/components/ui/button';
+import { StatusBadge, PriorityBadge } from '@/app/components/pcms-ui';
+import { getDisplayName } from '@/app/lib/utils/display-name';
+
+interface PrintableWorkOrderProps {
+  job: Job;
+  properties: Property[];
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getPropertyName(job: Job, properties: Property[]): string {
+  const lookup = (id: unknown): string | null => {
+    if (id == null) return null;
+    const key =
+      typeof id === 'object' && id
+        ? String((id as { property_id?: string; id?: string }).property_id ?? (id as { id?: string }).id ?? '')
+        : String(id);
+    if (!key) return null;
+    const found = properties.find((p) => String(p.property_id) === key || String(p.id) === key);
+    return found?.name ?? null;
+  };
+  return (
+    lookup(job.property_id) ??
+    (job.properties?.map(lookup).filter(Boolean).join(', ') as string | undefined) ??
+    '—'
+  );
+}
+
+export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps) {
+  // Auto-trigger the browser's print dialog when ?auto=1 is present so we
+  // can deep-link "Print" buttons that go straight to paper.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auto') === '1') {
+      const t = window.setTimeout(() => window.print(), 350);
+      return () => window.clearTimeout(t);
+    }
+  }, []);
+
+  const qrValue = useMemo(() => {
+    if (typeof window === 'undefined') return `/dashboard/jobs/${job.job_id}`;
+    return `${window.location.origin}/dashboard/jobs/${job.job_id}`;
+  }, [job.job_id]);
+
+  const propertyName = getPropertyName(job, properties);
+  const roomLine =
+    job.rooms?.map((r) => `${r.name || `Room ${r.room_id}`}${r.room_type ? ` (${r.room_type})` : ''}`).join(', ') ||
+    job.room_name ||
+    '—';
+
+  return (
+    <div className="print-work-order mx-auto max-w-3xl bg-white text-slate-900">
+      {/* Print-only stylesheet keeps the on-screen layout intact for review. */}
+      <style jsx global>{`
+        @media print {
+          /* Hide the surrounding dashboard chrome by default. The page is
+             served inside /dashboard so the layout decorations are still
+             rendered; we just hide them on print. */
+          body > * { visibility: hidden; }
+          .print-work-order, .print-work-order * { visibility: visible; }
+          .print-work-order { position: absolute; left: 0; top: 0; width: 100%; }
+          .no-print { display: none !important; }
+          @page { margin: 1.5cm; }
+        }
+      `}</style>
+
+      <div className="no-print flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => window.history.back()}
+          className="h-9"
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back
+        </Button>
+        <p className="text-sm font-bold text-slate-700">
+          Printable work order · #{job.job_id}
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => window.print()}
+          className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+        >
+          <Printer className="mr-1 h-4 w-4" /> Print
+        </Button>
+      </div>
+
+      <div className="px-8 py-8 sm:px-10">
+        <header className="flex items-start justify-between gap-6 border-b-2 border-slate-900 pb-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500">
+              Maintenance work order
+            </p>
+            <h1 className="mt-1 text-3xl font-black tracking-tight">
+              #{job.job_id}
+            </h1>
+            <p className="mt-1 text-sm font-semibold text-slate-700">
+              {propertyName} · {roomLine}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <StatusBadge status={job.status} />
+            <PriorityBadge priority={job.priority} />
+            {job.is_preventivemaintenance && (
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-700">
+                Preventive maintenance
+              </span>
+            )}
+          </div>
+        </header>
+
+        <section className="mt-5 grid grid-cols-3 gap-4 text-sm">
+          <Field label="Topic">{job.topics?.[0]?.title || '—'}</Field>
+          <Field label="Assigned to">
+            {getDisplayName(job.user, job.technician_name || job.user_name || '—')}
+          </Field>
+          <Field label="Area">{job.area?.name || job.area_name || '—'}</Field>
+          <Field label="Created">{formatDate(job.created_at)}</Field>
+          <Field label="Updated">{formatDate(job.updated_at)}</Field>
+          <Field label="Completed">{formatDate(job.completed_at)}</Field>
+        </section>
+
+        <section className="mt-6">
+          <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+            Description
+          </h2>
+          <p className="mt-1 whitespace-pre-wrap text-base font-medium leading-relaxed text-slate-900">
+            {job.description || '—'}
+          </p>
+        </section>
+
+        {job.remarks && (
+          <section className="mt-5">
+            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+              Remarks
+            </h2>
+            <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+              {job.remarks}
+            </p>
+          </section>
+        )}
+
+        <section className="mt-6 grid grid-cols-[1fr_auto] items-end gap-6 border-t border-slate-200 pt-5">
+          <div className="space-y-6">
+            <SignatureBlock label="Technician signature" />
+            <SignatureBlock label="Verified by" />
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <div className="rounded-md border border-slate-300 bg-white p-2">
+              <QRCode value={qrValue} size={104} aria-label="Open this job in PCMS" />
+            </div>
+            <p className="max-w-[7rem] text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Scan to open in PCMS
+            </p>
+          </div>
+        </section>
+
+        <footer className="mt-8 border-t border-slate-200 pt-3 text-[10px] font-medium text-slate-500">
+          Printed {new Date().toLocaleString()} · PCMS Hotel Maintenance
+        </footer>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">{label}</p>
+      <p className="mt-0.5 font-semibold text-slate-900">{children}</p>
+    </div>
+  );
+}
+
+function SignatureBlock({ label }: { label: string }) {
+  return (
+    <div>
+      <div className="h-12 border-b border-slate-400" />
+      <div className="mt-1 flex items-baseline justify-between text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        <span>{label}</span>
+        <span>Date</span>
+      </div>
+    </div>
+  );
+}

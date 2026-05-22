@@ -79,9 +79,17 @@ export default async function JobPage({ params }: Props) {
 
     return (
       <div className="mx-auto max-w-4xl space-y-5">
-        <h1 className="pcms-page-header text-2xl font-black tracking-[-0.03em] text-[var(--pcms-text)] sm:text-3xl">
-          Job: <PriorityBadge priority={job.priority} /> #{job.job_id}
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="pcms-page-header text-2xl font-black tracking-[-0.03em] text-[var(--pcms-text)] sm:text-3xl">
+            Job: <PriorityBadge priority={job.priority} /> #{job.job_id}
+          </h1>
+          <a
+            href={`/dashboard/jobs/${job.job_id}/print/`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+          >
+            Printable work order
+          </a>
+        </div>
         
         <div className="pcms-section-card space-y-4 p-5 text-[var(--pcms-text)] sm:p-6">
           {/* Basic Info */}

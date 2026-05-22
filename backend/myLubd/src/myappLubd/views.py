@@ -1301,6 +1301,140 @@ class RoomViewSet(viewsets.ModelViewSet):
 
         return apply_floor_filter(queryset).distinct()
 
+    @action(detail=False, methods=['get'], url_path='import-template')
+    def import_template(self, request):
+        """Return a CSV template that matches `bulk_import`'s schema."""
+        import csv as _csv
+        from io import StringIO
+
+        buf = StringIO()
+        writer = _csv.writer(buf)
+        writer.writerow(['name', 'room_type', 'is_active', 'property_id'])
+        writer.writerow(['101', 'Standard', 'true', ''])
+        writer.writerow(['102', 'Standard', 'true', ''])
+        writer.writerow(['201', 'Suite', 'true', ''])
+        body = buf.getvalue()
+        response = HttpResponse(body, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="pcms-rooms-template.csv"'
+        return response
+
+    @action(detail=False, methods=['post'], url_path='bulk-import')
+    def bulk_import(self, request):
+        """Create rooms from a CSV upload.
+
+        Required: name. Optional: room_type (default 'Standard'), is_active
+        (default true), property_id (defaults to ?property_id= query param).
+        Existing rooms (same name) get attached to the target property
+        instead of being recreated, so re-uploading the same sheet is
+        idempotent — Room.name has a unique constraint globally.
+
+        Tenant scoping: the request user must have access to every property
+        being targeted. Staff/superuser bypass."""
+        import csv as _csv
+        from io import StringIO
+
+        file_obj = request.FILES.get('file') if hasattr(request, 'FILES') else None
+        if file_obj is not None:
+            try:
+                text = file_obj.read().decode('utf-8-sig')
+            except UnicodeDecodeError:
+                return Response(
+                    {'error': 'File must be UTF-8 encoded CSV.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            text = (request.data or {}).get('csv', '') if isinstance(request.data, dict) else ''
+        text = (text or '').strip()
+        if not text:
+            return Response(
+                {'error': 'Send a CSV either as `file` (multipart) or `csv` (JSON string).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(text.encode('utf-8')) > 256 * 1024:
+            return Response(
+                {'error': 'CSV is larger than 256 KB — split it into smaller batches.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reader = _csv.DictReader(StringIO(text))
+        if reader.fieldnames is None:
+            return Response({'error': 'CSV is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        is_staff_bypass = request.user.is_staff or request.user.is_superuser
+        accessible_props = list(Property.objects.filter(users=request.user))
+        if not accessible_props and not is_staff_bypass:
+            return Response(
+                {'error': 'You have no property access — cannot import rooms.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        prop_lookup = {}
+        prop_source = Property.objects.all() if is_staff_bypass else accessible_props
+        for prop in prop_source:
+            prop_lookup[str(prop.id)] = prop
+            if prop.property_id:
+                prop_lookup[str(prop.property_id)] = prop
+
+        default_prop_key = (
+            request.query_params.get('property_id') or
+            (request.data.get('property_id') if isinstance(request.data, dict) else None)
+        )
+        default_prop = prop_lookup.get(str(default_prop_key)) if default_prop_key else None
+
+        created = []
+        attached = []
+        errors = []
+
+        for row_index, raw_row in enumerate(reader, start=2):
+            row = {(k or '').strip().lower(): (v or '').strip() for k, v in raw_row.items() if k}
+            name = row.get('name', '')
+            if not name:
+                errors.append({'row': row_index, 'error': 'name is required.'})
+                continue
+            room_type = (row.get('room_type') or 'Standard')[:50]
+            is_active_raw = (row.get('is_active') or 'true').lower()
+            is_active = is_active_raw not in ('0', 'false', 'no', 'inactive')
+
+            target_prop = prop_lookup.get(row.get('property_id', '')) if row.get('property_id') else default_prop
+            if target_prop is None and not is_staff_bypass:
+                errors.append({
+                    'row': row_index,
+                    'error': 'property_id missing or not accessible to you.',
+                })
+                continue
+
+            try:
+                existing = Room.objects.filter(name=name[:100]).first()
+                if existing is not None:
+                    if target_prop is not None:
+                        existing.properties.add(target_prop)
+                    attached.append({'row': row_index, 'room_id': existing.room_id, 'name': existing.name})
+                    continue
+
+                room = Room.objects.create(
+                    name=name[:100],
+                    room_type=room_type,
+                    is_active=is_active,
+                )
+                if target_prop is not None:
+                    room.properties.add(target_prop)
+                created.append({'row': row_index, 'room_id': room.room_id, 'name': room.name})
+            except Exception as exc:  # pragma: no cover - defensive
+                errors.append({'row': row_index, 'error': str(exc)})
+
+        return Response(
+            {
+                'created_count': len(created),
+                'attached_count': len(attached),
+                'error_count': len(errors),
+                'created': created[:50],
+                'attached': attached[:50],
+                'errors': errors[:200],
+            },
+            status=status.HTTP_201_CREATED if (created or attached) and not errors
+            else (status.HTTP_207_MULTI_STATUS if (created or attached) else status.HTTP_400_BAD_REQUEST),
+        )
+
+
 class TopicViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Topic.objects.all()

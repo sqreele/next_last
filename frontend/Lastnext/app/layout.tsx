@@ -9,6 +9,7 @@ import { StoreProvider } from '@/app/lib/providers/StoreProvider';
 import { SWRProvider } from '@/app/lib/swr-config'; // ✅ PERFORMANCE: Global SWR caching
 import { ServiceWorkerRegistrar } from '@/app/components/pwa/ServiceWorkerRegistrar';
 import { InstallPrompt } from '@/app/components/pwa/InstallPrompt';
+import { NetworkStatusBanner } from '@/app/components/pwa/NetworkStatusBanner';
 import './globals.css';
 // Bilingual UI font (Thai + English)
 const sarabun = localFont({
@@ -115,6 +116,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <Suspense fallback={null}>
                 <RouteTransitionLoader />
               </Suspense>
+              <NetworkStatusBanner />
               <main id="main-content" className="flex min-h-screen w-full flex-col">
                 {children}
               </main>

@@ -2514,6 +2514,128 @@ class PropertyViewSet(viewsets.ModelViewSet):
         serializer = PropertySerializer(properties, many=True, context={'request': request})
         return Response(serializer.data)
 
+    @action(detail=False, methods=['get'], url_path='import-template')
+    def import_template(self, request):
+        """Return a CSV template that matches `bulk_import`'s schema."""
+        import csv as _csv
+        from io import StringIO
+
+        buf = StringIO()
+        writer = _csv.writer(buf)
+        writer.writerow(['name', 'property_id', 'description'])
+        writer.writerow(['Hotel Phuket Beach', '', 'Coastal property — 80 rooms'])
+        writer.writerow(['Hotel Bangkok Central', '', 'Downtown property — 120 rooms'])
+        body = buf.getvalue()
+        response = HttpResponse(body, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="pcms-properties-template.csv"'
+        return response
+
+    @action(detail=False, methods=['post'], url_path='bulk-import')
+    def bulk_import(self, request):
+        """Create properties from a CSV upload.
+
+        Required: name. Optional: property_id (assigned automatically if
+        blank), description. Each imported property is auto-attached to the
+        request user so the dashboard's tenant-scoped queries pick it up
+        immediately.
+
+        Only staff/superusers can create properties — otherwise an operator
+        could conjure tenants for themselves at will."""
+        import csv as _csv
+        from io import StringIO
+
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {'error': 'Only staff can bulk-import properties.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        file_obj = request.FILES.get('file') if hasattr(request, 'FILES') else None
+        if file_obj is not None:
+            try:
+                text = file_obj.read().decode('utf-8-sig')
+            except UnicodeDecodeError:
+                return Response(
+                    {'error': 'File must be UTF-8 encoded CSV.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            text = (request.data or {}).get('csv', '') if isinstance(request.data, dict) else ''
+        text = (text or '').strip()
+        if not text:
+            return Response(
+                {'error': 'Send a CSV either as `file` (multipart) or `csv` (JSON string).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(text.encode('utf-8')) > 128 * 1024:
+            return Response(
+                {'error': 'CSV is larger than 128 KB — properties should be a small list.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reader = _csv.DictReader(StringIO(text))
+        if reader.fieldnames is None:
+            return Response({'error': 'CSV is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        created = []
+        attached = []
+        errors = []
+
+        for row_index, raw_row in enumerate(reader, start=2):
+            row = {(k or '').strip().lower(): (v or '').strip() for k, v in raw_row.items() if k}
+            name = row.get('name', '')
+            if not name:
+                errors.append({'row': row_index, 'error': 'name is required.'})
+                continue
+            description = (row.get('description') or '')[:500] or None
+            explicit_id = row.get('property_id', '') or None
+
+            try:
+                # If a property_id is given and matches an existing row,
+                # attach the user to it instead of creating a duplicate.
+                # Otherwise create fresh — Property.save() will generate
+                # a property_id automatically if blank.
+                existing = None
+                if explicit_id:
+                    existing = Property.objects.filter(property_id=explicit_id).first()
+                if existing is None:
+                    existing = Property.objects.filter(name__iexact=name).first()
+                if existing is not None:
+                    existing.users.add(request.user)
+                    attached.append({
+                        'row': row_index,
+                        'property_id': existing.property_id,
+                        'name': existing.name,
+                    })
+                    continue
+
+                prop = Property(name=name[:200], description=description)
+                if explicit_id:
+                    prop.property_id = explicit_id[:50]
+                prop.save()
+                prop.users.add(request.user)
+                created.append({
+                    'row': row_index,
+                    'property_id': prop.property_id,
+                    'name': prop.name,
+                })
+            except Exception as exc:  # pragma: no cover - defensive
+                errors.append({'row': row_index, 'error': str(exc)})
+
+        return Response(
+            {
+                'created_count': len(created),
+                'attached_count': len(attached),
+                'error_count': len(errors),
+                'created': created[:50],
+                'attached': attached[:50],
+                'errors': errors[:200],
+            },
+            status=status.HTTP_201_CREATED if (created or attached) and not errors
+            else (status.HTTP_207_MULTI_STATUS if (created or attached) else status.HTTP_400_BAD_REQUEST),
+        )
+
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer

@@ -21,6 +21,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from myappLubd.models import Job, PreventiveMaintenance
+from myappLubd.push import send_push_to_user
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +168,24 @@ class Command(BaseCommand):
                         f"  + {pm.pm_id} -> job {job.job_id} (owner={owner.username})"
                     )
                 )
+
+                # Best-effort push notification to the assignee so the new job
+                # surfaces on their phone immediately. Failures here are
+                # already swallowed inside send_push_to_user so they cannot
+                # break the materialization run.
+                try:
+                    send_push_to_user(
+                        owner,
+                        {
+                            'title': 'New preventive maintenance assigned',
+                            'body': (pm.pmtitle or 'Preventive maintenance')[:120],
+                            'tag': f'pm-due-{pm.pm_id}',
+                            'url': f'/dashboard/jobs/{job.job_id}',
+                            'icon': '/icon-192x192.png',
+                        },
+                    )
+                except Exception:  # pragma: no cover - defensive
+                    logger.exception('Push for materialized PM %s failed', pm.pm_id)
             except Exception as exc:  # pragma: no cover - defensive
                 errors += 1
                 logger.exception("Failed to materialize PM %s", pm.pm_id)

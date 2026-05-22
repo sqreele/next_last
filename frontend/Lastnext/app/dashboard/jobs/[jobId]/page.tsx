@@ -11,6 +11,7 @@ import { fixImageUrl } from '@/app/lib/utils/image-utils';
 import { JobHeroImage, GalleryImage } from '@/app/components/ui/OptimizedImageEnhanced';
 import { getDisplayName } from '@/app/lib/utils/display-name';
 import JobCommentsSection from '@/app/components/jobs/JobCommentsSection';
+import { BeforeAfterCompare } from '@/app/components/jobs/BeforeAfterCompare';
 
 type Props = {
   params: Promise<{ jobId: string }>;
@@ -222,10 +223,18 @@ export default async function JobPage({ params }: Props) {
             </div>
           )}
 
+          {/* Before / After comparison — shown above the flat gallery */}
+          <BeforeAfterCompare
+            images={job.images}
+            imageUrls={job.image_urls}
+            createdAt={job.created_at}
+            completedAt={job.completed_at}
+          />
+
           {/* Images */}
           {job.image_urls && job.image_urls.length > 0 && (
             <div className="space-y-2">
-              <h2 className="text-lg font-black text-[var(--pcms-text)]">Images</h2>
+              <h2 className="text-lg font-black text-[var(--pcms-text)]">All images</h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {job.image_urls.map((url, index) => {
                   // Use the fixImageUrl utility to properly handle different URL formats

@@ -48,3 +48,7 @@ qrcode[pil]==7.4.2
 # `vapid --gen` from py-vapid.
 pywebpush==2.0.0
 py-vapid==1.9.1
+# Test runner — works alongside `manage.py test`; CI prefers pytest for the
+# improved test selection and fixtures.
+pytest==8.3.4
+pytest-django==4.9.0

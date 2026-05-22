@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { Check } from 'lucide-react';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import InstagramJobCard from '@/app/components/jobs/InstagramJobCard';
 import Pagination from '@/app/components/jobs/Pagination';
 import JobActions from '@/app/components/jobs/JobActions';
+import { JobListMobileToolbar, type JobListFilters } from '@/app/components/jobs/JobListMobileToolbar';
+import { JobBatchActionBar } from '@/app/components/jobs/JobBatchActionBar';
 import { Job, TabValue, Property, SortOrder } from '@/app/lib/types';
 import { EmptyState, LoadingSkeleton } from '@/app/components/pcms-ui';
+import { cn } from '@/app/lib/utils/cn';
 import {
   startOfDay, endOfDay, subDays,
   startOfWeek, endOfWeek, startOfMonth, endOfMonth,
@@ -59,9 +63,28 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
   const [itemsPerPage, setItemsPerPage] = useState(24);
 
+  // Mobile toolbar filters — applied AFTER the legacy filters above so the desktop
+  // JobActions controls keep working unchanged.
+  const [mobileFilters, setMobileFilters] = useState<JobListFilters>({
+    search: '',
+    statuses: [],
+    priorities: [],
+    pmOnly: null,
+    defectOnly: null,
+    dateFilter: 'all',
+  });
+
+  // Batch selection state
+  const [selectionEnabled, setSelectionEnabled] = useState(false);
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter, sortOrder, selectedProperty, dateFilter]);
+  }, [filter, sortOrder, selectedProperty, dateFilter, mobileFilters]);
+
+  useEffect(() => {
+    if (!selectionEnabled) setSelectedJobIds(new Set());
+  }, [selectionEnabled]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -246,7 +269,66 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   });
 
 
-  const sortedJobs = [...filteredJobs].sort((a, b) => {
+  // Apply mobile toolbar filters on top of legacy filters
+  const filteredJobsWithMobile = useMemo(() => {
+    let out = filteredJobs;
+    if (mobileFilters.search.trim()) {
+      const term = mobileFilters.search.trim().toLowerCase();
+      out = out.filter((j) => {
+        const haystack = [
+          j.job_id,
+          j.description,
+          j.remarks,
+          j.room_name,
+          j.topics?.[0]?.title,
+          j.rooms?.[0]?.name,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(term);
+      });
+    }
+    if (mobileFilters.statuses.length) {
+      out = out.filter((j) => mobileFilters.statuses.includes(j.status as any));
+    }
+    if (mobileFilters.priorities.length) {
+      out = out.filter((j) => mobileFilters.priorities.includes(j.priority as any));
+    }
+    if (mobileFilters.pmOnly !== null) {
+      out = out.filter((j) => Boolean(j.is_preventivemaintenance) === mobileFilters.pmOnly);
+    }
+    if (mobileFilters.defectOnly !== null) {
+      out = out.filter((j) => Boolean(j.is_defective) === mobileFilters.defectOnly);
+    }
+    if (mobileFilters.dateFilter !== 'all') {
+      const now = new Date();
+      out = out.filter((j) => {
+        if (!j.created_at) return false;
+        const d = new Date(j.created_at);
+        switch (mobileFilters.dateFilter) {
+          case 'today':
+            return isWithinInterval(d, { start: startOfDay(now), end: endOfDay(now) });
+          case 'yesterday': {
+            const y = subDays(now, 1);
+            return isWithinInterval(d, { start: startOfDay(y), end: endOfDay(y) });
+          }
+          case 'thisWeek':
+            return isWithinInterval(d, {
+              start: startOfWeek(now, { weekStartsOn: 1 }),
+              end: endOfWeek(now, { weekStartsOn: 1 }),
+            });
+          case 'thisMonth':
+            return isWithinInterval(d, { start: startOfMonth(now), end: endOfMonth(now) });
+          default:
+            return true;
+        }
+      });
+    }
+    return out;
+  }, [filteredJobs, mobileFilters]);
+
+  const sortedJobs = [...filteredJobsWithMobile].sort((a, b) => {
     const dateA = new Date(a.created_at || '').getTime();
     const dateB = new Date(b.created_at || '').getTime();
     return sortOrder === "Newest first" ? dateB - dateA : dateA - dateB;
@@ -281,10 +363,48 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     }
   };
 
+  const toggleSelection = (jobId: string) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobId)) next.delete(jobId);
+      else next.add(jobId);
+      return next;
+    });
+  };
+
+  const selectAllVisible = () => {
+    setSelectedJobIds(new Set(sortedJobs.map((j) => String(j.job_id))));
+  };
+
+  const clearSelection = () => {
+    setSelectedJobIds(new Set());
+    setSelectionEnabled(false);
+  };
+
+  const mobileToolbar = (
+    <div className="md:hidden">
+      <JobListMobileToolbar
+        filters={mobileFilters}
+        onFiltersChange={setMobileFilters}
+        sortOrder={sortOrder}
+        onSortChange={setSortOrder}
+        selectionEnabled={selectionEnabled}
+        onToggleSelection={() => setSelectionEnabled((s) => !s)}
+        resultCount={sortedJobs.length}
+      />
+    </div>
+  );
+
+  const selectedJobs = useMemo(
+    () => sortedJobs.filter((j) => selectedJobIds.has(String(j.job_id))),
+    [sortedJobs, selectedJobIds],
+  );
+
   if (sortedJobs.length === 0 && !isLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex justify-end mb-2">
+        {mobileToolbar}
+        <div className="hidden md:flex justify-end mb-2">
           <JobActions
             jobs={sortedJobs}
             currentTab={filter}
@@ -309,7 +429,8 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end mb-2">
+      {mobileToolbar}
+      <div className="hidden md:flex justify-end mb-2">
         <JobActions
           jobs={sortedJobs}
           currentTab={filter}
@@ -324,7 +445,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
         />
       </div>
 
-      <div className="rounded-full bg-white/70 px-4 py-2 text-sm font-bold text-[var(--pcms-text-muted)] shadow-[var(--pcms-shadow-sm)]">
+      <div className="hidden rounded-full bg-white/70 px-4 py-2 text-sm font-bold text-[var(--pcms-text-muted)] shadow-[var(--pcms-shadow-sm)] md:block">
         Showing {Math.min(currentJobs.length, itemsPerPage)} of {sortedJobs.length} maintenance jobs
       </div>
 
@@ -334,17 +455,53 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
         </div>
       ) : (
         <div className="job-grid-container mb-10">
-          <div className={viewMode === 'list' 
-            ? "gap-4 space-y-4" 
+          <div className={viewMode === 'list'
+            ? "gap-4 space-y-4"
             : "pcms-job-grid auto-rows-fr"
           }>
-            {currentJobs.map((job, index) => (
-              <div key={job.job_id || `job-${index}`} className={viewMode === 'list' ? "h-full w-full" : "h-full"}>
+            {currentJobs.map((job, index) => {
+              const jobIdStr = String(job.job_id || `job-${index}`);
+              const selected = selectedJobIds.has(jobIdStr);
+              const cardEl = (
                 <div className="h-full touch-action-manipulation">
                   <InstagramJobCard job={job} viewMode={viewMode} />
                 </div>
-              </div>
-            ))}
+              );
+              if (!selectionEnabled) {
+                return (
+                  <div key={jobIdStr} className={viewMode === 'list' ? "h-full w-full" : "h-full"}>
+                    {cardEl}
+                  </div>
+                );
+              }
+              return (
+                <button
+                  type="button"
+                  key={jobIdStr}
+                  onClick={() => toggleSelection(jobIdStr)}
+                  aria-pressed={selected}
+                  aria-label={`${selected ? 'Deselect' : 'Select'} job ${jobIdStr}`}
+                  className={cn(
+                    'relative block w-full rounded-2xl text-left transition-all',
+                    viewMode === 'list' ? 'h-full' : 'h-full',
+                    selected ? 'ring-4 ring-blue-500 ring-offset-2' : 'ring-2 ring-transparent hover:ring-blue-200',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'absolute left-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full border-2 shadow-sm',
+                      selected
+                        ? 'border-blue-600 bg-blue-600 text-white'
+                        : 'border-slate-300 bg-white/90 text-transparent',
+                    )}
+                    aria-hidden="true"
+                  >
+                    <Check className="h-4 w-4" />
+                  </span>
+                  <div className="pointer-events-none">{cardEl}</div>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -358,6 +515,19 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
               onPageChange={handlePageChange}
             />
           </div>
+        </div>
+      )}
+
+      {selectionEnabled && selectedJobs.length > 0 && (
+        <div className="fixed inset-x-3 bottom-3 z-40 md:inset-x-auto md:bottom-6 md:left-1/2 md:-translate-x-1/2">
+          <JobBatchActionBar
+            selected={selectedJobs}
+            totalVisible={sortedJobs.length}
+            properties={properties}
+            onClear={clearSelection}
+            onSelectAll={selectAllVisible}
+            onComplete={handleRefresh}
+          />
         </div>
       )}
 

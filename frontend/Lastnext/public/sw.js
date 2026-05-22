@@ -115,3 +115,52 @@ self.addEventListener('message', (event) => {
     self.skipWaiting();
   }
 });
+
+// --- Web Push -------------------------------------------------------
+// Payload is JSON sent by the backend (see myappLubd/push.py):
+//   { title, body, tag?, url?, icon? }
+
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { title: 'PCMS', body: event.data ? event.data.text() : '' };
+  }
+
+  const title = data.title || 'PCMS';
+  const options = {
+    body: data.body || '',
+    tag: data.tag || 'pcms-default',
+    icon: data.icon || '/icon-192x192.png',
+    badge: '/icon-192x192.png',
+    data: { url: data.url || '/dashboard' },
+    renotify: !!data.renotify,
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/dashboard';
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if ('focus' in client) {
+            const url = new URL(client.url);
+            // Reuse an existing dashboard tab if we have one.
+            if (url.pathname.startsWith('/dashboard')) {
+              client.navigate(targetUrl);
+              return client.focus();
+            }
+          }
+        }
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(targetUrl);
+        }
+        return null;
+      }),
+  );
+});

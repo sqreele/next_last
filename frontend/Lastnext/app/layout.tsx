@@ -7,6 +7,8 @@ import { Toaster } from '@/app/components/ui/toaster';
 import { RouteTransitionLoader } from '@/app/components/ui/loading/RouteTransitionLoader';
 import { StoreProvider } from '@/app/lib/providers/StoreProvider';
 import { SWRProvider } from '@/app/lib/swr-config'; // ✅ PERFORMANCE: Global SWR caching
+import { ServiceWorkerRegistrar } from '@/app/components/pwa/ServiceWorkerRegistrar';
+import { InstallPrompt } from '@/app/components/pwa/InstallPrompt';
 import './globals.css';
 // Bilingual UI font (Thai + English)
 const sarabun = localFont({
@@ -117,6 +119,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 {children}
               </main>
               <Toaster />
+              <ServiceWorkerRegistrar />
+              <InstallPrompt />
             </StoreProvider>
           </AuthProvider>
         </SWRProvider>

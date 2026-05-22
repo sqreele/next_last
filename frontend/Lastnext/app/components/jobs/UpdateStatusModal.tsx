@@ -5,6 +5,7 @@ import { useSession } from '@/app/lib/session.client';
 import { Job, JobStatus } from '@/app/lib/types';
 import { fetchWithToken } from '@/app/lib/data.server';
 import { enqueueRequest } from '@/app/lib/offline-queue';
+import { useT } from '@/app/lib/i18n/LocaleProvider';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,7 @@ const ALL_STATUSES: Array<{ value: JobStatus; label: string; hint: string }> = [
 
 export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusModalProps) {
   const { data: session } = useSession();
+  const t = useT();
   const [selectedStatus, setSelectedStatus] = useState<JobStatus>(job.status);
   const [note, setNote] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
@@ -64,7 +66,7 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
 
     try {
       const accessToken = session?.user?.accessToken;
-      if (!accessToken) throw new Error('No access token available. Please log in.');
+      if (!accessToken) throw new Error(t('error.noToken'));
 
       await delay(400);
 
@@ -129,7 +131,7 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
       onComplete?.();
     } catch (err: any) {
       console.error('Failed to update status:', err);
-      setError(err.message || 'Failed to update status');
+      setError(err.message || t('error.updateStatus'));
     } finally {
       setIsUpdating(false);
     }
@@ -143,7 +145,7 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
 
   const triggerButton = children || (
     <Button variant="outline" className="w-full text-sm h-11" onClick={handleButtonClick}>
-      Update Status
+      {t('updateStatus.title')}
     </Button>
   );
 
@@ -163,8 +165,8 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
         onClick={handleButtonClick}
       >
         <DialogHeader className="border-b border-slate-200 px-5 py-4">
-          <DialogTitle className="text-lg font-bold text-slate-900">Update job status</DialogTitle>
-          <p className="text-xs font-medium text-slate-600">Job #{job.job_id}</p>
+          <DialogTitle className="text-lg font-bold text-slate-900">{t('updateStatus.title')}</DialogTitle>
+          <p className="text-xs font-medium text-slate-600">#{job.job_id}</p>
         </DialogHeader>
 
         <div className="space-y-5 px-5 py-4">
@@ -177,7 +179,7 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
 
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
             <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Status change
+              {t('updateStatus.statusChange')}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={job.status} />
@@ -185,13 +187,13 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
               {selectedStatus !== job.status ? (
                 <StatusBadge status={selectedStatus} />
               ) : (
-                <span className="text-xs font-semibold text-slate-500">Choose new status below</span>
+                <span className="text-xs font-semibold text-slate-500">{t('updateStatus.chooseNew')}</span>
               )}
             </div>
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm font-bold text-slate-900">Set new status</p>
+            <p className="text-sm font-bold text-slate-900">{t('updateStatus.setNew')}</p>
             <div className="grid grid-cols-1 gap-2">
               {statuses.map((status) => {
                 const active = selectedStatus === status.value;
@@ -234,8 +236,8 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
 
           <div className="space-y-2">
             <label htmlFor="status-note" className="text-sm font-bold text-slate-900">
-              Add a note{' '}
-              <span className="text-xs font-medium text-slate-500">(optional)</span>
+              {t('updateStatus.addNote')}{' '}
+              <span className="text-xs font-medium text-slate-500">({t('form.optional').toLowerCase()})</span>
             </label>
             <Textarea
               id="status-note"
@@ -243,8 +245,8 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
               onChange={(e) => setNote(e.target.value.slice(0, 500))}
               placeholder={
                 isCompletingNow
-                  ? 'What was fixed? Any follow-up needed?'
-                  : 'Add context for the next person handling this job.'
+                  ? t('updateStatus.notePlaceholderCompleted')
+                  : t('updateStatus.notePlaceholderDefault')
               }
               className="min-h-[88px] resize-none border-2 border-slate-300 text-sm"
               disabled={isUpdating}
@@ -263,7 +265,7 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
             disabled={isUpdating}
             className="h-11 w-full sm:w-auto"
           >
-            Cancel
+            {t('form.cancel')}
           </Button>
           <Button
             type="button"
@@ -274,10 +276,10 @@ export function UpdateStatusModal({ job, onComplete, children }: UpdateStatusMod
             {isUpdating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {t('updateStatus.saving')}
               </>
             ) : (
-              'Confirm update'
+              t('updateStatus.confirm')
             )}
           </Button>
         </DialogFooter>

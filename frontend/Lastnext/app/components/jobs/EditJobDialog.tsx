@@ -18,6 +18,7 @@ import { Label } from "@/app/components/ui/label";
 import { Input } from "@/app/components/ui/input";
 import { StatusBadge } from "@/app/components/pcms-ui";
 import { cn } from "@/app/lib/utils/cn";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
 
 const JOB_PRIORITY_OPTIONS = [
   { value: "low", label: "Low" },
@@ -42,6 +43,7 @@ interface EditDialogProps {
 }
 
 const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, isSubmitting }) => {
+  const t = useT();
   const [priority, setPriority] = useState<string>(job?.priority || "medium");
   const [status, setStatus] = useState<string>(job?.status || "pending");
   const [showTimestamps, setShowTimestamps] = useState(false);
@@ -100,16 +102,16 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
               <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
             </div>
-            <p className="text-center text-lg font-medium text-slate-700">Saving changes…</p>
+            <p className="text-center text-lg font-medium text-slate-700">{t('editJob.savingOverlay')}</p>
           </div>
         )}
 
         <DialogHeader className="border-b border-slate-200 px-5 py-4 text-left">
           <DialogTitle className="text-lg font-bold text-slate-900">
-            Edit job #{job.job_id}
+            {t('editJob.title')} #{job.job_id}
           </DialogTitle>
           <DialogDescription className="text-xs font-medium text-slate-600">
-            Update the maintenance job. Tap Save when finished.
+            {t('editJob.subtitle')}
           </DialogDescription>
         </DialogHeader>
 
@@ -120,7 +122,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
 
           <div className="space-y-2">
             <Label htmlFor="description" className="text-sm font-bold text-slate-900">
-              Description
+              {t('editJob.description')}
             </Label>
             <Textarea
               id="description"
@@ -134,7 +136,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-bold text-slate-900">Status</Label>
+            <Label className="text-sm font-bold text-slate-900">{t('editJob.status')}</Label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {JOB_STATUS_OPTIONS.map((option) => {
                 const active = status === option.value;
@@ -160,7 +162,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-bold text-slate-900">Priority</Label>
+            <Label className="text-sm font-bold text-slate-900">{t('editJob.priority')}</Label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {JOB_PRIORITY_OPTIONS.map((option) => {
                 const active = priority === option.value;
@@ -186,7 +188,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
 
           <div className="space-y-2">
             <Label htmlFor="remarks" className="text-sm font-bold text-slate-900">
-              Remarks <span className="text-xs font-medium text-slate-500">(optional)</span>
+              {t('editJob.remarks')} <span className="text-xs font-medium text-slate-500">({t('form.optional').toLowerCase()})</span>
             </Label>
             <Textarea
               id="remarks"
@@ -209,7 +211,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
                 disabled={isSubmitting}
                 className="h-5 w-5"
               />
-              <span className="text-sm font-semibold text-slate-900">Mark as defective</span>
+              <span className="text-sm font-semibold text-slate-900">{t('editJob.markDefective')}</span>
             </label>
             <label
               htmlFor="is_preventivemaintenance"
@@ -222,7 +224,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
                 disabled={isSubmitting}
                 className="h-5 w-5"
               />
-              <span className="text-sm font-semibold text-slate-900">Preventive maintenance</span>
+              <span className="text-sm font-semibold text-slate-900">{t('editJob.preventive')}</span>
             </label>
           </div>
 
@@ -233,7 +235,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
               className="flex w-full items-center justify-between p-3 text-sm font-bold text-slate-900 touch-manipulation"
               aria-expanded={showTimestamps}
             >
-              <span>Edit timestamps</span>
+              <span>{t('editJob.editTimestamps')}</span>
               {showTimestamps ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
@@ -244,7 +246,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
               <div className="space-y-3 border-t border-slate-200 p-3">
                 <div className="space-y-1">
                   <Label htmlFor="created_at" className="text-xs font-bold text-slate-700">
-                    Created
+                    {t('editJob.createdAt')}
                   </Label>
                   <Input
                     id="created_at"
@@ -257,7 +259,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="updated_at" className="text-xs font-bold text-slate-700">
-                    Last updated
+                    {t('editJob.updatedAt')}
                   </Label>
                   <Input
                     id="updated_at"
@@ -270,7 +272,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="completed_at" className="text-xs font-bold text-slate-700">
-                    Completed (optional)
+                    {t('editJob.completedAt')}
                   </Label>
                   <Input
                     id="completed_at"
@@ -281,7 +283,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
                     disabled={isSubmitting}
                   />
                   <p className="text-xs font-medium text-slate-500">
-                    Leave empty if the job is not yet completed.
+                    {t('editJob.completedHint')}
                   </p>
                 </div>
               </div>
@@ -296,7 +298,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
               disabled={isSubmitting}
               className="h-11 w-full sm:w-auto"
             >
-              Cancel
+              {t('form.cancel')}
             </Button>
             <Button
               type="submit"
@@ -304,7 +306,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
               className="h-11 w-full bg-blue-600 font-bold text-white hover:bg-blue-700 sm:w-auto"
             >
               {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-              Save changes
+              {t('editJob.saveChanges')}
             </Button>
           </DialogFooter>
         </form>

@@ -47,6 +47,7 @@ import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
 import { InventoryMobileStats } from '@/app/components/inventory/InventoryMobileStats';
 import { InventoryCsvImport } from '@/app/components/inventory/InventoryCsvImport';
+import { useT } from '@/app/lib/i18n/LocaleProvider';
 
 interface InventoryItem {
   id: number;
@@ -112,6 +113,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 export default function InventoryPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const t = useT();
   const { selectedPropertyId: selectedProperty } = useUser();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -471,14 +473,14 @@ export default function InventoryPage() {
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
               <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-              Inventory
+              {t('inventory.title')}
             </h1>
           </div>
           <p className="hidden sm:block text-gray-600 mt-1">
-            {totalCount} item{totalCount !== 1 ? 's' : ''} total
+            {totalCount} {t('inventory.itemsTotal')}
             {lowStockCount > 0 && (
               <span className="ml-2 text-yellow-600 font-semibold">
-                ({lowStockCount} low/out of stock)
+                ({lowStockCount} {t('inventory.lowStockWarning')})
               </span>
             )}
             {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRoom !== 'all' || lowStockOnly || selectedJobFilter !== 'all' || selectedPmFilter !== 'all') && ` (${filteredInventory.length} filtered)`}
@@ -721,7 +723,7 @@ export default function InventoryPage() {
                 className={`gap-2 ${lowStockOnly ? 'bg-yellow-600 hover:bg-yellow-700' : ''}`}
               >
                 <AlertTriangle className="h-4 w-4" />
-                Low Stock Only
+                {t('inventory.lowStockOnly')}
               </Button>
 
               {/* Clear Filters */}
@@ -742,7 +744,7 @@ export default function InventoryPage() {
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
                   <XCircle className="h-4 w-4 mr-1" />
-                  Clear Filters
+                  {t('inventory.clearFilters')}
                 </Button>
               )}
             </div>
@@ -755,11 +757,11 @@ export default function InventoryPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Inventory Items Found</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('inventory.noItems')}</h3>
             <p className="text-gray-600">
-              {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRoom !== 'all' || lowStockOnly || selectedJobFilter !== 'all' || selectedPmFilter !== 'all') 
-                ? 'Try adjusting your search or filter criteria' 
-                : 'No inventory items available for this property'}
+              {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRoom !== 'all' || lowStockOnly || selectedJobFilter !== 'all' || selectedPmFilter !== 'all')
+                ? t('inventory.noItemsFiltered')
+                : t('inventory.noItemsHint')}
             </p>
           </CardContent>
         </Card>

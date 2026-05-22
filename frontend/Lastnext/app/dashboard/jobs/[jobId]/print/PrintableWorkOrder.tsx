@@ -56,10 +56,27 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
     }
   }, []);
 
+  // QR points to the staff view by default. If a guest-facing URL makes
+  // sense for the room (i.e. there is a room attached to this job), prefer
+  // the public report endpoint so a guest who picks up the slip still lands
+  // somewhere useful instead of an auth wall.
   const qrValue = useMemo(() => {
-    if (typeof window === 'undefined') return `/dashboard/jobs/${job.job_id}`;
-    return `${window.location.origin}/dashboard/jobs/${job.job_id}`;
-  }, [job.job_id]);
+    const origin = typeof window === 'undefined' ? '' : window.location.origin;
+    const room = job.rooms?.[0];
+    const property = properties.find(
+      (p) =>
+        room?.properties?.some(
+          (rp) =>
+            (typeof rp === 'object' && rp && 'property_id' in rp
+              ? String((rp as { property_id?: string }).property_id) === String(p.property_id)
+              : String(rp) === String(p.property_id) || String(rp) === String(p.id)),
+        ),
+    );
+    if (room?.room_id && property?.property_id) {
+      return `${origin}/report/${property.property_id}/${room.room_id}`;
+    }
+    return `${origin}/dashboard/jobs/${job.job_id}`;
+  }, [job.job_id, job.rooms, properties]);
 
   const propertyName = getPropertyName(job, properties);
   const roomLine =

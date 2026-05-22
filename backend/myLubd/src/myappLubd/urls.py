@@ -84,4 +84,10 @@ urlpatterns = [
     path('api/v1/push/subscribe/', views.push_subscribe, name='push_subscribe'),
     path('api/v1/push/unsubscribe/', views.push_unsubscribe, name='push_unsubscribe'),
     path('api/v1/push/test/', views.push_test, name='push_test'),
+
+    # Public (unauthenticated) guest maintenance request — protected by an
+    # IP-based rate limit and a strict property/room sanity check.
+    path('api/v1/public/job-requests/<str:property_id>/<str:room_id>/',
+         views.public_job_request,
+         name='public_job_request'),
 ]

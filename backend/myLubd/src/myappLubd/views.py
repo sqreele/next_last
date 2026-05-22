@@ -3689,6 +3689,177 @@ class InventoryViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(low_stock_items, many=True)
         return Response(serializer.data)
     
+    @action(detail=False, methods=['get'], url_path='import-template')
+    def import_template(self, request):
+        """Return a starter CSV template that matches `bulk_import`'s schema.
+
+        Operators download this, fill it in, and re-upload. Keeps the column
+        names canonical so a partial mismatch can't silently drop fields."""
+        import csv as _csv
+        from io import StringIO
+
+        buf = StringIO()
+        writer = _csv.writer(buf)
+        writer.writerow([
+            'name', 'category', 'quantity', 'min_quantity', 'unit',
+            'unit_price', 'location', 'supplier', 'description', 'property_id',
+        ])
+        writer.writerow([
+            'LED bulb 9W', 'consumables', '50', '10', 'pcs',
+            '2.50', 'Storage A', 'Acme Supplies', 'Standard E27 bulb', '',
+        ])
+        writer.writerow([
+            'AC filter', 'parts', '12', '4', 'pcs',
+            '8.00', 'Mech room', 'Acme Supplies', '', '',
+        ])
+        body = buf.getvalue()
+        response = HttpResponse(body, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="pcms-inventory-template.csv"'
+        return response
+
+    @action(detail=False, methods=['post'], url_path='bulk-import')
+    def bulk_import(self, request):
+        """Create inventory items from a CSV upload.
+
+        Accepts either a multipart `file` field or a JSON body with a `csv`
+        string. Validates rows up-front and reports per-row errors so the
+        operator can fix the spreadsheet and re-upload — partially-good
+        files still commit their valid rows (rollback would be hostile to
+        bulk-onboarding workflows).
+
+        Required columns: name, quantity, min_quantity.
+        Optional columns: category, unit, unit_price, location, supplier,
+                          description, property_id.
+
+        Property scoping: items go to the property_id column if present and
+        the user has access; otherwise default to the request's currently
+        selected property if it exists; otherwise reject the row with an
+        explicit error."""
+        import csv as _csv
+        from io import StringIO
+
+        file_obj = request.FILES.get('file') if hasattr(request, 'FILES') else None
+        if file_obj is not None:
+            try:
+                text = file_obj.read().decode('utf-8-sig')
+            except UnicodeDecodeError:
+                return Response(
+                    {'error': 'File must be UTF-8 encoded CSV.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            text = (request.data or {}).get('csv', '') if isinstance(request.data, dict) else ''
+        text = (text or '').strip()
+        if not text:
+            return Response(
+                {'error': 'Send a CSV either as `file` (multipart) or `csv` (JSON string).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Cap input size so an operator can't accidentally bulk-import a
+        # 50 MB sheet that would OOM the worker. ~256 KB is more than enough
+        # for thousands of typical inventory rows.
+        if len(text.encode('utf-8')) > 256 * 1024:
+            return Response(
+                {'error': 'CSV is larger than 256 KB — split it into smaller batches.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reader = _csv.DictReader(StringIO(text))
+        if reader.fieldnames is None:
+            return Response(
+                {'error': 'CSV is empty.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Resolve property scope: which properties this user can write to.
+        accessible_props = list(Property.objects.filter(users=request.user))
+        if not accessible_props and not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {'error': 'You have no property access — cannot import inventory.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        prop_lookup = {}
+        for prop in accessible_props:
+            prop_lookup[str(prop.id)] = prop
+            if prop.property_id:
+                prop_lookup[str(prop.property_id)] = prop
+
+        # Default property from query string (frontend passes the active one).
+        default_prop_key = (
+            request.query_params.get('property_id') or
+            request.data.get('property_id') if isinstance(request.data, dict) else None
+        )
+        default_prop = prop_lookup.get(str(default_prop_key)) if default_prop_key else None
+
+        created = []
+        errors = []
+
+        for row_index, raw_row in enumerate(reader, start=2):  # row 1 is the header
+            row = {(k or '').strip().lower(): (v or '').strip() for k, v in raw_row.items() if k}
+            name = row.get('name', '')
+            if not name:
+                errors.append({'row': row_index, 'error': 'name is required.'})
+                continue
+
+            try:
+                quantity = int(row.get('quantity') or 0)
+                min_quantity = int(row.get('min_quantity') or 0)
+            except ValueError:
+                errors.append({'row': row_index, 'error': 'quantity and min_quantity must be integers.'})
+                continue
+            if quantity < 0 or min_quantity < 0:
+                errors.append({'row': row_index, 'error': 'quantity / min_quantity cannot be negative.'})
+                continue
+
+            unit_price_raw = row.get('unit_price', '').strip()
+            unit_price = None
+            if unit_price_raw:
+                try:
+                    unit_price = float(unit_price_raw)
+                    if unit_price < 0:
+                        raise ValueError
+                except ValueError:
+                    errors.append({'row': row_index, 'error': 'unit_price must be a non-negative number.'})
+                    continue
+
+            target_prop = prop_lookup.get(row.get('property_id', '')) if row.get('property_id') else default_prop
+            if target_prop is None and not (request.user.is_staff or request.user.is_superuser):
+                errors.append({
+                    'row': row_index,
+                    'error': 'property_id missing or not accessible to you.',
+                })
+                continue
+
+            try:
+                item = Inventory.objects.create(
+                    name=name[:200],
+                    description=row.get('description', '')[:500] or None,
+                    category=(row.get('category') or 'other')[:50],
+                    quantity=quantity,
+                    min_quantity=min_quantity,
+                    unit=(row.get('unit') or 'pcs')[:20],
+                    unit_price=unit_price,
+                    location=(row.get('location') or '')[:200] or None,
+                    supplier=(row.get('supplier') or '')[:200] or None,
+                    property=target_prop,
+                    created_by=request.user,
+                )
+                created.append({'row': row_index, 'item_id': item.item_id, 'name': item.name})
+            except Exception as exc:  # pragma: no cover - defensive
+                errors.append({'row': row_index, 'error': str(exc)})
+
+        return Response(
+            {
+                'created_count': len(created),
+                'error_count': len(errors),
+                'created': created[:50],  # cap response payload
+                'errors': errors[:200],
+            },
+            status=status.HTTP_201_CREATED if created and not errors
+            else (status.HTTP_207_MULTI_STATUS if created else status.HTTP_400_BAD_REQUEST),
+        )
+
     @action(detail=False, methods=['get'])
     def filter_options(self, request):
         """

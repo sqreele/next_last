@@ -46,6 +46,7 @@ import {
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
 import { InventoryMobileStats } from '@/app/components/inventory/InventoryMobileStats';
+import { InventoryCsvImport } from '@/app/components/inventory/InventoryCsvImport';
 
 interface InventoryItem {
   id: number;
@@ -483,13 +484,21 @@ export default function InventoryPage() {
             {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRoom !== 'all' || lowStockOnly || selectedJobFilter !== 'all' || selectedPmFilter !== 'all') && ` (${filteredInventory.length} filtered)`}
           </p>
         </div>
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Item
-            </Button>
-          </DialogTrigger>
+        <div className="flex flex-wrap items-center gap-2">
+          <InventoryCsvImport
+            currentPropertyId={selectedProperty}
+            onImported={() => {
+              // Force a refetch by toggling page (the page hook depends on it).
+              setPage(1);
+            }}
+          />
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Item
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Inventory Item</DialogTitle>
@@ -554,6 +563,7 @@ export default function InventoryPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Mobile-first stats strip — tap Low Stock to filter without scrolling */}

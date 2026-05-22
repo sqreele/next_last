@@ -2530,6 +2530,53 @@ class PropertyViewSet(viewsets.ModelViewSet):
         response['Content-Disposition'] = 'attachment; filename="pcms-properties-template.csv"'
         return response
 
+    @action(detail=False, methods=['get'], url_path='export')
+    def export_csv(self, request):
+        """Export the user's accessible properties as a CSV file.
+
+        Mirrors the columns the import endpoint accepts, so an operator can
+        round-trip: export from production, edit in a spreadsheet, then
+        re-upload to staging. Includes room_count and user_count so the
+        spreadsheet has enough context to plan changes without bouncing
+        back into the dashboard.
+
+        Tenant-scoped: regular users only see their accessible properties;
+        staff/superuser see everything."""
+        import csv as _csv
+        from io import StringIO
+
+        user = request.user
+        if user.is_staff or user.is_superuser:
+            qs = Property.objects.all()
+        else:
+            qs = Property.objects.filter(users=user)
+        qs = qs.prefetch_related('users', 'rooms').order_by('name')
+
+        buf = StringIO()
+        writer = _csv.writer(buf)
+        writer.writerow([
+            'name', 'property_id', 'description',
+            'room_count', 'user_count', 'is_preventivemaintenance', 'created_at',
+        ])
+        for prop in qs:
+            writer.writerow([
+                prop.name,
+                prop.property_id or '',
+                (prop.description or '').replace('\n', ' ').strip(),
+                prop.rooms.count(),
+                prop.users.count(),
+                'true' if prop.is_preventivemaintenance else 'false',
+                prop.created_at.isoformat() if prop.created_at else '',
+            ])
+
+        body = buf.getvalue()
+        response = HttpResponse(body, content_type='text/csv; charset=utf-8')
+        date = timezone.now().strftime('%Y-%m-%d')
+        response['Content-Disposition'] = (
+            f'attachment; filename="pcms-properties-export-{date}.csv"'
+        )
+        return response
+
     @action(detail=False, methods=['post'], url_path='bulk-import')
     def bulk_import(self, request):
         """Create properties from a CSV upload.

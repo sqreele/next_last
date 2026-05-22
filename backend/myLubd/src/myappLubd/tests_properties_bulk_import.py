@@ -84,3 +84,52 @@ class PropertyBulkImportTests(TestCase):
         self.assertEqual(resp.data['created_count'], 1)
         self.assertEqual(resp.data['error_count'], 1)
         self.assertEqual(resp.data['errors'][0]['row'], 2)
+
+
+class PropertyExportTests(TestCase):
+    """The /export action mirrors the import schema so a round-trip works.
+
+    Tenant scoping is enforced via get_queryset-style logic in the action:
+    regular users see only their accessible properties, staff sees all."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.staff = User.objects.create_user(username='owner', password='pw12345!', is_staff=True)
+        self.alice = User.objects.create_user(username='alice', password='pw12345!')
+        self.prop_a = Property.objects.create(name='Hotel Alice', description='Alice resort')
+        self.prop_a.users.add(self.alice)
+        self.prop_b = Property.objects.create(name='Hotel Bob', description='Bob resort')
+        # Bob's property has nobody attached except staff visibility.
+
+    def test_regular_user_only_sees_their_properties(self):
+        self.client.force_authenticate(user=self.alice)
+        resp = self.client.get('/api/v1/properties/export/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        body = resp.content.decode('utf-8')
+        # Header + one data row for Alice's property; Bob's must NOT appear.
+        lines = [line for line in body.split('\n') if line.strip()]
+        self.assertEqual(len(lines), 2, lines)
+        self.assertIn('Hotel Alice', lines[1])
+        self.assertNotIn('Hotel Bob', body)
+
+    def test_staff_sees_all_properties(self):
+        self.client.force_authenticate(user=self.staff)
+        resp = self.client.get('/api/v1/properties/export/')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        body = resp.content.decode('utf-8')
+        self.assertIn('Hotel Alice', body)
+        self.assertIn('Hotel Bob', body)
+
+    def test_export_header_matches_import_schema(self):
+        self.client.force_authenticate(user=self.staff)
+        resp = self.client.get('/api/v1/properties/export/')
+        header = resp.content.decode('utf-8').split('\n', 1)[0]
+        # The first three columns must match what bulk_import accepts so a
+        # round-trip is trivial (room_count/user_count/created_at are extra
+        # context-only fields).
+        for field in ('name', 'property_id', 'description'):
+            self.assertIn(field, header)
+
+    def test_unauthenticated_request_is_rejected(self):
+        resp = self.client.get('/api/v1/properties/export/')
+        self.assertIn(resp.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))

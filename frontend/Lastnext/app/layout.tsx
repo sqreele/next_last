@@ -10,6 +10,7 @@ import { SWRProvider } from '@/app/lib/swr-config'; // ✅ PERFORMANCE: Global S
 import { ServiceWorkerRegistrar } from '@/app/components/pwa/ServiceWorkerRegistrar';
 import { InstallPrompt } from '@/app/components/pwa/InstallPrompt';
 import { NetworkStatusBanner } from '@/app/components/pwa/NetworkStatusBanner';
+import { ThemeProvider } from '@/app/components/theme/ThemeProvider';
 import './globals.css';
 // Bilingual UI font (Thai + English)
 const sarabun = localFont({
@@ -102,6 +103,14 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <meta name="color-scheme" content="light dark" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <link rel="manifest" href="/manifest.json" />
+        {/* Pre-hydration theme bootstrap — keeps the page from flashing the
+            wrong theme between SSR and ThemeProvider mount. Reads the same
+            localStorage key the provider uses. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('pcms-theme');var m=window.matchMedia('(prefers-color-scheme: dark)').matches;var d=(s==='dark')||((s==='system'||!s)&&m);if(d){document.documentElement.classList.add('dark');}}catch(e){}})();`,
+          }}
+        />
       </head>
       <body className={`${sarabun.variable} font-sans min-h-screen bg-background`}>
         <a
@@ -111,6 +120,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           Skip to main content
         </a>
         <SWRProvider>
+          <ThemeProvider>
           <AuthProvider>
             <StoreProvider>
               <Suspense fallback={null}>
@@ -125,6 +135,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <InstallPrompt />
             </StoreProvider>
           </AuthProvider>
+          </ThemeProvider>
         </SWRProvider>
         <Analytics />
       </body>

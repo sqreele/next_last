@@ -44,6 +44,7 @@ import {
 import { dashboardNavigationItems } from "@/app/lib/navigation";
 import { useScrollDirection } from "@/app/lib/hooks/useScrollDirection";
 import { NotificationBell } from "@/app/components/notifications/NotificationBell";
+import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 
 function isNavItemActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -269,6 +270,7 @@ function MobileHeader({ hidden = false }: { hidden?: boolean }) {
           </Link>
         </div>
         <div className="flex items-center gap-1">
+          <ThemeToggle />
           <NotificationBell />
           <MobileSearch />
         </div>
@@ -295,6 +297,7 @@ function DesktopHeader({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
         <DashboardBreadcrumb />
       </div>
       <div className="flex items-center gap-4">
+        <ThemeToggle />
         <NotificationBell variant="full" />
         <SearchInput />
         <HeaderPropertyList />

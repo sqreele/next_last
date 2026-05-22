@@ -11,6 +11,9 @@ import { fixImageUrl } from '@/app/lib/utils/image-utils';
 import { JobHeroImage, GalleryImage } from '@/app/components/ui/OptimizedImageEnhanced';
 import { getDisplayName } from '@/app/lib/utils/display-name';
 import JobCommentsSection from '@/app/components/jobs/JobCommentsSection';
+import { BeforeAfterCompare } from '@/app/components/jobs/BeforeAfterCompare';
+import { JobAuditTimeline } from '@/app/components/jobs/JobAuditTimeline';
+import { ReassignJobButton } from '@/app/components/jobs/ReassignJobButton';
 
 type Props = {
   params: Promise<{ jobId: string }>;
@@ -77,9 +80,20 @@ export default async function JobPage({ params }: Props) {
 
     return (
       <div className="mx-auto max-w-4xl space-y-5">
-        <h1 className="pcms-page-header text-2xl font-black tracking-[-0.03em] text-[var(--pcms-text)] sm:text-3xl">
-          Job: <PriorityBadge priority={job.priority} /> #{job.job_id}
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="pcms-page-header text-2xl font-black tracking-[-0.03em] text-[var(--pcms-text)] sm:text-3xl">
+            Job: <PriorityBadge priority={job.priority} /> #{job.job_id}
+          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <ReassignJobButton job={job} />
+            <a
+              href={`/dashboard/jobs/${job.job_id}/print/`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              Printable work order
+            </a>
+          </div>
+        </div>
         
         <div className="pcms-section-card space-y-4 p-5 text-[var(--pcms-text)] sm:p-6">
           {/* Basic Info */}
@@ -222,10 +236,18 @@ export default async function JobPage({ params }: Props) {
             </div>
           )}
 
+          {/* Before / After comparison — shown above the flat gallery */}
+          <BeforeAfterCompare
+            images={job.images}
+            imageUrls={job.image_urls}
+            createdAt={job.created_at}
+            completedAt={job.completed_at}
+          />
+
           {/* Images */}
           {job.image_urls && job.image_urls.length > 0 && (
             <div className="space-y-2">
-              <h2 className="text-lg font-black text-[var(--pcms-text)]">Images</h2>
+              <h2 className="text-lg font-black text-[var(--pcms-text)]">All images</h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {job.image_urls.map((url, index) => {
                   // Use the fixImageUrl utility to properly handle different URL formats
@@ -278,6 +300,9 @@ export default async function JobPage({ params }: Props) {
             </div>
           )}
         </div>
+
+        {/* Audit log — derived event timeline */}
+        <JobAuditTimeline jobId={job.job_id} />
 
         {/* Comments */}
         <JobCommentsSection jobId={job.job_id} />

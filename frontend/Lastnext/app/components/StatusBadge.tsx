@@ -1,5 +1,20 @@
 import * as React from "react";
 import { cn } from "@/app/lib/utils/cn";
+import { useLocale } from "@/app/lib/i18n/LocaleProvider";
+import type { DictKey } from "@/app/lib/i18n/dictionary";
+
+// Map normalized status keys -> dictionary keys. Anything not in this map
+// keeps the English label from the existing statusConfig fallback.
+const STATUS_I18N: Record<string, DictKey> = {
+  completed: "status.completed",
+  verified: "status.verified",
+  open: "status.open",
+  pending: "status.pending",
+  in_progress: "status.inProgress",
+  waiting_sparepart: "status.waitingSparepart",
+  cancelled: "status.cancelled",
+  overdue: "status.overdue",
+};
 
 type StatusTone =
   | "green"
@@ -91,34 +106,70 @@ export function getStatusBadgeConfig(status?: string): StatusBadgeConfig {
   );
 }
 
+const ACTIVE_STATUSES = new Set([
+  "in_progress",
+  "waiting_sparepart",
+  "waiting_vendor",
+  "waiting_fix_defect",
+]);
+const URGENT_STATUSES = new Set(["overdue"]);
+
 export interface StatusBadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   status?: string;
+  /** Visual size; `sm` is suited to dense tables and chip rails. */
+  size?: "sm" | "md";
+  /** Force-enable the dot pulse; defaults to true for active/urgent statuses. */
+  pulse?: boolean;
 }
 
-export function StatusBadge({ status, className, ...props }: StatusBadgeProps) {
+export function StatusBadge({
+  status,
+  className,
+  size = "md",
+  pulse,
+  ...props
+}: StatusBadgeProps) {
   const normalized = normalizeStatus(status);
   const config = getStatusBadgeConfig(status);
+  const { t } = useLocale();
+  const i18nKey = STATUS_I18N[normalized];
+  const label = i18nKey ? t(i18nKey) : config.label;
+  const shouldPulse =
+    pulse ?? (ACTIVE_STATUSES.has(normalized) || URGENT_STATUSES.has(normalized));
+  const isUrgent = URGENT_STATUSES.has(normalized);
 
   return (
     <span
       className={cn(
-        "inline-flex min-h-8 min-w-0 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-extrabold leading-snug shadow-sm sm:min-h-9 sm:px-3 sm:text-sm",
+        "inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border font-extrabold leading-snug shadow-sm",
+        size === "sm"
+          ? "min-h-6 px-2 py-0.5 text-[11px]"
+          : "min-h-8 px-2.5 py-1 text-xs sm:min-h-9 sm:px-3 sm:text-sm",
         "whitespace-normal break-words text-left align-middle",
         toneClasses[config.tone],
+        isUrgent && "ring-1 ring-red-300",
         `pcms-status-badge--${normalized}`,
         className,
       )}
-      title={config.label}
+      title={label}
       {...props}
     >
-      <span
-        className={cn(
-          "h-2 w-2 flex-none rounded-full",
-          dotClasses[config.tone],
-        )}
-        aria-hidden="true"
-      />
-      <span className="min-w-0">{config.label}</span>
+      <span className="relative flex h-2 w-2 flex-none items-center justify-center">
+        {shouldPulse ? (
+          <span
+            className={cn(
+              "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+              dotClasses[config.tone],
+            )}
+            aria-hidden="true"
+          />
+        ) : null}
+        <span
+          className={cn("relative inline-flex h-2 w-2 rounded-full", dotClasses[config.tone])}
+          aria-hidden="true"
+        />
+      </span>
+      <span className="min-w-0">{label}</span>
     </span>
   );
 }

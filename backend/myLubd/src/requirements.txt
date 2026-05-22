@@ -43,3 +43,12 @@ django-dbbackup==4.2.1
 django-filter==25.1
 python-dotenv==1.0.1
 qrcode[pil]==7.4.2
+# Web Push notifications (PWA). Set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY,
+# and VAPID_CONTACT_EMAIL env vars after generating keys with
+# `vapid --gen` from py-vapid.
+pywebpush==2.0.0
+py-vapid==1.9.1
+# Test runner — works alongside `manage.py test`; CI prefers pytest for the
+# improved test selection and fixtures.
+pytest==8.3.4
+pytest-django==4.9.0

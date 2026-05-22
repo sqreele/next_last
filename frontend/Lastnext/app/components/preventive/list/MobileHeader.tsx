@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BarChart3, RefreshCw, Filter, Plus } from 'lucide-react';
+import { BarChart3, RefreshCw, Filter, Plus, CalendarDays } from 'lucide-react';
 
 interface MobileHeaderProps {
   totalCount: number;
@@ -44,6 +44,14 @@ export default function MobileHeader({
             aria-label="Open maintenance dashboard"
           >
             <BarChart3 className="h-5 w-5" />
+          </Link>
+          <Link
+            href="/dashboard/preventive-maintenance/schedule"
+            className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+            title="Calendar"
+            aria-label="Open maintenance calendar"
+          >
+            <CalendarDays className="h-5 w-5" />
           </Link>
           <button
             onClick={onRefresh}

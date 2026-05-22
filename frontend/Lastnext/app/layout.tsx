@@ -7,6 +7,11 @@ import { Toaster } from '@/app/components/ui/toaster';
 import { RouteTransitionLoader } from '@/app/components/ui/loading/RouteTransitionLoader';
 import { StoreProvider } from '@/app/lib/providers/StoreProvider';
 import { SWRProvider } from '@/app/lib/swr-config'; // ✅ PERFORMANCE: Global SWR caching
+import { ServiceWorkerRegistrar } from '@/app/components/pwa/ServiceWorkerRegistrar';
+import { InstallPrompt } from '@/app/components/pwa/InstallPrompt';
+import { NetworkStatusBanner } from '@/app/components/pwa/NetworkStatusBanner';
+import { ThemeProvider } from '@/app/components/theme/ThemeProvider';
+import { LocaleProvider } from '@/app/lib/i18n/LocaleProvider';
 import './globals.css';
 // Bilingual UI font (Thai + English)
 const sarabun = localFont({
@@ -99,6 +104,14 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <meta name="color-scheme" content="light dark" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <link rel="manifest" href="/manifest.json" />
+        {/* Pre-hydration theme bootstrap — keeps the page from flashing the
+            wrong theme between SSR and ThemeProvider mount. Reads the same
+            localStorage key the provider uses. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('pcms-theme');var m=window.matchMedia('(prefers-color-scheme: dark)').matches;var d=(s==='dark')||((s==='system'||!s)&&m);if(d){document.documentElement.classList.add('dark');}}catch(e){}})();`,
+          }}
+        />
       </head>
       <body className={`${sarabun.variable} font-sans min-h-screen bg-background`}>
         <a
@@ -108,17 +121,24 @@ export default function RootLayout({ children }: RootLayoutProps) {
           Skip to main content
         </a>
         <SWRProvider>
+          <ThemeProvider>
+          <LocaleProvider>
           <AuthProvider>
             <StoreProvider>
               <Suspense fallback={null}>
                 <RouteTransitionLoader />
               </Suspense>
+              <NetworkStatusBanner />
               <main id="main-content" className="flex min-h-screen w-full flex-col">
                 {children}
               </main>
               <Toaster />
+              <ServiceWorkerRegistrar />
+              <InstallPrompt />
             </StoreProvider>
           </AuthProvider>
+          </LocaleProvider>
+          </ThemeProvider>
         </SWRProvider>
         <Analytics />
       </body>

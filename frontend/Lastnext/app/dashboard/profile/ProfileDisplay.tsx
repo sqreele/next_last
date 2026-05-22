@@ -19,6 +19,7 @@ import { useUser, useProperties } from "@/app/lib/stores/mainStore";
 import { UserProfile, Property } from "@/app/lib/types";
 import { cn } from "@/app/lib/utils/cn";
 import { getDisplayName } from "@/app/lib/utils/display-name";
+import { PushNotificationsToggle } from "@/app/components/pwa/PushNotificationsToggle";
 
 // Define PropertyCardProps
 interface PropertyCardProps {
@@ -218,6 +219,9 @@ export default function ProfileDisplay() {
           <div>
             <CardTitle className="text-xl sm:text-2xl font-bold">Profile</CardTitle>
             <CardDescription>Manage your personal information and preferences</CardDescription>
+            <div className="mt-3">
+              <PushNotificationsToggle />
+            </div>
           </div>
           <Link href={`/dashboard/profile/edit/${userProfile.id}`} className="mt-2 sm:mt-0">
             <Button variant="outline" size="sm" className="w-full sm:w-auto h-10 flex items-center gap-2">

@@ -6,6 +6,7 @@ import * as Yup from 'yup';
 import axios from 'axios';
 import { Button } from "@/app/components/ui/button";
 import { PageHeader, PriorityBadge, SectionCard } from '@/app/components/pcms-ui';
+import { useT } from '@/app/lib/i18n/LocaleProvider';
 import { Textarea } from "@/app/components/ui/textarea";
 import { Plus, Loader, AlertCircle, CheckCircle, Upload } from 'lucide-react';
 import { Checkbox } from "@/app/components/ui/checkbox";
@@ -115,6 +116,7 @@ const initialValues: FormValues = {
 const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }) => {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const t = useT();
   const isSubmittingRef = React.useRef(false); // Prevent double submission
   const loaderShownAtRef = useRef<number | null>(null);
 
@@ -457,10 +459,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   }, [fetchData, session?.user?.accessToken, selectedProperty]);
 
   const STEPS = [
-    { num: 1, label: 'Status', bgClass: 'bg-blue-100 text-blue-800 border-blue-400' },
-    { num: 2, label: 'Location', bgClass: 'bg-emerald-100 text-emerald-800 border-emerald-400' },
-    { num: 3, label: 'Details', bgClass: 'bg-purple-100 text-purple-800 border-purple-400' },
-    { num: 4, label: 'Evidence', bgClass: 'bg-amber-100 text-amber-800 border-amber-400' },
+    { num: 1, label: t('createJob.step.status'), bgClass: 'bg-blue-100 text-blue-800 border-blue-400' },
+    { num: 2, label: t('createJob.step.location'), bgClass: 'bg-emerald-100 text-emerald-800 border-emerald-400' },
+    { num: 3, label: t('createJob.step.details'), bgClass: 'bg-purple-100 text-purple-800 border-purple-400' },
+    { num: 4, label: t('createJob.step.evidence'), bgClass: 'bg-amber-100 text-amber-800 border-amber-400' },
   ];
 
   return (
@@ -506,24 +508,78 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       >
         {({ values, errors, touched, submitCount, setFieldValue, setFieldTouched, isSubmitting }) => (
                   <Form className="relative space-y-5 sm:space-y-6 md:space-y-8">
-          <PageHeader title="Create Maintenance Job" description="Fill in all 4 steps: Status & Priority, Location, Job Details, then Evidence." />
+          <PageHeader title={t('createJob.title')} description={t('createJob.subtitle')} />
 
-          {/* Step Progress Indicator - mobile only */}
-          <div className="flex items-center justify-between xl:hidden">
-            {STEPS.map((step, i) => (
-              <React.Fragment key={step.num}>
-                <div className="flex flex-col items-center gap-1">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold border-2 sm:h-10 sm:w-10 ${step.bgClass}`}>
-                    {step.num}
+          {/* Completion state per step — drives the stepper and the bottom CTA hint. */}
+          {(() => {
+            const stepStatus = [
+              Boolean(values.description) && Boolean(values.priority) && Boolean(values.status),
+              Boolean(values.area_id) || Boolean(values.room?.room_id),
+              Boolean(values.topic.title),
+              Array.isArray(values.files) && values.files.length > 0,
+            ];
+            const completedCount = stepStatus.filter(Boolean).length;
+            return (
+              <>
+                {/* Sticky mobile stepper — clickable, completion-aware */}
+                <nav
+                  aria-label="Form steps"
+                  className="sticky top-0 z-10 -mx-3 border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur xl:hidden"
+                  style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
+                >
+                  <div className="mb-1 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    <span>{completedCount} of {STEPS.length} steps ready</span>
+                    <span className="text-blue-700">{Math.round((completedCount / STEPS.length) * 100)}%</span>
                   </div>
-                  <span className="text-[11px] font-semibold text-slate-700 sm:text-xs">{step.label}</span>
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div className="mb-4 h-0.5 flex-1 bg-slate-200 mx-1" />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
+                  <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                    <div
+                      className="h-full rounded-full bg-blue-600 transition-all duration-300"
+                      style={{ width: `${(completedCount / STEPS.length) * 100}%` }}
+                    />
+                  </div>
+                  <ol className="flex items-center justify-between gap-1">
+                    {STEPS.map((step, i) => {
+                      const done = stepStatus[i];
+                      return (
+                        <React.Fragment key={step.num}>
+                          <li className="flex flex-1 flex-col items-center gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (typeof document !== 'undefined') {
+                                  document
+                                    .getElementById(`cj-step-${step.num}`)
+                                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }
+                              }}
+                              aria-current={done ? undefined : 'step'}
+                              aria-label={`Go to step ${step.num}: ${step.label}${done ? ' (complete)' : ''}`}
+                              className={`flex h-9 w-9 touch-manipulation items-center justify-center rounded-full border-2 text-sm font-bold transition-all active:scale-95 sm:h-10 sm:w-10 ${
+                                done
+                                  ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm'
+                                  : step.bgClass
+                              }`}
+                            >
+                              {done ? <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" /> : step.num}
+                            </button>
+                            <span className="text-[10px] font-semibold text-slate-700 sm:text-[11px]">{step.label}</span>
+                          </li>
+                          {i < STEPS.length - 1 && (
+                            <div
+                              className={`mb-4 h-0.5 flex-1 transition-colors ${
+                                stepStatus[i] && stepStatus[i + 1] ? 'bg-emerald-400' : 'bg-slate-200'
+                              }`}
+                              aria-hidden
+                            />
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </ol>
+                </nav>
+              </>
+            );
+          })()}
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-5 sm:space-y-6 md:space-y-8">
@@ -539,12 +595,12 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
               </div>
               <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
-                Creating maintenance job...
+                {t('createJob.creating')}
               </p>
             </div>
           )}
           {/* Step 1: Status & Priority */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <div id="cj-step-1" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 scroll-mt-24">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">1</div>
                 <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Status &amp; Priority</h3>
@@ -656,7 +712,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Step 2: Assignment & Location */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <div id="cj-step-2" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 scroll-mt-24">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">2</div>
                 <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Location &amp; Room</h3>
@@ -827,7 +883,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Step 3: Job Details */}
-            <div className="rounded-2xl border border-purple-200 bg-purple-50 p-4 shadow-sm sm:p-6">
+            <div id="cj-step-3" className="rounded-2xl border border-purple-200 bg-purple-50 p-4 shadow-sm sm:p-6 scroll-mt-24">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">3</div>
                 <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Job Details</h3>
@@ -891,7 +947,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Step 4: Evidence Upload */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+            <div id="cj-step-4" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 scroll-mt-24">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500 text-sm font-black text-white shadow sm:h-9 sm:w-9">4</div>
                 <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Photo Evidence</h3>
@@ -933,29 +989,85 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </aside>
             </div>
 
-            {/* Submit Button */}
-            <div className="fixed bottom-[4.5rem] left-0 right-0 z-20 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none" style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}>
-              <div className="mx-auto max-w-lg md:max-w-none">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  aria-busy={isSubmitting}
-                  className="h-14 w-full touch-manipulation rounded-xl bg-blue-600 text-base font-bold text-white shadow-md shadow-blue-600/30 transition-all duration-200 hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-blue-400 disabled:opacity-100 sm:text-lg"
+            {/* Submit Button — sticky on mobile, with progress hint and scroll-to-error */}
+            {(() => {
+              const stepStatus = [
+                Boolean(values.description) && Boolean(values.priority) && Boolean(values.status),
+                Boolean(values.area_id) || Boolean(values.room?.room_id),
+                Boolean(values.topic.title),
+                Array.isArray(values.files) && values.files.length > 0,
+              ];
+              const completedCount = stepStatus.filter(Boolean).length;
+              const firstIncomplete = stepStatus.findIndex((s) => !s) + 1;
+              const allReady = completedCount === stepStatus.length;
+              return (
+                <div
+                  className="fixed bottom-[4.5rem] left-0 right-0 z-20 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
+                  style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
                 >
-                  {isSubmitting ? (
-                    <div className="flex items-center gap-3">
-                      <Loader className="h-5 w-5 animate-spin" />
-                      <span>Creating maintenance job...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <Plus className="h-5 w-5" />
-                      <span>Create Maintenance Job</span>
-                    </div>
-                  )}
-                </Button>
-              </div>
-            </div>
+                  <div className="mx-auto max-w-lg md:max-w-none">
+                    {!allReady && !isSubmitting && (
+                      <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 md:hidden">
+                        <span className="flex items-center gap-1.5">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          {completedCount}/{stepStatus.length} steps complete · finish step {firstIncomplete} to continue
+                        </span>
+                        <button
+                          type="button"
+                          className="rounded-md bg-amber-200 px-2 py-1 text-[11px] font-bold text-amber-900 hover:bg-amber-300"
+                          onClick={() => {
+                            if (typeof document !== 'undefined') {
+                              document
+                                .getElementById(`cj-step-${firstIncomplete}`)
+                                ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }}
+                        >
+                          Jump
+                        </button>
+                      </div>
+                    )}
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      aria-busy={isSubmitting}
+                      onClick={(event) => {
+                        // If something's missing, jump to the first incomplete step on mobile
+                        // before the form's own submit validation triggers so the user sees
+                        // exactly which section needs work.
+                        if (!allReady && typeof document !== 'undefined' && window.innerWidth < 1280) {
+                          event.preventDefault();
+                          document
+                            .getElementById(`cj-step-${firstIncomplete}`)
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                      className={`h-14 w-full touch-manipulation rounded-xl text-base font-bold text-white shadow-md transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-100 sm:text-lg ${
+                        allReady
+                          ? 'bg-blue-600 shadow-blue-600/30 hover:bg-blue-700 disabled:bg-blue-400'
+                          : 'bg-slate-700 shadow-slate-700/30 hover:bg-slate-800 disabled:bg-slate-400'
+                      }`}
+                    >
+                      {isSubmitting ? (
+                        <div className="flex items-center gap-3">
+                          <Loader className="h-5 w-5 animate-spin" />
+                          <span>{t('createJob.creating')}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <Plus className="h-5 w-5" />
+                          <span>
+                            {allReady
+                              ? t('createJob.cta')
+                              : t('createJob.ctaFinishStep').replace('{n}', String(firstIncomplete))}
+                          </span>
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
           </Form>
         )}
       </Formik>

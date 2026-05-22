@@ -16,7 +16,7 @@ import math
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import models
-from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory, RosterLeave, Area, JobComment
+from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory, RosterLeave, Area, JobComment, PushSubscription
 from django.urls import reverse
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .serializers import (
@@ -421,6 +421,103 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
 
         serializer = PreventiveMaintenanceListSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='schedule')
+    def schedule(self, request):
+        """
+        Calendar-friendly view of preventive maintenance work.
+
+        Groups PMs into per-day buckets so the frontend can render a calendar
+        without doing the bucketing client-side. Buckets are ordered by date
+        and include both open and recently-completed PMs so users can see
+        what was done in the visible window.
+
+        Query params:
+            from   ISO date (default = today).
+            days   Window length in days (default 30, capped at 180).
+            status `open` (default) | `completed` | `all`.
+        """
+        from datetime import datetime
+
+        days_param = request.query_params.get('days', '30')
+        try:
+            days = max(1, min(int(days_param), 180))
+        except (TypeError, ValueError):
+            days = 30
+
+        from_param = request.query_params.get('from')
+        if from_param:
+            try:
+                start_dt = datetime.fromisoformat(from_param.replace('Z', '+00:00'))
+                if timezone.is_naive(start_dt):
+                    start_dt = timezone.make_aware(start_dt, timezone.get_current_timezone())
+            except ValueError:
+                start_dt = timezone.now()
+        else:
+            start_dt = timezone.now()
+        start_dt = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_dt = start_dt + timedelta(days=days)
+
+        status_filter = (request.query_params.get('status') or 'open').lower()
+        qs = self.get_queryset().filter(scheduled_date__gte=start_dt, scheduled_date__lt=end_dt)
+        if status_filter == 'open':
+            qs = qs.filter(completed_date__isnull=True)
+        elif status_filter == 'completed':
+            qs = qs.filter(completed_date__isnull=False)
+        qs = qs.order_by('scheduled_date')
+
+        serializer = PreventiveMaintenanceListSerializer(qs, many=True, context={'request': request})
+        items = serializer.data
+
+        # Bucket by local date string YYYY-MM-DD. We pre-build every day in the
+        # range so the client can render an even calendar without filling gaps.
+        bucket_index = {}
+        days_out = []
+        cursor = start_dt
+        for _ in range(days):
+            key = cursor.date().isoformat()
+            bucket = {
+                'date': key,
+                'weekday': cursor.strftime('%a'),
+                'items': [],
+                'overdue_count': 0,
+                'open_count': 0,
+                'completed_count': 0,
+            }
+            bucket_index[key] = bucket
+            days_out.append(bucket)
+            cursor += timedelta(days=1)
+
+        now = timezone.now()
+        for pm in qs:
+            key = pm.scheduled_date.date().isoformat()
+            bucket = bucket_index.get(key)
+            if bucket is None:
+                continue
+            bucket['items'].append(
+                next(
+                    (i for i in items if str(i.get('pm_id')) == str(pm.pm_id)),
+                    None,
+                )
+            )
+            if pm.completed_date is not None:
+                bucket['completed_count'] += 1
+            elif pm.scheduled_date < now:
+                bucket['overdue_count'] += 1
+            else:
+                bucket['open_count'] += 1
+
+        # Drop None entries that snuck in from missing pm_id matches.
+        for bucket in days_out:
+            bucket['items'] = [item for item in bucket['items'] if item]
+
+        return Response({
+            'from': start_dt.date().isoformat(),
+            'to': (end_dt - timedelta(days=1)).date().isoformat(),
+            'days': days_out,
+            'total': qs.count(),
+            'status': status_filter,
+        })
 
     @action(detail=False, methods=['get'])
     def overdue(self, request):
@@ -1204,6 +1301,140 @@ class RoomViewSet(viewsets.ModelViewSet):
 
         return apply_floor_filter(queryset).distinct()
 
+    @action(detail=False, methods=['get'], url_path='import-template')
+    def import_template(self, request):
+        """Return a CSV template that matches `bulk_import`'s schema."""
+        import csv as _csv
+        from io import StringIO
+
+        buf = StringIO()
+        writer = _csv.writer(buf)
+        writer.writerow(['name', 'room_type', 'is_active', 'property_id'])
+        writer.writerow(['101', 'Standard', 'true', ''])
+        writer.writerow(['102', 'Standard', 'true', ''])
+        writer.writerow(['201', 'Suite', 'true', ''])
+        body = buf.getvalue()
+        response = HttpResponse(body, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="pcms-rooms-template.csv"'
+        return response
+
+    @action(detail=False, methods=['post'], url_path='bulk-import')
+    def bulk_import(self, request):
+        """Create rooms from a CSV upload.
+
+        Required: name. Optional: room_type (default 'Standard'), is_active
+        (default true), property_id (defaults to ?property_id= query param).
+        Existing rooms (same name) get attached to the target property
+        instead of being recreated, so re-uploading the same sheet is
+        idempotent — Room.name has a unique constraint globally.
+
+        Tenant scoping: the request user must have access to every property
+        being targeted. Staff/superuser bypass."""
+        import csv as _csv
+        from io import StringIO
+
+        file_obj = request.FILES.get('file') if hasattr(request, 'FILES') else None
+        if file_obj is not None:
+            try:
+                text = file_obj.read().decode('utf-8-sig')
+            except UnicodeDecodeError:
+                return Response(
+                    {'error': 'File must be UTF-8 encoded CSV.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            text = (request.data or {}).get('csv', '') if isinstance(request.data, dict) else ''
+        text = (text or '').strip()
+        if not text:
+            return Response(
+                {'error': 'Send a CSV either as `file` (multipart) or `csv` (JSON string).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(text.encode('utf-8')) > 256 * 1024:
+            return Response(
+                {'error': 'CSV is larger than 256 KB — split it into smaller batches.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reader = _csv.DictReader(StringIO(text))
+        if reader.fieldnames is None:
+            return Response({'error': 'CSV is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        is_staff_bypass = request.user.is_staff or request.user.is_superuser
+        accessible_props = list(Property.objects.filter(users=request.user))
+        if not accessible_props and not is_staff_bypass:
+            return Response(
+                {'error': 'You have no property access — cannot import rooms.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        prop_lookup = {}
+        prop_source = Property.objects.all() if is_staff_bypass else accessible_props
+        for prop in prop_source:
+            prop_lookup[str(prop.id)] = prop
+            if prop.property_id:
+                prop_lookup[str(prop.property_id)] = prop
+
+        default_prop_key = (
+            request.query_params.get('property_id') or
+            (request.data.get('property_id') if isinstance(request.data, dict) else None)
+        )
+        default_prop = prop_lookup.get(str(default_prop_key)) if default_prop_key else None
+
+        created = []
+        attached = []
+        errors = []
+
+        for row_index, raw_row in enumerate(reader, start=2):
+            row = {(k or '').strip().lower(): (v or '').strip() for k, v in raw_row.items() if k}
+            name = row.get('name', '')
+            if not name:
+                errors.append({'row': row_index, 'error': 'name is required.'})
+                continue
+            room_type = (row.get('room_type') or 'Standard')[:50]
+            is_active_raw = (row.get('is_active') or 'true').lower()
+            is_active = is_active_raw not in ('0', 'false', 'no', 'inactive')
+
+            target_prop = prop_lookup.get(row.get('property_id', '')) if row.get('property_id') else default_prop
+            if target_prop is None and not is_staff_bypass:
+                errors.append({
+                    'row': row_index,
+                    'error': 'property_id missing or not accessible to you.',
+                })
+                continue
+
+            try:
+                existing = Room.objects.filter(name=name[:100]).first()
+                if existing is not None:
+                    if target_prop is not None:
+                        existing.properties.add(target_prop)
+                    attached.append({'row': row_index, 'room_id': existing.room_id, 'name': existing.name})
+                    continue
+
+                room = Room.objects.create(
+                    name=name[:100],
+                    room_type=room_type,
+                    is_active=is_active,
+                )
+                if target_prop is not None:
+                    room.properties.add(target_prop)
+                created.append({'row': row_index, 'room_id': room.room_id, 'name': room.name})
+            except Exception as exc:  # pragma: no cover - defensive
+                errors.append({'row': row_index, 'error': str(exc)})
+
+        return Response(
+            {
+                'created_count': len(created),
+                'attached_count': len(attached),
+                'error_count': len(errors),
+                'created': created[:50],
+                'attached': attached[:50],
+                'errors': errors[:200],
+            },
+            status=status.HTTP_201_CREATED if (created or attached) and not errors
+            else (status.HTTP_207_MULTI_STATUS if (created or attached) else status.HTTP_400_BAD_REQUEST),
+        )
+
+
 class TopicViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Topic.objects.all()
@@ -1590,17 +1821,60 @@ class JobViewSet(viewsets.ModelViewSet):
         logger.info(f"Returning {len(serializer.data)} jobs to user {user.username} (no pagination)")
         return Response(response_data, status=status.HTTP_200_OK)
 
+    def _accessible_property_ids(self):
+        """Property PKs the current user can write against."""
+        user = self.request.user
+        if not user.is_authenticated:
+            return set()
+        if user.is_staff or user.is_superuser:
+            return None  # sentinel meaning "all"
+        return set(
+            Property.objects.filter(users=user).values_list('id', flat=True)
+        )
+
+    def _validate_tenant_scope(self, serializer):
+        """Reject writes that point at rooms or areas outside the user's tenant.
+
+        Multi-tenant guarding for reads is already handled in `get_queryset`;
+        this complements that on the write path so a forged room_id in the
+        request body can't cross-tenant.
+        """
+        accessible = self._accessible_property_ids()
+        if accessible is None:
+            return  # staff/superuser bypass
+
+        # Rooms come in as a list of Room model instances after validation
+        rooms = serializer.validated_data.get('rooms')
+        if rooms:
+            for room in rooms:
+                room_property_ids = set(
+                    room.properties.values_list('id', flat=True)
+                )
+                if not room_property_ids & accessible:
+                    raise PermissionDenied(
+                        f"You don't have access to a property containing room '{room.name}'."
+                    )
+
+        area = serializer.validated_data.get('area')
+        if area is not None and getattr(area, 'property_id', None) is not None:
+            if area.property_id not in accessible:
+                raise PermissionDenied(
+                    "You don't have access to that area's property."
+                )
+
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
+            self._validate_tenant_scope(serializer)
             serializer.save(user=self.request.user, updated_by=self.request.user)
         else:
             serializer.save()
-        
+
         # Invalidate cache after creating job
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
 
     def perform_update(self, serializer):
         if self.request.user.is_authenticated:
+            self._validate_tenant_scope(serializer)
             instance = self.get_object()
             data = serializer.validated_data
             if 'status' in data and data['status'] == 'completed' and instance.status != 'completed':
@@ -1609,10 +1883,10 @@ class JobViewSet(viewsets.ModelViewSet):
                 serializer.save(updated_by=self.request.user)
         else:
             serializer.save()
-        
+
         # Invalidate cache after updating job
         CacheManager.invalidate_job_cache(user_id=self.request.user.id if self.request.user.is_authenticated else None)
-    
+
     def perform_destroy(self, instance):
         super().perform_destroy(instance)
         # Invalidate cache after deleting job
@@ -1643,6 +1917,202 @@ class JobViewSet(viewsets.ModelViewSet):
         )
         out = JobCommentSerializer(comment, context={'request': request})
         return Response(out.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'], url_path='audit-log')
+    def audit_log(self, request, job_id=None):
+        """Synthetic activity log derived from existing job state and comments.
+
+        Until a dedicated AuditLog model lands (which would require a
+        migration), we surface the auditable timestamps already on the model:
+        creation, completion, image uploads, comments, and remark notes (the
+        UpdateStatusModal prepends `[ts · user → new_status] message` lines
+        which we parse out here). The response is a chronological list of
+        events the frontend can render as a timeline.
+        """
+        job = self.get_object()
+        events = []
+
+        creator_name = getattr(job.user, 'username', None) or getattr(job.user, 'first_name', None) or 'system'
+        events.append({
+            'kind': 'created',
+            'at': job.created_at.isoformat() if job.created_at else None,
+            'actor': creator_name,
+            'message': 'Job created',
+        })
+
+        if job.completed_at:
+            updater_name = getattr(job.updated_by, 'username', None) or 'unknown'
+            events.append({
+                'kind': 'completed',
+                'at': job.completed_at.isoformat(),
+                'actor': updater_name,
+                'message': 'Job completed',
+            })
+
+        # Image uploads — JobImage has uploaded_at and uploaded_by
+        for image in job.job_images.all().order_by('uploaded_at'):
+            uploaded_by = getattr(image.uploaded_by, 'username', None) if image.uploaded_by else None
+            events.append({
+                'kind': 'photo_uploaded',
+                'at': image.uploaded_at.isoformat() if image.uploaded_at else None,
+                'actor': uploaded_by or 'unknown',
+                'message': 'Photo uploaded',
+                'image_url': image.image_url.url if hasattr(image.image_url, 'url') else None,
+            })
+
+        # Comments
+        for comment in job.comments.select_related('author').order_by('created_at'):
+            author = getattr(comment.author, 'username', None) or 'unknown'
+            events.append({
+                'kind': 'comment',
+                'at': comment.created_at.isoformat() if comment.created_at else None,
+                'actor': author,
+                'message': comment.comment,
+            })
+
+        # Parse status-change lines that UpdateStatusModal appends to remarks.
+        # Format: `[YYYY-MM-DD HH:MM · username → status] message`
+        if job.remarks:
+            import re
+
+            pattern = re.compile(
+                r'\[(?P<ts>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2})\s*[·-]\s*(?P<actor>[^→]+?)\s*→\s*(?P<status>[a-z_]+)\]\s*(?P<msg>.*)',
+                re.IGNORECASE,
+            )
+            for line in job.remarks.splitlines():
+                match = pattern.search(line)
+                if not match:
+                    continue
+                events.append({
+                    'kind': 'status_change',
+                    'at': match.group('ts').replace(' ', 'T') + ':00',
+                    'actor': match.group('actor').strip(),
+                    'message': f"Status → {match.group('status')}",
+                    'note': match.group('msg').strip() or None,
+                    'new_status': match.group('status'),
+                })
+
+        # Sort: missing timestamps last
+        def _sort_key(event):
+            return event.get('at') or '9999-12-31T23:59:59'
+
+        events.sort(key=_sort_key)
+
+        return Response({
+            'job_id': job.job_id,
+            'count': len(events),
+            'events': events,
+        })
+
+    @action(detail=True, methods=['post'], url_path='reassign')
+    def reassign(self, request, job_id=None):
+        """Reassign the job to another user that shares at least one of the
+        job's properties.
+
+        Body: {"user_id": <id|username>, "note"?: str}
+
+        Stamps the remarks with the same status-note format the audit log
+        already parses, so the timeline picks up the reassignment as a
+        first-class event. Pushes both the new and previous assignee."""
+        job = self.get_object()
+        target_raw = (request.data or {}).get('user_id')
+        if not target_raw:
+            return Response(
+                {'error': 'user_id is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        target = None
+        target_str = str(target_raw).strip()
+        if target_str.isdigit():
+            target = User.objects.filter(pk=int(target_str)).first()
+        if target is None:
+            target = User.objects.filter(username__iexact=target_str).first()
+        if target is None:
+            return Response(
+                {'error': 'Target user not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Reassignment scope: target must share at least one property with
+        # the job (either through a job-rooms property or the job's area
+        # property). Staff/superusers bypass.
+        if not (target.is_staff or target.is_superuser):
+            job_property_ids = set(
+                Property.objects.filter(rooms__jobs=job).values_list('id', flat=True)
+            )
+            target_property_ids = set(
+                Property.objects.filter(users=target).values_list('id', flat=True)
+            )
+            if job_property_ids and not job_property_ids & target_property_ids:
+                return Response(
+                    {'error': "Target user has no access to this job's property."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        previous = job.user
+        if previous and previous.pk == target.pk:
+            return Response(
+                {'error': 'Job is already assigned to that user.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        note = ((request.data or {}).get('note') or '').strip()[:300]
+        stamp = timezone.now().strftime('%Y-%m-%d %H:%M')
+        actor = (
+            getattr(request.user, 'username', None) or getattr(request.user, 'email', None) or 'system'
+        )
+        new_username = target.username or getattr(target, 'email', None) or f'user-{target.pk}'
+        prev_username = (
+            previous.username if previous else 'unassigned'
+        )
+        log_line = (
+            f"[{stamp} · {actor} → reassigned] "
+            f"{prev_username} → {new_username}"
+            + (f" — {note}" if note else '')
+        )
+
+        job.user = target
+        job.updated_by = request.user if getattr(request.user, 'is_authenticated', False) else target
+        job.remarks = f"{job.remarks}\n{log_line}" if job.remarks else log_line
+        job.save(update_fields=['user', 'updated_by', 'remarks', 'updated_at'])
+
+        # Push to the new assignee; signal-driven push on Job.save() already
+        # fires on changed status but not on assignment, so we send an
+        # explicit one here. Previous assignee gets a courtesy note.
+        try:
+            from .push import send_push_to_user
+            send_push_to_user(
+                target,
+                {
+                    'title': 'Job reassigned to you',
+                    'body': (job.description or job.job_id)[:120],
+                    'tag': f'job-reassign-{job.job_id}',
+                    'url': f'/dashboard/jobs/{job.job_id}',
+                    'renotify': True,
+                },
+            )
+            if previous is not None and previous.pk != target.pk:
+                send_push_to_user(
+                    previous,
+                    {
+                        'title': 'Job reassigned',
+                        'body': f"#{job.job_id} is now assigned to {new_username}.",
+                        'tag': f'job-reassign-prev-{job.job_id}',
+                        'url': f'/dashboard/jobs/{job.job_id}',
+                    },
+                )
+        except Exception:  # pragma: no cover - defensive
+            logger.exception('Reassignment push failed for job=%s', job.job_id)
+
+        return Response(
+            {
+                'job_id': job.job_id,
+                'assignee': new_username,
+                'previous': prev_username,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class AreaViewSet(viewsets.ModelViewSet):
@@ -2043,6 +2513,175 @@ class PropertyViewSet(viewsets.ModelViewSet):
         properties = Property.objects.all()
         serializer = PropertySerializer(properties, many=True, context={'request': request})
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='import-template')
+    def import_template(self, request):
+        """Return a CSV template that matches `bulk_import`'s schema."""
+        import csv as _csv
+        from io import StringIO
+
+        buf = StringIO()
+        writer = _csv.writer(buf)
+        writer.writerow(['name', 'property_id', 'description'])
+        writer.writerow(['Hotel Phuket Beach', '', 'Coastal property — 80 rooms'])
+        writer.writerow(['Hotel Bangkok Central', '', 'Downtown property — 120 rooms'])
+        body = buf.getvalue()
+        response = HttpResponse(body, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="pcms-properties-template.csv"'
+        return response
+
+    @action(detail=False, methods=['get'], url_path='export')
+    def export_csv(self, request):
+        """Export the user's accessible properties as a CSV file.
+
+        Mirrors the columns the import endpoint accepts, so an operator can
+        round-trip: export from production, edit in a spreadsheet, then
+        re-upload to staging. Includes room_count and user_count so the
+        spreadsheet has enough context to plan changes without bouncing
+        back into the dashboard.
+
+        Tenant-scoped: regular users only see their accessible properties;
+        staff/superuser see everything."""
+        import csv as _csv
+        from io import StringIO
+
+        user = request.user
+        if user.is_staff or user.is_superuser:
+            qs = Property.objects.all()
+        else:
+            qs = Property.objects.filter(users=user)
+        qs = qs.prefetch_related('users', 'rooms').order_by('name')
+
+        buf = StringIO()
+        writer = _csv.writer(buf)
+        writer.writerow([
+            'name', 'property_id', 'description',
+            'room_count', 'user_count', 'is_preventivemaintenance', 'created_at',
+        ])
+        for prop in qs:
+            writer.writerow([
+                prop.name,
+                prop.property_id or '',
+                (prop.description or '').replace('\n', ' ').strip(),
+                prop.rooms.count(),
+                prop.users.count(),
+                'true' if prop.is_preventivemaintenance else 'false',
+                prop.created_at.isoformat() if prop.created_at else '',
+            ])
+
+        body = buf.getvalue()
+        response = HttpResponse(body, content_type='text/csv; charset=utf-8')
+        date = timezone.now().strftime('%Y-%m-%d')
+        response['Content-Disposition'] = (
+            f'attachment; filename="pcms-properties-export-{date}.csv"'
+        )
+        return response
+
+    @action(detail=False, methods=['post'], url_path='bulk-import')
+    def bulk_import(self, request):
+        """Create properties from a CSV upload.
+
+        Required: name. Optional: property_id (assigned automatically if
+        blank), description. Each imported property is auto-attached to the
+        request user so the dashboard's tenant-scoped queries pick it up
+        immediately.
+
+        Only staff/superusers can create properties — otherwise an operator
+        could conjure tenants for themselves at will."""
+        import csv as _csv
+        from io import StringIO
+
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {'error': 'Only staff can bulk-import properties.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        file_obj = request.FILES.get('file') if hasattr(request, 'FILES') else None
+        if file_obj is not None:
+            try:
+                text = file_obj.read().decode('utf-8-sig')
+            except UnicodeDecodeError:
+                return Response(
+                    {'error': 'File must be UTF-8 encoded CSV.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            text = (request.data or {}).get('csv', '') if isinstance(request.data, dict) else ''
+        text = (text or '').strip()
+        if not text:
+            return Response(
+                {'error': 'Send a CSV either as `file` (multipart) or `csv` (JSON string).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(text.encode('utf-8')) > 128 * 1024:
+            return Response(
+                {'error': 'CSV is larger than 128 KB — properties should be a small list.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reader = _csv.DictReader(StringIO(text))
+        if reader.fieldnames is None:
+            return Response({'error': 'CSV is empty.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        created = []
+        attached = []
+        errors = []
+
+        for row_index, raw_row in enumerate(reader, start=2):
+            row = {(k or '').strip().lower(): (v or '').strip() for k, v in raw_row.items() if k}
+            name = row.get('name', '')
+            if not name:
+                errors.append({'row': row_index, 'error': 'name is required.'})
+                continue
+            description = (row.get('description') or '')[:500] or None
+            explicit_id = row.get('property_id', '') or None
+
+            try:
+                # If a property_id is given and matches an existing row,
+                # attach the user to it instead of creating a duplicate.
+                # Otherwise create fresh — Property.save() will generate
+                # a property_id automatically if blank.
+                existing = None
+                if explicit_id:
+                    existing = Property.objects.filter(property_id=explicit_id).first()
+                if existing is None:
+                    existing = Property.objects.filter(name__iexact=name).first()
+                if existing is not None:
+                    existing.users.add(request.user)
+                    attached.append({
+                        'row': row_index,
+                        'property_id': existing.property_id,
+                        'name': existing.name,
+                    })
+                    continue
+
+                prop = Property(name=name[:200], description=description)
+                if explicit_id:
+                    prop.property_id = explicit_id[:50]
+                prop.save()
+                prop.users.add(request.user)
+                created.append({
+                    'row': row_index,
+                    'property_id': prop.property_id,
+                    'name': prop.name,
+                })
+            except Exception as exc:  # pragma: no cover - defensive
+                errors.append({'row': row_index, 'error': str(exc)})
+
+        return Response(
+            {
+                'created_count': len(created),
+                'attached_count': len(attached),
+                'error_count': len(errors),
+                'created': created[:50],
+                'attached': attached[:50],
+                'errors': errors[:200],
+            },
+            status=status.HTTP_201_CREATED if (created or attached) and not errors
+            else (status.HTTP_207_MULTI_STATUS if (created or attached) else status.HTTP_400_BAD_REQUEST),
+        )
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -3353,6 +3992,177 @@ class InventoryViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(low_stock_items, many=True)
         return Response(serializer.data)
     
+    @action(detail=False, methods=['get'], url_path='import-template')
+    def import_template(self, request):
+        """Return a starter CSV template that matches `bulk_import`'s schema.
+
+        Operators download this, fill it in, and re-upload. Keeps the column
+        names canonical so a partial mismatch can't silently drop fields."""
+        import csv as _csv
+        from io import StringIO
+
+        buf = StringIO()
+        writer = _csv.writer(buf)
+        writer.writerow([
+            'name', 'category', 'quantity', 'min_quantity', 'unit',
+            'unit_price', 'location', 'supplier', 'description', 'property_id',
+        ])
+        writer.writerow([
+            'LED bulb 9W', 'consumables', '50', '10', 'pcs',
+            '2.50', 'Storage A', 'Acme Supplies', 'Standard E27 bulb', '',
+        ])
+        writer.writerow([
+            'AC filter', 'parts', '12', '4', 'pcs',
+            '8.00', 'Mech room', 'Acme Supplies', '', '',
+        ])
+        body = buf.getvalue()
+        response = HttpResponse(body, content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="pcms-inventory-template.csv"'
+        return response
+
+    @action(detail=False, methods=['post'], url_path='bulk-import')
+    def bulk_import(self, request):
+        """Create inventory items from a CSV upload.
+
+        Accepts either a multipart `file` field or a JSON body with a `csv`
+        string. Validates rows up-front and reports per-row errors so the
+        operator can fix the spreadsheet and re-upload — partially-good
+        files still commit their valid rows (rollback would be hostile to
+        bulk-onboarding workflows).
+
+        Required columns: name, quantity, min_quantity.
+        Optional columns: category, unit, unit_price, location, supplier,
+                          description, property_id.
+
+        Property scoping: items go to the property_id column if present and
+        the user has access; otherwise default to the request's currently
+        selected property if it exists; otherwise reject the row with an
+        explicit error."""
+        import csv as _csv
+        from io import StringIO
+
+        file_obj = request.FILES.get('file') if hasattr(request, 'FILES') else None
+        if file_obj is not None:
+            try:
+                text = file_obj.read().decode('utf-8-sig')
+            except UnicodeDecodeError:
+                return Response(
+                    {'error': 'File must be UTF-8 encoded CSV.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            text = (request.data or {}).get('csv', '') if isinstance(request.data, dict) else ''
+        text = (text or '').strip()
+        if not text:
+            return Response(
+                {'error': 'Send a CSV either as `file` (multipart) or `csv` (JSON string).'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Cap input size so an operator can't accidentally bulk-import a
+        # 50 MB sheet that would OOM the worker. ~256 KB is more than enough
+        # for thousands of typical inventory rows.
+        if len(text.encode('utf-8')) > 256 * 1024:
+            return Response(
+                {'error': 'CSV is larger than 256 KB — split it into smaller batches.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reader = _csv.DictReader(StringIO(text))
+        if reader.fieldnames is None:
+            return Response(
+                {'error': 'CSV is empty.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Resolve property scope: which properties this user can write to.
+        accessible_props = list(Property.objects.filter(users=request.user))
+        if not accessible_props and not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {'error': 'You have no property access — cannot import inventory.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        prop_lookup = {}
+        for prop in accessible_props:
+            prop_lookup[str(prop.id)] = prop
+            if prop.property_id:
+                prop_lookup[str(prop.property_id)] = prop
+
+        # Default property from query string (frontend passes the active one).
+        default_prop_key = (
+            request.query_params.get('property_id') or
+            request.data.get('property_id') if isinstance(request.data, dict) else None
+        )
+        default_prop = prop_lookup.get(str(default_prop_key)) if default_prop_key else None
+
+        created = []
+        errors = []
+
+        for row_index, raw_row in enumerate(reader, start=2):  # row 1 is the header
+            row = {(k or '').strip().lower(): (v or '').strip() for k, v in raw_row.items() if k}
+            name = row.get('name', '')
+            if not name:
+                errors.append({'row': row_index, 'error': 'name is required.'})
+                continue
+
+            try:
+                quantity = int(row.get('quantity') or 0)
+                min_quantity = int(row.get('min_quantity') or 0)
+            except ValueError:
+                errors.append({'row': row_index, 'error': 'quantity and min_quantity must be integers.'})
+                continue
+            if quantity < 0 or min_quantity < 0:
+                errors.append({'row': row_index, 'error': 'quantity / min_quantity cannot be negative.'})
+                continue
+
+            unit_price_raw = row.get('unit_price', '').strip()
+            unit_price = None
+            if unit_price_raw:
+                try:
+                    unit_price = float(unit_price_raw)
+                    if unit_price < 0:
+                        raise ValueError
+                except ValueError:
+                    errors.append({'row': row_index, 'error': 'unit_price must be a non-negative number.'})
+                    continue
+
+            target_prop = prop_lookup.get(row.get('property_id', '')) if row.get('property_id') else default_prop
+            if target_prop is None and not (request.user.is_staff or request.user.is_superuser):
+                errors.append({
+                    'row': row_index,
+                    'error': 'property_id missing or not accessible to you.',
+                })
+                continue
+
+            try:
+                item = Inventory.objects.create(
+                    name=name[:200],
+                    description=row.get('description', '')[:500] or None,
+                    category=(row.get('category') or 'other')[:50],
+                    quantity=quantity,
+                    min_quantity=min_quantity,
+                    unit=(row.get('unit') or 'pcs')[:20],
+                    unit_price=unit_price,
+                    location=(row.get('location') or '')[:200] or None,
+                    supplier=(row.get('supplier') or '')[:200] or None,
+                    property=target_prop,
+                    created_by=request.user,
+                )
+                created.append({'row': row_index, 'item_id': item.item_id, 'name': item.name})
+            except Exception as exc:  # pragma: no cover - defensive
+                errors.append({'row': row_index, 'error': str(exc)})
+
+        return Response(
+            {
+                'created_count': len(created),
+                'error_count': len(errors),
+                'created': created[:50],  # cap response payload
+                'errors': errors[:200],
+            },
+            status=status.HTTP_201_CREATED if created and not errors
+            else (status.HTTP_207_MULTI_STATUS if created else status.HTTP_400_BAD_REQUEST),
+        )
+
     @action(detail=False, methods=['get'])
     def filter_options(self, request):
         """
@@ -3495,3 +4305,214 @@ def get_all_notifications(request):
             {'error': 'Failed to fetch notifications'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+# ============================================================
+# Web Push subscription endpoints
+# ============================================================
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def push_subscribe(request):
+    """
+    Register a PushManager subscription against the authenticated user.
+
+    Body shape (mirrors PushSubscription.toJSON() from the browser):
+        {
+          "endpoint": "...",
+          "keys": {"p256dh": "...", "auth": "..."}
+        }
+
+    Idempotent: if the same endpoint already exists we update the keys and
+    re-activate, so subscribing twice from the same browser is a no-op.
+    """
+    payload = request.data or {}
+    endpoint = (payload.get('endpoint') or '').strip()
+    keys = payload.get('keys') or {}
+    p256dh = (keys.get('p256dh') or '').strip()
+    auth = (keys.get('auth') or '').strip()
+
+    if not endpoint or not p256dh or not auth:
+        return Response(
+            {'error': 'endpoint and keys.{p256dh,auth} are required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user_agent = (request.META.get('HTTP_USER_AGENT') or '')[:255]
+    sub, created = PushSubscription.objects.update_or_create(
+        endpoint=endpoint,
+        defaults={
+            'user': request.user,
+            'p256dh': p256dh,
+            'auth': auth,
+            'user_agent': user_agent,
+            'is_active': True,
+        },
+    )
+    return Response(
+        {
+            'id': sub.id,
+            'created': created,
+            'is_active': sub.is_active,
+        },
+        status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def push_unsubscribe(request):
+    """Deactivate a subscription by endpoint. Body: {"endpoint": "..."}."""
+    endpoint = (request.data or {}).get('endpoint', '').strip()
+    if not endpoint:
+        return Response({'error': 'endpoint required'}, status=status.HTTP_400_BAD_REQUEST)
+    updated = PushSubscription.objects.filter(
+        user=request.user, endpoint=endpoint
+    ).update(is_active=False)
+    return Response({'deactivated': updated})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def push_public_key(request):
+    """Expose the configured VAPID public key so the frontend can subscribe."""
+    key = os.environ.get('NEXT_PUBLIC_VAPID_PUBLIC_KEY', '').strip()
+    return Response({'public_key': key, 'configured': bool(key)})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def push_test(request):
+    """Send a smoke-test push to every active subscription of the caller."""
+    from .push import send_push_to_user
+
+    delivered = send_push_to_user(
+        request.user,
+        {
+            'title': 'PCMS test push',
+            'body': f'Push delivered to {request.user.username or request.user.email or "your device"}',
+            'tag': 'pcms-test',
+            'url': '/dashboard',
+        },
+    )
+    return Response({'delivered': delivered})
+
+
+# ============================================================
+# Public guest maintenance requests (no auth)
+# ============================================================
+#
+# Hotels stick a QR code on the door / in the room that points to
+# /report/<property_id>/<room_id>. Guests scan it, fill in a brief form,
+# and the request lands in the maintenance backlog as a regular Job. To
+# protect against abuse the endpoint:
+#
+#   - Requires both property and room to exist AND for the room to be
+#     attached to that property (so a stranger can't enumerate or spoof
+#     other tenants from a single QR scan).
+#   - Caps description length and trims everything.
+#   - Throttles by IP via the cache (15 requests per hour).
+#   - Assigns the job to the property's first attached user (typically
+#     the chief engineer) so the assignee FK never goes null.
+
+from django.core.cache import cache
+
+
+def _client_ip(request) -> str:
+    forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '').strip()
+    if forwarded:
+        return forwarded.split(',', 1)[0].strip()
+    return (request.META.get('REMOTE_ADDR') or 'anon').strip()
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def public_job_request(request, property_id, room_id):
+    """Create a maintenance Job from an unauthenticated guest scan."""
+
+    ip = _client_ip(request)
+    bucket_key = f'pcms:public-job-request:{ip}'
+    count = cache.get(bucket_key, 0)
+    if count >= 15:
+        return Response(
+            {'error': 'Too many requests from this network. Try again later.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    payload = request.data or {}
+    description = (payload.get('description') or '').strip()
+    if not description:
+        return Response(
+            {'error': 'description is required.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    description = description[:1000]
+    guest_name = (payload.get('guest_name') or '').strip()[:120]
+    guest_contact = (payload.get('guest_contact') or '').strip()[:120]
+
+    # Resolve property and room. Accept both pcms-style property_id (P12345…)
+    # and numeric PKs so the QR code can use whichever the operator prefers.
+    property_obj = None
+    try:
+        if str(property_id).isdigit():
+            property_obj = Property.objects.filter(id=int(property_id)).first()
+        if property_obj is None:
+            property_obj = Property.objects.filter(property_id=str(property_id)).first()
+    except Exception:  # pragma: no cover - defensive
+        property_obj = None
+    if property_obj is None:
+        return Response({'error': 'Property not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    room_obj = None
+    try:
+        if str(room_id).isdigit():
+            room_obj = Room.objects.filter(room_id=int(room_id)).first()
+    except Exception:  # pragma: no cover - defensive
+        room_obj = None
+    if room_obj is None:
+        # Allow lookup by name as a fallback so QRs printed with the visible
+        # room number still work.
+        room_obj = Room.objects.filter(name=str(room_id)).first()
+    if room_obj is None or not room_obj.properties.filter(pk=property_obj.pk).exists():
+        return Response(
+            {'error': 'Room not found at this property.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    assignee = property_obj.users.order_by('id').first()
+    if assignee is None:
+        return Response(
+            {'error': 'Property has no staff to dispatch the request to.'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    stamp = timezone.now().strftime('%Y-%m-%d %H:%M')
+    remark_lines = [f'[{stamp} · guest → reported via QR scan]']
+    if guest_name:
+        remark_lines.append(f'Guest: {guest_name}')
+    if guest_contact:
+        remark_lines.append(f'Contact: {guest_contact}')
+    remark_lines.append(f'Source IP: {ip}')
+
+    job = Job.objects.create(
+        user=assignee,
+        updated_by=assignee,
+        description=description,
+        remarks='\n'.join(remark_lines),
+        status='pending',
+        priority='medium',
+    )
+    job.rooms.set([room_obj])
+
+    cache.set(bucket_key, count + 1, timeout=60 * 60)
+
+    return Response(
+        {
+            'job_id': job.job_id,
+            'property': property_obj.name,
+            'room': room_obj.name,
+            'message': 'Thanks — our maintenance team has been notified.',
+        },
+        status=status.HTTP_201_CREATED,
+    )

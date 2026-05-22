@@ -380,18 +380,84 @@ body {
   }
 }
 
-/* Dark mode support preparation */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f172a;
-    --foreground: #f1f5f9;
-  }
+/* Dark mode — driven by the `.dark` class on <html> (see ThemeProvider).
+   System preference falls through automatically because ThemeProvider mirrors
+   matchMedia('(prefers-color-scheme: dark)') when the user has 'system' set. */
+.dark {
+  /* shadcn/ui design tokens */
+  --background: 222 47% 7%;
+  --foreground: 210 40% 96%;
+  --card: 222 47% 10%;
+  --card-foreground: 210 40% 96%;
+  --popover: 222 47% 10%;
+  --popover-foreground: 210 40% 96%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 222 47% 11%;
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 96%;
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 217 33% 17%;
+  --accent-foreground: 210 40% 96%;
+  --destructive: 0 75% 55%;
+  --destructive-foreground: 210 40% 96%;
+  --success: 142 65% 50%;
+  --success-foreground: 222 47% 11%;
+  --warning: 24 95% 60%;
+  --warning-foreground: 222 47% 11%;
+  --info: 217 91% 65%;
+  --info-foreground: 222 47% 11%;
+  --border: 217 33% 22%;
+  --input: 217 33% 22%;
+  --ring: 217 91% 60%;
 
-  .glass {
-    background-color: rgba(15, 23, 42, 0.5);
-    border: 1px solid rgba(51, 65, 85, 0.3);
-  }
+  /* PCMS app tokens (used by the Sneat-style components in the dashboard). */
+  --pcms-app-bg: #0b1220;
+  --pcms-surface: #111a2e;
+  --pcms-surface-soft: #0f1729;
+  --pcms-border: #1e293b;
+  --pcms-border-strong: #334155;
+  --pcms-primary: #3b82f6;
+  --pcms-primary-hover: #60a5fa;
+  --pcms-primary-strong: #2563eb;
+  --pcms-primary-soft: #1e3a8a;
+  --pcms-text: #e2e8f0;
+  --pcms-text-muted: #94a3b8;
+  --pcms-text-soft: #64748b;
+  --pcms-row-hover: #1f2a44;
+  --pcms-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --pcms-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
 }
+
+.dark .glass {
+  background-color: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(51, 65, 85, 0.45);
+}
+
+/* Tailwind body utilities — explicit so `bg-background` reads from the
+   themed token instead of falling back to white via the @tailwind base reset. */
+body {
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+}
+
+/* Tailwind utility classes commonly used across the app to render text on
+   custom-colored surfaces. In dark mode many of these need explicit overrides
+   because the Sneat tokens above don't cover every component. */
+.dark .bg-white { background-color: hsl(var(--card)) !important; }
+.dark .bg-slate-50 { background-color: hsl(var(--secondary)) !important; }
+.dark .bg-gray-50 { background-color: hsl(var(--secondary)) !important; }
+.dark .text-slate-900 { color: hsl(var(--foreground)); }
+.dark .text-gray-900 { color: hsl(var(--foreground)); }
+.dark .text-slate-700 { color: hsl(var(--foreground)); opacity: 0.85; }
+.dark .text-gray-700 { color: hsl(var(--foreground)); opacity: 0.85; }
+.dark .text-slate-600 { color: hsl(var(--muted-foreground)); }
+.dark .text-gray-600 { color: hsl(var(--muted-foreground)); }
+.dark .text-slate-500 { color: hsl(var(--muted-foreground)); opacity: 0.9; }
+.dark .text-gray-500 { color: hsl(var(--muted-foreground)); opacity: 0.9; }
+.dark .border-slate-200 { border-color: hsl(var(--border)); }
+.dark .border-gray-200 { border-color: hsl(var(--border)); }
+.dark .border-slate-100 { border-color: hsl(var(--border)); opacity: 0.6; }
 
 /* Keyboard navigation improvements */
 .keyboard-nav:focus {

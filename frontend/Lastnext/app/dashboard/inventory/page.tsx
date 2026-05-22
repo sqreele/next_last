@@ -45,6 +45,9 @@ import {
 } from '@/app/components/ui/dialog';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
+import { InventoryMobileStats } from '@/app/components/inventory/InventoryMobileStats';
+import { InventoryCsvImport } from '@/app/components/inventory/InventoryCsvImport';
+import { useT } from '@/app/lib/i18n/LocaleProvider';
 
 interface InventoryItem {
   id: number;
@@ -110,6 +113,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
 export default function InventoryPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const t = useT();
   const { selectedPropertyId: selectedProperty } = useUser();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -462,33 +466,41 @@ export default function InventoryPage() {
   const lowStockCount = inventory.filter(item => item.status === 'low_stock' || item.status === 'out_of_stock').length;
 
   return (
-    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6 space-y-6">
+    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <Package className="h-8 w-8 text-blue-600" />
-              Inventory Management
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+              <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+              {t('inventory.title')}
             </h1>
           </div>
-          <p className="text-gray-600 mt-1">
-            {totalCount} item{totalCount !== 1 ? 's' : ''} total
+          <p className="hidden sm:block text-gray-600 mt-1">
+            {totalCount} {t('inventory.itemsTotal')}
             {lowStockCount > 0 && (
               <span className="ml-2 text-yellow-600 font-semibold">
-                ({lowStockCount} low/out of stock)
+                ({lowStockCount} {t('inventory.lowStockWarning')})
               </span>
             )}
             {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRoom !== 'all' || lowStockOnly || selectedJobFilter !== 'all' || selectedPmFilter !== 'all') && ` (${filteredInventory.length} filtered)`}
           </p>
         </div>
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Item
-            </Button>
-          </DialogTrigger>
+        <div className="flex flex-wrap items-center gap-2">
+          <InventoryCsvImport
+            currentPropertyId={selectedProperty}
+            onImported={() => {
+              // Force a refetch by toggling page (the page hook depends on it).
+              setPage(1);
+            }}
+          />
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Item
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add New Inventory Item</DialogTitle>
@@ -553,7 +565,19 @@ export default function InventoryPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {/* Mobile-first stats strip — tap Low Stock to filter without scrolling */}
+      <InventoryMobileStats
+        items={inventory}
+        total={totalCount}
+        lowStockOnly={lowStockOnly}
+        onToggleLowStock={() => {
+          setLowStockOnly((value) => !value);
+          setPage(1);
+        }}
+      />
 
       {/* Search and Filters */}
       <Card>
@@ -699,7 +723,7 @@ export default function InventoryPage() {
                 className={`gap-2 ${lowStockOnly ? 'bg-yellow-600 hover:bg-yellow-700' : ''}`}
               >
                 <AlertTriangle className="h-4 w-4" />
-                Low Stock Only
+                {t('inventory.lowStockOnly')}
               </Button>
 
               {/* Clear Filters */}
@@ -720,7 +744,7 @@ export default function InventoryPage() {
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
                   <XCircle className="h-4 w-4 mr-1" />
-                  Clear Filters
+                  {t('inventory.clearFilters')}
                 </Button>
               )}
             </div>
@@ -733,11 +757,11 @@ export default function InventoryPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Inventory Items Found</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('inventory.noItems')}</h3>
             <p className="text-gray-600">
-              {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRoom !== 'all' || lowStockOnly || selectedJobFilter !== 'all' || selectedPmFilter !== 'all') 
-                ? 'Try adjusting your search or filter criteria' 
-                : 'No inventory items available for this property'}
+              {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRoom !== 'all' || lowStockOnly || selectedJobFilter !== 'all' || selectedPmFilter !== 'all')
+                ? t('inventory.noItemsFiltered')
+                : t('inventory.noItemsHint')}
             </p>
           </CardContent>
         </Card>

@@ -3,11 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
-import { CalendarClock, Home, MapPin, User, Wrench } from 'lucide-react';
+import { CalendarClock, Home, MapPin, Wrench } from 'lucide-react';
 import { Room, Property, Job } from '@/app/lib/types';
-import { PriorityBadge, StatusBadge } from '@/app/components/pcms-ui';
 import Link from 'next/link';
-import { getDisplayName } from '@/app/lib/utils/display-name';
+import { RoomMaintenanceHistory } from '@/app/components/rooms/RoomMaintenanceHistory';
 
 type RoomDetailContentProps = {
   room: Room;
@@ -119,49 +118,9 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
             </div>
           )}
 
-          {/* Jobs Section */}
+          {/* Jobs Section — rich maintenance history with stats, timeline, filters */}
           <div className="mt-6">
-            <div className="flex items-center gap-2 mb-2">
-              <h2 className="text-xl font-semibold text-gray-800">Jobs in this Room</h2>
-              <Badge variant="secondary" className="text-sm">
-                {roomJobs.length} {roomJobs.length === 1 ? 'job' : 'jobs'}
-              </Badge>
-            </div>
-            {roomJobs.length > 0 ? (
-              <ul className="space-y-2">
-                {roomJobs.map((job, index) => (
-                  <li key={job.job_id} className="border p-3 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors">
-                    <Link href={`/dashboard/jobs/${job.job_id}`} className="block">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            #{index + 1}
-                          </Badge>
-                          <p><strong>Job ID:</strong> {job.job_id}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <StatusBadge status={job.status} />
-                          {job.is_preventivemaintenance && (
-                            <Badge variant="outline" className="px-2 py-1 text-xs bg-blue-50 text-blue-700 border-blue-200">PM</Badge>
-                          )}
-                        </div>
-                      </div>
-                      <p className="mt-2"><strong>Description:</strong> {job.description || 'N/A'}</p>
-                      <div className="flex justify-between items-center mt-2">
-                        <PriorityBadge priority={job.priority} />
-                        <span className="text-sm text-gray-500"><strong>Created:</strong> {new Date(job.created_at).toLocaleDateString()}</span>
-                      </div>
-                      <div className="mt-2 flex items-center gap-1 text-sm text-gray-600">
-                        <User className="h-4 w-4 text-gray-400" />
-                        <span><strong>Technician:</strong> {getDisplayName(job.user, job.technician_name || job.user_name || 'Unknown Technician')}</span>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-500 p-4 bg-gray-50 rounded-md border border-gray-200">No jobs found for this room.</p>
-            )}
+            <RoomMaintenanceHistory jobs={roomJobs} />
           </div>
 
           <Button variant="outline" onClick={() => window.history.back()} className="mt-4">

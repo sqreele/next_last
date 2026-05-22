@@ -1128,7 +1128,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   }
 
   return (
-    <div className="bg-white shadow-md rounded-lg p-3 sm:p-4 md:p-6">
+    <div className="bg-white shadow-md rounded-lg p-3 sm:p-4 md:p-6 pb-28 md:pb-6">
       {(error || submitError) && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4">
           <div className="flex justify-between items-start gap-2">
@@ -1720,42 +1720,50 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-between mt-6 sm:mt-8 gap-3 sm:gap-4">
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
-                {onCancel && (
-                  <button
-                    type="button"
-                    onClick={onCancel}
-                    className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-gray-100 text-gray-700 font-medium rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors touch-target min-h-[44px]"
-                    disabled={isSubmitting || isLoading}
-                  >
-                    Cancel
-                  </button>
-                )}
-                {isImageUploading && (
-                  <div className="flex items-center justify-center sm:justify-start space-x-2 text-blue-600 py-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
-                    <span className="text-sm">Uploading images...</span>
-                  </div>
-                )}
+            {/* Action Buttons — sticky to bottom on mobile so the primary CTA
+                is always reachable without scrolling through every section. */}
+            <div
+              className="fixed bottom-[4.5rem] left-0 right-0 z-20 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none md:mt-8"
+              style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
+            >
+              <div className="mx-auto flex max-w-lg flex-col-reverse gap-3 md:max-w-none md:flex-row md:justify-between md:gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
+                  {onCancel && (
+                    <button
+                      type="button"
+                      onClick={onCancel}
+                      className="w-full sm:w-auto h-12 sm:h-11 px-6 bg-gray-100 text-gray-700 font-medium rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors touch-target"
+                      disabled={isSubmitting || isLoading}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  {isImageUploading && (
+                    <div className="flex items-center justify-center sm:justify-start space-x-2 text-blue-600 py-2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+                      <span className="text-sm">Uploading images...</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className={`w-full sm:w-auto h-12 sm:h-11 px-6 ${
+                    isSubmitting || isLoading
+                      ? 'bg-blue-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/30'
+                  } text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors touch-target`}
+                  disabled={isSubmitting || isLoading}
+                >
+                  {isSubmitting || isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <span>{pmId || actualInitialData ? 'Updating...' : 'Creating...'}</span>
+                    </div>
+                  ) : (
+                    <span>{pmId || actualInitialData ? 'Update Maintenance' : 'Create Maintenance'}</span>
+                  )}
+                </button>
               </div>
-              <button
-                type="submit"
-                className={`w-full sm:w-auto px-6 py-3 sm:py-2.5 ${
-                  isSubmitting || isLoading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-                } text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors touch-target min-h-[44px]`}
-                disabled={isSubmitting || isLoading}
-              >
-                {isSubmitting || isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    <span>{pmId || actualInitialData ? 'Updating...' : 'Creating...'}</span>
-                  </div>
-                ) : (
-                  <span>{pmId || actualInitialData ? 'Update Maintenance' : 'Create Maintenance'}</span>
-                )}
-              </button>
             </div>
           </Form>
         );

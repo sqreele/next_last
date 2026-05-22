@@ -2581,5 +2581,37 @@ class WorkspaceReport(models.Model):
                         os.remove(jpeg_full_path)
                     except OSError:
                         pass
-        
+
         super().delete(*args, **kwargs)
+
+
+class PushSubscription(models.Model):
+    """
+    A Web Push subscription returned by `PushManager.subscribe()` on the
+    client. One user can have multiple subscriptions (laptop + phone + tablet).
+    The `endpoint` is globally unique per browser instance, so we use it as
+    the natural key for upserts.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='push_subscriptions',
+    )
+    endpoint = models.URLField(max_length=512, unique=True)
+    p256dh = models.CharField(max_length=255, help_text='Client public key (base64url).')
+    auth = models.CharField(max_length=255, help_text='Client auth secret (base64url).')
+    user_agent = models.CharField(max_length=255, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Push subscription'
+        verbose_name_plural = 'Push subscriptions'
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f'PushSubscription({self.user_id}, {self.endpoint[:40]}…)'

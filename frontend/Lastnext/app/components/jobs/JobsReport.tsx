@@ -40,6 +40,8 @@ import { fetchAllJobsForProperty } from '@/app/lib/data.server';
 import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import { endOfDay, format, startOfDay } from 'date-fns';
 import { jobsToCSV, downloadCSV } from '@/app/lib/utils/csv-export';
+import { exportJobsToExcel } from '@/app/lib/utils/excel-export';
+import { exportJobsReportToPdf } from '@/app/lib/utils/pdf-export';
 import { getDisplayName } from '@/app/lib/utils/display-name';
 import type { UtilityConsumptionRow } from '@/app/dashboard/utility-consumption/types';
 
@@ -463,6 +465,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
   const { users: detailedUsers } = useDetailedUsers();
   
   const [isGeneratingCsv, setIsGeneratingCsv] = useState(false);
+  const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [reportJobs, setReportJobs] = useState<Job[]>([]);
   const [utilityRows, setUtilityRows] = useState<UtilityConsumptionRow[]>([]);
   const [utilityLoading, setUtilityLoading] = useState(false);
@@ -1041,6 +1045,49 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
   ]);
 
 
+  // Shared filename + filter-description helpers used by all exports.
+  const buildExportFilename = (extension: string) => {
+    const propertyName = currentProperty?.name || `Property ${selectedProperty}`;
+    const date = format(new Date(), 'yyyy-MM-dd');
+    const filterParts = [
+      statusFilter !== 'all' ? statusFilter : '',
+      priorityFilter !== 'all' ? priorityFilter : '',
+      pmFilter !== 'all' ? pmFilter : '',
+      topicFilter === 'none'
+        ? 'no-topic'
+        : topicFilter !== 'all'
+          ? `topic-${topicFilter}`
+          : '',
+      userFilter === 'none'
+        ? 'no-user'
+        : userFilter !== 'all'
+          ? `user-${userFilter.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+          : '',
+      monthFilter !== 'all' ? `month-${monthFilter}` : '',
+      yearFilter !== 'all' ? `year-${yearFilter}` : '',
+      createdFrom.trim() ? `from-${createdFrom}` : '',
+      createdTo.trim() ? `to-${createdTo}` : '',
+    ].filter(Boolean);
+    const filterSlug = filterParts.length ? `-${filterParts.join('-')}` : '';
+    return `${propertyName.replace(/\s+/g, '-')}-jobs-report${filterSlug}-${date}.${extension}`
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
+      .replace(/-+/g, '-');
+  };
+
+  const buildFilterDescription = () => {
+    const parts: string[] = [];
+    if (statusFilter !== 'all') parts.push(`status=${statusFilter}`);
+    if (priorityFilter !== 'all') parts.push(`priority=${priorityFilter}`);
+    if (pmFilter !== 'all') parts.push(`type=${pmFilter}`);
+    if (topicFilter !== 'all') parts.push(`topic=${topicFilter === 'none' ? 'none' : topicFilter}`);
+    if (userFilter !== 'all') parts.push(`assignee=${userFilter === 'none' ? 'unassigned' : userFilter}`);
+    if (monthFilter !== 'all') parts.push(`month=${monthFilter}`);
+    if (yearFilter !== 'all') parts.push(`year=${yearFilter}`);
+    if (createdFrom.trim()) parts.push(`from=${createdFrom}`);
+    if (createdTo.trim()) parts.push(`to=${createdTo}`);
+    return parts.length ? parts.join('; ') : 'no filters applied';
+  };
+
   // Generate CSV export
   const handleGenerateCSV = async () => {
     if (!filteredReportJobs.length) {
@@ -1050,8 +1097,6 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
 
     try {
       setIsGeneratingCsv(true);
-      const propertyName = currentProperty?.name || `Property ${selectedProperty}`;
-
       const csvContent = jobsToCSV(filteredReportJobs, userProperties, {
         includeImages: false,
         includeUserDetails: true,
@@ -1059,38 +1104,64 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         includePropertyDetails: true,
         dateFormat: 'readable'
       });
-
-      const date = format(new Date(), 'yyyy-MM-dd');
-      const filterParts = [
-        statusFilter !== 'all' ? statusFilter : '',
-        priorityFilter !== 'all' ? priorityFilter : '',
-        pmFilter !== 'all' ? pmFilter : '',
-        topicFilter === 'none'
-          ? 'no-topic'
-          : topicFilter !== 'all'
-            ? `topic-${topicFilter}`
-            : '',
-        userFilter === 'none'
-          ? 'no-user'
-          : userFilter !== 'all'
-            ? `user-${userFilter.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-|-$/g, '')}`
-            : '',
-        monthFilter !== 'all' ? `month-${monthFilter}` : '',
-        yearFilter !== 'all' ? `year-${yearFilter}` : '',
-        createdFrom.trim() ? `from-${createdFrom}` : '',
-        createdTo.trim() ? `to-${createdTo}` : '',
-      ].filter(Boolean);
-      const filterSlug = filterParts.length ? `-${filterParts.join('-')}` : '';
-      const filename = `${propertyName.replace(/\s+/g, '-')}-jobs-report${filterSlug}-${date}.csv`
-        .replace(/[^a-zA-Z0-9._-]+/g, '-')
-        .replace(/-+/g, '-');
-
-      downloadCSV(csvContent, filename);
+      downloadCSV(csvContent, buildExportFilename('csv'));
     } catch (error: any) {
       console.error('Error generating CSV:', error);
       alert(`Failed to generate CSV: ${error.message || 'Unknown error'}`);
     } finally {
       setIsGeneratingCsv(false);
+    }
+  };
+
+  const handleGenerateExcel = async () => {
+    if (!filteredReportJobs.length) {
+      alert('No jobs match the current filters. Adjust filters or clear them to export.');
+      return;
+    }
+    try {
+      setIsGeneratingExcel(true);
+      const propertyName = currentProperty?.name || `Property ${selectedProperty}`;
+      // Yield to the browser so the spinner can paint before XLSX work blocks the main thread.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      exportJobsToExcel(filteredReportJobs, userProperties, {
+        propertyName,
+        summary: statistics,
+        filterDescription: buildFilterDescription(),
+        filename: buildExportFilename('xlsx'),
+        includeImages: false,
+        includeUserDetails: true,
+        includeRoomDetails: true,
+        includePropertyDetails: true,
+        dateFormat: 'readable',
+      });
+    } catch (error: any) {
+      console.error('Error generating Excel:', error);
+      alert(`Failed to generate Excel: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsGeneratingExcel(false);
+    }
+  };
+
+  const handleGeneratePdf = async () => {
+    if (!filteredReportJobs.length) {
+      alert('No jobs match the current filters. Adjust filters or clear them to export.');
+      return;
+    }
+    try {
+      setIsGeneratingPdf(true);
+      const propertyName = currentProperty?.name || `Property ${selectedProperty}`;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      exportJobsReportToPdf(filteredReportJobs, userProperties, {
+        propertyName,
+        summary: statistics,
+        filterDescription: buildFilterDescription(),
+        filename: buildExportFilename('pdf'),
+      });
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      alert(`Failed to generate PDF: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -1174,21 +1245,46 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
                 {filter !== 'all' ? ` · Tab filter: ${filter}` : ''}
               </p>
             </div>
-            <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-2">
-              <p className="text-xs text-gray-500 sm:mr-2">
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-2">
+              <p className="text-xs text-gray-500 sm:mr-2 sm:self-center">
                 Export uses filtered rows ({filteredReportJobs.length}/{reportJobs.length})
               </p>
-              <Button 
-                onClick={handleGenerateCSV} 
-                disabled={isGeneratingCsv || filteredReportJobs.length === 0}
-                isLoading={isGeneratingCsv}
-                loadingText="Downloading..."
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-                Export CSV ({filteredReportJobs.length})
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  onClick={handleGenerateExcel}
+                  disabled={isGeneratingExcel || filteredReportJobs.length === 0}
+                  isLoading={isGeneratingExcel}
+                  loadingText="Building Excel..."
+                  className="flex items-center gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <span className="hidden sm:inline">Export Excel</span>
+                  <span className="sm:hidden">Excel</span>
+                  <span className="text-xs opacity-90">({filteredReportJobs.length})</span>
+                </Button>
+                <Button
+                  onClick={handleGeneratePdf}
+                  disabled={isGeneratingPdf || filteredReportJobs.length === 0}
+                  isLoading={isGeneratingPdf}
+                  loadingText="Building PDF..."
+                  className="flex items-center gap-2 bg-rose-600 text-white hover:bg-rose-700"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Export PDF</span>
+                  <span className="sm:hidden">PDF</span>
+                </Button>
+                <Button
+                  onClick={handleGenerateCSV}
+                  disabled={isGeneratingCsv || filteredReportJobs.length === 0}
+                  isLoading={isGeneratingCsv}
+                  loadingText="Downloading..."
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <ClipboardList className="h-4 w-4" />
+                  CSV
+                </Button>
+              </div>
             </div>
           </div>
         </CardHeader>

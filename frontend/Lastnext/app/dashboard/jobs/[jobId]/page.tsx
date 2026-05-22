@@ -13,6 +13,7 @@ import { getDisplayName } from '@/app/lib/utils/display-name';
 import JobCommentsSection from '@/app/components/jobs/JobCommentsSection';
 import { BeforeAfterCompare } from '@/app/components/jobs/BeforeAfterCompare';
 import { JobAuditTimeline } from '@/app/components/jobs/JobAuditTimeline';
+import { ReassignJobButton } from '@/app/components/jobs/ReassignJobButton';
 
 type Props = {
   params: Promise<{ jobId: string }>;
@@ -83,12 +84,15 @@ export default async function JobPage({ params }: Props) {
           <h1 className="pcms-page-header text-2xl font-black tracking-[-0.03em] text-[var(--pcms-text)] sm:text-3xl">
             Job: <PriorityBadge priority={job.priority} /> #{job.job_id}
           </h1>
-          <a
-            href={`/dashboard/jobs/${job.job_id}/print/`}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
-          >
-            Printable work order
-          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <ReassignJobButton job={job} />
+            <a
+              href={`/dashboard/jobs/${job.job_id}/print/`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              Printable work order
+            </a>
+          </div>
         </div>
         
         <div className="pcms-section-card space-y-4 p-5 text-[var(--pcms-text)] sm:p-6">

@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import logging
 
+from django.core.cache import cache
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
-from .models import Job, JobComment
+from .models import Inventory, Job, JobComment
 from .push import send_push_to_user
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,10 @@ logger = logging.getLogger(__name__)
 # Track the prior status on each Job instance so post_save can decide whether
 # a status transition actually happened (instead of pushing for every PATCH).
 _PRIOR_STATUS_ATTR = '_pcms_prior_status'
+# Same trick for Inventory.status so we only push on the transition into
+# low_stock / out_of_stock, never on every PATCH that touches an unrelated
+# field on a row that happens to already be low.
+_PRIOR_INV_STATUS_ATTR = '_pcms_prior_inv_status'
 
 
 @receiver(pre_save, sender=Job)
@@ -80,6 +85,63 @@ def _push_on_status_change(sender, instance: Job, created: bool, **kwargs):
                 'renotify': True,
             },
         )
+
+
+@receiver(pre_save, sender=Inventory)
+def _capture_prior_inventory_status(sender, instance: Inventory, **kwargs):
+    if instance.pk is None:
+        setattr(instance, _PRIOR_INV_STATUS_ATTR, None)
+        return
+    try:
+        prior = Inventory.objects.only('status').get(pk=instance.pk).status
+    except Inventory.DoesNotExist:
+        prior = None
+    setattr(instance, _PRIOR_INV_STATUS_ATTR, prior)
+
+
+@receiver(post_save, sender=Inventory)
+def _push_on_inventory_low_stock(sender, instance: Inventory, created: bool, **kwargs):
+    """Push the property's staff when an item drops into low/out of stock.
+
+    De-duplicated via cache: each (item, transition) only fires one push per
+    24h, so a batch import or a wobbly quantity field can't spam phones."""
+    prior = getattr(instance, _PRIOR_INV_STATUS_ATTR, None)
+    new = instance.status
+    if new not in ('low_stock', 'out_of_stock'):
+        return
+    if not created and prior == new:
+        return  # already in this state, no new event
+    if instance.property_id is None:
+        return
+
+    dedupe_key = f'pcms:inv-low-stock:{instance.pk}:{new}'
+    if cache.get(dedupe_key):
+        return
+    cache.set(dedupe_key, 1, timeout=24 * 60 * 60)
+
+    title = (
+        'Item out of stock' if new == 'out_of_stock' else 'Inventory low'
+    )
+    body = (
+        f"{instance.name} — {instance.quantity} {instance.unit} "
+        f"(min {instance.min_quantity})"
+    )
+    # Notify every user attached to the property; let each device decide
+    # whether to actually show the notification (the SW handles it).
+    for user in instance.property.users.all():
+        try:
+            send_push_to_user(
+                user,
+                {
+                    'title': title,
+                    'body': body,
+                    'tag': f'inv-{instance.pk}-{new}',
+                    'url': '/dashboard/inventory',
+                    'renotify': True,
+                },
+            )
+        except Exception:  # pragma: no cover - defensive
+            logger.exception('Inventory push failed for user=%s', user.pk)
 
 
 @receiver(post_save, sender=JobComment)

@@ -1870,6 +1870,116 @@ class JobViewSet(viewsets.ModelViewSet):
             'events': events,
         })
 
+    @action(detail=True, methods=['post'], url_path='reassign')
+    def reassign(self, request, job_id=None):
+        """Reassign the job to another user that shares at least one of the
+        job's properties.
+
+        Body: {"user_id": <id|username>, "note"?: str}
+
+        Stamps the remarks with the same status-note format the audit log
+        already parses, so the timeline picks up the reassignment as a
+        first-class event. Pushes both the new and previous assignee."""
+        job = self.get_object()
+        target_raw = (request.data or {}).get('user_id')
+        if not target_raw:
+            return Response(
+                {'error': 'user_id is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        target = None
+        target_str = str(target_raw).strip()
+        if target_str.isdigit():
+            target = User.objects.filter(pk=int(target_str)).first()
+        if target is None:
+            target = User.objects.filter(username__iexact=target_str).first()
+        if target is None:
+            return Response(
+                {'error': 'Target user not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Reassignment scope: target must share at least one property with
+        # the job (either through a job-rooms property or the job's area
+        # property). Staff/superusers bypass.
+        if not (target.is_staff or target.is_superuser):
+            job_property_ids = set(
+                Property.objects.filter(rooms__jobs=job).values_list('id', flat=True)
+            )
+            target_property_ids = set(
+                Property.objects.filter(users=target).values_list('id', flat=True)
+            )
+            if job_property_ids and not job_property_ids & target_property_ids:
+                return Response(
+                    {'error': "Target user has no access to this job's property."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        previous = job.user
+        if previous and previous.pk == target.pk:
+            return Response(
+                {'error': 'Job is already assigned to that user.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        note = ((request.data or {}).get('note') or '').strip()[:300]
+        stamp = timezone.now().strftime('%Y-%m-%d %H:%M')
+        actor = (
+            getattr(request.user, 'username', None) or getattr(request.user, 'email', None) or 'system'
+        )
+        new_username = target.username or getattr(target, 'email', None) or f'user-{target.pk}'
+        prev_username = (
+            previous.username if previous else 'unassigned'
+        )
+        log_line = (
+            f"[{stamp} · {actor} → reassigned] "
+            f"{prev_username} → {new_username}"
+            + (f" — {note}" if note else '')
+        )
+
+        job.user = target
+        job.updated_by = request.user if getattr(request.user, 'is_authenticated', False) else target
+        job.remarks = f"{job.remarks}\n{log_line}" if job.remarks else log_line
+        job.save(update_fields=['user', 'updated_by', 'remarks', 'updated_at'])
+
+        # Push to the new assignee; signal-driven push on Job.save() already
+        # fires on changed status but not on assignment, so we send an
+        # explicit one here. Previous assignee gets a courtesy note.
+        try:
+            from .push import send_push_to_user
+            send_push_to_user(
+                target,
+                {
+                    'title': 'Job reassigned to you',
+                    'body': (job.description or job.job_id)[:120],
+                    'tag': f'job-reassign-{job.job_id}',
+                    'url': f'/dashboard/jobs/{job.job_id}',
+                    'renotify': True,
+                },
+            )
+            if previous is not None and previous.pk != target.pk:
+                send_push_to_user(
+                    previous,
+                    {
+                        'title': 'Job reassigned',
+                        'body': f"#{job.job_id} is now assigned to {new_username}.",
+                        'tag': f'job-reassign-prev-{job.job_id}',
+                        'url': f'/dashboard/jobs/{job.job_id}',
+                    },
+                )
+        except Exception:  # pragma: no cover - defensive
+            logger.exception('Reassignment push failed for job=%s', job.job_id)
+
+        return Response(
+            {
+                'job_id': job.job_id,
+                'assignee': new_username,
+                'previous': prev_username,
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 class AreaViewSet(viewsets.ModelViewSet):
     """CRUD for property areas/zones with tenant (property) isolation."""

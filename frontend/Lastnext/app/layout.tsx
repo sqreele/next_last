@@ -11,6 +11,7 @@ import { ServiceWorkerRegistrar } from '@/app/components/pwa/ServiceWorkerRegist
 import { InstallPrompt } from '@/app/components/pwa/InstallPrompt';
 import { NetworkStatusBanner } from '@/app/components/pwa/NetworkStatusBanner';
 import { ThemeProvider } from '@/app/components/theme/ThemeProvider';
+import { LocaleProvider } from '@/app/lib/i18n/LocaleProvider';
 import './globals.css';
 // Bilingual UI font (Thai + English)
 const sarabun = localFont({
@@ -121,6 +122,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         </a>
         <SWRProvider>
           <ThemeProvider>
+          <LocaleProvider>
           <AuthProvider>
             <StoreProvider>
               <Suspense fallback={null}>
@@ -135,6 +137,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
               <InstallPrompt />
             </StoreProvider>
           </AuthProvider>
+          </LocaleProvider>
           </ThemeProvider>
         </SWRProvider>
         <Analytics />

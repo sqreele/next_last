@@ -15,6 +15,7 @@ import {
   LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
+import { useT } from '@/app/lib/i18n/LocaleProvider';
 
 export type KpiTone = 'primary' | 'info' | 'warning' | 'success' | 'danger' | 'neutral';
 
@@ -149,9 +150,10 @@ export function MobileKpiStrip({
   deltas = {},
   className,
 }: MobileKpiStripProps) {
+  const t = useT();
   const kpis: KpiInput[] = [
     {
-      label: 'Total jobs',
+      label: t('kpi.totalJobs'),
       value: total,
       delta: deltas.total ?? null,
       deltaLabel: 'vs last week',
@@ -161,7 +163,7 @@ export function MobileKpiStrip({
       hint: 'All maintenance work',
     },
     {
-      label: 'Open',
+      label: t('kpi.open'),
       value: open,
       delta: deltas.open ?? null,
       deltaLabel: 'new this week',
@@ -171,7 +173,7 @@ export function MobileKpiStrip({
       hint: 'Needs assignment',
     },
     {
-      label: 'In progress',
+      label: t('kpi.inProgress'),
       value: inProgress,
       tone: 'warning',
       icon: Hammer,
@@ -179,17 +181,17 @@ export function MobileKpiStrip({
       hint: 'Active right now',
     },
     {
-      label: 'Completed',
+      label: t('kpi.completed'),
       value: completed,
       delta: deltas.completed ?? null,
       deltaLabel: 'vs last week',
       tone: 'success',
       icon: CheckCircle2,
       href: '/dashboard/jobs?status=completed',
-      hint: `${completionRate}% completion rate`,
+      hint: `${completionRate}% ${t('kpi.completionRate').toLowerCase()}`,
     },
     {
-      label: 'Overdue',
+      label: t('kpi.overdue'),
       value: overdue,
       delta: deltas.overdue ?? null,
       deltaLabel: 'vs last week',
@@ -199,7 +201,7 @@ export function MobileKpiStrip({
       hint: 'Needs escalation',
     },
     {
-      label: 'Waiting parts',
+      label: t('kpi.waitingParts'),
       value: waitingParts,
       tone: 'neutral',
       icon: Timer,

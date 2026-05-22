@@ -44,6 +44,7 @@ import {
 import { SkeletonList, SkeletonTable } from '@/app/components/ui/loading';
 import { MobileKpiStrip } from '@/app/components/dashboard/MobileKpiStrip';
 import { RecentActivityFeed } from '@/app/components/dashboard/RecentActivityFeed';
+import { TechnicianKpiBoard } from '@/app/components/dashboard/TechnicianKpiBoard';
 
 type StatTone = 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'secondary';
 
@@ -659,6 +660,12 @@ export default function ImprovedDashboard() {
               <RecentActivityFeed jobs={jobs} limit={10} />
             )}
           </div>
+
+          {/* Technician performance board — sortable table on desktop, stacked
+              cards on phones. Hidden when nobody has any work yet. */}
+          {!loading && (
+            <TechnicianKpiBoard jobs={jobs} />
+          )}
 
           {/* Categories + Technicians + Activity timeline */}
           <div className="sneat-mid-grid">

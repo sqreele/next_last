@@ -1188,6 +1188,8 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
     property_id = serializers.SerializerMethodField()
     procedure_template_name = serializers.CharField(source='procedure_template.name', read_only=True)
     procedure_template_id = serializers.IntegerField(source='procedure_template.id', read_only=True)
+    assigned_to_name = serializers.SerializerMethodField()
+    technician_name = serializers.SerializerMethodField()
     assigned_to = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         required=False,

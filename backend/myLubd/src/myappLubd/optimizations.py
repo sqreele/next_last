@@ -8,6 +8,8 @@ from django.core.cache import cache
 from typing import Dict, Any, List, Optional
 import logging
 
+from .models import Job, PreventiveMaintenance, Property
+
 logger = logging.getLogger(__name__)
 
 

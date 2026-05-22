@@ -45,6 +45,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
+import { InventoryMobileStats } from '@/app/components/inventory/InventoryMobileStats';
 
 interface InventoryItem {
   id: number;
@@ -462,17 +463,17 @@ export default function InventoryPage() {
   const lowStockCount = inventory.filter(item => item.status === 'low_stock' || item.status === 'out_of_stock').length;
 
   return (
-    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6 space-y-6">
+    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <Package className="h-8 w-8 text-blue-600" />
-              Inventory Management
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
+              <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+              Inventory
             </h1>
           </div>
-          <p className="text-gray-600 mt-1">
+          <p className="hidden sm:block text-gray-600 mt-1">
             {totalCount} item{totalCount !== 1 ? 's' : ''} total
             {lowStockCount > 0 && (
               <span className="ml-2 text-yellow-600 font-semibold">
@@ -554,6 +555,17 @@ export default function InventoryPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Mobile-first stats strip — tap Low Stock to filter without scrolling */}
+      <InventoryMobileStats
+        items={inventory}
+        total={totalCount}
+        lowStockOnly={lowStockOnly}
+        onToggleLowStock={() => {
+          setLowStockOnly((value) => !value);
+          setPage(1);
+        }}
+      />
 
       {/* Search and Filters */}
       <Card>

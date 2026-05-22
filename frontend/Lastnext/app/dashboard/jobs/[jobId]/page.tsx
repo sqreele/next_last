@@ -12,6 +12,7 @@ import { JobHeroImage, GalleryImage } from '@/app/components/ui/OptimizedImageEn
 import { getDisplayName } from '@/app/lib/utils/display-name';
 import JobCommentsSection from '@/app/components/jobs/JobCommentsSection';
 import { BeforeAfterCompare } from '@/app/components/jobs/BeforeAfterCompare';
+import { JobAuditTimeline } from '@/app/components/jobs/JobAuditTimeline';
 
 type Props = {
   params: Promise<{ jobId: string }>;
@@ -287,6 +288,9 @@ export default async function JobPage({ params }: Props) {
             </div>
           )}
         </div>
+
+        {/* Audit log — derived event timeline */}
+        <JobAuditTimeline jobId={job.job_id} />
 
         {/* Comments */}
         <JobCommentsSection jobId={job.job_id} />

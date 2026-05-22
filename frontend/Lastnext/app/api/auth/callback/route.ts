@@ -241,7 +241,8 @@ export async function GET(request: NextRequest) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: tokens.expires_in, // Use token expiry time
+        path: '/',
+        maxAge: tokens.refresh_token ? 60 * 24 * 60 * 60 : Math.max(tokens.expires_in || 0, 24 * 60 * 60),
       });
       response.cookies.delete('auth0_login_state');
 

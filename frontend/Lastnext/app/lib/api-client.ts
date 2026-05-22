@@ -86,12 +86,11 @@ const processPendingRequests = (token: string | null): void => {
 // Function to attempt token refresh
 async function refreshToken(refreshTokenValue: string): Promise<string | null> {
   try {
-    // Use standard fetch or a separate axios instance to avoid interceptor loops
-    const djangoBaseURL = process.env.NEXT_PUBLIC_API_URL ||
-      (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "https://pcms.live");
-    const response = await fetch(`${djangoBaseURL}/api/v1/token/refresh/`, {
+    // Use the Next.js route so the httpOnly session cookie can be updated.
+    const response = await fetch('/api/auth/token/refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ refresh: refreshTokenValue }),
     });
 
@@ -221,20 +220,43 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest);
     }
     
-    // Check if it's a 401 error - for Auth0, this usually means the token is expired or invalid
+    // Check if it's a 401 error - try to refresh once, then replay the original request
     if (error.response?.status === 401 && originalRequest._retry < MAX_RETRIES) {
       originalRequest._retry++;
 
-      // For Auth0, we don't handle token refresh manually
-      // Instead, redirect to login to get a fresh token
-      if (originalRequest._retry >= MAX_RETRIES) {
-          console.error("[ResponseInterceptor] 401 received multiple times. Redirecting to login.");
-          // Use Auth0 logout to clear session and redirect to login
-          window.location.href = '/auth/logout?returnTo=' + encodeURIComponent(window.location.pathname);
-          return Promise.reject(new ApiError("Authentication required. Please log in again.", 401));
+      try {
+        const sessionResponse = await fetch('/api/auth/session-compat', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        const sessionData: any = sessionResponse.ok ? await sessionResponse.json() : null;
+        const refreshTokenValue = sessionData?.user?.refreshToken;
+
+        if (refreshTokenValue) {
+          if (!isRefreshing) {
+            isRefreshing = true;
+            refreshPromise = refreshToken(refreshTokenValue).finally(() => {
+              isRefreshing = false;
+              refreshPromise = null;
+            });
+          }
+
+          const newAccessToken = await refreshPromise;
+          processPendingRequests(newAccessToken);
+
+          if (newAccessToken) {
+            originalRequest.headers = originalRequest.headers || {};
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            return apiClient(originalRequest);
+          }
+        }
+      } catch (refreshError) {
+        console.error("[ResponseInterceptor] Token refresh failed:", refreshError);
       }
 
-      // For now, just reject the request - Auth0 will handle the redirect
+      if (typeof window !== 'undefined' && originalRequest._retry >= MAX_RETRIES) {
+        window.location.href = '/auth/logout?returnTo=' + encodeURIComponent(window.location.pathname);
+      }
       return Promise.reject(new ApiError("Authentication failed. Please log in again.", 401));
     }
     

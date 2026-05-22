@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
           const domain = process.env.AUTH0_DOMAIN;
           const clientId = process.env.AUTH0_CLIENT_ID;
           const baseUrl = process.env.AUTH0_BASE_URL || request.nextUrl.origin;
-          const scope = 'openid profile email';
+          const scope = 'openid profile email offline_access';
           const audience = resolveAudience(process.env.AUTH0_AUDIENCE);
           const state = randomUUID();
           

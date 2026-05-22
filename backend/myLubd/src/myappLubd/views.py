@@ -1653,13 +1653,13 @@ class JobViewSet(viewsets.ModelViewSet):
         # Calculate stats using aggregation
         stats = base_queryset.aggregate(
             total=Count('id', distinct=True),
-            pending=Count(Case(When(status='pending', then=1))),
-            inProgress=Count(Case(When(status='in_progress', then=1))),
-            completed=Count(Case(When(status='completed', then=1))),
-            cancelled=Count(Case(When(status='cancelled', then=1))),
-            waitingSparepart=Count(Case(When(status='waiting_sparepart', then=1))),
-            defect=Count(Case(When(is_defective=True, then=1))),
-            preventiveMaintenance=Count(Case(When(is_preventivemaintenance=True, then=1)))
+            pending=Count('id', filter=Q(status='pending'), distinct=True),
+            inProgress=Count('id', filter=Q(status='in_progress'), distinct=True),
+            completed=Count('id', filter=Q(status='completed'), distinct=True),
+            cancelled=Count('id', filter=Q(status='cancelled'), distinct=True),
+            waitingSparepart=Count('id', filter=Q(status='waiting_sparepart'), distinct=True),
+            defect=Count('id', filter=Q(is_defective=True), distinct=True),
+            preventiveMaintenance=Count('id', filter=Q(is_preventivemaintenance=True), distinct=True)
         )
         
         return stats
@@ -1952,12 +1952,18 @@ class JobViewSet(viewsets.ModelViewSet):
         # Image uploads — JobImage has uploaded_at and uploaded_by
         for image in job.job_images.all().order_by('uploaded_at'):
             uploaded_by = getattr(image.uploaded_by, 'username', None) if image.uploaded_by else None
+            image_url = None
+            if image.image:
+                try:
+                    image_url = request.build_absolute_uri(image.image.url)
+                except Exception:
+                    image_url = image.image.url
             events.append({
                 'kind': 'photo_uploaded',
                 'at': image.uploaded_at.isoformat() if image.uploaded_at else None,
                 'actor': uploaded_by or 'unknown',
                 'message': 'Photo uploaded',
-                'image_url': image.image_url.url if hasattr(image.image_url, 'url') else None,
+                'image_url': image_url,
             })
 
         # Comments

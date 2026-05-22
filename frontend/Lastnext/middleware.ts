@@ -79,6 +79,10 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  if (!isAuthenticated && request.headers.get('authorization')?.toLowerCase().startsWith('bearer ')) {
+    isAuthenticated = true;
+  }
+
   // Handle protected routes
   if (isProtectedRoute || isProtectedApiRoute) {
     if (!isAuthenticated) {
@@ -138,12 +142,10 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
-

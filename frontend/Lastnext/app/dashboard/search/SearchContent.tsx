@@ -125,14 +125,21 @@ export default function SearchContent() {
   }, [query, accessToken, selectedProperty, userProperties, recordLoaderShown, clearLoadingAfterMinTime]);
 
   // Create filtered lists with proper null checks
-  const filteredJobs = Array.isArray(jobs) ? jobs.filter(job => 
-    job && (
-      (job.description?.toLowerCase() || '').includes(query.toLowerCase()) ||
-      (job.status?.toLowerCase() || '').includes(query.toLowerCase()) ||
-      (job.priority?.toLowerCase() || '').includes(query.toLowerCase()) ||
-      (job.remarks?.toLowerCase() || '').includes(query.toLowerCase())
-    )
-  ) : [];
+  const filteredJobs = Array.isArray(jobs) ? jobs.filter(job => {
+    if (!job) return false;
+    const q = query.toLowerCase();
+    return [
+      job.description,
+      job.title,
+      job.job_id,
+      job.status,
+      job.priority,
+      job.remarks,
+      job.room_name,
+      job.topics?.map(topic => topic?.title).join(' '),
+      job.rooms?.map(room => room?.name).join(' '),
+    ].some(value => String(value ?? '').toLowerCase().includes(q));
+  }) : [];
 
   const filteredProperties = Array.isArray(properties) ? properties.filter(property => 
     property && (

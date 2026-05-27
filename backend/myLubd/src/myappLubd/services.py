@@ -537,17 +537,31 @@ class NotificationService:
     """
     
     @staticmethod
-    def get_overdue_maintenance(user) -> List[PreventiveMaintenance]:
+    def _filter_by_property(queryset, property_id):
         """
-        Get overdue maintenance tasks
+        Scope a preventive maintenance queryset to a single property, matching
+        on the human-facing Property.property_id (e.g. "P1A2B3C4"). PMs link to
+        a property either through their job's rooms or through their machines.
+        """
+        if not property_id:
+            return queryset
+        return queryset.filter(
+            Q(job__rooms__properties__property_id=property_id) |
+            Q(machines__property__property_id=property_id)
+        )
+
+    @staticmethod
+    def get_overdue_maintenance(user, property_id: Optional[str] = None) -> List[PreventiveMaintenance]:
+        """
+        Get overdue maintenance tasks, optionally scoped to a single property.
         """
         now = timezone.now()
-        
+
         queryset = QueryOptimizer.get_optimized_preventive_maintenance_queryset().filter(
             completed_date__isnull=True,
             scheduled_date__lt=now
         ).order_by('scheduled_date')
-        
+
         # Filter by user access
         if not user.is_staff:
             user_properties = Property.objects.filter(users=user)
@@ -555,23 +569,26 @@ class NotificationService:
                 Q(job__rooms__properties__in=user_properties) |
                 Q(machines__property__in=user_properties)
             )
-        
+
+        queryset = NotificationService._filter_by_property(queryset, property_id)
+
         return list(queryset.distinct())
 
     @staticmethod
-    def get_upcoming_alerts(user, days: int = 7) -> List[PreventiveMaintenance]:
+    def get_upcoming_alerts(user, days: int = 7, property_id: Optional[str] = None) -> List[PreventiveMaintenance]:
         """
-        Get maintenance tasks due in the next few days
+        Get maintenance tasks due in the next few days, optionally scoped to a
+        single property.
         """
         now = timezone.now()
         end_date = now + timezone.timedelta(days=days)
-        
+
         queryset = QueryOptimizer.get_optimized_preventive_maintenance_queryset().filter(
             completed_date__isnull=True,
             scheduled_date__gte=now,
             scheduled_date__lte=end_date
         ).order_by('scheduled_date')
-        
+
         # Filter by user access
         if not user.is_staff:
             user_properties = Property.objects.filter(users=user)
@@ -579,7 +596,9 @@ class NotificationService:
                 Q(job__rooms__properties__in=user_properties) |
                 Q(machines__property__in=user_properties)
             )
-        
+
+        queryset = NotificationService._filter_by_property(queryset, property_id)
+
         return list(queryset.distinct())
 
     @staticmethod
@@ -597,13 +616,16 @@ class NotificationService:
             return default
 
     @staticmethod
-    def get_all_notifications(user, days: int = 7) -> Dict[str, Any]:
+    def get_all_notifications(user, days: int = 7, property_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Get combined overdue and upcoming notification payload.
+        Get combined overdue and upcoming notification payload, optionally
+        scoped to a single property.
         """
         normalized_days = NotificationService.normalize_days(days)
-        overdue_tasks = NotificationService.get_overdue_maintenance(user)
-        upcoming_tasks = NotificationService.get_upcoming_alerts(user, days=normalized_days)
+        overdue_tasks = NotificationService.get_overdue_maintenance(user, property_id=property_id)
+        upcoming_tasks = NotificationService.get_upcoming_alerts(
+            user, days=normalized_days, property_id=property_id
+        )
         all_tasks = list(overdue_tasks) + list(upcoming_tasks)
 
         return {

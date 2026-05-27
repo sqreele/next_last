@@ -73,20 +73,42 @@ class NotificationsApiService {
     return response.json() as Promise<T>;
   }
 
-  async getOverdueNotifications<T = unknown>(token: string): Promise<NotificationsListResponse<T>> {
-    const url = `${API_CONFIG.baseUrl}/api/v1/notifications/overdue/`;
+  private buildQuery(params: Record<string, string | number | null | undefined>): string {
+    const search = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== '') {
+        search.append(key, String(value));
+      }
+    });
+    const query = search.toString();
+    return query ? `?${query}` : '';
+  }
+
+  async getOverdueNotifications<T = unknown>(
+    token: string,
+    propertyId?: string | null,
+  ): Promise<NotificationsListResponse<T>> {
+    const url = `${API_CONFIG.baseUrl}/api/v1/notifications/overdue/${this.buildQuery({ property_id: propertyId })}`;
     return this.fetchWithAuth<NotificationsListResponse<T>>(url, token);
   }
 
-  async getUpcomingNotifications<T = unknown>(token: string, days: number = 7): Promise<UpcomingNotificationsResponse<T>> {
+  async getUpcomingNotifications<T = unknown>(
+    token: string,
+    days: number = 7,
+    propertyId?: string | null,
+  ): Promise<UpcomingNotificationsResponse<T>> {
     const normalizedDays = Number.isFinite(days) && days > 0 ? Math.floor(days) : 7;
-    const url = `${API_CONFIG.baseUrl}/api/v1/notifications/upcoming/?days=${normalizedDays}`;
+    const url = `${API_CONFIG.baseUrl}/api/v1/notifications/upcoming/${this.buildQuery({ days: normalizedDays, property_id: propertyId })}`;
     return this.fetchWithAuth<UpcomingNotificationsResponse<T>>(url, token);
   }
 
-  async getAllNotifications<T = unknown>(token: string, days: number = 7): Promise<AllNotificationsResponse<T>> {
+  async getAllNotifications<T = unknown>(
+    token: string,
+    days: number = 7,
+    propertyId?: string | null,
+  ): Promise<AllNotificationsResponse<T>> {
     const normalizedDays = Number.isFinite(days) && days > 0 ? Math.floor(days) : 7;
-    const url = `${API_CONFIG.baseUrl}/api/v1/notifications/all/?days=${normalizedDays}`;
+    const url = `${API_CONFIG.baseUrl}/api/v1/notifications/all/${this.buildQuery({ days: normalizedDays, property_id: propertyId })}`;
     return this.fetchWithAuth<AllNotificationsResponse<T>>(url, token);
   }
 

@@ -16,6 +16,7 @@ import { fetchWithToken } from '@/app/lib/data.server';
 import { Button } from '@/app/components/ui/button';
 import { useT } from '@/app/lib/i18n/LocaleProvider';
 import { cn } from '@/app/lib/utils/cn';
+import { useMainStore } from '@/app/lib/stores/mainStore';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -111,13 +112,16 @@ export function NotificationBell({ variant = 'compact', className }: Notificatio
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const accessToken = session?.user?.accessToken;
+  const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
 
   const fetchNotifications = React.useCallback(async () => {
     if (!accessToken) return;
     setLoading(true);
     try {
+      const params = new URLSearchParams({ days: '7' });
+      if (selectedPropertyId) params.set('property_id', selectedPropertyId);
       const res = await fetchWithToken<NotificationsResponse>(
-        `${API_BASE_URL}/api/v1/notifications/all/?days=7`,
+        `${API_BASE_URL}/api/v1/notifications/all/?${params.toString()}`,
         accessToken,
       );
       setData(res);
@@ -128,7 +132,7 @@ export function NotificationBell({ variant = 'compact', className }: Notificatio
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, [accessToken, selectedPropertyId]);
 
   useEffect(() => {
     if (!accessToken) return;

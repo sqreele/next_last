@@ -1595,8 +1595,13 @@ body {
 /* Screenshot-aligned mobile refinements: airy mint canvas, compact two-column cards, soft floating controls. */
 @layer components {
   .pcms-job-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.72rem;
+  }
+  @media (min-width: 430px) {
+    .pcms-job-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   .pcms-floating-action {

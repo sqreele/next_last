@@ -4199,16 +4199,17 @@ def get_overdue_notifications(request):
     
     Returns a list of preventive maintenance tasks that are past their scheduled date
     and not yet completed. Results are filtered based on user's property access.
-    
+
     Query Parameters:
-        - None
-    
+        - property_id (str, optional): Scope results to a single property.
+
     Returns:
         - List of overdue preventive maintenance tasks with pagination
     """
     try:
         user = request.user
-        overdue_tasks = NotificationService.get_overdue_maintenance(user)
+        property_id = request.query_params.get('property_id') or None
+        overdue_tasks = NotificationService.get_overdue_maintenance(user, property_id=property_id)
         
         # Serialize the results
         serializer = PreventiveMaintenanceListSerializer(
@@ -4240,15 +4241,17 @@ def get_upcoming_notifications(request):
     
     Query Parameters:
         - days (int, optional): Number of days to look ahead. Default is 7.
-    
+        - property_id (str, optional): Scope results to a single property.
+
     Returns:
         - List of upcoming preventive maintenance tasks with pagination
     """
     try:
         user = request.user
         days = NotificationService.normalize_days(request.query_params.get('days', 7))
-        
-        upcoming_tasks = NotificationService.get_upcoming_alerts(user, days=days)
+        property_id = request.query_params.get('property_id') or None
+
+        upcoming_tasks = NotificationService.get_upcoming_alerts(user, days=days, property_id=property_id)
         
         # Serialize the results
         serializer = PreventiveMaintenanceListSerializer(
@@ -4281,7 +4284,8 @@ def get_all_notifications(request):
     
     Query Parameters:
         - days (int, optional): Number of days to look ahead for upcoming tasks. Default is 7.
-    
+        - property_id (str, optional): Scope results to a single property.
+
     Returns:
         - Combined list of overdue and upcoming preventive maintenance tasks
     """
@@ -4289,7 +4293,8 @@ def get_all_notifications(request):
         user = request.user
         notification_payload = NotificationService.get_all_notifications(
             user,
-            days=request.query_params.get('days', 7)
+            days=request.query_params.get('days', 7),
+            property_id=request.query_params.get('property_id') or None
         )
         all_tasks = notification_payload['all_tasks']
         serializer = PreventiveMaintenanceListSerializer(

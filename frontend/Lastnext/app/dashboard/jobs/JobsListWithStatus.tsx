@@ -43,7 +43,7 @@ export function JobsListWithStatus({ jobs, properties, initialFilter }: JobsList
       <div
         role="tablist"
         aria-label="Filter jobs by status"
-        className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1"
+        className="scrollbar-hide -mx-3 flex snap-x gap-1.5 overflow-x-auto px-3 pb-1 sm:-mx-1 sm:px-1"
       >
         {TABS.map((tab) => {
           const active = filter === tab.value;
@@ -55,7 +55,7 @@ export function JobsListWithStatus({ jobs, properties, initialFilter }: JobsList
               aria-selected={active}
               onClick={() => setStatus(tab.value)}
               className={cn(
-                'flex-none rounded-full border px-3 py-1.5 text-xs font-bold transition-colors',
+                'flex-none snap-start touch-manipulation rounded-full border px-4 py-2 text-xs font-bold transition-colors',
                 active
                   ? 'border-slate-900 bg-slate-900 text-white'
                   : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',

@@ -129,14 +129,18 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
           </div>
 
           {imageUrls.length > 1 && (
-            <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-slate-950/35 px-2 py-1 backdrop-blur-sm">
+            <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-slate-950/35 px-1.5 py-0.5 backdrop-blur-sm">
               {imageUrls.map((_: string, i: number) => (
                 <button
                   key={i}
-                  className={`h-1.5 w-1.5 rounded-full ${i === activeIdx ? "bg-white" : "bg-white/60"}`}
+                  type="button"
+                  className="grid h-6 w-6 place-items-center rounded-full touch-manipulation"
                   onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); setActiveIdx(i); }}
                   aria-label={`Show maintenance photo ${i + 1}`}
-                />
+                  aria-pressed={i === activeIdx}
+                >
+                  <span className={`block h-1.5 rounded-full transition-all ${i === activeIdx ? "w-4 bg-white" : "w-1.5 bg-white/60"}`} />
+                </button>
               ))}
             </div>
           )}
@@ -190,7 +194,7 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
           </div>
           <button
             type="button"
-            className="rounded-full bg-[var(--pcms-accent-gradient)] px-3 py-2 text-xs font-black text-white shadow-[var(--pcms-button-shadow)] max-sm:w-full"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-[var(--pcms-accent-gradient)] px-5 py-2.5 text-sm font-black text-white shadow-[var(--pcms-button-shadow)] transition-transform touch-manipulation active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 max-sm:w-full sm:min-h-0 sm:px-4 sm:py-2 sm:text-xs"
             onClick={(e) => { e.stopPropagation(); goToDetail(); }}
           >
             View

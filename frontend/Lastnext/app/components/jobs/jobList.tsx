@@ -489,7 +489,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
                 >
                   <span
                     className={cn(
-                      'absolute left-3 top-3 z-10 grid h-7 w-7 place-items-center rounded-full border-2 shadow-sm',
+                      'absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full border-2 shadow-sm',
                       selected
                         ? 'border-blue-600 bg-blue-600 text-white'
                         : 'border-slate-300 bg-white/90 text-transparent',

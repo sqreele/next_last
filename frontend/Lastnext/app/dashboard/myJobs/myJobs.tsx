@@ -1,71 +1,89 @@
 "use client";
 
 import * as React from "react";
-import { useSession } from "@/app/lib/session.client";
 import { useRouter } from "next/navigation";
 import {
-  AlertCircle, Home, Pencil, Trash2, Loader, RefreshCcw, X, 
-  Briefcase, CheckCircle2, Clock, Calendar, Search, Filter,
-  Sparkles, TrendingUp, Info, Plus, Smile
+  AlertCircle,
+  Briefcase,
+  Calendar,
+  CheckCircle2,
+  Clock3,
+  Home,
+  Loader,
+  MapPin,
+  Pencil,
+  RefreshCcw,
+  Search,
+  TimerReset,
+  Trash2,
+  UserRound,
+  Wrench,
+  X,
 } from "lucide-react";
-// --- UI Imports ---
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/app/components/ui/table";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/app/components/ui/dialog";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/app/components/ui/alert-dialog";
-import { Textarea } from "@/app/components/ui/textarea";
-import { Checkbox } from "@/app/components/ui/checkbox";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/app/components/ui/select";
+
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
+import { Card, CardContent } from "@/app/components/ui/card";
+import { Checkbox } from "@/app/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
+import { Input } from "@/app/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import { Textarea } from "@/app/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/app/components/ui/alert-dialog";
+import { Skeleton } from "@/app/components/ui/loading";
 import { useToast } from "@/app/components/ui/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
-// --- Lib/Hook Imports ---
-import { useUser, useJobs } from "@/app/lib/stores/mainStore";
-import { useJobsData } from "@/app/lib/hooks/useJobsData";
-import { Job, JobStatus, JobPriority, Topic } from "@/app/lib/types";
-import { fetchTopics, deleteJob as deleteJobApi } from "@/app/lib/data.server";
-import { getDisplayName } from "@/app/lib/utils/display-name";
-// --- Component Imports ---
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
-import JobFilters, { FilterState } from "@/app/components/jobs/JobFilters";
 import Pagination from "@/app/components/jobs/Pagination";
 import UpdateStatusButton from "@/app/components/jobs/UpdateStatusButton";
-import { EmptyState, FloatingActionButton, PageHeader, PriorityBadge, SectionCard, StatusBadge, WorkspaceCard } from '@/app/components/pcms-ui';
-import { PageLoader, SkeletonList, SkeletonTable } from '@/app/components/ui/loading';
+import { StatusBadge } from "@/app/components/StatusBadge";
+import { FloatingActionButton, PriorityBadge } from "@/app/components/pcms-ui";
+import { useSession } from "@/app/lib/session.client";
+import { fetchTopics, deleteJob as deleteJobApi } from "@/app/lib/data.server";
+import { useJobsData } from "@/app/lib/hooks/useJobsData";
+import { useJobs, useUser } from "@/app/lib/stores/mainStore";
+import { cn } from "@/app/lib/utils/cn";
+import { getDisplayName } from "@/app/lib/utils/display-name";
+import type { Job, JobPriority, JobStatus, Topic } from "@/app/lib/types";
 
-// Constants
-const ITEMS_PER_PAGE = 25;
+const ITEMS_PER_PAGE = 24;
 
-// Tailwind-based styles (Keep as they are)
-const PRIORITY_STYLES: Record<JobPriority | 'default', string> = {
-  high: "",
-  medium: "",
-  low: "",
-  default: "",
-};
-const STATUS_STYLES: Record<JobStatus | "default", string> = {
-  completed: "",
-  in_progress: "",
-  pending: "",
-  cancelled: "",
-  waiting_sparepart: "",
-  default: "",
-};
+type DateFilter = "all" | "today" | "week" | "month";
 
-// Updated Types
-interface JobTableRowProps {
+interface FilterState {
+  search: string;
+  status: JobStatus | "all" | "overdue";
+  priority: JobPriority | "all";
+  date: DateFilter;
+  room: string;
+}
+
+interface JobActionProps {
   job: Job;
   onEdit: (job: Job) => void;
   onDelete: (job: Job) => void;
-  onStatusUpdated: (updatedJob: Job) => void; // Add this prop
+  onStatusUpdated: (updatedJob: Job) => void;
 }
 
 interface EditDialogProps {
@@ -86,319 +104,369 @@ interface DeleteDialogProps {
   isSubmitting: boolean;
 }
 
-// Include the updated JobTableRow component
-// Updated JobTableRow component - Desktop only
-const JobTableRow: React.FC<JobTableRowProps> = React.memo(
-  ({ job, onEdit, onDelete, onStatusUpdated }) => (
-    <TableRow
-      className="pcms-table-row-hover hidden md:table-row cursor-pointer border-b border-slate-100"
-      onClick={() => onEdit(job)}
+const defaultFilters: FilterState = {
+  search: "",
+  status: "all",
+  priority: "all",
+  date: "all",
+  room: "",
+};
+
+function formatDate(value?: string | null) {
+  if (!value) return "Not set";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Not set";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function getJobTitle(job: Job) {
+  return job.title || job.topics?.[0]?.title || `Job #${job.job_id}`;
+}
+
+function getJobLocation(job: Job) {
+  if (job.area_name) return job.area_name;
+  if (job.area?.name) return job.area.name;
+  if (job.room_name) return job.room_name;
+  if (job.rooms?.length) return job.rooms.map((room) => room.name).filter(Boolean).join(", ");
+  return "Room or area not set";
+}
+
+function getTechnician(job: Job) {
+  if (job.technician_name) return job.technician_name;
+  if (job.user_name) return job.user_name;
+  if (typeof job.user === "object" && job.user) return getDisplayName(job.user, "Assigned technician");
+  if (job.user) return String(job.user);
+  return "Assigned technician";
+}
+
+function isOverdue(job: Job) {
+  if (job.completed_at || job.status === "completed" || job.status === "cancelled") return false;
+  const createdAt = new Date(job.created_at).getTime();
+  if (Number.isNaN(createdAt)) return false;
+  const ageInDays = (Date.now() - createdAt) / (1000 * 60 * 60 * 24);
+  return ageInDays >= 3;
+}
+
+function matchesDate(job: Job, dateFilter: DateFilter) {
+  if (dateFilter === "all") return true;
+  const createdAt = new Date(job.created_at);
+  if (Number.isNaN(createdAt.getTime())) return false;
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfJobDay = new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate());
+
+  if (dateFilter === "today") return startOfJobDay.getTime() === startOfToday.getTime();
+
+  const daysOld = (startOfToday.getTime() - startOfJobDay.getTime()) / (1000 * 60 * 60 * 24);
+  if (dateFilter === "week") return daysOld >= 0 && daysOld <= 7;
+  if (dateFilter === "month") return daysOld >= 0 && daysOld <= 30;
+  return true;
+}
+
+function countByStatus(jobs: Job[], status: JobStatus) {
+  return jobs.filter((job) => job.status === status).length;
+}
+
+function MyJobsSkeleton() {
+  return (
+    <div className="min-h-screen w-full px-3 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-none space-y-5 lg:max-w-7xl">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-4 w-64 max-w-full" />
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Skeleton key={index} className="h-24 rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-64 rounded-lg" />
+        <div className="grid gap-3 lg:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-56 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JobStatusSummary({ jobs }: { jobs: Job[] }) {
+  const metrics = [
+    { label: "Total Jobs", value: jobs.length, tone: "border-slate-200 bg-white text-slate-900", icon: Briefcase },
+    { label: "In Progress", value: countByStatus(jobs, "in_progress"), tone: "border-blue-200 bg-blue-50 text-blue-900", icon: Wrench },
+    { label: "Waiting", value: countByStatus(jobs, "waiting_sparepart"), tone: "border-amber-200 bg-amber-50 text-amber-900", icon: Clock3 },
+    { label: "Completed", value: countByStatus(jobs, "completed"), tone: "border-emerald-200 bg-emerald-50 text-emerald-900", icon: CheckCircle2 },
+    { label: "Overdue", value: jobs.filter(isOverdue).length, tone: "border-red-200 bg-red-50 text-red-900", icon: TimerReset },
+  ];
+
+  return (
+    <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Job status summary">
+      {metrics.map((metric) => {
+        const Icon = metric.icon;
+        return (
+          <div key={metric.label} className={cn("rounded-lg border p-3 shadow-sm", metric.tone)}>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-medium">{metric.label}</p>
+              <Icon className="h-4 w-4" aria-hidden="true" />
+            </div>
+            <p className="mt-3 text-2xl font-semibold leading-none sm:text-3xl">{metric.value}</p>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+function FilterBar({
+  filters,
+  onChange,
+  onReset,
+}: {
+  filters: FilterState;
+  onChange: (filters: FilterState) => void;
+  onReset: () => void;
+}) {
+  const hasFilters =
+    filters.search.trim() !== "" ||
+    filters.status !== "all" ||
+    filters.priority !== "all" ||
+    filters.date !== "all" ||
+    filters.room.trim() !== "";
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:p-4" aria-label="Filter jobs">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-slate-900">Find Jobs</h2>
+        {hasFilters ? (
+          <Button type="button" variant="ghost" size="sm" onClick={onReset} className="h-9 px-2 text-slate-700">
+            <X className="mr-1 h-4 w-4" />
+            Reset
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_1fr_auto]">
+        <label className="space-y-1.5">
+          <span className="text-sm font-medium text-slate-700">Search</span>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Input
+              value={filters.search}
+              onChange={(event) => onChange({ ...filters, search: event.target.value })}
+              placeholder="Job title, ID, topic..."
+              className="h-11 border-slate-300 pl-10 text-base sm:text-sm"
+            />
+          </div>
+        </label>
+
+        <label className="space-y-1.5">
+          <span className="text-sm font-medium text-slate-700">Status</span>
+          <Select value={filters.status} onValueChange={(value) => onChange({ ...filters, status: value as FilterState["status"] })}>
+            <SelectTrigger className="h-11 border-slate-300 bg-white text-base sm:text-sm">
+              <SelectValue placeholder="All status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="pending">Pending / New</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="waiting_sparepart">Waiting</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+
+        <label className="space-y-1.5">
+          <span className="text-sm font-medium text-slate-700">Priority</span>
+          <Select value={filters.priority} onValueChange={(value) => onChange({ ...filters, priority: value as FilterState["priority"] })}>
+            <SelectTrigger className="h-11 border-slate-300 bg-white text-base sm:text-sm">
+              <SelectValue placeholder="All priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Priority</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+
+        <label className="space-y-1.5">
+          <span className="text-sm font-medium text-slate-700">Date</span>
+          <Select value={filters.date} onValueChange={(value) => onChange({ ...filters, date: value as DateFilter })}>
+            <SelectTrigger className="h-11 border-slate-300 bg-white text-base sm:text-sm">
+              <SelectValue placeholder="Any date" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Any Date</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="week">Last 7 Days</SelectItem>
+              <SelectItem value="month">Last 30 Days</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+
+        <label className="space-y-1.5">
+          <span className="text-sm font-medium text-slate-700">Room / Area</span>
+          <div className="relative">
+            <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Input
+              value={filters.room}
+              onChange={(event) => onChange({ ...filters, room: event.target.value })}
+              placeholder="Room 204, lobby..."
+              className="h-11 border-slate-300 pl-10 text-base sm:text-sm"
+            />
+          </div>
+        </label>
+
+        <div className="flex items-end">
+          <Button type="button" variant="outline" onClick={onReset} className="h-11 w-full border-slate-300 text-slate-800 lg:w-auto">
+            Reset Filters
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function JobCard({ job, onEdit, onDelete, onStatusUpdated }: JobActionProps) {
+  const router = useRouter();
+  const description = job.description || "No description provided.";
+  const location = getJobLocation(job);
+  const technician = getTechnician(job);
+  const overdue = isOverdue(job);
+
+  const openDetail = () => router.push(`/dashboard/jobs/${job.job_id}`);
+
+  return (
+    <article
       role="button"
       tabIndex={0}
-      aria-label={`Open job ${job.job_id}`}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onEdit(job);
+      onClick={openDetail}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openDetail();
         }
       }}
+      className="group flex w-full cursor-pointer flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md"
+      aria-label={`Open job ${job.job_id}`}
     >
-      <TableCell className="py-3">
-        <div className="font-medium text-gray-900">#{job.job_id}</div>
-        <PriorityBadge priority={job.priority} />
-        {job.remarks && (
-          <div className="mt-2">
-            <div className="text-xs text-gray-500 font-medium">Comments:</div>
-            <div 
-              className="text-xs text-gray-600 bg-gray-50 p-1.5 rounded border max-w-xs"
-              title={job.remarks.length > 50 ? job.remarks : undefined}
-            >
-              {job.remarks.length > 50 ? `${job.remarks.substring(0, 50)}...` : job.remarks}
-            </div>
-          </div>
-        )}
-      </TableCell>
-      <TableCell className="py-3 max-w-sm">
-        <p className="text-sm text-gray-700 truncate mb-1">{job.description}</p>
-        <div className="flex flex-wrap gap-1">
-          {job.topics?.map((topic) => (
-            <Badge
-              key={topic.id ?? topic.title} // Use unique key
-              variant="outline"
-              className="text-xs"
-            >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-slate-600">#{job.job_id}</p>
+          <h3 className="mt-1 text-lg font-semibold leading-snug text-slate-900 group-hover:text-blue-800">
+            {getJobTitle(job)}
+          </h3>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <StatusBadge status={overdue ? "overdue" : job.status} />
+          <PriorityBadge priority={job.priority} />
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Home className="h-4 w-4 shrink-0 text-slate-500" />
+          <span className="truncate font-medium text-slate-900">{location}</span>
+        </div>
+        <div className="flex min-w-0 items-center gap-2">
+          <UserRound className="h-4 w-4 shrink-0 text-slate-500" />
+          <span className="truncate">{technician}</span>
+        </div>
+        <div className="flex min-w-0 items-center gap-2">
+          <Calendar className="h-4 w-4 shrink-0 text-slate-500" />
+          <span>Created {formatDate(job.created_at)}</span>
+        </div>
+        <div className="flex min-w-0 items-center gap-2">
+          <Clock3 className="h-4 w-4 shrink-0 text-slate-500" />
+          <span>Due date not set</span>
+        </div>
+      </div>
+
+      <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-700">{description}</p>
+
+      {job.topics?.length ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {job.topics.slice(0, 3).map((topic) => (
+            <Badge key={topic.id ?? topic.title} variant="outline" className="border-slate-200 bg-slate-50 text-sm text-slate-700">
               {topic.title}
             </Badge>
           ))}
         </div>
-      </TableCell>
-      <TableCell className="py-3">
-        <div className="flex flex-col gap-1">
-          {job.rooms?.map((room) => (
-            <div key={room.room_id} className="flex items-center gap-1.5 text-sm text-gray-600">
-              <Home className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="truncate">{room.name}</span>
-            </div>
-          ))}
-        </div>
-      </TableCell>
-      <TableCell className="py-3">
-        <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
-          <StatusBadge status={job.status} />
-          {/* Add the Update Status button with stopPropagation */}
-          <UpdateStatusButton 
-            job={job} 
-            onStatusUpdated={onStatusUpdated} 
-            size="sm" 
-            variant="outline" 
-            className="text-xs h-7" 
-            buttonText="Change Status"
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-          />
-        </div>
-      </TableCell>
-      <TableCell className="py-3 text-sm text-gray-600">
-        {new Date(job.created_at).toLocaleDateString()}
-      </TableCell>
-      <TableCell className="py-3">
-        <div className="flex items-center gap-1 justify-end pr-4"> {/* Align Actions Right */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 hover:bg-gray-100"
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent row click
-              onEdit(job);
-            }}
-            aria-label="Edit Job"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-red-500 hover:bg-red-50 hover:text-red-600"
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent row click
-              onDelete(job);
-            }}
-            aria-label="Delete Job"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
-  ),
-  (prevProps, nextProps) =>
-    prevProps.job.job_id === nextProps.job.job_id &&
-    prevProps.job.status === nextProps.job.status &&
-    prevProps.job.priority === nextProps.job.priority &&
-    prevProps.job.description === nextProps.job.description
-);
+      ) : null}
 
-// Separate component for mobile view - Friendly design
-const JobMobileCard: React.FC<JobTableRowProps> = React.memo(
-  ({ job, onEdit, onDelete, onStatusUpdated }) => (
-    <Card 
-      variant="interactive"
-      className="md:hidden overflow-hidden rounded-[2rem] border-[var(--pcms-border)] bg-white/92 shadow-[var(--pcms-shadow-card)] transition-all hover:-translate-y-0.5 hover:border-cyan-200 cursor-pointer"
-      onClick={() => onEdit(job)}
-      role="button"
-      tabIndex={0}
-      aria-label={`Open job ${job.job_id}`}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onEdit(job);
-        }
-      }}
-    >
-      <div className="mx-3 mt-3 flex h-28 items-center justify-center rounded-[1.5rem] bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50 text-cyan-700">
-        <div className="text-center">
-          <Briefcase className="mx-auto h-8 w-8" />
-          <p className="mt-2 text-xs font-black uppercase tracking-[0.18em]">Maintenance Job</p>
-        </div>
+      <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center" onClick={(event) => event.stopPropagation()}>
+        <Button type="button" onClick={openDetail} className="h-11 w-full sm:w-auto">
+          View Detail
+        </Button>
+        <UpdateStatusButton
+          job={job}
+          onStatusUpdated={onStatusUpdated}
+          variant="outline"
+          size="sm"
+          className="h-11 w-full border-slate-300 text-slate-800 sm:w-auto"
+          buttonText="Update Status"
+        />
+        <Button type="button" variant="outline" onClick={() => onEdit(job)} className="h-11 w-full border-slate-300 text-slate-800 sm:w-auto">
+          <Pencil className="mr-2 h-4 w-4" />
+          Edit
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => onDelete(job)} className="h-11 w-full text-red-700 hover:bg-red-50 hover:text-red-800 sm:ml-auto sm:w-auto">
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete
+        </Button>
       </div>
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-[10rem] flex-1 space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="rounded-2xl bg-blue-100 p-2">
-                <Briefcase className="h-4 w-4 text-blue-600" />
-              </div>
-              <span className="text-base font-black text-[var(--pcms-text)]">#{job.job_id}</span>
-            </div>
-            <PriorityBadge priority={job.priority} />
-          </div>
-          <StatusBadge status={job.status} />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-            <span>Description</span>
-          </div>
-          <p className="text-sm font-medium text-[var(--pcms-text-muted)] break-words leading-relaxed">{job.description}</p>
-          {job.topics && job.topics.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {job.topics?.map((topic) => (
-                <Badge
-                  key={topic.id ?? topic.title}
-                  variant="outline"
-                  className="text-xs bg-gray-50 hover:bg-gray-100"
-                >
-                  {topic.title}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
+    </article>
+  );
+}
 
-        {job.rooms && job.rooms.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              <Home className="h-3.5 w-3.5" />
-              <span>Location</span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {job.rooms?.map((room) => (
-                <div key={room.room_id} className="flex items-center gap-2 rounded-2xl border border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] p-2 text-sm text-[var(--pcms-text)]">
-                  <Home className="h-4 w-4 flex-shrink-0 text-gray-400" />
-                  <span className="font-medium">{room.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-center gap-4 border-t border-[var(--pcms-border)] pt-2 text-xs font-bold text-[var(--pcms-text-muted)]">
-          <div className="flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>Created {new Date(job.created_at).toLocaleDateString()}</span>
-          </div>
-        </div>
-
-        {job.remarks && (
-          <div className="space-y-2 pt-2 border-t border-gray-100">
-            <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              <span>Comments</span>
-            </div>
-            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-3 text-sm font-medium text-blue-900">
-              {job.remarks}
-            </div>
-          </div>
-        )}
-
-        <div className="pt-3 space-y-2 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
-          <UpdateStatusButton 
-            job={job} 
-            onStatusUpdated={onStatusUpdated} 
-            size="sm" 
-            variant="outline" 
-            className="pcms-secondary-button w-full"
-            buttonText="Update Status"
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-            }}
-          />
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="pcms-secondary-button flex-1 h-10"
-              onClick={() => onEdit(job)}
-            >
-              <Pencil className="h-4 w-4 mr-2" /> Edit
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="flex-1 h-9"
-              onClick={() => onDelete(job)}
-            >
-              <Trash2 className="h-4 w-4 mr-2" /> Delete
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  ),
-  (prevProps, nextProps) =>
-    prevProps.job.job_id === nextProps.job.job_id &&
-    prevProps.job.status === nextProps.job.status &&
-    prevProps.job.priority === nextProps.job.priority &&
-    prevProps.job.description === nextProps.job.description
-);
-
-JobTableRow.displayName = 'JobTableRow';
-JobMobileCard.displayName = 'JobMobileCard';
-
-// EditDialog component with topic editing
-const EditDialog: React.FC<EditDialogProps> = ({ 
-  isOpen, 
-  onClose, 
-  job, 
-  onSubmit, 
-  isSubmitting, 
-  availableTopics, 
-  selectedTopics, 
-  onTopicsChange 
+const EditDialog: React.FC<EditDialogProps> = ({
+  isOpen,
+  onClose,
+  job,
+  onSubmit,
+  isSubmitting,
+  availableTopics,
+  selectedTopics,
+  onTopicsChange,
 }) => {
-  const [newTopicId, setNewTopicId] = React.useState<string>("");
+  const [newTopicId, setNewTopicId] = React.useState("");
 
   const handleAddTopic = () => {
     if (!newTopicId) return;
-    
-    const topicToAdd = availableTopics.find(topic => topic.id.toString() === newTopicId);
-    if (topicToAdd && !selectedTopics.find(topic => topic.id === topicToAdd.id)) {
+    const topicToAdd = availableTopics.find((topic) => topic.id.toString() === newTopicId);
+    if (topicToAdd && !selectedTopics.find((topic) => topic.id === topicToAdd.id)) {
       onTopicsChange([...selectedTopics, topicToAdd]);
       setNewTopicId("");
     }
   };
 
-  const handleRemoveTopic = (topicId: number) => {
-    onTopicsChange(selectedTopics.filter(topic => topic.id !== topicId));
-  };
-
   const availableTopicsForSelection = availableTopics.filter(
-    topic => !selectedTopics.find(selected => selected.id === topic.id)
+    (topic) => !selectedTopics.find((selected) => selected.id === topic.id),
   );
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[520px]">
         <form onSubmit={onSubmit}>
           <DialogHeader>
             <DialogTitle>Edit Job #{job?.job_id}</DialogTitle>
-            <DialogDescription>
-              Update the details for this maintenance job. Click save when you're done.
-            </DialogDescription>
+            <DialogDescription>Update this maintenance job and save your changes.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="description" className="text-right col-span-1 text-sm font-medium">
-                Description
-              </label>
-              <Textarea
-                id="description"
-                name="description"
-                defaultValue={job?.description}
-                className="col-span-3"
-                rows={3}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="priority" className="text-right col-span-1 text-sm font-medium">
-                Priority
-              </label>
+            <label className="space-y-2">
+              <span className="text-sm font-medium text-slate-700">Description</span>
+              <Textarea id="description" name="description" defaultValue={job?.description} rows={3} required />
+            </label>
+
+            <label className="space-y-2">
+              <span className="text-sm font-medium text-slate-700">Priority</span>
               <Select name="priority" defaultValue={job?.priority}>
-                <SelectTrigger className="col-span-3">
+                <SelectTrigger>
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
@@ -407,108 +475,65 @@ const EditDialog: React.FC<EditDialogProps> = ({
                   <SelectItem value="high">High</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            
-            {/* Topics Section */}
-            <div className="grid grid-cols-4 items-start gap-4">
-              <label className="text-right col-span-1 text-sm font-medium pt-2">
-                Topics
-              </label>
-              <div className="col-span-3 space-y-3">
-                {/* Selected Topics */}
-                <div className="space-y-2">
-                  <div className="text-xs text-gray-600">Selected Topics:</div>
-                  {selectedTopics.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedTopics.map((topic) => (
-                        <Badge
-                          key={topic.id}
-                          variant="secondary"
-                          className="flex items-center gap-1 pr-1"
-                        >
-                          {topic.title}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-4 w-4 p-0 hover:bg-gray-300"
-                            onClick={() => handleRemoveTopic(topic.id)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-500 italic">No topics selected</div>
-                  )}
-                </div>
-                
-                {/* Add Topic */}
-                {availableTopicsForSelection.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="text-xs text-gray-600">Add Topic:</div>
-                    <div className="flex gap-2">
-                      <Select value={newTopicId} onValueChange={setNewTopicId}>
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Select a topic to add" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableTopicsForSelection.map((topic) => (
-                            <SelectItem key={topic.id} value={topic.id.toString()}>
-                              {topic.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
+            </label>
+
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-slate-700">Topics</span>
+              {selectedTopics.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {selectedTopics.map((topic) => (
+                    <Badge key={topic.id} variant="secondary" className="gap-1 pr-1">
+                      {topic.title}
+                      <button
                         type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleAddTopic}
-                        disabled={!newTopicId}
+                        className="rounded-full p-0.5 hover:bg-slate-300"
+                        onClick={() => onTopicsChange(selectedTopics.filter((item) => item.id !== topic.id))}
+                        aria-label={`Remove ${topic.title}`}
                       >
-                        Add
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600">No topics selected</p>
+              )}
+
+              {availableTopicsForSelection.length ? (
+                <div className="flex gap-2">
+                  <Select value={newTopicId} onValueChange={setNewTopicId}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Add topic" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTopicsForSelection.map((topic) => (
+                        <SelectItem key={topic.id} value={topic.id.toString()}>
+                          {topic.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" onClick={handleAddTopic} disabled={!newTopicId}>
+                    Add
+                  </Button>
+                </div>
+              ) : null}
             </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="remarks" className="text-right col-span-1 text-sm font-medium">
-                Remarks
+
+            <label className="space-y-2">
+              <span className="text-sm font-medium text-slate-700">Remarks</span>
+              <Textarea id="remarks" name="remarks" defaultValue={job?.remarks || ""} rows={2} />
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex items-center gap-2 rounded-lg border border-slate-200 p-3 text-sm font-medium text-slate-700">
+                <Checkbox id="is_defective" name="is_defective" defaultChecked={job?.is_defective} />
+                Defective
               </label>
-              <Textarea
-                id="remarks"
-                name="remarks"
-                defaultValue={job?.remarks || ''}
-                className="col-span-3"
-                rows={2}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="is_defective" className="text-right col-span-1 text-sm font-medium">
-                Defective?
+              <label className="flex items-center gap-2 rounded-lg border border-slate-200 p-3 text-sm font-medium text-slate-700">
+                <Checkbox id="is_preventivemaintenance" name="is_preventivemaintenance" defaultChecked={job?.is_preventivemaintenance} />
+                Preventive
               </label>
-              <Checkbox
-                id="is_defective"
-                name="is_defective"
-                defaultChecked={job?.is_defective}
-                className="col-span-3 justify-self-start"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="is_preventivemaintenance" className="text-right col-span-1 text-sm font-medium">
-                Preventive?
-              </label>
-              <Checkbox
-                id="is_preventivemaintenance"
-                name="is_preventivemaintenance"
-                defaultChecked={job?.is_preventivemaintenance}
-                className="col-span-3 justify-self-start"
-              />
             </div>
           </div>
           <DialogFooter>
@@ -516,7 +541,7 @@ const EditDialog: React.FC<EditDialogProps> = ({
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+              {isSubmitting ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
               Save Changes
             </Button>
           </DialogFooter>
@@ -525,181 +550,137 @@ const EditDialog: React.FC<EditDialogProps> = ({
     </Dialog>
   );
 };
-EditDialog.displayName = 'EditDialog';
 
-// DeleteDialog component (Keep as is)
 const DeleteDialog: React.FC<DeleteDialogProps> = ({ isOpen, onClose, onConfirm, isSubmitting }) => (
   <AlertDialog open={isOpen} onOpenChange={onClose}>
     <AlertDialogContent>
       <AlertDialogHeader>
-        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+        <AlertDialogTitle>Delete this job?</AlertDialogTitle>
         <AlertDialogDescription>
-          This action cannot be undone. This will permanently delete the maintenance job.
+          This action cannot be undone. The maintenance job will be permanently removed.
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel onClick={onClose} disabled={isSubmitting}>Cancel</AlertDialogCancel>
+        <AlertDialogCancel onClick={onClose} disabled={isSubmitting}>
+          Cancel
+        </AlertDialogCancel>
         <AlertDialogAction onClick={onConfirm} disabled={isSubmitting} className="bg-red-600 hover:bg-red-700">
-          {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+          {isSubmitting ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
           Delete
         </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>
   </AlertDialog>
 );
-DeleteDialog.displayName = 'DeleteDialog';
 
 const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) => {
+  const router = useRouter();
   const { toast } = useToast();
   const { data: session, status: sessionStatus } = useSession();
   const { userProfile, selectedPropertyId: selectedProperty } = useUser();
   const { updateJob: storeUpdateJob, deleteJob: storeDeleteJob } = useJobs();
-  
-  const userLoading = false;
-  const router = useRouter();
 
-  // Local state for UI
-  const [filters, setFilters] = React.useState<FilterState>({
-    search: "", status: "all", priority: "all"
-  });
+  const [filters, setFilters] = React.useState<FilterState>(defaultFilters);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [selectedJob, setSelectedJob] = React.useState<Job | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  
-  // Topic-related state
   const [availableTopics, setAvailableTopics] = React.useState<Topic[]>([]);
   const [selectedTopics, setSelectedTopics] = React.useState<Topic[]>([]);
-  const [topicsLoading, setTopicsLoading] = React.useState(false);
 
-  // Use the hook for data fetching - always fetch user's jobs, not property-specific jobs
-  // Note: Backend's my_jobs endpoint already filters by authenticated user, 
-  // so we don't need to pass user_id in query params
-  const {
-    jobs,
-    isLoading,
-    error,
-    refreshJobs,
-    updateJob, // Hook's function to update local state
-    removeJob, // Hook's function to remove from local state
-  } = useJobsData({ 
-    propertyId: null, // keep using Maintenance Jobs endpoint
-    filters: { 
-      ...filters,
-      // Don't pass user_id - backend handles user filtering automatically
-      // pass selected property as a filter so backend restricts Maintenance Jobs to that property
+  const { jobs, isLoading, error, refreshJobs, updateJob, removeJob } = useJobsData({
+    propertyId: null,
+    filters: {
+      search: filters.search,
+      status: filters.status === "overdue" ? "all" : filters.status,
+      room_name: filters.room || null,
       property_id: selectedProperty ?? null,
-    }
+    },
   });
 
-  // Filter jobs based on local state
-  // Note: Backend already filters by user, so we don't need to check job.user here
   const filteredJobs = React.useMemo(() => {
-    if (!Array.isArray(jobs)) {
-      return [];
-    }
-    
-    const filtered = jobs.filter((job) => {
-      // Apply search filter
-      const searchLower = filters.search.toLowerCase();
-      const descMatch = job.description?.toLowerCase().includes(searchLower);
-      const idMatch = job.job_id?.toString().includes(searchLower);
-      const roomMatch = job.rooms?.some(room => room.name?.toLowerCase().includes(searchLower));
-      const topicMatch = job.topics?.some(topic => topic.title?.toLowerCase().includes(searchLower));
-      const matchesSearch = filters.search === "" || descMatch || idMatch || roomMatch || topicMatch;
+    const search = filters.search.trim().toLowerCase();
+    const room = filters.room.trim().toLowerCase();
 
-      // Apply status filter (if "all", show all statuses including completed)
-      const matchesStatus = filters.status === "all" || job.status === filters.status;
-      
-      // Apply priority filter
+    return jobs.filter((job) => {
+      const title = getJobTitle(job).toLowerCase();
+      const location = getJobLocation(job).toLowerCase();
+      const description = job.description?.toLowerCase() || "";
+      const jobId = String(job.job_id).toLowerCase();
+      const topics = job.topics?.map((topic) => topic.title).join(" ").toLowerCase() || "";
+
+      const matchesSearch = !search || [title, description, jobId, topics, location].some((value) => value.includes(search));
+      const matchesStatus =
+        filters.status === "all" ||
+        (filters.status === "overdue" ? isOverdue(job) : job.status === filters.status);
       const matchesPriority = filters.priority === "all" || job.priority === filters.priority;
+      const matchesRoom = !room || location.includes(room);
+      const matchesCreatedDate = matchesDate(job, filters.date);
 
-      return matchesSearch && matchesStatus && matchesPriority;
+      return matchesSearch && matchesStatus && matchesPriority && matchesRoom && matchesCreatedDate;
     });
-    return filtered;
   }, [jobs, filters]);
 
-  // Calculate pagination details
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, filteredJobs.length);
   const currentJobs = filteredJobs.slice(startIndex, endIndex);
 
-  // Reset page number when filters or property change
   React.useEffect(() => {
     setCurrentPage(1);
   }, [filters, activePropertyId, selectedProperty]);
 
-  // Effect to handle redirection if unauthenticated
   React.useEffect(() => {
     if (sessionStatus === "unauthenticated") {
       router.push("/auth/login");
     }
   }, [sessionStatus, router]);
 
-  // Effect to refresh jobs when filters change
   React.useEffect(() => {
     if (sessionStatus === "authenticated") {
-      // refresh when filters change or selected property changes
       refreshJobs();
     }
-  }, [filters, selectedProperty, sessionStatus, refreshJobs]);
+  }, [filters.search, filters.status, filters.room, selectedProperty, sessionStatus, refreshJobs]);
 
-  // Function to fetch available topics
-  const fetchAvailableTopics = async () => {
-    if (!session?.user?.accessToken) return;
-    
-    setTopicsLoading(true);
-    try {
-      const topics = await fetchTopics(session.user.accessToken);
-      setAvailableTopics(topics);
-    } catch (error) {
-      console.error('Failed to fetch topics:', error);
-      toast({
-        title: "Warning",
-        description: "Failed to load available topics",
-        variant: "destructive",
-      });
-    } finally {
-      setTopicsLoading(false);
-    }
-  };
-
-  // Fetch topics when dialog opens
   React.useEffect(() => {
-    if (isEditDialogOpen && session?.user?.accessToken) {
-      fetchAvailableTopics();
-    }
-  }, [isEditDialogOpen, session?.user?.accessToken]);
+    const loadTopics = async () => {
+      if (!isEditDialogOpen || !session?.user?.accessToken) return;
+      try {
+        setAvailableTopics(await fetchTopics(session.user.accessToken));
+      } catch (topicError) {
+        console.error("Failed to fetch topics:", topicError);
+        toast({
+          title: "Warning",
+          description: "Failed to load available topics.",
+          variant: "destructive",
+        });
+      }
+    };
 
-  // --- Event Handlers ---
-  const handleFilterChange = (newFilters: FilterState) => setFilters(newFilters);
-  const handleClearFilters = () => setFilters({ search: "", status: "all", priority: "all" });
+    loadTopics();
+  }, [isEditDialogOpen, session?.user?.accessToken, toast]);
+
+  const handleResetFilters = () => setFilters(defaultFilters);
+
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
-  const handleEdit = (job: Job) => { 
-    setSelectedJob(job); 
-    setSelectedTopics(job.topics || []); // Initialize with current job topics
-    setIsEditDialogOpen(true); 
-  };
-  const handleDelete = (job: Job) => { setSelectedJob(job); setIsDeleteDialogOpen(true); };
 
-  // New handler for status updates
-  const handleStatusUpdated = (updatedJob: Job) => {
-    updateJob(updatedJob);
+  const handleEdit = (job: Job) => {
+    setSelectedJob(job);
+    setSelectedTopics(job.topics || []);
+    setIsEditDialogOpen(true);
   };
 
-  // Handler for topic changes
-  const handleTopicsChange = (topics: Topic[]) => {
-    setSelectedTopics(topics);
+  const handleDelete = (job: Job) => {
+    setSelectedJob(job);
+    setIsDeleteDialogOpen(true);
   };
 
-  // Submit handler for edit dialog
   const handleEditSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedJob) return;
@@ -707,47 +688,35 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     setIsSubmitting(true);
     try {
       const formData = new FormData(event.currentTarget);
-      
-      // Create update data that includes the required fields from the original job
       const updatedJobData: Partial<Job> = {
         description: formData.get("description") as string,
         priority: formData.get("priority") as JobPriority,
         remarks: (formData.get("remarks") as string) || undefined,
         is_defective: formData.get("is_defective") === "on",
         is_preventivemaintenance: formData.get("is_preventivemaintenance") === "on",
-        
-        // Handle timestamp fields
-        created_at: formData.get("created_at") as string || selectedJob.created_at,
-        updated_at: formData.get("updated_at") as string || selectedJob.updated_at,
-        completed_at: formData.get("completed_at") as string || selectedJob.completed_at,
-        
-        // Use updated topics from the dialog
+        created_at: (formData.get("created_at") as string) || selectedJob.created_at,
+        updated_at: (formData.get("updated_at") as string) || selectedJob.updated_at,
+        completed_at: (formData.get("completed_at") as string) || selectedJob.completed_at,
         topics: selectedTopics,
       };
-      
-      // For the API request
+
       const apiRequestData = {
         ...updatedJobData,
-        topic_data: selectedTopics, // Use updated topics
+        topic_data: selectedTopics,
         room_id: selectedJob.rooms?.[0]?.room_id,
       };
 
-      // Call API function with the data formatted for the API
-              // Update job in store
-        storeUpdateJob(selectedJob.id, apiRequestData);
-        const updatedJobResult = { ...selectedJob, ...apiRequestData };
-
-      // Update local state using the hook's function
-      updateJob(updatedJobResult);
+      storeUpdateJob(selectedJob.id, apiRequestData);
+      updateJob({ ...selectedJob, ...apiRequestData });
 
       toast({ title: "Success", description: "Job updated successfully." });
       setIsEditDialogOpen(false);
       setSelectedJob(null);
-    } catch (error) {
-      console.error("Failed to update job:", error);
+    } catch (editError) {
+      console.error("Failed to update job:", editError);
       toast({
         title: "Update Failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        description: editError instanceof Error ? editError.message : "An unknown error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -760,14 +729,9 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
 
     setIsSubmitting(true);
     try {
-      if (!session?.user?.accessToken) {
-        throw new Error("Not authenticated");
-      }
+      if (!session?.user?.accessToken) throw new Error("Not authenticated");
 
-      // Delete on backend first
       await deleteJobApi(String(selectedJob.job_id), session.user.accessToken);
-
-      // Then update local stores/state
       storeDeleteJob(selectedJob.id);
       removeJob(selectedJob.job_id);
 
@@ -775,15 +739,14 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
       setIsDeleteDialogOpen(false);
       setSelectedJob(null);
 
-      // Adjust pagination if needed
       if (currentJobs.length === 1 && currentPage > 1) {
-          handlePageChange(currentPage - 1);
+        handlePageChange(currentPage - 1);
       }
-    } catch (error) {
-      console.error("Failed to delete job:", error);
+    } catch (deleteError) {
+      console.error("Failed to delete job:", deleteError);
       toast({
         title: "Deletion Failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        description: deleteError instanceof Error ? deleteError.message : "An unknown error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -791,326 +754,146 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     }
   };
 
-  // Job creation handler
   const handleJobCreated = async () => {
     const success = await refreshJobs(true);
     if (!success) {
-      toast({ title: "Warning", description: "Job created, but failed to refresh list.", variant: "default" });
+      toast({ title: "Warning", description: "Job created, but the list did not refresh.", variant: "default" });
     }
   };
 
-  const handleManualRefresh = async () => {
-    await refreshJobs(true);
-  };
-
-  // --- Render Logic ---
   if (sessionStatus === "loading" || (isLoading && !error && jobs.length === 0)) {
-    return <PageLoader label="Loading maintenance jobs" description="Preparing job cards, filters, and pagination for your property." />;
-  }
-  
-  if (sessionStatus === "unauthenticated") {
-    return null; // Redirect handled by useEffect
+    return <MyJobsSkeleton />;
   }
 
-  // Main Render Output
+  if (sessionStatus === "unauthenticated") return null;
+
   return (
-    <div className="min-h-screen bg-transparent pb-24">
-      {/* Friendly header with gradient */}
-      <div className="bg-transparent">
-        <div className="w-full max-w-none px-3 py-4 sm:px-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
-          <div className="pcms-page-header">
-            <div className="flex items-center gap-3">
-              <div className="rounded-3xl bg-[var(--pcms-accent-gradient)] p-3 shadow-[var(--pcms-button-shadow)]">
-                <Briefcase className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-black tracking-[-0.04em] text-[var(--pcms-text)]">
-                  Maintenance Jobs
-                </h1>
-                <p className="mt-1 text-sm font-semibold text-[var(--pcms-text-muted)]">
-                  {userProfile ? `Welcome back, ${getDisplayName(userProfile, 'User')}` : 'Manage hotel maintenance jobs'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {selectedProperty && (
-                <CreateJobButton 
-                  propertyId={selectedProperty} 
-                  onJobCreated={handleJobCreated} 
-                />
-              )}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleManualRefresh}
-                disabled={isLoading}
-                isLoading={isLoading}
-                className="rounded-full hover:bg-blue-50 hover:border-blue-300 transition-all"
-                title="Refresh jobs"
-                aria-label="Refresh jobs"
-              >
-                <RefreshCcw className={`h-5 w-5 ${isLoading ? 'animate-spin text-blue-600' : 'text-gray-600'}`} />
-              </Button>
-            </div>
+    <div className="min-h-screen w-full bg-slate-50/60 pb-24">
+      <main className="mx-auto w-full max-w-none space-y-5 px-3 py-4 sm:px-6 sm:py-6 lg:max-w-7xl lg:px-8">
+        <header className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">My Jobs</h1>
+            <p className="mt-1 text-sm leading-6 text-slate-600">View and manage jobs assigned to you.</p>
+            {userProfile ? (
+              <p className="mt-1 text-sm font-medium text-slate-700">Signed in as {getDisplayName(userProfile, "User")}</p>
+            ) : null}
           </div>
-        </div>
-      </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {selectedProperty ? <CreateJobButton propertyId={selectedProperty} onJobCreated={handleJobCreated} /> : null}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => refreshJobs(true)}
+              disabled={isLoading}
+              className="h-11 w-full border-slate-300 text-slate-800 sm:w-auto"
+            >
+              <RefreshCcw className={cn("mr-2 h-4 w-4", isLoading && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
+        </header>
 
-      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
-        {/* Job count info with friendly design */}
-        <Card className="pcms-section-card mb-6">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  {filteredJobs.length > 0 ? (
-                    <TrendingUp className="h-5 w-5 text-blue-600" />
-                  ) : (
-                    <Info className="h-5 w-5 text-blue-600" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">
-                    {filteredJobs.length === jobs.length && !filtersApplied()
-                      ? `You have ${jobs.length} maintenance job${jobs.length !== 1 ? 's' : ''} ${jobs.length === 0 ? 'yet' : 'in total'}`
-                      : `Showing ${filteredJobs.length} of ${jobs.length} maintenance job${jobs.length !== 1 ? 's' : ''}`
-                    }
-                  </p>
-                  {jobs.length > 0 && (
-                    <p className="mt-1 text-sm font-semibold text-[var(--pcms-text-muted)]">
-                      {filtersApplied() ? 'Filtered results' : 'All maintenance jobs'}
-                    </p>
-                  )}
-                </div>
-              </div>
-              {jobs.length > 0 && (
-                <div className="flex items-center gap-2">
-                  {!filtersApplied() && (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      All maintenance jobs
-                    </Badge>
-                  )}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <JobStatusSummary jobs={jobs} />
 
-        {/* Filters with better design */}
-        <Card className="pcms-section-card mb-6">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-600" />
-              <CardTitle className="text-base">Maintenance job filters</CardTitle>
-            </div>
-            <CardDescription className="text-xs">Refine by search, status, priority, room, category, and page size</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <JobFilters
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              onClearFilters={handleClearFilters}
-            />
-          </CardContent>
-        </Card>
+        <FilterBar filters={filters} onChange={setFilters} onReset={handleResetFilters} />
 
-        {/* Error Display with friendly design */}
-        {error && (
-          <Card className="mb-6 border-red-200 bg-red-50/50">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
-                <div className="p-2 bg-red-100 rounded-full">
-                  <AlertCircle className="h-5 w-5 text-red-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-red-900 mb-1">Unable to load maintenance jobs</h3>
-                  <p className="text-sm text-red-700 mb-3">{error}</p>
-                  <Button 
-                    onClick={() => refreshJobs(true)} 
-                    variant="outline" 
-                    size="sm"
-                    isLoading={isLoading}
-                    loadingText="Loading..."
-                    className="bg-white hover:bg-red-50 border-red-300 text-red-700"
-                  >
-                    <RefreshCcw className="h-3 w-3 mr-2" />
-                    Try Again
-                  </Button>
-                </div>
+        {error ? (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
+              <AlertCircle className="h-5 w-5 shrink-0 text-red-700" />
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold text-red-950">Unable to load jobs</h2>
+                <p className="mt-1 text-sm leading-6 text-red-800">{error}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => refreshJobs(true)}
+                  className="mt-3 h-11 w-full border-red-300 bg-white text-red-800 hover:bg-red-100 sm:w-auto"
+                >
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Retry
+                </Button>
               </div>
             </CardContent>
           </Card>
-        )}
+        ) : null}
 
-        {/* Job List or Empty State */}
-        {!error && (
-          isLoading && jobs.length === 0 ? (
-            <>
-              <div className="hidden md:block"><SkeletonTable rows={8} columns={6} /></div>
-              <SkeletonList rows={5} className="md:hidden" />
-            </>
-          ) : filteredJobs.length > 0 ? (
-            <>
-              {/* Table for Desktop */}
-              <div className="hidden md:block">
-                <Card className="pcms-section-card overflow-hidden">
-                  <Table className="w-full">
-                    <TableHeader>
-                      <TableRow className="bg-gradient-to-r from-gray-50 to-blue-50/30 hover:bg-gray-50 border-b-2 border-gray-200">
-                        <TableHead className="w-[180px] py-4 text-gray-700 font-semibold">Job Number</TableHead>
-                        <TableHead className="py-4 text-gray-700 font-semibold">Title / Category</TableHead>
-                        <TableHead className="py-4 text-gray-700 font-semibold">Room or Area</TableHead>
-                        <TableHead className="py-4 text-gray-700 font-semibold">Status</TableHead>
-                        <TableHead className="py-4 text-gray-700 font-semibold">Created</TableHead>
-                        <TableHead className="w-[100px] py-4 text-gray-700 font-semibold text-right pr-6">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {currentJobs.map((job) => (
-                        <JobTableRow 
-                          key={job.job_id} 
-                          job={job} 
-                          onEdit={handleEdit} 
-                          onDelete={handleDelete} 
-                          onStatusUpdated={handleStatusUpdated} 
-                        />
-                      ))}
-                    </TableBody>
-                  </Table>
-                </Card>
+        {!error && filteredJobs.length > 0 ? (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-slate-900">Assigned Jobs</h2>
+              <p className="text-sm font-medium text-slate-600">
+                Showing {startIndex + 1}-{endIndex} of {filteredJobs.length}
+              </p>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              {currentJobs.map((job) => (
+                <JobCard
+                  key={job.job_id}
+                  job={job}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onStatusUpdated={updateJob}
+                />
+              ))}
+            </div>
+
+            {totalPages > 1 ? (
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <Pagination totalPages={totalPages} currentPage={currentPage} onPageChange={handlePageChange} />
               </div>
-              
-              {/* Cards for Mobile - Improved design */}
-              <div className="md:hidden space-y-4">
-                {currentJobs.map((job) => (
-                  <JobMobileCard 
-                    key={job.job_id} 
-                    job={job} 
-                    onEdit={handleEdit} 
-                    onDelete={handleDelete} 
-                    onStatusUpdated={handleStatusUpdated} 
-                  />
-                ))}
-              </div>
-              
-              {/* Pagination with friendly design */}
-              {totalPages > 1 && (
-                <Card className="mt-6 border-gray-200">
-                  <CardContent className="pt-6">
-                    <div className="text-center space-y-4">
-                      <p className="text-sm text-gray-600">
-                        Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to{' '}
-                        <span className="font-semibold text-gray-900">{endIndex}</span> of{' '}
-                        <span className="font-semibold text-gray-900">{filteredJobs.length}</span> result{filteredJobs.length !== 1 ? 's' : ''}
-                      </p>
-                      <Pagination 
-                        totalPages={totalPages} 
-                        currentPage={currentPage} 
-                        onPageChange={handlePageChange} 
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </>
-          ) : (
-            // Empty State with friendly design
-            <Card className="border-dashed border-2 border-gray-300 bg-gradient-to-br from-gray-50 to-white">
-              <CardContent className="pt-16 pb-16 text-center">
-                <div className="w-full mx-auto space-y-6">
-                  <div className="relative inline-block">
-                    <div className="absolute inset-0 bg-blue-100 rounded-full blur-xl opacity-50"></div>
-                    {jobs.length > 0 ? (
-                      <Search className="h-16 w-16 text-gray-300 mx-auto relative z-10" />
-                    ) : (
-                      <div className="relative z-10">
-                        <Briefcase className="h-16 w-16 text-gray-300 mx-auto" />
-                        <Smile className="h-8 w-8 text-yellow-400 absolute -bottom-2 -right-2" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-semibold text-gray-900">
-                      {jobs.length > 0 ? (
-                        <>
-                          No maintenance jobs match your filters
-                        </>
-                      ) : (
-                        <>
-                          Ready to create the first maintenance job?
-                        </>
-                      )}
-                    </h3>
-                    <p className="text-gray-600 text-sm max-w-sm mx-auto">
-                      {jobs.length > 0
-                        ? "No maintenance jobs match the current filters. Try a different room, category, status, or priority."
-                        : (activePropertyId ?? selectedProperty)
-                          ? "No maintenance jobs found for this property yet. Create the first hotel maintenance job to get started."
-                          : "Create the first maintenance job to begin tracking room and area work."}
-                    </p>
-                  </div>
+            ) : null}
+          </section>
+        ) : null}
 
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-                    {jobs.length > 0 && filtersApplied() && (
-                      <Button 
-                        onClick={handleClearFilters} 
-                        variant="outline"
-                        className="border-blue-200 hover:bg-blue-50 hover:border-blue-300"
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Clear filters
-                      </Button>
-                    )}
-                    {jobs.length === 0 && selectedProperty && (
-                      <CreateJobButton 
-                        propertyId={selectedProperty} 
-                        onJobCreated={handleJobCreated} 
-                      />
-                    )}
-                    <Button 
-                      onClick={() => refreshJobs(true)} 
-                      variant={jobs.length > 0 ? "default" : "outline"}
-                      disabled={isLoading}
-                      className={jobs.length === 0 ? "border-blue-200 hover:bg-blue-50 hover:border-blue-300" : ""}
-                    >
-                      <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                      Refresh list
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        )}
-      </div>
+        {!error && filteredJobs.length === 0 ? (
+          <section className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center shadow-sm">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+              <Briefcase className="h-6 w-6" />
+            </div>
+            <h2 className="mt-4 text-lg font-semibold text-slate-900">
+              {jobs.length === 0 ? "No jobs assigned to you." : "No jobs match these filters."}
+            </h2>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">
+              {jobs.length === 0
+                ? "When a maintenance job is assigned to you, it will appear here."
+                : "Try resetting the filters or searching by a different room, area, status, or priority."}
+            </p>
+            <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+              {jobs.length > 0 ? (
+                <Button type="button" variant="outline" onClick={handleResetFilters} className="h-11 w-full border-slate-300 sm:w-auto">
+                  Reset Filters
+                </Button>
+              ) : null}
+              <Button type="button" onClick={() => refreshJobs(true)} className="h-11 w-full sm:w-auto">
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Refresh
+              </Button>
+            </div>
+          </section>
+        ) : null}
+      </main>
 
-      {/* Dialogs */}
-      <EditDialog 
-        isOpen={isEditDialogOpen} 
-        onClose={() => setIsEditDialogOpen(false)} 
-        job={selectedJob} 
-        onSubmit={handleEditSubmit} 
+      <EditDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => setIsEditDialogOpen(false)}
+        job={selectedJob}
+        onSubmit={handleEditSubmit}
         isSubmitting={isSubmitting}
         availableTopics={availableTopics}
         selectedTopics={selectedTopics}
-        onTopicsChange={handleTopicsChange}
+        onTopicsChange={setSelectedTopics}
+      />
+      <DeleteDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        isSubmitting={isSubmitting}
       />
       <FloatingActionButton label="Create Job" />
-      <DeleteDialog 
-        isOpen={isDeleteDialogOpen} 
-        onClose={() => setIsDeleteDialogOpen(false)} 
-        onConfirm={handleDeleteConfirm} 
-        isSubmitting={isSubmitting} 
-      />
     </div>
   );
-
-  // Helper function to check if any filters are active
-  function filtersApplied() {
-    return filters.search !== "" || filters.status !== "all" || filters.priority !== "all";
-  }
 };
 
 export default MyJobs;

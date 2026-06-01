@@ -61,10 +61,10 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
   };
 
   return (
-    <div className="p-6 max-w-7xl desktop:max-w-[96rem] mx-auto">
+    <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-start">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <CardTitle className="text-2xl font-bold">Room {room.name || 'N/A'}</CardTitle>
             <Badge
               variant="outline"
@@ -102,16 +102,16 @@ export default function RoomDetailContent({ room, properties, jobs }: RoomDetail
                   {preventiveMaintenanceJobs.length}
                 </Badge>
               </div>
-              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 flex items-center justify-between">
+              <div className="flex flex-col gap-3 rounded-md border border-blue-200 bg-blue-50 p-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-blue-900">
                   {preventiveMaintenanceJobs.length} PM {preventiveMaintenanceJobs.length === 1 ? 'job' : 'jobs'} in this room.
                 </p>
-                <div className="flex gap-2">
+                <div className="grid gap-2 sm:flex">
                   <Link href="/dashboard/preventive-maintenance">
-                    <Button size="sm" variant="secondary">Open PM Dashboard</Button>
+                    <Button size="sm" variant="secondary" className="w-full sm:w-auto">Open PM Dashboard</Button>
                   </Link>
                   <Link href="/dashboard/preventive-maintenance/create">
-                    <Button size="sm">Create PM</Button>
+                    <Button size="sm" className="w-full sm:w-auto">Create PM</Button>
                   </Link>
                 </div>
               </div>

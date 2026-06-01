@@ -98,17 +98,7 @@ function LoginContent() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      {/* Decorative orbs */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full bg-blue-200/40 blur-3xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-24 bottom-0 h-96 w-96 rounded-full bg-indigo-200/40 blur-3xl"
-      />
-
-      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-8 sm:px-6 lg:px-8">
+      <div className="relative flex min-h-screen w-full max-w-none flex-col px-3 py-6 sm:px-6 sm:py-8 lg:mx-auto lg:max-w-6xl lg:px-8">
         {/* Top brand bar */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -125,7 +115,7 @@ function LoginContent() {
         </div>
 
         <div className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-5xl">
+          <div className="w-full max-w-none lg:max-w-5xl">
             {message === 'onboarding_complete' && (
               <Alert className="mx-auto mb-6 max-w-md border-emerald-200 bg-emerald-50">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600" />
@@ -135,7 +125,7 @@ function LoginContent() {
               </Alert>
             )}
 
-            <div className="grid items-center gap-10 lg:grid-cols-2">
+            <div className="grid items-center gap-6 lg:grid-cols-2 lg:gap-10">
               {/* Left: pitch */}
               <div className="space-y-6 lg:pr-6">
                 <div className="inline-flex items-center gap-2 rounded-full border border-blue-200/70 bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wide text-blue-700 backdrop-blur">
@@ -177,7 +167,7 @@ function LoginContent() {
               </div>
 
               {/* Right: sign-in card */}
-              <Card className="mx-auto w-full max-w-md border-slate-200/80 bg-white/95 shadow-xl shadow-slate-900/[0.06] backdrop-blur">
+              <Card className="w-full max-w-none border-slate-200/80 bg-white/95 shadow-xl shadow-slate-900/[0.06] backdrop-blur sm:mx-auto sm:max-w-md">
                 <CardHeader className="space-y-3 text-center">
                   <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-blue-100 text-blue-700">
                     <Shield className="h-6 w-6" />

@@ -34,7 +34,7 @@ export default async function RoomDetailPage({ params }: Props) {
 // Loading Skeleton
 function LoadingSkeleton() {
   return (
-    <div className="p-6 max-w-7xl desktop:max-w-[96rem] mx-auto">
+    <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
       <div className="animate-pulse">
         <div className="h-8 w-1/3 bg-gray-200 rounded mb-4"></div>
         <div className="h-4 w-1/4 bg-gray-200 rounded mb-4"></div>

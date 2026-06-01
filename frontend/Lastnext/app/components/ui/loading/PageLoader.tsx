@@ -15,7 +15,7 @@ export function PageLoader({
 }) {
   return (
     <div className={cn('min-h-[60vh] w-full px-3 py-6 sm:px-6', className)} role="status" aria-live="polite" aria-busy="true">
-      <div className="mx-auto max-w-7xl space-y-5">
+      <div className="w-full max-w-none space-y-5 lg:mx-auto lg:max-w-7xl">
         <div className="rounded-[2rem] border border-cyan-100 bg-white/85 p-5 shadow-[var(--pcms-shadow-sm)] backdrop-blur sm:p-6">
           <div className="flex items-center gap-4">
             <div className="relative grid h-14 w-14 place-items-center rounded-2xl bg-[var(--pcms-accent-gradient)] text-white shadow-[var(--pcms-button-shadow)]">

@@ -4131,3 +4131,31 @@ body {
   flex-direction: column;
   gap: 1rem;
 }
+
+/* Final mobile-width guardrails: keep dashboard content full-width on phones. */
+@media (max-width: 640px) {
+  .pcms-app-shell main > div,
+  .pcms-app-shell main [class*="max-w-7xl"],
+  .pcms-app-shell main [class*="max-w-[96rem]"],
+  .pcms-app-shell main [class*="max-w-4xl"],
+  .pcms-app-shell main [class*="max-w-3xl"],
+  .pcms-app-shell main [class*="max-w-2xl"] {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .pcms-app-shell main [class*="container"] {
+    width: 100% !important;
+    max-width: none !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  .pcms-app-shell .pcms-page-header,
+  .pcms-app-shell .pcms-section-card,
+  .pcms-app-shell .pcms-workspace-card,
+  .pcms-app-shell .pcms-card-modern,
+  .pcms-app-shell [data-mobile-full="true"] {
+    width: 100%;
+  }
+}

@@ -20,7 +20,7 @@ export default async function RoomsIndexPage() {
   const rooms = (await fetchAllRooms(accessToken).catch(() => [])) || [];
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 px-3 py-5 sm:px-6">
+    <div className="w-full max-w-none space-y-5 px-3 py-4 sm:px-6 sm:py-5 lg:mx-auto lg:max-w-7xl">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">PCMS</p>
@@ -57,7 +57,7 @@ export default async function RoomsIndexPage() {
               <li key={room.room_id}>
                 <Link
                   href={`/dashboard/rooms/${room.room_id}`}
-                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-slate-900">

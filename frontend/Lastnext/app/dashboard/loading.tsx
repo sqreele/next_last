@@ -2,7 +2,7 @@ import { DashboardKpiSkeleton, JobListSkeleton, Skeleton } from '@/app/component
 
 export default function DashboardLoading() {
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 px-3 py-5 sm:px-6">
+    <div className="w-full max-w-none space-y-5 px-3 py-4 sm:px-6 sm:py-5 lg:mx-auto lg:max-w-7xl">
       <div className="flex flex-col gap-3 rounded-3xl border border-cyan-100 bg-white/80 p-5 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2">
           <Skeleton className="h-3 w-24" />

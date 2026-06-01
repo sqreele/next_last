@@ -524,7 +524,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 {/* Sticky mobile stepper — clickable, completion-aware */}
                 <nav
                   aria-label="Form steps"
-                  className="sticky top-0 z-10 -mx-3 border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur xl:hidden"
+                  className="sticky top-0 z-10 -mx-3 border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur sm:-mx-6 sm:px-6 xl:hidden"
                   style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
                 >
                   <div className="mb-1 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -581,7 +581,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             );
           })()}
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="grid w-full gap-5 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-5 sm:space-y-6 md:space-y-8">
           {/* Upload loading overlay */}
           {isSubmitting && (
@@ -600,7 +600,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
           )}
           {/* Step 1: Status & Priority */}
-            <div id="cj-step-1" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 scroll-mt-24">
+            <div id="cj-step-1" className="w-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-6 scroll-mt-24">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">1</div>
                 <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Status &amp; Priority</h3>
@@ -712,7 +712,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Step 2: Assignment & Location */}
-            <div id="cj-step-2" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 scroll-mt-24">
+            <div id="cj-step-2" className="w-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-6 scroll-mt-24">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">2</div>
                 <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Location &amp; Room</h3>
@@ -883,7 +883,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Step 3: Job Details */}
-            <div id="cj-step-3" className="rounded-2xl border border-purple-200 bg-purple-50 p-4 shadow-sm sm:p-6 scroll-mt-24">
+            <div id="cj-step-3" className="w-full rounded-2xl border border-purple-200 bg-purple-50 p-3 shadow-sm sm:p-6 scroll-mt-24">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">3</div>
                 <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Job Details</h3>
@@ -947,7 +947,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Step 4: Evidence Upload */}
-            <div id="cj-step-4" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 scroll-mt-24">
+            <div id="cj-step-4" className="w-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-6 scroll-mt-24">
               <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500 text-sm font-black text-white shadow sm:h-9 sm:w-9">4</div>
                 <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Photo Evidence</h3>
@@ -1002,10 +1002,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               const allReady = completedCount === stepStatus.length;
               return (
                 <div
-                  className="fixed bottom-[4.5rem] left-0 right-0 z-20 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
+                  className="fixed bottom-[4.5rem] left-0 right-0 z-20 border-t border-slate-200 bg-white px-3 py-3 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
                   style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
                 >
-                  <div className="mx-auto max-w-lg md:max-w-none">
+                  <div className="w-full max-w-none md:max-w-none">
                     {!allReady && !isSubmitting && (
                       <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 md:hidden">
                         <span className="flex items-center gap-1.5">

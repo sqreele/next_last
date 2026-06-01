@@ -136,7 +136,7 @@ export default function EditJobPage() {
 
   if (error) {
     return (
-      <div className="w-full mx-auto p-4">
+      <div className="w-full max-w-none px-3 py-4 sm:px-6">
         <div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-700 text-sm">
           {error}
         </div>
@@ -156,7 +156,7 @@ export default function EditJobPage() {
 
   // Simple inline form instead of complex dialog component
   return (
-    <div className="relative max-w-2xl mx-auto p-4 sm:p-6">
+    <div className="relative w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-2xl">
       {/* Full-screen saving overlay */}
       {isSubmitting && (
         <div
@@ -173,14 +173,15 @@ export default function EditJobPage() {
           </p>
         </div>
       )}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-between mb-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-md sm:p-6">
+        <div className="mb-6 flex items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-gray-900">
             Edit Job #{job.job_id}
           </h1>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="grid h-11 w-11 place-items-center rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Close edit form"
           >
             ✕
           </button>
@@ -319,18 +320,18 @@ export default function EditJobPage() {
           </div>
 
           {/* Submit Button */}
-          <div className="flex gap-3 pt-4">
+          <div className="sticky bottom-[4.5rem] -mx-4 grid gap-2 border-t border-slate-200 bg-white px-4 py-3 sm:static sm:mx-0 sm:flex sm:border-t-0 sm:px-0 sm:py-4">
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="min-h-11 rounded-xl border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 sm:w-auto"
               disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="min-h-11 rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Saving..." : "Save Changes"}

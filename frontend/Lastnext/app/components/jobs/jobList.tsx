@@ -507,7 +507,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
       )}
 
       {totalPages > 1 && (
-        <div className="mt-8 px-4 flex justify-center items-center">
+        <div className="mt-8 flex items-center justify-center px-0 sm:px-4">
           <div className="rounded-full border border-[var(--pcms-border)] bg-white/90 p-2 shadow-[var(--pcms-shadow-sm)] touch-action-manipulation">
             <Pagination
               currentPage={currentPage}
@@ -519,7 +519,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
       )}
 
       {selectionEnabled && selectedJobs.length > 0 && (
-        <div className="fixed inset-x-3 bottom-3 z-40 md:inset-x-auto md:bottom-6 md:left-1/2 md:-translate-x-1/2">
+        <div className="fixed inset-x-2 bottom-3 z-40 sm:inset-x-3 md:inset-x-auto md:bottom-6 md:left-1/2 md:-translate-x-1/2">
           <JobBatchActionBar
             selected={selectedJobs}
             totalVisible={sortedJobs.length}

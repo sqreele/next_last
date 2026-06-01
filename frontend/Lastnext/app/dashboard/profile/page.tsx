@@ -90,13 +90,13 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-white">
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-          <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-3">
+          <div className="w-full max-w-none px-3 py-3 sm:px-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
             </div>
           </div>
         </div>
-        <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-6">
+        <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
           <div className="text-center space-y-4">
             <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto"></div>
             <p className="text-sm text-gray-500">Loading...</p>
@@ -115,13 +115,13 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen bg-white">
         <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-          <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-3">
+          <div className="w-full max-w-none px-3 py-3 sm:px-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
             <div className="flex items-center justify-between">
               <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
             </div>
           </div>
         </div>
-        <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-6">
+        <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
           <Card className="w-full mx-auto">
             <CardContent className="pt-6">
               <div className="text-center space-y-4">
@@ -143,20 +143,20 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-white">
       {/* Instagram-style header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-3">
+        <div className="w-full max-w-none px-3 py-3 sm:px-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 py-6">
+      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
           {/* Profile Information */}
           <div className="lg:col-span-2">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <CardTitle className="text-xl">Personal Information</CardTitle>
                   <CardDescription>Your account details and preferences</CardDescription>
@@ -167,7 +167,7 @@ export default function ProfilePage() {
                 </Button>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center gap-4">
                   {profileImageUrl ? (
                     <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-blue-200">
                       <Image 
@@ -280,7 +280,7 @@ export default function ProfilePage() {
 
             {/* Properties Summary */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <CardTitle className="text-lg">Properties</CardTitle>
                   <CardDescription>Your managed properties</CardDescription>

@@ -92,7 +92,7 @@ export default function DashboardLayout({
           ref={mainRef}
           className="
             flex-1 overflow-auto
-            p-3 mobile:p-4 tablet:p-5 desktop:p-7
+            px-0 py-3 sm:px-4 tablet:p-5 desktop:p-7
             pb-32 mobile:pb-36 tablet:pb-8 desktop:pb-8
             transition-all duration-200
             scroll-smooth
@@ -103,11 +103,11 @@ export default function DashboardLayout({
             onRefresh={handleRefresh}
             scrollTargetRef={mainRef}
             className="
-              mx-auto w-full
-              max-w-[430px] mobile:max-w-full tablet:max-w-7xl desktop:max-w-[96rem]
+              mx-0 w-full max-w-none
+              tablet:mx-auto tablet:max-w-7xl desktop:max-w-[96rem]
             "
           >
-            <PageTransition className="space-y-4 mobile:space-y-5 tablet:space-y-6">
+            <PageTransition className="w-full space-y-4 mobile:space-y-5 tablet:space-y-6">
               {children}
             </PageTransition>
           </PullToRefresh>

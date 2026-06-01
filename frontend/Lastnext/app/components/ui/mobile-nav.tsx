@@ -42,7 +42,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
   return (
     <nav
       className={cn(
-        "fixed left-3 right-3 z-50 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(15,23,42,0.10)] md:hidden",
+        "fixed left-2 right-2 z-50 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(15,23,42,0.10)] sm:left-3 sm:right-3 md:hidden",
         "transition-transform duration-200 ease-out will-change-transform",
         hidden ? "translate-y-[calc(100%+1rem)]" : "translate-y-0",
         className,
@@ -51,7 +51,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
       role="navigation"
       aria-label="Mobile navigation"
     >
-      <div className="flex items-center justify-around gap-1 px-2 py-1.5">
+      <div className="flex items-center justify-around gap-1 px-1.5 py-1.5 sm:px-2">
         {navigationItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -68,7 +68,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
             >
               <div
                 className={cn(
-                  "flex flex-col items-center gap-1 px-2 py-2 rounded-xl transition-all duration-150 ease-out active:scale-95 touch-manipulation min-h-[56px] justify-center",
+                  "flex flex-col items-center gap-1 px-1.5 py-2 rounded-xl transition-all duration-150 ease-out active:scale-95 touch-manipulation min-h-[56px] justify-center sm:px-2",
                   isActive
                     ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
                     : "text-slate-700 hover:bg-slate-100 active:bg-slate-100",

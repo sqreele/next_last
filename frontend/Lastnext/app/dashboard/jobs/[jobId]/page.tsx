@@ -79,16 +79,20 @@ export default async function JobPage({ params }: Props) {
     };
 
     return (
-      <div className="mx-auto max-w-4xl space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="pcms-page-header text-2xl font-black tracking-[-0.03em] text-[var(--pcms-text)] sm:text-3xl">
-            Job: <PriorityBadge priority={job.priority} /> #{job.job_id}
-          </h1>
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="w-full max-w-none space-y-5 px-3 py-4 sm:px-0 sm:py-0 lg:mx-auto lg:max-w-4xl">
+        <div className="pcms-page-header">
+          <div className="min-w-0">
+            <p className="pcms-eyebrow">Maintenance Job</p>
+            <h1 className="flex flex-wrap items-center gap-2">
+              <span>Job #{job.job_id}</span>
+              <PriorityBadge priority={job.priority} />
+            </h1>
+          </div>
+          <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
             <ReassignJobButton job={job} />
             <a
               href={`/dashboard/jobs/${job.job_id}/print/`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 sm:w-auto"
             >
               Printable work order
             </a>

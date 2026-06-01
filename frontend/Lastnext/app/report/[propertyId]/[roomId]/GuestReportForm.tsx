@@ -69,7 +69,7 @@ export function GuestReportForm({ propertyId, roomId }: GuestReportFormProps) {
 
   if (state === 'success' && confirmation) {
     return (
-      <div className="mx-auto max-w-md rounded-3xl border border-emerald-200 bg-white p-6 shadow-xl">
+      <div className="w-full max-w-none rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl sm:mx-auto sm:max-w-md sm:rounded-3xl sm:p-6">
         <div className="grid h-14 w-14 place-items-center rounded-2xl bg-emerald-100 text-emerald-700">
           <CheckCircle2 className="h-7 w-7" />
         </div>
@@ -109,7 +109,7 @@ export function GuestReportForm({ propertyId, roomId }: GuestReportFormProps) {
   }
 
   return (
-    <div className="mx-auto max-w-md rounded-3xl border border-cyan-100 bg-white p-6 shadow-xl">
+    <div className="w-full max-w-none rounded-2xl border border-cyan-100 bg-white p-4 shadow-xl sm:mx-auto sm:max-w-md sm:rounded-3xl sm:p-6">
       <header className="flex items-center gap-3">
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-white shadow">
           <Wrench className="h-6 w-6" />

@@ -453,7 +453,7 @@ export default function InventoryPage() {
 
   if (error) {
     return (
-      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6">
+      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <p className="text-red-800">{error}</p>
@@ -466,7 +466,7 @@ export default function InventoryPage() {
   const lowStockCount = inventory.filter(item => item.status === 'low_stock' || item.status === 'out_of_stock').length;
 
   return (
-    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-3 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem] space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex-1">
@@ -486,7 +486,7 @@ export default function InventoryPage() {
             {(searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all' || selectedRoom !== 'all' || lowStockOnly || selectedJobFilter !== 'all' || selectedPmFilter !== 'all') && ` (${filteredInventory.length} filtered)`}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
           <InventoryCsvImport
             currentPropertyId={selectedProperty}
             onImported={() => {
@@ -509,7 +509,7 @@ export default function InventoryPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="name">Item Name *</Label>
                   <Input id="name" placeholder="Enter item name" />
@@ -534,7 +534,7 @@ export default function InventoryPage() {
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" placeholder="Enter description" />
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid gap-4 sm:grid-cols-3">
                 <div>
                   <Label htmlFor="quantity">Initial Quantity *</Label>
                   <Input id="quantity" type="number" defaultValue="0" />
@@ -548,7 +548,7 @@ export default function InventoryPage() {
                   <Input id="unit" defaultValue="pcs" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="location">Location</Label>
                   <Input id="location" placeholder="Storage location" />
@@ -619,7 +619,7 @@ export default function InventoryPage() {
             </div>
             
             {/* Second Row: All Filters */}
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
               <Filter className="h-5 w-5 text-gray-400" />
               
               {/* Category Filter */}
@@ -627,7 +627,7 @@ export default function InventoryPage() {
                 setSelectedCategory(value);
                 setPage(1);
               }}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
@@ -645,7 +645,7 @@ export default function InventoryPage() {
                 setSelectedStatus(value);
                 setPage(1);
               }}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -663,7 +663,7 @@ export default function InventoryPage() {
                 setSelectedRoom(value);
                 setPage(1);
               }}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="All Rooms" />
                 </SelectTrigger>
                 <SelectContent>
@@ -681,7 +681,7 @@ export default function InventoryPage() {
                 setSelectedJobFilter(value);
                 setPage(1);
               }}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="All Jobs" />
                 </SelectTrigger>
                 <SelectContent>
@@ -699,7 +699,7 @@ export default function InventoryPage() {
                 setSelectedPmFilter(value);
                 setPage(1);
               }}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="All PMs" />
                 </SelectTrigger>
                 <SelectContent>
@@ -766,7 +766,7 @@ export default function InventoryPage() {
           </CardContent>
         </Card>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
           {filteredInventory.map((item) => (
             <Card key={item.id} className="h-full hover:shadow-lg transition-shadow border-2 hover:border-blue-300">
               <CardHeader className="pb-3">
@@ -887,7 +887,70 @@ export default function InventoryPage() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="grid gap-3 p-3 md:hidden">
+              {filteredInventory.map((item) => (
+                <article key={item.id} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                  <div className="flex gap-3">
+                    <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-blue-50 text-2xl">
+                      {item.image_url ? (
+                        <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                      ) : (
+                        CATEGORY_ICONS[item.category] || '📋'
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-bold text-gray-900">{item.name}</h3>
+                          <p className="font-mono text-xs text-gray-500">{item.item_id}</p>
+                        </div>
+                        {getStatusBadge(item.status)}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <Badge variant="secondary" className="text-xs">{item.category_display || item.category}</Badge>
+                        {item.location ? <Badge variant="outline" className="text-xs">{item.location}</Badge> : null}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-2 border-t border-slate-100 pt-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Quantity</span>
+                      <strong className="text-gray-900">{item.quantity} {item.unit}</strong>
+                    </div>
+                    {(item.last_job_by_user || item.last_pm_by_user) && (
+                      <div className="rounded-xl bg-slate-50 p-2 text-xs text-gray-600">
+                        {item.last_job_by_user ? <p><span className="font-semibold text-blue-600">Job:</span> {item.last_job_by_user.job_id}</p> : null}
+                        {item.last_pm_by_user ? <p><span className="font-semibold text-purple-600">PM:</span> {item.last_pm_by_user.pm_id}</p> : null}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setShowRestockDialog(true);
+                        }}
+                      >
+                        Restock
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedItem(item);
+                          setShowUseDialog(true);
+                        }}
+                        disabled={item.quantity === 0}
+                      >
+                        Use
+                      </Button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">

@@ -817,7 +817,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     <div className="min-h-screen bg-transparent pb-24">
       {/* Friendly header with gradient */}
       <div className="bg-transparent">
-        <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 sm:px-6 py-4">
+        <div className="w-full max-w-none px-3 py-4 sm:px-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
           <div className="pcms-page-header">
             <div className="flex items-center gap-3">
               <div className="rounded-3xl bg-[var(--pcms-accent-gradient)] p-3 shadow-[var(--pcms-button-shadow)]">
@@ -856,7 +856,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
         </div>
       </div>
 
-      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto px-4 sm:px-6 py-6">
+      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
         {/* Job count info with friendly design */}
         <Card className="pcms-section-card mb-6">
           <CardContent className="pt-6">

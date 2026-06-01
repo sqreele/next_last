@@ -204,7 +204,7 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
 
   if (error || !task) {
     return (
-      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6">
+      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <p className="text-red-800">{error || 'Task not found'}</p>
@@ -238,7 +238,7 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
   };
 
   return (
-    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6 space-y-6">
+    <div className="w-full max-w-none space-y-4 px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button asChild variant="outline" size="sm">

@@ -76,7 +76,7 @@ function CreatePageContent() {
   };
 
   return (
-    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto py-4 px-3 sm:py-6 sm:px-4 md:py-8 md:px-6 lg:px-8">
+    <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Create Preventive Maintenance</h1>
         <Link 

@@ -6,7 +6,7 @@ import PreventiveMaintenanceDashboard from '@/app/components/preventive/Preventi
 export default function PreventiveMaintenanceDashboardPage() {
   return (
     <div className="bg-gray-50 min-h-screen">
-      <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-7xl desktop:max-w-[96rem] mx-auto">
+      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
         <PreventiveMaintenanceDashboard />
       </div>
     </div>

@@ -4159,3 +4159,34 @@ body {
     width: 100%;
   }
 }
+
+@media (max-width: 640px) {
+  .sneat-dashboard {
+    width: 100%;
+    padding: 0.75rem;
+    gap: 1rem;
+  }
+
+  .sneat-page-header,
+  .sneat-card,
+  .sneat-welcome-card,
+  .sneat-stat-card,
+  .sneat-chart-card {
+    width: 100%;
+    border-radius: 0.75rem;
+  }
+
+  .sneat-page-actions,
+  .sneat-card__head,
+  .sneat-list__row,
+  .sneat-timeline__top {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sneat-page-actions > *,
+  .sneat-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

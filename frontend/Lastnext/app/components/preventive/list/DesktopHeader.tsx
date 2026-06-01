@@ -27,7 +27,7 @@ export default function DesktopHeader({
   onDebugMachine
 }: DesktopHeaderProps) {
   return (
-    <div className="hidden md:block container mx-auto px-4 py-8">
+    <div className="hidden md:block container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl py-8">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Preventive Maintenance</h1>

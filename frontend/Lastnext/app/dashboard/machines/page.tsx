@@ -249,7 +249,7 @@ export default function MachinesListPage() {
 
   if (error) {
     return (
-      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6">
+      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <p className="text-red-800">{error}</p>
@@ -262,13 +262,13 @@ export default function MachinesListPage() {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6 space-y-6">
+    <div className="w-full max-w-none space-y-4 px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-              <Wrench className="h-8 w-8 text-blue-600" />
+            <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 sm:gap-3 sm:text-3xl">
+              <Wrench className="h-7 w-7 text-blue-600 sm:h-8 sm:w-8" />
               Machines
             </h1>
           </div>
@@ -296,10 +296,10 @@ export default function MachinesListPage() {
             </div>
             
             {/* Category Filter */}
-            <div className="flex items-center gap-2">
+            <div className="grid gap-2 sm:flex sm:items-center">
               <Filter className="h-5 w-5 text-gray-400" />
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
@@ -348,7 +348,7 @@ export default function MachinesListPage() {
           </CardContent>
         </Card>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
           {filteredMachines.map((machine) => {
             const machineImageUrl = getMachineImageUrl(machine);
 
@@ -361,8 +361,8 @@ export default function MachinesListPage() {
                 <Card className="h-full hover:shadow-lg transition-shadow border-2 hover:border-blue-300">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-4 flex-1 min-w-0">
-                        <div className="w-[150px] h-[150px] rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center flex-shrink-0">
+                      <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
+                        <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50 sm:h-[150px] sm:w-[150px]">
                           {machineImageUrl ? (
                             <>
                               <img
@@ -440,7 +440,43 @@ export default function MachinesListPage() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="grid gap-3 p-3 md:hidden">
+              {filteredMachines.map((machine) => {
+                const machineImageUrl = getMachineImageUrl(machine);
+                return (
+                  <button
+                    key={machine.machine_id}
+                    type="button"
+                    onClick={() => router.push(`/dashboard/machines/${machine.machine_id}`)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-blue-300"
+                  >
+                    <div className="flex gap-3">
+                      <div className="flex h-20 w-20 flex-none items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-blue-50 text-blue-600">
+                        {machineImageUrl ? (
+                          <img src={machineImageUrl} alt={`${machine.name} image`} className="h-full w-full object-cover" />
+                        ) : (
+                          <Wrench className="h-8 w-8" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-sm font-bold text-gray-900">{machine.name}</h3>
+                        <p className="mt-0.5 font-mono text-xs text-gray-500">{machine.machine_id}</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {machine.category ? <Badge variant="secondary" className="text-xs">{machine.category}</Badge> : null}
+                          <Badge variant="outline" className="text-xs">{machine.pm_count || 0} PM</Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-1.5 border-t border-slate-100 pt-3 text-xs font-medium text-gray-600">
+                      <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-gray-400" />{machine.location || 'No location'}</span>
+                      <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-gray-400" />{machine.last_maintenance ? new Date(machine.last_maintenance).toLocaleDateString() : 'No maintenance yet'}</span>
+                      <span>{machine.property_name || machine.property?.name || 'No property'}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">

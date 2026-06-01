@@ -20,7 +20,7 @@ export default async function PropertiesIndexPage() {
   const properties = (await fetchProperties(accessToken).catch(() => [])) || [];
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 px-3 py-5 sm:px-6">
+    <div className="w-full max-w-none space-y-5 px-3 py-4 sm:px-6 sm:py-5 lg:mx-auto lg:max-w-7xl">
       <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">PCMS</p>

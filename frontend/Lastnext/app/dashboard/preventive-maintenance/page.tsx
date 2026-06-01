@@ -521,7 +521,7 @@ function PreventiveMaintenanceListPageContent() {
 
       {/* Property Verification Info */}
       {selectedProperty && (
-        <div className="container mx-auto px-4 mb-4">
+        <div className="container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl mb-4">
           <div className="text-sm text-gray-600">
             {matchingPMItems.length} verified • {mismatchedPMItems.length} at different property
           </div>
@@ -530,7 +530,7 @@ function PreventiveMaintenanceListPageContent() {
 
       {/* Property Verification Alert */}
       {selectedProperty && mismatchedPMItems.length > 0 && (
-        <div className="container mx-auto px-4 mb-4">
+        <div className="container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl mb-4">
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
@@ -550,7 +550,7 @@ function PreventiveMaintenanceListPageContent() {
 
       {/* Property Match Confirmation */}
       {selectedProperty && mismatchedPMItems.length === 0 && matchingPMItems.length > 0 && (
-        <div className="container mx-auto px-4 mb-4">
+        <div className="container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl mb-4">
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
@@ -565,7 +565,7 @@ function PreventiveMaintenanceListPageContent() {
       )}
 
       {/* Stats Cards */}
-      <div className="hidden md:block container mx-auto px-4">
+      <div className="hidden md:block container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl">
         <StatsCards stats={stats} />
       </div>
 

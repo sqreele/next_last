@@ -51,7 +51,7 @@ export default function EditProfilePage() {
 
   if (loading) {
     return (
-      <div className="w-full max-w-2xl mx-auto p-4">
+      <div className="w-full max-w-none px-3 py-4 sm:px-6 lg:mx-auto lg:max-w-2xl">
         <Card>
           <CardContent className="flex justify-center py-12">
             <div className="animate-pulse space-y-4 w-full">
@@ -77,7 +77,7 @@ export default function EditProfilePage() {
   // Verify that the user is editing their own profile
   if (String(userProfile.id) !== profileId) {
     return (
-      <div className="w-full max-w-2xl mx-auto p-4">
+      <div className="w-full max-w-none px-3 py-4 sm:px-6 lg:mx-auto lg:max-w-2xl">
         <Card>
           <CardContent className="flex justify-center py-12">
             <div className="text-center">
@@ -170,7 +170,7 @@ export default function EditProfilePage() {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-4 space-y-6">
+    <div className="w-full max-w-none px-3 py-4 sm:px-6 lg:mx-auto lg:max-w-2xl space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/dashboard/profile">
           <Button variant="ghost" size="sm">
@@ -332,17 +332,17 @@ export default function EditProfilePage() {
               )}
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="sticky bottom-[4.5rem] -mx-4 grid gap-2 border-t border-slate-200 bg-white px-4 py-3 sm:static sm:mx-0 sm:flex sm:border-t-0 sm:px-0 sm:py-4">
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 sm:flex-none"
+                className="w-full sm:w-auto"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {isSubmitting ? 'Saving...' : 'Save Changes'}
               </Button>
               
-              <Link href="/dashboard/profile" className="flex-1 sm:flex-none">
+              <Link href="/dashboard/profile" className="w-full sm:w-auto">
                 <Button variant="outline" className="w-full">
                   Cancel
                 </Button>

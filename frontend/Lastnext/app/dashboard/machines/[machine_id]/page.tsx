@@ -367,7 +367,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
 
   if (error || !machine) {
     return (
-      <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6">
+      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-4">
@@ -394,10 +394,10 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
     : '/dashboard/preventive-maintenance/create';
 
   return (
-    <div className="max-w-7xl desktop:max-w-[96rem] mx-auto p-4 sm:p-6 space-y-6">
+    <div className="w-full max-w-none space-y-4 px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-start gap-4">
-        <div className="flex items-center gap-4 flex-1">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 lg:flex-1">
           <Button asChild variant="outline" size="sm">
             <Link href="/dashboard/machines">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -405,8 +405,8 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
             </Link>
           </Button>
           <div className="flex-1">
-            <div className="flex flex-wrap items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <div className="mb-2 flex flex-wrap items-center gap-3">
+              <h1 className="flex items-center gap-3 text-2xl font-bold text-gray-900 sm:text-3xl">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Wrench className="h-6 w-6 text-blue-600" />
                 </div>
@@ -416,7 +416,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
             <p className="text-gray-600 mt-1 font-mono text-sm">ID: {machine.machine_id}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 self-start">
+        <div className="grid w-full gap-2 self-start sm:flex sm:w-auto sm:items-center">
           <Button asChild size="sm">
             <Link href={createPreventiveLink}>
               <FilePlus2 className="h-4 w-4 mr-2" />
@@ -466,7 +466,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
             <div 
               ref={qrCodeRef}
               className="bg-white p-4 rounded-lg border-2 border-gray-200 flex-shrink-0"

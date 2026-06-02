@@ -87,6 +87,15 @@ class RoomSerializer(serializers.ModelSerializer):
         model = Room
         fields = ['room_id', 'name', 'room_type', 'is_active', 'created_at', 'properties']
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['room_id'] = data.get('room_id') or getattr(instance, 'room_id', None)
+        data['name'] = data.get('name') or 'Unnamed room'
+        data['room_type'] = data.get('room_type') or 'Room'
+        data['is_active'] = bool(data.get('is_active'))
+        data['properties'] = data.get('properties') if isinstance(data.get('properties'), list) else []
+        return data
+
 
 class RoomSummarySerializer(serializers.ModelSerializer):
     """
@@ -101,8 +110,20 @@ class RoomSummarySerializer(serializers.ModelSerializer):
         fields = ['room_id', 'name', 'room_type', 'properties']
 
     def get_properties(self, obj):
-        # Return property_id strings to keep payload small
-        return list(obj.properties.values_list('property_id', flat=True))
+        # Return property_id strings to keep payload small. Missing/removed
+        # property relations should not break nested dashboard payloads.
+        try:
+            return list(obj.properties.values_list('property_id', flat=True))
+        except Exception:
+            return []
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['room_id'] = data.get('room_id') or getattr(instance, 'room_id', None)
+        data['name'] = data.get('name') or 'Unnamed room'
+        data['room_type'] = data.get('room_type') or 'Room'
+        data['properties'] = data.get('properties') if isinstance(data.get('properties'), list) else []
+        return data
 
 # Property serializer for PM status endpoint
 class PropertyPMStatusSerializer(serializers.ModelSerializer):
@@ -261,6 +282,14 @@ class TopicSerializer(serializers.ModelSerializer):
         model = Topic
         fields = ['title', 'description', 'id', 'is_visible_in_create_job']
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['id'] = data.get('id') or getattr(instance, 'id', None)
+        data['title'] = data.get('title') or 'Untitled topic'
+        data['description'] = data.get('description') or ''
+        data['is_visible_in_create_job'] = bool(data.get('is_visible_in_create_job', True))
+        return data
+
 
 # Area serializer
 class AreaSerializer(serializers.ModelSerializer):
@@ -386,7 +415,10 @@ class JobSerializer(serializers.ModelSerializer):
         ]
 
     def get_comments_count(self, obj):
-        return obj.comments.count()
+        try:
+            return obj.comments.count()
+        except Exception:
+            return 0
 
     def validate(self, data):
         """Validate timestamp fields to ensure logical order"""
@@ -412,29 +444,30 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_user(self, obj):
         """Return user information in a structured format"""
-        if obj.user:
+        user = getattr(obj, 'user', None)
+        if user:
             return {
-                'id': obj.user.id,
-                'username': obj.user.username,
-                'first_name': obj.user.first_name,
-                'last_name': obj.user.last_name,
-                'email': obj.user.email,
-                'full_name': obj.user.get_full_name().strip() or get_user_display_name(obj.user),
-                'display_name': get_user_display_name(obj.user),
+                'id': getattr(user, 'id', None),
+                'username': getattr(user, 'username', '') or '',
+                'first_name': getattr(user, 'first_name', '') or '',
+                'last_name': getattr(user, 'last_name', '') or '',
+                'email': getattr(user, 'email', '') or '',
+                'full_name': user.get_full_name().strip() or get_user_display_name(user),
+                'display_name': get_user_display_name(user),
             }
         return None
 
     def get_user_name(self, obj):
-        return get_user_display_name(obj.user)
+        return get_user_display_name(getattr(obj, 'user', None)) or 'Unknown user'
 
     def get_technician_name(self, obj):
-        return get_user_display_name(obj.user)
+        return get_user_display_name(getattr(obj, 'user', None)) or 'Unknown technician'
 
     def get_created_by_name(self, obj):
-        return get_user_display_name(obj.user)
+        return get_user_display_name(getattr(obj, 'user', None)) or 'Unknown user'
 
     def get_updated_by_name(self, obj):
-        return get_user_display_name(obj.updated_by)
+        return get_user_display_name(getattr(obj, 'updated_by', None)) or ''
 
     def get_profile_image(self, obj):
         """
@@ -442,7 +475,8 @@ class JobSerializer(serializers.ModelSerializer):
         nesting. Returns:
           { profile_image: <url or null>, properties: [{property_id, name}] }
         """
-        userprofile = getattr(obj.user, 'userprofile', None)
+        user = getattr(obj, 'user', None)
+        userprofile = getattr(user, 'userprofile', None)
         if not userprofile:
             return None
 
@@ -464,8 +498,12 @@ class JobSerializer(serializers.ModelSerializer):
     def get_image_urls(self, obj):
         """Return a list of full URLs for all images associated with the job."""
         request = self.context.get('request')
-        if request and obj.job_images.exists():
-            return [request.build_absolute_uri(image.image.url) for image in obj.job_images.all()]
+        try:
+            images = obj.job_images.all()
+            if request and obj.job_images.exists():
+                return [request.build_absolute_uri(image.image.url) for image in images if getattr(image, 'image', None)]
+        except Exception:
+            return []
         return []
 
     def create(self, validated_data):
@@ -520,6 +558,14 @@ class JobSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        data['rooms'] = data.get('rooms') if isinstance(data.get('rooms'), list) else []
+        data['topics'] = data.get('topics') if isinstance(data.get('topics'), list) else []
+        data['images'] = data.get('images') if isinstance(data.get('images'), list) else []
+        data['image_urls'] = data.get('image_urls') if isinstance(data.get('image_urls'), list) else []
+        data['description'] = data.get('description') or ''
+        data['status'] = data.get('status') or 'pending'
+        data['priority'] = data.get('priority') or 'medium'
+        data['comments_count'] = data.get('comments_count') or 0
         return data
 
 # User registration serializer

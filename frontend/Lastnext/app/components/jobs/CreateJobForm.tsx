@@ -846,32 +846,47 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                   <Label className="text-sm font-semibold text-slate-900 sm:text-base">
                     Category <span className="text-red-500">*</span>
                   </Label>
-                  <Select
-                    value={values.topic.title}
-                    onValueChange={(value) => {
-                      const topic = topics.find(t => t.title === value);
-                      if (topic) {
-                        setFieldValue('topic', { title: topic.title, description: topic.description || '' });
-                        setFieldTouched('topic.title', true, false);
-                      }
-                    }}
-                    disabled={isSubmitting}
+                  <div
+                    role="listbox"
+                    aria-label="Select a maintenance category"
+                    aria-invalid={Boolean((touched.topic?.title || submitCount > 0) && errors.topic?.title)}
+                    className={`scrollbar-hide flex flex-nowrap gap-2 overflow-x-auto whitespace-nowrap px-1 pb-2 ${
+                      (touched.topic?.title || submitCount > 0) && errors.topic?.title ? 'rounded-xl ring-2 ring-red-200' : ''
+                    }`}
                   >
-                    <SelectTrigger className={`h-11 border-2 rounded-xl transition-all duration-200 sm:h-12 ${
-                      (touched.topic?.title || submitCount > 0) && errors.topic?.title ? 'border-red-400 bg-red-50' : 'border-slate-300 bg-white'
-                    }`}>
-                      <SelectValue placeholder="Select a maintenance category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {topics.length ? topics.map(topic => (
-                        <SelectItem key={topic.id} value={topic.title}>
+                    {topics.length ? topics.map((topic) => {
+                      const isSelected = values.topic.title === topic.title;
+
+                      return (
+                        <button
+                          key={topic.id}
+                          type="button"
+                          role="option"
+                          aria-selected={isSelected}
+                          onClick={() => {
+                            setFieldValue('topic', { title: topic.title, description: topic.description || '' });
+                            setFieldTouched('topic.title', true, false);
+                          }}
+                          disabled={isSubmitting}
+                          className={`shrink-0 touch-manipulation rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200 sm:px-5 sm:py-2.5 ${
+                            isSelected
+                              ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
+                              : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                          } ${isSubmitting ? 'cursor-not-allowed opacity-60' : ''}`}
+                        >
                           {topic.title}
-                        </SelectItem>
-                      )) : (
-                        <SelectItem value="loading" disabled>Loading topics...</SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                        </button>
+                      );
+                    }) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="shrink-0 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-500 sm:px-5 sm:py-2.5"
+                      >
+                        Loading topics...
+                      </button>
+                    )}
+                  </div>
                   {(touched.topic?.title || submitCount > 0) && errors.topic?.title && (
                     <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
                       <AlertCircle className="h-4 w-4" />

@@ -748,20 +748,33 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     }}
                     disabled={isSubmitting}
                   >
-                    <SelectTrigger className="h-11 border-2 rounded-xl border-slate-300 bg-white text-slate-900 sm:h-12">
+                    <SelectTrigger className={`h-11 border-2 rounded-xl bg-white text-slate-900 sm:h-12 ${
+                      (touched.area_id || submitCount > 0) && errors.area_id ? 'border-red-400 bg-red-50' : 'border-slate-300'
+                    }`}>
                       <SelectValue placeholder="Select an area (optional)" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No area</SelectItem>
                       {areas.length ? areas.map(area => (
                         <SelectItem key={area.id} value={String(area.id)}>
-                          {area.name}
+                          {area.name}{area.property_name ? ` · ${area.property_name}` : ''}
                         </SelectItem>
                       )) : (
                         <SelectItem value="empty" disabled>No areas configured</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
+                  {values.area_id && (
+                    <p className="text-xs font-bold text-cyan-700">
+                      Selected area will be saved with the job and shown on Jobs by Area.
+                    </p>
+                  )}
+                  {(touched.area_id || submitCount > 0) && errors.area_id && (
+                    <p className="flex items-center gap-1.5 text-sm font-semibold text-red-700">
+                      <AlertCircle className="h-4 w-4" />
+                      {String(errors.area_id)}
+                    </p>
+                  )}
                 </div>
 
                 {/* Floor Selection */}

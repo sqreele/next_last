@@ -104,6 +104,69 @@ class JobWithAreaTests(APITestCase):
         detail = self.client.get(f'/api/v1/jobs/{job_id}/')
         self.assertEqual(detail.status_code, status.HTTP_200_OK)
         self.assertEqual(detail.data['area_name'], 'Lobby')
+        self.assertEqual(detail.data['area_id'], self.area.id)
+        self.assertEqual(detail.data['area']['name'], 'Lobby')
+
+    def test_create_area_only_job_is_listed_with_area(self):
+        _login(self.client, self.user)
+        resp = self.client.post('/api/v1/jobs/', {
+            'description': 'Bathroom leak',
+            'remarks': '',
+            'priority': 'medium',
+            'status': 'pending',
+            'topic_data': {'title': self.topic.title},
+            'area_id': self.area.id,
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        self.assertEqual(resp.data['area_id'], self.area.id)
+        self.assertEqual(resp.data['area']['name'], 'Lobby')
+
+        listing = self.client.get('/api/v1/jobs/')
+        self.assertEqual(listing.status_code, status.HTTP_200_OK)
+        results = listing.data.get('results', listing.data)
+        created = next(job for job in results if job['job_id'] == resp.data['job_id'])
+        self.assertEqual(created['area_name'], 'Lobby')
+        self.assertEqual(created['area_id'], self.area.id)
+
+    def test_area_and_room_must_belong_to_same_property(self):
+        other_prop = Property.objects.create(name='Hotel Other')
+        other_prop.users.add(self.user)
+        other_room = Room.objects.create(name='909', room_type='Standard')
+        other_room.properties.add(other_prop)
+
+        _login(self.client, self.user)
+        resp = self.client.post('/api/v1/jobs/', {
+            'description': 'Mismatch',
+            'remarks': '',
+            'priority': 'medium',
+            'status': 'pending',
+            'room_id': other_room.room_id,
+            'topic_data': {'title': self.topic.title},
+            'area_id': self.area.id,
+        }, format='json')
+
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        self.assertFalse(Job.objects.filter(description='Mismatch').exists())
+
+    def test_room_id_create_rejects_inaccessible_room(self):
+        other_user = User.objects.create_user(username='other-tech', password='pw12345!')
+        other_prop = Property.objects.create(name='Hotel Other Tenant')
+        other_prop.users.add(other_user)
+        other_room = Room.objects.create(name='808', room_type='Standard')
+        other_room.properties.add(other_prop)
+
+        _login(self.client, self.user)
+        resp = self.client.post('/api/v1/jobs/', {
+            'description': 'Cross tenant room',
+            'remarks': '',
+            'priority': 'medium',
+            'status': 'pending',
+            'room_id': other_room.room_id,
+            'topic_data': {'title': self.topic.title},
+        }, format='json')
+
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, resp.content)
+        self.assertFalse(Job.objects.filter(description='Cross tenant room').exists())
 
 
 class JobCommentTests(APITestCase):

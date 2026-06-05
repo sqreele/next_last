@@ -392,7 +392,7 @@ class JobSerializer(serializers.ModelSerializer):
     area = AreaSummarySerializer(read_only=True)
     area_id = serializers.PrimaryKeyRelatedField(
         source='area', queryset=Area.objects.all(),
-        required=False, allow_null=True, write_only=True,
+        required=False, allow_null=True,
     )
     area_name = serializers.CharField(source='area.name', read_only=True)
     comments_count = serializers.SerializerMethodField()
@@ -439,6 +439,19 @@ class JobSerializer(serializers.ModelSerializer):
         # If updated_at is provided, ensure it's not before created_at
         if updated_at and created_at and updated_at < created_at:
             raise serializers.ValidationError("Updated date cannot be before created date")
+
+        room_id = data.get('room_id')
+        area = data.get('area')
+        if room_id and area is not None:
+            try:
+                room = Room.objects.prefetch_related('properties').get(room_id=room_id)
+            except Room.DoesNotExist:
+                raise serializers.ValidationError({'room_id': 'Invalid room ID'})
+
+            if not room.properties.filter(id=area.property_id).exists():
+                raise serializers.ValidationError({
+                    'area_id': 'Selected area must belong to the same property as the selected room.'
+                })
         
         return data
 

@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from django.db.models import Prefetch
 from rest_framework_simplejwt.tokens import RefreshToken
 from google.oauth2 import id_token
@@ -1499,10 +1499,15 @@ class JobViewSet(viewsets.ModelViewSet):
             'preventivemaintenance_set'  # Reverse foreign key
         ).distinct()  # Remove duplicates from joins
 
-        # Restrict by user's accessible properties unless staff/admin
+        # Restrict by user's accessible properties unless staff/admin.
+        # Area-only jobs do not have a room join, so include the job's area
+        # property in the tenant predicate as well.
         if not (user.is_staff or user.is_superuser):
             accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
-            queryset = queryset.filter(rooms__properties__in=accessible_property_ids)
+            queryset = queryset.filter(
+                Q(rooms__properties__in=accessible_property_ids) |
+                Q(area__property_id__in=accessible_property_ids)
+            )
 
         # Filters
         property_filter = self.request.query_params.get('property_id') or self.request.query_params.get('property')
@@ -1515,9 +1520,9 @@ class JobViewSet(viewsets.ModelViewSet):
         user_filter = self.request.query_params.get('user_id')
 
         if property_filter:
-            property_q = Q(rooms__properties__property_id=property_filter)
+            property_q = Q(rooms__properties__property_id=property_filter) | Q(area__property__property_id=property_filter)
             if str(property_filter).isdigit():
-                property_q |= Q(rooms__properties__id=int(property_filter))
+                property_q |= Q(rooms__properties__id=int(property_filter)) | Q(area__property_id=int(property_filter))
             queryset = queryset.filter(property_q)
 
         if topic_filter and str(topic_filter).lower() != 'all':
@@ -1643,12 +1648,18 @@ class JobViewSet(viewsets.ModelViewSet):
         # Apply same filtering logic as get_queryset
         if not (user.is_staff or user.is_superuser):
             accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
-            base_queryset = base_queryset.filter(rooms__properties__in=accessible_property_ids)
+            base_queryset = base_queryset.filter(
+                Q(rooms__properties__in=accessible_property_ids) |
+                Q(area__property_id__in=accessible_property_ids)
+            )
         
         # Apply filters
         property_filter = query_params.get('property_id')
         if property_filter:
-            base_queryset = base_queryset.filter(rooms__properties__property_id=property_filter)
+            property_q = Q(rooms__properties__property_id=property_filter) | Q(area__property__property_id=property_filter)
+            if str(property_filter).isdigit():
+                property_q |= Q(rooms__properties__id=int(property_filter)) | Q(area__property_id=int(property_filter))
+            base_queryset = base_queryset.filter(property_q)
             
         # Calculate stats using aggregation
         stats = base_queryset.aggregate(
@@ -1735,9 +1746,9 @@ class JobViewSet(viewsets.ModelViewSet):
 
         # Get all jobs where the (possibly overridden) user is the owner/creator
         jobs = Job.objects.filter(user=target_user).select_related(
-            'user', 'updated_by'
+            'user', 'updated_by', 'area', 'area__property'
         ).prefetch_related(
-            'rooms', 'topics', 'job_images', 'job_images__uploaded_by'
+            'rooms', 'rooms__properties', 'topics', 'job_images', 'job_images__uploaded_by'
         ).order_by('-created_at')
         
         initial_count = jobs.count()
@@ -1752,7 +1763,10 @@ class JobViewSet(viewsets.ModelViewSet):
         room_name_filter = request.query_params.get('room_name')
         
         if property_filter:
-            jobs = jobs.filter(rooms__properties__property_id=property_filter)
+            property_q = Q(rooms__properties__property_id=property_filter) | Q(area__property__property_id=property_filter)
+            if str(property_filter).isdigit():
+                property_q |= Q(rooms__properties__id=int(property_filter)) | Q(area__property_id=int(property_filter))
+            jobs = jobs.filter(property_q)
             logger.info(f"Applied property filter: {property_filter}")
         
         if status_filter:
@@ -1843,17 +1857,27 @@ class JobViewSet(viewsets.ModelViewSet):
         if accessible is None:
             return  # staff/superuser bypass
 
-        # Rooms come in as a list of Room model instances after validation
+        room_instances = []
+
+        # Rooms can arrive as model instances for endpoints that write the M2M
+        # field directly, or as the Create Job form's `room_id` helper field.
         rooms = serializer.validated_data.get('rooms')
         if rooms:
-            for room in rooms:
-                room_property_ids = set(
-                    room.properties.values_list('id', flat=True)
+            room_instances.extend(list(rooms))
+
+        room_id = serializer.validated_data.get('room_id')
+        if room_id:
+            room = Room.objects.prefetch_related('properties').filter(room_id=room_id).first()
+            if room is None:
+                raise ValidationError({'room_id': 'Invalid room ID'})
+            room_instances.append(room)
+
+        for room in room_instances:
+            room_property_ids = set(room.properties.values_list('id', flat=True))
+            if not room_property_ids & accessible:
+                raise PermissionDenied(
+                    f"You don't have access to a property containing room '{room.name}'."
                 )
-                if not room_property_ids & accessible:
-                    raise PermissionDenied(
-                        f"You don't have access to a property containing room '{room.name}'."
-                    )
 
         area = serializer.validated_data.get('area')
         if area is not None and getattr(area, 'property_id', None) is not None:

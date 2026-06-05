@@ -170,6 +170,14 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
       }
     }
 
+    // Area-level property references (for area-only jobs without rooms)
+    const area = (job as any).area;
+    if (area && typeof area === 'object') {
+      if (matches(area.property_id)) return true;
+      if (matches(area.property_uuid)) return true;
+      if (matches(area.property)) return true;
+    }
+
     // Room-level properties or direct room property references
     if (Array.isArray((job as any).rooms)) {
       for (const room of (job as any).rooms) {
@@ -282,6 +290,8 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
           j.room_name,
           j.topics?.[0]?.title,
           j.rooms?.[0]?.name,
+          j.area?.name,
+          j.area_name,
         ]
           .filter(Boolean)
           .join(' ')

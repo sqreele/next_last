@@ -76,6 +76,14 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
     return displayName === fallbackName ? fallbackName : displayName.split(/\s+/)[0] || displayName;
   }, [job.user, job.technician_name, job.user_name]);
 
+  const roomName = job.rooms?.[0]?.name || null;
+  const areaName = job.area?.name || job.area_name || null;
+  const locationLabel = areaName
+    ? `${areaName}${roomName ? ` · Room ${roomName}` : ''}`
+    : roomName
+      ? `Room ${roomName}`
+      : 'No Area';
+
   const [activeIdx, setActiveIdx] = useState(0);
   const [failed, setFailed] = useState<Set<number>>(new Set());
 
@@ -168,7 +176,7 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
         <div className="grid gap-1.5 rounded-[1rem] border border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] p-2 text-[11px] font-bold text-[var(--pcms-text-muted)] sm:gap-2 sm:rounded-[1.35rem] sm:p-3 sm:text-xs">
           <div className="flex min-w-0 items-center gap-2">
             <MapPin className="h-3.5 w-3.5 shrink-0 text-cyan-600" />
-            <span className="truncate">Room / Area: {job.rooms?.[0]?.name || "Not assigned"}</span>
+            <span className="truncate">Area / Room: {locationLabel}</span>
           </div>
           <div className="flex min-w-0 items-center gap-2">
             <UserRound className="h-3.5 w-3.5 shrink-0 text-blue-600" />

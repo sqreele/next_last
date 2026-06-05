@@ -79,6 +79,8 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
       job.priority,
       job.topics?.[0]?.title,
       job.rooms?.[0]?.name,
+      job.area?.name,
+      job.area_name,
     ].some((value) => String(value || '').toLowerCase().includes(query)));
   }, [jobs, selectedRoom, searchQuery]);
 

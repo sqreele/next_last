@@ -68,6 +68,14 @@ const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid"
     router.push(`/dashboard/jobs/${job.job_id}`);
   }, [router, job.job_id]);
 
+  const roomName = job.rooms?.[0]?.name || null;
+  const areaName = job.area?.name || job.area_name || null;
+  const locationLabel = areaName
+    ? `${areaName}${roomName ? ` · Room ${roomName}` : ''}`
+    : roomName
+      ? `Room ${roomName}`
+      : 'No Area';
+
   return (
     <Card className={"group overflow-hidden bg-white shadow hover:shadow-md transition-all duration-200"} onClick={goToDetail}>
       <div className="relative">
@@ -111,7 +119,7 @@ const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid"
             <div className="mt-1 flex items-center gap-1 text-xs text-gray-600">
               <MapPin className="w-3.5 h-3.5 text-gray-400" />
               <span className="truncate">
-                {job.rooms && job.rooms.length > 0 ? (job.rooms[0].name || "Unknown") : "N/A"}
+                {locationLabel}
               </span>
             </div>
           </div>

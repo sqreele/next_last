@@ -8,13 +8,14 @@ import { Button } from "@/app/components/ui/button";
 import { PageHeader, PriorityBadge, SectionCard } from '@/app/components/pcms-ui';
 import { useT } from '@/app/lib/i18n/LocaleProvider';
 import { Textarea } from "@/app/components/ui/textarea";
-import { Plus, Loader, AlertCircle, CheckCircle, Upload } from 'lucide-react';
+import { Plus, Loader, AlertCircle, CheckCircle, Upload, Search, Check } from 'lucide-react';
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { useToast } from "@/app/components/ui/use-toast";
 import { useSession, signIn } from '@/app/lib/session.client';
 import { Label } from "@/app/components/ui/label";
+import { Input } from "@/app/components/ui/input";
 import RoomAutocomplete from '@/app/components/jobs/RoomAutocomplete';
 import FileUpload from '@/app/components/jobs/FileUpload';
 import { Room, TopicFromAPI, Area } from '@/app/lib/types';
@@ -49,7 +50,7 @@ const validationSchema = Yup.object().shape({
   priority: Yup.string().required('Priority is required'),
   remarks: Yup.string().optional(),
   topic: Yup.object().shape({
-    title: Yup.string().required('Topic is required'),
+    title: Yup.string().required('Category is required'),
     description: Yup.string(),
   }).required(),
   room: Yup.object()
@@ -156,6 +157,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPropertyId, setCurrentPropertyId] = useState<string | null>(null);
+  const [categorySearch, setCategorySearch] = useState('');
 
   const normalizeRoomsResponse = useCallback((data: unknown): Room[] => {
     if (Array.isArray(data)) return data as Room[];
@@ -855,51 +857,111 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 </div>
 
                 {/* Topic Selection */}
-                <div className="md:col-span-2 space-y-2">
-                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Category <span className="text-red-500">*</span>
-                  </Label>
-                  <div
-                    role="listbox"
-                    aria-label="Select a maintenance category"
-                    aria-invalid={Boolean((touched.topic?.title || submitCount > 0) && errors.topic?.title)}
-                    className={`scrollbar-hide flex flex-nowrap gap-2 overflow-x-auto whitespace-nowrap px-1 pb-2 ${
-                      (touched.topic?.title || submitCount > 0) && errors.topic?.title ? 'rounded-xl ring-2 ring-red-200' : ''
-                    }`}
-                  >
-                    {topics.length ? topics.map((topic) => {
-                      const isSelected = values.topic.title === topic.title;
+                <div className="md:col-span-2 space-y-3">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-semibold text-slate-900 sm:text-base">
+                      Category <span className="text-red-500">*</span>
+                    </Label>
+                    <p className="text-xs font-medium text-slate-600 sm:text-sm">
+                      Choose one category. Tap the selected tag again to clear it.
+                    </p>
+                  </div>
 
-                      return (
-                        <button
-                          key={topic.id}
-                          type="button"
-                          role="option"
-                          aria-selected={isSelected}
-                          onClick={() => {
-                            setFieldValue('topic', { title: topic.title, description: topic.description || '' });
-                            setFieldTouched('topic.title', true, false);
-                          }}
-                          disabled={isSubmitting}
-                          className={`shrink-0 touch-manipulation rounded-full border px-4 py-2 text-sm font-semibold transition-all duration-200 sm:px-5 sm:py-2.5 ${
-                            isSelected
-                              ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
-                              : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50'
-                          } ${isSubmitting ? 'cursor-not-allowed opacity-60' : ''}`}
-                        >
-                          {topic.title}
-                        </button>
-                      );
-                    }) : (
+                  {values.topic.title && (
+                    <div className="rounded-2xl border border-blue-200 bg-blue-50 p-3">
+                      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-blue-900">Selected category</p>
                       <button
                         type="button"
-                        disabled
-                        className="shrink-0 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-500 sm:px-5 sm:py-2.5"
+                        onClick={() => {
+                          setFieldValue('topic', { title: '', description: '' });
+                          setFieldTouched('topic.title', true, false);
+                        }}
+                        disabled={isSubmitting}
+                        className={`inline-flex min-h-11 touch-manipulation items-center gap-2 rounded-full border-2 border-blue-600 bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 active:scale-[0.98] ${
+                          isSubmitting ? 'cursor-not-allowed opacity-60' : ''
+                        }`}
                       >
-                        Loading topics...
+                        <Check className="h-4 w-4" aria-hidden />
+                        {values.topic.title}
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  {topics.length > 8 && (
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden />
+                      <Input
+                        type="search"
+                        value={categorySearch}
+                        onChange={(event) => setCategorySearch(event.target.value)}
+                        placeholder="Search categories..."
+                        aria-label="Search categories"
+                        className="h-11 rounded-xl border-2 border-slate-300 bg-white pl-10 text-base text-slate-900 placeholder:text-slate-500 sm:h-12"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  )}
+
+                  {(() => {
+                    const trimmedCategorySearch = categorySearch.trim().toLowerCase();
+                    const visibleTopics = trimmedCategorySearch
+                      ? topics.filter((topic) => topic.title.toLowerCase().includes(trimmedCategorySearch))
+                      : topics;
+                    const hasCategoryError = Boolean((touched.topic?.title || submitCount > 0) && errors.topic?.title);
+                    const hasManyTopics = topics.length > 12;
+
+                    return (
+                      <div
+                        role="listbox"
+                        aria-label="Choose one maintenance category"
+                        aria-multiselectable="false"
+                        aria-invalid={hasCategoryError}
+                        className={`flex flex-wrap gap-2 rounded-2xl border bg-white p-2 sm:gap-3 sm:p-3 ${
+                          hasManyTopics ? 'max-h-64 overflow-y-auto pr-2' : ''
+                        } ${hasCategoryError ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200'}`}
+                      >
+                        {topics.length ? visibleTopics.map((topic) => {
+                          const isSelected = values.topic.title === topic.title;
+
+                          return (
+                            <button
+                              key={topic.id}
+                              type="button"
+                              role="option"
+                              aria-selected={isSelected}
+                              onClick={() => {
+                                setFieldValue(
+                                  'topic',
+                                  isSelected ? { title: '', description: '' } : { title: topic.title, description: topic.description || '' },
+                                );
+                                setFieldTouched('topic.title', true, false);
+                              }}
+                              disabled={isSubmitting}
+                              className={`inline-flex min-h-11 touch-manipulation items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-all duration-200 active:scale-[0.98] sm:px-5 ${
+                                isSelected
+                                  ? 'border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-600/20 hover:bg-blue-700'
+                                  : 'border-slate-300 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800'
+                              } ${isSubmitting ? 'cursor-not-allowed opacity-60' : ''}`}
+                            >
+                              {isSelected && <Check className="h-4 w-4" aria-hidden />}
+                              <span>{topic.title}</span>
+                            </button>
+                          );
+                        }) : (
+                          <div className="flex min-h-11 items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-500 sm:px-5">
+                            Loading topics...
+                          </div>
+                        )}
+
+                        {topics.length > 0 && visibleTopics.length === 0 && (
+                          <div className="flex min-h-11 items-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
+                            No categories match “{categorySearch}”.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {(touched.topic?.title || submitCount > 0) && errors.topic?.title && (
                     <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
                       <AlertCircle className="h-4 w-4" />

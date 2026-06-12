@@ -115,7 +115,11 @@ export default class MachineService {
         page_size: String(DEFAULT_MACHINE_PAGE_SIZE),
       };
 
-      const useProxy = !accessToken;
+      // Browser requests should go through the same-origin Next.js proxy so
+      // deployments do not depend on NEXT_PUBLIC_API_URL/CORS and can use the
+      // secure session cookie for authentication. Server-side callers with an
+      // explicit token can still call the Django API directly.
+      const useProxy = typeof window !== 'undefined' || !accessToken;
       if (!useProxy && !accessToken) {
         throw new Error('Access token required for direct machine request is missing.');
       }

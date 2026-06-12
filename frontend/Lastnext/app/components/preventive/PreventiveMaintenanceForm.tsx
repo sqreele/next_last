@@ -576,7 +576,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     } finally {
       setLoadingMachines(false);
     }
-  }, []);
+  }, [accessToken]);
 
   // Fetch available maintenance tasks (templates) - filtered by selected machines
   const fetchAvailableMaintenanceTasks = useCallback(async (machineIds?: string[]) => {

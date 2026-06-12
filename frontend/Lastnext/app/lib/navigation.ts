@@ -9,6 +9,7 @@ import {
   MapPin,
   Package,
   Zap,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -24,6 +25,7 @@ export const primaryNavigationItems: AppNavigationItem[] = [
   { name: 'Maintenance Jobs', href: '/dashboard/my-jobs', icon: ClipboardList, shortName: 'Jobs' },
   { name: 'Create Job', href: '/dashboard/create-job', icon: Plus, shortName: 'Create' },
   { name: 'Rooms', href: '/dashboard/rooms/by-topics', icon: Building2, shortName: 'Rooms' },
+  { name: 'Machines', href: '/dashboard/machines', icon: Wrench, shortName: 'Equip' },
   { name: 'Inventory', href: '/dashboard/inventory', icon: Package, shortName: 'Stock' },
   { name: 'Electricity', href: '/dashboard/utility-consumption', icon: Zap, shortName: 'Power' },
   { name: 'Reports', href: '/dashboard/jobs-report', icon: FileText, shortName: 'Reports' },
@@ -34,6 +36,7 @@ export const dashboardNavigationItems: AppNavigationItem[] = [
   { name: 'Maintenance Jobs', href: '/dashboard/my-jobs', icon: ClipboardList },
   { name: 'Create Job', href: '/dashboard/create-job', icon: Plus },
   { name: 'Rooms', href: '/dashboard/rooms/by-topics', icon: Building2 },
+  { name: 'Machines', href: '/dashboard/machines', icon: Wrench },
   { name: 'Areas', href: '/dashboard/areas', icon: MapPin },
   { name: 'Inventory', href: '/dashboard/inventory', icon: Package },
   { name: 'Electricity', href: '/dashboard/utility-consumption', icon: Zap },

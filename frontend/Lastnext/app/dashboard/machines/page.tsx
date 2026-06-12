@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/app/lib/session.client';
 import { useUser } from '@/app/lib/stores/mainStore';
 import apiClient from '@/app/lib/api-client';
+import MachineService from '@/app/lib/MachineService';
 import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Input } from '@/app/components/ui/input';
@@ -103,31 +104,18 @@ export default function MachinesListPage() {
     setLoading(true);
     setError(null);
     try {
-      const params: any = {
-        page: page,
-        page_size: pageSize
-      };
-      if (selectedProperty) {
-        params.property_id = selectedProperty;
+      const machineService = new MachineService();
+      const machineResponse = await machineService.getMachines(selectedProperty || undefined);
+
+      if (!machineResponse.success || !machineResponse.data) {
+        throw new Error(machineResponse.message || 'Failed to load machines');
       }
 
-      const response = await apiClient.get('/api/v1/machines/', { params });
-      
-      let machinesData: Machine[] = [];
-      let total = 0;
-      
-      if (Array.isArray(response.data)) {
-        machinesData = response.data;
-        total = response.data.length;
-      } else if (response.data && 'results' in response.data) {
-        machinesData = response.data.results || [];
-        total = response.data.count || 0;
-      }
-      
-      // Debug: Log first machine to check property_name
-      if (machinesData.length > 0) {
-      }
-      
+      const allMachines = machineResponse.data as Machine[];
+      const total = allMachines.length;
+      const startIndex = (page - 1) * pageSize;
+      const machinesData = allMachines.slice(startIndex, startIndex + pageSize);
+
       setTotalCount(total);
 
       // Fetch PM rows once, then aggregate by machine_id to avoid N+1 requests.

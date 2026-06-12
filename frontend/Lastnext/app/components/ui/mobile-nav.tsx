@@ -22,6 +22,7 @@ const NAV_I18N: Record<string, DictKey> = {
   Reports: "nav.reports",
   Rooms: "nav.rooms",
   Areas: "nav.areas",
+  Machines: "nav.machines",
 };
 
 interface MobileNavProps {
@@ -30,7 +31,7 @@ interface MobileNavProps {
 }
 
 const navigationItems = primaryNavigationItems.filter((item) =>
-  ["Dashboard", "Maintenance Jobs", "Create Job", "Inventory", "Reports"].includes(
+  ["Dashboard", "Maintenance Jobs", "Create Job", "Machines", "Inventory", "Reports"].includes(
     item.name,
   ),
 );
@@ -111,6 +112,7 @@ export function MobileTopBar({ className }: MobileNavProps) {
     if (pathname.includes("/create-job") || pathname.includes("/createJob"))
       return t("nav.createJob");
     if (pathname.includes("/profile")) return t("nav.profile");
+    if (pathname.includes("/machines")) return t("nav.machines");
     if (pathname.includes("/preventive-maintenance")) return t("nav.preventiveMaintenance");
     return t("nav.dashboard");
   };

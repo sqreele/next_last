@@ -1,5 +1,3 @@
-import { MEDIA_CONFIG } from '../config';
-
 /**
  * Get the base media URL for the current environment
  */
@@ -19,24 +17,34 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
     return null;
   }
   
+  const normalizedInput = imageUrl.trim().replace(/\\/g, '/');
+
+  const mediaIndex = normalizedInput.indexOf('/media/');
+
+  // Normalize absolute filesystem paths or duplicated media prefixes from Django.
+  if (mediaIndex >= 0 && !/^https?:\/\//i.test(normalizedInput)) {
+    const mediaPath = normalizedInput.slice(mediaIndex).replace(/^\/media\/(?:media\/)+/i, '/media/');
+    return encodeURI(mediaPath);
+  }
+
   // If it's already a relative URL starting with /media/, return as is
-  if (imageUrl.startsWith('/media/')) {
-    return imageUrl;
+  if (normalizedInput.startsWith('/media/')) {
+    return encodeURI(normalizedInput.replace(/^\/media\/(?:media\/)+/i, '/media/'));
   }
   
   // If it's a full external URL, handle it properly
-  if (imageUrl.startsWith('http')) {
+  if (normalizedInput.startsWith('http')) {
     // Handle Docker internal URLs that need to be converted to external URLs
-    if (imageUrl.includes('backend:8000') || imageUrl.includes('django-backend:8000')) {
+    if (normalizedInput.includes('backend:8000') || normalizedInput.includes('django-backend:8000')) {
       // In production, convert to the production domain
       if (process.env.NODE_ENV === 'production') {
-        const productionUrl = imageUrl
+        const productionUrl = normalizedInput
           .replace('http://backend:8000', 'https://pcms.live')
           .replace('http://django-backend:8000', 'https://pcms.live');
         return productionUrl;
       } else {
         // In development, convert to localhost URLs for browser access
-        const externalUrl = imageUrl
+        const externalUrl = normalizedInput
           .replace('http://backend:8000', 'http://localhost:8000')
           .replace('http://django-backend:8000', 'http://localhost:8000');
         return externalUrl;
@@ -44,33 +52,33 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
     }
     
     // Handle localhost:8000 URLs - preserve external URLs for media files
-    if (imageUrl.includes('localhost:8000')) {
+    if (normalizedInput.includes('localhost:8000')) {
       // For media files, keep the external URL to avoid Next.js image optimization issues
-      if (imageUrl.includes('/media/')) {
-        return imageUrl;
+      if (normalizedInput.includes('/media/')) {
+        return encodeURI(normalizedInput);
       }
       // For non-media files, use relative path
-      const relativePath = imageUrl.replace('http://localhost:8000', '');
+      const relativePath = normalizedInput.replace('http://localhost:8000', '');
       return relativePath;
     }
     
     // For production URLs, return as-is
-    if (imageUrl.includes('pcms.live') || imageUrl.includes('www.pcms.live')) {
-      return imageUrl;
+    if (normalizedInput.includes('pcms.live') || normalizedInput.includes('www.pcms.live')) {
+      return encodeURI(normalizedInput);
     }
     
     // For other external URLs, return them as-is for Next.js Image component
     // The unoptimized prop will be used to bypass Next.js optimization
-    return imageUrl;
+    return encodeURI(normalizedInput);
   }
   
   // If it's a relative path without /media/, prepend /media/
-  if (imageUrl.startsWith('maintenance_job_images/') || imageUrl.startsWith('profile_images/')) {
-    return `/media/${imageUrl}`;
+  if (normalizedInput.startsWith('maintenance_job_images/') || normalizedInput.startsWith('profile_images/')) {
+    return encodeURI(`/media/${normalizedInput}`);
   }
   
   // Default case: prepend /media/
-  return `/media/${imageUrl}`;
+  return encodeURI(`/media/${normalizedInput.replace(/^\/+/, '')}`);
 }
 
 /**

@@ -29,8 +29,9 @@ const ModernJobCard = React.memo(function ModernJobCard({ job, viewMode = "grid"
     const urls: string[] = [];
     if (Array.isArray(job.images)) {
       for (const img of job.images) {
-        if (img?.image_url) {
-          const u = createImageUrl(img.image_url);
+        const rawUrl = (img && (img.jpeg_url || img.image_url)) || null;
+        if (rawUrl) {
+          const u = createImageUrl(rawUrl);
           if (u) urls.push(u);
         }
       }

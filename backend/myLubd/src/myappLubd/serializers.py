@@ -13,7 +13,9 @@ from django.db.models import Q
 from django.db.utils import ProgrammingError
 from django.utils import timezone
 from django.core.validators import FileExtensionValidator
+from django.conf import settings
 from datetime import timedelta
+from pathlib import Path
 import math
 
 
@@ -222,6 +224,47 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def get_display_name(self, obj):
         return get_user_display_name(obj.user)
 
+def _build_media_absolute_uri(request, media_path):
+    """Build a stable media URL from paths stored by FileField or helper fields.
+
+    Admin-created records and older conversion jobs can store a mix of values:
+    FileField names, /media/ URLs, absolute backend URLs, or absolute filesystem
+    paths. Normalize those values before exposing them to the frontend.
+    """
+    if not media_path:
+        return None
+
+    value = str(media_path).strip()
+    if not value:
+        return None
+
+    if value.startswith(('http://', 'https://')):
+        return value
+
+    media_url = getattr(settings, 'MEDIA_URL', '/media/') or '/media/'
+    if not media_url.startswith('/'):
+        media_url = f'/{media_url}'
+    if not media_url.endswith('/'):
+        media_url = f'{media_url}/'
+
+    media_root = str(getattr(settings, 'MEDIA_ROOT', '') or '')
+    if media_root and value.startswith(media_root):
+        value = value[len(media_root):].lstrip('/\\')
+
+    # Collapse common bad persisted forms such as /media/media/foo.jpg.
+    while value.startswith(media_url):
+        value = value[len(media_url):]
+    value = value.lstrip('/\\')
+
+    url_path = f'{media_url}{value}'
+    if request:
+        try:
+            return request.build_absolute_uri(url_path)
+        except Exception:
+            return url_path
+    return url_path
+
+
 # Job image serializer
 class JobImageSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
@@ -232,49 +275,32 @@ class JobImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'image_url', 'jpeg_url', 'uploaded_by', 'uploaded_at']
 
     def get_image_url(self, obj):
-        """Return the absolute URL for the image."""
+        """Return the URL for the original uploaded image."""
         if obj.image:
-            return self.context['request'].build_absolute_uri(obj.image.url)
+            request = self.context.get('request')
+            return _build_media_absolute_uri(request, getattr(obj.image, 'url', obj.image.name))
         return None
 
     def get_jpeg_url(self, obj):
-        """Return the absolute URL for the JPEG-converted image when available."""
+        """Return the URL for the JPEG-converted image when available."""
         jpeg_path = getattr(obj, 'jpeg_path', None)
         if not jpeg_path:
             return None
-        # Build a proper media URL path
+
         jp = str(jpeg_path)
-        if jp.startswith('/media/'):
-            url_path = jp
-        elif '/' in jp:
-            # Already a relative path under media
-            url_path = f"/media/{jp}"
-        else:
-            # Backward-compat: only filename stored; infer directory from original image
-            base_dir = None
+        if '/' not in jp and getattr(obj, 'image', None):
+            # Backward-compat: only a filename was stored; infer its directory
+            # from the original image path.
             try:
-                if obj.image and hasattr(obj.image, 'url'):
-                    # obj.image.url is like /media/maintenance_job_images/2025/02/filename.ext
-                    full_url: str = obj.image.url  # type: ignore
-                    # Strip leading /media/ and filename to get directory
-                    if full_url.startswith('/media/'):
-                        remainder = full_url[len('/media/'):]
-                        slash_idx = remainder.rfind('/')
-                        if slash_idx != -1:
-                            base_dir = remainder[:slash_idx]
+                image_name = getattr(obj.image, 'name', '')
+                parent = str(Path(image_name).parent)
+                if parent and parent != '.':
+                    jp = str(Path(parent) / jp)
             except Exception:
-                base_dir = None
-            if base_dir:
-                url_path = f"/media/{base_dir}/{jp}"
-            else:
-                url_path = f"/media/{jp}"
+                pass
+
         request = self.context.get('request')
-        if request:
-            try:
-                return request.build_absolute_uri(url_path)
-            except Exception:
-                return url_path
-        return url_path
+        return _build_media_absolute_uri(request, jp)
 
 # Topic serializer
 class TopicSerializer(serializers.ModelSerializer):
@@ -509,15 +535,24 @@ class JobSerializer(serializers.ModelSerializer):
         }
 
     def get_image_urls(self, obj):
-        """Return a list of full URLs for all images associated with the job."""
+        """Return normalized URLs for all images associated with the job."""
         request = self.context.get('request')
+        urls = []
+        seen = set()
         try:
-            images = obj.job_images.all()
-            if request and obj.job_images.exists():
-                return [request.build_absolute_uri(image.image.url) for image in images if getattr(image, 'image', None)]
+            for image in obj.job_images.all():
+                candidates = [getattr(image, 'jpeg_path', None)]
+                if getattr(image, 'image', None):
+                    candidates.append(getattr(image.image, 'url', image.image.name))
+                for candidate in candidates:
+                    url = _build_media_absolute_uri(request, candidate)
+                    if url and url not in seen:
+                        urls.append(url)
+                        seen.add(url)
+                        break
         except Exception:
             return []
-        return []
+        return urls
 
     def create(self, validated_data):
         request = self.context.get('request')

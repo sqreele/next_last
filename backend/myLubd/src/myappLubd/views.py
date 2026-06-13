@@ -76,6 +76,25 @@ def display_name_from_user_values(first_name='', last_name='', email='', usernam
             return value
     return fallback
 
+
+def display_name_from_user(user, fallback='Unknown Technician'):
+    if not user:
+        return fallback
+
+    profile = getattr(user, 'userprofile', None)
+    profile_full_name = getattr(profile, 'full_name', None)
+    full_name = user.get_full_name().strip() if hasattr(user, 'get_full_name') else ''
+    for candidate in (
+        profile_full_name,
+        full_name,
+        getattr(user, 'email', None),
+        getattr(user, 'username', None),
+    ):
+        value = str(candidate or '').strip()
+        if value and not is_raw_auth_identifier(value):
+            return value
+    return fallback
+
 # Pagination class
 class MaintenancePagination(PageNumberPagination):
     page_size = 10
@@ -1956,7 +1975,7 @@ class JobViewSet(viewsets.ModelViewSet):
         job = self.get_object()
         events = []
 
-        creator_name = getattr(job.user, 'username', None) or getattr(job.user, 'first_name', None) or 'system'
+        creator_name = display_name_from_user(job.user, fallback='system')
         events.append({
             'kind': 'created',
             'at': job.created_at.isoformat() if job.created_at else None,
@@ -1965,7 +1984,7 @@ class JobViewSet(viewsets.ModelViewSet):
         })
 
         if job.completed_at:
-            updater_name = getattr(job.updated_by, 'username', None) or 'unknown'
+            updater_name = display_name_from_user(job.updated_by, fallback='unknown')
             events.append({
                 'kind': 'completed',
                 'at': job.completed_at.isoformat(),
@@ -1975,7 +1994,7 @@ class JobViewSet(viewsets.ModelViewSet):
 
         # Image uploads — JobImage has uploaded_at and uploaded_by
         for image in job.job_images.all().order_by('uploaded_at'):
-            uploaded_by = getattr(image.uploaded_by, 'username', None) if image.uploaded_by else None
+            uploaded_by = display_name_from_user(image.uploaded_by, fallback='unknown') if image.uploaded_by else None
             image_url = None
             if image.image:
                 try:
@@ -1992,7 +2011,7 @@ class JobViewSet(viewsets.ModelViewSet):
 
         # Comments
         for comment in job.comments.select_related('author').order_by('created_at'):
-            author = getattr(comment.author, 'username', None) or 'unknown'
+            author = display_name_from_user(comment.author, fallback='unknown')
             events.append({
                 'kind': 'comment',
                 'at': comment.created_at.isoformat() if comment.created_at else None,

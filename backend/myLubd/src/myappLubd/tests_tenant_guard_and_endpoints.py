@@ -119,7 +119,11 @@ class JobTenantGuardTests(APITestCase):
 class JobAuditLogTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user(username='tech', password='pw12345!')
+        self.user = User.objects.create_user(
+            username='auth0_69678f1e958bafc83554db32',
+            email='tech@example.com',
+            password='pw12345!',
+        )
         self.prop = Property.objects.create(name='Hotel X')
         self.prop.users.add(self.user)
         self.room = Room.objects.create(name='101', room_type='Standard')
@@ -147,6 +151,8 @@ class JobAuditLogTests(APITestCase):
         # two parsed status notes.
         self.assertIn('created', kinds)
         self.assertIn('completed', kinds)
+        created_event = next(e for e in data['events'] if e['kind'] == 'created')
+        self.assertEqual(created_event['actor'], 'tech@example.com')
         status_changes = [e for e in data['events'] if e['kind'] == 'status_change']
         self.assertEqual(len(status_changes), 2)
         self.assertEqual(status_changes[0]['new_status'], 'in_progress')

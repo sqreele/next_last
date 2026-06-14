@@ -5,9 +5,22 @@ from django.db import migrations, models
 
 def add_index_if_not_exists(apps, schema_editor):
     """Add index only if it doesn't exist"""
-    db_alias = schema_editor.connection.alias
     with schema_editor.connection.cursor() as cursor:
+        table_name = 'myappLubd_machine'
         index_name = 'myappLubd_m_group_i_d77154_idx'
+
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_name = %s
+            )
+        """, [table_name])
+        table_exists = cursor.fetchone()[0]
+
+        if not table_exists:
+            print(f"Table {table_name} does not exist, skipping index creation")
+            return
         
         # Check if index exists
         cursor.execute("""
@@ -22,7 +35,7 @@ def add_index_if_not_exists(apps, schema_editor):
             # Add the index
             cursor.execute(f"""
                 CREATE INDEX "{index_name}" 
-                ON myappLubd_machine (group_id)
+                ON "{table_name}" (group_id)
             """)
             print(f"Created index: {index_name}")
         else:

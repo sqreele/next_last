@@ -63,6 +63,12 @@ from .models import (
     RosterLeave,
     Area,
     JobComment,
+    Tenant,
+    TenantMembership,
+    SubscriptionPlan,
+    TenantSubscription,
+    UsageMetric,
+    InventoryUsage,
 )
 
 # Custom Date Joined Month Filter for Admin
@@ -416,13 +422,15 @@ class MachineAdmin(admin.ModelAdmin):
         'group_id',
         'installation_date', 
         'last_maintenance_date',
+        'expected_replacement_date',
+        'warranty_end_date',
         'next_maintenance_date',
         'task_count',
         'procedure_count',
         'get_group_ids'
     ]
-    list_filter = ['status', 'category', 'brand', 'property', 'group_id', 'created_at', CreatedAtMonthFilter, 'installation_date', InstallationDateMonthFilter]
-    search_fields = ['machine_id', 'name', 'brand', 'serial_number', 'description', 'location', 'group_id']
+    list_filter = ['status', 'category', 'brand', 'property', 'group_id', 'created_at', CreatedAtMonthFilter, 'installation_date', InstallationDateMonthFilter, 'warranty_end_date', 'expected_replacement_date']
+    search_fields = ['machine_id', 'name', 'brand', 'serial_number', 'description', 'location', 'group_id', 'asset_tag', 'supplier']
     readonly_fields = ['created_at', 'updated_at', 'next_maintenance_date', 'qr_code_preview', 'maintenance_procedures_display', 'get_group_ids', 'image_preview']  # Removed machine_id - now editable
     filter_horizontal = ['preventive_maintenances']
     
@@ -436,6 +444,14 @@ class MachineAdmin(admin.ModelAdmin):
         }),
         ('Property & Maintenance', {
             'fields': ('property', 'preventive_maintenances', 'maintenance_procedures_display', 'get_group_ids', 'installation_date', 'last_maintenance_date')
+        }),
+        ('Lifecycle & Warranty', {
+            'fields': (
+                'asset_tag', 'purchase_date', 'purchase_cost', 'warranty_start_date',
+                'warranty_end_date', 'expected_replacement_date',
+                'replacement_cost_estimate', 'supplier', 'supplier_contact',
+                'lifecycle_notes',
+            )
         }),
         ('QR Code', {
             'fields': ('qr_code_preview',),
@@ -4291,6 +4307,23 @@ class InventoryAdmin(admin.ModelAdmin):
         
         return response
     export_inventory_csv.short_description = "Export selected/filtered inventory items to CSV"
+
+
+@admin.register(InventoryUsage)
+class InventoryUsageAdmin(admin.ModelAdmin):
+    list_per_page = 25
+    list_display = [
+        'inventory', 'property', 'quantity', 'source', 'job',
+        'preventive_maintenance', 'total_cost', 'consumed_by', 'consumed_at'
+    ]
+    list_filter = ['source', 'property', 'consumed_at', 'created_at']
+    search_fields = [
+        'inventory__item_id', 'inventory__name', 'property__name',
+        'job__job_id', 'preventive_maintenance__pm_id', 'notes',
+        'consumed_by__username', 'consumed_by__email',
+    ]
+    readonly_fields = ['total_cost', 'created_at']
+    autocomplete_fields = ['inventory', 'property', 'job', 'preventive_maintenance', 'consumed_by']
     
     def mark_as_available(self, request, queryset):
         updated_count = queryset.update(status='available')
@@ -5181,3 +5214,51 @@ class JobCommentAdmin(admin.ModelAdmin):
         text = (obj.comment or '').strip()
         return (text[:60] + '…') if len(text) > 60 else text
     short_comment.short_description = 'Comment'
+
+
+@admin.register(Tenant)
+class TenantAdmin(admin.ModelAdmin):
+    list_per_page = 25
+    list_display = ['tenant_id', 'name', 'status', 'owner', 'billing_email', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['tenant_id', 'name', 'slug', 'billing_email', 'owner__username', 'owner__email']
+    readonly_fields = ['tenant_id', 'created_at', 'updated_at']
+    autocomplete_fields = ['owner']
+
+
+@admin.register(TenantMembership)
+class TenantMembershipAdmin(admin.ModelAdmin):
+    list_per_page = 25
+    list_display = ['tenant', 'user', 'role', 'is_active', 'created_at']
+    list_filter = ['role', 'is_active', 'tenant']
+    search_fields = ['tenant__name', 'user__username', 'user__email']
+    readonly_fields = ['created_at', 'updated_at']
+    autocomplete_fields = ['tenant', 'user', 'properties', 'invited_by']
+
+
+@admin.register(SubscriptionPlan)
+class SubscriptionPlanAdmin(admin.ModelAdmin):
+    list_per_page = 25
+    list_display = ['code', 'name', 'monthly_price', 'max_properties', 'max_users', 'is_active', 'sort_order']
+    list_filter = ['is_active', 'billing_interval', 'allow_offline_mode', 'allow_advanced_analytics']
+    search_fields = ['code', 'name', 'description']
+
+
+@admin.register(TenantSubscription)
+class TenantSubscriptionAdmin(admin.ModelAdmin):
+    list_per_page = 25
+    list_display = ['tenant', 'plan', 'status', 'current_period_end', 'cancel_at_period_end']
+    list_filter = ['status', 'plan', 'cancel_at_period_end']
+    search_fields = ['tenant__name', 'tenant__tenant_id', 'external_customer_id', 'external_subscription_id']
+    readonly_fields = ['created_at', 'updated_at']
+    autocomplete_fields = ['tenant', 'plan']
+
+
+@admin.register(UsageMetric)
+class UsageMetricAdmin(admin.ModelAdmin):
+    list_per_page = 25
+    list_display = ['tenant', 'period_start', 'period_end', 'property_count', 'active_user_count', 'work_order_count']
+    list_filter = ['period_start', 'period_end']
+    search_fields = ['tenant__name', 'tenant__tenant_id']
+    readonly_fields = ['calculated_at']
+    autocomplete_fields = ['tenant']

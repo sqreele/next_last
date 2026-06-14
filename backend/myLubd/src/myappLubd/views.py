@@ -15,8 +15,14 @@ from django.utils import timezone
 import math
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg
 from django.db.models.functions import ExtractMonth, ExtractYear
-from django.db import models
-from .models import UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory, RosterLeave, Area, JobComment, PushSubscription
+from django.db import models, transaction
+from .models import (
+    UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance,
+    JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory,
+    RosterLeave, Area, JobComment, PushSubscription, Tenant,
+    TenantMembership, SubscriptionPlan, TenantSubscription, UsageMetric,
+    InventoryUsage, MaintenanceChecklist, MaintenanceHistory,
+)
 from django.urls import reverse
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .serializers import (
@@ -28,8 +34,10 @@ from .serializers import (
     MachineCreateSerializer, MachineUpdateSerializer, MachinePreventiveMaintenanceSerializer,
     MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer,
     UtilityConsumptionSerializer, UtilityConsumptionListSerializer,
-    InventorySerializer, InventoryListSerializer, RosterLeaveSerializer,
-    AreaSerializer, JobCommentSerializer,
+    InventorySerializer, InventoryListSerializer, InventoryUsageSerializer, RosterLeaveSerializer,
+    AreaSerializer, JobCommentSerializer, TenantSerializer,
+    TenantMembershipSerializer, SubscriptionPlanSerializer,
+    TenantSubscriptionSerializer, UsageMetricSerializer,
 )
 from PIL import Image
 from io import BytesIO
@@ -51,6 +59,16 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_http_methods
 from .cache import cache_result, CacheManager
 from .services import NotificationService, PreventiveMaintenanceService
+from .tenancy import (
+    accessible_property_ids,
+    enforce_subscription_limit,
+    ensure_tenant_for_property,
+    ensure_tenant_for_user,
+    get_accessible_properties,
+    get_user_tenants,
+    tenant_usage_counts,
+    user_can_manage_tenant,
+)
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -94,6 +112,90 @@ def display_name_from_user(user, fallback='Unknown Technician'):
         if value and not is_raw_auth_identifier(value):
             return value
     return fallback
+
+
+def _job_property_ids(job):
+    return set(
+        Property.objects.filter(
+            Q(rooms__jobs=job) | Q(areas__jobs=job)
+        ).values_list('id', flat=True)
+    )
+
+
+def _pm_property_ids(pm):
+    property_q = Q(machines__preventive_maintenances=pm)
+    if pm.job_id:
+        property_q |= Q(rooms__jobs=pm.job)
+    return set(Property.objects.filter(property_q).values_list('id', flat=True))
+
+
+def _ensure_user_can_use_property(user, property_obj):
+    if user.is_staff or user.is_superuser:
+        return
+    if not get_accessible_properties(user).filter(id=property_obj.id).exists():
+        raise PermissionDenied("You do not have access to this property's inventory.")
+
+
+def consume_inventory_items(*, user, items, job=None, preventive_maintenance=None, source='manual'):
+    """Consume inventory in a transaction and return usage ledger rows."""
+    if not items:
+        return []
+    if job is not None and preventive_maintenance is not None:
+        raise ValidationError("Inventory usage can be linked to a job or PM, not both.")
+
+    usage_records = []
+    with transaction.atomic():
+        for raw_item in items:
+            item_id = raw_item.get('item_id') or raw_item.get('inventory') or raw_item.get('inventory_item_id')
+            quantity = int(raw_item.get('quantity') or 0)
+            if not item_id:
+                raise ValidationError({'inventory_usage': 'item_id is required for each consumed inventory item.'})
+            if quantity <= 0:
+                raise ValidationError({'inventory_usage': 'quantity must be greater than zero.'})
+
+            inventory = (
+                Inventory.objects.select_for_update()
+                .filter(Q(item_id__iexact=str(item_id)) | Q(id=item_id if str(item_id).isdigit() else None))
+                .first()
+            )
+            if inventory is None:
+                raise ValidationError({'inventory_usage': f'Inventory item not found: {item_id}'})
+            if inventory.property is None:
+                raise ValidationError({'inventory_usage': f'Inventory item {inventory.item_id} is not assigned to a property.'})
+
+            _ensure_user_can_use_property(user, inventory.property)
+            job_property_ids = _job_property_ids(job) if job is not None else set()
+            pm_property_ids = _pm_property_ids(preventive_maintenance) if preventive_maintenance is not None else set()
+
+            if job is not None and job_property_ids and inventory.property_id not in job_property_ids:
+                raise ValidationError({'inventory_usage': f'{inventory.item_id} does not belong to the job property.'})
+            if preventive_maintenance is not None and pm_property_ids and inventory.property_id not in pm_property_ids:
+                raise ValidationError({'inventory_usage': f'{inventory.item_id} does not belong to the PM property.'})
+            if inventory.quantity < quantity:
+                raise ValidationError({
+                    'inventory_usage': f'Insufficient stock for {inventory.item_id}: {inventory.quantity} available, {quantity} requested.'
+                })
+
+            inventory.quantity -= quantity
+            inventory.save(update_fields=['quantity', 'status', 'updated_at'])
+            if job is not None:
+                inventory.jobs.add(job)
+            if preventive_maintenance is not None:
+                inventory.preventive_maintenances.add(preventive_maintenance)
+
+            usage_records.append(InventoryUsage.objects.create(
+                inventory=inventory,
+                job=job,
+                preventive_maintenance=preventive_maintenance,
+                property=inventory.property,
+                quantity=quantity,
+                unit_cost=raw_item.get('unit_cost') if raw_item.get('unit_cost') not in ('', None) else inventory.unit_price,
+                source=source,
+                notes=raw_item.get('notes') or '',
+                consumed_by=user,
+            ))
+    return usage_records
+
 
 # Pagination class
 class MaintenancePagination(PageNumberPagination):
@@ -585,15 +687,66 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             if parsed_date:
                 completed_date = parsed_date
 
-        result = PreventiveMaintenanceService.update_status(
-            maintenance=instance,
-            new_status='completed',
-            user=request.user,
-            completed_date=completed_date,
-        )
+        checklist_updates = request.data.get('checklist_items') or request.data.get('checklist') or []
+        inventory_usage = request.data.get('inventory_usage') or request.data.get('parts_used') or []
+
+        with transaction.atomic():
+            for raw_item in checklist_updates:
+                item_text = (raw_item.get('item') or raw_item.get('title') or '').strip()
+                if not item_text:
+                    continue
+                checklist_item = None
+                item_id = raw_item.get('id')
+                if item_id:
+                    checklist_item = instance.checklists.filter(id=item_id).first()
+                if checklist_item is None:
+                    checklist_item = instance.checklists.filter(item__iexact=item_text).first()
+                if checklist_item is None:
+                    checklist_item = MaintenanceChecklist.objects.create(
+                        maintenance=instance,
+                        item=item_text[:200],
+                        description=raw_item.get('description') or '',
+                        order=raw_item.get('order') or instance.checklists.count() + 1,
+                    )
+
+                is_completed = bool(raw_item.get('is_completed', raw_item.get('completed', True)))
+                checklist_item.is_completed = is_completed
+                if is_completed:
+                    checklist_item.completed_by = request.user
+                    checklist_item.completed_at = timezone.now()
+                checklist_item.save(update_fields=['is_completed', 'completed_by', 'completed_at'])
+
+            usage_records = consume_inventory_items(
+                user=request.user,
+                items=inventory_usage,
+                preventive_maintenance=instance,
+                source='preventive_maintenance',
+            )
+
+            result = PreventiveMaintenanceService.update_status(
+                maintenance=instance,
+                new_status='completed',
+                user=request.user,
+                completed_date=completed_date,
+            )
+
+            if instance.machines.exists():
+                instance.machines.update(last_maintenance_date=result['current'].completed_date or timezone.now())
+
+            MaintenanceHistory.objects.create(
+                maintenance=result['current'],
+                action='completed',
+                notes=request.data.get('completion_notes') or request.data.get('notes') or '',
+                performed_by=request.user,
+            )
 
         response_data = PreventiveMaintenanceDetailSerializer(
             result['current'],
+            context={'request': request},
+        ).data
+        response_data['inventory_usage'] = InventoryUsageSerializer(
+            usage_records,
+            many=True,
             context={'request': request},
         ).data
 
@@ -1859,11 +2012,7 @@ class JobViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if not user.is_authenticated:
             return set()
-        if user.is_staff or user.is_superuser:
-            return None  # sentinel meaning "all"
-        return set(
-            Property.objects.filter(users=user).values_list('id', flat=True)
-        )
+        return accessible_property_ids(user)
 
     def _validate_tenant_scope(self, serializer):
         """Reject writes that point at rooms or areas outside the user's tenant.
@@ -2164,6 +2313,178 @@ class JobViewSet(viewsets.ModelViewSet):
         )
 
 
+class TenantViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TenantSerializer
+
+    def get_queryset(self):
+        qs = get_user_tenants(self.request.user).prefetch_related('memberships', 'properties')
+        return qs.annotate(
+            property_count=Count('properties', distinct=True),
+            active_user_count=Count(
+                'memberships',
+                filter=Q(memberships__is_active=True),
+                distinct=True,
+            ),
+        )
+
+    def perform_create(self, serializer):
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            if get_user_tenants(self.request.user).exists():
+                raise PermissionDenied("Your user already belongs to a tenant.")
+        tenant = serializer.save(owner=self.request.user)
+        TenantMembership.objects.get_or_create(
+            tenant=tenant,
+            user=self.request.user,
+            defaults={'role': 'owner'},
+        )
+        if not hasattr(tenant, 'subscription'):
+            from .tenancy import ensure_default_plan
+
+            TenantSubscription.objects.create(
+                tenant=tenant,
+                plan=ensure_default_plan(),
+                status='trialing',
+            )
+
+    @action(detail=True, methods=['get'])
+    def usage(self, request, pk=None):
+        tenant = self.get_object()
+        return Response(tenant_usage_counts(tenant))
+
+
+class SubscriptionPlanViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = SubscriptionPlanSerializer
+    queryset = SubscriptionPlan.objects.all()
+
+    def get_queryset(self):
+        qs = SubscriptionPlan.objects.all()
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            qs = qs.filter(is_active=True)
+        return qs.order_by('sort_order', 'monthly_price', 'name')
+
+    def perform_create(self, serializer):
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            raise PermissionDenied("Only staff can create subscription plans.")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            raise PermissionDenied("Only staff can update subscription plans.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            raise PermissionDenied("Only staff can delete subscription plans.")
+        instance.delete()
+
+
+class TenantMembershipViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TenantMembershipSerializer
+
+    def get_queryset(self):
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            return TenantMembership.objects.select_related('tenant', 'user').prefetch_related('properties')
+        return (
+            TenantMembership.objects.select_related('tenant', 'user')
+            .prefetch_related('properties')
+            .filter(tenant__in=get_user_tenants(self.request.user))
+        )
+
+    def _get_tenant_from_request(self, serializer=None):
+        tenant = None
+        if serializer is not None:
+            tenant = serializer.validated_data.get('tenant')
+        if tenant is None:
+            tenant_id = self.request.data.get('tenant') or self.request.query_params.get('tenant')
+            if tenant_id:
+                tenant = get_object_or_404(Tenant, pk=tenant_id)
+        return tenant
+
+    def _validate_membership_properties(self, tenant, serializer):
+        properties = serializer.validated_data.get('properties') or []
+        invalid = [prop.name for prop in properties if prop.tenant_id and prop.tenant_id != tenant.id]
+        if invalid:
+            raise ValidationError({
+                'properties': f"Properties must belong to tenant {tenant.name}: {', '.join(invalid)}"
+            })
+
+    def perform_create(self, serializer):
+        tenant = self._get_tenant_from_request(serializer)
+        if not user_can_manage_tenant(self.request.user, tenant):
+            raise PermissionDenied("You do not have permission to manage this tenant.")
+        enforce_subscription_limit(tenant, 'max_users')
+        self._validate_membership_properties(tenant, serializer)
+        membership = serializer.save(invited_by=self.request.user)
+        for prop in membership.properties.all():
+            if prop.tenant_id is None:
+                prop.tenant = membership.tenant
+                prop.save(update_fields=['tenant'])
+            if prop.tenant_id != membership.tenant_id:
+                continue
+            prop.users.add(membership.user)
+            profile, _ = UserProfile.objects.get_or_create(user=membership.user)
+            profile.properties.add(prop)
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        if not user_can_manage_tenant(self.request.user, instance.tenant):
+            raise PermissionDenied("You do not have permission to manage this tenant.")
+        self._validate_membership_properties(instance.tenant, serializer)
+        membership = serializer.save()
+        for prop in membership.properties.all():
+            if prop.tenant_id is None:
+                prop.tenant = membership.tenant
+                prop.save(update_fields=['tenant'])
+            if prop.tenant_id != membership.tenant_id:
+                continue
+            prop.users.add(membership.user)
+            profile, _ = UserProfile.objects.get_or_create(user=membership.user)
+            profile.properties.add(prop)
+
+    def perform_destroy(self, instance):
+        if not user_can_manage_tenant(self.request.user, instance.tenant):
+            raise PermissionDenied("You do not have permission to manage this tenant.")
+        instance.is_active = False
+        instance.save(update_fields=['is_active', 'updated_at'])
+
+
+class TenantSubscriptionViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TenantSubscriptionSerializer
+
+    def get_queryset(self):
+        qs = TenantSubscription.objects.select_related('tenant', 'plan')
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            return qs
+        return qs.filter(tenant__in=get_user_tenants(self.request.user))
+
+    def perform_create(self, serializer):
+        tenant = serializer.validated_data.get('tenant')
+        if not user_can_manage_tenant(self.request.user, tenant):
+            raise PermissionDenied("You do not have permission to manage this subscription.")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        if not user_can_manage_tenant(self.request.user, instance.tenant):
+            raise PermissionDenied("You do not have permission to manage this subscription.")
+        serializer.save()
+
+
+class UsageMetricViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UsageMetricSerializer
+
+    def get_queryset(self):
+        qs = UsageMetric.objects.select_related('tenant')
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            return qs
+        return qs.filter(tenant__in=get_user_tenants(self.request.user))
+
+
 class AreaViewSet(viewsets.ModelViewSet):
     """CRUD for property areas/zones with tenant (property) isolation."""
     permission_classes = [IsAuthenticated]
@@ -2319,7 +2640,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         logger.info(f"User {self.request.user.username} requesting properties")
         
         # ✅ PERFORMANCE: Optimize query with prefetch_related
-        base_queryset = Property.objects.prefetch_related('users', 'rooms')
+        base_queryset = Property.objects.select_related('tenant').prefetch_related('users', 'rooms')
         
         # Check if user is admin/superuser - give access to all properties
         if self.request.user.is_superuser or self.request.user.is_staff:
@@ -2329,7 +2650,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return queryset
         
         # Check if user has properties assigned
-        user_properties = base_queryset.filter(users=self.request.user)
+        user_properties = get_accessible_properties(self.request.user).select_related('tenant').prefetch_related('users', 'rooms')
         logger.info(f"User {self.request.user.username} has {user_properties.count()} assigned properties")
         
         # If user has no properties assigned, check if they're admin user
@@ -2342,12 +2663,30 @@ class PropertyViewSet(viewsets.ModelViewSet):
         # Return only properties assigned to the user
         return user_properties
 
+    def perform_create(self, serializer):
+        tenant = serializer.validated_data.get('tenant')
+        if tenant is None:
+            tenant = ensure_tenant_for_user(self.request.user)
+        if not user_can_manage_tenant(self.request.user, tenant):
+            raise PermissionDenied("You do not have permission to add properties to this tenant.")
+        enforce_subscription_limit(tenant, 'max_properties')
+        prop = serializer.save(tenant=tenant)
+        prop.users.add(self.request.user)
+        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
+        profile.properties.add(prop)
+        membership, _ = TenantMembership.objects.get_or_create(
+            tenant=tenant,
+            user=self.request.user,
+            defaults={'role': 'owner'},
+        )
+        membership.properties.add(prop)
+
     def get_object(self):
         property_id = self.kwargs.get('property_id')
         logger.info(f"Looking up property with ID: {property_id}")
 
         try:
-            obj = Property.objects.get(property_id=property_id)
+            obj = Property.objects.select_related('tenant').get(property_id=property_id)
             logger.info(f"Found property: {obj.name}")
 
             # Admin users can access all properties
@@ -2360,8 +2699,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 logger.info(f"Admin username {self.request.user.username} accessing property {property_id}")
                 return obj
 
-            # Check if user has access to this property
-            if not obj.users.filter(id=self.request.user.id).exists():
+            # Check if user has access to this property through SaaS membership
+            if not get_accessible_properties(self.request.user).filter(id=obj.id).exists():
                 logger.warning(f"Property {property_id} exists but not associated with user {self.request.user.username}")
                 if property_id == "PB749146D" and settings.DEBUG:
                     logger.info(f"SPECIAL CASE: Allowing access to test property {property_id} in debug mode")
@@ -2559,7 +2898,10 @@ class PropertyViewSet(viewsets.ModelViewSet):
         Only accessible to authenticated users.
         """
         logger.info(f"all properties requested by user: {request.user.username}")
-        properties = Property.objects.all()
+        if request.user.is_staff or request.user.is_superuser:
+            properties = Property.objects.all()
+        else:
+            properties = get_accessible_properties(request.user)
         serializer = PropertySerializer(properties, many=True, context={'request': request})
         return Response(serializer.data)
 
@@ -2676,6 +3018,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         created = []
         attached = []
         errors = []
+        tenant = ensure_tenant_for_user(request.user)
 
         for row_index, raw_row in enumerate(reader, start=2):
             row = {(k or '').strip().lower(): (v or '').strip() for k, v in raw_row.items() if k}
@@ -2697,6 +3040,11 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 if existing is None:
                     existing = Property.objects.filter(name__iexact=name).first()
                 if existing is not None:
+                    if existing.tenant_id is None:
+                        ensure_tenant_for_property(existing, request.user)
+                    elif not user_can_manage_tenant(request.user, existing.tenant):
+                        errors.append({'row': row_index, 'error': 'You cannot attach this property.'})
+                        continue
                     existing.users.add(request.user)
                     attached.append({
                         'row': row_index,
@@ -2705,11 +3053,24 @@ class PropertyViewSet(viewsets.ModelViewSet):
                     })
                     continue
 
+                try:
+                    enforce_subscription_limit(tenant, 'max_properties')
+                except Exception as exc:
+                    errors.append({'row': row_index, 'error': str(exc)})
+                    continue
+
                 prop = Property(name=name[:200], description=description)
                 if explicit_id:
                     prop.property_id = explicit_id[:50]
+                prop.tenant = tenant
                 prop.save()
                 prop.users.add(request.user)
+                membership, _ = TenantMembership.objects.get_or_create(
+                    tenant=tenant,
+                    user=request.user,
+                    defaults={'role': 'owner'},
+                )
+                membership.properties.add(prop)
                 created.append({
                     'row': row_index,
                     'property_id': prop.property_id,
@@ -3931,6 +4292,66 @@ class InventoryViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Add the current user as the creator when creating an inventory item"""
         serializer.save(created_by=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def consume(self, request, item_id=None):
+        """Consume this inventory item against a job, PM, or manual adjustment."""
+        inventory = self.get_object()
+        job = None
+        pm = None
+        source = request.data.get('source') or 'manual'
+
+        job_id = request.data.get('job_id')
+        pm_id = request.data.get('pm_id')
+        if job_id and pm_id:
+            return Response(
+                {'detail': 'Send either job_id or pm_id, not both.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if job_id:
+            job = get_object_or_404(Job, job_id=job_id)
+            source = 'job'
+        if pm_id:
+            pm = get_object_or_404(PreventiveMaintenance, pm_id=pm_id)
+            source = 'preventive_maintenance'
+
+        try:
+            usage_records = consume_inventory_items(
+                user=request.user,
+                items=[{
+                    'item_id': inventory.item_id,
+                    'quantity': request.data.get('quantity'),
+                    'unit_cost': request.data.get('unit_cost'),
+                    'notes': request.data.get('notes'),
+                }],
+                job=job,
+                preventive_maintenance=pm,
+                source=source,
+            )
+        except ValidationError as exc:
+            return Response(exc.detail if hasattr(exc, 'detail') else {'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        inventory.refresh_from_db()
+        return Response({
+            'inventory': InventorySerializer(inventory, context={'request': request}).data,
+            'usage': InventoryUsageSerializer(usage_records, many=True, context={'request': request}).data,
+        }, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'])
+    def usage(self, request, item_id=None):
+        inventory = self.get_object()
+        usage = inventory.usage_records.select_related(
+            'inventory', 'job', 'preventive_maintenance', 'property', 'consumed_by'
+        )
+        page = self.paginate_queryset(usage)
+        serializer = InventoryUsageSerializer(
+            page if page is not None else usage,
+            many=True,
+            context={'request': request},
+        )
+        if page is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['post'])
     def restock(self, request, item_id=None):

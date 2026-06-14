@@ -6,9 +6,21 @@ import django.db.models.deletion
 
 def add_fields_if_not_exist(apps, schema_editor):
     """Add job_id and preventive_maintenance_id columns only if they don't exist"""
-    db_alias = schema_editor.connection.alias
     with schema_editor.connection.cursor() as cursor:
         table_name = 'myappLubd_inventory'
+
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_name = %s
+            )
+        """, [table_name])
+        table_exists = cursor.fetchone()[0]
+
+        if not table_exists:
+            print(f"Table {table_name} does not exist, skipping inventory field updates")
+            return
         
         # Check and add job_id column
         cursor.execute("""
@@ -89,8 +101,22 @@ def add_fields_if_not_exist(apps, schema_editor):
 
 def add_indexes_if_not_exist(apps, schema_editor):
     """Add indexes only if they don't exist"""
-    db_alias = schema_editor.connection.alias
     with schema_editor.connection.cursor() as cursor:
+        table_name = 'myappLubd_inventory'
+
+        cursor.execute("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public'
+                AND table_name = %s
+            )
+        """, [table_name])
+        table_exists = cursor.fetchone()[0]
+
+        if not table_exists:
+            print(f"Table {table_name} does not exist, skipping inventory index creation")
+            return
+
         indexes = [
             ('myappLubd_i_job_id_50f920_idx', 'job_id'),
             ('myappLubd_i_prevent_37662d_idx', 'preventive_maintenance_id'),
@@ -108,7 +134,7 @@ def add_indexes_if_not_exist(apps, schema_editor):
             if not exists:
                 cursor.execute(f"""
                     CREATE INDEX "{index_name}" 
-                    ON myappLubd_inventory ("{column_name}")
+                    ON "{table_name}" ("{column_name}")
                 """)
                 print(f"Created index: {index_name}")
             else:

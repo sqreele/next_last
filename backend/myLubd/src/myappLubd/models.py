@@ -10,6 +10,7 @@ from PIL import Image
 from io import BytesIO
 import os
 import requests
+import builtins
 from django.core.files.base import ContentFile
 from pathlib import Path
 from django.db.models.signals import post_save
@@ -28,6 +29,221 @@ class User(AbstractUser):
     
     class Meta:
         pass
+
+
+class Tenant(models.Model):
+    """Commercial SaaS account that owns one or more hotel properties."""
+
+    STATUS_CHOICES = [
+        ('trialing', 'Trialing'),
+        ('active', 'Active'),
+        ('past_due', 'Past Due'),
+        ('suspended', 'Suspended'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    tenant_id = models.CharField(max_length=16, unique=True, blank=True, editable=False)
+    name = models.CharField(max_length=255, unique=True)
+    slug = models.SlugField(max_length=80, unique=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='trialing', db_index=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='owned_tenants',
+    )
+    billing_email = models.EmailField(blank=True, null=True)
+    timezone = models.CharField(max_length=64, default='UTC')
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['tenant_id']),
+            models.Index(fields=['slug']),
+            models.Index(fields=['status']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.tenant_id:
+            self.tenant_id = f"T{get_random_string(length=8, allowed_chars='0123456789ABCDEF')}"
+        if not self.slug:
+            from django.utils.text import slugify
+
+            base = slugify(self.name)[:70] or self.tenant_id.lower()
+            candidate = base
+            suffix = 1
+            while Tenant.objects.filter(slug=candidate).exclude(pk=self.pk).exists():
+                suffix += 1
+                candidate = f"{base[:70 - len(str(suffix)) - 1]}-{suffix}"
+            self.slug = candidate
+        super().save(*args, **kwargs)
+
+
+class SubscriptionPlan(models.Model):
+    """Public/commercial plan definition and its hard product limits."""
+
+    INTERVAL_CHOICES = [
+        ('monthly', 'Monthly'),
+        ('annual', 'Annual'),
+    ]
+
+    code = models.SlugField(max_length=50, unique=True)
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True, null=True)
+    monthly_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    billing_interval = models.CharField(max_length=20, choices=INTERVAL_CHOICES, default='monthly')
+    max_properties = models.PositiveIntegerField(default=1)
+    max_users = models.PositiveIntegerField(default=10)
+    max_monthly_work_orders = models.PositiveIntegerField(default=500)
+    max_assets = models.PositiveIntegerField(default=250)
+    max_storage_mb = models.PositiveIntegerField(default=10240)
+    max_pm_schedules = models.PositiveIntegerField(default=100)
+    allow_offline_mode = models.BooleanField(default=False)
+    allow_advanced_analytics = models.BooleanField(default=False)
+    allow_api_access = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveIntegerField(default=0)
+    features = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['sort_order', 'monthly_price', 'name']
+        indexes = [
+            models.Index(fields=['code']),
+            models.Index(fields=['is_active', 'sort_order']),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class TenantSubscription(models.Model):
+    """Current billing state for a tenant."""
+
+    STATUS_CHOICES = [
+        ('trialing', 'Trialing'),
+        ('active', 'Active'),
+        ('past_due', 'Past Due'),
+        ('cancelled', 'Cancelled'),
+        ('suspended', 'Suspended'),
+    ]
+
+    tenant = models.OneToOneField(Tenant, on_delete=models.CASCADE, related_name='subscription')
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT, related_name='subscriptions')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='trialing', db_index=True)
+    current_period_start = models.DateField(null=True, blank=True)
+    current_period_end = models.DateField(null=True, blank=True)
+    trial_ends_at = models.DateTimeField(null=True, blank=True)
+    external_customer_id = models.CharField(max_length=255, blank=True, null=True)
+    external_subscription_id = models.CharField(max_length=255, blank=True, null=True)
+    cancel_at_period_end = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['tenant__name']
+        indexes = [
+            models.Index(fields=['status']),
+            models.Index(fields=['current_period_end']),
+        ]
+
+    def __str__(self):
+        return f"{self.tenant.name} - {self.plan.name}"
+
+    @property
+    def is_entitled(self):
+        return self.status in {'trialing', 'active'}
+
+    def get_limit(self, key):
+        return getattr(self.plan, key, None)
+
+    def check_limit(self, key, current_value, increment=1):
+        limit = self.get_limit(key)
+        if limit is None:
+            return True, None
+        allowed = current_value + increment <= limit
+        return allowed, limit
+
+
+class TenantMembership(models.Model):
+    """A user's role inside a tenant plus optional property-level access."""
+
+    ROLE_CHOICES = [
+        ('owner', 'Owner'),
+        ('admin', 'Admin'),
+        ('manager', 'Manager'),
+        ('supervisor', 'Supervisor'),
+        ('technician', 'Technician'),
+        ('viewer', 'Viewer'),
+        ('billing', 'Billing'),
+    ]
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='memberships')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tenant_memberships')
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='technician')
+    is_active = models.BooleanField(default=True, db_index=True)
+    properties = models.ManyToManyField('Property', related_name='tenant_memberships', blank=True)
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sent_tenant_invitations',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['tenant__name', 'user__username']
+        constraints = [
+            models.UniqueConstraint(fields=['tenant', 'user'], name='unique_user_membership_per_tenant'),
+        ]
+        indexes = [
+            models.Index(fields=['tenant', 'role']),
+            models.Index(fields=['user', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.user} @ {self.tenant} ({self.role})"
+
+    @property
+    def can_manage_tenant(self):
+        return self.role in {'owner', 'admin', 'billing'}
+
+
+class UsageMetric(models.Model):
+    """Periodic usage snapshot used for limits, billing, and analytics."""
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='usage_metrics')
+    period_start = models.DateField()
+    period_end = models.DateField()
+    property_count = models.PositiveIntegerField(default=0)
+    active_user_count = models.PositiveIntegerField(default=0)
+    work_order_count = models.PositiveIntegerField(default=0)
+    asset_count = models.PositiveIntegerField(default=0)
+    pm_schedule_count = models.PositiveIntegerField(default=0)
+    storage_mb = models.PositiveIntegerField(default=0)
+    calculated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-period_start']
+        constraints = [
+            models.UniqueConstraint(fields=['tenant', 'period_start', 'period_end'], name='unique_usage_period_per_tenant'),
+        ]
+        indexes = [
+            models.Index(fields=['tenant', 'period_start']),
+        ]
+
+    def __str__(self):
+        return f"{self.tenant} usage {self.period_start} - {self.period_end}"
 
 
 class RosterLeave(models.Model):
@@ -534,6 +750,14 @@ def get_upload_path(instance, filename):
 
 class Property(models.Model):
     id = models.AutoField(primary_key=True) 
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='properties',
+        null=True,
+        blank=True,
+        help_text="SaaS tenant/account that owns this property",
+    )
     property_id = models.CharField(
         max_length=50,
         unique=True,
@@ -551,6 +775,7 @@ class Property(models.Model):
         verbose_name_plural = 'Properties'
         indexes = [
             # ✅ PERFORMANCE: Property indexes for faster lookups
+            models.Index(fields=['tenant', 'name']),
             models.Index(fields=['property_id']),  # Frequently used in queries
             models.Index(fields=['name']),  # For search operations
         ]
@@ -1178,6 +1403,16 @@ class Machine(models.Model):
     
     installation_date = models.DateField(null=True, blank=True, help_text="Date when equipment was installed")
     last_maintenance_date = models.DateTimeField(null=True, blank=True)
+    purchase_date = models.DateField(null=True, blank=True, help_text="Date this asset was purchased")
+    purchase_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    warranty_start_date = models.DateField(null=True, blank=True)
+    warranty_end_date = models.DateField(null=True, blank=True)
+    expected_replacement_date = models.DateField(null=True, blank=True)
+    replacement_cost_estimate = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    supplier = models.CharField(max_length=255, blank=True, null=True)
+    supplier_contact = models.CharField(max_length=255, blank=True, null=True)
+    asset_tag = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    lifecycle_notes = models.TextField(blank=True, null=True)
     
     # Image field for equipment photo
     image = models.ImageField(
@@ -1210,6 +1445,8 @@ class Machine(models.Model):
             models.Index(fields=['category', 'status']),  # Equipment type and status
             models.Index(fields=['last_maintenance_date']),  # For maintenance tracking
             models.Index(fields=['installation_date']),  # For age tracking
+            models.Index(fields=['expected_replacement_date']),
+            models.Index(fields=['warranty_end_date']),
         ]
 
     def __str__(self):
@@ -1231,6 +1468,26 @@ class Machine(models.Model):
         if upcoming_maintenances.exists():
             return upcoming_maintenances.first().next_due_date
         return None
+
+    @builtins.property
+    def is_under_warranty(self):
+        today = timezone.now().date()
+        if self.warranty_start_date and today < self.warranty_start_date:
+            return False
+        return bool(self.warranty_end_date and self.warranty_end_date >= today)
+
+    @builtins.property
+    def lifecycle_state(self):
+        today = timezone.now().date()
+        if self.status == 'retired':
+            return 'retired'
+        if self.expected_replacement_date and self.expected_replacement_date <= today:
+            return 'replacement_due'
+        if self.warranty_end_date and self.warranty_end_date < today:
+            return 'out_of_warranty'
+        if self.is_under_warranty:
+            return 'under_warranty'
+        return 'active'
 
 
 class MaintenanceProcedure(models.Model):
@@ -2016,6 +2273,83 @@ class Inventory(models.Model):
     
     def __str__(self):
         return f"{self.item_id} - {self.name} ({self.quantity} {self.unit})"
+
+
+class InventoryUsage(models.Model):
+    """Immutable stock movement ledger for parts consumed by jobs or PM work."""
+
+    SOURCE_CHOICES = [
+        ('job', 'Work Order'),
+        ('preventive_maintenance', 'Preventive Maintenance'),
+        ('manual', 'Manual Adjustment'),
+    ]
+
+    inventory = models.ForeignKey(
+        Inventory,
+        on_delete=models.PROTECT,
+        related_name='usage_records',
+    )
+    job = models.ForeignKey(
+        Job,
+        on_delete=models.SET_NULL,
+        related_name='inventory_usage_records',
+        null=True,
+        blank=True,
+    )
+    preventive_maintenance = models.ForeignKey(
+        PreventiveMaintenance,
+        on_delete=models.SET_NULL,
+        related_name='inventory_usage_records',
+        null=True,
+        blank=True,
+    )
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.CASCADE,
+        related_name='inventory_usage_records',
+    )
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    total_cost = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    source = models.CharField(max_length=30, choices=SOURCE_CHOICES, default='manual')
+    notes = models.TextField(blank=True, null=True)
+    consumed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name='inventory_usage_records',
+        null=True,
+        blank=True,
+    )
+    consumed_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-consumed_at']
+        indexes = [
+            models.Index(fields=['inventory', 'consumed_at']),
+            models.Index(fields=['property', 'consumed_at']),
+            models.Index(fields=['job']),
+            models.Index(fields=['preventive_maintenance']),
+            models.Index(fields=['source', 'consumed_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.inventory.item_id} x{self.quantity} ({self.source})"
+
+    def clean(self):
+        if self.job_id and self.preventive_maintenance_id:
+            raise ValidationError("Usage can be linked to either a job or a preventive maintenance task, not both.")
+        if not self.property_id and self.inventory_id:
+            self.property = self.inventory.property
+
+    def save(self, *args, **kwargs):
+        if not self.property_id and self.inventory_id:
+            self.property = self.inventory.property
+        if self.unit_cost is None and self.inventory_id:
+            self.unit_cost = self.inventory.unit_price
+        if self.unit_cost is not None:
+            self.total_cost = self.unit_cost * self.quantity
+        super().save(*args, **kwargs)
 
 
 class WorkspaceReport(models.Model):

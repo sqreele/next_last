@@ -168,10 +168,14 @@ const nextConfig = {
   },
   
   // Ensure webpack resolves the '@' alias to the project root
-  webpack: (config, { isServer, dev }) => {
+  webpack: (config, { isServer, dev, nextRuntime }) => {
     config.resolve = config.resolve || {};
     config.resolve.alias = config.resolve.alias || {};
     config.resolve.alias['@'] = projectRoot;
+
+    if (dev) {
+      config.devtool = false;
+    }
     
     // ✅ FIX: Exclude browser-only libraries from server-side bundle
     if (isServer) {

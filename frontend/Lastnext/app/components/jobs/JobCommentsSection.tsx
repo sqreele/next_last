@@ -2,11 +2,14 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Loader, MessageSquare, Send, AlertCircle } from 'lucide-react';
+import { Loader, MessageSquare, Send, AlertCircle, Clock } from 'lucide-react';
 import { Textarea } from '@/app/components/ui/textarea';
 import { Button } from '@/app/components/ui/button';
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
 import { useToast } from '@/app/components/ui/use-toast';
+import { useSession } from '@/app/lib/session.client';
+import { enqueueRequest } from '@/app/lib/offline-queue';
+import { useOfflineQueue } from '@/app/lib/hooks/useOfflineQueue';
 import type { JobComment } from '@/app/lib/types';
 
 type Props = {
@@ -34,11 +37,16 @@ function getErrorMessage(err: unknown, fallback: string): string {
 
 const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
   const { toast } = useToast();
+  const { data: session } = useSession();
+  const { queue } = useOfflineQueue();
   const [comments, setComments] = useState<JobComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const pendingComments = queue.filter(
+    (item) => item.kind === 'job-comment-create' && item.endpoint === `/api/v1/jobs/${jobId}/comments/`,
+  );
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -57,6 +65,49 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
 
   useEffect(() => { fetchComments(); }, [fetchComments]);
 
+  useEffect(() => {
+    if (pendingComments.length === 0 && !loading) {
+      fetchComments();
+    }
+    // We only want to refetch after queued comments drain.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingComments.length]);
+
+  const appendPendingComment = (value: string) => {
+    const now = new Date().toISOString();
+    const pending: JobComment = {
+      id: -Date.now(),
+      job: Number(jobId) || 0,
+      comment: value,
+      author_id: null,
+      author_username: session?.user?.username || null,
+      author_name:
+        session?.user?.first_name ||
+        session?.user?.email ||
+        'You',
+      created_at: now,
+      updated_at: now,
+    };
+    setComments((prev) => [...prev, pending]);
+  };
+
+  const queueComment = (value: string) => {
+    enqueueRequest({
+      kind: 'job-comment-create',
+      label: `Comment on #${jobId}`,
+      endpoint: `/api/v1/jobs/${jobId}/comments/`,
+      method: 'POST',
+      body: { comment: value },
+    });
+    appendPendingComment(value);
+    setText('');
+    toast({
+      title: 'Comment queued',
+      description: 'It will sync when this device is back online.',
+      variant: 'success',
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const value = text.trim();
@@ -66,6 +117,11 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
     }
     setSubmitting(true);
     try {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        queueComment(value);
+        return;
+      }
+
       const res = await axios.post(
         `/api/jobs/${jobId}/comments/`,
         { comment: value },
@@ -80,6 +136,17 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
       setText('');
       toast({ title: 'Comment added', variant: 'success' });
     } catch (err) {
+      const statusCode = axios.isAxiosError(err) ? err.response?.status : undefined;
+      const transient =
+        !statusCode ||
+        statusCode === 408 ||
+        statusCode === 425 ||
+        statusCode === 429 ||
+        statusCode >= 500;
+      if (transient) {
+        queueComment(value);
+        return;
+      }
       toast({
         title: 'Failed to add comment',
         description: getErrorMessage(err, 'Please try again'),
@@ -124,15 +191,36 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
                 <span className="text-sm font-semibold text-gray-900">
                   {c.author_name || c.author_username || 'Unknown'}
                 </span>
-                <time className="text-xs text-gray-500" dateTime={c.created_at}>
-                  {formatTimestamp(c.created_at)}
-                </time>
+                {c.id < 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                    <Clock className="h-3 w-3" /> Pending sync
+                  </span>
+                ) : (
+                  <time className="text-xs text-gray-500" dateTime={c.created_at}>
+                    {formatTimestamp(c.created_at)}
+                  </time>
+                )}
               </div>
               <p className="mt-1 whitespace-pre-wrap break-words text-sm text-gray-700">
                 {c.comment}
               </p>
             </li>
           ))}
+          {pendingComments
+            .filter((item) => !comments.some((c) => c.id < 0 && c.comment === String(item.body.comment || '')))
+            .map((item) => (
+              <li key={item.id} className="rounded-lg border border-amber-200 bg-amber-50 p-3 shadow-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-gray-900">You</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-amber-700">
+                    <Clock className="h-3 w-3" /> Pending sync
+                  </span>
+                </div>
+                <p className="mt-1 whitespace-pre-wrap break-words text-sm text-gray-700">
+                  {String(item.body.comment || '')}
+                </p>
+              </li>
+            ))}
         </ol>
       )}
 

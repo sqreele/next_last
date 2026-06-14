@@ -1,5 +1,11 @@
 from rest_framework import serializers
-from .models import Room, Topic, JobImage, Job, Property, UserProfile, Session, PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage, UtilityConsumption, Inventory, RosterLeave, Area, JobComment
+from .models import (
+    Room, Topic, JobImage, Job, Property, UserProfile, Session,
+    PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage,
+    UtilityConsumption, Inventory, RosterLeave, Area, JobComment, Tenant,
+    TenantMembership, SubscriptionPlan, TenantSubscription, UsageMetric,
+    InventoryUsage,
+)
 from django.contrib.auth import get_user_model
 import logging
 
@@ -83,6 +89,87 @@ class UserSummarySerializer(serializers.ModelSerializer):
     def get_display_name(self, obj):
         return get_user_display_name(obj)
 
+
+class SubscriptionPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionPlan
+        fields = [
+            'id', 'code', 'name', 'description', 'monthly_price', 'billing_interval',
+            'max_properties', 'max_users', 'max_monthly_work_orders', 'max_assets',
+            'max_storage_mb', 'max_pm_schedules', 'allow_offline_mode',
+            'allow_advanced_analytics', 'allow_api_access', 'is_active',
+            'sort_order', 'features',
+        ]
+        read_only_fields = ['id']
+
+
+class TenantSubscriptionSerializer(serializers.ModelSerializer):
+    plan = SubscriptionPlanSerializer(read_only=True)
+    plan_id = serializers.PrimaryKeyRelatedField(
+        queryset=SubscriptionPlan.objects.filter(is_active=True),
+        source='plan',
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = TenantSubscription
+        fields = [
+            'id', 'tenant', 'plan', 'plan_id', 'status', 'current_period_start',
+            'current_period_end', 'trial_ends_at', 'external_customer_id',
+            'external_subscription_id', 'cancel_at_period_end', 'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class TenantMembershipSerializer(serializers.ModelSerializer):
+    user = UserSummarySerializer(read_only=True)
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(),
+        source='user',
+        write_only=True,
+    )
+    properties = serializers.PrimaryKeyRelatedField(
+        queryset=Property.objects.all(),
+        many=True,
+        required=False,
+    )
+
+    class Meta:
+        model = TenantMembership
+        fields = [
+            'id', 'tenant', 'user', 'user_id', 'role', 'is_active',
+            'properties', 'invited_by', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'invited_by', 'created_at', 'updated_at']
+
+
+class UsageMetricSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UsageMetric
+        fields = [
+            'id', 'tenant', 'period_start', 'period_end', 'property_count',
+            'active_user_count', 'work_order_count', 'asset_count',
+            'pm_schedule_count', 'storage_mb', 'calculated_at',
+        ]
+        read_only_fields = ['id', 'calculated_at']
+
+
+class TenantSerializer(serializers.ModelSerializer):
+    subscription = TenantSubscriptionSerializer(read_only=True)
+    property_count = serializers.IntegerField(read_only=True)
+    active_user_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Tenant
+        fields = [
+            'id', 'tenant_id', 'name', 'slug', 'status', 'owner',
+            'billing_email', 'timezone', 'metadata', 'subscription',
+            'property_count', 'active_user_count', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'tenant_id', 'slug', 'owner', 'created_at', 'updated_at']
+
 # Room serializer defined first to avoid circular import issues
 class RoomSerializer(serializers.ModelSerializer):
     class Meta:
@@ -140,11 +227,14 @@ class PropertyPMStatusSerializer(serializers.ModelSerializer):
 class PropertySerializer(serializers.ModelSerializer):
     rooms = serializers.SerializerMethodField()
     is_preventivemaintenance = serializers.SerializerMethodField()
+    tenant_name = serializers.CharField(source='tenant.name', read_only=True)
 
     class Meta:
         model = Property
         fields = [
             'id',
+            'tenant',
+            'tenant_name',
             'property_id',
             'name',
             'description',
@@ -154,6 +244,9 @@ class PropertySerializer(serializers.ModelSerializer):
             'is_preventivemaintenance',
         ]
         read_only_fields = ['created_at', 'is_preventivemaintenance']
+        extra_kwargs = {
+            'users': {'required': False},
+        }
     
     def get_rooms(self, obj):
         """Get rooms for this property.
@@ -695,6 +788,8 @@ class MachineSerializer(serializers.ModelSerializer):
     property_name = serializers.CharField(source='property.name', read_only=True)
     task_count = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
+    lifecycle_state = serializers.CharField(read_only=True)
+    is_under_warranty = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Machine
@@ -702,7 +797,10 @@ class MachineSerializer(serializers.ModelSerializer):
             'id', 'machine_id', 'name', 'brand', 'category', 'serial_number',
             'description', 'location', 'property', 'property_name',
             'status', 'group_id', 'installation_date', 'last_maintenance_date', 'task_count',
-            'image', 'image_url', 'created_at', 'updated_at'
+            'purchase_date', 'purchase_cost', 'warranty_start_date', 'warranty_end_date',
+            'expected_replacement_date', 'replacement_cost_estimate', 'supplier',
+            'supplier_contact', 'asset_tag', 'lifecycle_notes', 'lifecycle_state',
+            'is_under_warranty', 'image', 'image_url', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'machine_id', 'created_at', 'updated_at']
     
@@ -739,13 +837,17 @@ class MachineListSerializer(serializers.ModelSerializer):
     task_count = serializers.SerializerMethodField()
     next_maintenance_date = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
+    lifecycle_state = serializers.CharField(read_only=True)
+    is_under_warranty = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = Machine
         fields = [
             'id', 'machine_id', 'name', 'brand', 'category', 'serial_number',
             'status', 'location', 'property_name', 
-            'task_count', 'next_maintenance_date', 'last_maintenance_date', 'image_url'
+            'task_count', 'next_maintenance_date', 'last_maintenance_date',
+            'expected_replacement_date', 'warranty_end_date', 'lifecycle_state',
+            'is_under_warranty', 'image_url'
         ]
     
     def get_task_count(self, obj):
@@ -861,6 +963,8 @@ class MachineDetailSerializer(serializers.ModelSerializer):
     days_since_last_maintenance = serializers.SerializerMethodField()
     next_maintenance_date = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
+    lifecycle_state = serializers.CharField(read_only=True)
+    is_under_warranty = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = Machine
@@ -868,6 +972,10 @@ class MachineDetailSerializer(serializers.ModelSerializer):
             'id', 'machine_id', 'name', 'brand', 'category', 'serial_number',
             'description', 'location', 'property', 'property_id',
             'status', 'group_id', 'installation_date', 'last_maintenance_date', 
+            'purchase_date', 'purchase_cost', 'warranty_start_date', 'warranty_end_date',
+            'expected_replacement_date', 'replacement_cost_estimate', 'supplier',
+            'supplier_contact', 'asset_tag', 'lifecycle_notes', 'lifecycle_state',
+            'is_under_warranty',
             'preventive_maintenances', 'maintenance_tasks', 'maintenance_procedures',
             'days_since_last_maintenance', 'next_maintenance_date', 
             'image', 'image_url', 'created_at', 'updated_at'
@@ -955,7 +1063,10 @@ class MachineCreateSerializer(serializers.ModelSerializer):
         model = Machine
         fields = [
             'name', 'brand', 'category', 'serial_number', 'description', 'location', 'property',
-            'status', 'group_id', 'installation_date', 'last_maintenance_date', 'image'
+            'status', 'group_id', 'installation_date', 'last_maintenance_date',
+            'purchase_date', 'purchase_cost', 'warranty_start_date', 'warranty_end_date',
+            'expected_replacement_date', 'replacement_cost_estimate', 'supplier',
+            'supplier_contact', 'asset_tag', 'lifecycle_notes', 'image'
         ]
     
     def validate(self, data):
@@ -977,7 +1088,10 @@ class MachineUpdateSerializer(serializers.ModelSerializer):
         model = Machine
         fields = [
             'name', 'brand', 'category', 'serial_number', 'description', 'location', 'property',
-            'status', 'group_id', 'installation_date', 'last_maintenance_date', 'image'
+            'status', 'group_id', 'installation_date', 'last_maintenance_date',
+            'purchase_date', 'purchase_cost', 'warranty_start_date', 'warranty_end_date',
+            'expected_replacement_date', 'replacement_cost_estimate', 'supplier',
+            'supplier_contact', 'asset_tag', 'lifecycle_notes', 'image'
         ]
     
     def validate(self, data):
@@ -2089,6 +2203,32 @@ class UtilityConsumptionListSerializer(serializers.ModelSerializer):
         ]
 
 
+class InventoryUsageSerializer(serializers.ModelSerializer):
+    inventory_item_id = serializers.CharField(source='inventory.item_id', read_only=True)
+    inventory_name = serializers.CharField(source='inventory.name', read_only=True)
+    property_id = serializers.CharField(source='property.property_id', read_only=True)
+    property_name = serializers.CharField(source='property.name', read_only=True)
+    job_id = serializers.CharField(source='job.job_id', read_only=True)
+    pm_id = serializers.CharField(source='preventive_maintenance.pm_id', read_only=True)
+    consumed_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = InventoryUsage
+        fields = [
+            'id', 'inventory', 'inventory_item_id', 'inventory_name', 'job', 'job_id',
+            'preventive_maintenance', 'pm_id', 'property', 'property_id', 'property_name',
+            'quantity', 'unit_cost', 'total_cost', 'source', 'notes',
+            'consumed_by', 'consumed_by_name', 'consumed_at', 'created_at',
+        ]
+        read_only_fields = [
+            'id', 'inventory_item_id', 'inventory_name', 'property_id', 'property_name',
+            'job_id', 'pm_id', 'total_cost', 'consumed_by_name', 'created_at',
+        ]
+
+    def get_consumed_by_name(self, obj):
+        return get_user_display_name(obj.consumed_by)
+
+
 class InventorySerializer(serializers.ModelSerializer):
     """Serializer for Inventory items"""
     property_name = serializers.CharField(source='property.name', read_only=True)
@@ -2104,6 +2244,7 @@ class InventorySerializer(serializers.ModelSerializer):
     pm_ids = serializers.SerializerMethodField()
     jobs_detail = serializers.SerializerMethodField()
     preventive_maintenances_detail = serializers.SerializerMethodField()
+    usage_records = InventoryUsageSerializer(many=True, read_only=True)
     
     class Meta:
         model = Inventory
@@ -2136,6 +2277,7 @@ class InventorySerializer(serializers.ModelSerializer):
             'pm_ids',
             'jobs_detail',
             'preventive_maintenances_detail',
+            'usage_records',
             'last_restocked',
             'expiry_date',
             'notes',

@@ -423,7 +423,7 @@ FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'https://pcms.live')
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Asia/Bangkok'
+TIME_ZONE = os.getenv('TIME_ZONE', 'Asia/Bangkok')
 USE_I18N = True
 USE_TZ = True
 

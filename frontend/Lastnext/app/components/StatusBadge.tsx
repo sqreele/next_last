@@ -143,10 +143,10 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border font-extrabold leading-snug shadow-sm",
+        "inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border font-black leading-snug shadow-sm",
         size === "sm"
-          ? "min-h-6 px-2 py-0.5 text-[11px]"
-          : "min-h-8 px-2.5 py-1 text-xs sm:min-h-9 sm:px-3 sm:text-sm",
+          ? "min-h-6 px-2 py-0.5 text-[11px] tracking-wide"
+          : "min-h-8 px-2.5 py-1 text-xs tracking-wide sm:min-h-9 sm:px-3 sm:text-sm",
         "whitespace-normal break-words text-left align-middle",
         toneClasses[config.tone],
         isUrgent && "ring-1 ring-red-300",

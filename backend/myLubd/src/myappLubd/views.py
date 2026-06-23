@@ -1876,6 +1876,11 @@ class JobViewSet(viewsets.ModelViewSet):
         status_value = request.data.get('status')
         if status_value and status_value not in dict(Job.STATUS_CHOICES):
             return Response({"detail": "Invalid status value."}, status=status.HTTP_400_BAD_REQUEST)
+        if job.status == 'completed' and status_value != 'completed':
+            return Response(
+                {"detail": "Completed jobs cannot have their status changed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if request.user.is_authenticated:
             job.updated_by = request.user
@@ -2078,6 +2083,8 @@ class JobViewSet(viewsets.ModelViewSet):
             self._validate_tenant_scope(serializer)
             instance = self.get_object()
             data = serializer.validated_data
+            if instance.status == 'completed' and 'status' in data and data['status'] != 'completed':
+                raise ValidationError("Completed jobs cannot have their status changed.")
             if 'status' in data and data['status'] == 'completed' and instance.status != 'completed':
                 serializer.save(updated_by=self.request.user, completed_at=timezone.now())
             else:

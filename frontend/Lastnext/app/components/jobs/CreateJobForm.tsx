@@ -5,7 +5,7 @@ import { Formik, Form, Field, FormikErrors } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
 import { Button } from "@/app/components/ui/button";
-import { PageHeader, PriorityBadge, SectionCard } from '@/app/components/pcms-ui';
+import { PageHeader, PriorityBadge, SectionCard, StatusBadge } from '@/app/components/pcms-ui';
 import { useT } from '@/app/lib/i18n/LocaleProvider';
 import { Textarea } from "@/app/components/ui/textarea";
 import { Plus, Loader, AlertCircle, CheckCircle, Upload, Search, Check } from 'lucide-react';
@@ -99,6 +99,22 @@ const PRIORITY_OPTIONS = [
   { value: 'high', label: 'High' },
   { value: 'critical', label: 'Critical' },
 ];
+
+const STATUS_SELECT_CLASSES: Record<string, string> = {
+  pending: 'border-blue-300 bg-blue-50 text-blue-900',
+  in_progress: 'border-indigo-300 bg-indigo-50 text-indigo-900',
+  waiting_sparepart: 'border-orange-300 bg-orange-50 text-orange-900',
+  completed: 'border-emerald-300 bg-emerald-50 text-emerald-900',
+  cancelled: 'border-red-300 bg-red-50 text-red-900',
+};
+
+const STATUS_OPTION_CLASSES: Record<string, string> = {
+  pending: 'font-bold text-blue-900 focus:bg-blue-50',
+  in_progress: 'font-bold text-indigo-900 focus:bg-indigo-50',
+  waiting_sparepart: 'font-bold text-orange-900 focus:bg-orange-50',
+  completed: 'font-bold text-emerald-900 focus:bg-emerald-50',
+  cancelled: 'font-bold text-red-900 focus:bg-red-50',
+};
 
 const initialValues: FormValues = {
   description: '',
@@ -647,19 +663,25 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     }}
                     disabled={isSubmitting}
                   >
-                    <SelectTrigger className={`h-11 border-2 rounded-xl transition-all duration-200 sm:h-12 ${
-                      (touched.status || submitCount > 0) && errors.status ? 'border-red-400 bg-red-50' : 'border-slate-300 bg-white'
+                    <SelectTrigger className={`h-11 rounded-xl border-2 font-bold shadow-sm transition-all duration-200 sm:h-12 ${
+                      (touched.status || submitCount > 0) && errors.status
+                        ? 'border-red-400 bg-red-50 text-red-900'
+                        : STATUS_SELECT_CLASSES[values.status] || 'border-slate-300 bg-white text-slate-900'
                     }`}>
                       <SelectValue placeholder="Select Status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="waiting_sparepart">Waiting Sparepart</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="pending" className={STATUS_OPTION_CLASSES.pending}>Pending</SelectItem>
+                      <SelectItem value="in_progress" className={STATUS_OPTION_CLASSES.in_progress}>In Progress</SelectItem>
+                      <SelectItem value="waiting_sparepart" className={STATUS_OPTION_CLASSES.waiting_sparepart}>Waiting Sparepart</SelectItem>
+                      <SelectItem value="completed" className={STATUS_OPTION_CLASSES.completed}>Completed</SelectItem>
+                      <SelectItem value="cancelled" className={STATUS_OPTION_CLASSES.cancelled}>Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Selected</span>
+                    <StatusBadge status={values.status} size="sm" />
+                  </div>
                   {(touched.status || submitCount > 0) && errors.status && (
                     <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
                       <AlertCircle className="h-4 w-4" />
@@ -1070,6 +1092,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Property</dt><dd className="font-semibold text-slate-900">{selectedProperty || 'Select property'}</dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Room / Area</dt><dd className="font-semibold text-slate-900">{values.room?.name || 'Select room'}</dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Category</dt><dd className="font-semibold text-slate-900">{values.topic.title || 'Select category'}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Status</dt><dd><StatusBadge status={values.status} size="sm" /></dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Priority</dt><dd><PriorityBadge priority={values.priority} /></dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Assigned to</dt><dd className="font-semibold text-slate-900">{[session?.user?.first_name, session?.user?.last_name].filter(Boolean).join(' ') || session?.user?.username || 'Chief Engineer review'}</dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Before photo count</dt><dd className="font-semibold text-slate-900">{values.files.length}</dd></div>

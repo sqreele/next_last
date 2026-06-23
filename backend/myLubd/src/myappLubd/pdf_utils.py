@@ -3,35 +3,31 @@ PDF Generation Utilities for Maintenance Reports
 Provides clean, compact, and professional maintenance report generation
 """
 
-import os
 import io
-from datetime import datetime
-from django.conf import settings
 from django.utils import timezone
-from reportlab.lib.pagesizes import A4, letter
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch, cm
+from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, 
-    PageBreak, Image, ListFlowable, ListItem, PageTemplate, 
-    Frame, NextPageTemplate, BaseDocTemplate
+    PageBreak, PageTemplate, Frame, BaseDocTemplate
 )
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import mm
-from PIL import Image as PILImage
+from reportlab.lib.enums import TA_CENTER
 import logging
+
+from .timezones import object_timezone
 
 logger = logging.getLogger(__name__)
 
 class MaintenanceReportGenerator:
     """Generates clean and compact maintenance PDF reports"""
     
-    def __init__(self, title="Maintenance Report", include_images=True, compact_mode=True):
+    def __init__(self, title="Maintenance Report", include_images=True, compact_mode=True, tzinfo=None):
         self.title = title
         self.include_images = include_images
         self.compact_mode = compact_mode
+        self.tzinfo = tzinfo or object_timezone()
         self.styles = self._create_styles()
         
     def _create_styles(self):
@@ -98,8 +94,9 @@ class MaintenanceReportGenerator:
         # Footer
         canvas.setFont('Helvetica', 8)
         canvas.setFillColor(colors.grey)
+        generated_at = timezone.localtime(timezone.now(), self.tzinfo)
         canvas.drawString(doc.leftMargin, doc.bottomMargin - 10, 
-                        f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+                        f"Generated on {generated_at.strftime('%Y-%m-%d %H:%M')} ({self.tzinfo.key})")
         canvas.drawRightString(doc.width + doc.leftMargin, doc.bottomMargin - 10, 
                              f"Page {doc.page}")
         
@@ -122,6 +119,8 @@ class MaintenanceReportGenerator:
             return "Not set"
         if isinstance(date_obj, str):
             return date_obj
+        if timezone.is_aware(date_obj):
+            date_obj = timezone.localtime(date_obj, self.tzinfo)
         return date_obj.strftime('%Y-%m-%d %H:%M')
     
     def _create_summary_table(self, data):

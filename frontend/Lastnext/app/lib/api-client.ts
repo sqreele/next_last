@@ -84,14 +84,14 @@ const processPendingRequests = (token: string | null): void => {
 };
 
 // Function to attempt token refresh
-async function refreshToken(refreshTokenValue: string): Promise<string | null> {
+async function refreshToken(): Promise<string | null> {
   try {
     // Use the Next.js route so the httpOnly session cookie can be updated.
     const response = await fetch('/api/auth/token/refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ refresh: refreshTokenValue }),
+      body: JSON.stringify({}),
     });
 
     if (!response.ok) {
@@ -225,30 +225,21 @@ apiClient.interceptors.response.use(
       originalRequest._retry++;
 
       try {
-        const sessionResponse = await fetch('/api/auth/session-compat', {
-          credentials: 'include',
-          cache: 'no-store',
-        });
-        const sessionData: any = sessionResponse.ok ? await sessionResponse.json() : null;
-        const refreshTokenValue = sessionData?.user?.refreshToken;
+        if (!isRefreshing) {
+          isRefreshing = true;
+          refreshPromise = refreshToken().finally(() => {
+            isRefreshing = false;
+            refreshPromise = null;
+          });
+        }
 
-        if (refreshTokenValue) {
-          if (!isRefreshing) {
-            isRefreshing = true;
-            refreshPromise = refreshToken(refreshTokenValue).finally(() => {
-              isRefreshing = false;
-              refreshPromise = null;
-            });
-          }
+        const newAccessToken = await refreshPromise;
+        processPendingRequests(newAccessToken);
 
-          const newAccessToken = await refreshPromise;
-          processPendingRequests(newAccessToken);
-
-          if (newAccessToken) {
-            originalRequest.headers = originalRequest.headers || {};
-            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-            return apiClient(originalRequest);
-          }
+        if (newAccessToken) {
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return apiClient(originalRequest);
         }
       } catch (refreshError) {
         console.error("[ResponseInterceptor] Token refresh failed:", refreshError);

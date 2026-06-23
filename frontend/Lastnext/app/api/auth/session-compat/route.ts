@@ -4,12 +4,12 @@ import { fetchProperties } from '@/app/lib/data.server';
 import { Property } from '@/app/lib/types';
 import { DEBUG_CONFIG } from '@/app/lib/config';
 import { API_CONFIG } from '@/app/lib/config';
+import { sanitizeSessionForClient } from '@/app/lib/auth0/session-cookie';
 
 interface UserProfileResponse {
   profile_image?: string | null;
   positions?: string | null;
   properties?: Property[];
-  uses_roster?: boolean;
   user_property_name?: string | null;
   user_property_id?: string | null;
   profile_property_name?: string | null;
@@ -92,7 +92,6 @@ export async function GET() {
         ...session.user,
         profile_image: profileData?.profile_image ?? session.user.profile_image ?? null,
         positions: profileData?.positions ?? session.user.positions ?? 'User',
-        uses_roster: profileData?.uses_roster ?? false,
         user_property_name: profileData?.user_property_name ?? null,
         user_property_id: profileData?.user_property_id ?? null,
         profile_property_name: profileData?.profile_property_name ?? null,
@@ -104,8 +103,8 @@ export async function GET() {
     if (DEBUG_CONFIG.logSessions) {
     }
 
-    return NextResponse.json(updatedSession ?? { user: undefined }, { 
-      headers: { 'Cache-Control': 'no-store' } 
+    return NextResponse.json(sanitizeSessionForClient(updatedSession) ?? { user: undefined }, {
+      headers: { 'Cache-Control': 'no-store' }
     });
   } catch (error) {
     console.error('❌ Error in session-compat API:', error);

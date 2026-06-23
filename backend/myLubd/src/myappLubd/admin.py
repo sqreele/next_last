@@ -33,6 +33,8 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q
 from collections import Counter
+
+from .timezones import timezone_choices
 from django.db import models
 from datetime import timedelta, datetime
 from django.http import HttpResponse
@@ -60,7 +62,6 @@ from .models import (
     UtilityConsumption,
     Inventory,
     WorkspaceReport,
-    RosterLeave,
     Area,
     JobComment,
     Tenant,
@@ -4341,14 +4342,6 @@ class InventoryUsageAdmin(admin.ModelAdmin):
     mark_as_out_of_stock.short_description = "Mark selected items as out of stock"
 
 
-@admin.register(RosterLeave)
-class RosterLeaveAdmin(admin.ModelAdmin):
-    list_display = ('staff_id', 'week', 'day', 'leave_type', 'created_by', 'created_at')
-    list_filter = ('week', 'day', 'leave_type', 'created_by')
-    search_fields = ('staff_id', 'note', 'created_by__username')
-    ordering = ('-created_at',)
-
-
 # ========================================
 # Workspace Report Admin
 # ========================================
@@ -5218,9 +5211,17 @@ class JobCommentAdmin(admin.ModelAdmin):
 
 @admin.register(Tenant)
 class TenantAdmin(admin.ModelAdmin):
+    class TenantAdminForm(forms.ModelForm):
+        timezone = forms.ChoiceField(choices=timezone_choices)
+
+        class Meta:
+            model = Tenant
+            fields = '__all__'
+
+    form = TenantAdminForm
     list_per_page = 25
-    list_display = ['tenant_id', 'name', 'status', 'owner', 'billing_email', 'created_at']
-    list_filter = ['status', 'created_at']
+    list_display = ['tenant_id', 'name', 'status', 'timezone', 'owner', 'billing_email', 'created_at']
+    list_filter = ['status', 'timezone', 'created_at']
     search_fields = ['tenant_id', 'name', 'slug', 'billing_email', 'owner__username', 'owner__email']
     readonly_fields = ['tenant_id', 'created_at', 'updated_at']
     autocomplete_fields = ['owner']

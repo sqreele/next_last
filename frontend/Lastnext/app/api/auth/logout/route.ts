@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { clearSessionCookie } from '@/app/lib/auth0/session-cookie';
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,18 +24,7 @@ export async function GET(request: NextRequest) {
     
     // Create response and clear session cookie
     const response = NextResponse.redirect(auth0LogoutUrl);
-    
-    // Clear the session cookie properly
-    response.cookies.delete('auth0_session');
-    
-    // Also set an expired cookie to ensure it's cleared
-    response.cookies.set('auth0_session', '', {
-      expires: new Date(0),
-      path: '/',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-    });
+    clearSessionCookie(response);
     
     return response;
     

@@ -9,7 +9,7 @@ export interface CompatUser {
   positions: string;
   properties: any[];
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   accessTokenExpires?: number;
   first_name?: string | null;
   last_name?: string | null;
@@ -31,7 +31,7 @@ export interface CompatUser {
 export interface CompatSession {
   user?: CompatUser;
   error?: string;
-  expires?: string;
+  expires?: string | number;
 }
 
 // This function is only used on the server side in the API route
@@ -41,4 +41,3 @@ export async function getCompatServerSession(): Promise<CompatSession | null> {
   // It's only used in the API route
   throw new Error('getCompatServerSession should not be called from client side');
 }
-

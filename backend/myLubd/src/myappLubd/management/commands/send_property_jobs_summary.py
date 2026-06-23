@@ -1,16 +1,15 @@
 import logging
-from datetime import datetime, timedelta
-from collections import defaultdict
+from datetime import timedelta
 
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.db.models import Count, Q
 
 from django.contrib.auth import get_user_model
-from myappLubd.models import Job, Topic, Property
+from myappLubd.models import Job, Property
 from myappLubd.email_utils import send_email
+from myappLubd.timezones import localtime_for, object_timezone
 
 
 logger = logging.getLogger(__name__)
@@ -66,7 +65,12 @@ class Command(BaseCommand):
 
     def get_property_job_statistics(self, property_id, days=7):
         """Calculate job statistics for a specific property."""
-        now = timezone.localtime()
+        property_obj = None
+        try:
+            property_obj = Property.objects.select_related('tenant').get(id=property_id)
+        except Property.DoesNotExist:
+            pass
+        now = localtime_for(property_obj)
         start_date = now - timedelta(days=days)
         
         # Get all jobs for this property within the time range
@@ -79,7 +83,7 @@ class Command(BaseCommand):
         
         # Get property info
         try:
-            property_obj = Property.objects.get(id=property_id)
+            property_obj = property_obj or Property.objects.select_related('tenant').get(id=property_id)
             property_name = property_obj.name
         except Property.DoesNotExist:
             property_name = f"Property {property_id}"
@@ -141,6 +145,7 @@ class Command(BaseCommand):
             'room_stats': room_stats,
             'topic_stats': topic_stats,
             'days': days,
+            'timezone_label': object_timezone(property_obj).key,
         }
 
     def get_property_users(self, property_id, strict_mode=True, exclude_emails=None, exclude_user_ids=None):
@@ -191,7 +196,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            now = timezone.localtime()
             days = options.get('days', 7)
             include_staff = options.get('include_staff', False)
             strict_mode = not include_staff  # strict_mode is True unless --include-staff is specified
@@ -205,6 +209,7 @@ class Command(BaseCommand):
                 
                 for property_obj in properties:
                     stats = self.get_property_job_statistics(property_obj.id, days)
+                    property_now = localtime_for(property_obj)
                     users = self.get_property_users(
                         property_obj.id, 
                         strict_mode=strict_mode,
@@ -213,7 +218,7 @@ class Command(BaseCommand):
                     )
                     
                     if users.exists():
-                        success = self.send_property_summary_email(stats, users, now)
+                        success = self.send_property_summary_email(stats, users, property_now)
                         if success:
                             total_sent += 1
                             logger.info(f"Property summary sent for {property_obj.name}")
@@ -265,7 +270,8 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.ERROR("No recipient email addresses found"))
                     return
                 
-                success = self.send_property_summary_email(stats, users, now)
+                property_obj = Property.objects.filter(id=property_id).select_related('tenant').first()
+                success = self.send_property_summary_email(stats, users, localtime_for(property_obj))
                 if success:
                     self.stdout.write(
                         self.style.SUCCESS(f"Property summary email sent for {stats['property_name']}")
@@ -288,7 +294,7 @@ class Command(BaseCommand):
             # Plain-text fallback body
             lines = [
                 f"Property: {stats['property_name']} (ID: {stats['property_id']})",
-                f"Date: {now.strftime('%Y-%m-%d')} (Asia/Bangkok)",
+                f"Date: {now.strftime('%Y-%m-%d')} ({stats['timezone_label']})",
                 f"Period: Last {stats['days']} days",
                 "",
                 f"SUMMARY:",
@@ -341,7 +347,7 @@ class Command(BaseCommand):
             
             context = {
                 "date_str": now.strftime('%Y-%m-%d'),
-                "timezone_label": "Asia/Bangkok",
+                "timezone_label": stats['timezone_label'],
                 "property_id": stats['property_id'],
                 "property_name": stats['property_name'],
                 "total_jobs": stats['total_jobs'],

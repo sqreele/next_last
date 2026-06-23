@@ -7,7 +7,7 @@ from .views import (
     UserProfileViewSet, UserViewSet, MachineViewSet,
     PreventiveMaintenanceImageUploadView, PreventiveMaintenanceViewSet,
     MaintenanceProcedureViewSet, UtilityConsumptionViewSet, InventoryViewSet,
-    RosterLeaveViewSet, AreaViewSet, TenantViewSet, TenantMembershipViewSet,
+    AreaViewSet, TenantViewSet, TenantMembershipViewSet,
     SubscriptionPlanViewSet, TenantSubscriptionViewSet, UsageMetricViewSet,
 )
 
@@ -28,7 +28,6 @@ router.register(r'users', UserViewSet, basename='user')
 router.register(r'user-profiles', UserProfileViewSet, basename='user-profile')
 router.register(r'utility-consumption', UtilityConsumptionViewSet, basename='utility-consumption')
 router.register(r'inventory', InventoryViewSet, basename='inventory')
-router.register(r'roster-leaves', RosterLeaveViewSet, basename='roster-leaves')
 router.register(r'areas', AreaViewSet, basename='area')
 router.register(r'tenants', TenantViewSet, basename='tenant')
 router.register(r'tenant-memberships', TenantMembershipViewSet, basename='tenant-membership')

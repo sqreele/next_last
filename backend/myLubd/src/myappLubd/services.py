@@ -23,6 +23,7 @@ from .models import (
 )
 from .optimizations import QueryOptimizer, CacheOptimizer
 from .cache_enhanced import cache_manager, cache_invalidation
+from .timezones import object_timezone
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -691,7 +692,7 @@ class PreventiveMaintenanceService:
         return PreventiveMaintenanceService.FREQUENCY_MAP.get(normalized)
 
     @staticmethod
-    def parse_datetime_value(value: Any, field_name: str) -> datetime:
+    def parse_datetime_value(value: Any, field_name: str, tzinfo=None) -> datetime:
         if value is None or (isinstance(value, str) and not value.strip()):
             raise ValidationError(f"{field_name} is required")
 
@@ -706,7 +707,7 @@ class PreventiveMaintenanceService:
             raise ValidationError(f"{field_name} must be a valid datetime")
 
         if timezone.is_naive(parsed):
-            parsed = timezone.make_aware(parsed, timezone.get_default_timezone())
+            parsed = timezone.make_aware(parsed, tzinfo or timezone.get_default_timezone())
 
         return parsed
 
@@ -715,12 +716,13 @@ class PreventiveMaintenanceService:
         frequency: str,
         custom_days: Optional[int],
         base_date: datetime,
+        tzinfo=None,
     ) -> datetime:
         if not base_date:
             raise ValidationError("Base date is required to calculate next due date")
 
         if timezone.is_naive(base_date):
-            base_date = timezone.make_aware(base_date, timezone.get_default_timezone())
+            base_date = timezone.make_aware(base_date, tzinfo or timezone.get_default_timezone())
 
         if frequency == 'daily':
             return base_date + timezone.timedelta(days=1)
@@ -776,18 +778,22 @@ class PreventiveMaintenanceService:
             raise ValidationError(f"Invalid status transition from {current_status} to {normalized_status}")
 
         next_schedule = None
+        tzinfo = object_timezone(maintenance)
 
         if normalized_status == 'completed':
             if completed_date is None:
                 completed_date = timezone.now()
             if timezone.is_naive(completed_date):
-                completed_date = timezone.make_aware(completed_date, timezone.get_default_timezone())
+                completed_date = timezone.make_aware(completed_date, tzinfo)
+            else:
+                completed_date = timezone.localtime(completed_date, tzinfo)
 
             base_date = completed_date or maintenance.scheduled_date
             next_due_date = PreventiveMaintenanceService.calculate_next_due_date(
                 maintenance.frequency,
                 maintenance.custom_days,
                 base_date,
+                tzinfo,
             )
 
             maintenance.status = normalized_status
@@ -827,10 +833,12 @@ class PreventiveMaintenanceService:
         scheduled_date: datetime,
         user,
     ) -> PreventiveMaintenance:
+        tzinfo = object_timezone(maintenance)
         next_due_date = PreventiveMaintenanceService.calculate_next_due_date(
             maintenance.frequency,
             maintenance.custom_days,
             scheduled_date,
+            tzinfo,
         )
 
         create_kwargs = dict(

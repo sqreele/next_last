@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/app/lib/config';
+import { getSessionFromRequest } from '@/app/lib/auth0/session-cookie';
 
 export const runtime = 'nodejs';
 
@@ -20,16 +21,9 @@ const HOP_BY_HOP_HEADERS = new Set([
   'upgrade',
 ]);
 
-function getSessionAccessToken(request: NextRequest): string | null {
-  const sessionCookie = request.cookies.get('auth0_session')?.value;
-  if (!sessionCookie) return null;
-
-  try {
-    const sessionData = JSON.parse(sessionCookie);
-    return sessionData?.user?.accessToken || null;
-  } catch {
-    return null;
-  }
+async function getSessionAccessToken(request: NextRequest): Promise<string | null> {
+  const sessionData = await getSessionFromRequest(request);
+  return sessionData?.user?.accessToken || null;
 }
 
 async function proxyRequest(request: NextRequest, context: RouteContext) {
@@ -47,7 +41,7 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
   });
 
   if (!headers.has('authorization')) {
-    const accessToken = getSessionAccessToken(request);
+    const accessToken = await getSessionAccessToken(request);
     if (accessToken) {
       headers.set('authorization', `Bearer ${accessToken}`);
     }

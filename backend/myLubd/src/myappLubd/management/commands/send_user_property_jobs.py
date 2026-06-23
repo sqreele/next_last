@@ -1,16 +1,15 @@
 import logging
-from datetime import datetime, timedelta
-from collections import defaultdict
+from datetime import timedelta
 
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.db.models import Count, Q
 
 from django.contrib.auth import get_user_model
-from myappLubd.models import Job, Topic, Property
+from myappLubd.models import Job, Property
 from myappLubd.email_utils import send_email
+from myappLubd.timezones import localtime_for
 
 
 logger = logging.getLogger(__name__)
@@ -76,9 +75,20 @@ class Command(BaseCommand):
             help="Comma-separated list of user IDs to exclude from sending",
         )
 
-    def get_user_property_jobs(self, user, property_id, days, status_filter=None, priority_filter=None):
+    def _primary_user_property(self, user):
+        try:
+            prop = user.userprofile.properties.select_related('tenant').first()
+            if prop:
+                return prop
+        except Exception:
+            pass
+        return Property.objects.filter(users=user).select_related('tenant').first()
+
+    def get_user_property_jobs(self, user, property_id, days, status_filter=None, priority_filter=None, now=None):
         """Get jobs for a specific user and property within date range."""
-        now = timezone.localtime()
+        if now is None:
+            property_obj = Property.objects.filter(id=property_id).select_related('tenant').first() if property_id else self._primary_user_property(user)
+            now = localtime_for(property_obj)
         start_date = now - timedelta(days=days)
         
         # Base query for jobs in date range
@@ -275,7 +285,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            now = timezone.localtime()
             days = options.get('days', 7)
             property_id = options.get('property_id')
             user_id = options.get('user_id')
@@ -285,7 +294,7 @@ class Command(BaseCommand):
             
             # Handle --all-properties flag
             if options.get('all_properties'):
-                self._handle_all_properties(options, now, days, status_filter, priority_filter, test_mode)
+                self._handle_all_properties(options, days, status_filter, priority_filter, test_mode)
                 return
             
             User = get_user_model()
@@ -337,7 +346,7 @@ class Command(BaseCommand):
             property_obj = None
             if property_id:
                 try:
-                    property_obj = Property.objects.get(id=property_id)
+                    property_obj = Property.objects.select_related('tenant').get(id=property_id)
                 except Property.DoesNotExist:
                     self.stdout.write(self.style.ERROR(f"Property with ID {property_id} not found"))
                     return
@@ -346,8 +355,10 @@ class Command(BaseCommand):
             total_users = users.count()
             
             for user in users:
+                user_property_obj = property_obj or self._primary_user_property(user)
+                now = localtime_for(user_property_obj)
                 # Get user's jobs
-                jobs = self.get_user_property_jobs(user, property_id, days, status_filter, priority_filter)
+                jobs = self.get_user_property_jobs(user, property_id, days, status_filter, priority_filter, now)
                 
                 if not jobs.exists():
                     logger.info(f"No jobs found for user {user.email}")
@@ -357,7 +368,7 @@ class Command(BaseCommand):
                 stats = self.get_job_statistics(jobs)
                 
                 # Send email
-                success = self.send_user_job_email(user, property_obj, jobs, stats, days, now)
+                success = self.send_user_job_email(user, user_property_obj, jobs, stats, days, now)
                 if success:
                     sent_count += 1
                 
@@ -378,11 +389,11 @@ class Command(BaseCommand):
             logger.exception("Error while sending user property job emails: %s", exc)
             self.stdout.write(self.style.ERROR(f"Error: {exc}"))
 
-    def _handle_all_properties(self, options, now, days, status_filter, priority_filter, test_mode):
+    def _handle_all_properties(self, options, days, status_filter, priority_filter, test_mode):
         """Send user job emails for all properties to their respective users."""
         User = get_user_model()
         
-        properties = Property.objects.all()
+        properties = Property.objects.select_related('tenant')
         total_sent = 0
         total_properties = properties.count()
         
@@ -428,8 +439,9 @@ class Command(BaseCommand):
             property_sent_count = 0
             
             for user in users:
+                now = localtime_for(property_obj)
                 # Get user's jobs for this property
-                jobs = self.get_user_property_jobs(user, property_id, days, status_filter, priority_filter)
+                jobs = self.get_user_property_jobs(user, property_id, days, status_filter, priority_filter, now)
                 
                 if not jobs.exists():
                     logger.info(f"No jobs found for user {user.email} in property {property_obj.name}")

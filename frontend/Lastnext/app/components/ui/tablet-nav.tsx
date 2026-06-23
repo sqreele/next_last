@@ -17,7 +17,7 @@ interface TabletNavProps {
   className?: string;
 }
 
-const navigationItems = primaryNavigationItems.filter((item) => item.href !== '/roster');
+const navigationItems = primaryNavigationItems;
 
 export function TabletNav({ className }: TabletNavProps) {
   const pathname = usePathname();

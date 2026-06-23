@@ -45,13 +45,18 @@ class SaaSFoundationTests(APITestCase):
         _login(self.client, self.owner)
         resp = self.client.post(
             '/api/v1/tenants/',
-            {'name': 'Acme Hotels', 'billing_email': 'billing@example.com'},
+            {
+                'name': 'Acme Hotels',
+                'billing_email': 'billing@example.com',
+                'timezone': 'Asia/Bangkok',
+            },
             format='json',
         )
 
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
         tenant = Tenant.objects.get(name='Acme Hotels')
         self.assertEqual(tenant.owner, self.owner)
+        self.assertEqual(tenant.timezone, 'Asia/Bangkok')
         self.assertTrue(
             TenantMembership.objects.filter(
                 tenant=tenant,
@@ -61,6 +66,26 @@ class SaaSFoundationTests(APITestCase):
             ).exists()
         )
         self.assertTrue(TenantSubscription.objects.filter(tenant=tenant).exists())
+
+    def test_tenant_timezone_must_be_valid_iana_name(self):
+        _login(self.client, self.owner)
+        resp = self.client.post(
+            '/api/v1/tenants/',
+            {'name': 'Bad Zone Hotels', 'timezone': 'Bangkok Time'},
+            format='json',
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        self.assertIn('timezone', resp.data)
+
+    def test_tenant_timezone_options_endpoint(self):
+        _login(self.client, self.owner)
+        resp = self.client.get('/api/v1/tenants/timezones/')
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.assertEqual(resp.data['default'], 'Asia/Bangkok')
+        self.assertIn('Asia/Bangkok', resp.data['common'])
+        self.assertIn('UTC', resp.data['all'])
 
     def test_property_create_attaches_to_tenant_and_enforces_plan_limit(self):
         tenant = Tenant.objects.create(name='Limit Hotels', owner=self.owner)

@@ -21,7 +21,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       
       // Set auth tokens
       if (session.user?.accessToken) {
-        setAuthTokens(session.user.accessToken, session.user.refreshToken || '');
+        setAuthTokens(session.user.accessToken, '');
       }
 
       // Create user profile from session data

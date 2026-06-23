@@ -240,8 +240,8 @@ export default function ProfilePage() {
                         <User2 className="w-5 h-5 text-gray-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-900">User ID</p>
-                        <p className="text-sm text-gray-600 font-mono">{user.id || 'N/A'}</p>
+                        <p className="text-sm font-medium text-gray-900">Account</p>
+                        <p className="text-sm text-gray-600">{displayName || user.email || 'N/A'}</p>
                       </div>
                     </div>
                   </div>

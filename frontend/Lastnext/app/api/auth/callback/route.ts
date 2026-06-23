@@ -1,4 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { setSessionCookie } from '@/app/lib/auth0/session-cookie';
+
+const RAW_AUTH_ID_PATTERN = /^(google-oauth2_|auth0_)/i;
+const RAW_AUTH_PIPE_PATTERN = /^(google-oauth2|auth0)\|/i;
+
+function isRawAuthIdentifier(value?: string | null): boolean {
+  if (!value) return true;
+  const text = value.trim();
+  if (!text) return true;
+  return RAW_AUTH_ID_PATTERN.test(text) || RAW_AUTH_PIPE_PATTERN.test(text);
+}
+
+function pickHumanUsername(userInfo: any): string {
+  const candidates = [
+    userInfo?.given_name,
+    userInfo?.name,
+    userInfo?.nickname,
+    userInfo?.email?.split('@')[0],
+    userInfo?.email,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string') continue;
+    const trimmed = candidate.trim();
+    if (trimmed && !isRawAuthIdentifier(trimmed)) {
+      return trimmed;
+    }
+  }
+
+  return 'User';
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -158,7 +189,7 @@ export async function GET(request: NextRequest) {
           // Use a sanitized ID that's URL-friendly and consistent with backend
           id: userInfo?.sub ? userInfo.sub.replace('|', '_') : `auth0_${Date.now()}`,
           // More reliable username extraction - prioritize human-readable names
-          username: userInfo?.given_name || userInfo?.name || userInfo?.nickname || userInfo?.email?.split('@')[0] || 'User',
+          username: pickHumanUsername(userInfo),
           email: userInfo?.email || 'unknown@example.com',
           profile_image: userInfo?.picture || null,
           positions: userInfo?.positions || 'User',
@@ -190,7 +221,7 @@ export async function GET(request: NextRequest) {
       }
       
       if (!sessionData.user.username || sessionData.user.username === 'User') {
-        sessionData.user.username = userInfo?.given_name || userInfo?.name || userInfo?.nickname || userInfo?.email?.split('@')[0] || 'User';
+        sessionData.user.username = pickHumanUsername(userInfo);
       }
 
       // Debug log the session data being created
@@ -236,14 +267,11 @@ export async function GET(request: NextRequest) {
       // Redirect with session cookie
       const response = NextResponse.redirect(redirectUrl);
       
-      // Set session cookie
-      response.cookies.set('auth0_session', JSON.stringify(sessionData), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: tokens.refresh_token ? 60 * 24 * 60 * 60 : Math.max(tokens.expires_in || 0, 24 * 60 * 60),
-      });
+      await setSessionCookie(
+        response,
+        sessionData,
+        tokens.refresh_token ? 60 * 24 * 60 * 60 : Math.max(tokens.expires_in || 0, 24 * 60 * 60),
+      );
       response.cookies.delete('auth0_login_state');
 
       return response;

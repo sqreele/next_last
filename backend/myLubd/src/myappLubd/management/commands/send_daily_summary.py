@@ -1,16 +1,16 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from collections import defaultdict
 
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 from django.conf import settings
 from django.template.loader import render_to_string
-from django.db.models import Count, Q
+from django.db.models import Q
 
 from django.contrib.auth import get_user_model
-from myappLubd.models import Job, Topic
+from myappLubd.models import Job, Property
 from myappLubd.email_utils import send_email
+from myappLubd.timezones import local_date_bounds, localtime_for, object_timezone
 
 
 logger = logging.getLogger(__name__)
@@ -199,22 +199,28 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            # Use Asia/Bangkok timezone as configured
-            now = timezone.localtime()
-            
             # Handle --all-properties flag
             if options.get('all_properties'):
-                self._handle_all_properties(options, now)
+                self._handle_all_properties(options)
                 return
+
+            property_obj = None
+            property_id = options.get('property_id')
+            if property_id:
+                try:
+                    property_obj = Property.objects.select_related('tenant').get(id=property_id)
+                except Property.DoesNotExist:
+                    property_obj = None
+
+            now = localtime_for(property_obj)
+            timezone_label = object_timezone(property_obj).key
 
             # Define the 24-hour window for the day that just ended at 23:00
             # but since we run at 23:00, we summarize the current day 00:00 -> 23:00
-            start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_of_window = now.replace(minute=59, second=59, microsecond=999999)
+            start_of_day, end_of_window = local_date_bounds(now)
 
             # Apply property filter if specified
             property_filter = Q()
-            property_id = options.get('property_id')
             if property_id:
                 # Jobs are related to properties through rooms.properties
                 property_filter = Q(rooms__properties__id=property_id)
@@ -240,9 +246,7 @@ class Command(BaseCommand):
             # Compose email
             if property_id:
                 try:
-                    from myappLubd.models import Property
-                    property_obj = Property.objects.get(id=property_id)
-                    property_name = property_obj.name
+                    property_name = property_obj.name if property_obj else Property.objects.get(id=property_id).name
                     subject = f"Daily Maintenance Summary - {property_name} - {now.strftime('%Y-%m-%d')}"
                 except Property.DoesNotExist:
                     subject = f"Daily Maintenance Summary - Property {property_id} - {now.strftime('%Y-%m-%d')}"
@@ -251,15 +255,13 @@ class Command(BaseCommand):
 
             # Plain-text fallback body
             lines = [
-                f"Date: {now.strftime('%Y-%m-%d')} (Asia/Bangkok)",
+                f"Date: {now.strftime('%Y-%m-%d')} ({timezone_label})",
             ]
             
             if property_id:
                 try:
-                    from myappLubd.models import Property
-                    property_obj = Property.objects.get(id=property_id)
                     lines.extend([
-                        f"Property: {property_obj.name} (ID: {property_id})",
+                        f"Property: {(property_obj.name if property_obj else Property.objects.get(id=property_id).name)} (ID: {property_id})",
                         "",
                     ])
                 except Property.DoesNotExist:
@@ -343,7 +345,7 @@ class Command(BaseCommand):
             ]
             context = {
                 "date_str": now.strftime('%Y-%m-%d'),
-                "timezone_label": "Asia/Bangkok",
+                "timezone_label": timezone_label,
                 "total_created": total_created,
                 "completed_today": completed_today,
                 "status_list": status_list,
@@ -454,11 +456,9 @@ class Command(BaseCommand):
             logger.exception("Error while sending daily summary email: %s", exc)
             self.stdout.write(self.style.ERROR(f"Error: {exc}"))
 
-    def _handle_all_properties(self, options, now):
+    def _handle_all_properties(self, options):
         """Send daily summary for all properties to their respective users."""
-        from myappLubd.models import Property
-        
-        properties = Property.objects.all()
+        properties = Property.objects.select_related('tenant')
         total_sent = 0
         total_properties = properties.count()
         
@@ -468,6 +468,8 @@ class Command(BaseCommand):
         
         for property_obj in properties:
             property_id = property_obj.id
+            now = localtime_for(property_obj)
+            timezone_label = object_timezone(property_obj).key
             
             # Get users assigned to this property
             users_qs = User.objects.filter(
@@ -505,8 +507,7 @@ class Command(BaseCommand):
             property_filter = Q(rooms__properties__id=property_id)
             
             # Get job statistics for this property
-            start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_of_window = now.replace(minute=59, second=59, microsecond=999999)
+            start_of_day, end_of_window = local_date_bounds(now)
             
             jobs_today = Job.objects.filter(created_at__range=(start_of_day, end_of_window)).filter(property_filter).distinct()
             total_created = jobs_today.count()
@@ -533,7 +534,7 @@ class Command(BaseCommand):
             
             # Plain-text body
             lines = [
-                f"Date: {now.strftime('%Y-%m-%d')} (Asia/Bangkok)",
+                f"Date: {now.strftime('%Y-%m-%d')} ({timezone_label})",
                 f"Property: {property_obj.name} (ID: {property_id})",
                 "",
                 f"TODAY'S SUMMARY:",
@@ -554,7 +555,7 @@ class Command(BaseCommand):
             ]
             context = {
                 "date_str": now.strftime('%Y-%m-%d'),
-                "timezone_label": "Asia/Bangkok",
+                "timezone_label": timezone_label,
                 "total_created": total_created,
                 "completed_today": completed_today,
                 "status_list": status_list,
@@ -593,4 +594,3 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(f"Daily summaries sent for {total_sent}/{total_properties} properties")
         )
-

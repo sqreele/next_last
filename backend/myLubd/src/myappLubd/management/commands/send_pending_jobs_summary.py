@@ -1,7 +1,6 @@
 import logging
-import base64
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -12,6 +11,7 @@ from django.db.models import Q, Prefetch
 from django.contrib.auth import get_user_model
 from myappLubd.models import Job, JobImage, Property
 from myappLubd.email_utils import send_email
+from myappLubd.timezones import localtime_for, object_timezone
 
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,8 @@ class Command(BaseCommand):
 
     def get_pending_jobs(self, property_id=None, days=30):
         """Get jobs with status: pending, in_progress, or waiting_sparepart."""
-        now = timezone.localtime()
+        property_obj = Property.objects.filter(id=property_id).select_related('tenant').first() if property_id else None
+        now = localtime_for(property_obj)
         start_date = now - timedelta(days=days)
         
         # Build base query for target statuses
@@ -110,7 +111,7 @@ class Command(BaseCommand):
         
         return jobs_query
 
-    def get_job_details_with_images(self, jobs, max_images=3, include_images=True):
+    def get_job_details_with_images(self, jobs, max_images=3, include_images=True, tzinfo=None):
         """Prepare job details with images for email template."""
         job_details = []
         
@@ -185,8 +186,8 @@ class Command(BaseCommand):
                 'status_info': status_info,
                 'priority': job.priority,
                 'priority_info': priority_info,
-                'created_at': job.created_at,
-                'updated_at': job.updated_at,
+                'created_at': timezone.localtime(job.created_at, tzinfo) if tzinfo and job.created_at else job.created_at,
+                'updated_at': timezone.localtime(job.updated_at, tzinfo) if tzinfo and job.updated_at else job.updated_at,
                 'user_name': user_name,
                 'rooms': rooms,
                 'topics': topics,
@@ -282,9 +283,10 @@ class Command(BaseCommand):
         
         return recipients
 
-    def send_pending_jobs_email(self, jobs, job_details, stats, recipients, now, property_name=None, property_id=None):
+    def send_pending_jobs_email(self, jobs, job_details, stats, recipients, now, property_name=None, property_id=None, timezone_label=None):
         """Send the pending jobs summary email."""
         try:
+            timezone_label = timezone_label or object_timezone().key
             # Prepare subject
             if property_name:
                 subject = f"Action Required: {stats['total']} Jobs Need Attention - {property_name} ({now.strftime('%Y-%m-%d')})"
@@ -293,7 +295,7 @@ class Command(BaseCommand):
             
             # Plain-text fallback body
             lines = [
-                f"Date: {now.strftime('%Y-%m-%d %H:%M')} (Asia/Bangkok)",
+                f"Date: {now.strftime('%Y-%m-%d %H:%M')} ({timezone_label})",
                 "",
             ]
             
@@ -355,7 +357,7 @@ class Command(BaseCommand):
             context = {
                 "date_str": now.strftime('%Y-%m-%d'),
                 "time_str": now.strftime('%H:%M'),
-                "timezone_label": "Asia/Bangkok",
+                "timezone_label": timezone_label,
                 "property_id": property_id,
                 "property_name": property_name,
                 "stats": stats,
@@ -389,32 +391,34 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         try:
-            now = timezone.localtime()
             days = options.get('days', 30)
             include_images = options.get('include_images', True)
             max_images = options.get('max_images', 3)
             
             if options.get('all_properties'):
                 # Send summary for all properties
-                properties = Property.objects.all()
+                properties = Property.objects.select_related('tenant')
                 total_sent = 0
                 
                 for property_obj in properties:
+                    property_now = localtime_for(property_obj)
+                    property_tz = object_timezone(property_obj)
                     jobs = self.get_pending_jobs(property_id=property_obj.id, days=days)
                     
                     if not jobs.exists():
                         logger.info(f"No pending jobs for property {property_obj.name}, skipping")
                         continue
                     
-                    job_details = self.get_job_details_with_images(jobs, max_images, include_images)
+                    job_details = self.get_job_details_with_images(jobs, max_images, include_images, property_tz)
                     stats = self.get_summary_stats(jobs)
                     recipients = self.get_recipients(options, property_id=property_obj.id)
                     
                     if recipients:
                         success = self.send_pending_jobs_email(
-                            jobs, job_details, stats, recipients, now,
+                            jobs, job_details, stats, recipients, property_now,
                             property_name=property_obj.name,
-                            property_id=property_obj.id
+                            property_id=property_obj.id,
+                            timezone_label=property_tz.key,
                         )
                         if success:
                             total_sent += 1
@@ -427,18 +431,21 @@ class Command(BaseCommand):
                 # Send summary for specific property or all jobs
                 property_id = options.get('property_id')
                 property_name = None
+                property_obj = None
                 
                 if property_id:
                     try:
-                        property_obj = Property.objects.get(id=property_id)
+                        property_obj = Property.objects.select_related('tenant').get(id=property_id)
                         property_name = property_obj.name
                     except Property.DoesNotExist:
                         try:
-                            property_obj = Property.objects.get(property_id=property_id)
+                            property_obj = Property.objects.select_related('tenant').get(property_id=property_id)
                             property_id = property_obj.id
                             property_name = property_obj.name
                         except Property.DoesNotExist:
                             property_name = f"Property {property_id}"
+                now = localtime_for(property_obj)
+                tzinfo = object_timezone(property_obj)
                 
                 jobs = self.get_pending_jobs(property_id=property_id, days=days)
                 
@@ -446,7 +453,7 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING("No jobs with pending/in_progress/waiting_sparepart status found"))
                     return
                 
-                job_details = self.get_job_details_with_images(jobs, max_images, include_images)
+                job_details = self.get_job_details_with_images(jobs, max_images, include_images, tzinfo)
                 stats = self.get_summary_stats(jobs)
                 recipients = self.get_recipients(options, property_id=property_id)
                 
@@ -458,7 +465,8 @@ class Command(BaseCommand):
                 success = self.send_pending_jobs_email(
                     jobs, job_details, stats, recipients, now,
                     property_name=property_name,
-                    property_id=property_id
+                    property_id=property_id,
+                    timezone_label=tzinfo.key,
                 )
                 
                 if success:

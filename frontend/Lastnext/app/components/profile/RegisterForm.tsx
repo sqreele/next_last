@@ -52,8 +52,6 @@ export default function RegisterForm() {
       );
      
       if (response.data.access) {
-        localStorage.setItem('accessToken', response.data.access);
-        localStorage.setItem('refreshToken', response.data.refresh);
         router.push('/auth/login');
       }
      } catch (error) {

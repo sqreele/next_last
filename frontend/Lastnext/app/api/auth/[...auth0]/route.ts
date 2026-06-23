@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
+import { clearSessionCookie, getSessionFromRequest, sanitizeSessionForClient } from '@/app/lib/auth0/session-cookie';
 
 function resolveAudience(raw?: string | null): string {
   const fallback = 'https://pcms.live/api';
@@ -99,30 +100,24 @@ export async function GET(request: NextRequest) {
           
           const response = NextResponse.redirect(logoutUrl);
           // Clear any session cookies
-          response.cookies.delete('auth0_session');
+          clearSessionCookie(response);
           return response;
         } catch (logoutError) {
           console.error('Auth0 logout error:', logoutError);
           // Fallback logout - clear cookie and redirect
           const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
           const response = NextResponse.redirect(baseUrl);
-          response.cookies.delete('auth0_session');
+          clearSessionCookie(response);
           return response;
         }
       
       case 'profile':
         // Get user profile from session
         try {
-          const cookie = request.cookies.get('auth0_session');
-          if (cookie?.value) {
-            try {
-              const parsed = JSON.parse(cookie.value);
-              if (parsed?.user) {
-                return NextResponse.json({ user: parsed.user });
-              }
-            } catch (e) {
-              console.error('Failed to parse auth0_session cookie in profile:', e);
-            }
+          const session = await getSessionFromRequest(request);
+          const clientSession = sanitizeSessionForClient(session);
+          if (clientSession?.user) {
+            return NextResponse.json({ user: clientSession.user });
           }
           return NextResponse.json({ user: null }, { status: 401 });
         } catch (profileError) {

@@ -177,9 +177,7 @@ export default function OnboardingPage() {
 
       // Wait 2 seconds then redirect to login to refresh session
       setTimeout(() => {
-        // Clear the session cookie to force re-login
-        document.cookie = 'auth0_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        router.push('/auth/login?message=onboarding_complete');
+        window.location.assign('/api/auth/logout?returnTo=/auth/login?message=onboarding_complete');
       }, 2000);
 
     } catch (error) {

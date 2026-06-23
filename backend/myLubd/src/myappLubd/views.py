@@ -19,7 +19,7 @@ from django.db import models, transaction
 from .models import (
     UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance,
     JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory,
-    RosterLeave, Area, JobComment, PushSubscription, Tenant,
+    Area, JobComment, PushSubscription, Tenant,
     TenantMembership, SubscriptionPlan, TenantSubscription, UsageMetric,
     InventoryUsage, MaintenanceChecklist, MaintenanceHistory,
 )
@@ -34,7 +34,7 @@ from .serializers import (
     MachineCreateSerializer, MachineUpdateSerializer, MachinePreventiveMaintenanceSerializer,
     MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer,
     UtilityConsumptionSerializer, UtilityConsumptionListSerializer,
-    InventorySerializer, InventoryListSerializer, InventoryUsageSerializer, RosterLeaveSerializer,
+    InventorySerializer, InventoryListSerializer, InventoryUsageSerializer,
     AreaSerializer, JobCommentSerializer, TenantSerializer,
     TenantMembershipSerializer, SubscriptionPlanSerializer,
     TenantSubscriptionSerializer, UsageMetricSerializer,
@@ -69,6 +69,7 @@ from .tenancy import (
     tenant_usage_counts,
     user_can_manage_tenant,
 )
+from .timezones import timezone_options
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -1982,10 +1983,14 @@ class JobViewSet(viewsets.ModelViewSet):
                     serializer = self.get_serializer(paginator, many=True)
                     response = self.get_paginated_response(serializer.data)
                     # Add additional metadata
+                    user_display_name = display_name_from_user(user, fallback=user.email or 'User')
+                    target_display_name = display_name_from_user(target_user, fallback=target_user.email or 'User')
                     response.data['user_id'] = user.id
-                    response.data['username'] = user.username
+                    response.data['username'] = user_display_name
+                    response.data['display_name'] = user_display_name
                     response.data['target_user_id'] = target_user.id
-                    response.data['target_username'] = target_user.username
+                    response.data['target_username'] = target_display_name
+                    response.data['target_display_name'] = target_display_name
                     logger.info(f"Returning paginated results: page {page_num}, {len(serializer.data)} jobs")
                     return response
             except (ValueError, TypeError) as e:
@@ -1993,15 +1998,19 @@ class JobViewSet(viewsets.ModelViewSet):
         
         # If no pagination requested or pagination failed, return all results
         serializer = self.get_serializer(jobs, many=True)
+        user_display_name = display_name_from_user(user, fallback=user.email or 'User')
+        target_display_name = display_name_from_user(target_user, fallback=target_user.email or 'User')
         
         response_data = {
             'count': len(serializer.data),
             'results': serializer.data,
             'user_id': user.id,
-            'username': user.username,
+            'username': user_display_name,
+            'display_name': user_display_name,
             'target_user_id': target_user.id,
-            'target_username': target_user.username,
-            'message': f'Found {len(serializer.data)} jobs for user {target_user.username}'
+            'target_username': target_display_name,
+            'target_display_name': target_display_name,
+            'message': f'Found {len(serializer.data)} jobs for user {target_display_name}'
         }
         
         logger.info(f"Returning {len(serializer.data)} jobs to user {user.username} (no pagination)")
@@ -2257,13 +2266,9 @@ class JobViewSet(viewsets.ModelViewSet):
 
         note = ((request.data or {}).get('note') or '').strip()[:300]
         stamp = timezone.now().strftime('%Y-%m-%d %H:%M')
-        actor = (
-            getattr(request.user, 'username', None) or getattr(request.user, 'email', None) or 'system'
-        )
-        new_username = target.username or getattr(target, 'email', None) or f'user-{target.pk}'
-        prev_username = (
-            previous.username if previous else 'unassigned'
-        )
+        actor = display_name_from_user(request.user, fallback=getattr(request.user, 'email', None) or 'system')
+        new_username = display_name_from_user(target, fallback=getattr(target, 'email', None) or f'user-{target.pk}')
+        prev_username = display_name_from_user(previous, fallback='unassigned') if previous else 'unassigned'
         log_line = (
             f"[{stamp} · {actor} → reassigned] "
             f"{prev_username} → {new_username}"
@@ -2351,6 +2356,10 @@ class TenantViewSet(viewsets.ModelViewSet):
     def usage(self, request, pk=None):
         tenant = self.get_object()
         return Response(tenant_usage_counts(tenant))
+
+    @action(detail=False, methods=['get'], url_path='timezones')
+    def timezones(self, request):
+        return Response(timezone_options())
 
 
 class SubscriptionPlanViewSet(viewsets.ModelViewSet):
@@ -3098,28 +3107,22 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
 
-
-class RosterLeaveViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint for managing roster leave records (PH/VC).
-    """
-    serializer_class = RosterLeaveSerializer
-    permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['staff_id', 'week', 'day', 'leave_type']
-    ordering_fields = ['week', 'day', 'created_at']
-    ordering = ['week', 'day']
-    pagination_class = None
-
     def get_queryset(self):
         user = self.request.user
-        queryset = RosterLeave.objects.select_related('created_by')
-        if not (user.is_staff or user.is_superuser):
-            queryset = queryset.filter(created_by=user)
-        return queryset
+        if user.is_staff or user.is_superuser:
+            return User.objects.all()
+        return User.objects.filter(pk=user.pk)
 
-    def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+    def create(self, request, *args, **kwargs):
+        if not (request.user.is_staff or request.user.is_superuser):
+            raise PermissionDenied("You do not have permission to create users.")
+        return super().create(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if not (request.user.is_staff or request.user.is_superuser):
+            raise PermissionDenied("You do not have permission to delete users.")
+        return super().destroy(request, *args, **kwargs)
+
 
 class PreventiveMaintenanceImageUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
@@ -3254,9 +3257,11 @@ class CustomSessionView(APIView):
 @permission_classes([IsAuthenticated])
 def auth_check(request):
     """Check if the user is authenticated and return basic user info"""
+    display_name = display_name_from_user(request.user, fallback=request.user.email or 'User')
     return Response({
         "authenticated": True,
-        "username": request.user.username,
+        "username": display_name,
+        "display_name": display_name,
         "email": request.user.email,
     }, status=status.HTTP_200_OK)
 
@@ -3462,7 +3467,8 @@ def google_auth(request):
             'user_id': user.id,
             'user': {
                 'id': user.id,
-                'username': user.username,
+                'username': display_name_from_user(user, fallback=user.email or 'User'),
+                'display_name': display_name_from_user(user, fallback=user.email or 'User'),
                 'email': user.email,
                 'profile_image': userprofile.profile_image.url if userprofile.profile_image else None,
                 'positions': userprofile.positions,
@@ -3915,6 +3921,7 @@ def generate_maintenance_pdf_report(request):
     """
     try:
         from .pdf_utils import MaintenanceReportGenerator
+        from .timezones import localtime_for, object_timezone
         from django.http import HttpResponse
         import io
         
@@ -3964,6 +3971,9 @@ def generate_maintenance_pdf_report(request):
         
         if property_id:
             queryset = queryset.filter(job__rooms__properties__property_id=property_id)
+            report_property = Property.objects.filter(property_id=property_id).select_related('tenant').first()
+        else:
+            report_property = None
         
         # Filter by user access (only show maintenance for properties user has access to)
         if not request.user.is_staff:
@@ -3981,11 +3991,14 @@ def generate_maintenance_pdf_report(request):
                 'error': 'No maintenance data found for the specified filters'
             }, status=status.HTTP_404_NOT_FOUND)
         
+        report_tz = object_timezone(report_property or maintenance_data[0])
+
         # Create PDF generator
         generator = MaintenanceReportGenerator(
             title=title,
             include_images=include_images,
-            compact_mode=(report_type == 'compact')
+            compact_mode=(report_type == 'compact'),
+            tzinfo=report_tz,
         )
         
         # Generate PDF
@@ -4003,7 +4016,7 @@ def generate_maintenance_pdf_report(request):
         )
         
         # Set filename
-        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = localtime_for(report_property or maintenance_data[0]).strftime('%Y%m%d_%H%M%S')
         filename = f"maintenance_report_{report_type}_{timestamp}.pdf"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
         
@@ -4098,7 +4111,8 @@ def update_user_profile(request):
             'updated_fields': updated_fields,
             'user': {
                 'id': user.id,
-                'username': user.username,
+                'username': display_name_from_user(user, fallback=user.email or 'User'),
+                'display_name': display_name_from_user(user, fallback=user.email or 'User'),
                 'email': user.email,
                 'first_name': user.first_name,
                 'last_name': user.last_name,

@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import (
     Room, Topic, JobImage, Job, Property, UserProfile, Session,
     PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage,
-    UtilityConsumption, Inventory, RosterLeave, Area, JobComment, Tenant,
+    UtilityConsumption, Inventory, Area, JobComment, Tenant,
     TenantMembership, SubscriptionPlan, TenantSubscription, UsageMetric,
     InventoryUsage,
 )
@@ -23,6 +23,8 @@ from django.conf import settings
 from datetime import timedelta
 from pathlib import Path
 import math
+
+from .timezones import is_valid_timezone
 
 
 RAW_AUTH_PREFIXES = ('google-oauth2_', 'auth0_', 'auth0|')
@@ -62,8 +64,21 @@ def get_user_display_name(user, fallback='Unknown Technician'):
     return fallback
 
 
+def get_user_public_username(user, fallback=''):
+    if not user:
+        return fallback
+
+    username = str(getattr(user, 'username', '') or '').strip()
+    if username and not is_raw_auth_identifier(username):
+        return username
+
+    display_name = get_user_display_name(user, fallback=fallback or 'User')
+    return '' if display_name == 'Unknown Technician' and not fallback else display_name
+
+
 # User serializer for basic user data
 class UserSerializer(serializers.HyperlinkedModelSerializer):
+    username = serializers.SerializerMethodField()
     display_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -73,7 +88,11 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     def get_display_name(self, obj):
         return get_user_display_name(obj)
 
+    def get_username(self, obj):
+        return get_user_public_username(obj)
+
 class UserSummarySerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     display_name = serializers.SerializerMethodField()
 
@@ -88,6 +107,9 @@ class UserSummarySerializer(serializers.ModelSerializer):
 
     def get_display_name(self, obj):
         return get_user_display_name(obj)
+
+    def get_username(self, obj):
+        return get_user_public_username(obj)
 
 
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
@@ -169,6 +191,13 @@ class TenantSerializer(serializers.ModelSerializer):
             'property_count', 'active_user_count', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'tenant_id', 'slug', 'owner', 'created_at', 'updated_at']
+
+    def validate_timezone(self, value):
+        if not is_valid_timezone(value):
+            raise serializers.ValidationError(
+                "Use a valid IANA timezone name, for example 'Asia/Bangkok' or 'UTC'."
+            )
+        return value
 
 # Room serializer defined first to avoid circular import issues
 class RoomSerializer(serializers.ModelSerializer):
@@ -278,13 +307,12 @@ class PropertySerializer(serializers.ModelSerializer):
 # User profile serializer
 class UserProfileSerializer(serializers.ModelSerializer):
     properties = PropertySerializer(many=True, read_only=True)
-    username = serializers.CharField(source='user.username', read_only=True)
+    username = serializers.SerializerMethodField()
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     display_name = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(source='user.date_joined', read_only=True)
-    uses_roster = serializers.BooleanField(source='user.uses_roster', read_only=True)
     # Property fields from User model
     user_property_name = serializers.CharField(source='user.property_name', read_only=True)
     user_property_id = serializers.CharField(source='user.property_id', read_only=True)
@@ -304,7 +332,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'profile_image',
             'positions',
             'properties',
-            'uses_roster',
             'user_property_name',
             'user_property_id',
             'profile_property_name',
@@ -316,6 +343,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_display_name(self, obj):
         return get_user_display_name(obj.user)
+
+    def get_username(self, obj):
+        return get_user_public_username(obj.user)
 
 def _build_media_absolute_uri(request, media_path):
     """Build a stable media URL from paths stored by FileField or helper fields.
@@ -447,7 +477,7 @@ class AreaSummarySerializer(serializers.ModelSerializer):
 
 # Job comment serializer
 class JobCommentSerializer(serializers.ModelSerializer):
-    author_username = serializers.CharField(source='author.username', read_only=True)
+    author_username = serializers.SerializerMethodField()
     author_name = serializers.SerializerMethodField()
     author_id = serializers.IntegerField(source='author.id', read_only=True)
 
@@ -466,20 +496,15 @@ class JobCommentSerializer(serializers.ModelSerializer):
     def get_author_name(self, obj):
         return get_user_display_name(obj.author)
 
+    def get_author_username(self, obj):
+        return get_user_public_username(obj.author)
+
     def validate_comment(self, value):
         text = (value or '').strip()
         if not text:
             raise serializers.ValidationError("Comment cannot be empty.")
         return text
 
-
-class RosterLeaveSerializer(serializers.ModelSerializer):
-    type = serializers.ChoiceField(source='leave_type', choices=RosterLeave.LEAVE_TYPE_CHOICES)
-
-    class Meta:
-        model = RosterLeave
-        fields = ['id', 'staff_id', 'week', 'day', 'type', 'note', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
 
 # Job serializer
 class JobSerializer(serializers.ModelSerializer):
@@ -491,7 +516,7 @@ class JobSerializer(serializers.ModelSerializer):
     )
     # Change from StringRelatedField to show user details
     user = serializers.SerializerMethodField()
-    user_username = serializers.CharField(source='user.username', read_only=True)
+    user_username = serializers.SerializerMethodField()
     user_first_name = serializers.CharField(source='user.first_name', read_only=True)
     user_last_name = serializers.CharField(source='user.last_name', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
@@ -580,7 +605,7 @@ class JobSerializer(serializers.ModelSerializer):
         if user:
             return {
                 'id': getattr(user, 'id', None),
-                'username': getattr(user, 'username', '') or '',
+                'username': get_user_public_username(user),
                 'first_name': getattr(user, 'first_name', '') or '',
                 'last_name': getattr(user, 'last_name', '') or '',
                 'email': getattr(user, 'email', '') or '',
@@ -591,6 +616,9 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_user_name(self, obj):
         return get_user_display_name(getattr(obj, 'user', None)) or 'Unknown user'
+
+    def get_user_username(self, obj):
+        return get_user_public_username(getattr(obj, 'user', None))
 
     def get_technician_name(self, obj):
         return get_user_display_name(getattr(obj, 'user', None)) or 'Unknown technician'
@@ -729,18 +757,20 @@ class UserSerializer(serializers.ModelSerializer):
         validators=[validate_password]
     )
     email = serializers.EmailField(required=True)
+    display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'email')
+        fields = ('username', 'password', 'email', 'display_name')
+        read_only_fields = ('display_name',)
 
     def validate(self, attrs):
-        username = attrs.get('username', '')
-        if User.objects.filter(username=username).exists():
+        username = attrs.get('username')
+        if username and User.objects.filter(username=username).exclude(pk=getattr(self.instance, 'pk', None)).exists():
             raise serializers.ValidationError({"username": "A user with that username already exists."})
 
-        email = attrs.get('email', '')
-        if User.objects.filter(email=email).exists():
+        email = attrs.get('email')
+        if email and User.objects.filter(email=email).exclude(pk=getattr(self.instance, 'pk', None)).exists():
             raise serializers.ValidationError({"email": "A user with that email already exists."})
 
         return attrs
@@ -753,6 +783,24 @@ class UserSerializer(serializers.ModelSerializer):
         )
         UserProfile.objects.get_or_create(user=user)
         return user
+
+    def get_display_name(self, obj):
+        return get_user_display_name(obj)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['username'] = get_user_public_username(instance)
+        data['display_name'] = get_user_display_name(instance)
+        return data
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
 
 # Login serializer
 class LoginSerializer(serializers.Serializer):
@@ -2055,7 +2103,7 @@ class MaintenanceTaskImageSerializer(serializers.ModelSerializer):
     """Serializer for MaintenanceTaskImage model"""
     task_name = serializers.CharField(source='task.name', read_only=True)
     # equipment_name removed - tasks no longer have equipment field
-    uploaded_by_username = serializers.CharField(source='uploaded_by.username', read_only=True)
+    uploaded_by_username = serializers.SerializerMethodField()
     uploaded_by_name = serializers.SerializerMethodField()
     image_url_full = serializers.SerializerMethodField()
     
@@ -2070,6 +2118,9 @@ class MaintenanceTaskImageSerializer(serializers.ModelSerializer):
 
     def get_uploaded_by_name(self, obj):
         return get_user_display_name(obj.uploaded_by)
+
+    def get_uploaded_by_username(self, obj):
+        return get_user_public_username(obj.uploaded_by)
     
     def get_image_url_full(self, obj):
         """Get full URL for the image"""
@@ -2114,7 +2165,7 @@ class UtilityConsumptionSerializer(serializers.ModelSerializer):
     property_name = serializers.CharField(source='property.name', read_only=True)
     property_id = serializers.CharField(source='property.property_id', read_only=True)
     month_display = serializers.CharField(source='get_month_display', read_only=True)
-    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    created_by_username = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     totalkwh = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
     onpeakkwh = serializers.DecimalField(**_UTILITY_DECIMAL_KWARGS)
@@ -2151,6 +2202,9 @@ class UtilityConsumptionSerializer(serializers.ModelSerializer):
 
     def get_created_by_name(self, obj):
         return get_user_display_name(obj.created_by)
+
+    def get_created_by_username(self, obj):
+        return get_user_public_username(obj.created_by)
     
     def validate(self, data):
         """Validate that property is provided"""
@@ -2235,7 +2289,7 @@ class InventorySerializer(serializers.ModelSerializer):
     property_id = serializers.CharField(source='property.property_id', read_only=True)
     room_name = serializers.CharField(source='room.name', read_only=True)
     room_id = serializers.CharField(source='room.room_id', read_only=True)
-    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    created_by_username = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     category_display = serializers.CharField(source='get_category_display', read_only=True)
@@ -2288,6 +2342,9 @@ class InventorySerializer(serializers.ModelSerializer):
             'created_by_name'
         ]
         read_only_fields = ['id', 'item_id', 'created_at', 'updated_at']
+
+    def get_created_by_username(self, obj):
+        return get_user_public_username(obj.created_by)
     
     def get_image_url(self, obj):
         """Get the image URL"""

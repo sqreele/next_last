@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/app/lib/config';
+import { getSessionFromRequest, setSessionCookie } from '@/app/lib/auth0/session-cookie';
 
 export const runtime = 'nodejs';
 
@@ -54,7 +55,18 @@ async function refreshWithAuth0(refreshToken: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body: Record<string, any> = {};
+    try {
+      body = await request.json();
+    } catch {
+      body = {};
+    }
+    const sessionData = await getSessionFromRequest(request);
+    const refreshTokenValue = sessionData?.user?.refreshToken || body.refresh;
+
+    if (!refreshTokenValue) {
+      return NextResponse.json({ error: 'Refresh token unavailable' }, { status: 401 });
+    }
 
     // Forward token refresh request to Django backend
     const response = await fetch(
@@ -64,7 +76,7 @@ export async function POST(request: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ refresh: refreshTokenValue }),
       }
     );
 
@@ -73,7 +85,7 @@ export async function POST(request: NextRequest) {
       tokens = await response.json();
     } else {
       console.error('Token refresh failed:', response.status, response.statusText);
-      tokens = body.refresh ? await refreshWithAuth0(body.refresh) : null;
+      tokens = await refreshWithAuth0(refreshTokenValue);
       if (!tokens) {
         return NextResponse.json(
           { error: 'Token refresh failed' },
@@ -84,35 +96,28 @@ export async function POST(request: NextRequest) {
 
     const nextResponse = NextResponse.json(tokens);
 
-    const sessionCookie = request.cookies.get('auth0_session')?.value;
-    if (sessionCookie && tokens.access) {
+    if (sessionData?.user && tokens.access) {
       try {
-        const sessionData = JSON.parse(sessionCookie);
         const accessTokenExpires = getAccessTokenExpiry(tokens.access);
         const updatedSession = {
           ...sessionData,
           user: {
             ...sessionData.user,
             accessToken: tokens.access,
-            refreshToken: tokens.refresh || sessionData.user?.refreshToken || body.refresh,
+            refreshToken: tokens.refresh || sessionData.user.refreshToken || refreshTokenValue,
             ...(accessTokenExpires ? { accessTokenExpires } : {}),
           },
           ...(accessTokenExpires ? { expires: accessTokenExpires } : {}),
         };
 
-        nextResponse.cookies.set('auth0_session', JSON.stringify(updatedSession), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          path: '/',
-          maxAge: tokens.refresh ? 60 * 24 * 60 * 60 : 24 * 60 * 60,
-        });
+        await setSessionCookie(nextResponse, updatedSession, tokens.refresh ? 60 * 24 * 60 * 60 : 24 * 60 * 60);
       } catch (cookieError) {
         console.error('Failed to update session cookie after token refresh:', cookieError);
       }
     }
 
-    return nextResponse;
+    const { refresh: _refresh, ...clientTokens } = tokens;
+    return NextResponse.json(clientTokens, { headers: nextResponse.headers });
 
   } catch (error) {
     console.error('Error in token refresh route:', error);

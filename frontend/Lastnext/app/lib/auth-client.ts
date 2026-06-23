@@ -11,14 +11,14 @@ type SessionCompat = {
     positions: string;
     properties: any[];
     accessToken: string;
-    refreshToken: string;
+    refreshToken?: string;
     accessTokenExpires?: number;
     first_name?: string | null;
     last_name?: string | null;
     created_at: string;
   };
   error?: string;
-  expires?: string;
+  expires?: string | number;
 } | null;
 
 const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then(res => res.json());
@@ -43,4 +43,3 @@ export function useCompatSession() {
 
   return { data, error, status, refresh: () => mutate() };
 }
-

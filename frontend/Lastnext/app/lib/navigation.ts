@@ -3,7 +3,6 @@ import {
   ClipboardList,
   FileText,
   Plus,
-  Users,
   Settings,
   Building2,
   MapPin,
@@ -41,6 +40,5 @@ export const dashboardNavigationItems: AppNavigationItem[] = [
   { name: 'Inventory', href: '/dashboard/inventory', icon: Package },
   { name: 'Electricity', href: '/dashboard/utility-consumption', icon: Zap },
   { name: 'Reports', href: '/dashboard/jobs-report', icon: FileText },
-  { name: 'Users', href: '/roster', icon: Users },
   { name: 'Settings', href: '/dashboard/profile', icon: Settings },
 ];

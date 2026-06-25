@@ -494,6 +494,22 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
     }).join(', ');
   };
 
+  const getMachineImageUrl = (machine: NonNullable<PreventiveMaintenance['machines']>[number]): string | null => {
+    const rawImageUrl = machine.image_url || machine.image;
+    return rawImageUrl ? fixImageUrl(rawImageUrl) : null;
+  };
+
+  const machinesWithImages = useMemo(() => {
+    if (!maintenanceData.machines || !Array.isArray(maintenanceData.machines)) return [];
+
+    return maintenanceData.machines
+      .filter((machine) => getMachineImageUrl(machine))
+      .map((machine) => ({
+        machine,
+        imageUrl: getMachineImageUrl(machine),
+      }));
+  }, [maintenanceData.machines]);
+
   // getTopicsString function removed - topics no longer displayed
   // const getTopicsString = () => {
   //   const topics = maintenanceData.topics;
@@ -983,22 +999,22 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
       {/* A4 PDF Content (Hidden on screen, visible when printing) */}
       <div id="pdf-content" className="hidden print:block">
         {/* A4 Paper Container */}
-        <div className="a4-page bg-white mx-auto" style={{ width: '210mm', minHeight: '297mm', padding: '20mm', boxSizing: 'border-box' }}>
+        <div className="a4-page bg-white mx-auto" style={{ width: '210mm', minHeight: '297mm', padding: '12mm', boxSizing: 'border-box' }}>
         {/* Header */}
-        <div className="header text-center mb-8 border-b-2 border-gray-300 pb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Maintenance Record Report</h1>
+        <div className="header text-center mb-4 border-b-2 border-gray-300 pb-4">
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Maintenance Record Report</h1>
           <p className="text-gray-600">Generated on {formatCurrentDateTime()}</p>
-          <div className="flex justify-center items-center mt-4 text-sm text-gray-500">
+          <div className="flex justify-center items-center mt-2 text-xs text-gray-500">
             <Building className="h-4 w-4 mr-2" />
             Facility Management System
           </div>
         </div>
 
         {/* Maintenance Details */}
-        <div className="maintenance-item border border-gray-300 rounded-lg p-6 mb-6">
-          <div className="flex justify-between items-start mb-4">
+        <div className="maintenance-item border border-gray-300 rounded-lg p-4 mb-4 text-sm">
+          <div className="flex justify-between items-start mb-3">
             <div>
-              <h2 className="text-2xl font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-gray-900">
                 {maintenanceData.pmtitle || 'Maintenance Task'}
               </h2>
               <p className="text-sm text-gray-600">ID: {maintenanceData.pm_id}</p>
@@ -1027,7 +1043,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+          <div className="grid grid-cols-2 gap-3 text-xs mb-3">
             <div>
               <span className="font-medium text-gray-600">Scheduled:</span>
               <p>{formatDate(maintenanceData.scheduled_date)}</p>
@@ -1044,6 +1060,32 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             <span className="font-medium text-gray-600">Machines:</span>
             <p className="text-gray-700 mt-1">{getMachinesString()}</p>
           </div>
+
+          {machinesWithImages.length > 0 && (
+            <div className="mb-4">
+              <span className="font-medium text-gray-600">Equipment Images:</span>
+              <div className="pdf-image-grid grid grid-cols-2 gap-3 mt-2">
+                {machinesWithImages.map(({ machine, imageUrl }, index) => (
+                  <div key={`${machine.machine_id || index}-pdf-equipment-image`} className="pdf-image-card rounded-lg border border-gray-300 p-2">
+                    <p className="text-xs font-medium text-gray-700 mb-1">
+                      {machine.name || machine.machine_id || `Equipment ${index + 1}`}
+                    </p>
+                    {imageUrl && (
+                      <MaintenanceImage
+                        src={imageUrl}
+                        alt={`${machine.name || machine.machine_id || 'Equipment'} image`}
+                        className="pdf-equipment-image w-full h-32 object-contain rounded-md border border-gray-200"
+                        width={400}
+                        height={128}
+                        lazy={false}
+                        showLoadingSpinner={false}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {maintenanceData.property_id && (
             <div className="mb-4">
@@ -1071,21 +1113,21 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
           )}
 
           {(beforeImageUrl || afterImageUrl) && (
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <h3 className="font-medium text-gray-700 mb-4 flex items-center">
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <h3 className="font-medium text-gray-700 mb-3 flex items-center">
                 <Camera className="h-4 w-4 mr-2" />
                 Maintenance Images
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="pdf-image-grid grid grid-cols-2 gap-3">
                 {beforeImageUrl && (
                   <div>
                     <span className="text-sm font-medium text-gray-600 block mb-2">Before:</span>
                     <MaintenanceImage 
                       src={beforeImageUrl} 
                       alt="Before maintenance" 
-                      className="w-full max-h-64 object-contain rounded-lg border border-gray-300"
+                      className="pdf-maintenance-image w-full h-40 object-contain rounded-lg border border-gray-300"
                       width={400}
-                      height={256}
+                      height={160}
                       lazy={false}
                       showLoadingSpinner={false}
                     />
@@ -1100,9 +1142,9 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                     <MaintenanceImage 
                       src={afterImageUrl} 
                       alt="After maintenance" 
-                      className="w-full max-h-64 object-contain rounded-lg border border-gray-300"
+                      className="pdf-maintenance-image w-full h-40 object-contain rounded-lg border border-gray-300"
                       width={400}
-                      height={256}
+                      height={160}
                       lazy={false}
                       showLoadingSpinner={false}
                     />
@@ -1117,7 +1159,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
         </div>
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t-2 border-gray-300 text-center">
+        <div className="mt-4 pt-4 border-t-2 border-gray-300 text-center">
           <div className="grid grid-cols-3 gap-4 text-xs text-gray-600">
             <div className="text-left">
               <p><strong>Report Generated:</strong></p>
@@ -1171,6 +1213,34 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
       )}
 
       <style jsx>{`
+
+        #pdf-content .a4-page {
+          width: 210mm;
+          min-height: 297mm;
+          padding: 12mm;
+          box-sizing: border-box;
+          color: #111827;
+        }
+
+        #pdf-content .maintenance-item {
+          page-break-inside: avoid;
+        }
+
+        #pdf-content .pdf-image-grid {
+          align-items: start;
+        }
+
+        #pdf-content .pdf-image-card {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        #pdf-content .pdf-equipment-image,
+        #pdf-content .pdf-maintenance-image {
+          background: #ffffff;
+          display: block;
+        }
+        
         @media print {
           .no-print {
             display: none !important;
@@ -1188,7 +1258,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
           .a4-page {
             width: 210mm !important;
             min-height: 297mm !important;
-            padding: 20mm !important;
+            padding: 12mm !important;
             margin: 0 auto !important;
             background: white !important;
             box-shadow: none !important;

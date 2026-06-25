@@ -64,6 +64,15 @@ interface FormValues {
   assigned_to: string;
 }
 
+
+const normalizeGroupId = (value: unknown): string | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+};
+
 type MaintenanceTaskOption = {
   id: number;
   name: string;
@@ -583,14 +592,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   // Fetch available maintenance tasks (templates) - filtered by selected machines
   const fetchAvailableMaintenanceTasks = useCallback(async (machineIds?: string[]) => {
-
-    const normalizeGroupId = (value: unknown): string | null => {
-      if (value === null || value === undefined) {
-        return null;
-      }
-      const normalized = String(value).trim().toLowerCase();
-      return normalized.length > 0 ? normalized : null;
-    };
 
     const mergeTemplatesById = (templates: MaintenanceProcedureTemplate[]): MaintenanceProcedureTemplate[] => {
       const uniqueTemplates = new Map<number, MaintenanceProcedureTemplate>();
@@ -1246,12 +1247,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               }
 
               const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(values.procedure_template));
-              const selectedTaskGroupId = selectedTask?.group_id?.trim().toLowerCase();
+              const selectedTaskGroupId = normalizeGroupId(selectedTask?.group_id);
               if (!selectedTaskGroupId) return;
 
               const allowedMachineIds = new Set(
                 availableMachines
-                  .filter((machine) => machine.group_id?.trim().toLowerCase() === selectedTaskGroupId)
+                  .filter((machine) => normalizeGroupId(machine.group_id) === selectedTaskGroupId)
                   .map((machine) => machine.machine_id)
               );
               const nextMachineIds = values.selected_machine_ids.filter((id) => allowedMachineIds.has(id) || id === machineId);
@@ -1304,6 +1305,109 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
               {/* Assigned User - Hidden, auto-assigned to current user */}
               <Field type="hidden" name="assigned_to" />
+
+            {/* Maintenance Task Template Selection */}
+            <div className="mb-4 sm:mb-6">
+              <label htmlFor="procedure_template" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                Maintenance Task Template <span className="text-red-500">*</span>
+                {loadingMaintenanceTasks && <span className="text-xs text-gray-500 ml-2">(Loading...)</span>}
+                {!loadingMaintenanceTasks && availableMaintenanceTasks.length === 0 && (
+                  <span className="text-xs text-amber-600 ml-2">(No tasks available)</span>
+                )}
+              </label>
+              <Field
+                as="select"
+                id="procedure_template"
+                name="procedure_template"
+                className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 touch-target ${
+                  errors.procedure_template && touched.procedure_template ? 'border-red-500' : 'border-gray-300'
+                }`}
+                disabled={loadingMaintenanceTasks}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  const taskId = e.target.value ? Number(e.target.value) : '';
+                  setFieldValue('procedure_template', taskId);
+
+                  // If a task is selected, auto-populate fields based on template
+                  if (taskId) {
+                    const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(taskId));
+                    if (selectedTask) {
+
+                      // Auto-populate title if empty
+                      if (!values.pmtitle || values.pmtitle.trim() === '') {
+                        setFieldValue('pmtitle', selectedTask.name);
+                      }
+
+                      // CRITICAL: Auto-set frequency and calculate scheduled_date based on template frequency
+                      if (selectedTask.frequency && selectedTask.frequency.trim() !== '' && selectedTask.frequency !== 'N/A') {
+                        const templateFrequency = selectedTask.frequency.toLowerCase().trim();
+                        const validFrequencies: FrequencyType[] = ['daily', 'weekly', 'monthly', 'quarterly', 'semi_annual', 'annual', 'custom'];
+
+                        if (validFrequencies.includes(templateFrequency as FrequencyType)) {
+                          // Set frequency from template
+                          setFieldValue('frequency', templateFrequency as FrequencyType);
+
+                          // Calculate next scheduled date based on template frequency
+                          const customDays = templateFrequency === 'custom' ? (selectedTask.custom_days ?? undefined) : undefined;
+                          const nextDate = calculateNextScheduledDate(templateFrequency, customDays);
+                          const formattedDate = formatDateForInput(nextDate);
+
+                          // Always update scheduled_date when template is selected
+                          setFieldValue('scheduled_date', formattedDate);
+
+                          // Set custom_days if frequency is custom
+                          if (templateFrequency === 'custom' && selectedTask.custom_days) {
+                            setFieldValue('custom_days', selectedTask.custom_days);
+                          } else if (templateFrequency !== 'custom') {
+                            // Clear custom_days if not custom frequency
+                            setFieldValue('custom_days', '');
+                          }
+                        } else {
+                          console.warn(`[Template Selection] Invalid frequency "${selectedTask.frequency}" from template, using default`);
+                        }
+                      } else {
+                        console.warn(`[Template Selection] Template has no valid frequency, keeping current values`);
+                      }
+                    } else {
+                      console.warn(`[Template Selection] Template with ID ${taskId} not found in available tasks`);
+                    }
+                  } else {
+                    // Template deselected - reset to defaults
+                    setFieldValue('frequency', 'monthly');
+                    setFieldValue('custom_days', '');
+                  }
+                }}
+              >
+                <option value="">Select a maintenance task template</option>
+                {loadingMaintenanceTasks ? (
+                  <option disabled>Loading tasks...</option>
+                ) : availableMaintenanceTasks.length === 0 ? (
+                  <option disabled>No tasks available</option>
+                ) : (
+                  availableMaintenanceTasks.map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.name}{task.category ? ` - ${task.category}` : ''} [{task.frequency.toUpperCase()}] - {task.difficulty_level}
+                    </option>
+                  ))
+                )}
+              </Field>
+              <p className="mt-1 text-xs text-gray-500">
+                {loadingMaintenanceTasks
+                  ? 'Loading available task templates...'
+                  : availableMaintenanceTasks.length === 0
+                  ? 'No task templates available for the current selection.'
+                  : 'Select a task template first. Machine choices will appear after a template is selected.'}
+              </p>
+
+              {errors.procedure_template && touched.procedure_template && (
+                <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.procedure_template}</p>
+              )}
+              {!loadingMaintenanceTasks && availableMaintenanceTasks.length === 0 && values.selected_machine_ids && values.selected_machine_ids.length > 0 && (
+                <p className="mt-1 text-xs text-amber-600">
+                  No tasks match the selected machine(s). Tasks are filtered by machine group_id or linked procedures.
+                </p>
+              )}
+            </div>
+
 
             {/* Maintenance Title */}
             <div className="mb-4 sm:mb-6">
@@ -1480,109 +1584,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             </div>
             )}
 
-            {/* Maintenance Task Template Selection */}
-            <div className="mb-4 sm:mb-6">
-              <label htmlFor="procedure_template" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-                Maintenance Task Template <span className="text-red-500">*</span>
-                {loadingMaintenanceTasks && <span className="text-xs text-gray-500 ml-2">(Loading...)</span>}
-                {!loadingMaintenanceTasks && availableMaintenanceTasks.length === 0 && (
-                  <span className="text-xs text-amber-600 ml-2">(No tasks available)</span>
-                )}
-              </label>
-              <Field
-                as="select"
-                id="procedure_template"
-                name="procedure_template"
-                className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 touch-target ${
-                  errors.procedure_template && touched.procedure_template ? 'border-red-500' : 'border-gray-300'
-                }`}
-                disabled={loadingMaintenanceTasks}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                  const taskId = e.target.value ? Number(e.target.value) : '';
-                  setFieldValue('procedure_template', taskId);
-
-                  // If a task is selected, auto-populate fields based on template
-                  if (taskId) {
-                    const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(taskId));
-                    if (selectedTask) {
-
-                      // Auto-populate title if empty
-                      if (!values.pmtitle || values.pmtitle.trim() === '') {
-                        setFieldValue('pmtitle', selectedTask.name);
-                      }
-
-                      // CRITICAL: Auto-set frequency and calculate scheduled_date based on template frequency
-                      if (selectedTask.frequency && selectedTask.frequency.trim() !== '' && selectedTask.frequency !== 'N/A') {
-                        const templateFrequency = selectedTask.frequency.toLowerCase().trim();
-                        const validFrequencies: FrequencyType[] = ['daily', 'weekly', 'monthly', 'quarterly', 'semi_annual', 'annual', 'custom'];
-
-                        if (validFrequencies.includes(templateFrequency as FrequencyType)) {
-                          // Set frequency from template
-                          setFieldValue('frequency', templateFrequency as FrequencyType);
-
-                          // Calculate next scheduled date based on template frequency
-                          const customDays = templateFrequency === 'custom' ? (selectedTask.custom_days ?? undefined) : undefined;
-                          const nextDate = calculateNextScheduledDate(templateFrequency, customDays);
-                          const formattedDate = formatDateForInput(nextDate);
-
-                          // Always update scheduled_date when template is selected
-                          setFieldValue('scheduled_date', formattedDate);
-
-                          // Set custom_days if frequency is custom
-                          if (templateFrequency === 'custom' && selectedTask.custom_days) {
-                            setFieldValue('custom_days', selectedTask.custom_days);
-                          } else if (templateFrequency !== 'custom') {
-                            // Clear custom_days if not custom frequency
-                            setFieldValue('custom_days', '');
-                          }
-                        } else {
-                          console.warn(`[Template Selection] Invalid frequency "${selectedTask.frequency}" from template, using default`);
-                        }
-                      } else {
-                        console.warn(`[Template Selection] Template has no valid frequency, keeping current values`);
-                      }
-                    } else {
-                      console.warn(`[Template Selection] Template with ID ${taskId} not found in available tasks`);
-                    }
-                  } else {
-                    // Template deselected - reset to defaults
-                    setFieldValue('frequency', 'monthly');
-                    setFieldValue('custom_days', '');
-                  }
-                }}
-              >
-                <option value="">Select a maintenance task template</option>
-                {loadingMaintenanceTasks ? (
-                  <option disabled>Loading tasks...</option>
-                ) : availableMaintenanceTasks.length === 0 ? (
-                  <option disabled>No tasks available</option>
-                ) : (
-                  availableMaintenanceTasks.map((task) => (
-                    <option key={task.id} value={task.id}>
-                      {task.name}{task.category ? ` - ${task.category}` : ''} [{task.frequency.toUpperCase()}] - {task.difficulty_level}
-                    </option>
-                  ))
-                )}
-              </Field>
-              <p className="mt-1 text-xs text-gray-500">
-                {loadingMaintenanceTasks
-                  ? 'Loading available task templates...'
-                  : availableMaintenanceTasks.length === 0
-                  ? 'No task templates available for the current selection.'
-                  : 'Select a task template first. Machine choices will appear after a template is selected.'}
-              </p>
-
-              {errors.procedure_template && touched.procedure_template && (
-                <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.procedure_template}</p>
-              )}
-              {!loadingMaintenanceTasks && availableMaintenanceTasks.length === 0 && values.selected_machine_ids && values.selected_machine_ids.length > 0 && (
-                <p className="mt-1 text-xs text-amber-600">
-                  No tasks match the selected machine(s). Tasks are filtered by machine group_id or linked procedures.
-                </p>
-              )}
-            </div>
-
-
             {/* Machines Selection */}
             {values.procedure_template === '' ? (
               <div className="mb-4 sm:mb-6 rounded-md border border-blue-200 bg-blue-50 p-3 sm:p-4 text-sm text-blue-800">
@@ -1609,9 +1610,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   </div>
                 ) : (() => {
                   const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(values.procedure_template));
-                  const selectedTaskGroupId = selectedTask?.group_id?.trim().toLowerCase();
+                  const selectedTaskGroupId = normalizeGroupId(selectedTask?.group_id);
                   const machinesMatchingTemplate = selectedTaskGroupId
-                    ? availableMachines.filter((m) => m.group_id?.trim().toLowerCase() === selectedTaskGroupId)
+                    ? availableMachines.filter((m) => normalizeGroupId(m.group_id) === selectedTaskGroupId)
                     : availableMachines;
                   const machinesToShow = machineId
                     ? machinesMatchingTemplate.filter(m => m.machine_id === machineId)

@@ -66,6 +66,8 @@ export interface MachineDetails {
   next_maintenance_date?: string | null;
   last_maintenance_date?: string | null;
   group_id?: string | null; // Task group ID for this machine
+  image?: string | null;
+  image_url?: string | null;
 }
 
 // ✅ Fixed Preventive Maintenance main interface

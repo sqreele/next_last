@@ -25,17 +25,25 @@ function getSessionSecret(): string | undefined {
   );
 }
 
-function base64UrlToBytes(value: string): Uint8Array {
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-  const binary = atob(padded);
-  const bytes = new Uint8Array(binary.length);
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
+function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> | null {
+  if (!value || value.length % 4 === 1 || !/^[A-Za-z0-9_-]+$/.test(value)) {
+    return null;
   }
 
-  return bytes;
+  try {
+    const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary = atob(padded);
+    const bytes = new Uint8Array(new ArrayBuffer(binary.length));
+
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+
+    return bytes;
+  } catch {
+    return null;
+  }
 }
 
 async function deriveAesKey(secret: string): Promise<CryptoKey> {
@@ -63,10 +71,16 @@ async function openSealedSessionCookie(
     return null;
   }
 
+  const ivBytes = base64UrlToBytes(iv);
   const encryptedBytes = base64UrlToBytes(encrypted);
   const tagBytes = base64UrlToBytes(tag);
+
+  if (!ivBytes || !encryptedBytes || !tagBytes) {
+    return null;
+  }
+
   const ciphertextWithTag = new Uint8Array(
-    encryptedBytes.length + tagBytes.length,
+    new ArrayBuffer(encryptedBytes.length + tagBytes.length),
   );
   ciphertextWithTag.set(encryptedBytes);
   ciphertextWithTag.set(tagBytes, encryptedBytes.length);
@@ -74,11 +88,11 @@ async function openSealedSessionCookie(
   const plaintext = await crypto.subtle.decrypt(
     {
       name: "AES-GCM",
-      iv: base64UrlToBytes(iv).buffer as ArrayBuffer,
+      iv: ivBytes,
       tagLength: 128,
     },
     await deriveAesKey(secret),
-    ciphertextWithTag.buffer as ArrayBuffer,
+    ciphertextWithTag,
   );
 
   return JSON.parse(new TextDecoder().decode(plaintext)) as MiddlewareSession;
@@ -126,6 +140,8 @@ const protectedRoutes = [
 ];
 
 // Define public routes that don't require authentication
+const PUBLIC_FILE = /\.[^/]+$/;
+
 const publicRoutes = [
   "/",
   "/auth/login",
@@ -159,7 +175,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/static") ||
     pathname.startsWith("/images") ||
     pathname.startsWith("/favicon.ico") ||
-    pathname.startsWith("/api/auth")
+    pathname.startsWith("/api/auth") ||
+    pathname === "/sw.js" ||
+    pathname === "/manifest.json" ||
+    PUBLIC_FILE.test(pathname)
   ) {
     return NextResponse.next();
   }
@@ -251,6 +270,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json).*)",
   ],
 };

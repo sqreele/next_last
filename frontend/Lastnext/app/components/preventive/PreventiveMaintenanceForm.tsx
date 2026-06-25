@@ -19,7 +19,7 @@ import { useToast } from '@/app/lib/hooks/use-toast';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
 import { useSession } from '@/app/lib/session.client';
 import { PreviewImage } from '@/app/components/ui/UniversalImage';
-import { preventiveMaintenanceService, 
+import { preventiveMaintenanceService,
   type CreatePreventiveMaintenanceData,
   type UpdatePreventiveMaintenanceData,
   setPreventiveMaintenanceServiceToken,
@@ -87,7 +87,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const { data: session } = useSession();
   const accessToken = auth0AccessToken || session?.user?.accessToken || null;
   const user = session?.user || auth0User || null;
-  
+
   const {
     properties: userProperties,
   } = useProperties();
@@ -215,21 +215,21 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   // Helper function to convert datetime-local values to ISO 8601 format
   const convertToISO8601 = useCallback((dateTimeLocal: string): string => {
-    
+
     if (!dateTimeLocal) {
       return '';
     }
-    
+
     try {
       // Create a Date object from the datetime-local value
       // This assumes the datetime-local value is in the user's local timezone
       const date = new Date(dateTimeLocal);
-      
+
       // Check if the date is valid
       if (isNaN(date.getTime())) {
         throw new Error('Invalid date');
       }
-      
+
       // Create a format that Django can parse: YYYY-MM-DDThh:mm
       // This matches Django's expected format without seconds
       const year = date.getFullYear();
@@ -237,17 +237,17 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       const day = String(date.getDate()).padStart(2, '0');
       const hours = String(date.getHours()).padStart(2, '0');
       const minutes = String(date.getMinutes()).padStart(2, '0');
-      
+
       const isoString = `${year}-${month}-${day}T${hours}:${minutes}`;
       return isoString;
     } catch (error) {
       console.error('[convertToISO8601] Error converting datetime-local to ISO 8601:', error, 'Input:', dateTimeLocal);
-      
+
       // If it's already in ISO format, return as is
       if (dateTimeLocal.includes('T') && (dateTimeLocal.includes('Z') || dateTimeLocal.includes('+'))) {
         return dateTimeLocal;
       }
-      
+
       // If it's in YYYY-MM-DDTHH:mm format, add seconds and convert to ISO
       if (dateTimeLocal.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
         const fallbackDate = new Date(dateTimeLocal + ':00');
@@ -258,12 +258,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           const day = String(fallbackDate.getDate()).padStart(2, '0');
           const hours = String(fallbackDate.getHours()).padStart(2, '0');
           const minutes = String(fallbackDate.getMinutes()).padStart(2, '0');
-          
+
           const fallbackISO = `${year}-${month}-${day}T${hours}:${minutes}`;
           return fallbackISO;
         }
       }
-      
+
       // Last resort: try to construct ISO string manually
       const fallback = `${dateTimeLocal}:00`;
       console.warn('[convertToISO8601] Using last resort fallback format:', fallback);
@@ -282,20 +282,20 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   // Helper function to ensure datetime-local input format
   const ensureDateTimeLocalFormat = useCallback((dateString: string): string => {
-    
+
     if (!dateString) {
       return '';
     }
-    
+
     // If it's already in datetime-local format, return as is
     if (dateString.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/)) {
       return dateString;
     }
-    
+
     // If it's a Date object or ISO string, convert to datetime-local format
     try {
       const date = new Date(dateString);
-      
+
       if (!isNaN(date.getTime())) {
         const formattedDate = formatDateForInput(date);
         return formattedDate;
@@ -337,7 +337,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     if (!values.pmtitle?.trim()) errors.pmtitle = 'Title is required';
     if (!values.scheduled_date) errors.scheduled_date = 'Scheduled date is required';
     if (!values.status) errors.status = 'Status is required';
-    
+
     // Validate date formats
     if (values.scheduled_date) {
       try {
@@ -350,7 +350,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           if (!pmId) {
             const now = new Date();
             const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            
+
             if (scheduledDate < oneDayAgo) {
               // Allow but show a warning - this could be for record-keeping
               console.warn('Scheduled date is more than 1 day in the past:', scheduledDate);
@@ -361,7 +361,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         errors.scheduled_date = 'Invalid scheduled date format';
       }
     }
-    
+
     // Only validate completed_date if it's provided (for edit mode)
     // For new records, completed_date should be empty
     if (values.completed_date && values.completed_date.trim() !== '') {
@@ -380,12 +380,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         errors.completed_date = 'Invalid completed date format';
       }
     }
-    
+
     // For new records, ensure completed_date is empty
     if (!pmId && values.completed_date && values.completed_date.trim() !== '') {
       errors.completed_date = 'Completed date should be empty for new maintenance records';
     }
-    
+
     // Frequency validation removed - field is hidden, defaults to 'monthly'
     // if (!values.frequency) errors.frequency = 'Frequency is required';
     // if (values.frequency === 'custom' && (!values.custom_days || values.custom_days < 1)) {
@@ -395,6 +395,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     //   errors.custom_days = 'Custom days cannot exceed 365';
     // }
     if (!values.property_id) errors.property_id = 'Property is required';
+    if (values.procedure_template === '') {
+      errors.procedure_template = 'Maintenance Task Template is required';
+    }
     // Machines are now optional - maintenance tasks can exist without specific machine assignments
     // if (!values.selected_machine_ids || values.selected_machine_ids.length === 0) {
     //   errors.selected_machine_ids = 'At least one machine must be selected';
@@ -415,7 +418,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     const currentData = actualInitialData;
 
     if (currentData) {
-      
+
       const topicIds: number[] = currentData.topics
         ?.map((topic: Topic | number) =>
           typeof topic === 'object' && 'id' in topic ? topic.id : typeof topic === 'number' ? topic : null
@@ -490,7 +493,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
     // For new records, assign to the current user
     const currentUserId = user?.id;
-    
+
     return {
       pmtitle: '',
       scheduled_date: defaultScheduledDate,
@@ -560,7 +563,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       }
     } catch (err: any) {
       console.error('❌ Error fetching available machines:', err);
-      
+
       // Provide more specific error messages
       let errorMessage = 'Failed to load machines for the selected property.';
       if (err.message?.includes('401') || err.message?.includes('Unauthorized')) {
@@ -570,7 +573,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       } else if (err.message?.includes('500')) {
         errorMessage = 'Server error. Please try again later.';
       }
-      
+
       setError(errorMessage);
       setAvailableMachines([]);
     } finally {
@@ -580,7 +583,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   // Fetch available maintenance tasks (templates) - filtered by selected machines
   const fetchAvailableMaintenanceTasks = useCallback(async (machineIds?: string[]) => {
-    
+
     const normalizeGroupId = (value: unknown): string | null => {
       if (value === null || value === undefined) {
         return null;
@@ -602,19 +605,19 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     setLoadingMaintenanceTasks(true);
     try {
       let tasks: MaintenanceProcedureTemplate[] = [];
-      
+
       if (machineIds && machineIds.length > 0) {
         // Fetch procedures for each selected machine
         const allProcedureIds = new Set<number>();
         const machineGroupIdsRaw = new Set<string>();
         const machineGroupIdsNormalized = new Set<string>();
-        
+
         // Fetch machine details to get their maintenance procedures and group_id
         for (const machineId of machineIds) {
           try {
             const response = await apiClient.get(`/api/v1/machines/${machineId}/`);
             const machine = response.data as any;
-            
+
             // Collect machine's group_id if it exists (check for null, undefined, and empty string)
             const normalizedMachineGroupId = normalizeGroupId(machine.group_id);
             if (normalizedMachineGroupId) {
@@ -622,7 +625,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               machineGroupIdsNormalized.add(normalizedMachineGroupId);
             } else {
             }
-            
+
             // Check if machine has maintenance_procedures field
             if (machine.maintenance_procedures && Array.isArray(machine.maintenance_procedures)) {
               machine.maintenance_procedures.forEach((proc: any) => {
@@ -635,13 +638,13 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             console.error(`[PreventiveMaintenanceForm] Failed to fetch machine ${machineId}:`, err);
           }
         }
-        
+
         // Fetch all available tasks
         const allTasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
-        
+
         // Log all tasks to show their group_ids for debugging
         const taskGroupIds = allTasks.map(t => ({ id: t.id, name: t.name, group_id: t.group_id }));
-        
+
         // Filter tasks based on:
         // 1. If machine has group_id, ONLY show tasks with matching group_id (strict match: machine.group_id === task.group_id)
         // 2. Otherwise, show tasks linked to the machine via maintenance_procedures
@@ -676,7 +679,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         // No machines selected, show all tasks
         tasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
       }
-      
+
       setAvailableMaintenanceTasks(
         tasks.map<MaintenanceTaskOption>((task: MaintenanceProcedureTemplate) => ({
           id: task.id,
@@ -747,7 +750,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         .getPreventiveMaintenanceById(pmId)
         .then((response) => {
           if (!mounted) return;
-          
+
           if (response.success && response.data) {
             setFetchedInitialData(response.data);
             if (response.data.before_image_url) setBeforeImagePreview(response.data.before_image_url);
@@ -800,8 +803,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           <p className="mt-2 text-sm">Please contact your administrator to assign properties to your account.</p>
         </div>
         <div className="mt-4">
-          <Link 
-            href="/dashboard/preventive-maintenance" 
+          <Link
+            href="/dashboard/preventive-maintenance"
             className="bg-gray-100 py-2 px-4 rounded-md text-gray-700 hover:bg-gray-200"
           >
             Back to List
@@ -883,12 +886,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         setSubmitting(false);
         return;
       }
-      
+
       // Validate completed_date is after scheduled_date (only when editing)
       if (pmId && values.completed_date && values.completed_date.trim() !== '' && values.scheduled_date) {
         const scheduledDate = new Date(values.scheduled_date);
         const completedDate = new Date(values.completed_date);
-        
+
         if (completedDate < scheduledDate) {
           setSubmitError('Completion date cannot be earlier than scheduled date');
           setIsLoading(false);
@@ -916,15 +919,15 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         : (values.status === 'completed' ? new Date().toISOString() : undefined);
 
       const assignedToValue = values.assigned_to;
-      const assignedToNumber = assignedToValue && !isNaN(Number(assignedToValue)) && Number(assignedToValue) > 0 
-        ? Number(assignedToValue) 
+      const assignedToNumber = assignedToValue && !isNaN(Number(assignedToValue)) && Number(assignedToValue) > 0
+        ? Number(assignedToValue)
         : undefined;
 
       // Ensure machineId from prop is included if provided (defensive check)
-      let finalMachineIds = Array.isArray(values.selected_machine_ids) && values.selected_machine_ids.length > 0 
+      let finalMachineIds = Array.isArray(values.selected_machine_ids) && values.selected_machine_ids.length > 0
         ? values.selected_machine_ids.map(id => String(id))
         : [];
-      
+
       // CRITICAL: If machineId prop was provided but not in selected_machine_ids, add it
       // This ensures the machine is always included when creating from machine detail page
       if (machineId && !pmId) {
@@ -968,11 +971,11 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         // CRITICAL: Only include images if they are actual File objects with size > 0
         // Do NOT send null, undefined, empty objects, or empty files
         // Backend will reject non-file data for ImageField
-        before_image: (values.before_image_file instanceof File && values.before_image_file.size > 0) 
-          ? values.before_image_file 
+        before_image: (values.before_image_file instanceof File && values.before_image_file.size > 0)
+          ? values.before_image_file
           : undefined,
-        after_image: (values.after_image_file instanceof File && values.after_image_file.size > 0) 
-          ? values.after_image_file 
+        after_image: (values.after_image_file instanceof File && values.after_image_file.size > 0)
+          ? values.after_image_file
           : undefined,
         procedure: values.procedure?.trim() || '',
         procedure_template: values.procedure_template !== '' ? Number(values.procedure_template) : undefined,
@@ -1012,7 +1015,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             console.error('[PreventiveMaintenanceForm] 🚨 CRITICAL: machineId prop provided but machine_ids is empty! Adding it now:', machineIdStr);
             dataForService.machine_ids = [machineIdStr];
           }
-          
+
           response = await preventiveMaintenanceService.createPreventiveMaintenance(dataForService);
         }
       } catch (apiError: any) {
@@ -1042,7 +1045,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       }
     } catch (error: any) {
       if (!isMounted) return;
-      
+
       // Log comprehensive error details
       const errorDetails = {
         message: error.message,
@@ -1055,13 +1058,13 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         code: error.code,
         stack: error.stack?.substring(0, 500), // Limit stack trace length
       };
-      
+
       console.error('[FORM] handleSubmit - Error submitting form:', error);
       console.error('[FORM] Error details:', errorDetails);
-      
+
       // Handle different error types
       let errorMessage = 'An unexpected error occurred.';
-      
+
       // Check if it's a network error
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         errorMessage = 'Request timed out. Please check your internet connection and try again.';
@@ -1070,7 +1073,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       } else if (error.response?.data) {
         // HTTP error response from backend
         const responseData = error.response.data;
-        
+
         if (typeof responseData === 'string') {
           errorMessage = responseData;
         } else if (responseData.detail) {
@@ -1133,10 +1136,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4">
           <div className="flex justify-between items-start gap-2">
             <p className="whitespace-pre-wrap text-sm sm:text-base flex-1">{error || submitError}</p>
-            <button 
-              onClick={clearError} 
-              className="text-red-700 hover:text-red-900 text-xl sm:text-2xl leading-none min-w-[32px] min-h-[32px] flex items-center justify-center touch-target" 
-              type="button" 
+            <button
+              onClick={clearError}
+              className="text-red-700 hover:text-red-900 text-xl sm:text-2xl leading-none min-w-[32px] min-h-[32px] flex items-center justify-center touch-target"
+              type="button"
               aria-label="Close error message"
             >
               ×
@@ -1175,23 +1178,23 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             // Auto-select machine when machineId prop is provided
             React.useEffect(() => {
               if (!machineId || pmId) return; // Only for new records with machineId prop
-              
+
               const machineIdStr = String(machineId);
               const isAlreadySelected = values.selected_machine_ids.includes(machineIdStr);
-              
+
               // Wait for machines to finish loading before auto-selecting
               if (loadingMachines) {
                 return;
               }
-              
+
               // If machines are loaded, validate and select the machine
               if (availableMachines.length > 0) {
                 const machineExists = availableMachines.some(m => m.machine_id === machineIdStr);
-                
+
                 if (machineExists) {
                   // Machine exists - select it if not already selected
                   if (!isAlreadySelected) {
-                    
+
                     const newMachineIds = [machineIdStr, ...values.selected_machine_ids.filter(id => id !== machineIdStr)];
                     setFieldValue('selected_machine_ids', newMachineIds, false);
                   } else {
@@ -1205,7 +1208,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                     selectedProperty: values.property_id,
                     availableMachinesCount: availableMachines.length
                   });
-                  
+
                   // Still try to select it (might be valid but not loaded yet, or might be from different property)
                   if (!isAlreadySelected) {
                     const newMachineIds = [machineIdStr, ...values.selected_machine_ids.filter(id => id !== machineIdStr)];
@@ -1222,16 +1225,23 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               }
             }, [machineId, pmId, availableMachines, loadingMachines, values.selected_machine_ids, values.property_id, setFieldValue]);
 
-            // Refetch maintenance tasks when selected machines change
+            // Refetch maintenance tasks from preselected machines only until a template is chosen.
             React.useEffect(() => {
-              
-              if (!pmId && values.selected_machine_ids.length > 0) {
+              if (pmId || values.procedure_template !== '') return;
+
+              if (values.selected_machine_ids.length > 0) {
                 fetchAvailableMaintenanceTasks(values.selected_machine_ids);
-              } else if (!pmId && values.selected_machine_ids.length === 0) {
-                // No machines selected, show all tasks
+              } else {
                 fetchAvailableMaintenanceTasks();
               }
-            }, [values.selected_machine_ids, pmId, fetchAvailableMaintenanceTasks]);
+            }, [values.selected_machine_ids, values.procedure_template, pmId, fetchAvailableMaintenanceTasks]);
+
+
+            React.useEffect(() => {
+              if (values.procedure_template !== '' || values.selected_machine_ids.length === 0 || machineId) return;
+
+              setFieldValue('selected_machine_ids', [], false);
+            }, [machineId, values.procedure_template, values.selected_machine_ids, setFieldValue]);
 
             const nextDueDate = React.useMemo(() => {
               if (!values.frequency) {
@@ -1453,17 +1463,125 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             </div>
             )}
 
+            {/* Maintenance Task Template Selection */}
+            <div className="mb-4 sm:mb-6">
+              <label htmlFor="procedure_template" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                Maintenance Task Template <span className="text-red-500">*</span>
+                {loadingMaintenanceTasks && <span className="text-xs text-gray-500 ml-2">(Loading...)</span>}
+                {!loadingMaintenanceTasks && availableMaintenanceTasks.length === 0 && (
+                  <span className="text-xs text-amber-600 ml-2">(No tasks available)</span>
+                )}
+              </label>
+              <Field
+                as="select"
+                id="procedure_template"
+                name="procedure_template"
+                className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 touch-target ${
+                  errors.procedure_template && touched.procedure_template ? 'border-red-500' : 'border-gray-300'
+                }`}
+                disabled={loadingMaintenanceTasks}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  const taskId = e.target.value ? Number(e.target.value) : '';
+                  setFieldValue('procedure_template', taskId);
+
+                  // If a task is selected, auto-populate fields based on template
+                  if (taskId) {
+                    const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(taskId));
+                    if (selectedTask) {
+
+                      // Auto-populate title if empty
+                      if (!values.pmtitle || values.pmtitle.trim() === '') {
+                        setFieldValue('pmtitle', selectedTask.name);
+                      }
+
+                      // CRITICAL: Auto-set frequency and calculate scheduled_date based on template frequency
+                      if (selectedTask.frequency && selectedTask.frequency.trim() !== '' && selectedTask.frequency !== 'N/A') {
+                        const templateFrequency = selectedTask.frequency.toLowerCase().trim();
+                        const validFrequencies: FrequencyType[] = ['daily', 'weekly', 'monthly', 'quarterly', 'semi_annual', 'annual', 'custom'];
+
+                        if (validFrequencies.includes(templateFrequency as FrequencyType)) {
+                          // Set frequency from template
+                          setFieldValue('frequency', templateFrequency as FrequencyType);
+
+                          // Calculate next scheduled date based on template frequency
+                          const customDays = templateFrequency === 'custom' ? (selectedTask.custom_days ?? undefined) : undefined;
+                          const nextDate = calculateNextScheduledDate(templateFrequency, customDays);
+                          const formattedDate = formatDateForInput(nextDate);
+
+                          // Always update scheduled_date when template is selected
+                          setFieldValue('scheduled_date', formattedDate);
+
+                          // Set custom_days if frequency is custom
+                          if (templateFrequency === 'custom' && selectedTask.custom_days) {
+                            setFieldValue('custom_days', selectedTask.custom_days);
+                          } else if (templateFrequency !== 'custom') {
+                            // Clear custom_days if not custom frequency
+                            setFieldValue('custom_days', '');
+                          }
+                        } else {
+                          console.warn(`[Template Selection] Invalid frequency "${selectedTask.frequency}" from template, using default`);
+                        }
+                      } else {
+                        console.warn(`[Template Selection] Template has no valid frequency, keeping current values`);
+                      }
+                    } else {
+                      console.warn(`[Template Selection] Template with ID ${taskId} not found in available tasks`);
+                    }
+                  } else {
+                    // Template deselected - reset to defaults
+                    setFieldValue('frequency', 'monthly');
+                    setFieldValue('custom_days', '');
+                  }
+                }}
+              >
+                <option value="">Select a maintenance task template</option>
+                {loadingMaintenanceTasks ? (
+                  <option disabled>Loading tasks...</option>
+                ) : availableMaintenanceTasks.length === 0 ? (
+                  <option disabled>No tasks available</option>
+                ) : (
+                  availableMaintenanceTasks.map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.name}{task.category ? ` - ${task.category}` : ''} [{task.frequency.toUpperCase()}] - {task.difficulty_level}
+                    </option>
+                  ))
+                )}
+              </Field>
+              <p className="mt-1 text-xs text-gray-500">
+                {loadingMaintenanceTasks
+                  ? 'Loading available task templates...'
+                  : availableMaintenanceTasks.length === 0
+                  ? 'No task templates available for the current selection.'
+                  : 'Select a task template first. Machine choices will appear after a template is selected.'}
+              </p>
+
+              {errors.procedure_template && touched.procedure_template && (
+                <p className="mt-1 text-xs sm:text-sm text-red-500">{errors.procedure_template}</p>
+              )}
+              {!loadingMaintenanceTasks && availableMaintenanceTasks.length === 0 && values.selected_machine_ids && values.selected_machine_ids.length > 0 && (
+                <p className="mt-1 text-xs text-amber-600">
+                  No tasks match the preselected machine(s).
+                </p>
+              )}
+            </div>
+
+
             {/* Machines Selection */}
+            {values.procedure_template === '' ? (
+              <div className="mb-4 sm:mb-6 rounded-md border border-blue-200 bg-blue-50 p-3 sm:p-4 text-sm text-blue-800">
+                Select a Maintenance Task Template first to see related machine concerns.
+              </div>
+            ) : (
             <div className="mb-4 sm:mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Machines (Optional) {loadingMachines && <span className="text-xs text-gray-500">(Loading...)</span>}
+                Machine Concerns (Optional) {loadingMachines && <span className="text-xs text-gray-500">(Loading...)</span>}
               </label>
               <div
                 className={`border rounded-md p-3 sm:p-4 max-h-60 overflow-y-auto bg-white scroll-momentum ${
                   errors.selected_machine_ids && touched.selected_machine_ids ? 'border-red-500' : 'border-gray-300'
                 }`}
                 role="group"
-                aria-label="Select machines"
+                aria-label="Select machine concerns"
               >
                 {!values.property_id ? (
                   <p className="text-sm text-gray-500">Please select a property to see available machines.</p>
@@ -1473,11 +1591,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                     <p className="ml-2 text-sm text-gray-500">Loading machines...</p>
                   </div>
                 ) : (() => {
-                  // Filter machines to show only the specified machine if machineId prop is provided
-                  const machinesToShow = machineId 
+                  const machinesToShow = machineId
                     ? availableMachines.filter(m => m.machine_id === machineId)
                     : availableMachines;
-                  
+
                   return machinesToShow.length > 0 ? (
                   <div className="space-y-2 sm:space-y-3">
                     {machinesToShow.map((machineItem) => {
@@ -1532,7 +1649,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                         </p>
                       ) : (
                         <>
-                          <p className="text-sm text-gray-500 mb-3">No machines available for this property.</p>
+                          <p className="text-sm text-gray-500 mb-3">No machine concerns are available for this property.</p>
                           {values.property_id && !error && (
                             <button
                               type="button"
@@ -1552,103 +1669,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 <p className="mt-1 text-sm text-red-500">{errors.selected_machine_ids}</p>
               )}
             </div>
-
-            {/* Maintenance Task Template Selection */}
-            <div className="mb-4 sm:mb-6">
-              <label htmlFor="procedure_template" className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
-                Maintenance Task Template (Optional)
-                {loadingMaintenanceTasks && <span className="text-xs text-gray-500 ml-2">(Loading...)</span>}
-                {!loadingMaintenanceTasks && availableMaintenanceTasks.length === 0 && (
-                  <span className="text-xs text-amber-600 ml-2">(No tasks available)</span>
-                )}
-              </label>
-              <Field
-                as="select"
-                id="procedure_template"
-                name="procedure_template"
-                className="w-full p-2.5 sm:p-3 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 touch-target"
-                disabled={loadingMaintenanceTasks}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                  const taskId = e.target.value ? Number(e.target.value) : '';
-                  setFieldValue('procedure_template', taskId);
-                  
-                  // If a task is selected, auto-populate fields based on template
-                  if (taskId) {
-                    const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(taskId));
-                    if (selectedTask) {
-                      
-                      // Auto-populate title if empty
-                      if (!values.pmtitle || values.pmtitle.trim() === '') {
-                        setFieldValue('pmtitle', selectedTask.name);
-                      }
-                      
-                      // CRITICAL: Auto-set frequency and calculate scheduled_date based on template frequency
-                      if (selectedTask.frequency && selectedTask.frequency.trim() !== '' && selectedTask.frequency !== 'N/A') {
-                        const templateFrequency = selectedTask.frequency.toLowerCase().trim();
-                        const validFrequencies: FrequencyType[] = ['daily', 'weekly', 'monthly', 'quarterly', 'semi_annual', 'annual', 'custom'];
-                        
-                        if (validFrequencies.includes(templateFrequency as FrequencyType)) {
-                          // Set frequency from template
-                          setFieldValue('frequency', templateFrequency as FrequencyType);
-                          
-                          // Calculate next scheduled date based on template frequency
-                          const customDays = templateFrequency === 'custom' ? (selectedTask.custom_days ?? undefined) : undefined;
-                          const nextDate = calculateNextScheduledDate(templateFrequency, customDays);
-                          const formattedDate = formatDateForInput(nextDate);
-                          
-                          // Always update scheduled_date when template is selected
-                          setFieldValue('scheduled_date', formattedDate);
-                          
-                          // Set custom_days if frequency is custom
-                          if (templateFrequency === 'custom' && selectedTask.custom_days) {
-                            setFieldValue('custom_days', selectedTask.custom_days);
-                          } else if (templateFrequency !== 'custom') {
-                            // Clear custom_days if not custom frequency
-                            setFieldValue('custom_days', '');
-                          }
-                        } else {
-                          console.warn(`[Template Selection] Invalid frequency "${selectedTask.frequency}" from template, using default`);
-                        }
-                      } else {
-                        console.warn(`[Template Selection] Template has no valid frequency, keeping current values`);
-                      }
-                    } else {
-                      console.warn(`[Template Selection] Template with ID ${taskId} not found in available tasks`);
-                    }
-                  } else {
-                    // Template deselected - reset to defaults
-                    setFieldValue('frequency', 'monthly');
-                    setFieldValue('custom_days', '');
-                  }
-                }}
-              >
-                <option value="">No template (Custom)</option>
-                {loadingMaintenanceTasks ? (
-                  <option disabled>Loading tasks...</option>
-                ) : availableMaintenanceTasks.length === 0 ? (
-                  <option disabled>No tasks available</option>
-                ) : (
-                  availableMaintenanceTasks.map((task) => (
-                    <option key={task.id} value={task.id}>
-                      {task.name}{task.category ? ` - ${task.category}` : ''} [{task.frequency.toUpperCase()}] - {task.difficulty_level}
-                    </option>
-                  ))
-                )}
-              </Field>
-              <p className="mt-1 text-xs text-gray-500">
-                {loadingMaintenanceTasks 
-                  ? 'Loading available task templates...'
-                  : availableMaintenanceTasks.length === 0
-                  ? 'No task templates available. You can still create a custom maintenance task.'
-                  : 'Select a task template to use as a reference for this maintenance'}
-              </p>
-              {!loadingMaintenanceTasks && availableMaintenanceTasks.length === 0 && values.selected_machine_ids && values.selected_machine_ids.length > 0 && (
-                <p className="mt-1 text-xs text-amber-600">
-                  No tasks match the selected machine(s). Tasks are filtered by machine group_id or linked procedures.
-                </p>
-              )}
-            </div>
-
+            )}
 
             {/* Image Uploads */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">

@@ -2026,17 +2026,34 @@ class MaintenanceStepSerializer(serializers.Serializer):
 class MaintenanceProcedureSerializer(serializers.ModelSerializer):
     """Serializer for MaintenanceTask (MaintenanceProcedure) - Generic task templates"""
     # steps field removed from API - not needed in frontend
-    # equipment field removed - tasks are now generic templates
+    machine_ids = serializers.SerializerMethodField()
+    machines = serializers.SerializerMethodField()
     
     class Meta:
         model = MaintenanceProcedure
         fields = [
             'id', 'name', 'group_id', 'category', 'description', 'frequency', 'estimated_duration', 
             'responsible_department', 'required_tools', 'safety_notes', 
-            'difficulty_level', 'created_at', 'updated_at'
+            'difficulty_level', 'machine_ids', 'machines', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'machine_ids', 'machines', 'created_at', 'updated_at']
     
+    def get_machine_ids(self, obj):
+        """Return machine identifiers explicitly linked to this template."""
+        return list(obj.machines.values_list('machine_id', flat=True))
+
+    def get_machines(self, obj):
+        """Return lightweight machine details for filtering template concerns in clients."""
+        return [
+            {
+                'machine_id': machine.machine_id,
+                'name': machine.name,
+                'group_id': machine.group_id,
+                'property_id': machine.property_id,
+            }
+            for machine in obj.machines.all()
+        ]
+
     def validate_steps(self, value):
         """Validate steps data"""
         if not value:
@@ -2083,20 +2100,37 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
 class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
     """Simplified serializer for listing maintenance tasks - Generic templates"""
     # steps_count and total_estimated_time removed - steps not used
-    # equipment field removed - tasks are now generic templates
     schedule_count = serializers.SerializerMethodField()
+    machine_ids = serializers.SerializerMethodField()
+    machines = serializers.SerializerMethodField()
     
     class Meta:
         model = MaintenanceProcedure
         fields = [
             'id', 'name', 'group_id', 'category', 'frequency', 'estimated_duration',
             'responsible_department', 'difficulty_level',
-            'schedule_count', 'created_at'
+            'schedule_count', 'machine_ids', 'machines', 'created_at'
         ]
     
     def get_schedule_count(self, obj):
         """Get count of maintenance schedules for this task"""
         return obj.maintenance_schedules.count()
+
+    def get_machine_ids(self, obj):
+        """Return machine identifiers explicitly linked to this template."""
+        return list(obj.machines.values_list('machine_id', flat=True))
+
+    def get_machines(self, obj):
+        """Return lightweight machine details for filtering template concerns in clients."""
+        return [
+            {
+                'machine_id': machine.machine_id,
+                'name': machine.name,
+                'group_id': machine.group_id,
+                'property_id': machine.property_id,
+            }
+            for machine in obj.machines.all()
+        ]
 
 
 class MaintenanceTaskImageSerializer(serializers.ModelSerializer):

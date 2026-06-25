@@ -1170,7 +1170,7 @@ class MaintenanceProcedureViewSet(viewsets.ModelViewSet):
         Return all maintenance procedures for all users (they are shared templates).
         However, only admin users can create/update/delete them.
         """
-        return MaintenanceProcedure.objects.all()
+        return MaintenanceProcedure.objects.prefetch_related('machines').all()
 
     def perform_create(self, serializer):
         """Only admin users can create procedures"""

@@ -14,6 +14,13 @@ export interface MaintenanceProcedureTemplate {
   required_tools?: string | null;
   created_at?: string;
   updated_at?: string;
+  machine_ids?: string[];
+  machines?: Array<{
+    machine_id: string;
+    name?: string | null;
+    group_id?: string | null;
+    property_id?: string | number | null;
+  }>;
 }
 
 interface PaginatedMaintenanceProceduresResponse {

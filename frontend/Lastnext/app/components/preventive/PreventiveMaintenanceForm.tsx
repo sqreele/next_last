@@ -82,6 +82,13 @@ type MaintenanceTaskOption = {
   difficulty_level: string;
   responsible_department?: string;
   custom_days?: number | null;
+  machine_ids?: string[];
+  machines?: Array<{
+    machine_id: string;
+    name?: string | null;
+    group_id?: string | null;
+    property_id?: string | number | null;
+  }>;
 };
 
 const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
@@ -691,6 +698,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           difficulty_level: task.difficulty_level || 'N/A',
           responsible_department: task.responsible_department ?? undefined,
           custom_days: (task as any).custom_days ?? undefined, // Include custom_days if available from API
+          machine_ids: task.machine_ids ?? [],
+          machines: task.machines ?? [],
         }))
       );
     } catch (err: any) {
@@ -1248,13 +1257,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
               const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(values.procedure_template));
               const selectedTaskGroupId = normalizeGroupId(selectedTask?.group_id);
-              if (!selectedTaskGroupId) return;
+              const selectedTaskMachineIds = new Set((selectedTask?.machine_ids ?? []).map((id) => String(id)));
+              if (selectedTaskMachineIds.size === 0 && !selectedTaskGroupId) return;
 
-              const allowedMachineIds = new Set(
-                availableMachines
-                  .filter((machine) => normalizeGroupId(machine.group_id) === selectedTaskGroupId)
-                  .map((machine) => machine.machine_id)
-              );
+              const allowedMachineIds = selectedTaskMachineIds.size > 0
+                ? selectedTaskMachineIds
+                : new Set(
+                  availableMachines
+                    .filter((machine) => normalizeGroupId(machine.group_id) === selectedTaskGroupId)
+                    .map((machine) => machine.machine_id)
+                );
               const nextMachineIds = values.selected_machine_ids.filter((id) => allowedMachineIds.has(id) || id === machineId);
               if (nextMachineIds.length !== values.selected_machine_ids.length) {
                 setFieldValue('selected_machine_ids', nextMachineIds, false);
@@ -1611,7 +1623,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 ) : (() => {
                   const selectedTask = availableMaintenanceTasks.find(t => t.id === Number(values.procedure_template));
                   const selectedTaskGroupId = normalizeGroupId(selectedTask?.group_id);
-                  const machinesMatchingTemplate = selectedTaskGroupId
+                  const selectedTaskMachineIds = new Set((selectedTask?.machine_ids ?? []).map((id) => String(id)));
+                  const machinesMatchingTemplate = selectedTaskMachineIds.size > 0
+                    ? availableMachines.filter((m) => selectedTaskMachineIds.has(String(m.machine_id)))
+                    : selectedTaskGroupId
                     ? availableMachines.filter((m) => normalizeGroupId(m.group_id) === selectedTaskGroupId)
                     : availableMachines;
                   const machinesToShow = machineId

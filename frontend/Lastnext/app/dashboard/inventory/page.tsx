@@ -453,7 +453,7 @@ export default function InventoryPage() {
 
   if (error) {
     return (
-      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
+      <div className="w-full px-3 py-4 sm:px-4 md:px-5">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <p className="text-red-800">{error}</p>
@@ -466,20 +466,21 @@ export default function InventoryPage() {
   const lowStockCount = inventory.filter(item => item.status === 'low_stock' || item.status === 'out_of_stock').length;
 
   return (
-    <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem] space-y-4 sm:space-y-6">
+    <div className="w-full max-w-none space-y-4 px-3 pb-4 pt-2 sm:px-4 md:px-5 lg:mx-auto lg:max-w-7xl desktop:max-w-[94rem]">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="pcms-page-header">
         <div className="flex-1">
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2 sm:gap-3">
-              <Package className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+          <p className="pcms-eyebrow">Inventory workspace</p>
+          <div className="mb-1 flex items-center gap-3">
+            <h1 className="flex items-center gap-2 text-xl font-bold text-[var(--pcms-text)] sm:gap-3 sm:text-3xl">
+              <Package className="h-6 w-6 text-[var(--pcms-primary)] sm:h-8 sm:w-8" />
               {t('inventory.title')}
             </h1>
           </div>
-          <p className="hidden sm:block text-gray-600 mt-1">
+          <p className="pcms-page-description hidden sm:block">
             {totalCount} {t('inventory.itemsTotal')}
             {lowStockCount > 0 && (
-              <span className="ml-2 text-yellow-600 font-semibold">
+              <span className="ml-2 font-semibold text-yellow-600">
                 ({lowStockCount} {t('inventory.lowStockWarning')})
               </span>
             )}
@@ -580,7 +581,7 @@ export default function InventoryPage() {
       />
 
       {/* Search and Filters */}
-      <Card>
+      <Card className="pcms-section-card">
         <CardContent className="pt-6">
           <div className="flex flex-col gap-4">
             {/* First Row: Search and View Toggle */}
@@ -598,12 +599,12 @@ export default function InventoryPage() {
               </div>
               
               {/* View Toggle */}
-              <div className="flex items-center gap-2 border rounded-md p-1">
+              <div className="flex items-center gap-2 rounded-full border border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] p-1">
                 <Button
                   variant={viewMode === 'grid' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('grid')}
-                  className="h-9 px-3"
+                  className="h-9 rounded-full px-3"
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
@@ -611,7 +612,7 @@ export default function InventoryPage() {
                   variant={viewMode === 'list' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('list')}
-                  className="h-9 px-3"
+                  className="h-9 rounded-full px-3"
                 >
                   <List className="h-4 w-4" />
                 </Button>
@@ -754,7 +755,7 @@ export default function InventoryPage() {
 
       {/* Inventory Grid/List */}
       {filteredInventory.length === 0 ? (
-        <Card>
+        <Card className="pcms-section-card">
           <CardContent className="py-12 text-center">
             <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('inventory.noItems')}</h3>
@@ -766,9 +767,9 @@ export default function InventoryPage() {
           </CardContent>
         </Card>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
           {filteredInventory.map((item) => (
-            <Card key={item.id} className="h-full hover:shadow-lg transition-shadow border-2 hover:border-blue-300">
+            <Card key={item.id} className="h-full border border-[var(--pcms-border)] transition-shadow hover:border-blue-300 hover:shadow-[var(--pcms-shadow)]">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">

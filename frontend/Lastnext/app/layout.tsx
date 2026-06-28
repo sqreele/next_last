@@ -14,10 +14,12 @@ import { ThemeProvider } from '@/app/components/theme/ThemeProvider';
 import { LocaleProvider } from '@/app/lib/i18n/LocaleProvider';
 import './globals.css';
 // Bilingual UI font (Thai + English)
-const sarabun = localFont({
+const lineSeed = localFont({
   src: [
-    { path: '../public/fonts/Sarabun-Regular.ttf', weight: '400', style: 'normal' },
-    { path: '../public/fonts/Sarabun-Bold.ttf', weight: '700', style: 'normal' },
+    { path: '../public/fonts/Web/WOFF2/LINESeedSansTH_W_Th.woff2', weight: '300', style: 'normal' },
+    { path: '../public/fonts/Web/WOFF2/LINESeedSansTH_W_Rg.woff2', weight: '400', style: 'normal' },
+    { path: '../public/fonts/Web/WOFF2/LINESeedSansTH_W_Bd.woff2', weight: '700', style: 'normal' },
+    { path: '../public/fonts/Web/WOFF2/LINESeedSansTH_W_XBd.woff2', weight: '800', style: 'normal' },
   ],
   variable: '--font-ui',
   display: 'swap',
@@ -91,7 +93,7 @@ interface RootLayoutProps {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="th" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, minimum-scale=1, user-scalable=yes, viewport-fit=cover" />
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
@@ -113,7 +115,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           }}
         />
       </head>
-      <body className={`${sarabun.variable} font-sans min-h-screen bg-background`}>
+      <body className={`${lineSeed.variable} font-sans min-h-screen bg-background`}>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-gray-900 focus:shadow-lg focus:ring-2 focus:ring-blue-600"

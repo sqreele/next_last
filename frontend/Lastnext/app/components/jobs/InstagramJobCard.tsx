@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Job } from "@/app/lib/types";
@@ -86,6 +86,11 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
 
   const [activeIdx, setActiveIdx] = useState(0);
   const [failed, setFailed] = useState<Set<number>>(new Set());
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    setImageLoaded(false);
+  }, [activeIdx, imageUrls]);
 
   const onError = useCallback((idx: number) => {
     setFailed(prev => new Set(prev).add(idx));
@@ -104,35 +109,43 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
 
   return (
     <article
-      className="group h-full w-full max-w-full cursor-pointer overflow-hidden rounded-[1.35rem] border border-white/80 bg-white/95 text-[var(--pcms-text)] shadow-[var(--pcms-shadow-card)] transition duration-200 hover:-translate-y-1 hover:border-cyan-200 hover:shadow-[var(--pcms-shadow)] sm:rounded-[2rem]"
+      className="group h-full w-full max-w-full cursor-pointer overflow-hidden rounded-[1.15rem] border border-[var(--pcms-border)] bg-white text-[var(--pcms-text)] shadow-[var(--pcms-shadow-card)] transition duration-200 hover:border-cyan-200 hover:shadow-[var(--pcms-shadow)] sm:rounded-[1.35rem]"
       onClick={goToDetail}
     >
-      <div className="relative p-1.5 sm:p-2.5">
-        <div className={viewMode === "list" ? "relative h-56 w-full overflow-hidden rounded-[1.15rem] bg-[var(--pcms-surface-soft)] sm:rounded-[1.55rem]" : "relative aspect-square w-full overflow-hidden rounded-[1.15rem] bg-[var(--pcms-surface-soft)] sm:aspect-[4/3] sm:rounded-[1.55rem]"}>
+      <div className="relative p-1 sm:p-1.5">
+        <div className={viewMode === "list" ? "relative h-52 w-full overflow-hidden rounded-[0.95rem] bg-[var(--pcms-surface-soft)] sm:h-56 sm:rounded-[1.1rem]" : "relative aspect-[4/3] w-full overflow-hidden rounded-[0.95rem] bg-[var(--pcms-surface-soft)] sm:rounded-[1.1rem]"}>
           {imageUrls.length > 0 && imageUrls[activeIdx] && !failed.has(activeIdx) ? (
-            <Image
-              src={imageUrls[activeIdx]}
-              alt={job.topics?.[0]?.title || 'Before photo for maintenance job'}
-              fill
-              className="object-cover transition duration-500 group-hover:scale-105"
-              onError={() => onError(activeIdx)}
-              unoptimized={isExternalImageUrl(imageUrls[activeIdx])}
-            />
+            <>
+              <div
+                className={`absolute inset-0 bg-slate-100 transition-opacity duration-300 ${imageLoaded ? "opacity-0" : "opacity-100"}`}
+                aria-hidden="true"
+              />
+              <Image
+                src={imageUrls[activeIdx]}
+                alt={job.topics?.[0]?.title || 'Before photo for maintenance job'}
+                fill
+                sizes={viewMode === "list" ? "(max-width: 768px) 100vw, 780px" : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"}
+                className={`object-cover transition-opacity duration-300 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
+                onLoad={() => setImageLoaded(true)}
+                onError={() => onError(activeIdx)}
+                unoptimized={isExternalImageUrl(imageUrls[activeIdx])}
+              />
+            </>
           ) : (
             <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-cyan-50 via-blue-50 to-teal-50 text-cyan-700">
               <div className="grid place-items-center gap-2 text-center">
-                <div className="grid h-14 w-14 place-items-center rounded-3xl bg-white/80 shadow-[var(--pcms-shadow-sm)]">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/85 shadow-[var(--pcms-shadow-sm)]">
                   <ImageIcon className="h-6 w-6" />
                 </div>
-                <span className="text-xs font-black uppercase tracking-[0.18em]">Before Photo</span>
+                <span className="text-xs font-bold uppercase">Before Photo</span>
               </div>
             </div>
           )}
 
-          <div className="absolute left-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-1.5 sm:left-3 sm:top-3 sm:gap-2">
+          <div className="absolute left-2 top-2 flex max-w-[calc(100%-1rem)] flex-wrap items-center gap-1.5 sm:left-3 sm:top-3">
             <StatusBadge status={job.status} />
             {job.is_preventivemaintenance && (
-              <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-black text-cyan-700">PM</span>
+              <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-bold text-cyan-700">PM</span>
             )}
           </div>
 
@@ -155,25 +168,25 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
         </div>
       </div>
 
-      <div className="space-y-2 px-2.5 pb-3 pt-1 sm:space-y-3 sm:px-4 sm:pb-4">
+      <div className="space-y-2.5 px-3 pb-3 pt-1.5 sm:px-4 sm:pb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[var(--pcms-primary-strong)] sm:gap-2 sm:text-xs sm:tracking-[0.12em]">
+            <div className="mb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase text-[var(--pcms-primary-strong)] sm:gap-2 sm:text-xs">
               <span>#{job.job_id}</span>
               <span className="h-1 w-1 rounded-full bg-cyan-300" />
               <span>{formatDate(job.created_at)}</span>
             </div>
-            <h2 className="line-clamp-2 text-sm font-black leading-tight tracking-[-0.02em] text-[var(--pcms-text)] sm:text-base">
+            <h2 className="line-clamp-2 text-[15px] font-bold leading-snug text-[var(--pcms-text)] sm:text-base">
               {job.topics?.[0]?.title || "Maintenance Job"}
             </h2>
           </div>
         </div>
 
-        <p className="line-clamp-2 text-xs font-medium leading-relaxed text-[var(--pcms-text-muted)] sm:line-clamp-3 sm:text-sm">
+        <p className="line-clamp-2 text-[13px] font-medium leading-6 text-[var(--pcms-text-muted)] sm:line-clamp-3 sm:text-sm">
           {job.description || "No description provided. Add maintenance notes for the technician and Chief Engineer."}
         </p>
 
-        <div className="grid gap-1.5 rounded-[1rem] border border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] p-2 text-[11px] font-bold text-[var(--pcms-text-muted)] sm:gap-2 sm:rounded-[1.35rem] sm:p-3 sm:text-xs">
+        <div className="grid gap-1.5 rounded-[0.9rem] border border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] p-2.5 text-[11px] font-semibold text-[var(--pcms-text-muted)] sm:gap-2 sm:rounded-[1rem] sm:p-3 sm:text-xs">
           <div className="flex min-w-0 items-center gap-2">
             <MapPin className="h-3.5 w-3.5 shrink-0 text-cyan-600" />
             <span className="truncate">Area / Room: {locationLabel}</span>
@@ -202,7 +215,7 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
           </div>
           <button
             type="button"
-            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-[var(--pcms-accent-gradient)] px-5 py-2.5 text-sm font-black text-white shadow-[var(--pcms-button-shadow)] transition-transform touch-manipulation active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 max-sm:w-full sm:min-h-0 sm:px-4 sm:py-2 sm:text-xs"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-[var(--pcms-accent-gradient)] px-5 py-2.5 text-sm font-bold text-white shadow-[var(--pcms-button-shadow)] transition-transform touch-manipulation active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 max-sm:w-full sm:min-h-0 sm:px-4 sm:py-2 sm:text-xs"
             onClick={(e) => { e.stopPropagation(); goToDetail(); }}
           >
             View
@@ -212,4 +225,3 @@ export default function InstagramJobCard({ job, viewMode = "grid" }: InstagramJo
     </article>
   );
 }
-

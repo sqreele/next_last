@@ -658,15 +658,11 @@ body {
     gap: 0.75rem;
     flex-wrap: wrap;
   }
-  .pcms-workspace-card,
   .pcms-section-card {
     background: var(--pcms-surface);
     border: 1px solid var(--pcms-border);
     border-radius: var(--pcms-radius-lg);
     box-shadow: var(--pcms-shadow-sm);
-  }
-  .pcms-workspace-card {
-    overflow: hidden;
   }
   .pcms-section-card {
     padding: 1.1rem;
@@ -684,58 +680,6 @@ body {
     margin: 0.25rem 0 0;
     color: var(--pcms-text-muted);
     font-size: 0.9rem;
-  }
-  .pcms-kpi-widget {
-    position: relative;
-    min-height: 132px;
-    overflow: hidden;
-    border: 1px solid var(--pcms-border);
-    background: var(--pcms-surface);
-    border-radius: var(--pcms-radius-lg);
-    padding: 1rem;
-    box-shadow: var(--pcms-shadow-sm);
-  }
-  .pcms-kpi-widget__accent {
-    width: 44px;
-    height: 5px;
-    border-radius: 999px;
-    margin-bottom: 1.1rem;
-    background: var(--pcms-primary);
-  }
-  .pcms-kpi-widget p {
-    margin: 0;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--pcms-text-muted);
-  }
-  .pcms-kpi-widget strong {
-    display: block;
-    margin-top: 0.3rem;
-    color: var(--pcms-text);
-    font-size: 2rem;
-    line-height: 1;
-    letter-spacing: -0.04em;
-  }
-  .pcms-kpi-widget span {
-    display: block;
-    margin-top: 0.65rem;
-    color: var(--pcms-text-soft);
-    font-size: 0.78rem;
-  }
-  .pcms-kpi-widget--violet .pcms-kpi-widget__accent {
-    background: #7c3aed;
-  }
-  .pcms-kpi-widget--orange .pcms-kpi-widget__accent {
-    background: #f97316;
-  }
-  .pcms-kpi-widget--green .pcms-kpi-widget__accent {
-    background: #16a34a;
-  }
-  .pcms-kpi-widget--teal .pcms-kpi-widget__accent {
-    background: #0d9488;
-  }
-  .pcms-kpi-widget--red .pcms-kpi-widget__accent {
-    background: #dc2626;
   }
   .pcms-status-badge,
   .pcms-priority-badge {
@@ -880,22 +824,6 @@ body {
     max-width: 30rem;
     color: var(--pcms-text-muted);
   }
-  .pcms-page-loader {
-    min-height: 360px;
-    display: grid;
-    place-items: center;
-    align-content: center;
-    gap: 1rem;
-    color: var(--pcms-text-muted);
-  }
-  .pcms-loader-ring {
-    width: 42px;
-    height: 42px;
-    border-radius: 999px;
-    border: 3px solid #dbeafe;
-    border-top-color: var(--pcms-primary);
-    animation: spin 0.8s linear infinite;
-  }
   .pcms-skeleton-list {
     display: grid;
     gap: 0.75rem;
@@ -915,21 +843,10 @@ body {
       background-position: 0 0;
     }
   }
-  .pcms-table-row-hover {
-    transition:
-      background-color 0.16s ease,
-      box-shadow 0.16s ease,
-      transform 0.16s ease;
-  }
-  .pcms-table-row-hover:hover {
-    background: var(--pcms-row-hover);
-    box-shadow: inset 3px 0 0 var(--pcms-primary);
-  }
   .pcms-btn,
   .pcms-action-button,
   .pcms-secondary-button,
-  .pcms-danger-button,
-  .pcms-status-update-button {
+  .pcms-danger-button {
     min-height: 44px;
     display: inline-flex;
     align-items: center;
@@ -952,15 +869,13 @@ body {
   .pcms-btn:active,
   .pcms-action-button:active,
   .pcms-secondary-button:active,
-  .pcms-danger-button:active,
-  .pcms-status-update-button:active {
+  .pcms-danger-button:active {
     transform: translateY(1px);
   }
   .pcms-btn:disabled,
   .pcms-action-button:disabled,
   .pcms-secondary-button:disabled,
   .pcms-danger-button:disabled,
-  .pcms-status-update-button:disabled,
   .pcms-btn[aria-disabled="true"] {
     cursor: not-allowed;
     opacity: 0.48;
@@ -1040,45 +955,6 @@ body {
     background: #f1f5f9;
     color: #0f172a;
   }
-  .pcms-status-update-button {
-    border: 1px solid currentColor;
-    background: var(--status-open-bg);
-    color: var(--status-open-text);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.68),
-      0 6px 14px rgba(15, 23, 42, 0.08);
-  }
-  .pcms-status-update-button--in_progress {
-    background: var(--status-in-progress-bg);
-    color: var(--status-in-progress-text);
-    border-color: var(--status-in-progress-border);
-  }
-  .pcms-status-update-button--waiting_spare_part,
-  .pcms-status-update-button--waiting_sparepart {
-    background: var(--status-waiting-spare-part-bg);
-    color: var(--status-waiting-spare-part-text);
-    border-color: var(--status-waiting-spare-part-border);
-  }
-  .pcms-status-update-button--waiting_vendor {
-    background: var(--status-waiting-vendor-bg);
-    color: var(--status-waiting-vendor-text);
-    border-color: var(--status-waiting-vendor-border);
-  }
-  .pcms-status-update-button--completed {
-    background: var(--status-completed-bg);
-    color: var(--status-completed-text);
-    border-color: var(--status-completed-border);
-  }
-  .pcms-status-update-button--verified {
-    background: var(--status-verified-bg);
-    color: var(--status-verified-text);
-    border-color: var(--status-verified-border);
-  }
-  .pcms-status-update-button--cancelled {
-    background: var(--status-cancelled-bg);
-    color: var(--status-cancelled-text);
-    border-color: var(--status-cancelled-border);
-  }
   .pcms-filter-button,
   .pcms-pagination-button {
     min-height: 44px;
@@ -1115,8 +991,7 @@ body {
   .pcms-btn,
   .pcms-action-button,
   .pcms-secondary-button,
-  .pcms-danger-button,
-  .pcms-status-update-button {
+  .pcms-danger-button {
     width: 100%;
     padding-inline: 0.95rem;
   }
@@ -1274,8 +1149,7 @@ body {
     gap: 0.65rem;
   }
 
-  .pcms-section-card,
-  .pcms-workspace-card {
+  .pcms-section-card {
     border: 1px solid rgba(216, 233, 242, 0.96);
     border-radius: var(--pcms-radius-lg);
     background: rgba(255, 255, 255, 0.92);
@@ -1927,7 +1801,6 @@ body {
   .pcms-action-button,
   .pcms-secondary-button,
   .pcms-danger-button,
-  .pcms-status-update-button,
   .pcms-filter-button,
   .pcms-pagination-button,
   .pcms-pagination-button--active {
@@ -2001,63 +1874,6 @@ body {
     box-shadow: var(--pcms-button-shadow);
   }
 
-  .pcms-status-update-button {
-    flex: 1 1 170px;
-    box-shadow:
-      0 8px 18px rgba(15, 23, 42, 0.12),
-      inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  }
-  .pcms-status-update-button--open,
-  .pcms-status-update-button--pending {
-    background: var(--status-open-bg);
-    color: var(--status-open-text);
-    border-color: var(--status-open-border);
-  }
-  .pcms-status-update-button--assigned {
-    background: var(--status-assigned-bg);
-    color: var(--status-assigned-text);
-    border-color: var(--status-assigned-border);
-  }
-  .pcms-status-update-button--in_progress {
-    background: var(--status-in-progress-bg);
-    color: var(--status-in-progress-text);
-    border-color: var(--status-in-progress-border);
-  }
-  .pcms-status-update-button--waiting_spare_part,
-  .pcms-status-update-button--waiting_sparepart {
-    background: var(--status-waiting-spare-part-bg);
-    color: var(--status-waiting-spare-part-text);
-    border-color: var(--status-waiting-spare-part-border);
-  }
-  .pcms-status-update-button--waiting_vendor {
-    background: var(--status-waiting-vendor-bg);
-    color: var(--status-waiting-vendor-text);
-    border-color: var(--status-waiting-vendor-border);
-  }
-  .pcms-status-update-button--completed,
-  .pcms-status-update-button--fixed {
-    background: var(--status-completed-bg);
-    color: var(--status-completed-text);
-    border-color: var(--status-completed-border);
-  }
-  .pcms-status-update-button--verified {
-    background: var(--status-verified-bg);
-    color: var(--status-verified-text);
-    border-color: var(--status-verified-border);
-  }
-  .pcms-status-update-button--cancelled {
-    background: var(--status-cancelled-bg);
-    color: var(--status-cancelled-text);
-    border-color: var(--status-cancelled-border);
-  }
-  .pcms-status-update-button--defect,
-  .pcms-status-update-button--under_review,
-  .pcms-status-update-button--waiting_fix_defect {
-    background: var(--status-defect-bg);
-    color: var(--status-defect-text);
-    border-color: var(--status-defect-border);
-  }
-
   .pcms-status-card--assigned {
     --status-card-bg: var(--status-assigned-bg);
     --status-card-text: var(--status-assigned-text);
@@ -2078,10 +1894,6 @@ body {
   .pcms-priority-picker__option {
     flex-basis: calc(50% - 0.3rem);
     padding-inline: 0.75rem;
-  }
-  .pcms-status-update-button {
-    flex-basis: 100%;
-    width: 100%;
   }
   .pcms-status-badge,
   .pcms-priority-badge {
@@ -2170,8 +1982,7 @@ body {
     gap: var(--pcms-space-3);
   }
 
-  .pcms-dashboard .pcms-section-card,
-  .pcms-dashboard .pcms-workspace-card {
+  .pcms-dashboard .pcms-section-card {
     border-color: rgba(203, 213, 225, 0.86);
     border-radius: var(--pcms-dashboard-radius);
     background: rgba(255, 255, 255, 0.96);
@@ -2211,7 +2022,6 @@ body {
     gap: var(--pcms-space-4);
   }
 
-  .pcms-dashboard .pcms-kpi-widget,
   .pcms-skeleton-card {
     min-height: 154px;
     display: flex;
@@ -2222,36 +2032,6 @@ body {
     padding: clamp(1rem, 2vw, 1.35rem);
     background: linear-gradient(180deg, #ffffff, #f8fbff);
     box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
-  }
-
-  .pcms-dashboard .pcms-kpi-widget__accent {
-    width: 3.25rem;
-    height: 0.35rem;
-    margin-bottom: var(--pcms-space-4);
-  }
-
-  .pcms-dashboard .pcms-kpi-widget p {
-    font-size: 0.78rem;
-    font-weight: 900;
-    line-height: 1.2;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--pcms-text-muted);
-  }
-
-  .pcms-dashboard .pcms-kpi-widget strong {
-    margin-top: var(--pcms-space-3);
-    font-size: clamp(2rem, 5vw, 2.75rem);
-    line-height: 0.95;
-    letter-spacing: -0.05em;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .pcms-dashboard .pcms-kpi-widget span {
-    margin-top: var(--pcms-space-3);
-    font-size: 0.84rem;
-    line-height: 1.35;
-    color: var(--pcms-text-muted);
   }
 
   .pcms-skeleton-card {
@@ -2766,7 +2546,6 @@ body {
   .pcms-action-button,
   .pcms-secondary-button,
   .pcms-danger-button,
-  .pcms-status-update-button,
   .pcms-filter-button,
   .pcms-pagination-button {
     border-radius: var(--pcms-button-radius);
@@ -2784,7 +2563,6 @@ body {
   .pcms-action-button:focus-visible,
   .pcms-secondary-button:focus-visible,
   .pcms-danger-button:focus-visible,
-  .pcms-status-update-button:focus-visible,
   .pcms-filter-button:focus-visible,
   .pcms-pagination-button:focus-visible {
     outline: none;
@@ -2795,7 +2573,6 @@ body {
   .pcms-action-button:hover:not(:disabled),
   .pcms-secondary-button:hover:not(:disabled),
   .pcms-danger-button:hover:not(:disabled),
-  .pcms-status-update-button:hover:not(:disabled),
   .pcms-filter-button:hover:not(:disabled),
   .pcms-pagination-button:hover:not(:disabled) {
     transform: translateY(-1px);
@@ -2805,23 +2582,20 @@ body {
   .pcms-action-button:active:not(:disabled),
   .pcms-secondary-button:active:not(:disabled),
   .pcms-danger-button:active:not(:disabled),
-  .pcms-status-update-button:active:not(:disabled),
   .pcms-filter-button:active:not(:disabled),
   .pcms-pagination-button:active:not(:disabled) {
     transform: translateY(0) scale(0.98);
   }
 
   .pcms-status-badge--pending,
-  .pcms-status-summary-card--pending,
-  .pcms-status-update-button--pending {
+  .pcms-status-summary-card--pending {
     background: var(--status-pending-bg);
     color: var(--status-pending-text);
     border-color: var(--status-pending-border);
   }
 
   .pcms-status-badge--in_progress,
-  .pcms-status-summary-card--in_progress,
-  .pcms-status-update-button--in_progress {
+  .pcms-status-summary-card--in_progress {
     background: var(--status-in-progress-bg);
     color: var(--status-in-progress-text);
     border-color: var(--status-in-progress-border);
@@ -2830,9 +2604,7 @@ body {
   .pcms-status-badge--waiting_spare_part,
   .pcms-status-badge--waiting_sparepart,
   .pcms-status-summary-card--waiting_spare_part,
-  .pcms-status-summary-card--waiting_sparepart,
-  .pcms-status-update-button--waiting_spare_part,
-  .pcms-status-update-button--waiting_sparepart {
+  .pcms-status-summary-card--waiting_sparepart {
     background: var(--status-waiting-spare-part-bg);
     color: var(--status-waiting-spare-part-text);
     border-color: var(--status-waiting-spare-part-border);
@@ -2842,10 +2614,7 @@ body {
   .pcms-status-badge--defect,
   .pcms-status-badge--under_review,
   .pcms-status-summary-card--waiting_fix_defect,
-  .pcms-status-summary-card--defect,
-  .pcms-status-update-button--waiting_fix_defect,
-  .pcms-status-update-button--defect,
-  .pcms-status-update-button--under_review {
+  .pcms-status-summary-card--defect {
     background: var(--status-defect-bg);
     color: var(--status-defect-text);
     border-color: var(--status-defect-border);
@@ -2866,14 +2635,11 @@ body {
 @media (max-width: 640px) {
   .pcms-page-header,
   .pcms-section-card,
-  .pcms-workspace-card,
-  .pcms-dashboard .pcms-section-card,
-  .pcms-dashboard .pcms-workspace-card {
+  .pcms-dashboard .pcms-section-card {
     border-radius: 1.35rem;
   }
 
   .pcms-section-card,
-  .pcms-workspace-card,
   .pcms-dashboard .pcms-section-card {
     padding: 1rem;
   }
@@ -2959,8 +2725,7 @@ body {
   .pcms-btn,
   .pcms-action-button,
   .pcms-secondary-button,
-  .pcms-danger-button,
-  .pcms-status-update-button {
+  .pcms-danger-button {
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -3099,56 +2864,6 @@ body {
     color: #0f172a;
   }
 
-  /* Status update buttons — spec-aligned colors */
-  .pcms-status-update-button {
-    color: #fff;
-    background: var(--status-pending-bg);
-    border-color: var(--status-pending-border);
-  }
-  .pcms-status-update-button--open,
-  .pcms-status-update-button--pending {
-    background: var(--status-open-bg);
-    color: var(--status-open-text);
-    border-color: var(--status-open-border);
-  }
-  .pcms-status-update-button--in_progress {
-    background: var(--status-in-progress-bg);
-    color: var(--status-in-progress-text);
-    border-color: var(--status-in-progress-border);
-  }
-  .pcms-status-update-button--waiting_spare_part,
-  .pcms-status-update-button--waiting_sparepart {
-    background: var(--status-waiting-spare-part-bg);
-    color: var(--status-waiting-spare-part-text);
-    border-color: var(--status-waiting-spare-part-border);
-  }
-  .pcms-status-update-button--waiting_vendor {
-    background: var(--status-waiting-vendor-bg);
-    color: var(--status-waiting-vendor-text);
-    border-color: var(--status-waiting-vendor-border);
-  }
-  .pcms-status-update-button--waiting_fix_defect {
-    background: var(--status-waiting-fix-defect-bg);
-    color: var(--status-waiting-fix-defect-text);
-    border-color: var(--status-waiting-fix-defect-border);
-  }
-  .pcms-status-update-button--completed {
-    background: var(--status-completed-bg);
-    color: var(--status-completed-text);
-    border-color: var(--status-completed-border);
-  }
-  .pcms-status-update-button--verified {
-    background: var(--status-verified-bg);
-    color: var(--status-verified-text);
-    border-color: var(--status-verified-border);
-  }
-  .pcms-status-update-button--cancelled,
-  .pcms-status-update-button--rejected {
-    background: var(--status-cancelled-bg);
-    color: var(--status-cancelled-text);
-    border-color: var(--status-cancelled-border);
-  }
-
   /* Status badge — spec colors via dot + soft background */
   .pcms-status-badge--in_progress {
     background: #eef2ff !important;
@@ -3181,46 +2896,6 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
     border-color: var(--pcms-border-strong);
-  }
-
-  /* Form field — clear required marker + error visuals */
-  .pcms-field {
-    display: grid;
-    gap: 0.4rem;
-  }
-  .pcms-field-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #1e293b;
-  }
-  .pcms-field-label--required::after {
-    content: "*";
-    color: #dc2626;
-    font-weight: 800;
-  }
-  .pcms-field-hint {
-    font-size: 0.78rem;
-    color: var(--pcms-text-muted);
-    line-height: 1.35;
-  }
-  .pcms-field-error {
-    font-size: 0.78rem;
-    color: #b91c1c;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    line-height: 1.35;
-  }
-  .pcms-field--invalid input,
-  .pcms-field--invalid textarea,
-  .pcms-field--invalid select,
-  .pcms-input-invalid {
-    border-color: #dc2626 !important;
-    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
   }
 
   /* Animated status dot for live operations */
@@ -3338,8 +3013,7 @@ body {
     transition: none !important;
   }
   .pcms-dot-pulse::after,
-  .spinner,
-  .pcms-loader-ring {
+  .spinner {
     animation: none !important;
   }
 }
@@ -4153,7 +3827,6 @@ body {
 
   .pcms-app-shell .pcms-page-header,
   .pcms-app-shell .pcms-section-card,
-  .pcms-app-shell .pcms-workspace-card,
   .pcms-app-shell .pcms-card-modern,
   .pcms-app-shell [data-mobile-full="true"] {
     width: 100%;
@@ -4188,5 +3861,194 @@ body {
   .sneat-btn {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* App polish overrides: keep Thai text and job media closer to native-app rhythm. */
+html {
+  font-size: 16px;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-feature-settings: "kern";
+  letter-spacing: 0;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+.pcms-job-grid {
+  align-items: stretch;
+}
+
+.pcms-job-grid article {
+  contain: layout paint;
+}
+
+.pcms-job-grid article h1,
+.pcms-job-grid article h2,
+.pcms-job-grid article h3,
+.pcms-job-grid article p,
+.pcms-job-grid article span,
+.pcms-job-grid article button {
+  letter-spacing: 0;
+}
+
+@media (max-width: 640px) {
+  .pcms-job-grid {
+    gap: 0.85rem;
+  }
+
+  .pcms-job-grid article {
+    border-radius: 1rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  }
+}
+
+/* App-wide dashboard polish pass. Keep shared surfaces quiet, dense and native-app-like. */
+.pcms-app-shell {
+  background: var(--pcms-app-bg);
+}
+
+.pcms-app-shell main {
+  scrollbar-gutter: stable;
+}
+
+.pcms-page-header {
+  align-items: flex-start;
+  border: 1px solid var(--pcms-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--pcms-shadow-sm);
+  padding: clamp(1rem, 2vw, 1.35rem);
+}
+
+.pcms-page-header h1 {
+  font-size: clamp(1.45rem, 2.5vw, 2rem);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.pcms-eyebrow {
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 700;
+}
+
+.pcms-page-description {
+  max-width: 68ch;
+  line-height: 1.65;
+}
+
+.pcms-page-actions {
+  gap: 0.5rem;
+}
+
+.pcms-section-card {
+  border: 1px solid var(--pcms-border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--pcms-shadow-sm);
+}
+
+.pcms-section-card__header h2 {
+  letter-spacing: 0;
+  font-weight: 800;
+}
+
+.pcms-search-input {
+  border-radius: 999px;
+  border-color: var(--pcms-border);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--pcms-shadow-sm);
+}
+
+.pcms-search-input input {
+  min-height: 48px;
+  font-weight: 600;
+}
+
+.pcms-floating-action {
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.sneat-dashboard {
+  background: transparent;
+  gap: 1.25rem;
+  padding: clamp(0.75rem, 1.8vw, 1.25rem);
+}
+
+.sneat-dashboard h1,
+.sneat-dashboard h2,
+.sneat-dashboard h3,
+.sneat-dashboard h4 {
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.sneat-card,
+.sneat-welcome-card,
+.sneat-stat-card,
+.sneat-chart-card {
+  border: 1px solid var(--pcms-border);
+  border-radius: 18px;
+  box-shadow: var(--pcms-shadow-sm);
+}
+
+.sneat-welcome-card::before,
+.sneat-welcome-card__art {
+  display: none;
+}
+
+.sneat-btn,
+.sneat-tabs button,
+.sneat-chip {
+  letter-spacing: 0;
+}
+
+.sneat-tabs {
+  border-radius: 999px;
+  background: var(--pcms-surface-soft);
+}
+
+.sneat-tabs button {
+  border-radius: 999px;
+}
+
+@media (max-width: 767px) {
+  .pcms-app-shell main {
+    background: var(--pcms-app-bg);
+  }
+
+  .pcms-page-header {
+    margin-inline: 0.75rem;
+    border-radius: 16px;
+    padding: 1rem;
+  }
+
+  .pcms-page-actions {
+    width: 100%;
+  }
+
+  .pcms-page-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .pcms-section-card {
+    border-radius: 16px;
+  }
+
+  .pcms-floating-action {
+    bottom: calc(5.75rem + env(safe-area-inset-bottom));
   }
 }

@@ -97,19 +97,19 @@ function LoginContent() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <div className="relative flex min-h-screen w-full max-w-none flex-col px-3 py-6 sm:px-6 sm:py-8 lg:mx-auto lg:max-w-6xl lg:px-8">
+    <div className="relative min-h-screen overflow-hidden bg-[var(--pcms-app-bg)]">
+      <div className="relative flex min-h-screen w-full max-w-none flex-col px-3 py-5 sm:px-6 sm:py-8 lg:mx-auto lg:max-w-6xl lg:px-8">
         {/* Top brand bar */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-600/30">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[var(--pcms-primary)] text-white shadow-[var(--pcms-shadow-sm)]">
               <Building className="h-5 w-5" />
             </div>
-            <span className="text-lg font-extrabold tracking-tight text-slate-900">
+            <span className="text-lg font-bold text-[var(--pcms-text)]">
               PCMS
             </span>
           </div>
-          <span className="hidden text-xs font-semibold text-slate-500 sm:inline">
+          <span className="hidden text-xs font-semibold text-[var(--pcms-text-muted)] sm:inline">
             Hotel maintenance operations
           </span>
         </div>
@@ -125,27 +125,27 @@ function LoginContent() {
               </Alert>
             )}
 
-            <div className="grid items-center gap-6 lg:grid-cols-2 lg:gap-10">
+            <div className="grid items-center gap-5 lg:grid-cols-2 lg:gap-8">
               {/* Left: pitch */}
-              <div className="space-y-6 lg:pr-6">
-                <div className="inline-flex items-center gap-2 rounded-full border border-blue-200/70 bg-white/70 px-3 py-1 text-xs font-bold uppercase tracking-wide text-blue-700 backdrop-blur">
+              <div className="space-y-5 lg:pr-6">
+                <div className="inline-flex items-center gap-2 rounded-full border border-blue-200/70 bg-white/80 px-3 py-1 text-xs font-bold text-blue-700 backdrop-blur">
                   <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
                   Property Care Maintenance System
                 </div>
-                <h1 className="text-balance text-4xl font-black leading-tight tracking-tight text-slate-900 sm:text-5xl">
+                <h1 className="text-balance text-3xl font-bold leading-tight text-[var(--pcms-text)] sm:text-5xl">
                   Hotel maintenance,{' '}
-                  <span className="bg-gradient-to-br from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  <span className="text-[var(--pcms-primary-strong)]">
                     organized clearly.
                   </span>
                 </h1>
-                <p className="max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
+                <p className="max-w-xl text-base leading-relaxed text-[var(--pcms-text-muted)] sm:text-lg">
                   Track jobs across rooms and areas, capture before/after photos,
                   and give Chief Engineers, Technicians and GMs a single source of
                   truth for every issue.
                 </p>
 
                 <ul className="grid gap-3 sm:grid-cols-2">
-                  <li className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3 shadow-sm backdrop-blur">
+                  <li className="flex items-start gap-3 rounded-2xl border border-[var(--pcms-border)] bg-white/85 p-3 shadow-[var(--pcms-shadow-sm)] backdrop-blur">
                     <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-emerald-100 text-emerald-700">
                       <Wrench className="h-4 w-4" />
                     </span>
@@ -154,7 +154,7 @@ function LoginContent() {
                       <p className="text-xs text-slate-600">Clear status, priority and photos for every job.</p>
                     </div>
                   </li>
-                  <li className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white/70 p-3 shadow-sm backdrop-blur">
+                  <li className="flex items-start gap-3 rounded-2xl border border-[var(--pcms-border)] bg-white/85 p-3 shadow-[var(--pcms-shadow-sm)] backdrop-blur">
                     <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-indigo-100 text-indigo-700">
                       <Users className="h-4 w-4" />
                     </span>
@@ -167,7 +167,7 @@ function LoginContent() {
               </div>
 
               {/* Right: sign-in card */}
-              <Card className="w-full max-w-none border-slate-200/80 bg-white/95 shadow-xl shadow-slate-900/[0.06] backdrop-blur sm:mx-auto sm:max-w-md">
+              <Card className="w-full max-w-none border-[var(--pcms-border)] bg-white/95 shadow-[var(--pcms-shadow)] backdrop-blur sm:mx-auto sm:max-w-md">
                 <CardHeader className="space-y-3 text-center">
                   <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-blue-100 text-blue-700">
                     <Shield className="h-6 w-6" />

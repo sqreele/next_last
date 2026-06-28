@@ -18,8 +18,8 @@ export default async function AreasPage() {
     redirect('/auth/login');
   }
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Suspense fallback={<div className="p-6 text-sm text-gray-500">Loading...</div>}>
+    <div className="w-full px-3 pb-4 pt-2 sm:px-4 md:px-5">
+      <Suspense fallback={<div className="pcms-section-card p-6 text-sm text-[var(--pcms-text-muted)]">Loading...</div>}>
         <AreasClient />
       </Suspense>
     </div>

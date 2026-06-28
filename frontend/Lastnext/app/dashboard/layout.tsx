@@ -72,7 +72,7 @@ export default function DashboardLayout({
   }, [router]);
 
   return (
-    <div className="pcms-app-shell flex min-h-screen-safe w-full text-[var(--pcms-text)] overscroll-none">
+    <div className="pcms-app-shell flex min-h-screen-safe w-full bg-[var(--pcms-app-bg)] text-[var(--pcms-text)] overscroll-none">
       {/* Desktop Navigation - Hidden on mobile and tablet */}
       <DesktopNav
         collapsed={isSidebarCollapsed}
@@ -92,7 +92,7 @@ export default function DashboardLayout({
           ref={mainRef}
           className="
             flex-1 overflow-auto
-            px-0 py-3 sm:px-4 tablet:p-5 desktop:p-7
+            px-0 py-2 sm:px-4 tablet:p-5 desktop:p-6
             pb-32 mobile:pb-36 tablet:pb-8 desktop:pb-8
             transition-all duration-200
             scroll-smooth
@@ -104,10 +104,10 @@ export default function DashboardLayout({
             scrollTargetRef={mainRef}
             className="
               mx-0 w-full max-w-none
-              tablet:mx-auto tablet:max-w-7xl desktop:max-w-[96rem]
+              tablet:mx-auto tablet:max-w-7xl desktop:max-w-[94rem]
             "
           >
-            <PageTransition className="w-full space-y-4 mobile:space-y-5 tablet:space-y-6">
+            <PageTransition className="w-full space-y-4 mobile:space-y-4 tablet:space-y-5">
               {children}
             </PageTransition>
           </PullToRefresh>
@@ -132,13 +132,13 @@ function DesktopNav({
   return (
     <aside
       className={cn(
-        "hidden desktop:flex flex-col border-r transition-all duration-300 bg-white/85 backdrop-blur-xl border-[var(--pcms-border)] shadow-[var(--pcms-shadow-sm)] relative z-30",
-        collapsed ? "w-[80px]" : "w-[240px] tablet:w-[220px]",
+        "hidden desktop:flex flex-col border-r transition-all duration-300 bg-white/92 backdrop-blur-xl border-[var(--pcms-border)] shadow-[var(--pcms-shadow-sm)] relative z-30",
+        collapsed ? "w-[76px]" : "w-[244px] tablet:w-[224px]",
       )}
     >
       <div
         className={cn(
-          "h-16 px-4 border-b flex items-center border-slate-200/80",
+          "h-16 px-4 border-b flex items-center border-[var(--pcms-border)]",
           collapsed ? "justify-center" : "justify-between",
         )}
       >
@@ -149,11 +149,11 @@ function DesktopNav({
             collapsed && "justify-center",
           )}
         >
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/25 transition-transform group-hover:scale-105">
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--pcms-primary)] text-white shadow-[var(--pcms-shadow-sm)]">
             <Package2 className="h-5 w-5" />
           </span>
           {!collapsed && (
-            <span className="font-extrabold text-lg tracking-tight text-slate-900 group-hover:text-blue-700 transition-colors">
+            <span className="text-lg font-bold text-[var(--pcms-text)] transition-colors group-hover:text-[var(--pcms-primary-strong)]">
               PCMS
             </span>
           )}
@@ -163,7 +163,7 @@ function DesktopNav({
             variant="ghost"
             size="icon"
             onClick={toggleCollapse}
-            className="h-8 w-8 hover:bg-gray-100"
+            className="h-8 w-8 hover:bg-[var(--pcms-surface-soft)]"
           >
             <PanelLeft className="h-4 w-4" />
           </Button>
@@ -179,19 +179,19 @@ function DesktopNav({
                 href={item.href}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition-all duration-200 ease-out",
+                  "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ease-out",
                   "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30",
                   collapsed ? "justify-center" : "",
                   isActive
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                    ? "bg-[var(--pcms-primary)] text-white shadow-[var(--pcms-button-shadow)]"
+                    : "text-[var(--pcms-text-muted)] hover:bg-[var(--pcms-surface-soft)] hover:text-[var(--pcms-text)]",
                 )}
                 title={collapsed ? item.name : undefined}
               >
                 {isActive && !collapsed && (
                   <span
                     aria-hidden="true"
-                    className="absolute -left-2 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-blue-600"
+                    className="absolute -left-2 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-[var(--pcms-primary)]"
                   />
                 )}
                 <span
@@ -216,7 +216,7 @@ function DesktopNav({
             <User />
             <Button
               variant="outline"
-              className="w-full justify-start gap-2 text-sm h-10 bg-white text-red-500 border-gray-300 hover:bg-red-50 mt-4"
+              className="mt-4 h-10 w-full justify-start gap-2 border-red-200 bg-red-50 text-sm text-red-700 hover:bg-red-100"
               onClick={() => appSignOut({ callbackUrl: "/auth/login" })}
             >
               <LogOut className="h-4 w-4" />
@@ -227,7 +227,7 @@ function DesktopNav({
           <Button
             variant="outline"
             size="icon"
-            className="w-full h-10 bg-white text-red-500 border-gray-300 hover:bg-red-50"
+            className="h-10 w-full border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
             onClick={() => appSignOut({ callbackUrl: "/auth/login" })}
             title="Logout"
           >
@@ -239,7 +239,7 @@ function DesktopNav({
             variant="ghost"
             size="icon"
             onClick={toggleCollapse}
-            className="w-full h-10 mt-4 hover:bg-gray-100"
+            className="mt-4 h-10 w-full hover:bg-[var(--pcms-surface-soft)]"
             title="Expand Sidebar"
           >
             <ChevronDown className="h-4 w-4 rotate-90" />
@@ -255,19 +255,19 @@ function MobileHeader({ hidden = false }: { hidden?: boolean }) {
     <header
       id="mobile-app-header"
       className={cn(
-        "lg:hidden sticky top-0 z-[70] border-b border-slate-200 shadow-sm bg-white/95 backdrop-blur-md",
+        "lg:hidden sticky top-0 z-[70] border-b border-[var(--pcms-border)] bg-white/94 shadow-[var(--pcms-shadow-sm)] backdrop-blur-xl",
         "transition-transform duration-200 ease-out will-change-transform",
         hidden ? "-translate-y-full" : "translate-y-0",
       )}
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
       {/* Row 1: nav, logo, actions */}
-      <div className="flex items-center justify-between h-14 px-3">
+      <div className="flex h-14 items-center justify-between px-3">
         <div className="flex items-center gap-2">
           <MobileNav />
           <Link href="/dashboard" className="flex items-center gap-1.5">
-            <Package2 className="h-5 w-5 text-blue-600" />
-            <span className="font-bold text-slate-900 text-sm">PCMS</span>
+            <Package2 className="h-5 w-5 text-[var(--pcms-primary)]" />
+            <span className="text-sm font-bold text-[var(--pcms-text)]">PCMS</span>
           </Link>
         </div>
         <div className="flex items-center gap-1">
@@ -279,7 +279,7 @@ function MobileHeader({ hidden = false }: { hidden?: boolean }) {
       </div>
 
       {/* Row 2: property selector + breadcrumb in one compact row */}
-      <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-1.5 overflow-x-auto scrollbar-none">
+      <div className="flex items-center gap-2 overflow-x-auto border-t border-[var(--pcms-border)] px-3 py-1.5 scrollbar-none">
         <div className="shrink-0">
           <HeaderPropertyList />
         </div>
@@ -294,7 +294,7 @@ function MobileHeader({ hidden = false }: { hidden?: boolean }) {
 
 function DesktopHeader({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
   return (
-    <header className="hidden lg:flex sticky top-0 z-50 h-16 items-center border-b bg-white/80 backdrop-blur-xl px-6 shadow-[var(--pcms-shadow-sm)] border-[var(--pcms-border)]">
+    <header className="hidden lg:flex sticky top-0 z-50 h-16 items-center border-b border-[var(--pcms-border)] bg-white/90 px-6 shadow-[var(--pcms-shadow-sm)] backdrop-blur-xl">
       <div className="flex items-center flex-1 gap-4">
         <DashboardBreadcrumb />
       </div>

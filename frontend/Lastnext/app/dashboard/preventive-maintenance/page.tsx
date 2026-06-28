@@ -493,7 +493,7 @@ function PreventiveMaintenanceListPageContent() {
   }), [status, frequency, search, start_date, end_date, machine_id, page, page_size]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="w-full space-y-4 px-3 pb-4 pt-2 sm:px-4 md:px-5">
       {/* Mobile Header */}
       <MobileHeader
         totalCount={totalCount}
@@ -521,7 +521,7 @@ function PreventiveMaintenanceListPageContent() {
 
       {/* Property Verification Info */}
       {selectedProperty && (
-        <div className="container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl mb-4">
+        <div className="mb-4 w-full max-w-none lg:mx-auto lg:max-w-7xl">
           <div className="text-sm text-gray-600">
             {matchingPMItems.length} verified • {mismatchedPMItems.length} at different property
           </div>
@@ -530,8 +530,8 @@ function PreventiveMaintenanceListPageContent() {
 
       {/* Property Verification Alert */}
       {selectedProperty && mismatchedPMItems.length > 0 && (
-        <div className="container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl mb-4">
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+        <div className="mb-4 w-full max-w-none lg:mx-auto lg:max-w-7xl">
+          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
@@ -550,8 +550,8 @@ function PreventiveMaintenanceListPageContent() {
 
       {/* Property Match Confirmation */}
       {selectedProperty && mismatchedPMItems.length === 0 && matchingPMItems.length > 0 && (
-        <div className="container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl mb-4">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <div className="mb-4 w-full max-w-none lg:mx-auto lg:max-w-7xl">
+          <div className="rounded-2xl border border-green-200 bg-green-50 p-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
               <div>
@@ -565,11 +565,11 @@ function PreventiveMaintenanceListPageContent() {
       )}
 
       {/* Stats Cards */}
-      <div className="hidden md:block container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl">
+      <div className="hidden w-full max-w-none md:block lg:mx-auto lg:max-w-7xl">
         <StatsCards stats={stats} />
       </div>
 
-      <div className="md:container md:mx-auto md:px-4">
+      <div className="w-full max-w-none space-y-4 lg:mx-auto lg:max-w-7xl">
         {/* Error Display */}
         {error && (
           <ErrorDisplay error={error} onClear={clearError} />
@@ -612,9 +612,9 @@ function PreventiveMaintenanceListPageContent() {
           <div className="relative">
             {/* Show loading overlay when refreshing existing data */}
             {isLoading && maintenanceItems.length > 0 && (
-              <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 backdrop-blur-sm">
                 <div className="flex flex-col items-center gap-2">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--pcms-primary)]"></div>
                   <span className="text-sm text-gray-600">Refreshing...</span>
                 </div>
               </div>
@@ -677,11 +677,11 @@ function PreventiveMaintenanceListPageContent() {
         })()}
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center px-4 py-2 border rounded-lg transition-colors ${
-              showFilters ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+            className={`inline-flex min-h-[44px] items-center justify-center rounded-full border px-4 py-2 font-semibold transition-colors ${
+              showFilters ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-[var(--pcms-border)] text-[var(--pcms-text-muted)] hover:bg-[var(--pcms-surface-soft)]'
             }`}
           >
             <Filter className="h-4 w-4 mr-2" />
@@ -695,7 +695,7 @@ function PreventiveMaintenanceListPageContent() {
           
           <Link
             href="/dashboard/preventive-maintenance/create"
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-[var(--pcms-primary)] px-4 py-2 font-semibold text-white transition-colors hover:bg-[var(--pcms-primary-hover)]"
           >
             <Plus className="h-4 w-4 mr-2" />
             New Maintenance

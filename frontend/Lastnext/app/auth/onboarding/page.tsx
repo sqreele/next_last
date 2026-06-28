@@ -194,7 +194,7 @@ export default function OnboardingPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--pcms-app-bg)]">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto" />
           <p className="text-lg font-medium text-gray-600">Loading your profile...</p>
@@ -205,8 +205,8 @@ export default function OnboardingPage() {
 
   if (submitSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100">
-        <Card className="w-full max-w-md mx-4 shadow-xl border-0">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--pcms-app-bg)]">
+        <Card className="mx-4 w-full max-w-md border-[var(--pcms-border)] shadow-[var(--pcms-shadow)]">
           <CardContent className="pt-8 pb-8 text-center">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 className="w-12 h-12 text-green-600" />
@@ -226,7 +226,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 py-12 px-4">
+    <div className="min-h-screen bg-[var(--pcms-app-bg)] px-4 py-12">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -242,7 +242,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* User Info Card */}
-        <Card className="mb-6 shadow-lg border-0">
+        <Card className="mb-6 border-[var(--pcms-border)] shadow-[var(--pcms-shadow-sm)]">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Mail className="w-5 h-5 text-blue-600" />
@@ -270,7 +270,7 @@ export default function OnboardingPage() {
         </Card>
 
         {/* Properties Selection Card */}
-        <Card className="mb-6 shadow-lg border-0">
+        <Card className="mb-6 border-[var(--pcms-border)] shadow-[var(--pcms-shadow-sm)]">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -344,7 +344,7 @@ export default function OnboardingPage() {
         <Button
           onClick={handleSubmit}
           disabled={isSubmitting || selectedProperties.length === 0}
-          className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+          className="h-12 w-full text-lg font-semibold"
         >
           {isSubmitting ? (
             <>

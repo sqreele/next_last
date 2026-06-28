@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { useUser } from "@/app/lib/stores/mainStore";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import JobList from "@/app/components/jobs/jobList";
@@ -11,7 +12,7 @@ import {
   Grid3X3, List, FileText
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
-import { FloatingActionButton, MobileTopBar, SearchInput } from "@/app/components/pcms-ui";
+import { FloatingActionButton, SearchInput } from "@/app/components/pcms-ui";
 
 interface JobsContentProps {
   jobs: Job[];
@@ -89,8 +90,7 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
   };
 
   return (
-    <div className="w-full space-y-4 p-3 sm:p-4 md:p-6">
-      <MobileTopBar title="Maintenance Jobs" />
+    <div className="w-full space-y-4 px-3 pb-3 pt-2 sm:p-4 md:p-5">
       <div className="pcms-page-header">
         <div>
           <p className="pcms-eyebrow">Hotel maintenance workspace</p>
@@ -101,7 +101,9 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
         </div>
         <div className="pcms-page-actions">
           <Button className="pcms-secondary-button" variant="outline"><Filter className="mr-2 h-4 w-4" />Filters</Button>
-          <Button className="pcms-secondary-button" variant="outline"><FileText className="mr-2 h-4 w-4" />PDF Report</Button>
+          <Button className="pcms-secondary-button" variant="outline" asChild>
+            <Link href="/dashboard/jobs-report"><FileText className="mr-2 h-4 w-4" />PDF Report</Link>
+          </Button>
         </div>
       </div>
 
@@ -115,8 +117,8 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
       {/* Header with View Toggle */}
       <div className="pcms-section-card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <h2 className="text-xl font-black tracking-[-0.02em] text-[var(--pcms-text)]">Job history</h2>
-          <p className="text-sm font-semibold text-[var(--pcms-text-muted)]">
+          <h2 className="text-xl font-bold text-[var(--pcms-text)]">Job history</h2>
+          <p className="text-sm font-medium text-[var(--pcms-text-muted)]">
             {filteredJobs.length} maintenance job{filteredJobs.length !== 1 ? 's' : ''} found
           </p>
         </div>
@@ -127,7 +129,8 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
             variant={viewMode === 'grid' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('grid')}
-            className="pcms-secondary-button h-11 px-4"
+            className="h-11 px-4"
+            aria-label="Grid view"
           >
             <Grid3X3 className="w-4 h-4" />
           </Button>
@@ -135,7 +138,8 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
             variant={viewMode === 'list' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setViewMode('list')}
-            className="pcms-secondary-button h-11 px-4"
+            className="h-11 px-4"
+            aria-label="List view"
           >
             <List className="w-4 h-4" />
           </Button>
@@ -151,12 +155,12 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
         <div className="pt-1">
           {/* Desktop Tabs - Horizontal Scrollable */}
           <div className="hidden md:block overflow-x-auto">
-            <TabsList className="inline-flex h-12 items-center justify-center rounded-full bg-white/70 p-1 border border-[var(--pcms-border)] shadow-[var(--pcms-shadow-sm)]">
+            <TabsList className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--pcms-border)] bg-white/85 p-1 shadow-[var(--pcms-shadow-sm)]">
               {tabConfig.map(({ value, label, icon: Icon, color }) => (
                 <TabsTrigger 
                   key={value} 
                   value={value} 
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--pcms-accent-gradient)] data-[state=active]:text-white data-[state=active]:shadow-[var(--pcms-button-shadow)] hover:bg-white hover:text-[var(--pcms-primary-strong)] min-w-fit"
+                  className="inline-flex min-w-fit items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all hover:bg-[var(--pcms-surface-soft)] hover:text-[var(--pcms-primary-strong)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--pcms-primary)] data-[state=active]:text-white data-[state=active]:shadow-[var(--pcms-button-shadow)]"
                 >
                   <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
                   {label}
@@ -172,7 +176,7 @@ export default function JobsContent({ jobs, properties, selectedRoom, onRoomFilt
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/70 px-3.5 py-2 text-xs font-black shadow-[var(--pcms-shadow-sm)] transition-all data-[state=active]:scale-[1.02] data-[state=active]:bg-[var(--pcms-accent-gradient)] data-[state=active]:text-white data-[state=active]:shadow-[var(--pcms-button-shadow)] ${color}`}
+                  className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/70 px-3.5 py-2 text-xs font-bold shadow-[var(--pcms-shadow-sm)] transition-all data-[state=active]:bg-[var(--pcms-primary)] data-[state=active]:text-white data-[state=active]:shadow-[var(--pcms-button-shadow)] ${color}`}
                 >
                   <Icon className="mr-1.5 h-4 w-4 flex-shrink-0" />
                   {label}

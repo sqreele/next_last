@@ -88,18 +88,11 @@ export default function ProfilePage() {
   // Show loading while checking session
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-          <div className="w-full max-w-none px-3 py-3 sm:px-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
-            </div>
-          </div>
-        </div>
-        <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
-          <div className="text-center space-y-4">
-            <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin mx-auto"></div>
-            <p className="text-sm text-gray-500">Loading...</p>
+      <div className="w-full px-3 py-4 sm:px-4 md:px-5">
+        <div className="pcms-section-card py-12 text-center">
+          <div className="space-y-4">
+            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-[var(--pcms-primary)]"></div>
+            <p className="text-sm text-[var(--pcms-text-muted)]">Loading...</p>
           </div>
         </div>
       </div>
@@ -113,16 +106,9 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-          <div className="w-full max-w-none px-3 py-3 sm:px-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
-            </div>
-          </div>
-        </div>
-        <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
-          <Card className="w-full mx-auto">
+      <div className="w-full px-3 py-4 sm:px-4 md:px-5">
+        <div className="mx-auto w-full max-w-4xl">
+          <Card className="mx-auto w-full">
             <CardContent className="pt-6">
               <div className="text-center space-y-4">
                 <AlertCircle className="w-16 h-16 text-red-500 mx-auto" />
@@ -140,17 +126,16 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Instagram-style header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="w-full max-w-none px-3 py-3 sm:px-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold text-gray-900">Profile</h1>
-          </div>
+    <div className="w-full px-3 pb-4 pt-2 sm:px-4 md:px-5">
+      <div className="pcms-page-header mb-4">
+        <div>
+          <p className="pcms-eyebrow">Account workspace</p>
+          <h1>Profile</h1>
+          <p className="pcms-page-description">Manage your account details, properties, and access context.</p>
         </div>
       </div>
 
-      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
+      <div className="w-full max-w-none lg:mx-auto lg:max-w-7xl desktop:max-w-[94rem]">
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
           {/* Profile Information */}

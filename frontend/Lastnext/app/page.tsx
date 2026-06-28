@@ -85,18 +85,18 @@ export default function LandingPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-[var(--pcms-app-bg)]">
       {/* Navigation */}
-      <nav className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 border-b border-[var(--pcms-border)] bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
             className="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-md"
           >
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-600/30">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--pcms-primary)] text-white shadow-[var(--pcms-shadow-sm)]">
               <Building className="h-5 w-5" />
             </span>
-            <span className="text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+            <span className="text-lg font-bold text-[var(--pcms-text)] sm:text-xl">
               HotelEngPro
             </span>
           </Link>
@@ -129,22 +129,22 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
+      <section className="px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-5xl text-center">
-          <span className="mb-6 inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1.5 text-xs font-semibold text-blue-800 sm:text-sm">
+          <span className="mb-6 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-white/85 px-3 py-1.5 text-xs font-semibold text-blue-800 shadow-[var(--pcms-shadow-sm)] sm:text-sm">
             <Zap className="h-3.5 w-3.5" />
             New: AI-Powered Maintenance Predictions
           </span>
 
-          <h1 className="mb-6 text-balance text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+          <h1 className="mb-6 text-balance text-4xl font-bold leading-tight text-[var(--pcms-text)] sm:text-5xl lg:text-6xl">
             Streamline your{' '}
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <span className="text-[var(--pcms-primary-strong)]">
               hotel engineering
             </span>{' '}
             operations
           </h1>
 
-          <p className="mx-auto mb-10 max-w-2xl text-balance text-base text-slate-600 sm:text-lg lg:text-xl">
+          <p className="mx-auto mb-10 max-w-2xl text-balance text-base text-[var(--pcms-text-muted)] sm:text-lg lg:text-xl">
             The complete hotel engineering and maintenance management
             platform — maintain properties, coordinate teams, and optimize
             costs with intelligent automation.
@@ -195,16 +195,13 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section
-        id="features"
-        className="bg-white px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
-      >
+      <section id="features" className="px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-7xl">
           <div className="mb-12 text-center sm:mb-16">
-            <h2 className="mb-4 text-balance text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+            <h2 className="mb-4 text-balance text-3xl font-bold text-[var(--pcms-text)] sm:text-4xl">
               Everything you need for hotel engineering management
             </h2>
-            <p className="mx-auto max-w-2xl text-balance text-base text-slate-600 sm:text-lg">
+            <p className="mx-auto max-w-2xl text-balance text-base text-[var(--pcms-text-muted)] sm:text-lg">
               From preventive maintenance to team coordination, HotelEngPro
               has the tools your engineering team needs every day.
             </p>
@@ -216,7 +213,7 @@ export default function LandingPage() {
               return (
                 <Card
                   key={feature.title}
-                  className="border border-slate-200/70 transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
+                  className="border border-[var(--pcms-border)] transition-all duration-200 hover:border-slate-300 hover:shadow-[var(--pcms-shadow)]"
                 >
                   <CardHeader>
                     <div
@@ -243,15 +240,15 @@ export default function LandingPage() {
       {/* Benefits Section */}
       <section
         id="demo"
-        className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
+        className="px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-20"
       >
         <div className="mx-auto max-w-7xl">
           <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
             <div>
-              <h2 className="mb-5 text-balance text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              <h2 className="mb-5 text-balance text-3xl font-bold text-[var(--pcms-text)] sm:text-4xl">
                 Transform your hotel engineering operations
               </h2>
-              <p className="mb-8 text-balance text-base text-slate-600 sm:text-lg">
+              <p className="mb-8 text-balance text-base text-[var(--pcms-text-muted)] sm:text-lg">
                 Join thousands of hotel engineers who have revolutionized
                 their maintenance processes with HotelEngPro.
               </p>
@@ -272,7 +269,7 @@ export default function LandingPage() {
               </ul>
             </div>
 
-            <Card className="overflow-hidden border-0 bg-gradient-to-br from-blue-600 to-purple-600 text-white shadow-xl">
+            <Card className="overflow-hidden border border-[var(--pcms-border)] bg-[var(--pcms-primary)] text-white shadow-[var(--pcms-shadow)]">
               <CardContent className="p-8 sm:p-10">
                 <Star className="mx-auto mb-4 h-10 w-10 sm:h-12 sm:w-12" />
                 <h3 className="mb-2 text-center text-xl font-bold sm:text-2xl">

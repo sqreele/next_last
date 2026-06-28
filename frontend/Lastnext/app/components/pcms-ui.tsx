@@ -4,15 +4,10 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Search, RefreshCw, Home, FileText, Settings, Plus } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
-import { humanize, normalizeStatus } from '@/app/components/StatusBadge';
+import { humanize } from '@/app/components/StatusBadge';
 import { useLocale } from '@/app/lib/i18n/LocaleProvider';
 import type { DictKey } from '@/app/lib/i18n/dictionary';
 export { StatusBadge, getStatusBadgeConfig, humanize, normalizeStatus } from '@/app/components/StatusBadge';
-
-
-export function AppShell({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('pcms-app-shell', className)}>{children}</div>;
-}
 
 export function MobileTopBar({ title, actions }: { title: string; actions?: React.ReactNode }) {
   return (
@@ -61,10 +56,6 @@ export function PageHeader({ title, description, actions }: { title: string; des
   );
 }
 
-export function WorkspaceCard({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
-  return <section className={cn('pcms-workspace-card', className)}>{children}</section>;
-}
-
 export function SectionCard({ title, description, children, className }: React.HTMLAttributes<HTMLDivElement> & { title?: string; description?: string }) {
   return (
     <section className={cn('pcms-section-card', className)}>
@@ -76,17 +67,6 @@ export function SectionCard({ title, description, children, className }: React.H
       )}
       {children}
     </section>
-  );
-}
-
-export function KpiWidget({ label, value, tone = 'blue', detail }: { label: string; value: React.ReactNode; tone?: 'blue' | 'violet' | 'orange' | 'green' | 'teal' | 'red'; detail?: string }) {
-  return (
-    <div className={cn('pcms-kpi-widget', `pcms-kpi-widget--${tone}`)}>
-      <div className="pcms-kpi-widget__accent" />
-      <p>{label}</p>
-      <strong>{value}</strong>
-      {detail ? <span>{detail}</span> : null}
-    </div>
   );
 }
 
@@ -145,105 +125,10 @@ export function EmptyState({ title, description, action }: { title: string; desc
   );
 }
 
-export function PageLoader({ label = 'Loading maintenance jobs...' }: { label?: string }) {
-  return (
-    <div className="pcms-page-loader" role="status" aria-live="polite" aria-busy="true">
-      <div className="pcms-loader-ring" />
-      <p>{label}</p>
-    </div>
-  );
-}
-
 export function SkeletonList({ rows = 4 }: { rows?: number }) {
   return (
     <div className="pcms-skeleton-list">
       {Array.from({ length: rows }).map((_, index) => <div key={index} className="pcms-skeleton-row" />)}
     </div>
   );
-}
-
-export function Toolbar({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-3 shadow-sm md:flex-row md:items-center md:justify-between', className)}>{children}</div>;
-}
-
-export function FilterBar({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('grid gap-3 sm:grid-cols-2 lg:grid-cols-6', className)}>{children}</div>;
-}
-
-export function ActionButton({ className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button className={cn('pcms-action-button', className)} {...props}>{children}</button>;
-}
-
-export function SecondaryButton({ className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button className={cn('pcms-secondary-button', className)} {...props}>{children}</button>;
-}
-
-export function DangerButton({ className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return <button className={cn('pcms-danger-button', className)} {...props}>{children}</button>;
-}
-
-export function StatusUpdateButton({ status, className, children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { status: string }) {
-  const normalized = normalizeStatus(status);
-  return <button className={cn('pcms-status-update-button', `pcms-status-update-button--${normalized}`, className)} {...props}>{children}</button>;
-}
-
-export function FormField({
-  label,
-  hint,
-  error,
-  required,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  error?: string | null;
-  required?: boolean;
-  htmlFor?: string;
-  children: React.ReactNode;
-}) {
-  const labelClass = cn('pcms-field-label', required && 'pcms-field-label--required');
-  const body = (
-    <>
-      {htmlFor ? (
-        <label htmlFor={htmlFor} className={labelClass}>{label}</label>
-      ) : (
-        <span className={labelClass}>{label}</span>
-      )}
-      <div className={cn(error && 'pcms-field--invalid')}>{children}</div>
-      {error ? (
-        <span className="pcms-field-error" role="alert">
-          <span aria-hidden="true">⚠</span>
-          {error}
-        </span>
-      ) : hint ? (
-        <span className="pcms-field-hint">{hint}</span>
-      ) : null}
-    </>
-  );
-  return htmlFor ? (
-    <div className="pcms-field" data-invalid={error ? 'true' : undefined}>{body}</div>
-  ) : (
-    <label className="pcms-field" data-invalid={error ? 'true' : undefined}>{body}</label>
-  );
-}
-
-export function DataGrid({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('overflow-hidden rounded-3xl border border-slate-200 bg-white', className)}>{children}</div>;
-}
-
-export function JobRow({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('pcms-table-row-hover grid gap-3 border-b border-slate-100 p-4 md:grid-cols-8 md:items-center', className)}>{children}</div>;
-}
-
-export function JobCard({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
-  return <article className={cn('rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md', className)}>{children}</article>;
-}
-
-export function RoomPicker({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('grid gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-3', className)}>{children}</div>;
-}
-
-export function PaginationControls({ className, children }: React.HTMLAttributes<HTMLDivElement>) {
-  return <nav className={cn('flex flex-wrap items-center justify-center gap-2 rounded-3xl border border-slate-200 bg-white p-3', className)} aria-label="Pagination controls">{children}</nav>;
 }

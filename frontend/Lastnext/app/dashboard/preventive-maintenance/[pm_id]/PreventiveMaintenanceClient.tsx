@@ -622,9 +622,9 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
   return (
     <>
-      <div className="bg-white shadow-xl rounded-2xl border border-gray-100 overflow-hidden">
+      <div className="overflow-hidden rounded-[18px] border border-[var(--pcms-border)] bg-white shadow-[var(--pcms-shadow-sm)]">
         {/* Modern Header */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-b border-gray-100">
+        <div className="border-b border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] px-5 py-5 sm:px-8 sm:py-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-blue-100 rounded-xl">
@@ -644,7 +644,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
           
           {/* Modern Metadata Cards */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="rounded-xl border border-[var(--pcms-border)] bg-white p-4 shadow-[var(--pcms-shadow-sm)] transition-shadow hover:shadow-[var(--pcms-shadow)]">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Clipboard className="h-5 w-5 text-blue-600" />
@@ -657,7 +657,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             </div>
             
             {/* Always show Task Template card - with link if exists, or message if not */}
-            <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="rounded-xl border border-[var(--pcms-border)] bg-white p-4 shadow-[var(--pcms-shadow-sm)] transition-shadow hover:shadow-[var(--pcms-shadow)]">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${(maintenanceData.procedure_template_id || maintenanceData.procedure_template) ? 'bg-indigo-100' : 'bg-gray-100'}`}>
                   <Settings className={`h-5 w-5 ${(maintenanceData.procedure_template_id || maintenanceData.procedure_template) ? 'text-indigo-600' : 'text-gray-400'}`} />
@@ -694,7 +694,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             </div>
             
             {maintenanceData.property_id && (
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="rounded-xl border border-[var(--pcms-border)] bg-white p-4 shadow-[var(--pcms-shadow-sm)] transition-shadow hover:shadow-[var(--pcms-shadow)]">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-green-100 rounded-lg">
                     <Building className="h-5 w-5 text-green-600" />
@@ -712,7 +712,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             )}
               
               {assignedUserInfo && (
-                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="rounded-xl border border-[var(--pcms-border)] bg-white p-4 shadow-[var(--pcms-shadow-sm)] transition-shadow hover:shadow-[var(--pcms-shadow)]">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-sky-100 rounded-lg">
                       <User className="h-5 w-5 text-sky-600" />
@@ -741,7 +741,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             </div>
             
             {(maintenanceData.completed_date || taskStatus === 'completed') && (
-              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="rounded-xl border border-[var(--pcms-border)] bg-white p-4 shadow-[var(--pcms-shadow-sm)] transition-shadow hover:shadow-[var(--pcms-shadow)]">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-green-100 rounded-lg">
                     <CheckCircle className="h-5 w-5 text-green-600" />
@@ -801,7 +801,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
             {/* Left Column */}
             <div className="space-y-6">
               {/* Maintenance Title */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
+              <div className="rounded-[18px] border border-[var(--pcms-border)] bg-white p-6 shadow-[var(--pcms-shadow-sm)]">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <FileText className="h-5 w-5 text-blue-600" />
@@ -815,7 +815,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
               {/* Maintenance Procedure */}
               {maintenanceData.procedure && (
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100">
+                <div className="rounded-[18px] border border-[var(--pcms-border)] bg-white p-6 shadow-[var(--pcms-shadow-sm)]">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-green-100 rounded-lg">
                       <Clipboard className="h-5 w-5 text-green-600" />
@@ -830,7 +830,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
               {/* Notes */}
               {maintenanceData.notes && (
-                <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-6 rounded-2xl border border-purple-100">
+                <div className="rounded-[18px] border border-[var(--pcms-border)] bg-white p-6 shadow-[var(--pcms-shadow-sm)]">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-purple-100 rounded-lg">
                       <FileText className="h-5 w-5 text-purple-600" />
@@ -846,65 +846,13 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
 
             {/* Right Column */}
             <div className="space-y-6">
-              {/* Frequency - HIDDEN (defaults to monthly, managed via task template) */}
-              {false && (
-              <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-2xl border border-orange-100">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <Clock className="h-5 w-5 text-orange-600" />
-                  </div>
-                  <h4 className="text-lg font-semibold text-gray-900">Frequency</h4>
-                </div>
-                <div className="bg-white/60 p-4 rounded-xl">
-                  <p className="text-2xl font-bold text-gray-800 capitalize">
-                    {maintenanceData.frequency}
-                    {maintenanceData.frequency === 'custom' && maintenanceData.custom_days && (
-                      <span className="block text-lg font-normal text-gray-600 mt-1">
-                        Every {maintenanceData.custom_days} days
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-              )}
-
-              {/* Topics - HIDDEN (topics removed from system) */}
-              {false && (
-              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 p-6 rounded-2xl border border-indigo-100">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 bg-indigo-100 rounded-lg">
-                    <FileText className="h-5 w-5 text-indigo-600" />
-                  </div>
-                  <h4 className="text-lg font-semibold text-gray-900">Maintenance Topics</h4>
-                </div>
-                <div className="bg-white/60 p-4 rounded-xl">
-                  {maintenanceData.topics?.length ? (
-                    <div className="flex flex-wrap gap-2">
-                      {maintenanceData.topics?.map((topic, index) => {
-                        const topicTitle = typeof topic === 'object' && 'title' in topic ? topic.title : `Topic ${topic}`;
-                        return (
-                          <span 
-                            key={index} 
-                            className="inline-flex items-center px-3 py-2 bg-indigo-100 text-indigo-800 text-sm font-medium rounded-lg"
-                          >
-                            {topicTitle}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 italic">No topics assigned</p>
-                  )}
-                </div>
-              </div>
-              )}
             </div>
           </div>
         </div>
 
         {/* Modern Machines Section */}
         <div className="px-8 py-6 border-t border-gray-100">
-          <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-6 rounded-2xl border border-gray-200">
+          <div className="rounded-[18px] border border-[var(--pcms-border)] bg-white p-6 shadow-[var(--pcms-shadow-sm)]">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-gray-100 rounded-lg">
                 <Wrench className="h-6 w-6 text-gray-600" />
@@ -919,7 +867,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
         
         {/* Modern Images Section */}
         <div className="px-8 py-6 border-t border-gray-100">
-          <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-2xl border border-amber-200">
+          <div className="rounded-[18px] border border-[var(--pcms-border)] bg-white p-6 shadow-[var(--pcms-shadow-sm)]">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-amber-100 rounded-lg">
                 <Camera className="h-6 w-6 text-amber-600" />
@@ -1072,7 +1020,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
               
               <Link
                 href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-center font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+                className="pcms-btn pcms-btn-primary flex items-center justify-center gap-2 px-6 py-3 text-center font-medium"
               >
                 <Settings className="h-4 w-4" />
                 Edit
@@ -1081,7 +1029,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
               <button
                 onClick={handleDelete}
                 disabled={isLoading}
-                className={`flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl hover:from-red-600 hover:to-rose-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 font-medium shadow-lg hover:shadow-xl transition-all duration-200 ${
+                className={`pcms-btn pcms-btn-danger flex items-center justify-center gap-2 px-6 py-3 font-medium ${
                   isLoading ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >

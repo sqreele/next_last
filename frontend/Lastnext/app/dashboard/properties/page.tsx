@@ -20,14 +20,14 @@ export default async function PropertiesIndexPage() {
   const properties = (await fetchProperties(accessToken).catch(() => [])) || [];
 
   return (
-    <div className="w-full max-w-none space-y-5 px-3 py-4 sm:px-6 sm:py-5 lg:mx-auto lg:max-w-7xl">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="w-full max-w-none space-y-5 px-3 py-3 sm:px-4 md:px-5 lg:mx-auto lg:max-w-7xl">
+      <header className="pcms-page-header">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">PCMS</p>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+          <p className="pcms-eyebrow">Properties workspace</p>
+          <h1>
             Properties
           </h1>
-          <p className="text-sm font-medium text-slate-600">
+          <p className="pcms-page-description">
             {properties.length} propert{properties.length === 1 ? 'y' : 'ies'} in scope
           </p>
         </div>
@@ -44,7 +44,7 @@ export default async function PropertiesIndexPage() {
         }
       >
         {properties.length === 0 ? (
-          <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+          <div className="rounded-[18px] border border-dashed border-[var(--pcms-border-strong)] bg-[var(--pcms-surface-soft)] p-8 text-center">
             <Building2 className="mx-auto h-8 w-8 text-slate-400" />
             <p className="mt-3 text-sm font-bold text-slate-900">No properties yet.</p>
             <p className="text-xs font-medium text-slate-500">
@@ -57,7 +57,7 @@ export default async function PropertiesIndexPage() {
               <li key={prop.property_id ?? prop.id}>
                 <Link
                   href={`/dashboard/rooms?property=${encodeURIComponent(prop.property_id ?? prop.id)}`}
-                  className="flex h-full flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
+                  className="flex h-full flex-col gap-2 rounded-[18px] border border-[var(--pcms-border)] bg-white p-4 shadow-[var(--pcms-shadow-sm)] transition-all hover:border-[var(--pcms-border-strong)] hover:shadow-[var(--pcms-shadow)]"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">

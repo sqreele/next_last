@@ -45,8 +45,12 @@ const statusAliases: Record<string, string> = {
   "waiting fix defect": "waiting_fix_defect",
   under_review: "waiting_fix_defect",
   defect: "waiting_fix_defect",
+  pm: "preventive_maintenance",
+  preventive: "preventive_maintenance",
+  "preventive maintenance": "preventive_maintenance",
   fixed: "completed",
   rejected: "rejected",
+  urgent: "urgent",
 };
 
 const statusConfig: Record<string, StatusBadgeConfig> = {
@@ -54,12 +58,14 @@ const statusConfig: Record<string, StatusBadgeConfig> = {
   verified: { label: "Verified", tone: "green" },
   open: { label: "Open", tone: "blue" },
   scheduled: { label: "Scheduled", tone: "gray" },
-  pending: { label: "Pending", tone: "blue" },
-  in_progress: { label: "In Progress", tone: "indigo" },
+  pending: { label: "Pending", tone: "purple" },
+  in_progress: { label: "In Progress", tone: "blue" },
   waiting_sparepart: { label: "Waiting Sparepart", tone: "orange" },
   waiting_vendor: { label: "Waiting Vendor", tone: "orange" },
   waiting_fix_defect: { label: "Waiting Fix Defect", tone: "amber" },
   cancelled: { label: "Cancelled", tone: "red" },
+  preventive_maintenance: { label: "Preventive Maintenance", tone: "indigo" },
+  urgent: { label: "Urgent", tone: "red" },
   rejected: { label: "Rejected", tone: "red" },
   overdue: { label: "Overdue", tone: "red" },
 };
@@ -84,6 +90,45 @@ const dotClasses: Record<StatusTone, string> = {
   purple: "bg-purple-500",
   red: "bg-red-500",
   gray: "bg-slate-400",
+};
+
+const statusClassOverrides: Record<string, { badge: string; dot: string }> = {
+  pending: {
+    badge: "border-violet-200 bg-violet-50 text-violet-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+    dot: "bg-violet-500",
+  },
+  in_progress: {
+    badge: "border-cyan-200 bg-cyan-50 text-cyan-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+    dot: "bg-cyan-500",
+  },
+  waiting_sparepart: {
+    badge: "border-amber-200 bg-amber-50 text-amber-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+    dot: "bg-amber-500",
+  },
+  completed: {
+    badge: "border-emerald-200 bg-emerald-50 text-emerald-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+    dot: "bg-emerald-500",
+  },
+  cancelled: {
+    badge: "border-pink-200 bg-pink-50 text-pink-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+    dot: "bg-pink-500",
+  },
+  waiting_fix_defect: {
+    badge: "border-orange-200 bg-orange-50 text-orange-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+    dot: "bg-orange-500",
+  },
+  preventive_maintenance: {
+    badge: "border-indigo-200 bg-indigo-50 text-indigo-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+    dot: "bg-indigo-500",
+  },
+  urgent: {
+    badge: "border-red-200 bg-red-50 text-red-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+    dot: "bg-red-500",
+  },
+  overdue: {
+    badge: "border-red-300 bg-red-50 text-red-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]",
+    dot: "bg-red-600",
+  },
 };
 
 export function normalizeStatus(status?: string) {
@@ -136,6 +181,7 @@ export function StatusBadge({
   const { t } = useLocale();
   const i18nKey = STATUS_I18N[normalized];
   const label = i18nKey ? t(i18nKey) : config.label;
+  const override = statusClassOverrides[normalized];
   const shouldPulse =
     pulse ?? (ACTIVE_STATUSES.has(normalized) || URGENT_STATUSES.has(normalized));
   const isUrgent = URGENT_STATUSES.has(normalized);
@@ -148,7 +194,7 @@ export function StatusBadge({
           ? "min-h-6 px-2 py-0.5 text-[11px] tracking-wide"
           : "min-h-8 px-2.5 py-1 text-xs tracking-wide sm:min-h-9 sm:px-3 sm:text-sm",
         "whitespace-normal break-words text-left align-middle",
-        toneClasses[config.tone],
+        override?.badge || toneClasses[config.tone],
         isUrgent && "ring-1 ring-red-300",
         `pcms-status-badge--${normalized}`,
         className,
@@ -161,13 +207,13 @@ export function StatusBadge({
           <span
             className={cn(
               "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
-              dotClasses[config.tone],
+              override?.dot || dotClasses[config.tone],
             )}
             aria-hidden="true"
           />
         ) : null}
         <span
-          className={cn("relative inline-flex h-2 w-2 rounded-full", dotClasses[config.tone])}
+          className={cn("relative inline-flex h-2 w-2 rounded-full", override?.dot || dotClasses[config.tone])}
           aria-hidden="true"
         />
       </span>

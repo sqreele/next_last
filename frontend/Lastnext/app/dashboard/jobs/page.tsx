@@ -41,14 +41,14 @@ export default async function JobsIndexPage({ searchParams }: PageProps) {
   ]);
 
   return (
-    <div className="w-full max-w-none space-y-5 px-3 py-4 sm:px-6 sm:py-5 lg:mx-auto lg:max-w-7xl">
-      <header className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+    <div className="w-full max-w-none space-y-5 px-3 py-3 sm:px-4 md:px-5 lg:mx-auto lg:max-w-7xl">
+      <header className="pcms-page-header">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">PCMS</p>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
+          <p className="pcms-eyebrow">Jobs workspace</p>
+          <h1>
             Maintenance jobs
           </h1>
-          <p className="text-sm font-medium text-slate-600">
+          <p className="pcms-page-description">
             {jobs.length} job{jobs.length === 1 ? '' : 's'} in scope · filter via the toolbar below
           </p>
         </div>

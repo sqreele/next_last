@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, FileDown, Filter, SortAsc, SortDesc, Building, Calendar, DoorOpen, Settings } from "lucide-react";
+import { Plus, FileDown, Filter, SortAsc, SortDesc, Calendar, DoorOpen, Settings } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import { useUser } from "@/app/lib/stores/mainStore";
@@ -51,7 +51,7 @@ export default function JobActions({
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomSearch, setRoomSearch] = useState<string>("");
   const [isLoadingRooms, setIsLoadingRooms] = useState(false);
-  const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setSelectedProperty } = useUser();
+  const { selectedPropertyId: selectedProperty } = useUser();
   const { data: session } = useSession();
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
   const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>({});
@@ -72,93 +72,19 @@ export default function JobActions({
     onRefresh ? onRefresh() : router.refresh();
   };
 
-  const getPropertyName = (propertyId: string | null) => {
-    if (!propertyId) return "All Properties";
-    const property = properties.find((p) => p.property_id === propertyId);
-    return property?.name || `Property ${propertyId}`;
-  };
-
-  // Enhanced property filtering that considers user's profile
-  const getAvailableProperties = () => {
-    // If user has specific properties assigned, filter to those
-    if (properties.length > 0) {
-      return properties;
-    }
-    // Fallback to all properties if none are specifically assigned
-    return properties;
-  };
-
-  // Get current property display info
-  const getCurrentPropertyInfo = () => {
-    if (!selectedProperty) {
-      return { name: "All Properties", id: null, isUserProperty: false };
-    }
-    
-    const property = properties.find((p) => p.property_id === selectedProperty);
-    if (property) {
-      return { 
-        name: property.name, 
-        id: selectedProperty, 
-        isUserProperty: true 
-      };
-    }
-    
-    return { 
-      name: `Property ${selectedProperty}`, 
-      id: selectedProperty, 
-      isUserProperty: false 
-    };
-  };
-
   const getRoomName = (roomId: string | null) => {
     if (!roomId) return "All Rooms";
     const room = rooms.find((r) => String(r.room_id) === roomId);
     return room?.name || `Room ${roomId}`;
   };
 
-  // Enhanced room filtering with property context
   const getFilteredRooms = () => {
-    // If no rooms are loaded, return empty array
     if (!rooms || rooms.length === 0) {
       return [];
     }
-    
-    // If no property selected, return all rooms
-    if (!selectedProperty) {
-      return rooms;
-    }
-    
-    // Filter rooms by selected property - more flexible approach
-    const filteredRooms = rooms.filter(room => {
-      
-      // Check if room belongs to the selected property
-      if (room.property_id && String(room.property_id) === String(selectedProperty)) {
-        return true;
-      }
-      
-      // Check if room has properties array that includes the selected property
-      if (room.properties && Array.isArray(room.properties)) {
-        const hasProperty = room.properties.some(prop => String(prop) === String(selectedProperty));
-        return hasProperty;
-      }
-      
-      // If room has no property association, include it (fallback for backward compatibility)
-      if (!room.property_id && !room.properties) {
-        return true;
-      }
-      
-      return false;
-    });
-    
-    // If filtering is too strict and returns no rooms, show all rooms as fallback
-    if (filteredRooms.length === 0 && rooms.length > 0) {
-      return rooms;
-    }
-    
-    return filteredRooms;
+    return rooms;
   };
 
-  // Get room display info with property context
   const getRoomDisplayInfo = (room: Room) => {
     const roomName = room.name || `Room ${room.room_id}`;
     const roomType = room.room_type || 'Unknown Type';
@@ -171,37 +97,23 @@ export default function JobActions({
     };
   };
 
-  // Fetch rooms when property changes or on component mount
+  // The board has no property filter button; it follows the selected property from the app header.
   useEffect(() => {
     const fetchRooms = async () => {
       
       setIsLoadingRooms(true);
       try {
         let roomsData: any[] = [];
-        let response: Response;
-        
         const baseUrl = '/api/rooms';
-        
-        if (selectedProperty) {
-          // Fetch rooms for specific property via Next.js API route
-          const propertySpecificUrl = `${baseUrl}?property=${encodeURIComponent(String(selectedProperty))}`;
-          response = await fetch(propertySpecificUrl);
-          
-          if (response.ok) {
-            roomsData = await response.json();
-          } else {
-            // Fallback to general rooms endpoint
-            response = await fetch(baseUrl);
-            if (response.ok) {
-              roomsData = await response.json();
-            }
-          }
-        } else {
-          // No property selected - fetch all rooms user has access to
+        const url = selectedProperty
+          ? `${baseUrl}?property=${encodeURIComponent(String(selectedProperty))}`
+          : baseUrl;
+        let response = await fetch(url);
+        if (!response.ok && selectedProperty) {
           response = await fetch(baseUrl);
-          if (response.ok) {
-            roomsData = await response.json();
-          }
+        }
+        if (response.ok) {
+          roomsData = await response.json();
         }
 
         if (roomsData && Array.isArray(roomsData)) {
@@ -277,37 +189,6 @@ export default function JobActions({
     <div className="flex items-center gap-2 flex-wrap">
       {/* Desktop Actions */}
       <div className="hidden md:flex items-center gap-2 flex-wrap">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant={selectedProperty ? "default" : "outline"} 
-              size="sm" 
-              className={`${buttonClass} ${selectedProperty ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100' : ''}`}
-            >
-              <Building className="h-4 w-4" />
-              <span className="truncate max-w-[120px]">{getCurrentPropertyInfo().name}</span>
-              {selectedProperty && <span className="ml-1 text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full">Active</span>}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className={dropdownContentClass}>
-            <DropdownMenuLabel className={menuLabelClass}>Properties</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setSelectedProperty(null)} className={menuItemClass}>
-              <Building className="h-4 w-4" />
-              All Properties
-            </DropdownMenuItem>
-            {getAvailableProperties().map((property) => (
-              <DropdownMenuItem
-                key={property.property_id}
-                onClick={() => setSelectedProperty(property.property_id)}
-                className={menuItemClass}
-              >
-                <Building className="h-4 w-4" />
-                <span className="truncate">{property.name}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button 
@@ -401,14 +282,9 @@ export default function JobActions({
                   </DropdownMenuItem>
                 );
               })}
-            {getFilteredRooms().length === 0 && selectedProperty && !isLoadingRooms && (
+            {getFilteredRooms().length === 0 && !isLoadingRooms && (
               <DropdownMenuItem disabled className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 cursor-not-allowed">
-                <span>
-                  {rooms.length === 0 
-                    ? "No rooms loaded" 
-                    : `No rooms found for property ${selectedProperty}`
-                  }
-                </span>
+                <span>No rooms loaded</span>
               </DropdownMenuItem>
             )}
             
@@ -464,22 +340,6 @@ export default function JobActions({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className={`${dropdownContentClass} max-h-[80vh] overflow-y-auto w-[280px]`} sideOffset={5}>
-            <DropdownMenuLabel className={menuLabelClass}>Properties</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setSelectedProperty(null)} className={menuItemClass}>
-              <Building className="h-4 w-4" /> All Properties
-            </DropdownMenuItem>
-            {getAvailableProperties().map((property) => (
-              <DropdownMenuItem
-                key={property.property_id}
-                onClick={() => setSelectedProperty(property.property_id)}
-                className={menuItemClass}
-              >
-                <Building className="h-4 w-4" />
-                <span className="truncate">{property.name}</span>
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator className="bg-gray-200 my-1" />
-
             <DropdownMenuLabel className={menuLabelClass}>Rooms</DropdownMenuLabel>
             <div className="px-2 pb-1">
               <input
@@ -488,13 +348,11 @@ export default function JobActions({
                 onChange={(e) => setRoomSearch(e.target.value)}
                 placeholder="Search room number, name, or type..."
                 className="w-full h-8 px-3 text-xs rounded-md bg-gray-50 border border-gray-200 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:bg-gray-100 disabled:text-gray-400"
-                disabled={!selectedProperty}
               />
             </div>
             <DropdownMenuItem 
               onClick={() => onRoomFilter?.(null)} 
               className={menuItemClass}
-              disabled={!selectedProperty}
             >
               <DoorOpen className="h-4 w-4" /> All Rooms
             </DropdownMenuItem>
@@ -523,9 +381,9 @@ export default function JobActions({
                   </DropdownMenuItem>
                 );
               })}
-            {getFilteredRooms().length === 0 && selectedProperty && !isLoadingRooms && (
+            {getFilteredRooms().length === 0 && !isLoadingRooms && (
               <DropdownMenuItem disabled className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 cursor-not-allowed">
-                <span>No rooms available for this property</span>
+                <span>No rooms available</span>
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator className="bg-gray-200 my-1" />

@@ -154,14 +154,14 @@ export function PMScheduleCalendar() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-col gap-3 rounded-3xl border border-cyan-100 bg-white/85 p-4 shadow-sm backdrop-blur sm:p-5">
+      <header className="flex flex-col gap-3 rounded-[18px] border border-[var(--pcms-border)] bg-white/90 p-4 shadow-[var(--pcms-shadow-sm)] backdrop-blur sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600 text-white shadow">
               <CalendarDays className="h-5 w-5" />
             </span>
             <div>
-              <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+              <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
                 PM Calendar
               </h1>
               <p className="text-xs font-medium text-slate-600 sm:text-sm">
@@ -172,7 +172,7 @@ export function PMScheduleCalendar() {
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href="/dashboard/preventive-maintenance/create"
-              className="inline-flex h-10 items-center gap-1 rounded-lg bg-blue-600 px-3 text-sm font-bold text-white hover:bg-blue-700"
+              className="inline-flex h-10 items-center gap-1 rounded-full bg-[var(--pcms-primary)] px-3 text-sm font-bold text-white hover:bg-[var(--pcms-primary-hover)]"
             >
               <Plus className="h-4 w-4" /> New PM
             </Link>

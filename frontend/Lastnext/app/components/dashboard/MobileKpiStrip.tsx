@@ -50,32 +50,32 @@ interface MobileKpiStripProps {
 
 const TONE_STYLES: Record<KpiTone, { card: string; icon: string; value: string }> = {
   primary: {
-    card: 'border-blue-200 bg-gradient-to-br from-blue-50 to-white',
+    card: 'border-blue-200 bg-white',
     icon: 'bg-blue-600 text-white',
     value: 'text-blue-900',
   },
   info: {
-    card: 'border-sky-200 bg-gradient-to-br from-sky-50 to-white',
+    card: 'border-sky-200 bg-white',
     icon: 'bg-sky-600 text-white',
     value: 'text-sky-900',
   },
   warning: {
-    card: 'border-amber-200 bg-gradient-to-br from-amber-50 to-white',
+    card: 'border-amber-200 bg-white',
     icon: 'bg-amber-500 text-white',
     value: 'text-amber-900',
   },
   success: {
-    card: 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white',
+    card: 'border-emerald-200 bg-white',
     icon: 'bg-emerald-600 text-white',
     value: 'text-emerald-900',
   },
   danger: {
-    card: 'border-rose-200 bg-gradient-to-br from-rose-50 to-white',
+    card: 'border-rose-200 bg-white',
     icon: 'bg-rose-600 text-white',
     value: 'text-rose-900',
   },
   neutral: {
-    card: 'border-slate-200 bg-gradient-to-br from-slate-50 to-white',
+    card: 'border-slate-200 bg-white',
     icon: 'bg-slate-700 text-white',
     value: 'text-slate-900',
   },
@@ -107,7 +107,7 @@ function KpiCard({ kpi }: { kpi: KpiInput }) {
   const inner = (
     <div
       className={cn(
-        'flex h-full w-full min-w-[180px] flex-col gap-2 rounded-2xl border p-3 shadow-sm transition-shadow sm:p-4',
+        'flex h-full w-full min-w-[180px] flex-col gap-2 rounded-[18px] border p-3 shadow-[var(--pcms-shadow-sm)] transition-shadow sm:p-4',
         styles.card,
         kpi.href ? 'hover:shadow-md' : '',
       )}
@@ -119,8 +119,8 @@ function KpiCard({ kpi }: { kpi: KpiInput }) {
         <DeltaPill delta={kpi.delta ?? undefined} label={kpi.deltaLabel} />
       </div>
       <div className="space-y-1">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600">{kpi.label}</p>
-        <p className={cn('text-2xl font-black leading-none sm:text-3xl', styles.value)}>{kpi.value}</p>
+        <p className="text-[11px] font-bold text-slate-600">{kpi.label}</p>
+        <p className={cn('text-2xl font-bold leading-none sm:text-3xl', styles.value)}>{kpi.value}</p>
         {kpi.hint ? <p className="text-xs font-medium text-slate-600">{kpi.hint}</p> : null}
       </div>
       {kpi.href ? (

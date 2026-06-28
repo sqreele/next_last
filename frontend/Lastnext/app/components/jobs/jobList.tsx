@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Check } from 'lucide-react';
 import { useUser, useProperties } from '@/app/lib/stores/mainStore';
-import InstagramJobCard from '@/app/components/jobs/InstagramJobCard';
+import MaintenanceJobCard from '@/app/components/jobs/MaintenanceJobCard';
 import Pagination from '@/app/components/jobs/Pagination';
 import JobActions from '@/app/components/jobs/JobActions';
 import { JobListMobileToolbar, type JobListFilters } from '@/app/components/jobs/JobListMobileToolbar';
@@ -38,17 +38,16 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   const { selectedPropertyId: selectedProperty } = useUser();
   const { properties: globalProperties } = useProperties();
 
-  // Build a set of identifiers that represent the currently selected property
-  // This ensures we match both the human-readable property code and the numeric PK
   const selectedPropertyIdentifiers = (() => {
     const identifiers = new Set<string>();
     if (selectedProperty) identifiers.add(String(selectedProperty));
 
-    // Use provided properties list or fall back to global store properties
-    const propertyList = Array.isArray(properties) && properties.length > 0 ? properties : (Array.isArray(globalProperties) ? globalProperties : []);
+    const propertyList = Array.isArray(properties) && properties.length > 0
+      ? properties
+      : (Array.isArray(globalProperties) ? globalProperties : []);
 
-    const matched = propertyList?.find(
-      (p) => String(p.property_id) === String(selectedProperty) || String(p.id) === String(selectedProperty)
+    const matched = propertyList.find(
+      (p) => String(p.property_id) === String(selectedProperty) || String(p.id) === String(selectedProperty),
     );
 
     if (matched) {
@@ -134,61 +133,51 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     }
   };
 
-  // Helper to check if a job belongs to the selected property by examining
-  // all possible locations where a property reference might exist
-  const doesMatchSelectedProperty = (job: Job): boolean => {
+  const doesMatchHeaderProperty = (job: Job): boolean => {
     if (!selectedProperty) return true;
 
-    const selectedIds = selectedPropertyIdentifiers;
     const matches = (value: unknown): boolean => {
       if (value === undefined || value === null) return false;
-      return selectedIds.has(String(value));
+      return selectedPropertyIdentifiers.has(String(value));
     };
 
-    // Direct property reference on job
-    if (matches((job as any).property_id)) return true;
+    if (matches(job.property_id)) return true;
 
-    // Job-level properties collection
-    if (Array.isArray((job as any).properties)) {
-      for (const prop of (job as any).properties) {
+    if (Array.isArray(job.properties)) {
+      for (const prop of job.properties) {
         if (typeof prop === 'string' || typeof prop === 'number') {
           if (matches(prop)) return true;
         } else if (prop && typeof prop === 'object') {
-          if ('property_id' in prop && matches((prop as any).property_id)) return true;
-          if ('id' in prop && matches((prop as any).id)) return true;
+          if (matches(prop.property_id)) return true;
+          if (matches(prop.id)) return true;
         }
       }
     }
 
-    // Properties via profile image metadata
-    if ((job as any).profile_image && Array.isArray((job as any).profile_image.properties)) {
-      for (const prop of (job as any).profile_image.properties) {
+    if (job.profile_image && Array.isArray(job.profile_image.properties)) {
+      for (const prop of job.profile_image.properties) {
         if (prop && typeof prop === 'object') {
-          if ('property_id' in prop && matches((prop as any).property_id)) return true;
-          if ('id' in prop && matches((prop as any).id)) return true;
+          if ('property_id' in prop && matches(prop.property_id)) return true;
+          if ('id' in prop && matches(prop.id)) return true;
         }
       }
     }
 
-    // Area-level property references (for area-only jobs without rooms)
-    const area = (job as any).area;
-    if (area && typeof area === 'object') {
+    const area = job.area;
+    if (area) {
       if (matches(area.property_id)) return true;
-      if (matches(area.property_uuid)) return true;
-      if (matches(area.property)) return true;
+      if (matches((area as { property_uuid?: unknown }).property_uuid)) return true;
     }
 
-    // Room-level properties or direct room property references
-    if (Array.isArray((job as any).rooms)) {
-      for (const room of (job as any).rooms) {
-        if (room && matches((room as any).property_id)) return true;
-        if (room && Array.isArray((room as any).properties)) {
-          for (const prop of (room as any).properties) {
+    if (Array.isArray(job.rooms)) {
+      for (const room of job.rooms) {
+        if (matches(room.property_id)) return true;
+        if (Array.isArray(room.properties)) {
+          for (const prop of room.properties) {
             if (typeof prop === 'string' || typeof prop === 'number') {
               if (matches(prop)) return true;
-            } else if (prop && typeof prop === 'object') {
-              if ('property_id' in prop && matches((prop as any).property_id)) return true;
-              if ('id' in prop && matches((prop as any).id)) return true;
+            } else if (prop && typeof prop === 'object' && 'property_id' in prop) {
+              if (matches(prop.property_id)) return true;
             }
           }
         }
@@ -199,12 +188,8 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   };
 
   const filteredJobs = jobs.filter(job => {
-    // Apply property-based filtering across all known sources
-    if (selectedProperty) {
-      const matchesProperty = doesMatchSelectedProperty(job);
-      if (!matchesProperty) {
-        return false;
-      }
+    if (!doesMatchHeaderProperty(job)) {
+      return false;
     }
 
     // Room filtering
@@ -431,7 +416,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
         <EmptyState
           title="No maintenance jobs found"
-          description={selectedProperty ? 'No jobs match the selected room, date, status, or search filters.' : 'Select a property to view hotel maintenance jobs.'}
+          description={selectedProperty ? 'No jobs match the selected header property, room, date, status, or search filters.' : 'No jobs match the selected room, date, status, or search filters.'}
         />
       </div>
     );
@@ -474,7 +459,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
               const selected = selectedJobIds.has(jobIdStr);
               const cardEl = (
                 <div className="h-full touch-action-manipulation">
-                  <InstagramJobCard job={job} viewMode={viewMode} />
+                  <MaintenanceJobCard job={job} viewMode={viewMode} />
                 </div>
               );
               if (!selectionEnabled) {

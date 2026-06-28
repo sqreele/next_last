@@ -1435,20 +1435,20 @@ body {
     grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
   }
-  @media (min-width: 430px) {
+  @media (min-width: 640px) {
     .pcms-job-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
-  @media (min-width: 768px) {
+  @media (min-width: 1024px) {
     .pcms-job-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 1.15rem;
+      gap: 1.25rem;
     }
   }
-  @media (min-width: 1280px) {
+  @media (min-width: 1536px) {
     .pcms-job-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 

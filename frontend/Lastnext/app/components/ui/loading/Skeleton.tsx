@@ -64,32 +64,45 @@ export function JobCardSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'relative flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm',
+        'flex min-h-[430px] flex-col overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.07)]',
         className,
       )}
     >
-      <div className="absolute left-0 top-0 h-full w-1.5 bg-slate-200" />
-      <div className="space-y-3 border-b border-slate-100 p-4 pl-5">
+      <div className="space-y-4 bg-slate-50 p-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
+          <div className="flex min-w-0 flex-1 items-start gap-3">
+            <Skeleton className="h-10 w-10 shrink-0 rounded-2xl" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
           </div>
-          <Skeleton className="h-7 w-24 rounded-full" />
+          <Skeleton className="h-11 w-11 rounded-full" />
         </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-5 w-16 rounded-full" />
-          <Skeleton className="h-5 w-20 rounded-full" />
-          <Skeleton className="h-5 w-12 rounded-full" />
-        </div>
+        <Skeleton className="h-32 w-full rounded-2xl" />
       </div>
-      <div className="space-y-3 p-3 sm:p-4">
-        <Skeleton className="aspect-video w-full rounded-md" />
-        <Skeleton className="h-12 w-full rounded-lg" />
-        <Skeleton className="h-4 w-2/3" />
-        <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
-          <Skeleton className="h-10 rounded-md" />
-          <Skeleton className="h-10 rounded-md" />
+      <div className="flex flex-1 flex-col space-y-4 p-4">
+        <div className="flex flex-wrap gap-2">
+          <Skeleton className="h-7 w-20 rounded-full" />
+          <Skeleton className="h-7 w-16 rounded-full" />
+          <Skeleton className="h-7 w-20 rounded-full" />
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-full" />
+          <Skeleton className="h-5 w-4/5" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Skeleton key={index} className="h-4 w-full" />
+          ))}
+        </div>
+        <div className="mt-auto flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <Skeleton className="h-11 w-full rounded-full sm:w-28" />
         </div>
       </div>
     </div>
@@ -98,7 +111,7 @@ export function JobCardSkeleton({ className }: { className?: string }) {
 
 export function JobListSkeleton({ count = 6, className }: { count?: number; className?: string }) {
   return (
-    <div className={cn('grid gap-3 sm:grid-cols-2 lg:grid-cols-3', className)}>
+    <div className={cn('grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4', className)}>
       {Array.from({ length: count }).map((_, index) => (
         <JobCardSkeleton key={index} />
       ))}

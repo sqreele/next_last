@@ -103,7 +103,7 @@ export function InventoryMobileStats({
           const Icon = tile.icon;
           const interactive = !!tile.onClick;
           const className = cn(
-            'flex min-w-[120px] flex-none snap-start flex-col items-start gap-1 rounded-2xl border-2 p-3 shadow-sm transition-all',
+            'flex min-w-[120px] flex-none snap-start flex-col items-start gap-1 rounded-[18px] border p-3 shadow-[var(--pcms-shadow-sm)] transition-all',
             tone.card,
             tile.active && 'ring-2 ring-blue-500 ring-offset-1',
             interactive && 'hover:shadow-md active:scale-[0.98] touch-manipulation',
@@ -120,8 +120,8 @@ export function InventoryMobileStats({
                   </span>
                 )}
               </div>
-              <p className={cn('text-2xl font-black leading-none', tone.value)}>{tile.value}</p>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+              <p className={cn('text-2xl font-bold leading-none', tone.value)}>{tile.value}</p>
+              <p className="text-[10px] font-bold text-slate-600">
                 {tile.label}
               </p>
             </>

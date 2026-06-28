@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Job } from '@/app/lib/types';
-import InstagramJobCard from '@/app/components/jobs/InstagramJobCard';
+import MaintenanceJobCard from '@/app/components/jobs/MaintenanceJobCard';
 import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { SearchInput, MobileTopBar } from '@/app/components/pcms-ui';
@@ -160,7 +160,7 @@ export default function JobsByAreaClient({ initialJobs }: { initialJobs: Job[] }
               <div className="pcms-job-grid auto-rows-fr">
                 {group.jobs.map((job) => (
                   <div key={job.job_id} className="h-full touch-action-manipulation">
-                    <InstagramJobCard job={job} />
+                    <MaintenanceJobCard job={job} />
                   </div>
                 ))}
               </div>

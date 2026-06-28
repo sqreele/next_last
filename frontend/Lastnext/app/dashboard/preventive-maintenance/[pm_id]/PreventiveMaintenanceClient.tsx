@@ -29,6 +29,7 @@ import {
   User
 } from 'lucide-react';
 import { fixImageUrl } from '@/app/lib/utils/image-utils';
+import { fetchImageAsDataURL } from '@/app/lib/imageUtils';
 import { MaintenanceImage } from '@/app/components/ui/UniversalImage';
 import { getDisplayName, getUserEmail } from '@/app/lib/utils/display-name';
 import { StatusBadge } from '@/app/components/StatusBadge';
@@ -47,6 +48,7 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   const [currentImageAlt, setCurrentImageAlt] = useState<string>('');
   const [isCompleting, setIsCompleting] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfImageDataUrls, setPdfImageDataUrls] = useState<Record<string, string>>({});
   const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setIsLoading);
   
   useEffect(() => {
@@ -190,6 +192,77 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
     setCurrentImage(null);
   };
 
+  const waitForPdfImages = async (root: HTMLElement) => {
+    const images = Array.from(root.querySelectorAll('img'));
+    await Promise.all(
+      images.map((image) => {
+        if (image.complete && image.naturalWidth > 0) {
+          return Promise.resolve();
+        }
+
+        return new Promise<void>((resolve) => {
+          const timeout = window.setTimeout(resolve, 6000);
+          const done = () => {
+            window.clearTimeout(timeout);
+            resolve();
+          };
+          image.onload = done;
+          image.onerror = done;
+        });
+      }),
+    );
+  };
+
+  const preparePdfImages = async () => {
+    const machineImageUrls = machinesWithImages
+      .map(({ imageUrl }) => imageUrl)
+      .filter((url): url is string => !!url);
+
+    const imageUrls = Array.from(
+      new Set([beforeImageUrl, afterImageUrl, ...machineImageUrls].filter((url): url is string => !!url)),
+    );
+
+    if (imageUrls.length === 0) return;
+
+    const convertedEntries = await Promise.all(
+      imageUrls.map(async (url) => {
+        if (pdfImageDataUrls[url]) {
+          return [url, pdfImageDataUrls[url]] as const;
+        }
+
+        try {
+          const dataUrl = await fetchImageAsDataURL(url, {
+            retries: 1,
+            timeout: 10000,
+            useProxy: url.startsWith('http'),
+            maxSize: 1200,
+            quality: 0.82,
+          });
+          return [url, dataUrl] as const;
+        } catch (error) {
+          console.warn('[PM PDF] Failed to prepare image for PDF:', url, error);
+          return null;
+        }
+      }),
+    );
+
+    const nextDataUrls = convertedEntries.reduce<Record<string, string>>((acc, entry) => {
+      if (entry) {
+        acc[entry[0]] = entry[1];
+      }
+      return acc;
+    }, {});
+
+    if (Object.keys(nextDataUrls).length > 0) {
+      setPdfImageDataUrls((current) => ({ ...current, ...nextDataUrls }));
+    }
+  };
+
+  const getPdfImageSrc = (imageUrl: string | null | undefined) => {
+    if (!imageUrl) return '';
+    return pdfImageDataUrls[imageUrl] || imageUrl;
+  };
+
   const handleExportPdf = async () => {
     setIsExportingPdf(true);
     setError(null);
@@ -214,7 +287,9 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
       pdfContent.style.top = '0';
       pdfContent.style.zIndex = '-1';
 
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await preparePdfImages();
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      await waitForPdfImages(pdfContent);
 
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import('html2canvas'),
@@ -454,16 +529,38 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
         {machinesList.map((machine, index) => {
           const machineId = typeof machine === 'object' ? machine.machine_id : machine;
           const machineName = typeof machine === 'object' ? machine.name : null;
+          const machineImageUrl = typeof machine === 'object' ? getMachineImageUrl(machine) : null;
           
           return (
             <div 
               key={index} 
               className="bg-gradient-to-r from-slate-50 to-gray-50 p-4 rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Wrench className="h-5 w-5 text-blue-600" />
-                </div>
+              <div className="flex items-center gap-4">
+                {machineImageUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => openImageModal(machineImageUrl, `${machineName || 'Machine'} image`)}
+                    className="group relative h-20 w-20 flex-none overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-label={`Open image for ${machineName || machineId || 'machine'}`}
+                  >
+                    <img
+                      src={machineImageUrl}
+                      alt={machineName ? `${machineName} machine` : 'Machine'}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none';
+                      }}
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-200 group-hover:bg-black/20 group-hover:opacity-100">
+                      <ZoomIn className="h-5 w-5 text-white" />
+                    </span>
+                  </button>
+                ) : (
+                  <div className="grid h-20 w-20 flex-none place-items-center rounded-xl border border-dashed border-gray-300 bg-gray-100">
+                    <Wrench className="h-7 w-7 text-gray-400" />
+                  </div>
+                )}
                 <div className="flex-1">
                   <p className="font-semibold text-gray-900">
                     {machineName || 'Unnamed Machine'}
@@ -1071,14 +1168,10 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                       {machine.name || machine.machine_id || `Equipment ${index + 1}`}
                     </p>
                     {imageUrl && (
-                      <MaintenanceImage
-                        src={imageUrl}
+                      <img
+                        src={getPdfImageSrc(imageUrl)}
                         alt={`${machine.name || machine.machine_id || 'Equipment'} image`}
                         className="pdf-equipment-image w-full h-32 object-contain rounded-md border border-gray-200"
-                        width={400}
-                        height={128}
-                        lazy={false}
-                        showLoadingSpinner={false}
                       />
                     )}
                   </div>
@@ -1122,14 +1215,10 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                 {beforeImageUrl && (
                   <div>
                     <span className="text-sm font-medium text-gray-600 block mb-2">Before:</span>
-                    <MaintenanceImage 
-                      src={beforeImageUrl} 
+                    <img
+                      src={getPdfImageSrc(beforeImageUrl)}
                       alt="Before maintenance" 
                       className="pdf-maintenance-image w-full h-40 object-contain rounded-lg border border-gray-300"
-                      width={400}
-                      height={160}
-                      lazy={false}
-                      showLoadingSpinner={false}
                     />
                     <div className="hidden w-full h-48 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
                       <span className="text-gray-500 text-sm">Before image unavailable</span>
@@ -1139,14 +1228,10 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
                 {afterImageUrl && (
                   <div>
                     <span className="text-sm font-medium text-gray-600 block mb-2">After:</span>
-                    <MaintenanceImage 
-                      src={afterImageUrl} 
+                    <img
+                      src={getPdfImageSrc(afterImageUrl)}
                       alt="After maintenance" 
                       className="pdf-maintenance-image w-full h-40 object-contain rounded-lg border border-gray-300"
-                      width={400}
-                      height={160}
-                      lazy={false}
-                      showLoadingSpinner={false}
                     />
                     <div className="hidden w-full h-48 bg-gray-100 rounded-lg border border-gray-300 flex items-center justify-center">
                       <span className="text-gray-500 text-sm">After image unavailable</span>

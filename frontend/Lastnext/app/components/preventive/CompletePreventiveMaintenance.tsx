@@ -250,7 +250,7 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
         
         // Redirect after a short delay
         setTimeout(() => {
-          router.push(`/preventive-maintenance/${pmId}`);
+          router.push(`/dashboard/preventive-maintenance/${pmId}`);
         }, 2000);
       } else {
         throw new Error('Failed to complete maintenance task');
@@ -370,7 +370,7 @@ export default function CompletePreventiveMaintenance({ params }: CompletePreven
                       <StatusBadge status={record.status} className="mt-1" />
                     </div>
                     <Link 
-                      href={`/preventive-maintenance/complete/${record.id}`}
+                      href={`/dashboard/preventive-maintenance/edit/${record.pm_id || record.id}?complete=true`}
                       className="ml-3 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                     >
                       {record.status === 'Completed' ? 'View' : 'Complete'}

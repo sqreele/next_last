@@ -692,6 +692,11 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         inventory_usage = request.data.get('inventory_usage') or request.data.get('parts_used') or []
 
         with transaction.atomic():
+            update_fields = []
+            if 'after_image' in request.FILES:
+                instance.after_image = request.FILES['after_image']
+                update_fields.append('after_image')
+
             for raw_item in checklist_updates:
                 item_text = (raw_item.get('item') or raw_item.get('title') or '').strip()
                 if not item_text:
@@ -730,6 +735,9 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 user=request.user,
                 completed_date=completed_date,
             )
+
+            if update_fields:
+                result['current'].save(update_fields=update_fields)
 
             if instance.machines.exists():
                 instance.machines.update(last_maintenance_date=result['current'].completed_date or timezone.now())

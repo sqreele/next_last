@@ -632,7 +632,7 @@ export default function PreventiveMaintenanceDashboard() {
                           </Link>
                           {status !== 'completed' && (
                             <Link 
-                              href={`/dashboard/preventive-maintenance/${item.pm_id}/edit?complete=true`}
+                              href={`/dashboard/preventive-maintenance/edit/${item.pm_id}?complete=true`}
                               className="text-green-600 hover:text-green-900"
                             >
                               Complete

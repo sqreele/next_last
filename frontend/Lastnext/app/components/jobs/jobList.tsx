@@ -449,7 +449,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
           <LoadingSkeleton rows={6} />
         </div>
       ) : (
-        <div className="job-grid-container mb-10">
+        <div className="job-grid-container -mx-3 mb-10 sm:mx-0">
           <div className={viewMode === 'list'
             ? "gap-4 space-y-4"
             : "pcms-job-grid auto-rows-fr"

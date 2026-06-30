@@ -3840,6 +3840,10 @@ body {
     gap: 1rem;
   }
 
+  .sneat-card--pad-lg {
+    padding: 1rem;
+  }
+
   .sneat-page-header,
   .sneat-card,
   .sneat-welcome-card,
@@ -3861,6 +3865,24 @@ body {
   .sneat-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .sneat-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.45rem;
+    padding: 0.45rem;
+    border-radius: 1rem;
+  }
+
+  .sneat-tabs button {
+    min-width: 0;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.6rem;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
   }
 }
 

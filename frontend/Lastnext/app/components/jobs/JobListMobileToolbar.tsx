@@ -157,11 +157,12 @@ export function JobListMobileToolbar({
         <Button
           type="button"
           variant="outline"
+          size="icon"
           onClick={() => setOpen(true)}
-          className="relative h-11 flex-none rounded-xl border-2 border-slate-200 bg-white px-3"
+          className="relative h-11 w-11 flex-none rounded-xl border-2 border-slate-200 bg-white p-0"
           aria-label={`Open filters${activeCount ? `, ${activeCount} active` : ''}`}
         >
-          <FilterIcon className="h-4 w-4" />
+          <FilterIcon className="h-4 w-4" aria-hidden="true" />
           {activeCount > 0 && (
             <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-blue-600 text-[11px] font-bold text-white">
               {activeCount}

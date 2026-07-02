@@ -34,6 +34,7 @@ export const API_CONFIG = {
     authResetPassword: '/api/v1/auth/password/reset/',
     health: '/api/v1/health/',
     csrfToken: '/api/v1/csrf-token/',
+    aiChat: '/api/v1/ai/chat/',
   }
 };
 

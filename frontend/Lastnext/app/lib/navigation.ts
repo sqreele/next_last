@@ -9,6 +9,7 @@ import {
   Package,
   Zap,
   Wrench,
+  BotMessageSquare,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -27,6 +28,7 @@ export const primaryNavigationItems: AppNavigationItem[] = [
   { name: 'Machines', href: '/dashboard/machines', icon: Wrench, shortName: 'Equip' },
   { name: 'Inventory', href: '/dashboard/inventory', icon: Package, shortName: 'Stock' },
   { name: 'Electricity', href: '/dashboard/utility-consumption', icon: Zap, shortName: 'Power' },
+  { name: 'AI Chat', href: '/ai-chat', icon: BotMessageSquare, shortName: 'AI' },
   { name: 'Reports', href: '/dashboard/jobs-report', icon: FileText, shortName: 'Reports' },
 ];
 
@@ -39,6 +41,7 @@ export const dashboardNavigationItems: AppNavigationItem[] = [
   { name: 'Areas', href: '/dashboard/areas', icon: MapPin },
   { name: 'Inventory', href: '/dashboard/inventory', icon: Package },
   { name: 'Electricity', href: '/dashboard/utility-consumption', icon: Zap },
+  { name: 'AI Chat', href: '/ai-chat', icon: BotMessageSquare },
   { name: 'Reports', href: '/dashboard/jobs-report', icon: FileText },
   { name: 'Settings', href: '/dashboard/profile', icon: Settings },
 ];

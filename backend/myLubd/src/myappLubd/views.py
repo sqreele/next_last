@@ -49,6 +49,8 @@ from django.shortcuts import get_object_or_404
 import logging
 import json
 import uuid
+import re
+from difflib import SequenceMatcher
 from datetime import timedelta
 from calendar import monthrange
 from django.http import JsonResponse, HttpResponseRedirect
@@ -76,45 +78,541 @@ GEMINI_CHAT_MODEL = 'gemini-2.5-flash'
 GEMINI_SYSTEM_INSTRUCTION = """
 คุณคือ AI ผู้ช่วยประจำระบบบริหารจัดการงานช่าง (HotelEngPro)
 หน้าที่ของคุณคือช่วยตอบคำถามเกี่ยวกับงานแจ้งซ่อมและสถิติของระบบเป็นภาษาไทยที่สุภาพ กระชับ และเข้าใจง่าย
-ห้ามคิดคำนวณตัวเลขยอดรวมหรือสถิติเองเด็ดขาด หากคำถามเกี่ยวข้องกับข้อมูลในระบบ เช่น จำนวนงาน สถานะงาน หรือหมวดหมู่ที่เสียบ่อย ให้เรียกใช้ Tool ที่มีให้เสมอ
+ห้ามคิดคำนวณตัวเลขยอดรวมหรือสถิติเองเด็ดขาด หากคำถามเกี่ยวข้องกับข้อมูลในระบบ เช่น จำนวนงาน สถานะงาน ห้องที่เสียบ่อย รายละเอียดงานแต่ละห้อง ผู้ที่ทำการซ่อม/ช่างผู้ปฏิบัติงาน สรุปรายงานรายปี/รายเดือน รายชื่อคนรายงานมากที่สุดรายเดือน หมวดหมู่ที่เสียบ่อย หรืองาน PM/Preventive Maintenance ให้เรียกใช้ Tool ที่มีให้เสมอ
+หากผู้ใช้ระบุสาขา/property ให้ส่งชื่อสาขานั้นใน argument property_name ของ Tool get_maintenance_summary เสมอ
+หากผู้ใช้ระบุห้อง ให้ส่งชื่อหรือเลขห้องนั้นใน argument room_name ของ Tool get_maintenance_summary เสมอ
 เมื่อได้รับผลลัพธ์จาก Tool แล้ว ให้สรุปจากข้อมูลดิบนั้นเท่านั้น และถ้าไม่มีข้อมูลใน Tool ให้บอกผู้ใช้อย่างตรงไปตรงมา
 """.strip()
 
 
-def get_maintenance_summary():
+def _normalize_search_text(value):
+    return ''.join(char.lower() for char in str(value or '') if char.isalnum())
+
+
+def _resolve_property(property_name=None):
+    search = str(property_name or '').strip()
+    if not search:
+        return None, None
+
+    properties = list(Property.objects.all())
+    normalized_search = _normalize_search_text(search)
+
+    for prop in properties:
+        if search.lower() == prop.name.lower() or search.lower() == prop.property_id.lower():
+            return prop, None
+
+    for prop in properties:
+        if normalized_search and (
+            normalized_search in _normalize_search_text(prop.name)
+            or normalized_search in _normalize_search_text(prop.property_id)
+        ):
+            return prop, None
+
+    best_property = None
+    best_score = 0
+    for prop in properties:
+        score = max(
+            SequenceMatcher(None, normalized_search, _normalize_search_text(prop.name)).ratio(),
+            SequenceMatcher(None, normalized_search, _normalize_search_text(prop.property_id)).ratio(),
+        )
+        if score > best_score:
+            best_property = prop
+            best_score = score
+
+    if best_property and best_score >= 0.72:
+        return best_property, None
+
+    return None, {
+        'requested_property': search,
+        'available_properties': [
+            {'property_id': prop.property_id, 'name': prop.name}
+            for prop in properties
+        ],
+    }
+
+
+def _resolve_room(room_name=None, property_obj=None):
+    search = str(room_name or '').strip()
+    if not search:
+        return None, None
+
+    rooms = Room.objects.all()
+    if property_obj:
+        rooms = rooms.filter(properties=property_obj)
+    rooms = list(rooms.distinct())
+    normalized_search = _normalize_search_text(search)
+
+    for room in rooms:
+        if search.lower() == room.name.lower() or search == str(room.room_id):
+            return room, None
+
+    for room in rooms:
+        if normalized_search and (
+            normalized_search in _normalize_search_text(room.name)
+            or normalized_search in _normalize_search_text(room.room_type)
+            or normalized_search == str(room.room_id)
+        ):
+            return room, None
+
+    best_room = None
+    best_score = 0
+    for room in rooms:
+        score = max(
+            SequenceMatcher(None, normalized_search, _normalize_search_text(room.name)).ratio(),
+            SequenceMatcher(None, normalized_search, _normalize_search_text(room.room_type)).ratio(),
+        )
+        if score > best_score:
+            best_room = room
+            best_score = score
+
+    if best_room and best_score >= 0.72:
+        return best_room, None
+
+    return None, {
+        'requested_room': search,
+        'available_rooms': [
+            {
+                'room_id': room.room_id,
+                'name': room.name,
+                'room_type': room.room_type,
+            }
+            for room in rooms
+        ],
+    }
+
+
+def _serialize_user(user):
+    if not user:
+        return None
+    display_name = user.get_full_name().strip() if hasattr(user, 'get_full_name') else ''
+    display_name = display_name or getattr(user, 'email', '') or getattr(user, 'username', '') or 'Unknown'
+    return {
+        'user_id': getattr(user, 'id', None),
+        'username': getattr(user, 'username', None),
+        'name': display_name,
+        'email': getattr(user, 'email', None),
+    }
+
+
+def _serialize_job(job):
+    return {
+        'job_id': job.job_id,
+        'status': job.status,
+        'priority': job.priority,
+        'description': job.description,
+        'remarks': job.remarks,
+        'created_at': job.created_at.isoformat() if job.created_at else None,
+        'updated_at': job.updated_at.isoformat() if job.updated_at else None,
+        'completed_at': job.completed_at.isoformat() if job.completed_at else None,
+        'reported_by': _serialize_user(job.user),
+        'technician': _serialize_user(job.user),
+        'last_updated_by': _serialize_user(job.updated_by),
+        'technician_note': 'ใน schema ปัจจุบัน Job.user ถูกใช้เป็น technician/ผู้รับผิดชอบงาน และ updated_by คือผู้แก้ไขหรือปิดงานล่าสุด',
+        'rooms': [
+            {
+                'room_id': room.room_id,
+                'name': room.name,
+                'room_type': room.room_type,
+            }
+            for room in job.rooms.all()
+        ],
+        'topics': [topic.title for topic in job.topics.all()],
+        'area': {
+            'id': job.area.id,
+            'name': job.area.name,
+            'property': job.area.property.name,
+        } if job.area and job.area.property else None,
+    }
+
+
+def _display_user_name_from_values(row):
+    return ' '.join(
+        part for part in [row.get('user__first_name'), row.get('user__last_name')]
+        if part
+    ).strip() or row.get('user__username') or row.get('user__email') or 'Unknown'
+
+
+def _should_force_summary_tool(message):
+    normalized = message.lower()
+    keywords = [
+        'pm',
+        'preventive',
+        'สาขา',
+        'property',
+        'ห้อง',
+        'room',
+        'รายงาน',
+        'สรุปรายงาน',
+        'ผู้รายงาน',
+        'ผู้ซ่อม',
+        'คนซ่อม',
+        'ช่าง',
+        'ทำการซ่อม',
+        'ผู้ปฏิบัติงาน',
+        'คนแจ้ง',
+        'แจ้งมากที่สุด',
+        'แต่ละเดือน',
+        'รายเดือน',
+        'รายปี',
+        'แยกปี',
+        'แยกเดือน',
+        'เสียบ่อย',
+        'รายละเอียดงาน',
+        'งานซ่อม',
+    ]
+    return any(keyword in normalized for keyword in keywords)
+
+
+def _extract_room_name_from_message(message):
+    match = re.search(r'(?:ห้อง|room)\s*([A-Za-z0-9ก-๙_-]+)', message, flags=re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return ''
+
+
+def get_maintenance_summary(property_name: str = "", room_name: str = ""):
     """
     ดึงข้อมูลสรุปดิบของระบบแจ้งซ่อม HotelEngPro สำหรับให้ Gemini ใช้ตอบคำถามเชิงสถิติอย่างถูกต้อง
 
     ฟังก์ชันนี้ควรถูกเรียกเมื่อผู้ใช้ถามเกี่ยวกับภาพรวมงานแจ้งซ่อม เช่น จำนวนงานทั้งหมด
     จำนวนงานที่เสร็จแล้ว จำนวนงานที่ยังเปิดอยู่ จำนวนงานที่ยกเลิก หรือหมวดหมู่งานเสีย/แจ้งซ่อม
-    ที่พบบ่อยที่สุด โดยผลลัพธ์เป็นข้อมูลจากระบบเท่านั้น เพื่อป้องกันไม่ให้ AI คิดตัวเลขเอง
+    หรือห้องที่เสียบ่อยที่สุด รวมถึงรายละเอียดงานแต่ละห้องและรายการงาน PM
+    โดยผลลัพธ์เป็นข้อมูลจากระบบเท่านั้น เพื่อป้องกันไม่ให้ AI คิดตัวเลขเอง
+    หากผู้ใช้ถามแยกตามสาขา ให้ส่งชื่อสาขาหรือ property id ผ่าน property_name
+    หากผู้ใช้ถามแยกตามห้อง ให้ส่งชื่อ เลขห้อง หรือ room id ผ่าน room_name
 
     Returns:
         dict: ข้อมูลสรุปงานแจ้งซ่อม ประกอบด้วย total_jobs, completed, open, cancelled
         และ top_categories ซึ่งเป็นรายการหมวดหมู่ที่เสียบ่อยพร้อมจำนวนงาน
     """
-    # TODO: เปลี่ยน Mock Data ด้านล่างเป็น Django ORM จริงเมื่อ schema รายงานพร้อมใช้งาน เช่น
-    # totals = Job.objects.aggregate(
-    #     total_jobs=Count('id', distinct=True),
-    #     completed=Count('id', filter=Q(status='completed'), distinct=True),
-    #     cancelled=Count('id', filter=Q(status='cancelled'), distinct=True),
-    # )
-    # open_jobs = Job.objects.exclude(status__in=['completed', 'cancelled']).count()
-    # top_categories = list(
-    #     Topic.objects.annotate(jobs=Count('jobs', distinct=True))
-    #     .order_by('-jobs')
-    #     .values('name', 'jobs')[:3]
-    # )
+    property_obj, property_error = _resolve_property(property_name)
+    if property_error:
+        return {
+            'error': 'PROPERTY_NOT_FOUND',
+            **property_error,
+        }
+    room_obj, room_error = _resolve_room(room_name, property_obj)
+    if room_error:
+        return {
+            'error': 'ROOM_NOT_FOUND',
+            **room_error,
+        }
+
+    jobs = Job.objects.all()
+    if property_obj:
+        jobs = jobs.filter(
+            Q(area__property=property_obj) |
+            Q(rooms__properties=property_obj)
+        ).distinct()
+    if room_obj:
+        jobs = jobs.filter(rooms=room_obj).distinct()
+
+    totals = jobs.aggregate(
+        total_jobs=Count('id', distinct=True),
+        completed=Count('id', filter=Q(status='completed'), distinct=True),
+        cancelled=Count('id', filter=Q(status='cancelled'), distinct=True),
+    )
+    open_jobs = jobs.exclude(status__in=['completed', 'cancelled']).count()
+    job_ids = list(jobs.values_list('id', flat=True))
+    top_categories = list(
+        Topic.objects
+        .annotate(job_count=Count('jobs', filter=Q(jobs__id__in=job_ids), distinct=True))
+        .filter(job_count__gt=0)
+        .order_by('-job_count', 'title')
+        .values('title', 'job_count')[:5]
+    )
+    top_rooms = list(
+        Room.objects
+        .annotate(job_count=Count('jobs', filter=Q(jobs__id__in=job_ids), distinct=True))
+        .filter(job_count__gt=0)
+        .order_by('-job_count', 'room_type', 'name')
+        .values('room_id', 'name', 'room_type', 'job_count')[:5]
+    )
+    reporter_rows = list(
+        jobs
+        .annotate(year=ExtractYear('created_at'), month=ExtractMonth('created_at'))
+        .values('year', 'month', 'user_id', 'user__username', 'user__first_name', 'user__last_name', 'user__email')
+        .annotate(job_count=Count('id', distinct=True))
+        .order_by('year', 'month', '-job_count', 'user__username')
+    )
+    monthly_top_reporters = []
+    seen_months = set()
+    for row in reporter_rows:
+        month_key = (row['year'], row['month'])
+        if month_key in seen_months:
+            continue
+        seen_months.add(month_key)
+        display_name = _display_user_name_from_values(row)
+        monthly_top_reporters.append({
+            'year': row['year'],
+            'month': row['month'],
+            'reporter': {
+                'user_id': row['user_id'],
+                'username': row.get('user__username'),
+                'name': display_name,
+                'email': row.get('user__email'),
+            },
+            'jobs': row['job_count'],
+        })
+    technician_rows = list(
+        jobs
+        .values('user_id', 'user__username', 'user__first_name', 'user__last_name', 'user__email')
+        .annotate(job_count=Count('id', distinct=True))
+        .order_by('-job_count', 'user__username')[:10]
+    )
+    top_technicians = []
+    for row in technician_rows:
+        top_technicians.append({
+            'user_id': row['user_id'],
+            'username': row.get('user__username'),
+            'name': _display_user_name_from_values(row),
+            'email': row.get('user__email'),
+            'jobs': row['job_count'],
+            'note': 'นับจาก Job.user ซึ่งโปรเจกต์ใช้เป็น technician/ผู้รับผิดชอบงาน',
+        })
+
+    month_keys = list(
+        jobs
+        .annotate(year=ExtractYear('created_at'), month=ExtractMonth('created_at'))
+        .values('year', 'month')
+        .annotate(total=Count('id', distinct=True))
+        .order_by('year', 'month')
+    )
+    monthly_report_details = []
+    for month_row in month_keys:
+        year = month_row['year']
+        month = month_row['month']
+        month_jobs = jobs.filter(created_at__year=year, created_at__month=month).distinct()
+        month_job_ids = list(month_jobs.values_list('id', flat=True))
+        status_counts = list(
+            month_jobs
+            .values('status')
+            .annotate(count=Count('id', distinct=True))
+            .order_by('status')
+        )
+        month_top_reporters = []
+        for reporter_row in (
+            month_jobs
+            .values('user_id', 'user__username', 'user__first_name', 'user__last_name', 'user__email')
+            .annotate(job_count=Count('id', distinct=True))
+            .order_by('-job_count', 'user__username')[:3]
+        ):
+            month_top_reporters.append({
+                'user_id': reporter_row['user_id'],
+                'username': reporter_row.get('user__username'),
+                'name': _display_user_name_from_values(reporter_row),
+                'email': reporter_row.get('user__email'),
+                'jobs': reporter_row['job_count'],
+            })
+        month_top_rooms = list(
+            Room.objects
+            .annotate(job_count=Count('jobs', filter=Q(jobs__id__in=month_job_ids), distinct=True))
+            .filter(job_count__gt=0)
+            .order_by('-job_count', 'room_type', 'name')
+            .values('room_id', 'name', 'room_type', 'job_count')[:3]
+        )
+        month_top_categories = list(
+            Topic.objects
+            .annotate(job_count=Count('jobs', filter=Q(jobs__id__in=month_job_ids), distinct=True))
+            .filter(job_count__gt=0)
+            .order_by('-job_count', 'title')
+            .values('title', 'job_count')[:3]
+        )
+        sample_jobs = (
+            month_jobs
+            .prefetch_related('rooms', 'topics')
+            .select_related('area__property')
+            .order_by('-created_at')[:10]
+        )
+        monthly_report_details.append({
+            'year': year,
+            'month': month,
+            'total_jobs': month_row['total'],
+            'status_counts': [
+                {'status': row['status'], 'count': row['count']}
+                for row in status_counts
+            ],
+            'top_reporters': month_top_reporters,
+            'top_rooms': [
+                {
+                    'room_id': row['room_id'],
+                    'name': row['name'],
+                    'room_type': row['room_type'],
+                    'jobs': row['job_count'],
+                }
+                for row in month_top_rooms
+            ],
+            'top_categories': [
+                {'category': row['title'], 'jobs': row['job_count']}
+                for row in month_top_categories
+            ],
+            'jobs': [_serialize_job(job) for job in sample_jobs],
+        })
+
+    year_keys = list(
+        jobs
+        .annotate(year=ExtractYear('created_at'))
+        .values('year')
+        .annotate(total=Count('id', distinct=True))
+        .order_by('year')
+    )
+    yearly_report_details = []
+    for year_row in year_keys:
+        year = year_row['year']
+        year_jobs = jobs.filter(created_at__year=year).distinct()
+        year_job_ids = list(year_jobs.values_list('id', flat=True))
+        status_counts = list(
+            year_jobs
+            .values('status')
+            .annotate(count=Count('id', distinct=True))
+            .order_by('status')
+        )
+        monthly_counts = list(
+            year_jobs
+            .annotate(month=ExtractMonth('created_at'))
+            .values('month')
+            .annotate(total=Count('id', distinct=True))
+            .order_by('month')
+        )
+        year_top_rooms = list(
+            Room.objects
+            .annotate(job_count=Count('jobs', filter=Q(jobs__id__in=year_job_ids), distinct=True))
+            .filter(job_count__gt=0)
+            .order_by('-job_count', 'room_type', 'name')
+            .values('room_id', 'name', 'room_type', 'job_count')[:5]
+        )
+        year_top_categories = list(
+            Topic.objects
+            .annotate(job_count=Count('jobs', filter=Q(jobs__id__in=year_job_ids), distinct=True))
+            .filter(job_count__gt=0)
+            .order_by('-job_count', 'title')
+            .values('title', 'job_count')[:5]
+        )
+        yearly_report_details.append({
+            'year': year,
+            'total_jobs': year_row['total'],
+            'status_counts': [
+                {'status': row['status'], 'count': row['count']}
+                for row in status_counts
+            ],
+            'monthly_counts': [
+                {'month': row['month'], 'jobs': row['total']}
+                for row in monthly_counts
+            ],
+            'top_rooms': [
+                {
+                    'room_id': row['room_id'],
+                    'name': row['name'],
+                    'room_type': row['room_type'],
+                    'jobs': row['job_count'],
+                }
+                for row in year_top_rooms
+            ],
+            'top_categories': [
+                {'category': row['title'], 'jobs': row['job_count']}
+                for row in year_top_categories
+            ],
+        })
+    room_details = []
+    room_queryset = Room.objects.all()
+    if property_obj:
+        room_queryset = room_queryset.filter(properties=property_obj)
+    if room_obj:
+        room_queryset = room_queryset.filter(pk=room_obj.pk)
+
+    room_job_filter = Q(jobs__id__in=job_ids)
+    for room in (
+        room_queryset
+        .annotate(job_count=Count('jobs', filter=room_job_filter, distinct=True))
+        .filter(job_count__gt=0)
+        .order_by('-job_count', 'room_type', 'name')[:10]
+    ):
+        room_jobs = (
+            jobs.filter(rooms=room)
+            .prefetch_related('rooms', 'topics')
+            .select_related('area__property')
+            .order_by('-created_at')[:10]
+        )
+        room_details.append({
+            'room_id': room.room_id,
+            'name': room.name,
+            'room_type': room.room_type,
+            'job_count': room.job_count,
+            'jobs': [_serialize_job(job) for job in room_jobs],
+        })
+    preventive_maintenance = PreventiveMaintenance.objects.select_related(
+        'assigned_to',
+        'created_by',
+        'job',
+        'procedure_template',
+    ).prefetch_related('topics')
+    if property_obj:
+        preventive_maintenance = preventive_maintenance.filter(
+            Q(job__area__property=property_obj) |
+            Q(job__rooms__properties=property_obj)
+        ).distinct()
+
+    pm_status_counts = list(
+        preventive_maintenance
+        .values('status')
+        .annotate(count=Count('id'))
+        .order_by('status')
+    )
+    pm_items = []
+    for pm in preventive_maintenance.order_by('-scheduled_date')[:20]:
+        pm_items.append({
+            'pm_id': pm.pm_id,
+            'title': pm.pmtitle,
+            'status': pm.status,
+            'priority': pm.priority,
+            'frequency': pm.frequency,
+            'scheduled_date': pm.scheduled_date.isoformat() if pm.scheduled_date else None,
+            'completed_date': pm.completed_date.isoformat() if pm.completed_date else None,
+            'next_due_date': pm.next_due_date.isoformat() if pm.next_due_date else None,
+            'assigned_to': pm.assigned_to.get_full_name() or pm.assigned_to.username if pm.assigned_to else None,
+            'topics': [topic.title for topic in pm.topics.all()],
+        })
+
     return {
-        'total_jobs': 284,
-        'completed': 204,
-        'open': 79,
-        'cancelled': 1,
+        'property': {
+            'property_id': property_obj.property_id,
+            'name': property_obj.name,
+        } if property_obj else None,
+        'room': {
+            'room_id': room_obj.room_id,
+            'name': room_obj.name,
+            'room_type': room_obj.room_type,
+        } if room_obj else None,
+        'total_jobs': totals['total_jobs'] or 0,
+        'completed': totals['completed'] or 0,
+        'open': open_jobs,
+        'cancelled': totals['cancelled'] or 0,
         'top_categories': [
-            {'category': 'Air-Conditions', 'jobs': 14},
-            {'category': 'Barth Room', 'jobs': 10},
-            {'category': 'Wall and Repaint', 'jobs': 7},
+            {'category': row['title'], 'jobs': row['job_count']}
+            for row in top_categories
         ],
+        'top_rooms': [
+            {
+                'room_id': row['room_id'],
+                'name': row['name'],
+                'room_type': row['room_type'],
+                'jobs': row['job_count'],
+            }
+            for row in top_rooms
+        ],
+        'monthly_top_reporters': monthly_top_reporters,
+        'top_technicians': top_technicians,
+        'yearly_report_details': yearly_report_details,
+        'monthly_report_details': monthly_report_details,
+        'room_details': room_details,
+        'preventive_maintenance': {
+            'total': preventive_maintenance.count(),
+            'status_counts': [
+                {'status': row['status'], 'count': row['count']}
+                for row in pm_status_counts
+            ],
+            'items': pm_items,
+        },
     }
 
 
@@ -171,6 +669,26 @@ def chat_with_gemini(request):
 
         function_calls = first_response.function_calls or []
         if not function_calls:
+            if _should_force_summary_tool(message):
+                tool_result = get_maintenance_summary(
+                    room_name=_extract_room_name_from_message(message),
+                )
+                tool_part = types.Part.from_function_response(
+                    name='get_maintenance_summary',
+                    response={'result': tool_result},
+                )
+                final_response = client.models.generate_content(
+                    model=GEMINI_CHAT_MODEL,
+                    contents=[
+                        types.Content(role='user', parts=[types.Part(text=message)]),
+                        types.Content(role='user', parts=[tool_part]),
+                    ],
+                    config=_gemini_config(include_tools=False),
+                )
+                return Response({
+                    'reply': final_response.text or '',
+                    'tool_calls': ['get_maintenance_summary'],
+                })
             return Response({'reply': first_response.text or ''})
 
         tool_parts = []
@@ -178,11 +696,14 @@ def chat_with_gemini(request):
             if function_call.name != 'get_maintenance_summary':
                 tool_result = {'error': f'ไม่รองรับ Tool: {function_call.name}'}
             else:
-                tool_result = get_maintenance_summary()
+                function_args = getattr(function_call, 'args', None) or {}
+                tool_result = get_maintenance_summary(
+                    property_name=function_args.get('property_name') or function_args.get('branch_name') or '',
+                    room_name=function_args.get('room_name') or function_args.get('room') or '',
+                )
 
             tool_parts.append(
                 types.Part.from_function_response(
-                    id=getattr(function_call, 'id', None),
                     name=function_call.name,
                     response={'result': tool_result},
                 )

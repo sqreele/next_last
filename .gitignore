@@ -4,5 +4,8 @@ nginx/ssl/*
 
 # Environment files
 .env
-.env.***/__pycache__/
+.env.local
+.env.*
+
+__pycache__/
 *.pyc

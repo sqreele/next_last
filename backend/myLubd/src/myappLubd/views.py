@@ -71,6 +71,147 @@ from .tenancy import (
 )
 from .timezones import timezone_options
 
+
+GEMINI_CHAT_MODEL = 'gemini-2.5-flash'
+GEMINI_SYSTEM_INSTRUCTION = """
+คุณคือ AI ผู้ช่วยประจำระบบบริหารจัดการงานช่าง (HotelEngPro)
+หน้าที่ของคุณคือช่วยตอบคำถามเกี่ยวกับงานแจ้งซ่อมและสถิติของระบบเป็นภาษาไทยที่สุภาพ กระชับ และเข้าใจง่าย
+ห้ามคิดคำนวณตัวเลขยอดรวมหรือสถิติเองเด็ดขาด หากคำถามเกี่ยวข้องกับข้อมูลในระบบ เช่น จำนวนงาน สถานะงาน หรือหมวดหมู่ที่เสียบ่อย ให้เรียกใช้ Tool ที่มีให้เสมอ
+เมื่อได้รับผลลัพธ์จาก Tool แล้ว ให้สรุปจากข้อมูลดิบนั้นเท่านั้น และถ้าไม่มีข้อมูลใน Tool ให้บอกผู้ใช้อย่างตรงไปตรงมา
+""".strip()
+
+
+def get_maintenance_summary():
+    """
+    ดึงข้อมูลสรุปดิบของระบบแจ้งซ่อม HotelEngPro สำหรับให้ Gemini ใช้ตอบคำถามเชิงสถิติอย่างถูกต้อง
+
+    ฟังก์ชันนี้ควรถูกเรียกเมื่อผู้ใช้ถามเกี่ยวกับภาพรวมงานแจ้งซ่อม เช่น จำนวนงานทั้งหมด
+    จำนวนงานที่เสร็จแล้ว จำนวนงานที่ยังเปิดอยู่ จำนวนงานที่ยกเลิก หรือหมวดหมู่งานเสีย/แจ้งซ่อม
+    ที่พบบ่อยที่สุด โดยผลลัพธ์เป็นข้อมูลจากระบบเท่านั้น เพื่อป้องกันไม่ให้ AI คิดตัวเลขเอง
+
+    Returns:
+        dict: ข้อมูลสรุปงานแจ้งซ่อม ประกอบด้วย total_jobs, completed, open, cancelled
+        และ top_categories ซึ่งเป็นรายการหมวดหมู่ที่เสียบ่อยพร้อมจำนวนงาน
+    """
+    # TODO: เปลี่ยน Mock Data ด้านล่างเป็น Django ORM จริงเมื่อ schema รายงานพร้อมใช้งาน เช่น
+    # totals = Job.objects.aggregate(
+    #     total_jobs=Count('id', distinct=True),
+    #     completed=Count('id', filter=Q(status='completed'), distinct=True),
+    #     cancelled=Count('id', filter=Q(status='cancelled'), distinct=True),
+    # )
+    # open_jobs = Job.objects.exclude(status__in=['completed', 'cancelled']).count()
+    # top_categories = list(
+    #     Topic.objects.annotate(jobs=Count('jobs', distinct=True))
+    #     .order_by('-jobs')
+    #     .values('name', 'jobs')[:3]
+    # )
+    return {
+        'total_jobs': 284,
+        'completed': 204,
+        'open': 79,
+        'cancelled': 1,
+        'top_categories': [
+            {'category': 'Air-Conditions', 'jobs': 14},
+            {'category': 'Barth Room', 'jobs': 10},
+            {'category': 'Wall and Repaint', 'jobs': 7},
+        ],
+    }
+
+
+def _genai_modules():
+    from google import genai
+    from google.genai import types
+
+    return genai, types
+
+
+def _build_gemini_client():
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        raise ValueError('GEMINI_API_KEY environment variable is not configured.')
+    genai, _ = _genai_modules()
+    return genai.Client(api_key=api_key)
+
+
+def _gemini_config(include_tools=True):
+    _, types = _genai_modules()
+    config_kwargs = {
+        'system_instruction': GEMINI_SYSTEM_INSTRUCTION,
+        'temperature': 0.2,
+    }
+    if include_tools:
+        config_kwargs.update({
+            'tools': [get_maintenance_summary],
+            'automatic_function_calling': types.AutomaticFunctionCallingConfig(disable=True),
+        })
+    return types.GenerateContentConfig(**config_kwargs)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def chat_with_gemini(request):
+    """REST API สำหรับคุยกับ Gemini พร้อม Function Calling เพื่อดึงข้อมูลแจ้งซ่อมจากระบบ"""
+    message = str(request.data.get('message') or '').strip()
+    if not message:
+        return Response(
+            {'detail': 'กรุณาระบุ message ใน request body'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        client = _build_gemini_client()
+        _, types = _genai_modules()
+        config = _gemini_config(include_tools=True)
+
+        first_response = client.models.generate_content(
+            model=GEMINI_CHAT_MODEL,
+            contents=message,
+            config=config,
+        )
+
+        function_calls = first_response.function_calls or []
+        if not function_calls:
+            return Response({'reply': first_response.text or ''})
+
+        tool_parts = []
+        for function_call in function_calls:
+            if function_call.name != 'get_maintenance_summary':
+                tool_result = {'error': f'ไม่รองรับ Tool: {function_call.name}'}
+            else:
+                tool_result = get_maintenance_summary()
+
+            tool_parts.append(
+                types.Part.from_function_response(
+                    id=getattr(function_call, 'id', None),
+                    name=function_call.name,
+                    response={'result': tool_result},
+                )
+            )
+
+        final_response = client.models.generate_content(
+            model=GEMINI_CHAT_MODEL,
+            contents=[
+                types.Content(role='user', parts=[types.Part(text=message)]),
+                first_response.candidates[0].content,
+                types.Content(role='user', parts=tool_parts),
+            ],
+            config=_gemini_config(include_tools=False),
+        )
+
+        return Response({
+            'reply': final_response.text or '',
+            'tool_calls': [function_call.name for function_call in function_calls],
+        })
+    except ValueError as exc:
+        logger.warning('Gemini chatbot configuration error: %s', exc)
+        return Response({'detail': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    except Exception as exc:
+        logger.exception('Gemini chatbot request failed')
+        return Response(
+            {'detail': 'ไม่สามารถเชื่อมต่อ Gemini ได้ในขณะนี้', 'error': str(exc)},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
 logger = logging.getLogger(__name__)
 User = get_user_model()
 

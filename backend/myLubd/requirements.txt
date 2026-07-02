@@ -40,3 +40,6 @@ gunicorn>=21.2.0
 
 # QR Code generation
 qrcode[pil]>=7.4.2
+
+# Gemini API official SDK
+google-genai>=1.0.0

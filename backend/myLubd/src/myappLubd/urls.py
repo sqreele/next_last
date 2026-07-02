@@ -64,6 +64,9 @@ urlpatterns = [
     path('api/v1/auth/password/reset/', views.reset_password, name='reset_password'),
     path('api/v1/auth/profile/update/', views.update_user_profile, name='update_user_profile'),
     
+    # AI Chatbot endpoint
+    path('api/v1/ai/chat/', views.chat_with_gemini, name='chat_with_gemini'),
+
     # Health check
     path('api/v1/health/', views.health_check, name='health_check'),
 

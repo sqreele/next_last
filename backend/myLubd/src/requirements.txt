@@ -52,3 +52,5 @@ py-vapid==1.9.1
 # improved test selection and fixtures.
 pytest==8.3.4
 pytest-django==4.9.0
+
+google-genai>=1.0.0

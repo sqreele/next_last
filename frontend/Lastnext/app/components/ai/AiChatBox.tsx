@@ -151,7 +151,7 @@ export default function AiChatBox() {
 
   if (status === 'loading') {
     return (
-      <section className="mx-auto flex min-h-[70vh] w-full max-w-4xl items-center justify-center rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-4xl items-center justify-center border border-slate-200 bg-white p-5 text-center shadow-sm sm:min-h-[70vh] sm:rounded-lg sm:p-8">
         <div>
           <p className="text-sm font-semibold text-slate-700">กำลังตรวจสอบสถานะการเข้าสู่ระบบ...</p>
           <p className="mt-2 text-xs text-slate-500">กรุณารอสักครู่ก่อนเริ่มแชท</p>
@@ -162,7 +162,7 @@ export default function AiChatBox() {
 
   if (!isAuthenticated) {
     return (
-      <section className="mx-auto flex min-h-[70vh] w-full max-w-4xl items-center justify-center rounded-lg border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-4xl items-center justify-center border border-slate-200 bg-white p-5 text-center shadow-sm sm:min-h-[70vh] sm:rounded-lg sm:p-8">
         <div className="max-w-md">
           <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">AI Chatbot</p>
           <h1 className="mt-2 text-2xl font-bold text-slate-950">กรุณาเข้าสู่ระบบก่อนเริ่มแชท</h1>
@@ -177,13 +177,13 @@ export default function AiChatBox() {
   }
 
   return (
-    <section className="mx-auto flex min-h-[70vh] w-full max-w-4xl flex-col rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 px-5 py-4">
+    <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-4xl flex-col border border-slate-200 bg-white shadow-sm sm:min-h-[70vh] sm:rounded-lg">
+      <div className="border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">AI Chatbot</p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-950">ผู้ช่วยงานซ่อมบำรุง</h1>
+        <h1 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">ผู้ช่วยงานซ่อมบำรุง</h1>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+      <div className="flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:space-y-4 sm:px-5 sm:py-5">
         {!hasProperty ? (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-5 text-sm font-medium text-amber-900">
             ไม่พบ property สำหรับผู้ใช้นี้ กรุณาติดต่อผู้ดูแลระบบก่อนเริ่มแชท
@@ -203,7 +203,7 @@ export default function AiChatBox() {
             >
               <div
                 className={cn(
-                  'max-w-[82%] rounded-lg px-4 py-3 text-sm leading-6',
+                  'max-w-[92%] rounded-lg px-3 py-2.5 text-sm leading-6 sm:max-w-[82%] sm:px-4 sm:py-3',
                   chatMessage.role === 'user'
                     ? 'bg-cyan-700 text-white'
                     : 'border border-slate-200 bg-slate-50 text-slate-900',
@@ -235,12 +235,12 @@ export default function AiChatBox() {
       </div>
 
       {error ? (
-        <div className="mx-5 mb-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mx-3 mb-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:mx-5">
           {error}
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="border-t border-slate-200 p-4">
+      <form onSubmit={handleSubmit} className="border-t border-slate-200 p-3 sm:p-4">
         <div className="flex flex-col gap-3 sm:flex-row">
           <Textarea
             value={message}
@@ -249,7 +249,7 @@ export default function AiChatBox() {
             placeholder="พิมพ์ข้อความ..."
             rows={2}
             disabled={isLoading || !hasProperty}
-            className="min-h-[52px] flex-1 resize-none"
+            className="min-h-[52px] flex-1 resize-none text-base sm:text-sm"
           />
           <Button type="submit" disabled={!canSubmit} isLoading={isLoading} loadingText="กำลังส่ง">
             <Send className="mr-2 h-4 w-4" />

@@ -33,6 +33,30 @@ function getPropertyNames(properties: Property[], selectedPropertyId: string | n
     .join(', ');
 }
 
+
+function normalizeSearchText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9ก-๙]/gi, '');
+}
+
+function findMentionedPropertyName(messages: ChatMessage[], properties: Property[]): string {
+  for (const chatMessage of [...messages].reverse()) {
+    if (chatMessage.role !== 'user') continue;
+    const normalizedMessage = normalizeSearchText(chatMessage.content);
+    const matchedProperty = properties.find((property) => {
+      const candidates = [property.property_id, property.name, String(property.id || '')]
+        .filter(Boolean)
+        .map((candidate) => normalizeSearchText(String(candidate)));
+      return candidates.some((candidate) => candidate.length > 0 && normalizedMessage.includes(candidate));
+    });
+
+    if (matchedProperty) {
+      return matchedProperty.property_id || matchedProperty.name || String(matchedProperty.id || '');
+    }
+  }
+
+  return '';
+}
+
 function getDisplayUserName(sessionUser: Record<string, unknown> | undefined, username?: string): string {
   const parts = [sessionUser?.first_name, sessionUser?.last_name]
     .map((part) => (typeof part === 'string' ? part.trim() : ''))
@@ -76,6 +100,18 @@ export default function AiChatBox() {
     () => getPropertyNames(availableProperties, selectedPropertyId),
     [availableProperties, selectedPropertyId],
   );
+  const activePropertyName = useMemo(() => {
+    const scopedProperties = selectedPropertyId
+      ? availableProperties.filter((property) => getPropertyKey(property) === String(selectedPropertyId))
+      : availableProperties;
+
+    if (scopedProperties.length !== 1) {
+      return '';
+    }
+
+    const property = scopedProperties[0];
+    return property.property_id || property.name || String(property.id || '');
+  }, [availableProperties, selectedPropertyId]);
   const hasProperty = propertyNames.length > 0;
   const greeting = useMemo(
     () => `สวัสดีครับ ${userName} ${propertyNames} มี อยากทราบข้อมูลด้านไหนครับ`,
@@ -133,7 +169,9 @@ export default function AiChatBox() {
 
     try {
       setIsLoading(true);
-      const response = await sendAiChatMessage(userMessage);
+      const response = await sendAiChatMessage(userMessage, {
+        property_name: activePropertyName || findMentionedPropertyName(history, availableProperties),
+      });
       appendAssistantReply(response);
     } catch (submitError) {
       setError(getErrorMessage(submitError));

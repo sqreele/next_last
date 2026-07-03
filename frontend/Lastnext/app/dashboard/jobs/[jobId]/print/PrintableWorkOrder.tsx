@@ -7,6 +7,7 @@ import { Job, Property } from '@/app/lib/types';
 import { Button } from '@/app/components/ui/button';
 import { StatusBadge, PriorityBadge } from '@/app/components/pcms-ui';
 import { getDisplayName } from '@/app/lib/utils/display-name';
+import { fixImageUrl } from '@/app/lib/utils/image-utils';
 
 interface PrintableWorkOrderProps {
   job: Job;
@@ -24,6 +25,23 @@ function formatDate(value: string | null | undefined): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function getPrintableImageUrls(job: Job): string[] {
+  const seen = new Set<string>();
+  const urls: string[] = [];
+
+  const addUrl = (rawUrl: string | null | undefined) => {
+    const normalizedUrl = fixImageUrl(rawUrl) || rawUrl?.trim();
+    if (!normalizedUrl || seen.has(normalizedUrl)) return;
+    seen.add(normalizedUrl);
+    urls.push(normalizedUrl);
+  };
+
+  job.images?.forEach((image) => addUrl(image.jpeg_url || image.image_url));
+  job.image_urls?.forEach(addUrl);
+
+  return urls;
 }
 
 function getPropertyName(job: Job, properties: Property[]): string {
@@ -79,6 +97,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
   }, [job.job_id, job.rooms, properties]);
 
   const propertyName = getPropertyName(job, properties);
+  const imageUrls = getPrintableImageUrls(job);
   const roomLine =
     job.rooms?.map((r) => `${r.name || `Room ${r.room_id}`}${r.room_type ? ` (${r.room_type})` : ''}`).join(', ') ||
     job.room_name ||
@@ -96,6 +115,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
           .print-work-order, .print-work-order * { visibility: visible; }
           .print-work-order { position: absolute; left: 0; top: 0; width: 100%; }
           .no-print { display: none !important; }
+          .print-image-card { break-inside: avoid; page-break-inside: avoid; }
           @page { margin: 1.5cm; }
         }
       `}</style>
@@ -175,6 +195,33 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
             <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
               {job.remarks}
             </p>
+          </section>
+        )}
+
+
+        {imageUrls.length > 0 && (
+          <section className="mt-6">
+            <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+              Photos
+            </h2>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              {imageUrls.map((imageUrl, index) => (
+                <figure
+                  key={`${imageUrl}-${index}`}
+                  className="print-image-card overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
+                >
+                  {/* Use a plain img so browser print keeps Django/media URLs intact. */}
+                  <img
+                    src={imageUrl}
+                    alt={`Job photo ${index + 1} for ${job.job_id}`}
+                    className="h-44 w-full object-cover"
+                  />
+                  <figcaption className="border-t border-slate-200 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    Photo {index + 1}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
           </section>
         )}
 

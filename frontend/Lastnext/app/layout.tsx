@@ -12,6 +12,7 @@ import { InstallPrompt } from '@/app/components/pwa/InstallPrompt';
 import { NetworkStatusBanner } from '@/app/components/pwa/NetworkStatusBanner';
 import { ThemeProvider } from '@/app/components/theme/ThemeProvider';
 import { LocaleProvider } from '@/app/lib/i18n/LocaleProvider';
+import { PropertyAccessGuard } from '@/app/components/auth/PropertyAccessGuard';
 import './globals.css';
 // Bilingual UI font (Thai + English)
 const lineSeed = localFont({
@@ -143,7 +144,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
               </Suspense>
               <NetworkStatusBanner />
               <main id="main-content" className="flex min-h-screen w-full flex-col">
-                {children}
+                <Suspense fallback={null}>
+                  <PropertyAccessGuard>{children}</PropertyAccessGuard>
+                </Suspense>
               </main>
               <Toaster />
               <ServiceWorkerRegistrar />

@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect } from 'react';
 import { useMainStore } from '../stores/mainStore';
+import { getPropertyId } from '../security/propertyAccess';
 import { useSession } from '../session.client';
 
 interface StoreProviderProps {
@@ -38,39 +39,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           created_at: session.user.created_at || new Date().toISOString(),
         };
 
-        // Only update user profile if it has changed
+        const sessionProperties = Array.isArray(session.user.properties) ? session.user.properties : [];
         const currentProfile = useMainStore.getState().userProfile;
+        const currentProfileProperties = Array.isArray(currentProfile?.properties) ? currentProfile.properties : [];
+        const profilePropertiesChanged =
+          currentProfileProperties.length !== sessionProperties.length ||
+          !currentProfileProperties.every((prop, index) => getPropertyId(prop) === getPropertyId(sessionProperties[index]));
         const profileChanged = !currentProfile || 
           currentProfile.id !== userProfile.id ||
           currentProfile.username !== userProfile.username ||
-          currentProfile.email !== userProfile.email;
+          currentProfile.email !== userProfile.email ||
+          profilePropertiesChanged;
         
         if (profileChanged) {
           setUserProfile(userProfile);
         }
 
-        // Set properties in store (only if they've changed)
-        if (session.user?.properties && session.user.properties.length > 0) {
-          const currentProperties = useMainStore.getState().properties;
-          const propertiesChanged = !currentProperties || 
-            currentProperties.length !== session.user.properties.length ||
-            !currentProperties.every((prop, index) => 
-              prop.property_id === session.user?.properties[index]?.property_id ||
-              prop.id === session.user?.properties[index]?.id
-            );
-          
-          if (propertiesChanged) {
-            setProperties(session.user.properties);
-          }
+        // Keep the global property list exactly in sync with the current API/session payload,
+        // including empty arrays so stale properties from a previous user cannot remain selectable.
+        const currentProperties = useMainStore.getState().properties;
+        const propertiesChanged =
+          currentProperties.length !== sessionProperties.length ||
+          !currentProperties.every((prop, index) => getPropertyId(prop) === getPropertyId(sessionProperties[index]));
+        
+        if (propertiesChanged) {
+          setProperties(sessionProperties);
+        }
 
-          // Auto-select first property if none selected
-          const currentSelectedProperty = useMainStore.getState().selectedPropertyId;
-          if (!currentSelectedProperty) {
-            const firstProperty = session.user?.properties[0];
-            if (firstProperty) {
-              const propertyId = String(firstProperty.property_id || firstProperty.id);
-              setSelectedPropertyId(propertyId);
-            }
+        // Auto-select first authorized property if none selected.
+        const currentSelectedProperty = useMainStore.getState().selectedPropertyId;
+        if (!currentSelectedProperty) {
+          const firstProperty = sessionProperties[0];
+          if (firstProperty) {
+            const propertyId = getPropertyId(firstProperty);
+            setSelectedPropertyId(propertyId);
           }
         }
       }

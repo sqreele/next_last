@@ -3,6 +3,7 @@ import { devtools, persist, type PersistOptions } from 'zustand/middleware';
 import { UserProfile, Property, Job, JobStatus, JobPriority } from '../types';
 import { logger } from '../utils/logger';
 import { useAuthStore } from './useAuthStore';
+import { filterPropertiesForUser, getDefaultAuthorizedPropertyId, getPropertyId, isPropertyAllowedForUser } from '../security/propertyAccess';
 
 // Only enable devtools in development and on client-side
 const isDevtoolsEnabled = typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
@@ -156,7 +157,23 @@ const storeImplementation: StateCreator<MainStore, [], []> = (set, get) => ({
   ...initialState,
   
   // User Actions
-  setUserProfile: (profile: UserProfile | null) => set({ userProfile: profile, isAuthenticated: !!profile }),
+  setUserProfile: (profile: UserProfile | null) => {
+    const state = get();
+    const filteredProperties = filterPropertiesForUser(state.properties, profile);
+    const selectedIsAllowed = isPropertyAllowedForUser(profile, state.selectedPropertyId);
+    const fallbackPropertyId = getDefaultAuthorizedPropertyId(profile);
+
+    set({
+      userProfile: profile,
+      isAuthenticated: !!profile,
+      properties: filteredProperties,
+      selectedPropertyId: selectedIsAllowed ? state.selectedPropertyId : fallbackPropertyId,
+    });
+
+    if (!selectedIsAllowed) {
+      try { useAuthStore.getState().setSelectedProperty(fallbackPropertyId); } catch {}
+    }
+  },
   setSelectedPropertyId: (propertyId: string | null) => {
     // ✅ SECURITY: Validate property access before setting
     if (propertyId === null) {
@@ -166,14 +183,15 @@ const storeImplementation: StateCreator<MainStore, [], []> = (set, get) => ({
     }
 
     const state = get();
-    const userProps = state.properties;
+    const userProps = filterPropertiesForUser(state.properties, state.userProfile);
 
-    // Verify user has access to this property
-    const hasAccess = userProps.some((p: Property) => p.property_id === propertyId);
+    // Verify user has access to this property. If user.properties is empty, fall back to loaded properties.
+    const hasAccess = isPropertyAllowedForUser(state.userProfile, propertyId)
+      && (userProps.length === 0 || userProps.some((p: Property) => getPropertyId(p) === String(propertyId)));
     if (!hasAccess) {
       logger.warn('Security: Attempted to select unauthorized property', {
         propertyId,
-        userProperties: userProps.map((p: Property) => p.property_id)
+        userProperties: userProps.map((p: Property) => getPropertyId(p))
       });
       // Don't set the unauthorized property
       return;
@@ -193,7 +211,16 @@ const storeImplementation: StateCreator<MainStore, [], []> = (set, get) => ({
   }),
   
   // Property Actions
-  setProperties: (properties: Property[]) => set({ properties }),
+  setProperties: (properties: Property[]) => {
+    const state = get();
+    const filteredProperties = filterPropertiesForUser(properties, state.userProfile);
+    const selectedPropertyId = filteredProperties.some((property) => getPropertyId(property) === String(state.selectedPropertyId))
+      ? state.selectedPropertyId
+      : (getDefaultAuthorizedPropertyId(state.userProfile) ?? (filteredProperties[0] ? getPropertyId(filteredProperties[0]) : null));
+
+    set({ properties: filteredProperties, selectedPropertyId });
+    try { useAuthStore.getState().setSelectedProperty(selectedPropertyId); } catch {}
+  },
   setSelectedPropertyData: (property: Property | null) => set({ selectedPropertyData: property }),
   setPropertyLoading: (loading: boolean) => set({ propertyLoading: loading }),
   setPropertyError: (error: string | null) => set({ propertyError: error }),

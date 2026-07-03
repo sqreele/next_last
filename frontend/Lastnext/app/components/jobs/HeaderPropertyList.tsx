@@ -11,50 +11,39 @@ import { Button } from "@/app/components/ui/button";
 import { ChevronDown, Building2, Loader2 } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
 import { useMainStore } from '@/app/lib/stores/mainStore';
+import { filterPropertiesForUser, getPropertyId } from '@/app/lib/security/propertyAccess';
 
 const HeaderPropertyList = React.memo(() => {
   // Use more specific selectors to prevent unnecessary re-renders
   const selectedProperty = useMainStore(state => state.selectedPropertyId);
   const setSelectedProperty = useMainStore(state => state.setSelectedPropertyId);
   const userProperties = useMainStore(state => state.properties);
+  const userProfile = useMainStore(state => state.userProfile);
   const propertyLoading = useMainStore(state => state.propertyLoading);
   
   // Debug logging to help identify infinite loops
   useEffect(() => {
   }, [selectedProperty, userProperties?.length, propertyLoading]);
   
-  // Check if user has properties - memoized to prevent unnecessary recalculations
-  const hasProperties = useMemo(() => 
-    userProperties && userProperties.length > 0, 
-    [userProperties]
-  );
-  
-  // Helper function to safely get the string ID from any property object format
-  const getPropertyId = useCallback((property: any): string => {
-    if (!property) return "";
-    if (typeof property === "string" || typeof property === "number") return String(property);
-    if (typeof property.property_id === "string" || typeof property.property_id === "number") {
-      return String(property.property_id);
-    }
-    if (typeof property.id === "string" || typeof property.id === "number") {
-      return String(property.id);
-    }
-    return "";
-  }, []);
-
   // Helper function to safely get the display name from any property object format
   const getPropertyName = useCallback((property: any): string => {
     if (!property) return "Select Property";
     if (typeof property === "string" || typeof property === "number") return `Property ${property}`;
     return property.name || `Property ${getPropertyId(property)}`;
-  }, [getPropertyId]);
+  }, []);
+
+  // Memoize the properties array to prevent unnecessary re-renders
+  const safeProperties = useMemo(() => 
+    filterPropertiesForUser(Array.isArray(userProperties) ? userProperties : [], userProfile), 
+    [userProperties, userProfile]
+  );
 
   // Find current property by selectedProperty ID - memoized with stable dependencies
   const currentProperty = useMemo(() => {
-    if (!userProperties || !userProperties.length) return null;
+    if (!safeProperties.length) return null;
     
     if (selectedProperty) {
-      for (const prop of userProperties) {
+      for (const prop of safeProperties) {
         const propId = getPropertyId(prop);
         if (propId === selectedProperty) {
           return prop;
@@ -62,8 +51,8 @@ const HeaderPropertyList = React.memo(() => {
       }
     }
     
-    return userProperties[0];
-  }, [userProperties, selectedProperty, getPropertyId]);
+    return safeProperties[0];
+  }, [safeProperties, selectedProperty]);
 
   // Handle property selection - memoized with stable dependencies
   const handlePropertySelect = useCallback(
@@ -73,17 +62,13 @@ const HeaderPropertyList = React.memo(() => {
         setSelectedProperty(propId);
       }
     },
-    [getPropertyId, setSelectedProperty, selectedProperty]
+    [setSelectedProperty, selectedProperty]
   );
 
-  // Memoize the properties array to prevent unnecessary re-renders
-  const safeProperties = useMemo(() => 
-    Array.isArray(userProperties) ? userProperties : [], 
-    [userProperties]
-  );
+  const isSelectorLocked = safeProperties.length === 1;
 
   // Loading state if properties are not yet available
-  if (propertyLoading || !hasProperties) {
+  if (propertyLoading) {
     return (
       <Button
         variant="outline"
@@ -116,7 +101,9 @@ const HeaderPropertyList = React.memo(() => {
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className="flex items-center justify-between gap-2 w-full sm:w-auto h-12 px-4 bg-white border-gray-300 hover:bg-gray-50"
+            disabled={isSelectorLocked}
+            aria-label={isSelectorLocked ? "Property selector locked to your assigned property" : "Select property"}
+            className="flex items-center justify-between gap-2 w-full sm:w-auto h-12 px-4 bg-white border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-100"
           >
             <div className="flex items-center gap-2 truncate">
               <Building2 className="h-4 w-4 flex-shrink-0 text-gray-600" />
@@ -124,7 +111,7 @@ const HeaderPropertyList = React.memo(() => {
                 {getPropertyName(currentProperty)}
               </span>
             </div>
-            <ChevronDown className="h-4 w-4 flex-shrink-0 text-gray-400" />
+            {!isSelectorLocked && <ChevronDown className="h-4 w-4 flex-shrink-0 text-gray-400" />}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent

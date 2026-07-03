@@ -8,7 +8,7 @@ import { Button } from "@/app/components/ui/button";
 import { PriorityBadge, SectionCard, StatusBadge } from '@/app/components/pcms-ui';
 import { useT } from '@/app/lib/i18n/LocaleProvider';
 import { Textarea } from "@/app/components/ui/textarea";
-import { Plus, Loader, AlertCircle, CheckCircle, Search, Check, ArrowLeft, HelpCircle, ClipboardList, MapPin, Info, ImagePlus, Wrench, ShieldAlert, CalendarCheck, X, Building2, Layers3, DoorOpen } from 'lucide-react';
+import { Plus, Loader, AlertCircle, CheckCircle, Search, Check, ArrowLeft, ClipboardList, MapPin, Info, ImagePlus, Wrench, ShieldAlert, CalendarCheck, X, Building2, Layers3, DoorOpen, Tag } from 'lucide-react';
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -139,54 +139,103 @@ const initialValues: FormValues = {
   is_preventivemaintenance: false,
 };
 
-const SECTION_CARD_CLASS = 'scroll-mt-24 rounded-[1.75rem] border border-slate-200/80 bg-white p-4 shadow-[0_12px_40px_rgba(15,23,42,0.06)] sm:p-6';
+const SECTION_CARD_CLASS = 'scroll-mt-40 rounded-[16px] border border-[#E4E8F1] bg-white p-4 shadow-none sm:p-5';
+const FORM_SHELL_CLASS = 'mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden bg-[#F3F5FA] pb-32 text-[#16233F]';
 
 function RequiredMark() {
   return <span className="text-red-500" aria-label="required">*</span>;
 }
 
-function CreateJobHeader({ onCancel }: { onCancel: () => void }) {
+function ProgressRing({ percent }: { percent: number }) {
+  const circumference = 119.4;
+  const offset = circumference - (circumference * percent) / 100;
+
+  return (
+    <div className="relative h-[46px] w-[46px] shrink-0">
+      <svg className="-rotate-90" width="46" height="46" viewBox="0 0 46 46" aria-hidden>
+        <circle cx="23" cy="23" r="19" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="4" />
+        <circle
+          cx="23"
+          cy="23"
+          r="19"
+          fill="none"
+          stroke="#F5A623"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="transition-[stroke-dashoffset] duration-300"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-medium text-white">
+        {percent}%
+      </div>
+    </div>
+  );
+}
+
+function CreateJobHeader({ onBack, progress, stepStatus }: { onBack: () => void; progress: number; stepStatus: boolean[] }) {
+  const steps = [
+    { label: 'Job Details', target: 'cj-step-1' },
+    { label: 'Location', target: 'cj-step-2' },
+    { label: 'Category', target: 'cj-step-category' },
+    { label: 'Additional', target: 'cj-step-3' },
+    { label: 'Photos', target: 'cj-step-4' },
+  ];
+
   return (
     <header
-      className="sticky top-0 z-30 -mx-3 border-b border-slate-200/80 bg-white/95 px-3 py-2 backdrop-blur-xl sm:-mx-4 sm:px-4 md:rounded-b-3xl md:border-x md:shadow-sm"
-      style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
+      className="sticky top-0 z-30 rounded-b-[20px] bg-[#1B2A4D] px-4 pb-4 pt-3 text-white shadow-[0_6px_18px_rgba(20,30,60,0.18)]"
+      style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
-      <div className="mx-auto flex min-h-12 max-w-5xl items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => window.history.back()}
-          className="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 active:scale-95"
+          onClick={onBack}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white/10 text-white transition active:scale-95"
           aria-label="Go back"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-[18px] w-[18px]" />
         </button>
-        <div className="min-w-0 text-center">
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-blue-600">Maintenance</p>
-          <h1 className="truncate text-lg font-black text-slate-950 sm:text-xl">Create Job</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-[17px] font-bold leading-tight">New Job Order</h1>
+          <p className="mt-0.5 text-xs text-[#B9C2DA]">Facilities &amp; Maintenance</p>
         </div>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 active:scale-95"
-          aria-label="Cancel and close create job"
-        >
-          <X className="h-5 w-5 sm:hidden" />
-          <HelpCircle className="hidden h-5 w-5 sm:block" />
-        </button>
+        <ProgressRing percent={progress} />
       </div>
+      <nav className="mt-3 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Form sections">
+        {steps.map((step, index) => {
+          const done = stepStatus[index];
+          return (
+            <button
+              key={step.target}
+              type="button"
+              onClick={() => document.getElementById(step.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] transition ${
+                done
+                  ? 'border-[#F5A623]/40 bg-[#F5A623]/15 font-semibold text-white'
+                  : 'border-white/10 bg-white/10 text-[#CBD3E6]'
+              }`}
+            >
+              {done && <Check className="h-3 w-3 text-[#F5A623]" />}
+              {step.label}
+            </button>
+          );
+        })}
+      </nav>
     </header>
   );
 }
 
 function SectionTitle({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description: string }) {
   return (
-    <div className="mb-4 flex items-start gap-3 sm:mb-6">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
-        <Icon className="h-5 w-5" aria-hidden />
+    <div className="mb-4 flex items-start gap-2.5">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#FFF3DE] text-[#7A4E00]">
+        <Icon className="h-4 w-4" aria-hidden />
       </div>
       <div className="min-w-0">
-        <h2 className="text-lg font-black text-slate-950 sm:text-xl">{title}</h2>
-        <p className="text-sm font-medium leading-5 text-slate-500">{description}</p>
+        <h2 className="text-[15.5px] font-bold leading-tight text-[#1B2A4D]">{title}</h2>
+        <p className="mt-0.5 text-xs leading-5 text-[#5B6785]">{description}</p>
       </div>
     </div>
   );
@@ -559,17 +608,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     }
   }, [fetchData, session?.user?.accessToken, selectedProperty]);
 
-  const STEPS = [
-    { num: 1, label: t('createJob.step.status'), bgClass: 'bg-blue-100 text-blue-800 border-blue-400' },
-    { num: 2, label: t('createJob.step.location'), bgClass: 'bg-emerald-100 text-emerald-800 border-emerald-400' },
-    { num: 3, label: t('createJob.step.details'), bgClass: 'bg-purple-100 text-purple-800 border-purple-400' },
-    { num: 4, label: t('createJob.step.evidence'), bgClass: 'bg-amber-100 text-amber-800 border-amber-400' },
-  ];
+
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-32 text-slate-950 sm:pb-32 md:rounded-[2rem] md:pb-8">
-      <CreateJobHeader onCancel={() => router.push('/dashboard/jobs')} />
-      <div className="mx-auto w-full max-w-5xl space-y-4 px-3 pt-4 sm:px-4 sm:pt-5 md:px-6">
+    <div className={FORM_SHELL_CLASS}>
+      <div className="space-y-4">
       {/* Error Alert */}
       {error && (
         <Alert className="border-red-300 bg-red-50">
@@ -609,87 +652,26 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        {({ values, errors, touched, submitCount, setFieldValue, setFieldTouched, isSubmitting }) => (
-                  <Form className="relative space-y-5 sm:space-y-6 md:space-y-8" noValidate>
-          <div className="rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-600 to-cyan-500 p-4 text-white shadow-lg shadow-blue-900/10 sm:p-6">
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-100">New maintenance request</p>
-            <h2 className="mt-2 text-2xl font-black">Create a job in minutes</h2>
-            <p className="mt-1 max-w-2xl text-sm font-medium text-blue-50">Capture the issue, location, priority, type, and photo evidence with a mobile-first workflow.</p>
-          </div>
+        {({ values, errors, touched, submitCount, setFieldValue, setFieldTouched, isSubmitting }) => {
+          const stepStatus = [
+            Boolean(values.description) && Boolean(values.priority),
+            Boolean(values.area_id) || Boolean(values.room?.room_id),
+            Boolean(values.topic.title),
+            Boolean(values.remarks) || values.is_defective || values.is_preventivemaintenance,
+            Array.isArray(values.files) && values.files.length > 0,
+          ];
+          const progress = Math.round((stepStatus.filter(Boolean).length / stepStatus.length) * 100);
 
-          {/* Completion state per step — drives the stepper and the bottom CTA hint. */}
-          {(() => {
-            const stepStatus = [
-              Boolean(values.description) && Boolean(values.priority) && Boolean(values.status),
-              Boolean(values.area_id) || Boolean(values.room?.room_id),
-              Boolean(values.topic.title),
-              Array.isArray(values.files) && values.files.length > 0,
-            ];
-            const completedCount = stepStatus.filter(Boolean).length;
-            return (
-              <>
-                {/* Sticky mobile stepper — clickable, completion-aware */}
-                <nav
-                  aria-label="Form steps"
-                  className="sticky top-[61px] z-10 -mx-3 border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur sm:-mx-6 sm:px-6 xl:hidden"
-                  style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
-                >
-                  <div className="mb-1 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                    <span>{completedCount} of {STEPS.length} steps ready</span>
-                    <span className="text-blue-700">{Math.round((completedCount / STEPS.length) * 100)}%</span>
-                  </div>
-                  <div className="mb-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-                    <div
-                      className="h-full rounded-full bg-blue-600 transition-all duration-300"
-                      style={{ width: `${(completedCount / STEPS.length) * 100}%` }}
-                    />
-                  </div>
-                  <ol className="flex items-center justify-between gap-1">
-                    {STEPS.map((step, i) => {
-                      const done = stepStatus[i];
-                      return (
-                        <React.Fragment key={step.num}>
-                          <li className="flex flex-1 flex-col items-center gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (typeof document !== 'undefined') {
-                                  document
-                                    .getElementById(`cj-step-${step.num}`)
-                                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                }
-                              }}
-                              aria-current={done ? undefined : 'step'}
-                              aria-label={`Go to step ${step.num}: ${step.label}${done ? ' (complete)' : ''}`}
-                              className={`flex h-9 w-9 touch-manipulation items-center justify-center rounded-full border-2 text-sm font-bold transition-all active:scale-95 sm:h-10 sm:w-10 ${
-                                done
-                                  ? 'border-emerald-500 bg-emerald-500 text-white shadow-sm'
-                                  : step.bgClass
-                              }`}
-                            >
-                              {done ? <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" /> : step.num}
-                            </button>
-                            <span className="text-[10px] font-semibold text-slate-700 sm:text-[11px]">{step.label}</span>
-                          </li>
-                          {i < STEPS.length - 1 && (
-                            <div
-                              className={`mb-4 h-0.5 flex-1 transition-colors ${
-                                stepStatus[i] && stepStatus[i + 1] ? 'bg-emerald-400' : 'bg-slate-200'
-                              }`}
-                              aria-hidden
-                            />
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </ol>
-                </nav>
-              </>
-            );
-          })()}
+          return (
+          <Form className="relative space-y-4" noValidate>
+            <CreateJobHeader onBack={() => window.history.back()} progress={progress} stepStatus={stepStatus} />
+            <div className="px-4 pt-4">
 
-          <div className="grid w-full gap-5 sm:gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-5 sm:space-y-6 md:space-y-8">
+          {/* Completion state per step — drives the bottom CTA hint. */}
+
+
+          <div className="grid w-full gap-4">
+          <div className="space-y-4">
           {/* Upload loading overlay */}
           {isSubmitting && (
             <div
@@ -860,7 +842,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
             {/* Step 2: Assignment & Location */}
             <div id="cj-step-2" className={SECTION_CARD_CLASS}>
-              <SectionTitle icon={MapPin} title="Location" description="Follow the sequence: property, area, floor, then room." />
+              <SectionTitle icon={MapPin} title="Location" description="Where is this job located? Follow property, area, floor, then room." />
+              <div className="mb-4 flex gap-2 rounded-[10px] border border-[#DCE4FA] bg-[#F3F6FF] p-3 text-[12.5px] leading-5 text-[#243761]">
+                <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <span>Follow the sequence: property, area, floor, then room.</span>
+              </div>
               
               <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
@@ -1057,8 +1043,15 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                   </div>
                 )}
 
+              </div>
+            </div>
+
+            {/* Step 3: Category */}
+            <div id="cj-step-category" className={SECTION_CARD_CLASS}>
+              <SectionTitle icon={Tag} title="Category" description="Choose one category. Tap the selected tag again to clear it." />
+              <div className="grid grid-cols-1 gap-4">
                 {/* Topic Selection */}
-                <div className="md:col-span-2 space-y-3">
+                <div className="space-y-3">
                   <div className="space-y-1">
                     <Label className="text-sm font-semibold text-slate-900 sm:text-base">
                       Category <span className="text-red-500">*</span>
@@ -1138,10 +1131,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                                 setFieldTouched('topic.title', true, false);
                               }}
                               disabled={isSubmitting}
-                              className={`inline-flex min-h-11 touch-manipulation items-center gap-2 rounded-full border-2 px-4 py-2 text-sm font-semibold transition-all duration-200 active:scale-[0.98] sm:px-5 ${
+                              className={`inline-flex min-h-10 touch-manipulation items-center gap-2 rounded-[10px] border-[1.5px] px-3.5 py-2 text-[13.5px] font-semibold transition-all duration-200 active:scale-[0.98] sm:px-5 ${
                                 isSelected
-                                  ? 'border-blue-600 bg-blue-600 text-white shadow-sm shadow-blue-600/20 hover:bg-blue-700'
-                                  : 'border-slate-300 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800'
+                                  ? 'border-[#1B2A4D] bg-[#1B2A4D] text-white shadow-sm'
+                                  : 'border-[#E4E8F1] bg-[#FBFBFD] text-[#5B6785] hover:border-[#1B2A4D]/30 hover:bg-[#F3F6FF]'
                               } ${isSubmitting ? 'cursor-not-allowed opacity-60' : ''}`}
                             >
                               {isSelected && <Check className="h-4 w-4" aria-hidden />}
@@ -1173,7 +1166,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               </div>
             </div>
 
-            {/* Step 3: Job Details */}
+            {/* Step 4: Additional Details */}
             <div id="cj-step-3" className={SECTION_CARD_CLASS}>
               <SectionTitle icon={Info} title="Additional Details" description="Set status, add remarks, and mark special job flags." />
               
@@ -1234,7 +1227,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               </div>
             </div>
 
-            {/* Step 4: Evidence Upload */}
+            {/* Step 5: Evidence Upload */}
             <div id="cj-step-4" className={SECTION_CARD_CLASS}>
               <SectionTitle icon={ImagePlus} title="Image Upload" description="Take photos or choose images, preview them, and remove mistakes before submitting." />
               
@@ -1280,7 +1273,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             </div>
-            <aside className="hidden xl:block">
+            <aside className="hidden">
               <div className="sticky top-24 space-y-4">
                 <SectionCard title="Maintenance job summary" description="Review before creating the job.">
                   <dl className="space-y-3 text-sm">
@@ -1353,8 +1346,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       }}
                       className={`h-14 w-full touch-manipulation rounded-xl text-base font-bold text-white shadow-md transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-100 sm:text-lg ${
                         allReady
-                          ? 'bg-blue-600 shadow-blue-600/30 hover:bg-blue-700 disabled:bg-blue-400'
-                          : 'bg-slate-700 shadow-slate-700/30 hover:bg-slate-800 disabled:bg-slate-400'
+                          ? 'bg-[#1B2A4D] hover:bg-[#243761] disabled:bg-[#5B6785]'
+                          : 'bg-[#1B2A4D] hover:bg-[#243761] disabled:bg-[#5B6785]'
                       }`}
                     >
                       {isSubmitting ? (
@@ -1377,8 +1370,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 </div>
               );
             })()}
+            </div>
           </Form>
-        )}
+          );
+        }}
       </Formik>
       )}
       </div>

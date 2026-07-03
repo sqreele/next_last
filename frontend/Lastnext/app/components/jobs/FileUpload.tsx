@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, ChangeEventHandler } from "react";
+import React, { useState, useCallback, useEffect, ChangeEventHandler, useId } from "react";
 import Image from "next/image";
 import { Upload, X, AlertCircle, CheckCircle2, Loader2, Camera, ImagePlus } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
@@ -31,6 +31,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [fileProgress, setFileProgress] = useState<{ [key: string]: number }>({});
   const [validationError, setValidationError] = useState<string | null>(null);
   const [loadedPreviews, setLoadedPreviews] = useState<Record<string, boolean>>({});
+  const generatedInputId = useId();
+  const inputId = `pcms-file-input-${generatedInputId}`;
 
   const validateFiles = useCallback(
     (files: File[]): string | null => {
@@ -161,7 +163,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       {/* Hidden file input — shared by all trigger buttons */}
       <input
-        id="pcms-file-input"
+        id={inputId}
         type="file"
         className="hidden"
         multiple
@@ -173,7 +175,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       {/* Mobile: two large tap buttons (Camera / Gallery) */}
       <div className="grid grid-cols-2 gap-3 sm:hidden">
         <label
-          htmlFor="pcms-file-input"
+          htmlFor={inputId}
           className={cn(
             "flex min-h-[80px] touch-manipulation flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50 px-3 py-4 text-center transition-colors active:bg-blue-100",
             disabled ? "pointer-events-none opacity-50" : "cursor-pointer"
@@ -183,7 +185,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
           <span className="text-xs font-semibold text-blue-700">Camera / Gallery</span>
         </label>
         <label
-          htmlFor="pcms-file-input"
+          htmlFor={inputId}
           className={cn(
             "flex min-h-[80px] touch-manipulation flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-center transition-colors active:bg-gray-100",
             disabled ? "pointer-events-none opacity-50" : "cursor-pointer"
@@ -209,7 +211,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onDrop={handleDrop}
       >
         <label
-          htmlFor="pcms-file-input"
+          htmlFor={inputId}
           className={cn(
             "flex flex-col items-center gap-2",
             disabled ? "pointer-events-none" : "cursor-pointer"

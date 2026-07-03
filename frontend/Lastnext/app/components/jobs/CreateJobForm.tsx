@@ -8,7 +8,7 @@ import { Button } from "@/app/components/ui/button";
 import { PageHeader, PriorityBadge, SectionCard, StatusBadge } from '@/app/components/pcms-ui';
 import { useT } from '@/app/lib/i18n/LocaleProvider';
 import { Textarea } from "@/app/components/ui/textarea";
-import { Plus, Loader, AlertCircle, CheckCircle, Upload, Search, Check } from 'lucide-react';
+import { Plus, Loader, AlertCircle, CheckCircle, Search, Check } from 'lucide-react';
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -20,12 +20,12 @@ import RoomAutocomplete from '@/app/components/jobs/RoomAutocomplete';
 import FileUpload from '@/app/components/jobs/FileUpload';
 import { Room, TopicFromAPI, Area } from '@/app/lib/types';
 import { useRouter } from 'next/navigation';
-import { useUser, useJobs } from '@/app/lib/stores/mainStore';
+import { useUser } from '@/app/lib/stores/mainStore';
 
 // Use Next.js API routes for proxying to the backend
 const MIN_LOADER_MS = 400; // Minimum time to show loader to avoid flash
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_FILES = 2; // Maximum number of images allowed
+const MAX_FILES_PER_STAGE = 2; // Maximum images allowed for before/after sections
 
 interface FormValues {
   description: string;
@@ -40,6 +40,7 @@ interface FormValues {
   area_id: number | null;
   floor: string | null;
   files: File[];
+  afterFiles: File[];
   is_defective: boolean;
   is_preventivemaintenance: boolean;
 }
@@ -86,8 +87,15 @@ const validationSchema = Yup.object().shape({
         .test('fileType', 'Only image files allowed', (value) => !value || !(value instanceof File) || value.type.startsWith('image/'))
     )
     .min(1, 'At least one image is required')
-    .max(MAX_FILES, `You can upload up to ${MAX_FILES} images`)
-    .required('At least one image is required'),
+    .max(MAX_FILES_PER_STAGE, `You can upload up to ${MAX_FILES_PER_STAGE} before images`)
+    .required('At least one before image is required'),
+  afterFiles: Yup.array()
+    .of(
+      Yup.mixed<File>()
+        .test('fileSize', 'File too large (max 5MB)', (value) => !value || !(value instanceof File) || value.size <= MAX_FILE_SIZE)
+        .test('fileType', 'Only image files allowed', (value) => !value || !(value instanceof File) || value.type.startsWith('image/'))
+    )
+    .max(MAX_FILES_PER_STAGE, `You can upload up to ${MAX_FILES_PER_STAGE} after images`),
   is_defective: Yup.boolean().default(false),
   is_preventivemaintenance: Yup.boolean().default(false),
 });
@@ -126,6 +134,7 @@ const initialValues: FormValues = {
   area_id: null,
   floor: null,
   files: [],
+  afterFiles: [],
   is_defective: false,
   is_preventivemaintenance: false,
 };
@@ -154,13 +163,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   }, []);
 
   const { selectedPropertyId: selectedProperty, setSelectedPropertyId: setSelectedProperty, userProfile } = useUser();
-  const { addJob } = useJobs();
-  
-  // Since we don't have triggerJobCreation in the new store, we'll create a simple counter
-  const [jobCreationCount, setJobCreationCount] = useState(0);
-  const triggerJobCreation = () => {
-    setJobCreationCount(prev => prev + 1);
-  };
   const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);
@@ -170,7 +172,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   const [isRoomLoading, setIsRoomLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPropertyId, setCurrentPropertyId] = useState<string | null>(null);
   const [categorySearch, setCategorySearch] = useState('');
@@ -258,8 +259,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     if (!files || files.length === 0) {
       return 'At least one image is required';
     }
-    if (files.length > MAX_FILES) {
-      return `You can upload up to ${MAX_FILES} images`;
+    if (files.length > MAX_FILES_PER_STAGE) {
+      return `You can upload up to ${MAX_FILES_PER_STAGE} images`;
     }
     for (const file of files) {
       if (file.size > MAX_FILE_SIZE) {
@@ -324,6 +325,17 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         return;
       }
 
+      if (values.afterFiles.length > 0) {
+        const afterFileError = validateFiles(values.afterFiles);
+        if (afterFileError) {
+          setError(afterFileError);
+          showErrorToast(afterFileError);
+          isSubmittingRef.current = false;
+          setSubmitting(false);
+          return;
+        }
+      }
+
       // All validations passed, proceed with submission
       const formData = new FormData();
       formData.append('description', values.description.trim());
@@ -346,7 +358,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       if (values.area_id != null) {
         formData.append('area_id', String(values.area_id));
       }
-      values.files.forEach(file => {
+      [...values.files, ...values.afterFiles].forEach(file => {
         formData.append('images', file);
       });
 
@@ -357,7 +369,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
       // Success - reset form and redirect
       resetForm();
-      triggerJobCreation();
       if (onJobCreated) onJobCreated();
       toast({
         title: 'Success',
@@ -1065,22 +1076,44 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Photo Evidence</h3>
               </div>
               
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                  Before Photo / Evidence (up to {MAX_FILES}) <span className="text-red-500">*</span>
-                </Label>
-                <FileUpload
-                  onFileSelect={(selectedFiles) => {
-                    setFieldValue('files', selectedFiles);
-                    setFieldTouched('files', true, false);
-                  }}
-                  error={(touched.files || submitCount > 0) && typeof errors.files === 'string' ? errors.files : undefined}
-                  disabled={isSubmitting}
-                  maxFiles={MAX_FILES}
-                />
-                <p className="text-xs font-medium text-slate-600 sm:text-sm">
-                  Upload before photos or evidence to document the issue. Max 5MB each.
-                </p>
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
+                    Before Photo / Evidence (up to {MAX_FILES_PER_STAGE}) <span className="text-red-500">*</span>
+                  </Label>
+                  <FileUpload
+                    onFileSelect={(selectedFiles) => {
+                      setFieldValue('files', selectedFiles);
+                      setFieldTouched('files', true, false);
+                    }}
+                    error={(touched.files || submitCount > 0) && typeof errors.files === 'string' ? errors.files : undefined}
+                    touched={Boolean(touched.files || submitCount > 0)}
+                    disabled={isSubmitting}
+                    maxFiles={MAX_FILES_PER_STAGE}
+                  />
+                  <p className="text-xs font-medium text-slate-600 sm:text-sm">
+                    Upload up to 2 before photos to document the issue. Max 5MB each.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
+                    After Photo / Evidence (up to {MAX_FILES_PER_STAGE})
+                  </Label>
+                  <FileUpload
+                    onFileSelect={(selectedFiles) => {
+                      setFieldValue('afterFiles', selectedFiles);
+                      setFieldTouched('afterFiles', true, false);
+                    }}
+                    error={(touched.afterFiles || submitCount > 0) && typeof errors.afterFiles === 'string' ? errors.afterFiles : undefined}
+                    touched={Boolean(touched.afterFiles || submitCount > 0)}
+                    disabled={isSubmitting}
+                    maxFiles={MAX_FILES_PER_STAGE}
+                  />
+                  <p className="text-xs font-medium text-slate-600 sm:text-sm">
+                    Optional: upload up to 2 after photos when the job is already fixed. Max 5MB each.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -1096,6 +1129,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Priority</dt><dd><PriorityBadge priority={values.priority} /></dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Assigned to</dt><dd className="font-semibold text-slate-900">{[session?.user?.first_name, session?.user?.last_name].filter(Boolean).join(' ') || session?.user?.username || 'Chief Engineer review'}</dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Before photo count</dt><dd className="font-semibold text-slate-900">{values.files.length}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">After photo count</dt><dd className="font-semibold text-slate-900">{values.afterFiles.length}</dd></div>
                   </dl>
                 </SectionCard>
               </div>

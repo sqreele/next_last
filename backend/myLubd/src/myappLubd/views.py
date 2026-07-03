@@ -82,7 +82,9 @@ GEMINI_SYSTEM_INSTRUCTION = """
 ก่อนตอบคำถามที่ต้องดึงข้อมูลระบบ ให้ตรวจสอบก่อนว่าผู้ใช้ระบุ property/สาขาแล้วหรือไม่ หากยังไม่ระบุ ให้ถามกลับว่า “ต้องการข้อมูลของ property อะไรครับ/คะ” และห้ามเรียก Tool เพื่อสรุปข้อมูลรวมทุก property
 หากผู้ใช้ระบุสาขา/property ให้ส่งชื่อสาขานั้นใน argument property_name ของ Tool ทุกตัวเสมอ
 หากผู้ใช้ระบุห้อง ให้ส่งชื่อหรือเลขห้องนั้นใน argument room_name ของ Tool get_maintenance_summary เสมอ
+หากผู้ใช้ถามรายละเอียดตามหมวดหมู่/category/topic เช่น งานระบบแอร์มีห้องไหนบ้าง ให้ใช้ category_details จาก Tool และแจกแจงห้อง/พื้นที่ที่เกี่ยวข้องพร้อมจำนวนงาน
 หากผู้ใช้ถามงานประจำรายเดือน รายปี ตารางงานซ้ำ หรือ recurring maintenance ให้เรียก Tool get_recurring_maintenance_tasks และส่ง property_name, year, month หรือ frequency ตามที่ผู้ใช้ระบุ
+หากผู้ใช้ถามงานประจำเดือนแต่ละเดือนว่ามีกี่งาน ให้ตอบจาก monthly.month_counts หรือ monthly.by_year ของ Tool get_recurring_maintenance_tasks เท่านั้น
 เมื่อได้รับผลลัพธ์จาก Tool แล้ว ให้สรุปจากข้อมูลดิบนั้นเท่านั้น และถ้าไม่มีข้อมูลใน Tool ให้บอกผู้ใช้อย่างตรงไปตรงมา
 """.strip()
 
@@ -183,6 +185,62 @@ def _resolve_room(room_name=None, property_obj=None):
     }
 
 
+def _resolve_topic(category_name=None):
+    search = str(category_name or '').strip()
+    if not search:
+        return None, None
+
+    topics = list(Topic.objects.all())
+    normalized_search = _normalize_search_text(search)
+    alias_map = {
+        'air': ['air', 'hvac', 'ac', 'แอร์', 'ปรับอากาศ'],
+        'ac': ['air', 'hvac', 'ac', 'แอร์', 'ปรับอากาศ'],
+        'hvac': ['air', 'hvac', 'ac', 'แอร์', 'ปรับอากาศ'],
+        'ระบบแอร์': ['air', 'hvac', 'ac', 'แอร์', 'ปรับอากาศ'],
+        'แอร์': ['air', 'hvac', 'ac', 'แอร์', 'ปรับอากาศ'],
+        'เครื่องปรับอากาศ': ['air', 'hvac', 'ac', 'แอร์', 'ปรับอากาศ'],
+    }
+
+    for topic in topics:
+        if search.lower() == topic.title.lower():
+            return topic, None
+
+    for topic in topics:
+        normalized_title = _normalize_search_text(topic.title)
+        if normalized_search and (
+            normalized_search in normalized_title
+            or normalized_title in normalized_search
+        ):
+            return topic, None
+
+    aliases = alias_map.get(search.lower()) or alias_map.get(search)
+    if aliases:
+        for topic in topics:
+            title = topic.title.lower()
+            normalized_title = _normalize_search_text(topic.title)
+            if any(alias.lower() in title or _normalize_search_text(alias) in normalized_title for alias in aliases):
+                return topic, None
+
+    best_topic = None
+    best_score = 0
+    for topic in topics:
+        score = SequenceMatcher(None, normalized_search, _normalize_search_text(topic.title)).ratio()
+        if score > best_score:
+            best_topic = topic
+            best_score = score
+
+    if best_topic and best_score >= 0.55:
+        return best_topic, None
+
+    return None, {
+        'requested_category': search,
+        'available_categories': [
+            {'id': topic.id, 'title': topic.title}
+            for topic in topics
+        ],
+    }
+
+
 def _serialize_user(user):
     if not user:
         return None
@@ -237,6 +295,8 @@ def _display_user_name_from_values(row):
 def _should_force_summary_tool(message):
     normalized = message.lower()
     keywords = [
+        'category',
+        'topic',
         'pm',
         'preventive',
         'สาขา',
@@ -260,6 +320,11 @@ def _should_force_summary_tool(message):
         'แยกเดือน',
         'เสียบ่อย',
         'รายละเอียดงาน',
+        'รายละเอียดของงาน',
+        'หมวดหมู่',
+        'ประเภทงาน',
+        'ระบบแอร์',
+        'แอร์',
         'งานซ่อม',
         'งานประจำ',
         'ประจำเดือน',
@@ -365,7 +430,99 @@ def _extract_room_name_from_message(message):
     return ''
 
 
-def get_maintenance_summary(property_name: str = "", room_name: str = ""):
+def _extract_category_name_from_message(message):
+    text = str(message or '')
+    normalized_text = _normalize_search_text(text)
+    if not normalized_text:
+        return ''
+
+    for topic in Topic.objects.all():
+        normalized_title = _normalize_search_text(topic.title)
+        if normalized_title and normalized_title in normalized_text:
+            return topic.title
+
+    matches = re.findall(
+        r'งาน\s*([A-Za-z0-9ก-๙ _.-]+?)(?:มี|อยู่|ของ|$)',
+        text,
+        flags=re.IGNORECASE,
+    )
+    for candidate in reversed(matches):
+        category = candidate.strip()
+        normalized_category = category.lower()
+        if category and not any(skip in normalized_category for skip in ['category', 'topic', 'หมวดหมู่', 'ประเภท', 'แต่ละ', 'เเต่ละ']):
+            return category
+
+    return ''
+
+
+def _build_category_details(jobs, job_ids, selected_topic=None):
+    topic_queryset = Topic.objects.annotate(
+        job_count=Count('jobs', filter=Q(jobs__id__in=job_ids), distinct=True)
+    ).filter(job_count__gt=0)
+    if selected_topic:
+        topic_queryset = topic_queryset.filter(pk=selected_topic.pk)
+
+    category_details = []
+    for topic in topic_queryset.order_by('-job_count', 'title')[:10]:
+        topic_jobs = jobs.filter(topics=topic).distinct()
+        topic_job_ids = list(topic_jobs.values_list('id', flat=True))
+        status_counts = list(
+            topic_jobs
+            .values('status')
+            .annotate(count=Count('id', distinct=True))
+            .order_by('status')
+        )
+        room_rows = list(
+            Room.objects
+            .annotate(job_count=Count('jobs', filter=Q(jobs__id__in=topic_job_ids), distinct=True))
+            .filter(job_count__gt=0)
+            .order_by('-job_count', 'room_type', 'name')
+            .values('room_id', 'name', 'room_type', 'job_count')[:20]
+        )
+        area_rows = list(
+            Area.objects
+            .annotate(job_count=Count('jobs', filter=Q(jobs__id__in=topic_job_ids), distinct=True))
+            .filter(job_count__gt=0)
+            .order_by('-job_count', 'name')
+            .values('id', 'name', 'job_count')[:20]
+        )
+        sample_jobs = (
+            topic_jobs
+            .prefetch_related('rooms', 'topics')
+            .select_related('area__property')
+            .order_by('-created_at')[:10]
+        )
+        category_details.append({
+            'category': topic.title,
+            'job_count': topic.job_count,
+            'status_counts': [
+                {'status': row['status'], 'count': row['count']}
+                for row in status_counts
+            ],
+            'rooms': [
+                {
+                    'room_id': row['room_id'],
+                    'name': row['name'],
+                    'room_type': row['room_type'],
+                    'jobs': row['job_count'],
+                }
+                for row in room_rows
+            ],
+            'areas': [
+                {
+                    'id': row['id'],
+                    'name': row['name'],
+                    'jobs': row['job_count'],
+                }
+                for row in area_rows
+            ],
+            'jobs': [_serialize_job(job) for job in sample_jobs],
+        })
+
+    return category_details
+
+
+def get_maintenance_summary(property_name: str = "", room_name: str = "", category_name: str = ""):
     """
     ดึงข้อมูลสรุปดิบของระบบแจ้งซ่อม HotelEngPro สำหรับให้ Gemini ใช้ตอบคำถามเชิงสถิติอย่างถูกต้อง
 
@@ -375,6 +532,7 @@ def get_maintenance_summary(property_name: str = "", room_name: str = ""):
     โดยผลลัพธ์เป็นข้อมูลจากระบบเท่านั้น เพื่อป้องกันไม่ให้ AI คิดตัวเลขเอง
     หากผู้ใช้ถามแยกตามสาขา ให้ส่งชื่อสาขาหรือ property id ผ่าน property_name
     หากผู้ใช้ถามแยกตามห้อง ให้ส่งชื่อ เลขห้อง หรือ room id ผ่าน room_name
+    หากผู้ใช้ถามเจาะจงหมวดหมู่/category/topic ให้ส่งชื่อหมวดหมู่ผ่าน category_name
 
     Returns:
         dict: ข้อมูลสรุปงานแจ้งซ่อม ประกอบด้วย total_jobs, completed, open, cancelled
@@ -392,6 +550,12 @@ def get_maintenance_summary(property_name: str = "", room_name: str = ""):
             'error': 'ROOM_NOT_FOUND',
             **room_error,
         }
+    topic_obj, topic_error = _resolve_topic(category_name)
+    if topic_error:
+        return {
+            'error': 'CATEGORY_NOT_FOUND',
+            **topic_error,
+        }
 
     jobs = Job.objects.all()
     if property_obj:
@@ -401,6 +565,8 @@ def get_maintenance_summary(property_name: str = "", room_name: str = ""):
         ).distinct()
     if room_obj:
         jobs = jobs.filter(rooms=room_obj).distinct()
+    if topic_obj:
+        jobs = jobs.filter(topics=topic_obj).distinct()
 
     totals = jobs.aggregate(
         total_jobs=Count('id', distinct=True),
@@ -423,6 +589,7 @@ def get_maintenance_summary(property_name: str = "", room_name: str = ""):
         .order_by('-job_count', 'room_type', 'name')
         .values('room_id', 'name', 'room_type', 'job_count')[:5]
     )
+    category_details = _build_category_details(jobs, job_ids, topic_obj)
     reporter_rows = list(
         jobs
         .annotate(year=ExtractYear('created_at'), month=ExtractMonth('created_at'))
@@ -678,6 +845,10 @@ def get_maintenance_summary(property_name: str = "", room_name: str = ""):
             'name': room_obj.name,
             'room_type': room_obj.room_type,
         } if room_obj else None,
+        'category': {
+            'id': topic_obj.id,
+            'title': topic_obj.title,
+        } if topic_obj else None,
         'total_jobs': totals['total_jobs'] or 0,
         'completed': totals['completed'] or 0,
         'open': open_jobs,
@@ -699,6 +870,7 @@ def get_maintenance_summary(property_name: str = "", room_name: str = ""):
         'top_technicians': top_technicians,
         'yearly_report_details': yearly_report_details,
         'monthly_report_details': monthly_report_details,
+        'category_details': category_details,
         'room_details': room_details,
         'preventive_maintenance': {
             'total': preventive_maintenance.count(),
@@ -733,6 +905,46 @@ def _safe_int(value):
         return int(value) if value not in (None, '') else None
     except (TypeError, ValueError):
         return None
+
+
+def _build_monthly_task_counts(monthly_tasks):
+    month_rows = list(
+        monthly_tasks
+        .annotate(year_value=ExtractYear('scheduled_date'), month_value=ExtractMonth('scheduled_date'))
+        .values('year_value', 'month_value')
+        .annotate(total=Count('id', distinct=True))
+        .order_by('year_value', 'month_value')
+    )
+    month_counts = [
+        {
+            'year': row['year_value'],
+            'month': row['month_value'],
+            'total': row['total'],
+        }
+        for row in month_rows
+    ]
+
+    totals_by_year_month = {
+        (row['year_value'], row['month_value']): row['total']
+        for row in month_rows
+        if row['year_value'] and row['month_value']
+    }
+    years = sorted({row['year_value'] for row in month_rows if row['year_value']})
+    by_year = [
+        {
+            'year': year,
+            'months': [
+                {
+                    'month': month,
+                    'total': totals_by_year_month.get((year, month), 0),
+                }
+                for month in range(1, 13)
+            ],
+        }
+        for year in years
+    ]
+
+    return month_counts, by_year
 
 
 def get_recurring_maintenance_tasks(property_name: str = '', frequency: str = '', year: int = 0, month: int = 0):
@@ -791,22 +1003,17 @@ def get_recurring_maintenance_tasks(property_name: str = '', frequency: str = ''
     )
     monthly_tasks = tasks.filter(frequency='monthly').order_by('scheduled_date', 'pmtitle')
     annual_tasks = tasks.filter(frequency='annual').order_by('scheduled_date', 'pmtitle')
+    monthly_month_counts, monthly_counts_by_year = _build_monthly_task_counts(monthly_tasks)
 
     monthly_by_month = []
-    for row in (
-        monthly_tasks
-        .annotate(year_value=ExtractYear('scheduled_date'), month_value=ExtractMonth('scheduled_date'))
-        .values('year_value', 'month_value')
-        .annotate(total=Count('id'))
-        .order_by('year_value', 'month_value')
-    ):
+    for row in monthly_month_counts:
         month_items = monthly_tasks.filter(
-            scheduled_date__year=row['year_value'],
-            scheduled_date__month=row['month_value'],
+            scheduled_date__year=row['year'],
+            scheduled_date__month=row['month'],
         )[:20]
         monthly_by_month.append({
-            'year': row['year_value'],
-            'month': row['month_value'],
+            'year': row['year'],
+            'month': row['month'],
             'total': row['total'],
             'items': [_serialize_preventive_maintenance(pm) for pm in month_items],
         })
@@ -840,6 +1047,8 @@ def get_recurring_maintenance_tasks(property_name: str = '', frequency: str = ''
         'status_counts': [{'status': row['status'], 'count': row['count']} for row in status_counts],
         'monthly': {
             'total': monthly_tasks.count(),
+            'month_counts': monthly_month_counts,
+            'by_year': monthly_counts_by_year,
             'by_month': monthly_by_month,
         },
         'annual': {
@@ -958,6 +1167,7 @@ def chat_with_gemini(request):
                 tool_result = get_maintenance_summary(
                     property_name=inferred_property_name,
                     room_name=_extract_room_name_from_message(message),
+                    category_name=_extract_category_name_from_message(message),
                 )
                 tool_part = types.Part.from_function_response(
                     name='get_maintenance_summary',
@@ -984,6 +1194,7 @@ def chat_with_gemini(request):
                 tool_result = get_maintenance_summary(
                     property_name=function_args.get('property_name') or function_args.get('branch_name') or inferred_property_name,
                     room_name=function_args.get('room_name') or function_args.get('room') or '',
+                    category_name=function_args.get('category_name') or function_args.get('category') or function_args.get('topic') or '',
                 )
             elif function_call.name == 'get_recurring_maintenance_tasks':
                 tool_result = get_recurring_maintenance_tasks(

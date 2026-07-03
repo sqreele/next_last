@@ -8,7 +8,7 @@ import { Button } from "@/app/components/ui/button";
 import { PriorityBadge, SectionCard, StatusBadge } from '@/app/components/pcms-ui';
 import { useT } from '@/app/lib/i18n/LocaleProvider';
 import { Textarea } from "@/app/components/ui/textarea";
-import { Plus, Loader, AlertCircle, CheckCircle, Search, Check, ArrowLeft, ClipboardList, MapPin, Info, ImagePlus, Wrench, ShieldAlert, CalendarCheck, X, Building2, Layers3, DoorOpen, Tag } from 'lucide-react';
+import { Plus, Loader, AlertCircle, CheckCircle, Search, Check, ArrowLeft, ClipboardList, MapPin, Info, ImagePlus, Wrench, ShieldAlert, CalendarCheck, X, Layers3, DoorOpen, Tag } from 'lucide-react';
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -139,8 +139,8 @@ const initialValues: FormValues = {
   is_preventivemaintenance: false,
 };
 
-const SECTION_CARD_CLASS = 'scroll-mt-40 rounded-[16px] border border-[#E4E8F1] bg-white p-4 shadow-none sm:p-5';
-const FORM_SHELL_CLASS = 'mx-auto min-h-screen w-full max-w-[480px] overflow-x-hidden bg-[#F3F5FA] pb-32 text-[#16233F]';
+const SECTION_CARD_CLASS = 'scroll-mt-32 rounded-lg border border-[#E4E8F1] bg-white p-4 shadow-sm shadow-slate-200/60 sm:p-5 xl:p-6';
+const FORM_SHELL_CLASS = 'mx-auto min-h-screen w-full max-w-7xl overflow-x-hidden bg-[#F3F5FA] pb-32 text-[#16233F] md:pb-8';
 
 function RequiredMark() {
   return <span className="text-red-500" aria-label="required">*</span>;
@@ -185,10 +185,10 @@ function CreateJobHeader({ onBack, progress, stepStatus }: { onBack: () => void;
 
   return (
     <header
-      className="sticky top-0 z-30 rounded-b-[20px] bg-[#1B2A4D] px-4 pb-4 pt-3 text-white shadow-[0_6px_18px_rgba(20,30,60,0.18)]"
+      className="sticky top-0 z-30 rounded-b-lg bg-[#1B2A4D] px-4 pb-4 pt-3 text-white shadow-[0_6px_18px_rgba(20,30,60,0.18)] md:top-3 md:rounded-lg md:px-5 xl:px-6"
       style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 md:gap-4">
         <button
           type="button"
           onClick={onBack}
@@ -198,12 +198,12 @@ function CreateJobHeader({ onBack, progress, stepStatus }: { onBack: () => void;
           <ArrowLeft className="h-[18px] w-[18px]" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[17px] font-bold leading-tight">New Job Order</h1>
+          <h1 className="truncate text-[17px] font-bold leading-tight md:text-xl">New Job Order</h1>
           <p className="mt-0.5 text-xs text-[#B9C2DA]">Facilities &amp; Maintenance</p>
         </div>
         <ProgressRing percent={progress} />
       </div>
-      <nav className="mt-3 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Form sections">
+      <nav className="mt-3 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] md:flex-wrap [&::-webkit-scrollbar]:hidden" aria-label="Form sections">
         {steps.map((step, index) => {
           const done = stepStatus[index];
           return (
@@ -317,6 +317,17 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
   }, []);
+
+  const selectedPropertyLabel = React.useMemo(() => {
+    const activeProperty = selectedProperty || currentPropertyId;
+    if (!activeProperty) return '';
+
+    const matchedProperty = userProfile?.properties?.find(
+      (property) => propertyValue(property) === activeProperty,
+    );
+
+    return matchedProperty ? propertyLabel(matchedProperty) : '';
+  }, [currentPropertyId, selectedProperty, userProfile?.properties]);
 
   const formatApiError = (error: unknown, fallbackMessage: string): string => {
     if (!axios.isAxiosError(error)) {
@@ -665,13 +676,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
           return (
           <Form className="relative space-y-4" noValidate>
             <CreateJobHeader onBack={() => window.history.back()} progress={progress} stepStatus={stepStatus} />
-            <div className="px-4 pt-4">
+            <div className="px-0 pt-4 sm:px-1 md:px-0">
 
           {/* Completion state per step — drives the bottom CTA hint. */}
 
 
-          <div className="grid w-full gap-4">
-          <div className="space-y-4">
+          <div className="grid w-full gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
+          <div className="grid gap-4 lg:grid-cols-2 xl:gap-5">
           {/* Upload loading overlay */}
           {isSubmitting && (
             <div
@@ -689,7 +700,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
           )}
           {/* Step 1: Status & Priority */}
-            <div id="cj-step-1" className={SECTION_CARD_CLASS}>
+            <div id="cj-step-1" className={`${SECTION_CARD_CLASS} lg:col-span-2`}>
               <SectionTitle icon={ClipboardList} title="Job Information" description="Describe the issue and choose how the team should handle it." />
               
               <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
@@ -841,7 +852,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Step 2: Assignment & Location */}
-            <div id="cj-step-2" className={SECTION_CARD_CLASS}>
+            <div id="cj-step-2" className={`${SECTION_CARD_CLASS} lg:col-span-2`}>
               <SectionTitle icon={MapPin} title="Location" description="Where is this job located? Follow property, area, floor, then room." />
               <div className="mb-4 flex gap-2 rounded-[10px] border border-[#DCE4FA] bg-[#F3F6FF] p-3 text-[12.5px] leading-5 text-[#243761]">
                 <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
@@ -1015,15 +1026,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                   )}
                 </div>
 
-                {(selectedProperty || values.area_id || values.floor || values.room) && (
+                {(values.area_id || values.floor || values.room) && (
                   <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                     <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Selected location</p>
                     <div className="flex flex-wrap gap-2">
-                      {selectedProperty && (
-                        <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-white px-3 py-1 text-sm font-bold text-slate-700 shadow-sm">
-                          <Building2 className="h-4 w-4" /> {selectedProperty}
-                        </span>
-                      )}
                       {values.area_id && (
                         <button type="button" onClick={() => { setFieldValue('area_id', null); setFieldValue('floor', null); setFieldValue('room', null); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
                           <MapPin className="h-4 w-4" /> {areas.find((area) => area.id === values.area_id)?.name || 'Area'} <X className="h-3.5 w-3.5" />
@@ -1228,7 +1234,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Step 5: Evidence Upload */}
-            <div id="cj-step-4" className={SECTION_CARD_CLASS}>
+            <div id="cj-step-4" className={`${SECTION_CARD_CLASS} lg:col-span-2`}>
               <SectionTitle icon={ImagePlus} title="Image Upload" description="Take photos or choose images, preview them, and remove mistakes before submitting." />
               
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -1273,19 +1279,38 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             </div>
-            <aside className="hidden">
-              <div className="sticky top-24 space-y-4">
+            <aside className="hidden xl:block">
+              <div className="sticky top-28 space-y-4">
                 <SectionCard title="Maintenance job summary" description="Review before creating the job.">
                   <dl className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Property</dt><dd className="font-semibold text-slate-900">{selectedProperty || 'Select property'}</dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Room / Area</dt><dd className="font-semibold text-slate-900">{values.room?.name || 'Select room'}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Property</dt><dd className="text-right font-semibold text-slate-900">{selectedPropertyLabel || 'Select property'}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Area</dt><dd className="text-right font-semibold text-slate-900">{areas.find((area) => area.id === values.area_id)?.name || 'Select area'}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Room</dt><dd className="text-right font-semibold text-slate-900">{values.room?.name || 'Select room'}</dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Category</dt><dd className="font-semibold text-slate-900">{values.topic.title || 'Select category'}</dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Status</dt><dd><StatusBadge status={values.status} size="sm" /></dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Priority</dt><dd><PriorityBadge priority={values.priority} /></dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Assigned to</dt><dd className="font-semibold text-slate-900">{[session?.user?.first_name, session?.user?.last_name].filter(Boolean).join(' ') || session?.user?.username || 'Chief Engineer review'}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Assigned to</dt><dd className="text-right font-semibold text-slate-900">{[session?.user?.first_name, session?.user?.last_name].filter(Boolean).join(' ') || session?.user?.username || 'Chief Engineer review'}</dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Before photo count</dt><dd className="font-semibold text-slate-900">{values.files.length}</dd></div>
                     <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">After photo count</dt><dd className="font-semibold text-slate-900">{values.afterFiles.length}</dd></div>
                   </dl>
+                </SectionCard>
+                <SectionCard title="Progress" description="Desktop review">
+                  <div className="space-y-3">
+                    {([
+                      ['Job details', stepStatus[0]],
+                      ['Location', stepStatus[1]],
+                      ['Category', stepStatus[2]],
+                      ['Additional', stepStatus[3]],
+                      ['Photos', stepStatus[4]],
+                    ] as Array<[string, boolean]>).map(([label, done]) => (
+                      <div key={String(label)} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="font-medium text-slate-600">{label}</span>
+                        <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-bold ${done ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {done ? 'Done' : 'Open'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </SectionCard>
               </div>
             </aside>

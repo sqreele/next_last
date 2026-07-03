@@ -1,0 +1,8 @@
+{
+  "/api/auth/session-compat/route": "app/api/auth/session-compat/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/dashboard/my-jobs/page": "app/dashboard/my-jobs/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/areas/page": "app/dashboard/areas/page.js",
+  "/dashboard/create-job/page": "app/dashboard/create-job/page.js"
+}

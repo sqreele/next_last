@@ -41,9 +41,9 @@ export default async function CreateJobPage() {
   }
 
   return (
-    <div className="w-full px-3 pb-4 pt-2 sm:px-4 md:px-5">
+    <div className="w-full bg-[#F3F5FA] px-3 pb-6 pt-2 sm:px-4 md:px-6 xl:px-8">
       <Suspense fallback={
-        <div className="pcms-section-card flex items-center justify-center py-12">
+        <div className="mx-auto flex min-h-[60vh] w-full max-w-7xl items-center justify-center rounded-lg border border-slate-200 bg-white py-12 shadow-sm">
           <div className="flex flex-col items-center gap-4">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-[var(--pcms-primary)]"></div>
             <p className="text-sm text-[var(--pcms-text-muted)]">Loading...</p>

@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
-import { Printer, ArrowLeft } from 'lucide-react';
+import { Printer, ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { Job, Property } from '@/app/lib/types';
 import { Button } from '@/app/components/ui/button';
 import { StatusBadge, PriorityBadge } from '@/app/components/pcms-ui';
@@ -62,7 +62,30 @@ function getPropertyName(job: Job, properties: Property[]): string {
   );
 }
 
+function buildPdfFilename(jobId: string | undefined): string {
+  const safeJobId = String(jobId || 'work-order').replace(/[^a-z0-9_-]+/gi, '-');
+  const date = new Date().toISOString().slice(0, 10);
+  return `work-order-${safeJobId}-${date}.pdf`;
+}
+
+async function waitForImages(container: HTMLElement) {
+  const images = Array.from(container.querySelectorAll('img'));
+  await Promise.all(
+    images.map((image) => {
+      if (image.complete) return Promise.resolve();
+      return new Promise<void>((resolve) => {
+        image.onload = () => resolve();
+        image.onerror = () => resolve();
+      });
+    }),
+  );
+}
+
 export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps) {
+  const printableContentRef = useRef<HTMLDivElement | null>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
   // Auto-trigger the browser's print dialog when ?auto=1 is present so we
   // can deep-link "Print" buttons that go straight to paper.
   useEffect(() => {
@@ -103,6 +126,55 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
     job.room_name ||
     '—';
 
+  const handleDownloadPdf = async () => {
+    const printableContent = printableContentRef.current;
+    if (!printableContent || isDownloadingPdf) return;
+
+    setIsDownloadingPdf(true);
+    setPdfError(null);
+    try {
+      await waitForImages(printableContent);
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+
+      const canvas = await html2canvas(printableContent, {
+        scale: Math.min(2, window.devicePixelRatio || 1),
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const imageData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const targetWidth = pageWidth - margin * 2;
+      const renderedHeight = (canvas.height * targetWidth) / canvas.width;
+      let heightLeft = renderedHeight;
+      let position = margin;
+
+      pdf.addImage(imageData, 'PNG', margin, position, targetWidth, renderedHeight);
+      heightLeft -= pageHeight - margin * 2;
+
+      while (heightLeft > 0) {
+        position = heightLeft - renderedHeight + margin;
+        pdf.addPage();
+        pdf.addImage(imageData, 'PNG', margin, position, targetWidth, renderedHeight);
+        heightLeft -= pageHeight - margin * 2;
+      }
+
+      pdf.save(buildPdfFilename(job.job_id));
+    } catch (error) {
+      console.error('Failed to download work order PDF:', error);
+      setPdfError('Could not download PDF. Please try Print instead.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   return (
     <div className="print-work-order mx-auto max-w-3xl bg-white text-slate-900">
       {/* Print-only stylesheet keeps the on-screen layout intact for review. */}
@@ -133,17 +205,38 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
         <p className="text-sm font-bold text-slate-700">
           Printable work order · #{job.job_id}
         </p>
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => window.print()}
-          className="h-9 bg-blue-600 text-white hover:bg-blue-700"
-        >
-          <Printer className="mr-1 h-4 w-4" /> Print
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleDownloadPdf}
+            disabled={isDownloadingPdf}
+            className="h-9 bg-emerald-600 text-white hover:bg-emerald-700"
+          >
+            {isDownloadingPdf ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="mr-1 h-4 w-4" />
+            )}
+            PDF
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => window.print()}
+            className="h-9 bg-blue-600 text-white hover:bg-blue-700"
+          >
+            <Printer className="mr-1 h-4 w-4" /> Print
+          </Button>
+        </div>
       </div>
+      {pdfError && (
+        <div className="no-print border-b border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">
+          {pdfError}
+        </div>
+      )}
 
-      <div className="px-8 py-8 sm:px-10">
+      <div ref={printableContentRef} className="bg-white px-8 py-8 sm:px-10">
         <header className="flex items-start justify-between gap-6 border-b-2 border-slate-900 pb-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500">

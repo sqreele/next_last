@@ -33,6 +33,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [loadedPreviews, setLoadedPreviews] = useState<Record<string, boolean>>({});
   const generatedInputId = useId();
   const inputId = `pcms-file-input-${generatedInputId}`;
+  const cameraInputId = `pcms-camera-input-${generatedInputId}`;
 
   const validateFiles = useCallback(
     (files: File[]): string | null => {
@@ -171,18 +172,28 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onChange={handleFileChange}
         disabled={disabled}
       />
+      <input
+        id={cameraInputId}
+        type="file"
+        className="hidden"
+        multiple
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileChange}
+        disabled={disabled}
+      />
 
       {/* Mobile: two large tap buttons (Camera / Gallery) */}
       <div className="grid grid-cols-2 gap-3 sm:hidden">
         <label
-          htmlFor={inputId}
+          htmlFor={cameraInputId}
           className={cn(
             "flex min-h-[80px] touch-manipulation flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50 px-3 py-4 text-center transition-colors active:bg-blue-100",
             disabled ? "pointer-events-none opacity-50" : "cursor-pointer"
           )}
         >
           <Camera className="h-7 w-7 text-blue-500" />
-          <span className="text-xs font-semibold text-blue-700">Camera / Gallery</span>
+          <span className="text-xs font-semibold text-blue-700">Take Photo</span>
         </label>
         <label
           htmlFor={inputId}

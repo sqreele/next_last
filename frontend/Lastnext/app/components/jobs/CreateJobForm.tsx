@@ -5,10 +5,10 @@ import { Formik, Form, Field, FormikErrors } from 'formik';
 import * as Yup from 'yup';
 import axios from 'axios';
 import { Button } from "@/app/components/ui/button";
-import { PageHeader, PriorityBadge, SectionCard, StatusBadge } from '@/app/components/pcms-ui';
+import { PriorityBadge, SectionCard, StatusBadge } from '@/app/components/pcms-ui';
 import { useT } from '@/app/lib/i18n/LocaleProvider';
 import { Textarea } from "@/app/components/ui/textarea";
-import { Plus, Loader, AlertCircle, CheckCircle, Search, Check } from 'lucide-react';
+import { Plus, Loader, AlertCircle, CheckCircle, Search, Check, ArrowLeft, HelpCircle, ClipboardList, MapPin, Info, ImagePlus, Wrench, ShieldAlert, CalendarCheck, X, Building2, Layers3, DoorOpen } from 'lucide-react';
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -18,7 +18,7 @@ import { Label } from "@/app/components/ui/label";
 import { Input } from "@/app/components/ui/input";
 import RoomAutocomplete from '@/app/components/jobs/RoomAutocomplete';
 import FileUpload from '@/app/components/jobs/FileUpload';
-import { Room, TopicFromAPI, Area } from '@/app/lib/types';
+import { Room, TopicFromAPI, Area, Property } from '@/app/lib/types';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/app/lib/stores/mainStore';
 
@@ -105,7 +105,7 @@ const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
   { value: 'high', label: 'High' },
-  { value: 'critical', label: 'Critical' },
+  { value: 'critical', label: 'Urgent' },
 ];
 
 const STATUS_SELECT_CLASSES: Record<string, string> = {
@@ -137,6 +137,78 @@ const initialValues: FormValues = {
   afterFiles: [],
   is_defective: false,
   is_preventivemaintenance: false,
+};
+
+const SECTION_CARD_CLASS = 'scroll-mt-24 rounded-[1.75rem] border border-slate-200/80 bg-white p-4 shadow-[0_12px_40px_rgba(15,23,42,0.06)] sm:p-6';
+
+function RequiredMark() {
+  return <span className="text-red-500" aria-label="required">*</span>;
+}
+
+function CreateJobHeader({ onCancel }: { onCancel: () => void }) {
+  return (
+    <header
+      className="sticky top-0 z-30 -mx-3 border-b border-slate-200/80 bg-white/95 px-3 py-2 backdrop-blur-xl sm:-mx-4 sm:px-4 md:rounded-b-3xl md:border-x md:shadow-sm"
+      style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
+    >
+      <div className="mx-auto flex min-h-12 max-w-5xl items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 active:scale-95"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <div className="min-w-0 text-center">
+          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-blue-600">Maintenance</p>
+          <h1 className="truncate text-lg font-black text-slate-950 sm:text-xl">Create Job</h1>
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex h-11 w-11 touch-manipulation items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 active:scale-95"
+          aria-label="Cancel and close create job"
+        >
+          <X className="h-5 w-5 sm:hidden" />
+          <HelpCircle className="hidden h-5 w-5 sm:block" />
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function SectionTitle({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description: string }) {
+  return (
+    <div className="mb-4 flex items-start gap-3 sm:mb-6">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+        <Icon className="h-5 w-5" aria-hidden />
+      </div>
+      <div className="min-w-0">
+        <h2 className="text-lg font-black text-slate-950 sm:text-xl">{title}</h2>
+        <p className="text-sm font-medium leading-5 text-slate-500">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function LoadingSkeleton({ label }: { label: string }) {
+  return (
+    <div className="space-y-2" role="status" aria-live="polite">
+      <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+      <p className="text-xs font-semibold text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+const propertyLabel = (property: Property | string | number) => {
+  if (typeof property === 'string' || typeof property === 'number') return String(property);
+  return property.name || property.property_id || String(property.id);
+};
+
+const propertyValue = (property: Property | string | number) => {
+  if (typeof property === 'string' || typeof property === 'number') return String(property);
+  return property.property_id || String(property.id);
 };
 
 const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }) => {
@@ -495,7 +567,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   ];
 
   return (
-    <div className="space-y-4 pb-32 sm:space-y-6 sm:pb-32 md:space-y-8 md:pb-6">
+    <div className="min-h-screen overflow-x-hidden bg-slate-50 pb-32 text-slate-950 sm:pb-32 md:rounded-[2rem] md:pb-8">
+      <CreateJobHeader onCancel={() => router.push('/dashboard/jobs')} />
+      <div className="mx-auto w-full max-w-5xl space-y-4 px-3 pt-4 sm:px-4 sm:pt-5 md:px-6">
       {/* Error Alert */}
       {error && (
         <Alert className="border-red-300 bg-red-50">
@@ -536,8 +610,12 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         onSubmit={handleSubmit}
       >
         {({ values, errors, touched, submitCount, setFieldValue, setFieldTouched, isSubmitting }) => (
-                  <Form className="relative space-y-5 sm:space-y-6 md:space-y-8">
-          <PageHeader title={t('createJob.title')} description={t('createJob.subtitle')} />
+                  <Form className="relative space-y-5 sm:space-y-6 md:space-y-8" noValidate>
+          <div className="rounded-[1.75rem] border border-blue-100 bg-gradient-to-br from-blue-600 to-cyan-500 p-4 text-white shadow-lg shadow-blue-900/10 sm:p-6">
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-blue-100">New maintenance request</p>
+            <h2 className="mt-2 text-2xl font-black">Create a job in minutes</h2>
+            <p className="mt-1 max-w-2xl text-sm font-medium text-blue-50">Capture the issue, location, priority, type, and photo evidence with a mobile-first workflow.</p>
+          </div>
 
           {/* Completion state per step — drives the stepper and the bottom CTA hint. */}
           {(() => {
@@ -553,7 +631,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 {/* Sticky mobile stepper — clickable, completion-aware */}
                 <nav
                   aria-label="Form steps"
-                  className="sticky top-0 z-10 -mx-3 border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur sm:-mx-6 sm:px-6 xl:hidden"
+                  className="sticky top-[61px] z-10 -mx-3 border-b border-slate-200 bg-white/95 px-3 py-2 backdrop-blur sm:-mx-6 sm:px-6 xl:hidden"
                   style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
                 >
                   <div className="mb-1 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -629,17 +707,14 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
           )}
           {/* Step 1: Status & Priority */}
-            <div id="cj-step-1" className="w-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-6 scroll-mt-24">
-              <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">1</div>
-                <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Status &amp; Priority</h3>
-              </div>
+            <div id="cj-step-1" className={SECTION_CARD_CLASS}>
+              <SectionTitle icon={ClipboardList} title="Job Information" description="Describe the issue and choose how the team should handle it." />
               
               <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                 {/* Description */}
                 <div className="md:col-span-2 space-y-2">
                   <Label htmlFor="description" className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Job Description <span className="text-red-500">*</span>
+                    Job Description <RequiredMark />
                   </Label>
                   <Field
                     as={Textarea}
@@ -743,17 +818,81 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     </p>
                   )}
                 </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
+                    Job Type <RequiredMark />
+                  </Label>
+                  <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Job type">
+                    {[
+                      { key: 'work_order', label: 'Work Order', description: 'Standard maintenance task', icon: Wrench, active: !values.is_defective && !values.is_preventivemaintenance },
+                      { key: 'defect', label: 'Defect', description: 'Fault or issue found', icon: ShieldAlert, active: values.is_defective },
+                      { key: 'pm', label: 'Preventive Maintenance', description: 'Planned recurring care', icon: CalendarCheck, active: values.is_preventivemaintenance },
+                    ].map((type) => (
+                      <button
+                        key={type.key}
+                        type="button"
+                        role="radio"
+                        aria-checked={type.active}
+                        disabled={isSubmitting}
+                        onClick={() => {
+                          setFieldValue('is_defective', type.key === 'defect');
+                          setFieldValue('is_preventivemaintenance', type.key === 'pm');
+                        }}
+                        className={`min-h-[72px] touch-manipulation rounded-2xl border-2 p-3 text-left transition-all focus:outline-none focus:ring-4 focus:ring-blue-100 active:scale-[0.98] ${
+                          type.active
+                            ? 'border-blue-600 bg-blue-50 text-blue-950 shadow-sm'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50/50'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 font-black">
+                          <type.icon className="h-5 w-5" aria-hidden />
+                          {type.label}
+                          {type.active && <Check className="ml-auto h-4 w-4" aria-hidden />}
+                        </span>
+                        <span className="mt-1 block text-xs font-semibold text-slate-500">{type.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Step 2: Assignment & Location */}
-            <div id="cj-step-2" className="w-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-6 scroll-mt-24">
-              <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-green-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">2</div>
-                <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Location &amp; Room</h3>
-              </div>
+            <div id="cj-step-2" className={SECTION_CARD_CLASS}>
+              <SectionTitle icon={MapPin} title="Location" description="Follow the sequence: property, area, floor, then room." />
               
               <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
+                    Property <RequiredMark />
+                  </Label>
+                  <Select
+                    value={selectedProperty || currentPropertyId || ''}
+                    onValueChange={(value) => {
+                      setSelectedProperty(value);
+                      setCurrentPropertyId(value);
+                      setFieldValue('area_id', null);
+                      setFieldValue('floor', null);
+                      setFieldValue('room', null);
+                      setFloors([]);
+                      setRooms([]);
+                    }}
+                    disabled={isSubmitting || !hasProperties}
+                  >
+                    <SelectTrigger className="h-12 rounded-2xl border-2 border-slate-300 bg-white text-slate-900 shadow-sm">
+                      <SelectValue placeholder={hasProperties ? 'Select property' : 'No properties available'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {userProfile?.properties?.map((property) => (
+                        <SelectItem key={propertyValue(property)} value={propertyValue(property)}>
+                          {propertyLabel(property)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Area Selection - required if no room selected */}
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-slate-900 sm:text-base">
@@ -881,6 +1020,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                   {values.floor && !isRoomLoading && rooms.length === 0 && (
                     <p className="text-sm font-medium text-slate-600">No rooms found for this floor</p>
                   )}
+                  {isRoomLoading && <LoadingSkeleton label="Loading available rooms without refreshing the page..." />}
                   {(touched.room || submitCount > 0) && errors.room && (
                     <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
                       <AlertCircle className="h-4 w-4" />
@@ -888,6 +1028,34 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     </p>
                   )}
                 </div>
+
+                {(selectedProperty || values.area_id || values.floor || values.room) && (
+                  <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Selected location</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProperty && (
+                        <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-white px-3 py-1 text-sm font-bold text-slate-700 shadow-sm">
+                          <Building2 className="h-4 w-4" /> {selectedProperty}
+                        </span>
+                      )}
+                      {values.area_id && (
+                        <button type="button" onClick={() => { setFieldValue('area_id', null); setFieldValue('floor', null); setFieldValue('room', null); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
+                          <MapPin className="h-4 w-4" /> {areas.find((area) => area.id === values.area_id)?.name || 'Area'} <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {values.floor && (
+                        <button type="button" onClick={() => { setFieldValue('floor', null); setFieldValue('room', null); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-indigo-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
+                          <Layers3 className="h-4 w-4" /> Floor {values.floor} <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      {values.room && (
+                        <button type="button" onClick={() => setFieldValue('room', null)} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
+                          <DoorOpen className="h-4 w-4" /> {values.room.name} <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Topic Selection */}
                 <div className="md:col-span-2 space-y-3">
@@ -1006,11 +1174,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Step 3: Job Details */}
-            <div id="cj-step-3" className="w-full rounded-2xl border border-purple-200 bg-purple-50 p-3 shadow-sm sm:p-6 scroll-mt-24">
-              <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-600 text-sm font-black text-white shadow sm:h-9 sm:w-9">3</div>
-                <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Job Details</h3>
-              </div>
+            <div id="cj-step-3" className={SECTION_CARD_CLASS}>
+              <SectionTitle icon={Info} title="Additional Details" description="Set status, add remarks, and mark special job flags." />
               
               <div className="space-y-4 sm:space-y-6">
                 {/* Remarks */}
@@ -1070,11 +1235,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
 
             {/* Step 4: Evidence Upload */}
-            <div id="cj-step-4" className="w-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-6 scroll-mt-24">
-              <div className="mb-4 flex items-center gap-2 sm:mb-6 sm:gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500 text-sm font-black text-white shadow sm:h-9 sm:w-9">4</div>
-                <h3 className="text-lg font-bold text-slate-900 sm:text-xl">Photo Evidence</h3>
-              </div>
+            <div id="cj-step-4" className={SECTION_CARD_CLASS}>
+              <SectionTitle icon={ImagePlus} title="Image Upload" description="Take photos or choose images, preview them, and remove mistakes before submitting." />
               
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <div className="space-y-2">
@@ -1219,6 +1381,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
         )}
       </Formik>
       )}
+      </div>
     </div>
   );
 };

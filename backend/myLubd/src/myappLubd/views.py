@@ -275,17 +275,26 @@ def _should_force_summary_tool(message):
 
 def _should_force_recurring_tool(message):
     normalized = message.lower()
-    keywords = [
+    if any(keyword in normalized for keyword in ['แจ้งซ่อม', 'งานซ่อม', 'repair request', 'work order']):
+        return False
+
+    explicit_recurring_keywords = [
         'งานประจำ',
-        'ประจำเดือน',
-        'ประจำปี',
-        'รายเดือน',
-        'รายปี',
+        'ตารางงาน',
+        'งานซ้ำ',
         'recurring',
         'routine',
         'schedule',
     ]
-    return any(keyword in normalized for keyword in keywords)
+    if any(keyword in normalized for keyword in explicit_recurring_keywords):
+        return True
+
+    pm_keywords = ['pm', 'preventive', 'preventive maintenance']
+    frequency_keywords = ['ประจำเดือน', 'ประจำปี', 'รายเดือน', 'รายปี', 'monthly', 'annual', 'yearly']
+    return (
+        any(keyword in normalized for keyword in pm_keywords)
+        and any(keyword in normalized for keyword in frequency_keywords)
+    )
 
 
 def _extract_year_month_from_message(message):

@@ -726,7 +726,7 @@ def _safe_int(value):
         return None
 
 
-def get_recurring_maintenance_tasks(property_name: str = '', frequency: str = '', year=None, month=None):
+def get_recurring_maintenance_tasks(property_name: str = '', frequency: str = '', year: int = 0, month: int = 0):
     """
     ดึงรายการงานประจำ/งาน PM ที่เกิดซ้ำเป็นรายเดือนหรือรายปีสำหรับให้ AI chat ตอบคำถาม
     เช่น งานประจำเดือนนี้ งานประจำรายเดือนของสาขา งานประจำปี หรือตาราง recurring maintenance

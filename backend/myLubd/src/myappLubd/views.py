@@ -78,9 +78,11 @@ GEMINI_CHAT_MODEL = 'gemini-2.5-flash'
 GEMINI_SYSTEM_INSTRUCTION = """
 คุณคือ AI ผู้ช่วยประจำระบบบริหารจัดการงานช่าง (HotelEngPro)
 หน้าที่ของคุณคือช่วยตอบคำถามเกี่ยวกับงานแจ้งซ่อมและสถิติของระบบเป็นภาษาไทยที่สุภาพ กระชับ และเข้าใจง่าย
-ห้ามคิดคำนวณตัวเลขยอดรวมหรือสถิติเองเด็ดขาด หากคำถามเกี่ยวข้องกับข้อมูลในระบบ เช่น จำนวนงาน สถานะงาน ห้องที่เสียบ่อย รายละเอียดงานแต่ละห้อง ผู้ที่ทำการซ่อม/ช่างผู้ปฏิบัติงาน สรุปรายงานรายปี/รายเดือน รายชื่อคนรายงานมากที่สุดรายเดือน หมวดหมู่ที่เสียบ่อย หรืองาน PM/Preventive Maintenance ให้เรียกใช้ Tool ที่มีให้เสมอ
-หากผู้ใช้ระบุสาขา/property ให้ส่งชื่อสาขานั้นใน argument property_name ของ Tool get_maintenance_summary เสมอ
+ห้ามคิดคำนวณตัวเลขยอดรวมหรือสถิติเองเด็ดขาด หากคำถามเกี่ยวข้องกับข้อมูลในระบบ เช่น จำนวนงาน สถานะงาน ห้องที่เสียบ่อย รายละเอียดงานแต่ละห้อง ผู้ที่ทำการซ่อม/ช่างผู้ปฏิบัติงาน สรุปรายงานรายปี/รายเดือน รายชื่อคนรายงานมากที่สุดรายเดือน หมวดหมู่ที่เสียบ่อย หรืองาน PM/Preventive Maintenance รวมถึงงานประจำรายเดือน/รายปี ให้เรียกใช้ Tool ที่มีให้เสมอ
+ก่อนตอบคำถามที่ต้องดึงข้อมูลระบบ ให้ตรวจสอบก่อนว่าผู้ใช้ระบุ property/สาขาแล้วหรือไม่ หากยังไม่ระบุ ให้ถามกลับว่า “ต้องการข้อมูลของ property อะไรครับ/คะ” และห้ามเรียก Tool เพื่อสรุปข้อมูลรวมทุก property
+หากผู้ใช้ระบุสาขา/property ให้ส่งชื่อสาขานั้นใน argument property_name ของ Tool ทุกตัวเสมอ
 หากผู้ใช้ระบุห้อง ให้ส่งชื่อหรือเลขห้องนั้นใน argument room_name ของ Tool get_maintenance_summary เสมอ
+หากผู้ใช้ถามงานประจำรายเดือน รายปี ตารางงานซ้ำ หรือ recurring maintenance ให้เรียก Tool get_recurring_maintenance_tasks และส่ง property_name, year, month หรือ frequency ตามที่ผู้ใช้ระบุ
 เมื่อได้รับผลลัพธ์จาก Tool แล้ว ให้สรุปจากข้อมูลดิบนั้นเท่านั้น และถ้าไม่มีข้อมูลใน Tool ให้บอกผู้ใช้อย่างตรงไปตรงมา
 """.strip()
 
@@ -259,9 +261,93 @@ def _should_force_summary_tool(message):
         'เสียบ่อย',
         'รายละเอียดงาน',
         'งานซ่อม',
+        'งานประจำ',
+        'ประจำเดือน',
+        'ประจำปี',
+        'รายเดือน',
+        'รายปี',
+        'recurring',
+        'routine',
+        'schedule',
     ]
     return any(keyword in normalized for keyword in keywords)
 
+
+def _should_force_recurring_tool(message):
+    normalized = message.lower()
+    keywords = [
+        'งานประจำ',
+        'ประจำเดือน',
+        'ประจำปี',
+        'รายเดือน',
+        'รายปี',
+        'recurring',
+        'routine',
+        'schedule',
+    ]
+    return any(keyword in normalized for keyword in keywords)
+
+
+def _extract_year_month_from_message(message):
+    text = str(message or '')
+    year = None
+    month = None
+    year_match = re.search(r'(20\d{2}|25\d{2})', text)
+    if year_match:
+        year = int(year_match.group(1))
+        if year >= 2400:
+            year -= 543
+    month_match = re.search(r'(?:เดือน|month)\s*(\d{1,2})', text, flags=re.IGNORECASE)
+    if month_match:
+        parsed_month = int(month_match.group(1))
+        if 1 <= parsed_month <= 12:
+            month = parsed_month
+    return year, month
+
+
+def _extract_frequency_from_message(message):
+    normalized = str(message or '').lower()
+    if any(keyword in normalized for keyword in ['รายปี', 'ประจำปี', 'annual', 'yearly']):
+        return 'annual'
+    if any(keyword in normalized for keyword in ['รายเดือน', 'ประจำเดือน', 'monthly']):
+        return 'monthly'
+    return ''
+
+
+def _extract_property_name_from_message(message):
+    text = str(message or '')
+    normalized_text = _normalize_search_text(text)
+    if not normalized_text:
+        return ''
+
+    properties = list(Property.objects.all())
+    for prop in properties:
+        candidates = [prop.name, prop.property_id]
+        for candidate in candidates:
+            normalized_candidate = _normalize_search_text(candidate)
+            if normalized_candidate and normalized_candidate in normalized_text:
+                return str(candidate)
+
+    match = re.search(r'(?:property|สาขา)\s*[:：-]?\s*([A-Za-z0-9ก-๙ _.-]+)', text, flags=re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+
+    return ''
+
+
+def _property_required_reply():
+    properties = list(Property.objects.order_by('name').values('property_id', 'name')[:20])
+    if properties:
+        property_list = ', '.join(
+            f"{prop['name']} ({prop['property_id']})" if prop.get('property_id') else prop['name']
+            for prop in properties
+        )
+        return f'ต้องการข้อมูลของ property อะไรครับ/คะ? กรุณาระบุชื่อสาขาหรือ property id ก่อน เช่น {property_list}'
+    return 'ต้องการข้อมูลของ property อะไรครับ/คะ? กรุณาระบุชื่อสาขาหรือ property id ก่อน'
+
+
+def _requires_property_before_tool(message):
+    return _should_force_recurring_tool(message) or _should_force_summary_tool(message)
 
 def _extract_room_name_from_message(message):
     match = re.search(r'(?:ห้อง|room)\s*([A-Za-z0-9ก-๙_-]+)', message, flags=re.IGNORECASE)
@@ -616,6 +702,143 @@ def get_maintenance_summary(property_name: str = "", room_name: str = ""):
     }
 
 
+def _serialize_preventive_maintenance(pm):
+    return {
+        'pm_id': pm.pm_id,
+        'title': pm.pmtitle,
+        'status': pm.status,
+        'priority': pm.priority,
+        'frequency': pm.frequency,
+        'scheduled_date': pm.scheduled_date.isoformat() if pm.scheduled_date else None,
+        'completed_date': pm.completed_date.isoformat() if pm.completed_date else None,
+        'next_due_date': pm.next_due_date.isoformat() if pm.next_due_date else None,
+        'assigned_to': _serialize_user(pm.assigned_to),
+        'created_by': _serialize_user(pm.created_by),
+        'topics': [topic.title for topic in pm.topics.all()],
+        'job_id': pm.job.job_id if pm.job else None,
+    }
+
+
+def _safe_int(value):
+    try:
+        return int(value) if value not in (None, '') else None
+    except (TypeError, ValueError):
+        return None
+
+
+def get_recurring_maintenance_tasks(property_name: str = '', frequency: str = '', year=None, month=None):
+    """
+    ดึงรายการงานประจำ/งาน PM ที่เกิดซ้ำเป็นรายเดือนหรือรายปีสำหรับให้ AI chat ตอบคำถาม
+    เช่น งานประจำเดือนนี้ งานประจำรายเดือนของสาขา งานประจำปี หรือตาราง recurring maintenance
+    """
+    property_obj, property_error = _resolve_property(property_name)
+    if property_error:
+        return {
+            'error': 'PROPERTY_NOT_FOUND',
+            **property_error,
+        }
+
+    normalized_frequency = str(frequency or '').strip().lower()
+    frequency_aliases = {
+        'yearly': 'annual',
+        'annual': 'annual',
+        'รายปี': 'annual',
+        'ประจำปี': 'annual',
+        'monthly': 'monthly',
+        'รายเดือน': 'monthly',
+        'ประจำเดือน': 'monthly',
+    }
+    selected_frequency = frequency_aliases.get(normalized_frequency, normalized_frequency)
+    if selected_frequency not in {'monthly', 'annual'}:
+        selected_frequency = ''
+
+    selected_year = _safe_int(year)
+    selected_month = _safe_int(month)
+
+    tasks = PreventiveMaintenance.objects.select_related(
+        'assigned_to',
+        'created_by',
+        'job',
+    ).prefetch_related('topics')
+
+    if property_obj:
+        tasks = tasks.filter(
+            Q(job__area__property=property_obj) |
+            Q(job__rooms__properties=property_obj)
+        ).distinct()
+
+    tasks = tasks.filter(frequency__in=['monthly', 'annual'])
+    if selected_frequency:
+        tasks = tasks.filter(frequency=selected_frequency)
+    if selected_year:
+        tasks = tasks.filter(scheduled_date__year=selected_year)
+    if selected_month and 1 <= selected_month <= 12:
+        tasks = tasks.filter(scheduled_date__month=selected_month)
+
+    status_counts = list(
+        tasks.values('status')
+        .annotate(count=Count('id'))
+        .order_by('status')
+    )
+    monthly_tasks = tasks.filter(frequency='monthly').order_by('scheduled_date', 'pmtitle')
+    annual_tasks = tasks.filter(frequency='annual').order_by('scheduled_date', 'pmtitle')
+
+    monthly_by_month = []
+    for row in (
+        monthly_tasks
+        .annotate(year_value=ExtractYear('scheduled_date'), month_value=ExtractMonth('scheduled_date'))
+        .values('year_value', 'month_value')
+        .annotate(total=Count('id'))
+        .order_by('year_value', 'month_value')
+    ):
+        month_items = monthly_tasks.filter(
+            scheduled_date__year=row['year_value'],
+            scheduled_date__month=row['month_value'],
+        )[:20]
+        monthly_by_month.append({
+            'year': row['year_value'],
+            'month': row['month_value'],
+            'total': row['total'],
+            'items': [_serialize_preventive_maintenance(pm) for pm in month_items],
+        })
+
+    annual_by_year = []
+    for row in (
+        annual_tasks
+        .annotate(year_value=ExtractYear('scheduled_date'))
+        .values('year_value')
+        .annotate(total=Count('id'))
+        .order_by('year_value')
+    ):
+        year_items = annual_tasks.filter(scheduled_date__year=row['year_value'])[:20]
+        annual_by_year.append({
+            'year': row['year_value'],
+            'total': row['total'],
+            'items': [_serialize_preventive_maintenance(pm) for pm in year_items],
+        })
+
+    return {
+        'property': {
+            'property_id': property_obj.property_id,
+            'name': property_obj.name,
+        } if property_obj else None,
+        'filters': {
+            'frequency': selected_frequency or 'monthly_and_annual',
+            'year': selected_year,
+            'month': selected_month if selected_month and 1 <= selected_month <= 12 else None,
+        },
+        'total': tasks.count(),
+        'status_counts': [{'status': row['status'], 'count': row['count']} for row in status_counts],
+        'monthly': {
+            'total': monthly_tasks.count(),
+            'by_month': monthly_by_month,
+        },
+        'annual': {
+            'total': annual_tasks.count(),
+            'by_year': annual_by_year,
+        },
+    }
+
 def _genai_modules():
     from google import genai
     from google.genai import types
@@ -639,7 +862,7 @@ def _gemini_config(include_tools=True):
     }
     if include_tools:
         config_kwargs.update({
-            'tools': [get_maintenance_summary],
+            'tools': [get_maintenance_summary, get_recurring_maintenance_tasks],
             'automatic_function_calling': types.AutomaticFunctionCallingConfig(disable=True),
         })
     return types.GenerateContentConfig(**config_kwargs)
@@ -668,9 +891,53 @@ def chat_with_gemini(request):
         )
 
         function_calls = first_response.function_calls or []
+        inferred_property_name = _extract_property_name_from_message(message)
+        if function_calls:
+            has_tool_property = any(
+                (getattr(function_call, 'args', None) or {}).get('property_name')
+                or (getattr(function_call, 'args', None) or {}).get('branch_name')
+                for function_call in function_calls
+                if function_call.name in {'get_maintenance_summary', 'get_recurring_maintenance_tasks'}
+            )
+            if not has_tool_property and not inferred_property_name:
+                return Response({
+                    'reply': _property_required_reply(),
+                    'tool_calls': [],
+                })
+        elif _requires_property_before_tool(message) and not inferred_property_name:
+            return Response({
+                'reply': _property_required_reply(),
+                'tool_calls': [],
+            })
+
         if not function_calls:
+            if _should_force_recurring_tool(message):
+                extracted_year, extracted_month = _extract_year_month_from_message(message)
+                tool_result = get_recurring_maintenance_tasks(
+                    property_name=inferred_property_name,
+                    frequency=_extract_frequency_from_message(message),
+                    year=extracted_year,
+                    month=extracted_month,
+                )
+                tool_part = types.Part.from_function_response(
+                    name='get_recurring_maintenance_tasks',
+                    response={'result': tool_result},
+                )
+                final_response = client.models.generate_content(
+                    model=GEMINI_CHAT_MODEL,
+                    contents=[
+                        types.Content(role='user', parts=[types.Part(text=message)]),
+                        types.Content(role='user', parts=[tool_part]),
+                    ],
+                    config=_gemini_config(include_tools=False),
+                )
+                return Response({
+                    'reply': final_response.text or '',
+                    'tool_calls': ['get_recurring_maintenance_tasks'],
+                })
             if _should_force_summary_tool(message):
                 tool_result = get_maintenance_summary(
+                    property_name=inferred_property_name,
                     room_name=_extract_room_name_from_message(message),
                 )
                 tool_part = types.Part.from_function_response(
@@ -693,14 +960,21 @@ def chat_with_gemini(request):
 
         tool_parts = []
         for function_call in function_calls:
-            if function_call.name != 'get_maintenance_summary':
-                tool_result = {'error': f'ไม่รองรับ Tool: {function_call.name}'}
-            else:
-                function_args = getattr(function_call, 'args', None) or {}
+            function_args = getattr(function_call, 'args', None) or {}
+            if function_call.name == 'get_maintenance_summary':
                 tool_result = get_maintenance_summary(
-                    property_name=function_args.get('property_name') or function_args.get('branch_name') or '',
+                    property_name=function_args.get('property_name') or function_args.get('branch_name') or inferred_property_name,
                     room_name=function_args.get('room_name') or function_args.get('room') or '',
                 )
+            elif function_call.name == 'get_recurring_maintenance_tasks':
+                tool_result = get_recurring_maintenance_tasks(
+                    property_name=function_args.get('property_name') or function_args.get('branch_name') or inferred_property_name,
+                    frequency=function_args.get('frequency') or '',
+                    year=function_args.get('year'),
+                    month=function_args.get('month'),
+                )
+            else:
+                tool_result = {'error': f'ไม่รองรับ Tool: {function_call.name}'}
 
             tool_parts.append(
                 types.Part.from_function_response(

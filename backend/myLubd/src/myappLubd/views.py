@@ -884,14 +884,24 @@ def chat_with_gemini(request):
         _, types = _genai_modules()
         config = _gemini_config(include_tools=True)
 
+        request_property_name = str(
+            request.data.get('property_name')
+            or request.data.get('property_id')
+            or request.data.get('branch_name')
+            or ''
+        ).strip()
+        inferred_property_name = _extract_property_name_from_message(message) or request_property_name
+        model_message = message
+        if request_property_name and not _extract_property_name_from_message(message):
+            model_message = f"Property context: {request_property_name}\nUser message: {message}"
+
         first_response = client.models.generate_content(
             model=GEMINI_CHAT_MODEL,
-            contents=message,
+            contents=model_message,
             config=config,
         )
 
         function_calls = first_response.function_calls or []
-        inferred_property_name = _extract_property_name_from_message(message)
         if function_calls:
             has_tool_property = any(
                 (getattr(function_call, 'args', None) or {}).get('property_name')
@@ -926,7 +936,7 @@ def chat_with_gemini(request):
                 final_response = client.models.generate_content(
                     model=GEMINI_CHAT_MODEL,
                     contents=[
-                        types.Content(role='user', parts=[types.Part(text=message)]),
+                        types.Content(role='user', parts=[types.Part(text=model_message)]),
                         types.Content(role='user', parts=[tool_part]),
                     ],
                     config=_gemini_config(include_tools=False),
@@ -947,7 +957,7 @@ def chat_with_gemini(request):
                 final_response = client.models.generate_content(
                     model=GEMINI_CHAT_MODEL,
                     contents=[
-                        types.Content(role='user', parts=[types.Part(text=message)]),
+                        types.Content(role='user', parts=[types.Part(text=model_message)]),
                         types.Content(role='user', parts=[tool_part]),
                     ],
                     config=_gemini_config(include_tools=False),
@@ -986,7 +996,7 @@ def chat_with_gemini(request):
         final_response = client.models.generate_content(
             model=GEMINI_CHAT_MODEL,
             contents=[
-                types.Content(role='user', parts=[types.Part(text=message)]),
+                types.Content(role='user', parts=[types.Part(text=model_message)]),
                 first_response.candidates[0].content,
                 types.Content(role='user', parts=tool_parts),
             ],

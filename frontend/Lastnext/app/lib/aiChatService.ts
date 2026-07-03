@@ -6,10 +6,15 @@ export type AiChatResponse = {
   tool_calls?: string[];
 };
 
-export async function sendAiChatMessage(message: string): Promise<AiChatResponse> {
+export type AiChatContext = {
+  property_name?: string;
+};
+
+export async function sendAiChatMessage(message: string, context: AiChatContext = {}): Promise<AiChatResponse> {
   try {
     const response = await apiClient.post<AiChatResponse>(API_CONFIG.endpoints.aiChat, {
       message,
+      ...context,
     });
     return response.data;
   } catch (error) {

@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import React from 'react';
@@ -186,6 +185,17 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
     () => topics.find((t) => t.id === selectedTopicId) || null,
     [topics, selectedTopicId]
   );
+  const visibleTopics = React.useMemo(
+    () => topics.filter((topic) => typeof topic.id === 'number' && topicToRoomIds.has(topic.id)),
+    [topics, topicToRoomIds]
+  );
+
+  React.useEffect(() => {
+    if (selectedTopicId === null) return;
+    if (!visibleTopics.some((topic) => topic.id === selectedTopicId)) {
+      setSelectedTopicId(null);
+    }
+  }, [selectedTopicId, visibleTopics]);
 
   const mismatchRooms = React.useMemo(() => {
     if (!selectedTopicId) return [];
@@ -476,7 +486,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
                     <CommandList>
                       <CommandEmpty>No topics found.</CommandEmpty>
                       <CommandGroup heading="Topics">
-                        {topics.map((topic) => (
+                        {visibleTopics.map((topic) => (
                           <CommandItem
                             key={topic.id}
                             value={topic.title}
@@ -510,7 +520,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
                 }}
               >
                 <option value="none">Select topic...</option>
-                {topics.map((topic) => (
+                {visibleTopics.map((topic) => (
                   <option key={topic.id} value={String(topic.id)}>
                     {topic.title} ({(totalRooms - (topicToRoomIds.get(topic.id)?.size ?? 0)).toLocaleString()} rooms)
                   </option>
@@ -588,7 +598,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
 
           <div className="mt-4 -mx-1 overflow-x-auto scrollbar-none">
             <div className="flex items-center gap-2 px-1 min-w-max">
-              {topics.map((topic) => {
+              {visibleTopics.map((topic) => {
                 const topicMismatch = totalRooms - (topicToRoomIds.get(topic.id)?.size ?? 0);
                 const isActive = selectedTopicId === topic.id;
                 return (

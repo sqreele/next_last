@@ -53,9 +53,14 @@ export default function SearchContent() {
         // Fetch jobs with proper error handling
         let jobsData: Job[] = [];
         try {
-          const jobsRes = await fetch('/jobs', { headers });
+          const effectivePropertyId = selectedProperty || userProperties?.[0]?.property_id;
+          const jobsParams = new URLSearchParams();
+          if (effectivePropertyId) jobsParams.set('property_id', String(effectivePropertyId));
+          if (query) jobsParams.set('search', query);
+          const jobsRes = await fetch(`/api/jobs/${jobsParams.toString() ? `?${jobsParams.toString()}` : ''}`, { headers });
           if (jobsRes.ok) {
-            jobsData = await jobsRes.json();
+            const jobsPayload = await jobsRes.json();
+            jobsData = Array.isArray(jobsPayload) ? jobsPayload : (jobsPayload?.results || []);
             // Ensure we have an array
             if (!Array.isArray(jobsData)) {
               console.warn('Jobs data is not an array:', jobsData);
@@ -71,7 +76,7 @@ export default function SearchContent() {
         // Fetch properties with proper error handling
         let propertiesData: Property[] = [];
         try {
-          const propertiesRes = await fetch('/properties', { headers });
+          const propertiesRes = await fetch('/api/properties', { headers });
           if (propertiesRes.ok) {
             propertiesData = await propertiesRes.json();
             // Ensure we have an array

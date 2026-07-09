@@ -156,7 +156,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({ propertyId, onJobCrea
       // Use Next.js API routes which proxy to Django and handle auth via session
       const [roomsResponse, topicsResponse] = await Promise.all([
         apiClient.get<Room[]>(`/api/rooms/?property=${currentPropertyId}`),
-        apiClient.get<TopicFromAPI[]>(`/api/topics/`),
+        apiClient.get<TopicFromAPI[]>(`/api/topics/?property=${encodeURIComponent(currentPropertyId)}`),
       ]);
       setRooms(roomsResponse.data ?? []);
       setTopics(topicsResponse.data ?? []);

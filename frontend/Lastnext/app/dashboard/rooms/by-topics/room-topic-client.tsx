@@ -130,6 +130,20 @@ export default function RoomsByTopicClient({
     () => safeTopics.find((topic) => getTopicId(topic) === selectedTopicId) || null,
     [safeTopics, selectedTopicId]
   );
+  const visibleTopics = React.useMemo(
+    () => safeTopics.filter((topic) => {
+      const topicId = getTopicId(topic);
+      return topicId !== null && topicCounts.has(topicId);
+    }),
+    [safeTopics, topicCounts]
+  );
+
+  React.useEffect(() => {
+    if (selectedTopicId === null) return;
+    if (!visibleTopics.some((topic) => getTopicId(topic) === selectedTopicId)) {
+      setSelectedTopicId(null);
+    }
+  }, [selectedTopicId, visibleTopics]);
 
   // Filter rooms to those that are linked to the selected topic via jobs
   const filteredRooms = React.useMemo(() => {
@@ -245,7 +259,7 @@ export default function RoomsByTopicClient({
                           <span>All</span>
                           <span className="text-xs text-gray-500">{allCount}</span>
                         </CommandItem>
-                        {safeTopics.map((topic) => {
+                        {visibleTopics.map((topic) => {
                           const topicId = getTopicId(topic);
                           if (topicId === null) return null;
                           return (
@@ -277,7 +291,7 @@ export default function RoomsByTopicClient({
               >
                 All <span className="ml-1 text-[10px] opacity-80">{allCount}</span>
               </Badge>
-              {safeTopics.map((topic) => {
+              {visibleTopics.map((topic) => {
                 const topicId = getTopicId(topic);
                 if (topicId === null) return null;
                 return (

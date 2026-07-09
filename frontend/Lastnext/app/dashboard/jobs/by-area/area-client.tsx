@@ -7,6 +7,8 @@ import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { SearchInput, MobileTopBar } from '@/app/components/pcms-ui';
 import { AlertCircle, MapPin } from 'lucide-react';
+import { useUser, useProperties } from '@/app/lib/stores/mainStore';
+import { filterJobsByProperty } from '@/app/lib/utils/property-filter';
 
 type AreaGroup = {
   key: string;
@@ -45,12 +47,19 @@ function sortGroups(groups: AreaGroup[]): AreaGroup[] {
 
 export default function JobsByAreaClient({ initialJobs }: { initialJobs: Job[] }) {
   const [query, setQuery] = React.useState('');
+  const { selectedPropertyId } = useUser();
+  const { properties } = useProperties();
+
+  const propertyScopedJobs = React.useMemo(
+    () => filterJobsByProperty(initialJobs, selectedPropertyId, properties),
+    [initialJobs, selectedPropertyId, properties],
+  );
 
   const filteredJobs = React.useMemo(() => {
     const term = query.trim().toLowerCase();
-    if (!term) return initialJobs;
+    if (!term) return propertyScopedJobs;
 
-    return initialJobs.filter((job) => [
+    return propertyScopedJobs.filter((job) => [
       job.job_id,
       job.description,
       job.remarks,
@@ -61,7 +70,7 @@ export default function JobsByAreaClient({ initialJobs }: { initialJobs: Job[] }
       job.area?.name,
       job.area_name,
     ].some((value) => String(value || '').toLowerCase().includes(term)));
-  }, [initialJobs, query]);
+  }, [propertyScopedJobs, query]);
 
   const groups = React.useMemo(() => {
     const byArea = new Map<string, AreaGroup>();

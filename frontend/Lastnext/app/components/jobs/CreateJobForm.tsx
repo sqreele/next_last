@@ -592,7 +592,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       const propertyParam = selectedProperty || currentPropertyId || undefined;
       const [roomsResponse, topicsResponse, areasResponse] = await Promise.all([
         axios.get(`/api/rooms/`, { withCredentials: true, params: propertyParam ? { property: propertyParam } : undefined }),
-        axios.get(`/api/topics/`, { withCredentials: true }),
+        axios.get(`/api/topics/`, {
+          withCredentials: true,
+          params: propertyParam ? { property: propertyParam } : undefined,
+        }),
         axios.get(`/api/areas/`, {
           withCredentials: true,
           params: { is_active: 'true', ...(propertyParam ? { property_id: propertyParam } : {}) },
@@ -872,6 +875,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       setFieldValue('area_id', null);
                       setFieldValue('floor', null);
                       setFieldValue('room', null);
+                      setFieldValue('topic', { title: '', description: '' });
+                      setFieldTouched('topic.title', false, false);
+                      setCategorySearch('');
                       setFloors([]);
                       setRooms([]);
                     }}

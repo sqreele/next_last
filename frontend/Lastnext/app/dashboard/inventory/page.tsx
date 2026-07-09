@@ -219,7 +219,11 @@ export default function InventoryPage() {
 
         // Fetch jobs for filter
         const jobsResponse = await apiClient.get('/api/v1/jobs/', {
-          params: { page_size: 100, ordering: '-updated_at' }
+          params: {
+            page_size: 100,
+            ordering: '-updated_at',
+            ...(selectedProperty ? { property_id: selectedProperty } : {}),
+          }
         });
         const jobsData = Array.isArray(jobsResponse.data) 
           ? jobsResponse.data 
@@ -231,7 +235,11 @@ export default function InventoryPage() {
 
         // Fetch PMs for filter
         const pmResponse = await apiClient.get('/api/v1/preventive-maintenance/', {
-          params: { page_size: 100, ordering: '-updated_at' }
+          params: {
+            page_size: 100,
+            ordering: '-updated_at',
+            ...(selectedProperty ? { property_id: selectedProperty } : {}),
+          }
         });
         const pmData = Array.isArray(pmResponse.data)
           ? pmResponse.data
@@ -262,7 +270,11 @@ export default function InventoryPage() {
       try {
         // Fetch user's recent jobs
         const jobsResponse = await apiClient.get('/api/v1/jobs/my_jobs/', {
-          params: { page_size: 50, ordering: '-updated_at' }
+          params: {
+            page_size: 50,
+            ordering: '-updated_at',
+            ...(selectedProperty ? { property_id: selectedProperty } : {}),
+          }
         });
         const jobsData = Array.isArray(jobsResponse.data) 
           ? jobsResponse.data 
@@ -274,7 +286,11 @@ export default function InventoryPage() {
 
         // Fetch user's PMs (assigned to or created by user)
         const pmResponse = await apiClient.get('/api/v1/preventive-maintenance/', {
-          params: { page_size: 50, ordering: '-updated_at' }
+          params: {
+            page_size: 50,
+            ordering: '-updated_at',
+            ...(selectedProperty ? { property_id: selectedProperty } : {}),
+          }
         });
         const pmData = Array.isArray(pmResponse.data)
           ? pmResponse.data
@@ -301,7 +317,7 @@ export default function InventoryPage() {
     };
 
     fetchUserJobsAndPMs();
-  }, [showUseDialog, status, selectedItem]);
+  }, [showUseDialog, status, selectedItem, selectedProperty]);
 
   const fetchInventory = async () => {
     recordLoaderShown();

@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import React from 'react';
@@ -8,8 +7,10 @@ import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/app/components/ui/command';
-import { ChevronDown, Filter, Search, X } from 'lucide-react';
+import { ChevronDown, Filter, X } from 'lucide-react';
 import JobsContent from '@/app/dashboard/JobsContent';
+import { useUser } from '@/app/lib/stores/mainStore';
+import { filterJobsByProperty } from '@/app/lib/utils/property-filter';
 
 type Props = {
   initialJobs: Job[];
@@ -19,12 +20,18 @@ type Props = {
 
 export default function JobsByTopicClient({ initialJobs, topics, properties }: Props) {
   const [selectedTopicId, setSelectedTopicId] = React.useState<number | null>(null);
+  const { selectedPropertyId } = useUser();
   const getVariant = (active: boolean): 'default' | 'outline' => (active ? 'default' : 'outline');
+
+  const propertyScopedJobs = React.useMemo(
+    () => filterJobsByProperty(initialJobs, selectedPropertyId, properties),
+    [initialJobs, selectedPropertyId, properties],
+  );
 
   const topicCounts = React.useMemo(() => {
     const counts = new Map<number, number>();
-    if (Array.isArray(initialJobs)) {
-      for (const job of initialJobs) {
+    if (Array.isArray(propertyScopedJobs)) {
+      for (const job of propertyScopedJobs) {
         if (Array.isArray(job.topics)) {
           for (const t of job.topics) {
             if (t && typeof t.id === 'number') {
@@ -35,15 +42,27 @@ export default function JobsByTopicClient({ initialJobs, topics, properties }: P
       }
     }
     return counts;
-  }, [initialJobs]);
+  }, [propertyScopedJobs]);
 
-  const allCount = React.useMemo(() => Array.isArray(initialJobs) ? initialJobs.length : 0, [initialJobs]);
+  const allCount = React.useMemo(() => Array.isArray(propertyScopedJobs) ? propertyScopedJobs.length : 0, [propertyScopedJobs]);
   const selectedTopic = React.useMemo(() => topics.find(t => t.id === selectedTopicId) || null, [topics, selectedTopicId]);
 
   const filtered = React.useMemo(() => {
-    if (!selectedTopicId) return initialJobs;
-    return initialJobs.filter(job => Array.isArray(job.topics) && job.topics.some(t => t.id === selectedTopicId));
-  }, [initialJobs, selectedTopicId]);
+    if (!selectedTopicId) return propertyScopedJobs;
+    return propertyScopedJobs.filter(job => Array.isArray(job.topics) && job.topics.some(t => t.id === selectedTopicId));
+  }, [propertyScopedJobs, selectedTopicId]);
+
+  const visibleTopics = React.useMemo(
+    () => topics.filter((topic) => topicCounts.has(topic.id)),
+    [topics, topicCounts],
+  );
+
+  React.useEffect(() => {
+    if (selectedTopicId === null) return;
+    if (!visibleTopics.some((topic) => topic.id === selectedTopicId)) {
+      setSelectedTopicId(null);
+    }
+  }, [selectedTopicId, visibleTopics]);
 
   return (
     <div className="space-y-4">
@@ -104,7 +123,7 @@ export default function JobsByTopicClient({ initialJobs, topics, properties }: P
                           <span>All</span>
                           <span className="text-xs text-gray-500">{allCount}</span>
                         </CommandItem>
-                        {topics.map(topic => (
+                        {visibleTopics.map(topic => (
                           <CommandItem
                             key={topic.id}
                             value={topic.title}
@@ -132,7 +151,7 @@ export default function JobsByTopicClient({ initialJobs, topics, properties }: P
               >
                 All <span className="ml-1 text-[10px] opacity-80">{allCount}</span>
               </Badge>
-              {topics.map(topic => (
+              {visibleTopics.map(topic => (
                 <Badge
                   key={topic.id}
                   variant={getVariant(selectedTopicId === topic.id)}
@@ -151,4 +170,3 @@ export default function JobsByTopicClient({ initialJobs, topics, properties }: P
     </div>
   );
 }
-

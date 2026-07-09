@@ -14,7 +14,15 @@ export function PageLoader({
   className?: string;
 }) {
   return (
-    <div className={cn('min-h-[60vh] w-full px-3 py-6 sm:px-6', className)} role="status" aria-live="polite" aria-busy="true">
+    <div
+      className={cn(
+        'flex min-h-[calc(100vh-3.5rem)] w-full items-center justify-center px-3 py-6 sm:px-6',
+        className,
+      )}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
       <div className="w-full max-w-none space-y-5 lg:mx-auto lg:max-w-7xl">
         <div className="rounded-[18px] border border-[var(--pcms-border)] bg-white/90 p-5 shadow-[var(--pcms-shadow-sm)] backdrop-blur sm:p-6">
           <div className="flex items-center gap-4">

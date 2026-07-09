@@ -539,7 +539,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     try {
       const topicService = new TopicService();
       // Get access token from Auth0 hook
-      const response = await topicService.getTopics(accessToken || undefined);
+      const response = await topicService.getTopics(accessToken || undefined, selectedProperty);
       if (response.success && response.data) {
         // Map the topics to ensure description is always a string
         const mappedTopics: Topic[] = response.data.map(topic => ({
@@ -557,7 +557,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     } finally {
       setLoadingTopics(false);
     }
-  }, [accessToken]);
+  }, [accessToken, selectedProperty]);
 
   const fetchAvailableMachines = useCallback(async (propertyId: string | null | undefined) => {
     if (!propertyId) {

@@ -800,9 +800,10 @@ export async function fetchUsersByProperty(propertyId: string, accessToken?: str
   }
 }
 
-export async function fetchTopics(accessToken?: string): Promise<Topic[]> {
+export async function fetchTopics(accessToken?: string, propertyId?: string | null): Promise<Topic[]> {
   try {
-    const response = await fetchWithToken<any>(`/api/v1/topics/`, accessToken);
+    const query = propertyId ? `?property=${encodeURIComponent(propertyId)}` : '';
+    const response = await fetchWithToken<any>(`/api/v1/topics/${query}`, accessToken);
     
     // The backend returns a structured response with 'results' field containing the topics
     let topics: Topic[] = [];

@@ -70,7 +70,7 @@ export function usePreventiveMaintenanceActions() {
     try {
       setLoading(true);
       // Use fetchTopics from data.server.ts
-      const topicsData = await fetchTopics(accessToken);
+      const topicsData = await fetchTopics(accessToken, selectedProperty);
       // Map topics to match the expected type (convert null to undefined for description)
       const mappedTopics = Array.isArray(topicsData) 
         ? topicsData.map(topic => ({
@@ -85,7 +85,7 @@ export function usePreventiveMaintenanceActions() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, setLoading, setTopics, setError]);
+  }, [accessToken, selectedProperty, setLoading, setTopics, setError]);
 
   // Fetch machines
   const fetchMachines = useCallback(async (propertyId?: string) => {
@@ -422,4 +422,3 @@ export function usePreventiveMaintenanceActions() {
     setSelectedMaintenance,
   };
 }
-

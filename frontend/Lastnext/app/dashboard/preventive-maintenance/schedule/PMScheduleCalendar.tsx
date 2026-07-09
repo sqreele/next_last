@@ -17,6 +17,7 @@ import { useSession } from '@/app/lib/session.client';
 import { fetchWithToken } from '@/app/lib/data.server';
 import { Button } from '@/app/components/ui/button';
 import { cn } from '@/app/lib/utils/cn';
+import { useUser } from '@/app/lib/stores/mainStore';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -76,6 +77,7 @@ const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export function PMScheduleCalendar() {
   const { data: session } = useSession();
+  const { selectedPropertyId } = useUser();
   const [anchor, setAnchor] = useState<Date>(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -108,10 +110,22 @@ export function PMScheduleCalendar() {
       setError('Sign in to view the PM schedule.');
       return;
     }
+    if (!selectedPropertyId) {
+      setData(null);
+      setLoading(false);
+      setError('Select a property to view the PM schedule.');
+      return;
+    }
     setLoading(true);
     setError(null);
     const from = toISODate(gridStart);
-    const url = `${API_BASE_URL}/api/v1/preventive-maintenance/schedule/?from=${from}&days=${days}&status=${statusFilter}`;
+    const params = new URLSearchParams({
+      from,
+      days: String(days),
+      status: statusFilter,
+      property_id: selectedPropertyId,
+    });
+    const url = `${API_BASE_URL}/api/v1/preventive-maintenance/schedule/?${params.toString()}`;
     fetchWithToken<ScheduleResponse>(url, token)
       .then((res) => {
         if (cancelled) return;
@@ -127,7 +141,7 @@ export function PMScheduleCalendar() {
     return () => {
       cancelled = true;
     };
-  }, [gridStart, days, statusFilter, session?.user?.accessToken]);
+  }, [gridStart, days, statusFilter, selectedPropertyId, session?.user?.accessToken]);
 
   const dayIndex = useMemo(() => {
     const map = new Map<string, DayBucket>();

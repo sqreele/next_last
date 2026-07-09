@@ -114,14 +114,14 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
     try {
       // Production mode: Always make real API calls
       const topicService = new TopicService();
-      const response = await topicService.getTopics(accessToken || undefined);
+      const response = await topicService.getTopics(accessToken || undefined, selectedProperty);
       if (response.success && response.data) {
         setTopics(response.data);
       }
     } catch (error) {
       console.error('Error fetching topics:', error);
     }
-  }, [setTopics, accessToken]);
+  }, [setTopics, accessToken, selectedProperty]);
 
   // Fetch maintenance items
   const fetchMaintenanceItems = useCallback(async (params?: SearchParams) => {

@@ -155,7 +155,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
     if (status === 'authenticated') {
       fetchMachineDetails();
     }
-  }, [status, unwrappedParams.machine_id]);
+  }, [status, unwrappedParams.machine_id, selectedProperty]);
 
   const fetchMachineDetails = async () => {
     recordLoaderShown();
@@ -163,7 +163,9 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
     setLoadingHistory(true);
     setError(null);
     try {
-      const response = await apiClient.get(`/api/v1/machines/${unwrappedParams.machine_id}/`);
+      const response = await apiClient.get(`/api/v1/machines/${unwrappedParams.machine_id}/`, {
+        params: selectedProperty ? { property_id: selectedProperty } : undefined,
+      });
       setMachine(response.data);
       
       // Extract PM history from the machine data
@@ -195,7 +197,8 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
       const response = await apiClient.get('/api/v1/preventive-maintenance/', {
         params: {
           machine_id: unwrappedParams.machine_id,
-          page_size: 100
+          page_size: 100,
+          ...(selectedProperty ? { property_id: selectedProperty } : {}),
         }
       });
 

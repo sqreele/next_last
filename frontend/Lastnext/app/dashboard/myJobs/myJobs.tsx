@@ -647,7 +647,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     const loadTopics = async () => {
       if (!isEditDialogOpen || !session?.user?.accessToken) return;
       try {
-        setAvailableTopics(await fetchTopics(session.user.accessToken));
+        setAvailableTopics(await fetchTopics(session.user.accessToken, selectedProperty));
       } catch (topicError) {
         console.error("Failed to fetch topics:", topicError);
         toast({
@@ -659,7 +659,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({ activePropertyId }) =
     };
 
     loadTopics();
-  }, [isEditDialogOpen, session?.user?.accessToken, toast]);
+  }, [isEditDialogOpen, selectedProperty, session?.user?.accessToken, toast]);
 
   const handleResetFilters = () => setFilters(defaultFilters);
 

@@ -61,6 +61,20 @@ export const jobBelongsToProperty = (job: Job, idSet: Set<string>): boolean => {
     if (job.properties.some((p) => matchesPropertyEntry(p as PropertyLike, idSet))) return true;
   }
 
+  const area = job.area as
+    | {
+        property_id?: string | number;
+        property_uuid?: string | number;
+        property?: string | number | { property_id?: string | number; id?: string | number };
+      }
+    | null
+    | undefined;
+  if (area) {
+    if (area.property_id != null && idSet.has(String(area.property_id))) return true;
+    if (area.property_uuid != null && idSet.has(String(area.property_uuid))) return true;
+    if (matchesPropertyEntry(area.property as PropertyLike, idSet)) return true;
+  }
+
   const profileProps = (job.profile_image as { properties?: PropertyLike[] } | null | undefined)?.properties;
   if (Array.isArray(profileProps)) {
     if (profileProps.some((p) => matchesPropertyEntry(p, idSet))) return true;

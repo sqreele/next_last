@@ -82,9 +82,11 @@ GEMINI_SYSTEM_INSTRUCTION = """
 ก่อนตอบคำถามที่ต้องดึงข้อมูลระบบ ให้ตรวจสอบก่อนว่าผู้ใช้ระบุ property/สาขาแล้วหรือไม่ หากยังไม่ระบุ ให้ถามกลับว่า “ต้องการข้อมูลของ property อะไรครับ/คะ” และห้ามเรียก Tool เพื่อสรุปข้อมูลรวมทุก property
 หากผู้ใช้ระบุสาขา/property ให้ส่งชื่อสาขานั้นใน argument property_name ของ Tool ทุกตัวเสมอ
 หากผู้ใช้ระบุห้อง ให้ส่งชื่อหรือเลขห้องนั้นใน argument room_name ของ Tool get_maintenance_summary เสมอ
+หากผู้ใช้ถามงานแจ้งซ่อมวันนี้ งานซ่อมวันนี้ หรือ today's repair requests ให้เรียก Tool get_today_maintenance_jobs เสมอ
 หากผู้ใช้ถามรายละเอียดตามหมวดหมู่/category/topic เช่น งานระบบแอร์มีห้องไหนบ้าง ให้ใช้ category_details จาก Tool และแจกแจงห้อง/พื้นที่ที่เกี่ยวข้องพร้อมจำนวนงาน
-หากผู้ใช้ถามงานประจำรายเดือน รายปี ตารางงานซ้ำ หรือ recurring maintenance ให้เรียก Tool get_recurring_maintenance_tasks และส่ง property_name, year, month หรือ frequency ตามที่ผู้ใช้ระบุ
+หากผู้ใช้ถามงานประจำรายเดือน รายปี ตารางงานซ้ำ หรือ recurring maintenance ให้เรียก Tool get_recurring_maintenance_tasks และส่ง property_name, year, month หรือ frequency ตามที่ผู้ใช้ระบุ หากถามว่าเดือนนี้หรือ this month ให้ใช้เดือนและปีปัจจุบัน
 หากผู้ใช้ถามงานประจำเดือนแต่ละเดือนว่ามีกี่งาน ให้ตอบจาก monthly.month_counts หรือ monthly.by_year ของ Tool get_recurring_maintenance_tasks เท่านั้น
+หากผู้ใช้ถามว่างานประจำเดือนนี้มีอะไรบ้างหรือขอรายละเอียดงานประจำเดือน ให้ตอบเป็นรายการงานโดยระบุวันที่, PM ID, ชื่องาน, สถานะ, ความสำคัญ, ห้อง/พื้นที่, ผู้รับผิดชอบ, หมวดหมู่ และรายละเอียด/ขั้นตอนเท่าที่ Tool ส่งกลับมา
 เมื่อได้รับผลลัพธ์จาก Tool แล้ว ให้สรุปจากข้อมูลดิบนั้นเท่านั้น และถ้าไม่มีข้อมูลใน Tool ให้บอกผู้ใช้อย่างตรงไปตรงมา
 """.strip()
 
@@ -294,6 +296,8 @@ def _display_user_name_from_values(row):
 
 def _should_force_summary_tool(message):
     normalized = message.lower()
+    if _should_force_today_tool(message):
+        return False
     keywords = [
         'category',
         'topic',
@@ -338,6 +342,16 @@ def _should_force_summary_tool(message):
     return any(keyword in normalized for keyword in keywords)
 
 
+def _should_force_today_tool(message):
+    normalized = str(message or '').lower()
+    today_keywords = ['วันนี้', 'today', 'todays', "today's"]
+    maintenance_keywords = ['แจ้งซ่อม', 'งานซ่อม', 'repair request', 'work order', 'maintenance job']
+    return (
+        any(keyword in normalized for keyword in today_keywords)
+        and any(keyword in normalized for keyword in maintenance_keywords)
+    )
+
+
 def _should_force_recurring_tool(message):
     normalized = message.lower()
     if any(keyword in normalized for keyword in ['แจ้งซ่อม', 'งานซ่อม', 'repair request', 'work order']):
@@ -355,7 +369,7 @@ def _should_force_recurring_tool(message):
         return True
 
     pm_keywords = ['pm', 'preventive', 'preventive maintenance']
-    frequency_keywords = ['ประจำเดือน', 'ประจำปี', 'รายเดือน', 'รายปี', 'monthly', 'annual', 'yearly']
+    frequency_keywords = ['ประจำเดือน', 'ประจำปี', 'รายเดือน', 'รายปี', 'เดือนนี้', 'เดือนหน้า', 'monthly', 'annual', 'yearly', 'this month', 'next month']
     return (
         any(keyword in normalized for keyword in pm_keywords)
         and any(keyword in normalized for keyword in frequency_keywords)
@@ -364,6 +378,7 @@ def _should_force_recurring_tool(message):
 
 def _extract_year_month_from_message(message):
     text = str(message or '')
+    normalized = text.lower()
     year = None
     month = None
     year_match = re.search(r'(20\d{2}|25\d{2})', text)
@@ -371,11 +386,53 @@ def _extract_year_month_from_message(message):
         year = int(year_match.group(1))
         if year >= 2400:
             year -= 543
+
+    today = timezone.localdate()
+    if any(keyword in normalized for keyword in ['เดือนนี้', 'this month', 'current month']):
+        year = year or today.year
+        month = today.month
+    elif any(keyword in normalized for keyword in ['เดือนหน้า', 'next month']):
+        next_month = today.replace(day=28) + timedelta(days=4)
+        year = year or next_month.year
+        month = next_month.month
+
     month_match = re.search(r'(?:เดือน|month)\s*(\d{1,2})', text, flags=re.IGNORECASE)
     if month_match:
         parsed_month = int(month_match.group(1))
         if 1 <= parsed_month <= 12:
             month = parsed_month
+    thai_months = {
+        'มกราคม': 1,
+        'ม.ค.': 1,
+        'กุมภาพันธ์': 2,
+        'ก.พ.': 2,
+        'มีนาคม': 3,
+        'มี.ค.': 3,
+        'เมษายน': 4,
+        'เม.ย.': 4,
+        'พฤษภาคม': 5,
+        'พ.ค.': 5,
+        'มิถุนายน': 6,
+        'มิ.ย.': 6,
+        'กรกฎาคม': 7,
+        'ก.ค.': 7,
+        'สิงหาคม': 8,
+        'ส.ค.': 8,
+        'กันยายน': 9,
+        'ก.ย.': 9,
+        'ตุลาคม': 10,
+        'ต.ค.': 10,
+        'พฤศจิกายน': 11,
+        'พ.ย.': 11,
+        'ธันวาคม': 12,
+        'ธ.ค.': 12,
+    }
+    for month_name, month_number in thai_months.items():
+        if month_name in text:
+            month = month_number
+            break
+    if month and not year:
+        year = today.year
     return year, month
 
 
@@ -383,7 +440,7 @@ def _extract_frequency_from_message(message):
     normalized = str(message or '').lower()
     if any(keyword in normalized for keyword in ['รายปี', 'ประจำปี', 'annual', 'yearly']):
         return 'annual'
-    if any(keyword in normalized for keyword in ['รายเดือน', 'ประจำเดือน', 'monthly']):
+    if any(keyword in normalized for keyword in ['รายเดือน', 'ประจำเดือน', 'เดือนนี้', 'เดือนหน้า', 'monthly', 'this month', 'next month']):
         return 'monthly'
     return ''
 
@@ -421,7 +478,7 @@ def _property_required_reply():
 
 
 def _requires_property_before_tool(message):
-    return _should_force_recurring_tool(message) or _should_force_summary_tool(message)
+    return _should_force_today_tool(message) or _should_force_recurring_tool(message) or _should_force_summary_tool(message)
 
 def _extract_room_name_from_message(message):
     match = re.search(r'(?:ห้อง|room)\s*([A-Za-z0-9ก-๙_-]+)', message, flags=re.IGNORECASE)
@@ -883,7 +940,71 @@ def get_maintenance_summary(property_name: str = "", room_name: str = "", catego
     }
 
 
+def get_today_maintenance_jobs(property_name: str = ""):
+    """
+    ดึงรายการงานแจ้งซ่อมที่ถูกสร้างในวันนี้สำหรับให้ AI chat ตอบคำถาม
+    เช่น งานแจ้งซ่อมวันนี้ งานซ่อมวันนี้ หรือ today's repair requests
+    """
+    property_obj, property_error = _resolve_property(property_name)
+    if property_error:
+        return {
+            'error': 'PROPERTY_NOT_FOUND',
+            **property_error,
+        }
+
+    now = timezone.localtime(timezone.now())
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = start_of_day + timedelta(days=1)
+
+    jobs = Job.objects.select_related(
+        'user',
+        'updated_by',
+        'area__property',
+    ).prefetch_related('rooms', 'topics').filter(
+        created_at__gte=start_of_day,
+        created_at__lt=end_of_day,
+    )
+
+    if property_obj:
+        jobs = jobs.filter(
+            Q(area__property=property_obj) |
+            Q(rooms__properties=property_obj)
+        ).distinct()
+
+    status_counts = list(
+        jobs.values('status')
+        .annotate(count=Count('id', distinct=True))
+        .order_by('status')
+    )
+    priority_counts = list(
+        jobs.values('priority')
+        .annotate(count=Count('id', distinct=True))
+        .order_by('priority')
+    )
+    items = list(jobs.order_by('-created_at')[:50])
+
+    return {
+        'property': {
+            'property_id': property_obj.property_id,
+            'name': property_obj.name,
+        } if property_obj else None,
+        'date': start_of_day.date().isoformat(),
+        'timezone': timezone.get_current_timezone_name(),
+        'total': jobs.count(),
+        'open': jobs.exclude(status__in=['completed', 'cancelled']).count(),
+        'completed': jobs.filter(status='completed').count(),
+        'cancelled': jobs.filter(status='cancelled').count(),
+        'status_counts': [{'status': row['status'], 'count': row['count']} for row in status_counts],
+        'priority_counts': [{'priority': row['priority'], 'count': row['count']} for row in priority_counts],
+        'items': [_serialize_job(job) for job in items],
+    }
+
+
 def _serialize_preventive_maintenance(pm):
+    job = pm.job
+    area = job.area if job and job.area else None
+    procedure_template = pm.procedure_template
+
     return {
         'pm_id': pm.pm_id,
         'title': pm.pmtitle,
@@ -893,10 +1014,43 @@ def _serialize_preventive_maintenance(pm):
         'scheduled_date': pm.scheduled_date.isoformat() if pm.scheduled_date else None,
         'completed_date': pm.completed_date.isoformat() if pm.completed_date else None,
         'next_due_date': pm.next_due_date.isoformat() if pm.next_due_date else None,
+        'estimated_duration': pm.estimated_duration,
+        'actual_duration': pm.actual_duration,
         'assigned_to': _serialize_user(pm.assigned_to),
+        'completed_by': _serialize_user(pm.completed_by),
         'created_by': _serialize_user(pm.created_by),
         'topics': [topic.title for topic in pm.topics.all()],
-        'job_id': pm.job.job_id if pm.job else None,
+        'notes': pm.notes or '',
+        'procedure': pm.procedure or '',
+        'remarks': pm.remarks or '',
+        'completion_notes': pm.completion_notes or '',
+        'job_id': job.job_id if job else None,
+        'job_description': job.description if job else '',
+        'job_remarks': job.remarks if job else '',
+        'job_status': job.status if job else '',
+        'job_priority': job.priority if job else '',
+        'rooms': [
+            {
+                'room_id': room.room_id,
+                'name': room.name,
+                'room_type': room.room_type,
+            }
+            for room in job.rooms.all()
+        ] if job else [],
+        'area': {
+            'id': area.id,
+            'name': area.name,
+            'property_id': area.property.property_id if area.property else '',
+            'property_name': area.property.name if area.property else '',
+        } if area else None,
+        'procedure_template': {
+            'id': procedure_template.id,
+            'name': procedure_template.name,
+            'category': procedure_template.category,
+            'description': procedure_template.description,
+            'estimated_duration': procedure_template.estimated_duration,
+            'responsible_department': procedure_template.responsible_department,
+        } if procedure_template else None,
     }
 
 
@@ -978,9 +1132,13 @@ def get_recurring_maintenance_tasks(property_name: str = '', frequency: str = ''
 
     tasks = PreventiveMaintenance.objects.select_related(
         'assigned_to',
+        'completed_by',
         'created_by',
         'job',
-    ).prefetch_related('topics')
+        'job__area',
+        'job__area__property',
+        'procedure_template',
+    ).prefetch_related('topics', 'job__rooms')
 
     if property_obj:
         tasks = tasks.filter(
@@ -1080,7 +1238,7 @@ def _gemini_config(include_tools=True):
     }
     if include_tools:
         config_kwargs.update({
-            'tools': [get_maintenance_summary, get_recurring_maintenance_tasks],
+            'tools': [get_maintenance_summary, get_recurring_maintenance_tasks, get_today_maintenance_jobs],
             'automatic_function_calling': types.AutomaticFunctionCallingConfig(disable=True),
         })
     return types.GenerateContentConfig(**config_kwargs)
@@ -1125,7 +1283,7 @@ def chat_with_gemini(request):
                 (getattr(function_call, 'args', None) or {}).get('property_name')
                 or (getattr(function_call, 'args', None) or {}).get('branch_name')
                 for function_call in function_calls
-                if function_call.name in {'get_maintenance_summary', 'get_recurring_maintenance_tasks'}
+                if function_call.name in {'get_maintenance_summary', 'get_recurring_maintenance_tasks', 'get_today_maintenance_jobs'}
             )
             if not has_tool_property and not inferred_property_name:
                 return Response({
@@ -1139,6 +1297,26 @@ def chat_with_gemini(request):
             })
 
         if not function_calls:
+            if _should_force_today_tool(message):
+                tool_result = get_today_maintenance_jobs(
+                    property_name=inferred_property_name,
+                )
+                tool_part = types.Part.from_function_response(
+                    name='get_today_maintenance_jobs',
+                    response={'result': tool_result},
+                )
+                final_response = client.models.generate_content(
+                    model=GEMINI_CHAT_MODEL,
+                    contents=[
+                        types.Content(role='user', parts=[types.Part(text=model_message)]),
+                        types.Content(role='user', parts=[tool_part]),
+                    ],
+                    config=_gemini_config(include_tools=False),
+                )
+                return Response({
+                    'reply': final_response.text or '',
+                    'tool_calls': ['get_today_maintenance_jobs'],
+                })
             if _should_force_recurring_tool(message):
                 extracted_year, extracted_month = _extract_year_month_from_message(message)
                 tool_result = get_recurring_maintenance_tasks(
@@ -1202,6 +1380,10 @@ def chat_with_gemini(request):
                     frequency=function_args.get('frequency') or '',
                     year=function_args.get('year'),
                     month=function_args.get('month'),
+                )
+            elif function_call.name == 'get_today_maintenance_jobs':
+                tool_result = get_today_maintenance_jobs(
+                    property_name=function_args.get('property_name') or function_args.get('branch_name') or inferred_property_name,
                 )
             else:
                 tool_result = {'error': f'ไม่รองรับ Tool: {function_call.name}'}
@@ -2787,6 +2969,23 @@ class TopicViewSet(viewsets.ModelViewSet):
     queryset = Topic.objects.all()
     serializer_class = TopicSerializer
 
+    def _selected_property_queryset(self):
+        property_filter = (
+            self.request.query_params.get('property') or
+            self.request.query_params.get('property_id')
+        )
+        if not property_filter or str(property_filter).lower() == 'all':
+            return Property.objects.none()
+
+        selected_properties = Property.objects.filter(
+            Q(property_id=str(property_filter)) |
+            Q(name=str(property_filter))
+        )
+        if str(property_filter).isdigit():
+            selected_properties = selected_properties | Property.objects.filter(id=int(property_filter))
+
+        return selected_properties.distinct()
+
     def get_queryset(self):
         """
         Return topics that are associated with jobs in properties the user has access to.
@@ -2795,22 +2994,40 @@ class TopicViewSet(viewsets.ModelViewSet):
         user = self.request.user
         
         include_hidden = self.request.query_params.get('include_hidden', 'false').lower() == 'true'
+        property_filter = (
+            self.request.query_params.get('property') or
+            self.request.query_params.get('property_id')
+        )
+        selected_properties = self._selected_property_queryset()
+        requested_property_filter = bool(property_filter and str(property_filter).lower() != 'all')
+        has_property_filter = selected_properties.exists()
+        if requested_property_filter and not has_property_filter:
+            return Topic.objects.none()
+
+        def filter_topics_by_properties(queryset, properties):
+            return queryset.filter(
+                Q(jobs__rooms__properties__in=properties) |
+                Q(jobs__area__property__in=properties) |
+                Q(preventive_maintenances__job__rooms__properties__in=properties) |
+                Q(preventive_maintenances__job__area__property__in=properties)
+            ).distinct()
 
         # Admin users can access all topics, with optional hidden topic filtering
         if user.is_superuser or user.is_staff:
             queryset = Topic.objects.all()
+            if has_property_filter:
+                queryset = filter_topics_by_properties(queryset, selected_properties)
             if not include_hidden:
                 queryset = queryset.filter(is_visible_in_create_job=True)
             return queryset
         
         # Get properties the user has access to
-        accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
+        accessible_properties = Property.objects.filter(users=user)
+        if has_property_filter:
+            accessible_properties = accessible_properties.filter(id__in=selected_properties.values_list('id', flat=True))
         
         # Return topics that are used in jobs within user's accessible properties
-        queryset = Topic.objects.filter(
-            Q(jobs__rooms__properties__in=accessible_property_ids) |
-            Q(preventive_maintenances__job__rooms__properties__in=accessible_property_ids)
-        ).distinct()
+        queryset = filter_topics_by_properties(Topic.objects.all(), accessible_properties)
 
         if not include_hidden:
             queryset = queryset.filter(is_visible_in_create_job=True)

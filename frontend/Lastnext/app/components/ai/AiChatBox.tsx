@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from 'react';
-import { LogIn, Send, Wrench } from 'lucide-react';
+import { CalendarDays, ClipboardList, LogIn, Send, Wrench } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Textarea } from '@/app/components/ui/textarea';
 import { cn } from '@/app/lib/utils/cn';
@@ -16,6 +16,24 @@ type ChatMessage = {
   content: string;
   toolCalls?: string[];
 };
+
+const QUICK_ACTIONS = [
+  {
+    label: 'งานแจ้งซ่อมวันนี้',
+    message: 'งานแจ้งซ่อมวันนี้มีอะไรบ้าง',
+    icon: CalendarDays,
+  },
+  {
+    label: 'งานประจำเดือนนี้',
+    message: 'งานประจำเดือนนี้มีอะไรบ้าง ขอรายละเอียดงาน',
+    icon: ClipboardList,
+  },
+  {
+    label: 'รายละเอียดงานประจำเดือน',
+    message: 'ขอรายละเอียดงานประจำเดือนนี้ แยกตามวันที่ ห้อง/พื้นที่ ผู้รับผิดชอบ และสถานะ',
+    icon: CalendarDays,
+  },
+];
 
 
 function getPropertyKey(property: Property): string {
@@ -148,14 +166,13 @@ export default function AiChatBox() {
     ]);
   };
 
-  const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
-    event?.preventDefault();
-
-    if (!trimmedMessage || isLoading || !isAuthenticated || !hasProperty) {
+  const submitChatMessage = async (rawMessage: string) => {
+    const nextMessage = rawMessage.trim();
+    if (!nextMessage || isLoading || !isAuthenticated || !hasProperty) {
       return;
     }
 
-    const userMessage = trimmedMessage;
+    const userMessage = nextMessage;
     setMessage('');
     setError(null);
     setHistory((current) => [
@@ -178,6 +195,11 @@ export default function AiChatBox() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    await submitChatMessage(trimmedMessage);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -279,6 +301,24 @@ export default function AiChatBox() {
       ) : null}
 
       <form onSubmit={handleSubmit} className="border-t border-slate-200 p-3 sm:p-4">
+        <div className="mb-3 flex flex-wrap gap-2">
+          {QUICK_ACTIONS.map((action) => {
+            const Icon = action.icon;
+            return (
+              <Button
+                key={action.label}
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isLoading || !hasProperty}
+                onClick={() => void submitChatMessage(action.message)}
+              >
+                <Icon className="mr-2 h-4 w-4" />
+                {action.label}
+              </Button>
+            );
+          })}
+        </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Textarea
             value={message}

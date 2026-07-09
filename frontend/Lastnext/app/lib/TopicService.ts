@@ -12,8 +12,9 @@ export interface Topic {
 export default class TopicService {
   private baseUrl: string = '/api/v1/topics/';
 
-  async getTopics(accessToken?: string): Promise<ServiceResponse<Topic[]>> {
+  async getTopics(accessToken?: string, propertyId?: string | null): Promise<ServiceResponse<Topic[]>> {
     try {
+      const params = propertyId ? { property: propertyId } : undefined;
       
       if (accessToken) {
         // Use direct backend call with provided token
@@ -21,12 +22,13 @@ export default class TopicService {
           Authorization: `Bearer ${accessToken}`,
         };
         
-        const response = await apiClient.get<Topic[]>(this.baseUrl, { headers });
+        const response = await apiClient.get<Topic[]>(this.baseUrl, { headers, params });
         return { success: true, data: response.data };
       } else {
         // Use Next.js API proxy to include auth automatically
         
-        const res = await fetch('/api/topics/', { credentials: 'include' });
+        const query = propertyId ? `?property=${encodeURIComponent(propertyId)}` : '';
+        const res = await fetch(`/api/topics/${query}`, { credentials: 'include' });
         if (!res.ok) {
           throw new Error(`Failed to fetch topics: ${res.status}`);
         }

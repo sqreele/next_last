@@ -16,6 +16,7 @@ from rest_framework.test import APIClient, APITestCase
 from .models import (
     Job,
     JobComment,
+    Machine,
     PreventiveMaintenance,
     Property,
     Room,
@@ -237,3 +238,41 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
         resp = self.client.get('/api/v1/preventive-maintenance/schedule/?days=30')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['total'], 0)
+
+
+class PreventiveMaintenanceCreateTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='pm-tech', password='pw12345!')
+        self.prop = Property.objects.create(name='Hotel PM')
+        self.prop.users.add(self.user)
+        self.machine = Machine.objects.create(
+            machine_id='L2544AF9284',
+            name='Laundry extractor',
+            category='Laundry',
+            property=self.prop,
+        )
+
+    def test_create_accepts_empty_optional_form_fields_with_machine_ids(self):
+        _login(self.client, self.user)
+
+        resp = self.client.post(
+            '/api/v1/preventive-maintenance/',
+            {
+                'pmtitle': 'Inspect laundry extractor',
+                'scheduled_date': timezone.now().isoformat(),
+                'frequency': 'monthly',
+                'machine_ids': [self.machine.machine_id],
+                'procedure_template': '',
+                'assigned_to': '',
+                'completed_date': '',
+                'custom_days': '',
+                'notes': '',
+                'remarks': '',
+            },
+            format='multipart',
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        pm = PreventiveMaintenance.objects.get(pmtitle='Inspect laundry extractor')
+        self.assertEqual(list(pm.machines.values_list('machine_id', flat=True)), [self.machine.machine_id])

@@ -1540,6 +1540,28 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             
             # Replace data with the dict version
             data = data_dict
+
+        # Multipart FormData commonly sends optional select/date fields as empty
+        # strings. DRF's related/date fields do not treat "" as null, so normalize
+        # those values before field validation. This keeps optional fields from
+        # turning an otherwise valid PM create request into a 400 response.
+        if isinstance(data, dict):
+            data = data.copy()
+            for nullable_field in (
+                'procedure_template',
+                'assigned_to',
+                'completed_date',
+                'custom_days',
+                'remarks',
+                'notes',
+                'procedure',
+            ):
+                value = data.get(nullable_field)
+                if isinstance(value, str) and value.strip() == '':
+                    if nullable_field in ('procedure_template', 'assigned_to', 'completed_date', 'custom_days'):
+                        data[nullable_field] = None
+                    else:
+                        data.pop(nullable_field, None)
         
         # Remove empty image fields that are not files
         # Django ImageField expects either a file or the field to be absent

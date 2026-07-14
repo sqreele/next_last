@@ -402,14 +402,15 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       errors.completed_date = 'Completed date should be empty for new maintenance records';
     }
 
-    // Frequency validation removed - field is hidden, defaults to 'monthly'
-    // if (!values.frequency) errors.frequency = 'Frequency is required';
-    // if (values.frequency === 'custom' && (!values.custom_days || values.custom_days < 1)) {
-    //   errors.custom_days = 'Custom days must be at least 1';
-    // }
-    // if (values.frequency === 'custom' && values.custom_days && values.custom_days > 365) {
-    //   errors.custom_days = 'Custom days cannot exceed 365';
-    // }
+    if (!values.frequency) errors.frequency = 'Frequency is required';
+    if (values.frequency === 'custom') {
+      const customDays = Number(values.custom_days);
+      if (!values.custom_days || Number.isNaN(customDays) || customDays < 1) {
+        errors.custom_days = 'Custom days must be at least 1';
+      } else if (customDays > 365) {
+        errors.custom_days = 'Custom days cannot exceed 365';
+      }
+    }
     if (!values.property_id) errors.property_id = 'Property is required';
     if (values.procedure_template === '') {
       errors.procedure_template = 'Maintenance Task Template is required';
@@ -1002,13 +1003,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       if (!dataForService.scheduled_date) {
         throw new Error('Scheduled date is required');
       }
-      // Frequency validation removed - defaults to 'monthly' if not provided
-      // if (!dataForService.frequency) {
-      //   throw new Error('Frequency is required');
-      // }
-      // if (dataForService.frequency === 'custom' && !dataForService.custom_days) {
-      //   throw new Error('Custom days is required when frequency is custom');
-      // }
+      if (!dataForService.frequency) {
+        throw new Error('Frequency is required');
+      }
+      if (dataForService.frequency === 'custom' && !dataForService.custom_days) {
+        throw new Error('Custom days is required when frequency is custom');
+      }
       const maintenanceIdToUpdate = pmId || (actualInitialData?.pm_id ?? null);
       let response: ServiceResponse<PreventiveMaintenance>;
 
@@ -1516,9 +1516,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             )}
 
 
-            {/* Maintenance Frequency - HIDDEN (defaults to 'monthly') */}
-            {false && (
-            <>
+            {/* Maintenance Frequency */}
             <div className="mb-6">
               <label htmlFor="frequency" className="block text-sm font-medium text-gray-700 mb-1">
                 Maintenance Frequency
@@ -1560,8 +1558,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   <p className="mt-1 text-sm text-red-500">{errors.custom_days}</p>
                 )}
               </div>
-            )}
-            </>
             )}
 
             {/* Notes */}

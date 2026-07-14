@@ -371,20 +371,25 @@ export default function PreventiveMaintenanceClient({ maintenanceData }: Prevent
   const afterImageUrl = getAfterImageUrl();
   
   const assignedUserInfo = useMemo(() => {
-    if (maintenanceData.assigned_to_name || maintenanceData.technician_name) {
+    if (maintenanceData.assigned_to_details) {
+      const details = maintenanceData.assigned_to_details;
+      const display = getDisplayName(details, 'Unknown Technician');
+      if (display !== 'Unknown Technician') {
+        return {
+          display,
+          email: details.email,
+        };
+      }
+    }
+
+    const namedAssignee = maintenanceData.assigned_to_name || maintenanceData.technician_name;
+    if (namedAssignee && namedAssignee !== 'Unknown Technician') {
       return {
-        display: maintenanceData.assigned_to_name || maintenanceData.technician_name || 'Unknown Technician',
+        display: namedAssignee,
         email: getUserEmail(maintenanceData.assigned_to_details || maintenanceData.assigned_to),
       };
     }
 
-    if (maintenanceData.assigned_to_details) {
-      const details = maintenanceData.assigned_to_details;
-      return {
-        display: getDisplayName(details, 'Unknown Technician'),
-        email: details.email,
-      };
-    }
 
     const assignee = maintenanceData.assigned_to as any;
     if (assignee && typeof assignee === 'object') {

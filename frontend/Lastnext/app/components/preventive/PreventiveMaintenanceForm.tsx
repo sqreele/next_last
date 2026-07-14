@@ -107,7 +107,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const {
     properties: userProperties,
   } = useProperties();
-  const { selectedPropertyId: selectedProperty } = useUser();
+  const { selectedPropertyId: selectedProperty, userProfile } = useUser();
   const hasProperties = userProperties && userProperties.length > 0;
 
   const [fetchedInitialData, setFetchedInitialData] = useState<PreventiveMaintenance | null>(null);
@@ -508,8 +508,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       };
     }
 
-    // For new records, assign to the current user
-    const currentUserId = user?.id;
+    // For new records, assign to the current application user. Prefer the
+    // persisted backend profile id because Auth0 session ids may be non-numeric
+    // provider identifiers that the preventive-maintenance API cannot accept.
+    const currentUserId = userProfile?.id || user?.id;
 
     return {
       pmtitle: '',
@@ -528,7 +530,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       procedure_template: '',
         assigned_to: currentUserId ? String(currentUserId) : '',
     };
-  }, [actualInitialData, selectedProperty, machineId, formatDateForInput, defaultScheduledDate, getPropertyDetails, user]);
+  }, [actualInitialData, selectedProperty, machineId, formatDateForInput, defaultScheduledDate, getPropertyDetails, userProfile?.id, user]);
 
   const clearError = useCallback(() => {
     setError(null);

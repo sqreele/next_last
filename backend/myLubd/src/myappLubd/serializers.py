@@ -1355,6 +1355,14 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
         
         topic_ids = validated_data.pop('topic_ids', None)
         machine_ids = validated_data.pop('machine_ids', None)
+        procedure_template = validated_data.get('procedure_template')
+        if procedure_template:
+            template_frequency = getattr(procedure_template, 'frequency', None)
+            template_custom_days = getattr(procedure_template, 'custom_days', None)
+            if template_frequency:
+                validated_data['frequency'] = template_frequency
+            if validated_data.get('frequency') == 'custom' and template_custom_days and not validated_data.get('custom_days'):
+                validated_data['custom_days'] = template_custom_days
         instance = super().update(instance, validated_data)
         
         if topic_ids is not None:
@@ -1367,7 +1375,18 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
         """Custom validation for form data"""
         frequency = data.get('frequency')
         custom_days = data.get('custom_days')
-        
+        procedure_template = data.get('procedure_template')
+
+        if procedure_template:
+            template_frequency = getattr(procedure_template, 'frequency', None)
+            template_custom_days = getattr(procedure_template, 'custom_days', None)
+            if template_frequency:
+                frequency = template_frequency
+                data['frequency'] = template_frequency
+            if frequency == 'custom' and not custom_days and template_custom_days:
+                custom_days = template_custom_days
+                data['custom_days'] = template_custom_days
+
         if frequency == 'custom' and not custom_days:
             raise serializers.ValidationError({
                 'custom_days': 'Custom days value is required when frequency is set to Custom'
@@ -1631,6 +1650,9 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                 # Use template frequency (prefer template frequency over form frequency)
                 frequency = template_frequency
                 validated_data['frequency'] = frequency
+            template_custom_days = getattr(procedure_template, 'custom_days', None)
+            if frequency == 'custom' and template_custom_days and not validated_data.get('custom_days'):
+                validated_data['custom_days'] = template_custom_days
             
             # Calculate next schedule based on frequency if scheduled_date is not provided or invalid
             # Check if scheduled_date is None, empty string, or not a valid datetime
@@ -1738,6 +1760,14 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         
         topic_ids = validated_data.pop('topic_ids', None)
         machine_ids = validated_data.pop('machine_ids', None)
+        procedure_template = validated_data.get('procedure_template')
+        if procedure_template:
+            template_frequency = getattr(procedure_template, 'frequency', None)
+            template_custom_days = getattr(procedure_template, 'custom_days', None)
+            if template_frequency:
+                validated_data['frequency'] = template_frequency
+            if validated_data.get('frequency') == 'custom' and template_custom_days and not validated_data.get('custom_days'):
+                validated_data['custom_days'] = template_custom_days
         instance = super().update(instance, validated_data)
         
         if topic_ids is not None:
@@ -1753,6 +1783,17 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         frequency = data.get('frequency')
         custom_days = data.get('custom_days')
+        procedure_template = data.get('procedure_template')
+
+        if procedure_template:
+            template_frequency = getattr(procedure_template, 'frequency', None)
+            template_custom_days = getattr(procedure_template, 'custom_days', None)
+            if template_frequency:
+                frequency = template_frequency
+                data['frequency'] = template_frequency
+            if frequency == 'custom' and not custom_days and template_custom_days:
+                custom_days = template_custom_days
+                data['custom_days'] = template_custom_days
 
         if frequency == 'custom' and not custom_days:
             raise serializers.ValidationError({

@@ -1043,6 +1043,17 @@ def _serialize_preventive_maintenance(pm):
             'property_id': area.property.property_id if area.property else '',
             'property_name': area.property.name if area.property else '',
         } if area else None,
+        'machines': [
+            {
+                'machine_id': machine.machine_id,
+                'name': machine.name,
+                'category': machine.category or '',
+                'location': machine.location or '',
+                'property_id': machine.property.property_id if machine.property else '',
+                'property_name': machine.property.name if machine.property else '',
+            }
+            for machine in pm.machines.all()
+        ],
         'procedure_template': {
             'id': procedure_template.id,
             'name': procedure_template.name,
@@ -1138,12 +1149,13 @@ def get_recurring_maintenance_tasks(property_name: str = '', frequency: str = ''
         'job__area',
         'job__area__property',
         'procedure_template',
-    ).prefetch_related('topics', 'job__rooms')
+    ).prefetch_related('topics', 'job__rooms', 'machines', 'machines__property')
 
     if property_obj:
         tasks = tasks.filter(
             Q(job__area__property=property_obj) |
-            Q(job__rooms__properties=property_obj)
+            Q(job__rooms__properties=property_obj) |
+            Q(machines__property=property_obj)
         ).distinct()
 
     tasks = tasks.filter(frequency__in=['monthly', 'annual'])
@@ -2359,8 +2371,8 @@ class MachineViewSet(viewsets.ModelViewSet):
     pagination_class = MaintenancePagination
     lookup_field = 'machine_id'
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'property', 'location']
-    search_fields = ['name', 'description', 'machine_id']
+    filterset_fields = ['status', 'property', 'location', 'category']
+    search_fields = ['name', 'description', 'machine_id', 'category']
     ordering_fields = ['name', 'created_at', 'installation_date', 'last_maintenance_date']
     ordering = ['name']
 
@@ -2384,12 +2396,17 @@ class MachineViewSet(viewsets.ModelViewSet):
         if property_filter:
             queryset = queryset.filter(property__property_id=property_filter)
 
+        category_filter = self.request.query_params.get('category')
+        if category_filter:
+            queryset = queryset.filter(category__iexact=category_filter)
+
         search_term = self.request.query_params.get('search')
         if search_term:
             queryset = queryset.filter(
                 Q(name__icontains=search_term) |
                 Q(description__icontains=search_term) |
-                Q(machine_id__icontains=search_term)
+                Q(machine_id__icontains=search_term) |
+                Q(category__icontains=search_term)
             )
 
         return queryset.distinct()

@@ -3,7 +3,7 @@ from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 from datetime import datetime
 
-from .models import Job, PreventiveMaintenance, Property, Room, Topic
+from .models import Job, Machine, PreventiveMaintenance, Property, Room, Topic
 from .views import (
     _extract_category_name_from_message,
     _should_force_recurring_tool,
@@ -151,3 +151,34 @@ class AIRecurringMonthlyCountsTests(TestCase):
         self.assertEqual(months[0], {'month': 1, 'total': 2})
         self.assertEqual(months[1], {'month': 2, 'total': 1})
         self.assertEqual(months[2], {'month': 3, 'total': 0})
+
+    def test_recurring_tasks_include_machine_only_pm_for_property(self):
+        machine = Machine.objects.create(
+            machine_id='M-201',
+            name='Pump 201',
+            category='Pump',
+            location='Plant Room',
+            property=self.property,
+        )
+        pm = PreventiveMaintenance.objects.create(
+            pmtitle='ตรวจปั๊มน้ำ',
+            scheduled_date=timezone.make_aware(datetime(2026, 7, 14, 9, 0)),
+            frequency='monthly',
+            created_by=self.user,
+            assigned_to=self.user,
+        )
+        pm.machines.add(machine)
+
+        summary = get_recurring_maintenance_tasks(
+            property_name='Monthly PM Hotel',
+            frequency='monthly',
+            year=2026,
+            month=7,
+        )
+
+        self.assertEqual(summary['total'], 1)
+        self.assertEqual(summary['monthly']['total'], 1)
+        item = summary['monthly']['by_month'][0]['items'][0]
+        self.assertEqual(item['title'], 'ตรวจปั๊มน้ำ')
+        self.assertEqual(item['machines'][0]['machine_id'], 'M-201')
+        self.assertEqual(item['machines'][0]['property_name'], 'Monthly PM Hotel')

@@ -70,7 +70,7 @@ export default function MachinesListPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { selectedPropertyId: selectedProperty } = useUser();
-  const [machines, setMachines] = useState<Machine[]>([]);
+  const [allMachines, setAllMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -92,7 +92,7 @@ export default function MachinesListPage() {
     if (status === 'authenticated') {
       fetchMachines();
     }
-  }, [status, selectedProperty, page, pageSize]);
+  }, [status, selectedProperty]);
 
   // Reset to page 1 when property changes
   useEffect(() => {
@@ -112,11 +112,7 @@ export default function MachinesListPage() {
       }
 
       const allMachines = machineResponse.data as Machine[];
-      const total = allMachines.length;
-      const startIndex = (page - 1) * pageSize;
-      const machinesData = allMachines.slice(startIndex, startIndex + pageSize);
-
-      setTotalCount(total);
+      setTotalCount(allMachines.length);
 
       // Fetch PM rows once, then aggregate by machine_id to avoid N+1 requests.
       const pmByMachine = new Map<string, { count: number; lastMaintenance?: string }>();
@@ -153,7 +149,7 @@ export default function MachinesListPage() {
         console.error('Error fetching preventive maintenance aggregation:', pmError);
       }
 
-      const machinesWithCounts = machinesData.map((machine) => {
+      const machinesWithCounts = allMachines.map((machine) => {
         const aggregated = pmByMachine.get(machine.machine_id);
         return {
           ...machine,
@@ -164,11 +160,11 @@ export default function MachinesListPage() {
         };
       });
 
-      setMachines(machinesWithCounts);
+      setAllMachines(machinesWithCounts);
     } catch (err: any) {
       console.error('Error fetching machines:', err);
       setError(err.message || 'Failed to load machines');
-      setMachines([]);
+      setAllMachines([]);
     } finally {
       clearLoadingAfterMinTime();
     }
@@ -177,7 +173,7 @@ export default function MachinesListPage() {
   // Extract unique categories from machines
   const categories = useMemo(() => {
     const categoryMap = new Map<string, string>();
-    machines.forEach((machine) => {
+    allMachines.forEach((machine) => {
       const raw = machine.category?.trim();
       if (!raw) return;
       const key = normalizeCategory(raw);
@@ -187,7 +183,7 @@ export default function MachinesListPage() {
     return Array.from(categoryMap.entries())
       .sort((a, b) => a[1].localeCompare(b[1], undefined, { sensitivity: 'base' }))
       .map(([value, label]) => ({ value, label }));
-  }, [machines]);
+  }, [allMachines]);
 
   useEffect(() => {
     if (selectedCategory === 'all') return;
@@ -197,7 +193,7 @@ export default function MachinesListPage() {
     }
   }, [categories, selectedCategory]);
 
-  const filteredMachines = machines.filter((machine) => {
+  const filteredMachines = allMachines.filter((machine) => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
       machine.name?.toLowerCase().includes(searchLower) ||
@@ -211,6 +207,15 @@ export default function MachinesListPage() {
     
     return matchesSearch && matchesCategory;
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, selectedCategory]);
+
+  const paginatedMachines = useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    return filteredMachines.slice(startIndex, startIndex + pageSize);
+  }, [filteredMachines, page, pageSize]);
 
   const getMachineImageUrl = (machine: Machine): string | null => {
     const candidate = machine.image_url || machine.image?.image_url || machine.image?.url;
@@ -247,7 +252,8 @@ export default function MachinesListPage() {
     );
   }
 
-  const totalPages = Math.ceil(totalCount / pageSize);
+  const visibleCount = filteredMachines.length;
+  const totalPages = Math.ceil(visibleCount / pageSize);
 
   return (
     <div className="w-full max-w-none space-y-4 px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
@@ -337,7 +343,7 @@ export default function MachinesListPage() {
         </Card>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
-          {filteredMachines.map((machine) => {
+          {paginatedMachines.map((machine) => {
             const machineImageUrl = getMachineImageUrl(machine);
 
             return (
@@ -429,7 +435,7 @@ export default function MachinesListPage() {
         <Card>
           <CardContent className="p-0">
             <div className="grid gap-3 p-3 md:hidden">
-              {filteredMachines.map((machine) => {
+              {paginatedMachines.map((machine) => {
                 const machineImageUrl = getMachineImageUrl(machine);
                 return (
                   <button
@@ -492,7 +498,7 @@ export default function MachinesListPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredMachines.map((machine) => {
+                  {paginatedMachines.map((machine) => {
                     const machineImageUrl = getMachineImageUrl(machine);
 
                     return (
@@ -597,12 +603,12 @@ export default function MachinesListPage() {
       )}
 
       {/* Pagination */}
-      {(!searchTerm && selectedCategory === 'all') && filteredMachines.length > 0 && totalPages > 1 && (
+      {filteredMachines.length > 0 && totalPages > 1 && (
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-gray-600">
-                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} machines
+                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, visibleCount)} of {visibleCount} machine{visibleCount !== 1 ? 's' : ''}
               </div>
               
               <div className="flex items-center gap-2">

@@ -7,6 +7,7 @@ export interface MaintenanceProcedureTemplate {
   description?: string;
   category?: string | null;
   frequency?: string | null;
+  custom_days?: number | null;
   difficulty_level?: string | null;
   responsible_department?: string | null;
   estimated_duration?: string | null;

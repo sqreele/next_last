@@ -27,6 +27,8 @@ function formatDate(value: string | null | undefined): string {
   });
 }
 
+const MAX_PRINTABLE_PHOTOS = 6;
+
 function getPrintableImageUrls(job: Job): string[] {
   const seen = new Set<string>();
   const urls: string[] = [];
@@ -41,7 +43,7 @@ function getPrintableImageUrls(job: Job): string[] {
   job.images?.forEach((image) => addUrl(image.jpeg_url || image.image_url));
   job.image_urls?.forEach(addUrl);
 
-  return urls;
+  return urls.slice(0, MAX_PRINTABLE_PHOTOS);
 }
 
 function getPropertyName(job: Job, properties: Property[]): string {
@@ -297,7 +299,10 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
             <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
               Photos
             </h2>
-            <div className="mt-2 grid grid-cols-2 gap-3">
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+              Showing up to {MAX_PRINTABLE_PHOTOS} photos
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {imageUrls.map((imageUrl, index) => (
                 <figure
                   key={`${imageUrl}-${index}`}
@@ -307,7 +312,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
                   <img
                     src={imageUrl}
                     alt={`Job photo ${index + 1} for ${job.job_id}`}
-                    className="h-44 w-full object-cover"
+                    className="h-32 w-full object-cover"
                   />
                   <figcaption className="border-t border-slate-200 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                     Photo {index + 1}

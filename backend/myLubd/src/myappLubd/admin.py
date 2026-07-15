@@ -933,7 +933,7 @@ class JobAdmin(admin.ModelAdmin):
     list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_rooms_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
     list_filter = ['status', 'priority', 'is_defective', 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
     search_fields = ['job_id', 'description', 'user__username', 'updated_by__username', 'topics__title']
-    readonly_fields = ['job_id', 'updated_by', 'inventory_items_display']
+    readonly_fields = ['job_id', 'updated_by', 'inventory_items_display', 'preventive_maintenance_images']
     filter_horizontal = ['rooms', 'topics']
     inlines = [JobImageInline]
     fieldsets = (
@@ -949,6 +949,10 @@ class JobAdmin(admin.ModelAdmin):
         ('Inventory Used', {
             'fields': ('inventory_items_display',),
             'description': 'Inventory items linked to this job'
+        }),
+        ('Preventive Maintenance Images', {
+            'fields': ('preventive_maintenance_images',),
+            'description': 'Before and after images from preventive maintenance records linked to this job'
         }),
         ('Timestamps (Editable)', {
             'fields': ('created_at', 'updated_at', 'completed_at'),
@@ -1020,6 +1024,59 @@ class JobAdmin(admin.ModelAdmin):
         return format_html('<span style="color: {};">{}</span>', color, obj.get_status_display())
     get_status_display_colored.short_description = 'Status'
     get_status_display_colored.admin_order_field = 'status'
+
+    def preventive_maintenance_images(self, obj):
+        if not obj or not obj.pk:
+            return format_html('<span style="color: #999;">Save this job before linking preventive maintenance images.</span>')
+
+        preventive_maintenances = obj.preventivemaintenance_set.all()
+        if not preventive_maintenances:
+            return format_html('<span style="color: #999;">No linked preventive maintenance images.</span>')
+
+        cards = []
+        for preventive_maintenance in preventive_maintenances:
+            pm_link = reverse("admin:myappLubd_preventivemaintenance_change", args=[preventive_maintenance.pk])
+            image_cells = []
+            for label, image in (
+                ('Before', preventive_maintenance.before_image),
+                ('After', preventive_maintenance.after_image),
+            ):
+                if image and hasattr(image, 'url'):
+                    image_cells.append(format_html(
+                        '<div style="display:inline-block; margin-right:16px; vertical-align:top;">'
+                        '<div style="font-weight:600; margin-bottom:4px;">{} image</div>'
+                        '<a href="{}" target="_blank" rel="noopener noreferrer">'
+                        '<img src="{}" style="max-width:180px; max-height:180px; border:1px solid #ddd; border-radius:4px; object-fit:contain;" />'
+                        '</a>'
+                        '</div>',
+                        label,
+                        image.url,
+                        image.url,
+                    ))
+                else:
+                    image_cells.append(format_html(
+                        '<div style="display:inline-block; margin-right:16px; min-width:180px; vertical-align:top; color:#999;">'
+                        '<div style="font-weight:600; margin-bottom:4px; color:#333;">{} image</div>'
+                        'No image'
+                        '</div>',
+                        label,
+                    ))
+
+            cards.append(format_html(
+                '<div style="margin-bottom:16px; padding:12px; border:1px solid #e5e7eb; border-radius:6px; background:#fafafa;">'
+                '<div style="margin-bottom:10px; font-weight:700;">'
+                '<a href="{}">{}</a> — {}'
+                '</div>'
+                '{}'
+                '</div>',
+                pm_link,
+                preventive_maintenance.pm_id,
+                preventive_maintenance.pmtitle,
+                format_html_join('', '{}', ((cell,) for cell in image_cells)),
+            ))
+
+        return format_html_join('', '{}', ((card,) for card in cards))
+    preventive_maintenance_images.short_description = 'Before / After Images'
 
     def save_model(self, request, obj, form, change):
         if not obj.pk and not obj.user_id:
@@ -1154,7 +1211,7 @@ class JobAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         self._request = request
-        return super().get_queryset(request).select_related('user', 'updated_by').prefetch_related('rooms__properties', 'topics')
+        return super().get_queryset(request).select_related('user', 'updated_by').prefetch_related('rooms__properties', 'topics', 'preventivemaintenance_set')
 
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)

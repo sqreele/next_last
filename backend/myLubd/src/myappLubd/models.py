@@ -864,7 +864,7 @@ class JobImage(models.Model):
 
     image = models.ImageField(
         upload_to='maintenance_job_images/%Y/%m/',
-        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif'])],
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
         null=True,
         blank=True,
         help_text="Uploaded image file"
@@ -940,44 +940,37 @@ class JobImage(models.Model):
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
+        should_process_image = is_new and bool(self.image)
 
-        # Process and convert image only if it's a new image
-        if is_new and self.image:
-            try:
-                # Process and convert image to JPEG format
-                processed_images = self.process_image(self.image)
-
-                # Generate filename for JPEG version
-                # Extract the directory from the actual image path (which has date directories)
-                image_path = Path(self.image.name)
-                base_name = image_path.stem
-                jpeg_name = f'{base_name}.jpg'
-
-                # Save the JPEG version (for PDF generation)
-                # Use the directory from the actual uploaded image path, not the template
-                jpeg_path = str(image_path.parent / jpeg_name)
-                jpeg_full_path = os.path.join(settings.MEDIA_ROOT, jpeg_path)
-                
-                # Ensure directory exists
-                os.makedirs(os.path.dirname(jpeg_full_path), exist_ok=True)
-                
-                # Save JPEG file
-                with open(jpeg_full_path, 'wb') as f:
-                    f.write(processed_images['jpeg'].getvalue())
-
-                # Store JPEG path for PDF generation (relative to MEDIA_ROOT)
-                self.jpeg_path = jpeg_path
-
-                # Close the processed images to free memory
-                processed_images['jpeg'].close()
-
-            except Exception as e:
-                logger.error(f"Error processing image: {e}")
-                # Don't fail the save if image processing fails
-                pass
-
-        # Call the parent save method to store the object in the database
+        # Save the original upload first so ImageField applies upload_to and
+        # self.image.name includes the final dated media directory.
         super().save(*args, **kwargs)
+
+        if not should_process_image:
+            return
+
+        try:
+            self.image.open('rb')
+            processed_images = self.process_image(self.image)
+
+            image_path = Path(self.image.name)
+            jpeg_path = str(image_path.with_suffix('.jpg'))
+            jpeg_full_path = os.path.join(settings.MEDIA_ROOT, jpeg_path)
+
+            os.makedirs(os.path.dirname(jpeg_full_path), exist_ok=True)
+
+            with open(jpeg_full_path, 'wb') as f:
+                f.write(processed_images['jpeg'].getvalue())
+
+            processed_images['jpeg'].close()
+
+            if self.jpeg_path != jpeg_path:
+                self.jpeg_path = jpeg_path
+                super().save(update_fields=['jpeg_path'])
+
+        except Exception as e:
+            logger.error(f"Error processing image: {e}")
+            # Don't fail the save if JPEG generation fails.
 
     def delete(self, *args, **kwargs):
         """Remove image file when model instance is deleted"""

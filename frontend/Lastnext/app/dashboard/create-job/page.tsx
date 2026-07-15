@@ -8,12 +8,12 @@ import { getServerSession } from '@/app/lib/session.server';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Create Job - HotelEngPro',
-  description: 'Create a new hotel maintenance job effortlessly with HotelEngPro. Assign tasks, set priorities, and upload images with our intuitive form.',
-  keywords: ['HotelEngPro', 'create job', 'hotel maintenance', 'job management', 'property maintenance', 'hotel engineering'],
+  title: 'สร้างงานซ่อม - HotelEngPro',
+  description: 'สร้างงานซ่อมบำรุงโรงแรม มอบหมายงาน ตั้งค่าความสำคัญ และอัปโหลดรูปภาพได้ในฟอร์มเดียว',
+  keywords: ['HotelEngPro', 'สร้างงานซ่อม', 'งานซ่อมโรงแรม', 'จัดการงานซ่อม', 'บำรุงรักษาโรงแรม'],
   openGraph: {
-    title: 'Create Job - HotelEngPro',
-    description: 'Add new hotel maintenance tasks with ease using HotelEngPro.',
+    title: 'สร้างงานซ่อม - HotelEngPro',
+    description: 'เพิ่มงานซ่อมบำรุงโรงแรมได้ง่ายด้วย HotelEngPro',
     url: 'https://pcms.live/dashboard/create-job',
     type: 'website',
     images: [
@@ -21,14 +21,14 @@ export const metadata: Metadata = {
         url: 'https://pcms.live/og-create-job.jpg',
         width: 1200,
         height: 630,
-        alt: 'HotelEngPro - Create Job Page',
+        alt: 'HotelEngPro - หน้าสร้างงานซ่อม',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Create Job - HotelEngPro',
-    description: 'Effortlessly create hotel maintenance jobs with HotelEngPro.',
+    title: 'สร้างงานซ่อม - HotelEngPro',
+    description: 'สร้างงานซ่อมบำรุงโรงแรมได้ง่ายด้วย HotelEngPro',
     images: ['https://pcms.live/twitter-create-job.jpg'],
   },
 };
@@ -41,12 +41,12 @@ export default async function CreateJobPage() {
   }
 
   return (
-    <div className="w-full bg-[#F3F5FA] px-3 pb-6 pt-2 sm:px-4 md:px-6 xl:px-8">
+    <div className="w-full bg-[#f7f8f8] px-3 pb-6 pt-2 sm:px-4 md:px-6 xl:px-8">
       <Suspense fallback={
         <div className="mx-auto flex min-h-[60vh] w-full max-w-7xl items-center justify-center rounded-lg border border-slate-200 bg-white py-12 shadow-sm">
           <div className="flex flex-col items-center gap-4">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-[var(--pcms-primary)]"></div>
-            <p className="text-sm text-[var(--pcms-text-muted)]">Loading...</p>
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#e2e6e8] border-t-[#46b8bc]"></div>
+            <p className="text-sm text-[var(--pcms-text-muted)]">กำลังโหลด...</p>
           </div>
         </div>
       }>

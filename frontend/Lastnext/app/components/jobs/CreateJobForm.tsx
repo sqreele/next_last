@@ -7,6 +7,7 @@ import axios from 'axios';
 import { Button } from "@/app/components/ui/button";
 import { PriorityBadge, SectionCard, StatusBadge } from '@/app/components/pcms-ui';
 import { useT } from '@/app/lib/i18n/LocaleProvider';
+import type { DictKey } from '@/app/lib/i18n/dictionary';
 import { Textarea } from "@/app/components/ui/textarea";
 import { Plus, Loader, AlertCircle, CheckCircle, Search, Check, ArrowLeft, ClipboardList, MapPin, Info, ImagePlus, Wrench, ShieldAlert, CalendarCheck, X, Layers3, DoorOpen, Tag } from 'lucide-react';
 import { Checkbox } from "@/app/components/ui/checkbox";
@@ -26,6 +27,14 @@ import { useUser } from '@/app/lib/stores/mainStore';
 const MIN_LOADER_MS = 400; // Minimum time to show loader to avoid flash
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_FILES_PER_STAGE = 20; // Maximum images allowed for before/after sections
+type TFunction = (key: DictKey) => string;
+
+function formatMessage(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce(
+    (message, [key, value]) => message.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
+}
 
 interface FormValues {
   description: string;
@@ -45,24 +54,26 @@ interface FormValues {
   is_preventivemaintenance: boolean;
 }
 
-const validationSchema = Yup.object().shape({
-  description: Yup.string().required('Description is required'),
-  status: Yup.string().required('Status is required'),
-  priority: Yup.string().required('Priority is required'),
+const createValidationSchema = (t: TFunction) => Yup.object().shape({
+  description: Yup.string().required(t('createJob.validation.descriptionRequired')),
+  status: Yup.string().required(t('createJob.validation.statusRequired')),
+  priority: Yup.string().required(t('createJob.validation.priorityRequired')),
   remarks: Yup.string().optional(),
   topic: Yup.object().shape({
-    title: Yup.string().required('Category is required'),
+    title: Yup.string().required(t('createJob.validation.categoryRequired')),
     description: Yup.string(),
   }).required(),
   room: Yup.object()
     .nullable()
     .shape({
-      room_id: Yup.number().typeError('Invalid Room ID').min(1, 'Room must be selected'),
+      room_id: Yup.number()
+        .typeError(t('createJob.validation.invalidRoom'))
+        .min(1, t('createJob.validation.roomRequired')),
       name: Yup.string(),
     })
     .test(
       'room-or-area',
-      'Select either a room or an area',
+      t('createJob.validation.roomOrArea'),
       function (value) {
         const areaId = this.parent.area_id;
         if (areaId) return true;
@@ -73,7 +84,7 @@ const validationSchema = Yup.object().shape({
     .nullable()
     .test(
       'area-or-room',
-      'Select either an area or a room',
+      t('createJob.validation.roomOrArea'),
       function (value) {
         const room = this.parent.room as { room_id?: number } | null;
         if (room && room.room_id) return true;
@@ -83,45 +94,59 @@ const validationSchema = Yup.object().shape({
   files: Yup.array()
     .of(
       Yup.mixed<File>()
-        .test('fileSize', 'File too large (max 5MB)', (value) => !value || !(value instanceof File) || value.size <= MAX_FILE_SIZE)
-        .test('fileType', 'Only image files allowed', (value) => !value || !(value instanceof File) || value.type.startsWith('image/'))
+        .test('fileSize', t('createJob.validation.fileTooLarge'), (value) => !value || !(value instanceof File) || value.size <= MAX_FILE_SIZE)
+        .test('fileType', t('createJob.validation.onlyImages'), (value) => !value || !(value instanceof File) || value.type.startsWith('image/'))
     )
-    .min(1, 'At least one image is required')
-    .max(MAX_FILES_PER_STAGE, `You can upload up to ${MAX_FILES_PER_STAGE} before images`)
-    .required('At least one before image is required'),
+    .min(1, t('createJob.validation.imageRequired'))
+    .max(MAX_FILES_PER_STAGE, formatMessage(t('createJob.validation.maxBeforeImages'), { max: MAX_FILES_PER_STAGE }))
+    .required(t('createJob.validation.beforeImageRequired')),
   afterFiles: Yup.array()
     .of(
       Yup.mixed<File>()
-        .test('fileSize', 'File too large (max 5MB)', (value) => !value || !(value instanceof File) || value.size <= MAX_FILE_SIZE)
-        .test('fileType', 'Only image files allowed', (value) => !value || !(value instanceof File) || value.type.startsWith('image/'))
+        .test('fileSize', t('createJob.validation.fileTooLarge'), (value) => !value || !(value instanceof File) || value.size <= MAX_FILE_SIZE)
+        .test('fileType', t('createJob.validation.onlyImages'), (value) => !value || !(value instanceof File) || value.type.startsWith('image/'))
     )
-    .max(MAX_FILES_PER_STAGE, `You can upload up to ${MAX_FILES_PER_STAGE} after images`),
+    .max(MAX_FILES_PER_STAGE, formatMessage(t('createJob.validation.maxAfterImages'), { max: MAX_FILES_PER_STAGE })),
   is_defective: Yup.boolean().default(false),
   is_preventivemaintenance: Yup.boolean().default(false),
 });
 
 
 const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'critical', label: 'Urgent' },
-];
+  { value: 'low', labelKey: 'priority.low' },
+  { value: 'medium', labelKey: 'priority.medium' },
+  { value: 'high', labelKey: 'priority.high' },
+  { value: 'critical', labelKey: 'priority.critical' },
+] as const satisfies Array<{ value: string; labelKey: DictKey }>;
+
+const STATUS_OPTIONS = [
+  { value: 'pending', labelKey: 'status.pending' },
+  { value: 'in_progress', labelKey: 'status.inProgress' },
+  { value: 'waiting_sparepart', labelKey: 'status.waitingSparepart' },
+  { value: 'completed', labelKey: 'status.completed' },
+  { value: 'cancelled', labelKey: 'status.cancelled' },
+] as const satisfies Array<{ value: string; labelKey: DictKey }>;
+
+const JOB_TYPES = [
+  { key: 'work_order', labelKey: 'createJob.type.workOrder', descriptionKey: 'createJob.type.workOrderDesc', icon: Wrench },
+  { key: 'defect', labelKey: 'createJob.type.defect', descriptionKey: 'createJob.type.defectDesc', icon: ShieldAlert },
+  { key: 'pm', labelKey: 'createJob.type.pm', descriptionKey: 'createJob.type.pmDesc', icon: CalendarCheck },
+] as const satisfies Array<{ key: string; labelKey: DictKey; descriptionKey: DictKey; icon: React.ElementType }>;
 
 const STATUS_SELECT_CLASSES: Record<string, string> = {
-  pending: 'border-blue-300 bg-blue-50 text-blue-900',
-  in_progress: 'border-indigo-300 bg-indigo-50 text-indigo-900',
-  waiting_sparepart: 'border-orange-300 bg-orange-50 text-orange-900',
-  completed: 'border-emerald-300 bg-emerald-50 text-emerald-900',
-  cancelled: 'border-red-300 bg-red-50 text-red-900',
+  pending: 'border-[#e2e6e8] bg-white text-[#4f5d63]',
+  in_progress: 'border-[#46b8bc] bg-[#f8ffff] text-[#1b7178]',
+  waiting_sparepart: 'border-[#f0c36d] bg-[#fffaf0] text-[#946200]',
+  completed: 'border-[#7cc89c] bg-[#f5fff8] text-[#267345]',
+  cancelled: 'border-[#eca3a3] bg-[#fff7f7] text-[#a53d3d]',
 };
 
 const STATUS_OPTION_CLASSES: Record<string, string> = {
-  pending: 'font-bold text-blue-900 focus:bg-blue-50',
-  in_progress: 'font-bold text-indigo-900 focus:bg-indigo-50',
-  waiting_sparepart: 'font-bold text-orange-900 focus:bg-orange-50',
-  completed: 'font-bold text-emerald-900 focus:bg-emerald-50',
-  cancelled: 'font-bold text-red-900 focus:bg-red-50',
+  pending: 'font-semibold text-[#4f5d63] focus:bg-slate-50',
+  in_progress: 'font-semibold text-[#1b7178] focus:bg-[#f8ffff]',
+  waiting_sparepart: 'font-semibold text-[#946200] focus:bg-[#fffaf0]',
+  completed: 'font-semibold text-[#267345] focus:bg-[#f5fff8]',
+  cancelled: 'font-semibold text-[#a53d3d] focus:bg-[#fff7f7]',
 };
 
 const initialValues: FormValues = {
@@ -139,8 +164,9 @@ const initialValues: FormValues = {
   is_preventivemaintenance: false,
 };
 
-const SECTION_CARD_CLASS = 'scroll-mt-32 rounded-lg border border-[#E4E8F1] bg-white p-4 shadow-sm shadow-slate-200/60 sm:p-5 xl:p-6';
-const FORM_SHELL_CLASS = 'mx-auto min-h-screen w-full max-w-7xl overflow-x-hidden bg-[#F3F5FA] pb-32 text-[#16233F] md:pb-8';
+const SECTION_CARD_CLASS = 'scroll-mt-28 rounded-[4px] border border-[#e2e6e8] bg-white p-4 sm:p-5';
+const FORM_SHELL_CLASS = 'mx-auto min-h-screen w-full max-w-7xl overflow-x-hidden bg-[#f7f8f8] pb-32 text-[#2f3a3f] md:pb-8';
+const FIELD_BASE_CLASS = 'border border-[#dfe5e8] bg-white text-[#2f3a3f] placeholder:text-[#9aa4a9] focus:border-[#46b8bc] focus:ring-[#dff6f7]';
 
 function RequiredMark() {
   return <span className="text-red-500" aria-label="required">*</span>;
@@ -153,13 +179,13 @@ function ProgressRing({ percent }: { percent: number }) {
   return (
     <div className="relative h-[46px] w-[46px] shrink-0">
       <svg className="-rotate-90" width="46" height="46" viewBox="0 0 46 46" aria-hidden>
-        <circle cx="23" cy="23" r="19" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="4" />
+        <circle cx="23" cy="23" r="19" fill="none" stroke="#e2e6e8" strokeWidth="4" />
         <circle
           cx="23"
           cy="23"
           r="19"
           fill="none"
-          stroke="#F5A623"
+          stroke="#46b8bc"
           strokeWidth="4"
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -167,43 +193,43 @@ function ProgressRing({ percent }: { percent: number }) {
           className="transition-[stroke-dashoffset] duration-300"
         />
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-medium text-white">
+      <div className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-semibold text-[#269fa8]">
         {percent}%
       </div>
     </div>
   );
 }
 
-function CreateJobHeader({ onBack, progress, stepStatus }: { onBack: () => void; progress: number; stepStatus: boolean[] }) {
+function CreateJobHeader({ onBack, progress, stepStatus, t }: { onBack: () => void; progress: number; stepStatus: boolean[]; t: TFunction }) {
   const steps = [
-    { label: 'Job Details', target: 'cj-step-1' },
-    { label: 'Location', target: 'cj-step-2' },
-    { label: 'Category', target: 'cj-step-category' },
-    { label: 'Additional', target: 'cj-step-3' },
-    { label: 'Photos', target: 'cj-step-4' },
+    { label: t('createJob.step.jobDetails'), target: 'cj-step-1' },
+    { label: t('createJob.step.location'), target: 'cj-step-2' },
+    { label: t('createJob.step.category'), target: 'cj-step-category' },
+    { label: t('createJob.step.additional'), target: 'cj-step-3' },
+    { label: t('createJob.step.photos'), target: 'cj-step-4' },
   ];
 
   return (
     <header
-      className="sticky top-0 z-30 rounded-b-lg bg-[#1B2A4D] px-4 pb-4 pt-3 text-white shadow-[0_6px_18px_rgba(20,30,60,0.18)] md:top-3 md:rounded-lg md:px-5 xl:px-6"
+      className="sticky top-0 z-30 rounded-b-[4px] border border-[#e2e6e8] bg-white px-4 pb-4 pt-3 text-[#2f3a3f] shadow-sm md:top-3 md:rounded-[4px] md:px-5 xl:px-6"
       style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
       <div className="flex items-center gap-3 md:gap-4">
         <button
           type="button"
           onClick={onBack}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white/10 text-white transition active:scale-95"
-          aria-label="Go back"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[4px] border border-[#e2e6e8] bg-white text-[#6f7c82] transition hover:border-[#46b8bc] hover:text-[#269fa8] active:scale-95"
+          aria-label={t('createJob.header.back')}
         >
           <ArrowLeft className="h-[18px] w-[18px]" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[17px] font-bold leading-tight md:text-xl">New Job Order</h1>
-          <p className="mt-0.5 text-xs text-[#B9C2DA]">Facilities &amp; Maintenance</p>
+          <h1 className="truncate text-[17px] font-bold leading-tight md:text-xl">{t('createJob.header.title')}</h1>
+          <p className="mt-0.5 text-xs text-[#8a9499]">{t('createJob.header.subtitle')}</p>
         </div>
         <ProgressRing percent={progress} />
       </div>
-      <nav className="mt-3 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] md:flex-wrap [&::-webkit-scrollbar]:hidden" aria-label="Form sections">
+      <nav className="mt-3 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] md:flex-wrap [&::-webkit-scrollbar]:hidden" aria-label={t('createJob.header.sections')}>
         {steps.map((step, index) => {
           const done = stepStatus[index];
           return (
@@ -213,11 +239,11 @@ function CreateJobHeader({ onBack, progress, stepStatus }: { onBack: () => void;
               onClick={() => document.getElementById(step.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
               className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] transition ${
                 done
-                  ? 'border-[#F5A623]/40 bg-[#F5A623]/15 font-semibold text-white'
-                  : 'border-white/10 bg-white/10 text-[#CBD3E6]'
+                  ? 'border-[#46b8bc] bg-[#f8ffff] font-semibold text-[#269fa8]'
+                  : 'border-[#e2e6e8] bg-white text-[#7b878c]'
               }`}
             >
-              {done && <Check className="h-3 w-3 text-[#F5A623]" />}
+              {done && <Check className="h-3 w-3 text-[#269fa8]" />}
               {step.label}
             </button>
           );
@@ -230,12 +256,12 @@ function CreateJobHeader({ onBack, progress, stepStatus }: { onBack: () => void;
 function SectionTitle({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description: string }) {
   return (
     <div className="mb-4 flex items-start gap-2.5">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#FFF3DE] text-[#7A4E00]">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[4px] border border-[#e2e6e8] bg-[#f8ffff] text-[#269fa8]">
         <Icon className="h-4 w-4" aria-hidden />
       </div>
       <div className="min-w-0">
-        <h2 className="text-[15.5px] font-bold leading-tight text-[#1B2A4D]">{title}</h2>
-        <p className="mt-0.5 text-xs leading-5 text-[#5B6785]">{description}</p>
+        <h2 className="text-[15px] font-semibold leading-tight text-[#2f3a3f]">{title}</h2>
+        <p className="mt-0.5 text-xs leading-5 text-[#8a9499]">{description}</p>
       </div>
     </div>
   );
@@ -244,7 +270,7 @@ function SectionTitle({ icon: Icon, title, description }: { icon: React.ElementT
 function LoadingSkeleton({ label }: { label: string }) {
   return (
     <div className="space-y-2" role="status" aria-live="polite">
-      <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+      <div className="h-12 animate-pulse rounded-[4px] bg-[#edf1f2]" />
       <p className="text-xs font-semibold text-slate-500">{label}</p>
     </div>
   );
@@ -264,6 +290,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   const { data: session } = useSession();
   const { toast } = useToast();
   const t = useT();
+  const validationSchema = React.useMemo(() => createValidationSchema(t), [t]);
   const isSubmittingRef = React.useRef(false); // Prevent double submission
   const loaderShownAtRef = useRef<number | null>(null);
 
@@ -364,11 +391,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
   const showErrorToast = useCallback((message: string) => {
     toast({
-      title: 'Error',
+      title: t('error.title'),
       description: message,
       variant: 'destructive',
     });
-  }, [toast]);
+  }, [toast, t]);
 
   // Check if user has properties
   const hasProperties = userProfile?.properties && userProfile.properties.length > 0;
@@ -389,17 +416,17 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
   const validateFiles = (files: File[]) => {
     if (!files || files.length === 0) {
-      return 'At least one image is required';
+      return t('createJob.validation.imageRequired');
     }
     if (files.length > MAX_FILES_PER_STAGE) {
-      return `You can upload up to ${MAX_FILES_PER_STAGE} images`;
+      return formatMessage(t('createJob.error.fileMax'), { max: MAX_FILES_PER_STAGE });
     }
     for (const file of files) {
       if (file.size > MAX_FILE_SIZE) {
-        return `File ${file.name} is too large (max 5MB)`;
+        return formatMessage(t('createJob.error.fileTooLargeNamed'), { file: file.name });
       }
       if (!file.type.startsWith('image/')) {
-        return `File ${file.name} is not an image`;
+        return formatMessage(t('createJob.error.fileNotImage'), { file: file.name });
       }
     }
     return null;
@@ -419,7 +446,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
     try {
       if (!session?.user) {
-        const message = 'Please login first';
+        const message = t('createJob.error.loginFirst');
         setError(message);
         showErrorToast(message);
         await signIn();
@@ -429,7 +456,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       }
 
       if (!selectedProperty) {
-        const message = 'Please select a property';
+        const message = t('createJob.error.selectProperty');
         setError(message);
         showErrorToast(message);
         isSubmittingRef.current = false;
@@ -440,7 +467,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       const hasRoom = Boolean(values.room && values.room.room_id);
       const hasArea = values.area_id != null;
       if (!hasRoom && !hasArea) {
-        const message = 'Please select either a room or an area';
+        const message = t('createJob.validation.roomOrArea');
         setError(message);
         showErrorToast(message);
         isSubmittingRef.current = false;
@@ -496,15 +523,16 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
       await axios.post(`/api/jobs/`, formData, { withCredentials: true });
 
-      const statusLabel = values.status.replace('_', ' ');
-      setSuccessMessage(`Maintenance job created successfully with status: ${statusLabel}. Redirecting to Maintenance Jobs...`);
+      const statusOption = STATUS_OPTIONS.find((option) => option.value === values.status);
+      const statusLabel = statusOption ? t(statusOption.labelKey) : values.status.replace('_', ' ');
+      setSuccessMessage(formatMessage(t('createJob.successMessage'), { status: statusLabel }));
 
       // Success - reset form and redirect
       resetForm();
       if (onJobCreated) onJobCreated();
       toast({
-        title: 'Success',
-        description: 'Maintenance job created successfully.',
+        title: t('success.title'),
+        description: t('createJob.successToast'),
         variant: 'success',
       });
       setTimeout(() => {
@@ -514,7 +542,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       // Note: Don't reset isSubmittingRef here because we're navigating away
     } catch (error) {
       console.error('Submission error:', error);
-      const errorMessage = formatApiError(error, 'Failed to create job. Please try again.');
+      const errorMessage = formatApiError(error, t('createJob.error.createFailed'));
       setError(errorMessage);
       setSuccessMessage(null);
       showErrorToast(errorMessage);
@@ -540,14 +568,14 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       setRooms(normalizeRoomsResponse(response.data));
     } catch (error) {
       console.error('Error fetching rooms:', error);
-      const errorMessage = formatApiError(error, 'Failed to fetch rooms. Please try again.');
+      const errorMessage = formatApiError(error, t('createJob.error.fetchRooms'));
       setError(errorMessage);
       showErrorToast(errorMessage);
       setRooms([]);
     } finally {
       setIsRoomLoading(false);
     }
-  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, normalizeRoomsResponse, showErrorToast]);
+  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, normalizeRoomsResponse, showErrorToast, t]);
 
   const fetchFloorsForArea = useCallback(async (areaId: number | null) => {
     if (!session?.user?.accessToken || !areaId) {
@@ -569,14 +597,14 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       setFloors(normalizeFloorsResponse(response.data));
     } catch (error) {
       console.error('Error fetching floors:', error);
-      const errorMessage = formatApiError(error, 'Failed to fetch floors. Please try again.');
+      const errorMessage = formatApiError(error, t('createJob.error.fetchFloors'));
       setError(errorMessage);
       showErrorToast(errorMessage);
       setFloors([]);
     } finally {
       setIsFloorLoading(false);
     }
-  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, normalizeFloorsResponse, showErrorToast]);
+  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, normalizeFloorsResponse, showErrorToast, t]);
 
   const fetchData = useCallback(async () => {
     if (!session?.user?.accessToken) {
@@ -608,13 +636,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
       setAreas(areasList);
     } catch (error) {
       console.error('Error fetching data:', error);
-      const errorMessage = formatApiError(error, 'Failed to fetch rooms and topics. Please try again.');
+      const errorMessage = formatApiError(error, t('createJob.error.fetchData'));
       setError(errorMessage);
       showErrorToast(errorMessage);
     } finally {
       clearLoadingAfterMinTime();
     }
-  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, clearLoadingAfterMinTime, normalizeRoomsResponse, showErrorToast]);
+  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, clearLoadingAfterMinTime, normalizeRoomsResponse, showErrorToast, t]);
 
   useEffect(() => {
     if (session?.user?.accessToken) {
@@ -650,11 +678,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
           aria-busy="true"
           role="status"
         >
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-            <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+          <div className="flex h-14 w-14 items-center justify-center rounded-[4px] border border-[#e2e6e8] bg-[#f8ffff]">
+            <Loader className="h-8 w-8 animate-spin text-[#269fa8]" aria-hidden />
           </div>
           <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
-            Loading create maintenance job form...
+            {t('createJob.loadingForm')}
           </p>
         </div>
       )}
@@ -678,7 +706,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
           return (
           <Form className="relative space-y-4" noValidate>
-            <CreateJobHeader onBack={() => window.history.back()} progress={progress} stepStatus={stepStatus} />
+            <CreateJobHeader onBack={() => window.history.back()} progress={progress} stepStatus={stepStatus} t={t} />
             <div className="px-0 pt-4 sm:px-1 md:px-0">
 
           {/* Completion state per step — drives the bottom CTA hint. */}
@@ -694,8 +722,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               aria-busy="true"
               role="status"
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-                <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+              <div className="flex h-14 w-14 items-center justify-center rounded-[4px] border border-[#e2e6e8] bg-[#f8ffff]">
+                <Loader className="h-8 w-8 animate-spin text-[#269fa8]" aria-hidden />
               </div>
               <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
                 {t('createJob.creating')}
@@ -704,25 +732,25 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
           )}
           {/* Step 1: Status & Priority */}
             <div id="cj-step-1" className={`${SECTION_CARD_CLASS} lg:col-span-2`}>
-              <SectionTitle icon={ClipboardList} title="Job Information" description="Describe the issue and choose how the team should handle it." />
+              <SectionTitle icon={ClipboardList} title={t('createJob.section.jobInfo')} description={t('createJob.section.jobInfoDesc')} />
               
               <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                 {/* Description */}
                 <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="description" className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Job Description <RequiredMark />
+                  <Label htmlFor="description" className="text-sm font-semibold text-[#2f3a3f]">
+                    {t('createJob.description')} <RequiredMark />
                   </Label>
                   <Field
                     as={Textarea}
                     id="description"
                     name="description"
-                    placeholder="Describe the maintenance job in detail..."
+                    placeholder={t('createJob.descriptionPlaceholder')}
                     disabled={isSubmitting}
-                    className={`w-full min-h-[96px] border-2 p-3 text-sm transition-all duration-200 sm:min-h-[110px] sm:p-4 sm:text-base ${
+                    className={`w-full min-h-[96px] rounded-[4px] p-3 text-sm transition-all duration-200 sm:min-h-[110px] ${
                       touched.description && errors.description 
-                        ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-                        : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-200'
-                    } pcms-textarea resize-none focus:outline-none focus:ring-4`}
+                        ? 'border border-red-300 focus:border-red-500 focus:ring-red-100' 
+                        : FIELD_BASE_CLASS
+                    } pcms-textarea resize-none focus:outline-none focus:ring-2`}
                   />
                   {(touched.description || submitCount > 0) && errors.description && (
                     <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
@@ -734,8 +762,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
                 {/* Status and Priority */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Status <span className="text-red-500">*</span>
+                  <Label className="text-sm font-semibold text-[#2f3a3f]">
+                    {t('createJob.status')} <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={values.status}
@@ -745,23 +773,23 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     }}
                     disabled={isSubmitting}
                   >
-                    <SelectTrigger className={`h-11 rounded-xl border-2 font-bold shadow-sm transition-all duration-200 sm:h-12 ${
+                    <SelectTrigger className={`h-11 rounded-[4px] font-semibold transition-all duration-200 ${
                       (touched.status || submitCount > 0) && errors.status
-                        ? 'border-red-400 bg-red-50 text-red-900'
-                        : STATUS_SELECT_CLASSES[values.status] || 'border-slate-300 bg-white text-slate-900'
+                        ? 'border border-red-400 bg-red-50 text-red-900'
+                        : STATUS_SELECT_CLASSES[values.status] || FIELD_BASE_CLASS
                     }`}>
-                      <SelectValue placeholder="Select Status" />
+                      <SelectValue placeholder={t('createJob.selectStatus')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending" className={STATUS_OPTION_CLASSES.pending}>Pending</SelectItem>
-                      <SelectItem value="in_progress" className={STATUS_OPTION_CLASSES.in_progress}>In Progress</SelectItem>
-                      <SelectItem value="waiting_sparepart" className={STATUS_OPTION_CLASSES.waiting_sparepart}>Waiting Sparepart</SelectItem>
-                      <SelectItem value="completed" className={STATUS_OPTION_CLASSES.completed}>Completed</SelectItem>
-                      <SelectItem value="cancelled" className={STATUS_OPTION_CLASSES.cancelled}>Cancelled</SelectItem>
+                      {STATUS_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value} className={STATUS_OPTION_CLASSES[option.value]}>
+                          {t(option.labelKey)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">Selected</span>
+                  <div className="flex items-center gap-2 rounded-[4px] border border-[#e2e6e8] bg-[#fafafa] px-3 py-2">
+                    <span className="text-xs font-semibold uppercase text-[#8a9499]">{t('createJob.selected')}</span>
                     <StatusBadge status={values.status} size="sm" />
                   </div>
                   {(touched.status || submitCount > 0) && errors.status && (
@@ -773,21 +801,21 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Priority <span className="text-red-500">*</span>
+                  <Label className="text-sm font-semibold text-[#2f3a3f]">
+                    {t('createJob.priority')} <span className="text-red-500">*</span>
                   </Label>
                   <div
-                    className={`grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 ${(touched.priority || submitCount > 0) && errors.priority ? 'ring-2 ring-red-400 rounded-xl p-1' : ''}`}
+                    className={`grid grid-cols-2 gap-2 sm:grid-cols-4 ${(touched.priority || submitCount > 0) && errors.priority ? 'ring-2 ring-red-200 rounded-[4px] p-1' : ''}`}
                     role="radiogroup"
-                    aria-label="Priority"
+                    aria-label={t('createJob.priority')}
                   >
                     {PRIORITY_OPTIONS.map((option) => {
                       const active = values.priority === option.value;
                       const colorMap: Record<string, string> = {
-                        low: active ? 'bg-green-500 text-white border-green-500 shadow-md' : 'border-green-200 text-green-700 hover:bg-green-50',
-                        medium: active ? 'bg-yellow-500 text-white border-yellow-500 shadow-md' : 'border-yellow-200 text-yellow-700 hover:bg-yellow-50',
-                        high: active ? 'bg-orange-500 text-white border-orange-500 shadow-md' : 'border-orange-200 text-orange-700 hover:bg-orange-50',
-                        critical: active ? 'bg-red-600 text-white border-red-600 shadow-md' : 'border-red-200 text-red-700 hover:bg-red-50',
+                        low: active ? 'border-[#46b8bc] bg-[#46b8bc] text-white' : 'border-[#e2e6e8] bg-white text-[#4f5d63] hover:border-[#46b8bc] hover:bg-[#f8ffff]',
+                        medium: active ? 'border-[#46b8bc] bg-[#46b8bc] text-white' : 'border-[#e2e6e8] bg-white text-[#4f5d63] hover:border-[#46b8bc] hover:bg-[#f8ffff]',
+                        high: active ? 'border-[#46b8bc] bg-[#46b8bc] text-white' : 'border-[#e2e6e8] bg-white text-[#4f5d63] hover:border-[#46b8bc] hover:bg-[#f8ffff]',
+                        critical: active ? 'border-[#46b8bc] bg-[#46b8bc] text-white' : 'border-[#e2e6e8] bg-white text-[#4f5d63] hover:border-[#46b8bc] hover:bg-[#f8ffff]',
                       };
                       return (
                         <button
@@ -800,9 +828,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                             setFieldValue('priority', option.value);
                             setFieldTouched('priority', true, false);
                           }}
-                          className={`min-h-[44px] touch-manipulation rounded-xl border-2 px-3 py-2 text-sm font-bold transition-all duration-150 active:scale-95 ${colorMap[option.value]}`}
+                          className={`min-h-[40px] touch-manipulation rounded-[4px] border px-3 py-2 text-sm font-semibold transition-all duration-150 active:scale-95 ${colorMap[option.value]}`}
                         >
-                          {option.label}
+                          {t(option.labelKey)}
                         </button>
                       );
                     })}
@@ -816,39 +844,42 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Job Type <RequiredMark />
+                  <Label className="text-sm font-semibold text-[#2f3a3f]">
+                    {t('createJob.jobType')} <RequiredMark />
                   </Label>
-                  <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Job type">
-                    {[
-                      { key: 'work_order', label: 'Work Order', description: 'Standard maintenance task', icon: Wrench, active: !values.is_defective && !values.is_preventivemaintenance },
-                      { key: 'defect', label: 'Defect', description: 'Fault or issue found', icon: ShieldAlert, active: values.is_defective },
-                      { key: 'pm', label: 'Preventive Maintenance', description: 'Planned recurring care', icon: CalendarCheck, active: values.is_preventivemaintenance },
-                    ].map((type) => (
+                  <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label={t('createJob.jobType')}>
+                    {JOB_TYPES.map((type) => {
+                      const active = type.key === 'work_order'
+                        ? !values.is_defective && !values.is_preventivemaintenance
+                        : type.key === 'defect'
+                          ? values.is_defective
+                          : values.is_preventivemaintenance;
+                      return (
                       <button
                         key={type.key}
                         type="button"
                         role="radio"
-                        aria-checked={type.active}
+                        aria-checked={active}
                         disabled={isSubmitting}
                         onClick={() => {
                           setFieldValue('is_defective', type.key === 'defect');
                           setFieldValue('is_preventivemaintenance', type.key === 'pm');
                         }}
-                        className={`min-h-[72px] touch-manipulation rounded-2xl border-2 p-3 text-left transition-all focus:outline-none focus:ring-4 focus:ring-blue-100 active:scale-[0.98] ${
-                          type.active
-                            ? 'border-blue-600 bg-blue-50 text-blue-950 shadow-sm'
-                            : 'border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50/50'
+                        className={`min-h-[68px] touch-manipulation rounded-[4px] border p-3 text-left transition-all focus:outline-none focus:ring-2 focus:ring-[#dff6f7] active:scale-[0.98] ${
+                          active
+                            ? 'border-[#46b8bc] bg-[#f8ffff] text-[#1b7178]'
+                            : 'border-[#e2e6e8] bg-white text-[#4f5d63] hover:border-[#46b8bc] hover:bg-[#f8ffff]'
                         }`}
                       >
-                        <span className="flex items-center gap-2 font-black">
+                        <span className="flex items-center gap-2 font-semibold">
                           <type.icon className="h-5 w-5" aria-hidden />
-                          {type.label}
-                          {type.active && <Check className="ml-auto h-4 w-4" aria-hidden />}
+                          {t(type.labelKey)}
+                          {active && <Check className="ml-auto h-4 w-4" aria-hidden />}
                         </span>
-                        <span className="mt-1 block text-xs font-semibold text-slate-500">{type.description}</span>
+                        <span className="mt-1 block text-xs font-medium text-[#8a9499]">{t(type.descriptionKey)}</span>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -856,16 +887,16 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
             {/* Step 2: Assignment & Location */}
             <div id="cj-step-2" className={`${SECTION_CARD_CLASS} lg:col-span-2`}>
-              <SectionTitle icon={MapPin} title="Location" description="Where is this job located? Follow property, area, floor, then room." />
-              <div className="mb-4 flex gap-2 rounded-[10px] border border-[#DCE4FA] bg-[#F3F6FF] p-3 text-[12.5px] leading-5 text-[#243761]">
+              <SectionTitle icon={MapPin} title={t('createJob.step.location')} description={t('createJob.section.locationDesc')} />
+              <div className="mb-4 flex gap-2 rounded-[4px] border border-[#e2e6e8] bg-[#f8ffff] p-3 text-[12.5px] leading-5 text-[#4f5d63]">
                 <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                <span>Follow the sequence: property, area, floor, then room.</span>
+                <span>{t('createJob.locationHint')}</span>
               </div>
               
               <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
-                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Property <RequiredMark />
+                  <Label className="text-sm font-semibold text-[#2f3a3f]">
+                    {t('createJob.property')} <RequiredMark />
                   </Label>
                   <Select
                     value={selectedProperty || currentPropertyId || ''}
@@ -883,8 +914,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     }}
                     disabled={isSubmitting || !hasProperties}
                   >
-                    <SelectTrigger className="h-12 rounded-2xl border-2 border-slate-300 bg-white text-slate-900 shadow-sm">
-                      <SelectValue placeholder={hasProperties ? 'Select property' : 'No properties available'} />
+                    <SelectTrigger className={`h-11 rounded-[4px] ${FIELD_BASE_CLASS}`}>
+                      <SelectValue placeholder={hasProperties ? t('createJob.selectProperty') : t('createJob.noProperties')} />
                     </SelectTrigger>
                     <SelectContent>
                       {userProfile?.properties?.map((property) => (
@@ -898,9 +929,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
                 {/* Area Selection - required if no room selected */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Area / Zone {values.room && values.room.room_id ? (
-                      <span className="text-xs font-medium text-slate-600">(optional)</span>
+                  <Label className="text-sm font-semibold text-[#2f3a3f]">
+                    {t('createJob.areaZone')} {values.room && values.room.room_id ? (
+                      <span className="text-xs font-medium text-slate-600">{t('createJob.optional')}</span>
                     ) : (
                       <span className="text-red-500">*</span>
                     )}
@@ -925,25 +956,25 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     }}
                     disabled={isSubmitting}
                   >
-                    <SelectTrigger className={`h-11 border-2 rounded-xl bg-white text-slate-900 sm:h-12 ${
-                      (touched.area_id || submitCount > 0) && errors.area_id ? 'border-red-400 bg-red-50' : 'border-slate-300'
+                    <SelectTrigger className={`h-11 rounded-[4px] ${
+                      (touched.area_id || submitCount > 0) && errors.area_id ? 'border border-red-400 bg-red-50 text-red-900' : FIELD_BASE_CLASS
                     }`}>
-                      <SelectValue placeholder="Select an area (optional)" />
+                      <SelectValue placeholder={t('createJob.selectAreaOptional')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">No area</SelectItem>
+                      <SelectItem value="none">{t('createJob.noArea')}</SelectItem>
                       {areas.length ? areas.map(area => (
                         <SelectItem key={area.id} value={String(area.id)}>
                           {area.name}{area.property_name ? ` · ${area.property_name}` : ''}
                         </SelectItem>
                       )) : (
-                        <SelectItem value="empty" disabled>No areas configured</SelectItem>
+                        <SelectItem value="empty" disabled>{t('createJob.noAreas')}</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
                   {values.area_id && (
-                    <p className="text-xs font-bold text-cyan-700">
-                      Selected area will be saved with the job and shown on Jobs by Area.
+                    <p className="text-xs font-semibold text-[#269fa8]">
+                      {t('createJob.areaSavedHint')}
                     </p>
                   )}
                   {(touched.area_id || submitCount > 0) && errors.area_id && (
@@ -956,8 +987,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
                 {/* Floor Selection */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Floor <span className="text-xs font-medium text-slate-600">(select area first)</span>
+                  <Label className="text-sm font-semibold text-[#2f3a3f]">
+                    {t('createJob.floor')} <span className="text-xs font-medium text-slate-600">{t('createJob.selectAreaFirst')}</span>
                   </Label>
                   <Select
                     value={values.floor || 'none'}
@@ -974,36 +1005,36 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     }}
                     disabled={isSubmitting || isFloorLoading || !values.area_id}
                   >
-                    <SelectTrigger className="h-11 border-2 rounded-xl border-slate-300 bg-white text-slate-900 sm:h-12">
+                    <SelectTrigger className={`h-11 rounded-[4px] ${FIELD_BASE_CLASS}`}>
                       {isFloorLoading ? (
                         <span className="flex items-center gap-2 text-muted-foreground">
-                          <Loader className="h-4 w-4 animate-spin" /> Loading floors...
+                          <Loader className="h-4 w-4 animate-spin" /> {t('createJob.loadingFloors')}
                         </span>
                       ) : (
-                        <SelectValue placeholder="Select a floor" />
+                        <SelectValue placeholder={t('createJob.selectFloor')} />
                       )}
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Select a floor</SelectItem>
+                      <SelectItem value="none">{t('createJob.selectFloor')}</SelectItem>
                       {floors.length ? floors.map(floor => (
                         <SelectItem key={floor} value={floor}>
-                          Floor {floor}
+                          {formatMessage(t('createJob.floorValue'), { floor })}
                         </SelectItem>
                       )) : (
-                        <SelectItem value="empty" disabled>No floors found for this area</SelectItem>
+                        <SelectItem value="empty" disabled>{t('createJob.noFloorsArea')}</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
                   {values.area_id && !isFloorLoading && floors.length === 0 && (
-                    <p className="text-sm font-medium text-slate-600">No floors found for this area</p>
+                    <p className="text-sm font-medium text-slate-600">{t('createJob.noFloorsArea')}</p>
                   )}
                 </div>
 
                 {/* Room Selection */}
                 <div className="md:col-span-2 space-y-2">
-                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Room Number {values.area_id ? (
-                      <span className="text-xs font-medium text-slate-600">(optional)</span>
+                  <Label className="text-sm font-semibold text-[#2f3a3f]">
+                    {t('createJob.roomNumber')} {values.area_id ? (
+                      <span className="text-xs font-medium text-slate-600">{t('createJob.optional')}</span>
                     ) : (
                       <span className="text-red-500">*</span>
                     )}
@@ -1017,13 +1048,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     }}
                     disabled={isSubmitting}
                     loading={isRoomLoading}
-                    emptyText={values.area_id && values.floor ? 'No rooms found for this floor' : 'No rooms found'}
-                    placeholder={values.area_id && !values.floor ? 'Select floor or pick a room...' : 'Select room number...'}
+                    emptyText={values.area_id && values.floor ? t('createJob.noRoomsFloor') : t('createJob.noRooms')}
+                    placeholder={values.area_id && !values.floor ? t('createJob.selectFloorOrRoom') : t('createJob.selectRoomNumber')}
                   />
                   {values.floor && !isRoomLoading && rooms.length === 0 && (
-                    <p className="text-sm font-medium text-slate-600">No rooms found for this floor</p>
+                    <p className="text-sm font-medium text-slate-600">{t('createJob.noRoomsFloor')}</p>
                   )}
-                  {isRoomLoading && <LoadingSkeleton label="Loading available rooms without refreshing the page..." />}
+                  {isRoomLoading && <LoadingSkeleton label={t('createJob.loadingRooms')} />}
                   {(touched.room || submitCount > 0) && errors.room && (
                     <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
                       <AlertCircle className="h-4 w-4" />
@@ -1033,21 +1064,21 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 </div>
 
                 {(values.area_id || values.floor || values.room) && (
-                  <div className="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">Selected location</p>
+                  <div className="md:col-span-2 rounded-[4px] border border-[#e2e6e8] bg-[#fafafa] p-3">
+                    <p className="mb-2 text-xs font-semibold uppercase text-[#8a9499]">{t('createJob.selectedLocation')}</p>
                     <div className="flex flex-wrap gap-2">
                       {values.area_id && (
-                        <button type="button" onClick={() => { setFieldValue('area_id', null); setFieldValue('floor', null); setFieldValue('room', null); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
-                          <MapPin className="h-4 w-4" /> {areas.find((area) => area.id === values.area_id)?.name || 'Area'} <X className="h-3.5 w-3.5" />
+                        <button type="button" onClick={() => { setFieldValue('area_id', null); setFieldValue('floor', null); setFieldValue('room', null); }} className="inline-flex min-h-8 items-center gap-1.5 rounded-[4px] border border-[#46b8bc] bg-[#f8ffff] px-3 py-1 text-sm font-semibold text-[#269fa8]">
+                          <MapPin className="h-4 w-4" /> {areas.find((area) => area.id === values.area_id)?.name || t('createJob.area')} <X className="h-3.5 w-3.5" />
                         </button>
                       )}
                       {values.floor && (
-                        <button type="button" onClick={() => { setFieldValue('floor', null); setFieldValue('room', null); }} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-indigo-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
-                          <Layers3 className="h-4 w-4" /> Floor {values.floor} <X className="h-3.5 w-3.5" />
+                        <button type="button" onClick={() => { setFieldValue('floor', null); setFieldValue('room', null); }} className="inline-flex min-h-8 items-center gap-1.5 rounded-[4px] border border-[#46b8bc] bg-[#f8ffff] px-3 py-1 text-sm font-semibold text-[#269fa8]">
+                          <Layers3 className="h-4 w-4" /> {formatMessage(t('createJob.floorValue'), { floor: values.floor })} <X className="h-3.5 w-3.5" />
                         </button>
                       )}
                       {values.room && (
-                        <button type="button" onClick={() => setFieldValue('room', null)} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-emerald-600 px-3 py-1 text-sm font-bold text-white shadow-sm">
+                        <button type="button" onClick={() => setFieldValue('room', null)} className="inline-flex min-h-8 items-center gap-1.5 rounded-[4px] border border-[#46b8bc] bg-[#f8ffff] px-3 py-1 text-sm font-semibold text-[#269fa8]">
                           <DoorOpen className="h-4 w-4" /> {values.room.name} <X className="h-3.5 w-3.5" />
                         </button>
                       )}
@@ -1060,22 +1091,22 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
             {/* Step 3: Category */}
             <div id="cj-step-category" className={SECTION_CARD_CLASS}>
-              <SectionTitle icon={Tag} title="Category" description="Choose one category. Tap the selected tag again to clear it." />
+              <SectionTitle icon={Tag} title={t('createJob.category')} description={t('createJob.section.categoryDesc')} />
               <div className="grid grid-cols-1 gap-4">
                 {/* Topic Selection */}
                 <div className="space-y-3">
                   <div className="space-y-1">
-                    <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                      Category <span className="text-red-500">*</span>
+                    <Label className="text-sm font-semibold text-[#2f3a3f]">
+                      {t('createJob.category')} <span className="text-red-500">*</span>
                     </Label>
                     <p className="text-xs font-medium text-slate-600 sm:text-sm">
-                      Choose one category. Tap the selected tag again to clear it.
+                      {t('createJob.section.categoryDesc')}
                     </p>
                   </div>
 
                   {values.topic.title && (
-                    <div className="rounded-2xl border border-blue-200 bg-blue-50 p-3">
-                      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-blue-900">Selected category</p>
+                    <div className="rounded-[4px] border border-[#46b8bc] bg-[#f8ffff] p-3">
+                      <p className="mb-2 text-xs font-semibold uppercase text-[#269fa8]">{t('createJob.selectedCategory')}</p>
                       <button
                         type="button"
                         onClick={() => {
@@ -1083,7 +1114,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                           setFieldTouched('topic.title', true, false);
                         }}
                         disabled={isSubmitting}
-                        className={`inline-flex min-h-11 touch-manipulation items-center gap-2 rounded-full border-2 border-blue-600 bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 active:scale-[0.98] ${
+                        className={`inline-flex min-h-10 touch-manipulation items-center gap-2 rounded-[4px] border border-[#46b8bc] bg-[#46b8bc] px-3 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#269fa8] active:scale-[0.98] ${
                           isSubmitting ? 'cursor-not-allowed opacity-60' : ''
                         }`}
                       >
@@ -1100,9 +1131,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                         type="search"
                         value={categorySearch}
                         onChange={(event) => setCategorySearch(event.target.value)}
-                        placeholder="Search categories..."
-                        aria-label="Search categories"
-                        className="h-11 rounded-xl border-2 border-slate-300 bg-white pl-10 text-base text-slate-900 placeholder:text-slate-500 sm:h-12"
+                        placeholder={t('createJob.searchCategories')}
+                        aria-label={t('createJob.searchCategories')}
+                        className={`h-11 rounded-[4px] pl-10 text-sm ${FIELD_BASE_CLASS}`}
                         disabled={isSubmitting}
                       />
                     </div>
@@ -1119,10 +1150,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     return (
                       <div
                         role="listbox"
-                        aria-label="Choose one maintenance category"
+                        aria-label={t('createJob.chooseCategory')}
                         aria-multiselectable="false"
                         aria-invalid={hasCategoryError}
-                        className={`flex flex-wrap gap-2 rounded-2xl border bg-white p-2 sm:gap-3 sm:p-3 ${
+                        className={`flex flex-wrap gap-2 rounded-[4px] border bg-white p-2 sm:gap-3 sm:p-3 ${
                           hasManyTopics ? 'max-h-64 overflow-y-auto pr-2' : ''
                         } ${hasCategoryError ? 'border-red-300 ring-2 ring-red-100' : 'border-slate-200'}`}
                       >
@@ -1143,10 +1174,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                                 setFieldTouched('topic.title', true, false);
                               }}
                               disabled={isSubmitting}
-                              className={`inline-flex min-h-10 touch-manipulation items-center gap-2 rounded-[10px] border-[1.5px] px-3.5 py-2 text-[13.5px] font-semibold transition-all duration-200 active:scale-[0.98] sm:px-5 ${
+                              className={`inline-flex min-h-9 touch-manipulation items-center gap-2 rounded-[4px] border px-3 py-1.5 text-[13px] font-semibold transition-all duration-200 active:scale-[0.98] sm:px-4 ${
                                 isSelected
-                                  ? 'border-[#1B2A4D] bg-[#1B2A4D] text-white shadow-sm'
-                                  : 'border-[#E4E8F1] bg-[#FBFBFD] text-[#5B6785] hover:border-[#1B2A4D]/30 hover:bg-[#F3F6FF]'
+                                  ? 'border-[#46b8bc] bg-[#46b8bc] text-white'
+                                  : 'border-[#e2e6e8] bg-[#FBFBFD] text-[#5B6785] hover:border-[#46b8bc] hover:bg-[#f8ffff]'
                               } ${isSubmitting ? 'cursor-not-allowed opacity-60' : ''}`}
                             >
                               {isSelected && <Check className="h-4 w-4" aria-hidden />}
@@ -1154,14 +1185,14 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                             </button>
                           );
                         }) : (
-                          <div className="flex min-h-11 items-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-500 sm:px-5">
-                            Loading topics...
+                          <div className="flex min-h-10 items-center rounded-[4px] border border-[#e2e6e8] bg-white px-4 py-2 text-sm font-semibold text-[#8a9499]">
+                            {t('createJob.loadingTopics')}
                           </div>
                         )}
 
                         {topics.length > 0 && visibleTopics.length === 0 && (
-                          <div className="flex min-h-11 items-center rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-600">
-                            No categories match “{categorySearch}”.
+                          <div className="flex min-h-10 items-center rounded-[4px] border border-dashed border-[#e2e6e8] bg-[#fafafa] px-4 py-2 text-sm font-semibold text-[#6f7c82]">
+                            {formatMessage(t('createJob.noCategoryMatch'), { search: categorySearch })}
                           </div>
                         )}
                       </div>
@@ -1180,25 +1211,25 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
             {/* Step 4: Additional Details */}
             <div id="cj-step-3" className={SECTION_CARD_CLASS}>
-              <SectionTitle icon={Info} title="Additional Details" description="Set status, add remarks, and mark special job flags." />
+              <SectionTitle icon={Info} title={t('createJob.section.additional')} description={t('createJob.section.additionalDesc')} />
               
               <div className="space-y-4 sm:space-y-6">
                 {/* Remarks */}
                 <div className="space-y-2">
-                  <Label htmlFor="remarks" className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Remarks
+                  <Label htmlFor="remarks" className="text-sm font-semibold text-[#2f3a3f]">
+                    {t('createJob.remarks')}
                   </Label>
                   <Field
                     as={Textarea}
                     id="remarks"
                     name="remarks"
-                    placeholder="Enter any additional remarks or special instructions..."
+                    placeholder={t('createJob.remarksPlaceholder')}
                     disabled={isSubmitting}
-                    className={`w-full min-h-[96px] border-2 p-3 text-sm transition-all duration-200 sm:min-h-[110px] sm:p-4 sm:text-base ${
+                    className={`w-full min-h-[96px] rounded-[4px] p-3 text-sm transition-all duration-200 sm:min-h-[110px] ${
                       (touched.remarks || submitCount > 0) && errors.remarks 
-                        ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-                        : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-500 focus:border-purple-500 focus:ring-purple-200'
-                    } pcms-textarea resize-none focus:outline-none focus:ring-4`}
+                        ? 'border border-red-300 focus:border-red-500 focus:ring-red-100' 
+                        : FIELD_BASE_CLASS
+                    } pcms-textarea resize-none focus:outline-none focus:ring-2`}
                   />
                   {(touched.remarks || submitCount > 0) && errors.remarks && (
                     <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
@@ -1210,29 +1241,29 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
                 {/* Checkboxes */}
                 <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
-                  <div className="flex items-center gap-3 rounded-xl border border-purple-200 bg-white/60 p-3 sm:p-4">
+                  <div className="flex items-center gap-3 rounded-[4px] border border-[#e2e6e8] bg-white p-3">
                     <Checkbox
                       id="is_defective"
                       checked={values.is_defective}
                       onCheckedChange={(checked) => setFieldValue('is_defective', checked)}
                       disabled={isSubmitting}
-                      className="h-5 w-5 text-purple-600 border-2 border-purple-300 rounded"
+                      className="h-5 w-5 rounded border border-[#46b8bc] text-[#269fa8]"
                     />
-                    <Label htmlFor="is_defective" className="cursor-pointer text-sm font-semibold text-slate-900 sm:text-base">
-                      Is Defective?
+                    <Label htmlFor="is_defective" className="cursor-pointer text-sm font-semibold text-[#2f3a3f]">
+                      {t('createJob.isDefective')}
                     </Label>
                   </div>
 
-                  <div className="flex items-center gap-3 rounded-xl border border-purple-200 bg-white/60 p-3 sm:p-4">
+                  <div className="flex items-center gap-3 rounded-[4px] border border-[#e2e6e8] bg-white p-3">
                     <Checkbox
                       id="is_preventivemaintenance"
                       checked={values.is_preventivemaintenance}
                       onCheckedChange={(checked) => setFieldValue('is_preventivemaintenance', checked)}
                       disabled={isSubmitting}
-                      className="h-5 w-5 text-purple-600 border-2 border-purple-300 rounded"
+                      className="h-5 w-5 rounded border border-[#46b8bc] text-[#269fa8]"
                     />
-                    <Label htmlFor="is_preventivemaintenance" className="cursor-pointer text-sm font-semibold text-slate-900 sm:text-base">
-                      Is Preventive Maintenance?
+                    <Label htmlFor="is_preventivemaintenance" className="cursor-pointer text-sm font-semibold text-[#2f3a3f]">
+                      {t('createJob.isPreventiveMaintenance')}
                     </Label>
                   </div>
                 </div>
@@ -1241,12 +1272,12 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
 
             {/* Step 5: Evidence Upload */}
             <div id="cj-step-4" className={`${SECTION_CARD_CLASS} lg:col-span-2`}>
-              <SectionTitle icon={ImagePlus} title="Image Upload" description="Take photos or choose images, preview them, and remove mistakes before submitting." />
+              <SectionTitle icon={ImagePlus} title={t('createJob.section.images')} description={t('createJob.section.imagesDesc')} />
               
               <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    Before Photo / Evidence (up to {MAX_FILES_PER_STAGE}) <span className="text-red-500">*</span>
+                  <Label className="text-sm font-semibold text-[#2f3a3f]">
+                    {formatMessage(t('createJob.beforePhoto'), { max: MAX_FILES_PER_STAGE })} <span className="text-red-500">*</span>
                   </Label>
                   <FileUpload
                     onFileSelect={(selectedFiles) => {
@@ -1259,13 +1290,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     maxFiles={MAX_FILES_PER_STAGE}
                   />
                   <p className="text-xs font-medium text-slate-600 sm:text-sm">
-                    Upload up to 20 before photos to document the issue. Max 5MB each.
+                    {formatMessage(t('createJob.beforePhotoHint'), { max: MAX_FILES_PER_STAGE })}
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-slate-900 sm:text-base">
-                    After Photo / Evidence (up to {MAX_FILES_PER_STAGE})
+                  <Label className="text-sm font-semibold text-[#2f3a3f]">
+                    {formatMessage(t('createJob.afterPhoto'), { max: MAX_FILES_PER_STAGE })}
                   </Label>
                   <FileUpload
                     onFileSelect={(selectedFiles) => {
@@ -1278,7 +1309,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     maxFiles={MAX_FILES_PER_STAGE}
                   />
                   <p className="text-xs font-medium text-slate-600 sm:text-sm">
-                    Optional: upload up to 20 after photos when the job is already fixed. Max 5MB each.
+                    {formatMessage(t('createJob.afterPhotoHint'), { max: MAX_FILES_PER_STAGE })}
                   </p>
                 </div>
               </div>
@@ -1287,32 +1318,32 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
             </div>
             <aside className="hidden xl:block">
               <div className="sticky top-28 space-y-4">
-                <SectionCard title="Maintenance job summary" description="Review before creating the job.">
+                <SectionCard title={t('createJob.summary.title')} description={t('createJob.summary.desc')}>
                   <dl className="space-y-3 text-sm">
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Property</dt><dd className="text-right font-semibold text-slate-900">{selectedPropertyLabel || 'Select property'}</dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Area</dt><dd className="text-right font-semibold text-slate-900">{areas.find((area) => area.id === values.area_id)?.name || 'Select area'}</dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Room</dt><dd className="text-right font-semibold text-slate-900">{values.room?.name || 'Select room'}</dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Category</dt><dd className="font-semibold text-slate-900">{values.topic.title || 'Select category'}</dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Status</dt><dd><StatusBadge status={values.status} size="sm" /></dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Priority</dt><dd><PriorityBadge priority={values.priority} /></dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Assigned to</dt><dd className="text-right font-semibold text-slate-900">{[session?.user?.first_name, session?.user?.last_name].filter(Boolean).join(' ') || session?.user?.username || 'Chief Engineer review'}</dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">Before photo count</dt><dd className="font-semibold text-slate-900">{values.files.length}</dd></div>
-                    <div className="flex items-center justify-between gap-3"><dt className="text-slate-500">After photo count</dt><dd className="font-semibold text-slate-900">{values.afterFiles.length}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[#8a9499]">{t('createJob.property')}</dt><dd className="text-right font-semibold text-[#2f3a3f]">{selectedPropertyLabel || t('createJob.selectProperty')}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[#8a9499]">{t('createJob.area')}</dt><dd className="text-right font-semibold text-[#2f3a3f]">{areas.find((area) => area.id === values.area_id)?.name || t('createJob.selectAreaOptional')}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[#8a9499]">{t('createJob.roomNumber')}</dt><dd className="text-right font-semibold text-[#2f3a3f]">{values.room?.name || t('createJob.selectRoomNumber')}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[#8a9499]">{t('createJob.category')}</dt><dd className="font-semibold text-[#2f3a3f]">{values.topic.title || t('createJob.category')}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[#8a9499]">{t('createJob.status')}</dt><dd><StatusBadge status={values.status} size="sm" /></dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[#8a9499]">{t('createJob.priority')}</dt><dd><PriorityBadge priority={values.priority} /></dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[#8a9499]">{t('createJob.summary.assignedTo')}</dt><dd className="text-right font-semibold text-[#2f3a3f]">{[session?.user?.first_name, session?.user?.last_name].filter(Boolean).join(' ') || session?.user?.username || t('createJob.summary.chiefReview')}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[#8a9499]">{t('createJob.summary.beforeCount')}</dt><dd className="font-semibold text-[#2f3a3f]">{values.files.length}</dd></div>
+                    <div className="flex items-center justify-between gap-3"><dt className="text-[#8a9499]">{t('createJob.summary.afterCount')}</dt><dd className="font-semibold text-[#2f3a3f]">{values.afterFiles.length}</dd></div>
                   </dl>
                 </SectionCard>
-                <SectionCard title="Progress" description="Desktop review">
+                <SectionCard title={t('createJob.progress.title')} description={t('createJob.progress.desc')}>
                   <div className="space-y-3">
                     {([
-                      ['Job details', stepStatus[0]],
-                      ['Location', stepStatus[1]],
-                      ['Category', stepStatus[2]],
-                      ['Additional', stepStatus[3]],
-                      ['Photos', stepStatus[4]],
+                      [t('createJob.step.jobDetails'), stepStatus[0]],
+                      [t('createJob.step.location'), stepStatus[1]],
+                      [t('createJob.step.category'), stepStatus[2]],
+                      [t('createJob.step.additional'), stepStatus[3]],
+                      [t('createJob.step.photos'), stepStatus[4]],
                     ] as Array<[string, boolean]>).map(([label, done]) => (
                       <div key={String(label)} className="flex items-center justify-between gap-3 text-sm">
-                        <span className="font-medium text-slate-600">{label}</span>
-                        <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs font-bold ${done ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                          {done ? 'Done' : 'Open'}
+                        <span className="font-medium text-[#6f7c82]">{label}</span>
+                        <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-[4px] px-2 text-xs font-semibold ${done ? 'bg-[#f8ffff] text-[#269fa8]' : 'bg-[#fafafa] text-[#8a9499]'}`}>
+                          {done ? t('createJob.progress.done') : t('createJob.progress.open')}
                         </span>
                       </div>
                     ))}
@@ -1335,7 +1366,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
               const allReady = completedCount === stepStatus.length;
               return (
                 <div
-                  className="fixed bottom-[4.5rem] left-0 right-0 z-20 border-t border-slate-200 bg-white px-3 py-3 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
+                  className="fixed bottom-[4.5rem] left-0 right-0 z-20 border-t border-[#e2e6e8] bg-white px-3 py-3 shadow-[0_-2px_10px_rgba(47,58,63,0.08)] sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
                   style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
                 >
                   <div className="w-full max-w-none md:max-w-none">
@@ -1343,11 +1374,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 md:hidden">
                         <span className="flex items-center gap-1.5">
                           <AlertCircle className="h-3.5 w-3.5" />
-                          {completedCount}/{stepStatus.length} steps complete · finish step {firstIncomplete} to continue
+                          {formatMessage(t('createJob.mobileProgress'), { completed: completedCount, total: stepStatus.length, step: firstIncomplete })}
                         </span>
                         <button
                           type="button"
-                          className="rounded-md bg-amber-200 px-2 py-1 text-[11px] font-bold text-amber-900 hover:bg-amber-300"
+                          className="rounded-[4px] border border-[#46b8bc] bg-white px-2 py-1 text-[11px] font-semibold text-[#269fa8] hover:bg-[#f8ffff]"
                           onClick={() => {
                             if (typeof document !== 'undefined') {
                               document
@@ -1356,7 +1387,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                             }
                           }}
                         >
-                          Jump
+                          {t('createJob.jump')}
                         </button>
                       </div>
                     )}
@@ -1375,10 +1406,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                             ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }
                       }}
-                      className={`h-14 w-full touch-manipulation rounded-xl text-base font-bold text-white shadow-md transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-100 sm:text-lg ${
+                      className={`h-12 w-full touch-manipulation rounded-[4px] text-sm font-semibold text-white transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-100 sm:text-base ${
                         allReady
-                          ? 'bg-[#1B2A4D] hover:bg-[#243761] disabled:bg-[#5B6785]'
-                          : 'bg-[#1B2A4D] hover:bg-[#243761] disabled:bg-[#5B6785]'
+                          ? 'bg-[#46b8bc] hover:bg-[#269fa8] disabled:bg-[#9ccfd1]'
+                          : 'bg-[#46b8bc] hover:bg-[#269fa8] disabled:bg-[#9ccfd1]'
                       }`}
                     >
                       {isSubmitting ? (

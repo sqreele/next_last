@@ -5,6 +5,14 @@ import Image from "next/image";
 import { X, AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { cn } from "@/app/lib/utils/cn";
+import { useT } from "@/app/lib/i18n/LocaleProvider";
+
+function formatMessage(template: string, values: Record<string, string | number>) {
+  return Object.entries(values).reduce(
+    (message, [key, value]) => message.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
+}
 
 export interface FileUploadProps {
   onFileSelect: (files: File[]) => void;
@@ -24,6 +32,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   touched,
   disabled = false,
 }) => {
+  const t = useT();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -35,21 +44,21 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const validateFiles = useCallback(
     (files: File[]): string | null => {
       if (files.length + selectedFiles.length > maxFiles) {
-        return `Maximum ${maxFiles} files allowed`;
+        return formatMessage(t('fileUpload.maxFiles'), { max: maxFiles });
       }
       // Validate type
       const invalidTypes = files.filter((file) => !file.type.startsWith("image/"));
       if (invalidTypes.length > 0) {
-        return `Only image files are allowed (${invalidTypes.map(f => f.name).join(', ')})`;
+        return formatMessage(t('fileUpload.onlyImages'), { files: invalidTypes.map(f => f.name).join(', ') });
       }
       // Validate size
       const oversizedFiles = files.filter((file) => file.size > maxSize * 1024 * 1024);
       if (oversizedFiles.length > 0) {
-        return `File(s) too large: ${oversizedFiles.map(f => f.name).join(', ')} (Max ${maxSize}MB)`;
+        return formatMessage(t('fileUpload.tooLarge'), { files: oversizedFiles.map(f => f.name).join(', '), max: maxSize });
       }
       return null;
     },
-    [maxFiles, maxSize, selectedFiles.length]
+    [maxFiles, maxSize, selectedFiles.length, t]
   );
 
   const handleFiles = useCallback(
@@ -153,7 +162,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       <div
         className={cn(
-          "w-full rounded-none border border-[#e2e6e8] bg-white p-4",
+          "w-full rounded-[4px] border border-[#e2e6e8] bg-white p-4 transition-colors",
           isDragging && "border-[#46b8bc] bg-[#f8ffff]",
           disabled && "opacity-60"
         )}
@@ -164,18 +173,21 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
       >
-        <p className="text-[12px] leading-none text-[#8a9499]">
-          Add up to {maxFiles} photos.{' '}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[12px] leading-5 text-[#8a9499]">
+            {formatMessage(t('fileUpload.addPhotos'), { max: maxFiles })}{' '}
+            <span className="text-[#a1aaae]">{t('fileUpload.rearrange')}</span>
+          </p>
           <label
             htmlFor={inputId}
             className={cn(
-              "font-semibold text-[#269fa8] hover:underline",
+              "inline-flex min-h-9 shrink-0 touch-manipulation items-center justify-center rounded-[4px] border border-[#46b8bc] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#269fa8] transition hover:bg-[#f4ffff] active:scale-[0.98]",
               disabled ? "pointer-events-none" : "cursor-pointer"
             )}
           >
-            See seller tips
+            {t('fileUpload.choosePhotos')}
           </label>
-        </p>
+        </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-[10px]">
           {selectedFiles.map((file, index) => (
@@ -190,7 +202,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               )}
               <Image
                 src={previewUrls[index]}
-                alt={`Preview ${index + 1}`}
+                alt={formatMessage(t('fileUpload.previewAlt'), { n: index + 1 })}
                 fill
                 className={cn("object-cover transition-opacity duration-200", loadedPreviews[file.name] ? "opacity-100" : "opacity-0")}
                 sizes="90px"
@@ -199,9 +211,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
               {!disabled && (
                 <button
                   type="button"
-                  className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-[#6f7c82] opacity-0 transition hover:text-red-500 group-hover:opacity-100"
+                  className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-[#6f7c82] opacity-0 transition hover:text-red-500 group-hover:opacity-100 focus:opacity-100"
                   onClick={() => removeFile(index)}
-                  aria-label="Remove file"
+                  aria-label={t('fileUpload.removeFile')}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -213,19 +225,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <label
               htmlFor={inputId}
               className={cn(
-                "grid h-[30px] w-[30px] shrink-0 place-items-center self-center rounded-[4px] border border-[#46b8bc] bg-white text-[24px] font-light leading-none text-[#46b8bc] transition hover:bg-[#f4ffff]",
+                "grid h-[30px] w-[30px] shrink-0 touch-manipulation place-items-center self-center rounded-[4px] border border-[#46b8bc] bg-white text-[24px] font-light leading-none text-[#46b8bc] transition hover:bg-[#f4ffff]",
                 disabled ? "pointer-events-none" : "cursor-pointer"
               )}
-              aria-label="Add photos"
+              aria-label={t('fileUpload.addPhotosLabel')}
             >
               +
             </label>
           )}
         </div>
-
-        <p className="mt-[14px] text-[11px] leading-none text-[#a1aaae]">
-          Click and drag to rearrange
-        </p>
       </div>
     </div>
   );

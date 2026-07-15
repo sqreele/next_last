@@ -29,7 +29,7 @@ function formatDate(value: string | null | undefined): string {
 
 const MAX_PRINTABLE_PHOTOS = 6;
 
-function getPrintableImageUrls(job: Job): string[] {
+function getPrintableImageUrls(job: Job): { displayUrls: string[]; totalCount: number } {
   const seen = new Set<string>();
   const urls: string[] = [];
 
@@ -43,7 +43,10 @@ function getPrintableImageUrls(job: Job): string[] {
   job.images?.forEach((image) => addUrl(image.jpeg_url || image.image_url));
   job.image_urls?.forEach(addUrl);
 
-  return urls.slice(0, MAX_PRINTABLE_PHOTOS);
+  return {
+    displayUrls: urls.slice(0, MAX_PRINTABLE_PHOTOS),
+    totalCount: urls.length,
+  };
 }
 
 function getPropertyName(job: Job, properties: Property[]): string {
@@ -122,7 +125,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
   }, [job.job_id, job.rooms, properties]);
 
   const propertyName = getPropertyName(job, properties);
-  const imageUrls = getPrintableImageUrls(job);
+  const { displayUrls: imageUrls, totalCount: imageCount } = getPrintableImageUrls(job);
   const roomLine =
     job.rooms?.map((r) => `${r.name || `Room ${r.room_id}`}${r.room_type ? ` (${r.room_type})` : ''}`).join(', ') ||
     job.room_name ||
@@ -300,7 +303,9 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
               Photos
             </h2>
             <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-              Showing up to {MAX_PRINTABLE_PHOTOS} photos
+              {imageCount > MAX_PRINTABLE_PHOTOS
+                ? `Total photos in this job: ${imageCount} · Showing first ${MAX_PRINTABLE_PHOTOS}`
+                : `Total photos in this job: ${imageCount}`}
             </p>
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {imageUrls.map((imageUrl, index) => (

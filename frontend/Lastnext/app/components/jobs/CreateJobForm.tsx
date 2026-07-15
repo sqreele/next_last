@@ -25,7 +25,7 @@ import { useUser } from '@/app/lib/stores/mainStore';
 // Use Next.js API routes for proxying to the backend
 const MIN_LOADER_MS = 400; // Minimum time to show loader to avoid flash
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const MAX_FILES_PER_STAGE = 2; // Maximum images allowed for before/after sections
+const MAX_FILES_PER_STAGE = 20; // Maximum images allowed for before/after sections
 
 interface FormValues {
   description: string;
@@ -1259,7 +1259,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     maxFiles={MAX_FILES_PER_STAGE}
                   />
                   <p className="text-xs font-medium text-slate-600 sm:text-sm">
-                    Upload up to 2 before photos to document the issue. Max 5MB each.
+                    Upload up to 20 before photos to document the issue. Max 5MB each.
                   </p>
                 </div>
 
@@ -1278,7 +1278,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     maxFiles={MAX_FILES_PER_STAGE}
                   />
                   <p className="text-xs font-medium text-slate-600 sm:text-sm">
-                    Optional: upload up to 2 after photos when the job is already fixed. Max 5MB each.
+                    Optional: upload up to 20 after photos when the job is already fixed. Max 5MB each.
                   </p>
                 </div>
               </div>

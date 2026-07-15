@@ -1,10 +1,8 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, ChangeEventHandler, useId } from "react";
+import React, { useState, useCallback, useEffect, ChangeEventHandler, useId, useMemo } from "react";
 import Image from "next/image";
-import { Upload, X, AlertCircle, CheckCircle2, Loader2, Camera, ImagePlus } from "lucide-react";
-import { Button } from "@/app/components/ui/button";
-import { Progress } from "@/app/components/ui/progress";
+import { X, AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { cn } from "@/app/lib/utils/cn";
 
@@ -28,7 +26,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
 }) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [fileProgress, setFileProgress] = useState<{ [key: string]: number }>({});
   const [validationError, setValidationError] = useState<string | null>(null);
   const [loadedPreviews, setLoadedPreviews] = useState<Record<string, boolean>>({});
   const generatedInputId = useId();
@@ -69,31 +66,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
           ...Object.fromEntries(files.map((file) => [file.name, false])),
         }));
         onFileSelect(newFiles);
-
-        // Simulate progress
-        const newProgress = { ...fileProgress };
-        files.forEach((file) => {
-          newProgress[file.name] = 0;
-        });
-        setFileProgress(newProgress);
-
-        // Simulate upload progress
-        files.forEach((file) => {
-          let progress = 0;
-          const interval = setInterval(() => {
-            progress += 10;
-            setFileProgress((prev) => ({
-              ...prev,
-              [file.name]: progress,
-            }));
-            if (progress >= 100) {
-              clearInterval(interval);
-            }
-          }, 200);
-        });
       }
     },
-    [disabled, validateFiles, selectedFiles, maxFiles, onFileSelect, fileProgress]
+    [disabled, validateFiles, selectedFiles, maxFiles, onFileSelect]
   );
 
   const handleFileChange: ChangeEventHandler<HTMLInputElement> = useCallback(
@@ -136,25 +111,19 @@ const FileUpload: React.FC<FileUploadProps> = ({
     [handleFiles]
   );
 
-  const getFilePreview = useCallback(
-    (file: File) => {
-      return URL.createObjectURL(file);
-    },
-    []
+  const previewUrls = useMemo(
+    () => selectedFiles.map((file) => URL.createObjectURL(file)),
+    [selectedFiles]
   );
 
   useEffect(() => {
-    // Cleanup object URLs to prevent memory leaks
     return () => {
-      selectedFiles.forEach((file) => {
-        URL.revokeObjectURL(getFilePreview(file));
-      });
+      previewUrls.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [selectedFiles, getFilePreview]);
+  }, [previewUrls]);
 
   return (
-    <div className="space-y-3 sm:space-y-4">
-      {/* Display External (Formik) Error OR Internal Validation Error */}
+    <div className="space-y-3">
       {(touched && error) || validationError ? (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -162,7 +131,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
         </Alert>
       ) : null}
 
-      {/* Hidden file input — shared by all trigger buttons */}
       <input
         id={inputId}
         type="file"
@@ -183,36 +151,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
         disabled={disabled}
       />
 
-      {/* Mobile: two large tap buttons (Camera / Gallery) */}
-      <div className="grid grid-cols-2 gap-3 sm:hidden">
-        <label
-          htmlFor={cameraInputId}
-          className={cn(
-            "flex min-h-[80px] touch-manipulation flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50 px-3 py-4 text-center transition-colors active:bg-blue-100",
-            disabled ? "pointer-events-none opacity-50" : "cursor-pointer"
-          )}
-        >
-          <Camera className="h-7 w-7 text-blue-500" />
-          <span className="text-xs font-semibold text-blue-700">Take Photo</span>
-        </label>
-        <label
-          htmlFor={inputId}
-          className={cn(
-            "flex min-h-[80px] touch-manipulation flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-center transition-colors active:bg-gray-100",
-            disabled ? "pointer-events-none opacity-50" : "cursor-pointer"
-          )}
-        >
-          <ImagePlus className="h-7 w-7 text-gray-400" />
-          <span className="text-xs font-semibold text-gray-600">Browse Files</span>
-        </label>
-      </div>
-
-      {/* Desktop: drag-and-drop zone */}
       <div
         className={cn(
-          "hidden rounded-xl border-2 border-dashed p-6 text-center transition-colors sm:block",
-          isDragging ? "border-[var(--pcms-primary)] bg-[var(--pcms-primary-soft)]" : "border-gray-200",
-          disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+          "w-full rounded-none border border-[#e2e6e8] bg-white p-4",
+          isDragging && "border-[#46b8bc] bg-[#f8ffff]",
+          disabled && "opacity-60"
         )}
         onDragOver={(e) => {
           e.preventDefault();
@@ -221,84 +164,69 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
       >
-        <label
-          htmlFor={inputId}
-          className={cn(
-            "flex flex-col items-center gap-2",
-            disabled ? "pointer-events-none" : "cursor-pointer"
-          )}
-        >
-          <Upload className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Drag &amp; drop images here, or <span className="font-semibold text-blue-600 underline">click to browse</span>
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Max {maxFiles} files · {maxSize}MB each · Images only
-          </p>
-        </label>
-      </div>
+        <p className="text-[12px] leading-none text-[#8a9499]">
+          Add up to {maxFiles} photos.{' '}
+          <label
+            htmlFor={inputId}
+            className={cn(
+              "font-semibold text-[#269fa8] hover:underline",
+              disabled ? "pointer-events-none" : "cursor-pointer"
+            )}
+          >
+            See seller tips
+          </label>
+        </p>
 
-      {/* File Previews */}
-      {selectedFiles.length > 0 && (
-        <div className="space-y-2.5 sm:space-y-3">
+        <div className="mt-4 flex flex-wrap items-center gap-[10px]">
           {selectedFiles.map((file, index) => (
             <div
               key={`${file.name}-${index}-${file.lastModified}`}
-              className="group relative flex items-start gap-2.5 rounded-lg border bg-background p-2.5 sm:items-center sm:gap-3 sm:p-3"
+              className="group relative h-[90px] w-[90px] shrink-0 overflow-hidden rounded-[4px] bg-slate-100"
             >
-              {/* Image Preview */}
-              <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded bg-slate-100 sm:h-16 sm:w-16">
-                {!loadedPreviews[file.name] && (
-                  <div className="absolute inset-0 z-10 grid place-items-center bg-slate-100">
-                    <Loader2 className="h-4 w-4 animate-spin text-cyan-600" />
-                  </div>
-                )}
-                <Image
-                  src={getFilePreview(file)}
-                  alt={`Preview ${index}`}
-                  fill
-                  className={cn("object-cover transition-opacity duration-200", loadedPreviews[file.name] ? "opacity-100" : "opacity-0")}
-                  sizes="(max-width: 640px) 56px, 64px"
-                  onLoad={() => setLoadedPreviews((prev) => ({ ...prev, [file.name]: true }))}
-                />
-              </div>
-              {/* File Info & Progress */}
-              <div className="flex-1 min-w-0">
-                <p className="truncate pr-8 text-xs font-medium sm:pr-0 sm:text-sm" title={file.name}>
-                  {file.name}
-                </p>
-                <p className="text-[11px] text-muted-foreground sm:text-xs">
-                  {(file.size / (1024 * 1024)).toFixed(2)}MB
-                </p>
-                <div className="mt-1 flex items-center gap-2">
-                  <Progress
-                    value={fileProgress[file.name] || (file ? 100 : 0)}
-                    className="h-1 flex-1"
-                  />
-                  {(fileProgress[file.name] || 0) >= 100 ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" aria-label="Ready" />
-                  ) : (
-                    <span className="text-[10px] font-semibold text-cyan-700">{fileProgress[file.name] || 0}%</span>
-                  )}
+              {!loadedPreviews[file.name] && (
+                <div className="absolute inset-0 z-10 grid place-items-center bg-slate-100">
+                  <Loader2 className="h-4 w-4 animate-spin text-[#269fa8]" />
                 </div>
-              </div>
-              {/* Remove Button */}
+              )}
+              <Image
+                src={previewUrls[index]}
+                alt={`Preview ${index + 1}`}
+                fill
+                className={cn("object-cover transition-opacity duration-200", loadedPreviews[file.name] ? "opacity-100" : "opacity-0")}
+                sizes="90px"
+                onLoad={() => setLoadedPreviews((prev) => ({ ...prev, [file.name]: true }))}
+              />
               {!disabled && (
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1 h-7 w-7 text-muted-foreground opacity-100 transition-opacity hover:text-destructive sm:h-6 sm:w-6 sm:opacity-0 sm:group-hover:opacity-100"
+                  className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-[#6f7c82] opacity-0 transition hover:text-red-500 group-hover:opacity-100"
                   onClick={() => removeFile(index)}
                   aria-label="Remove file"
                 >
-                  <X className="h-4 w-4" />
-                </Button>
+                  <X className="h-3.5 w-3.5" />
+                </button>
               )}
             </div>
           ))}
+
+          {selectedFiles.length < maxFiles && (
+            <label
+              htmlFor={inputId}
+              className={cn(
+                "grid h-[30px] w-[30px] shrink-0 place-items-center self-center rounded-[4px] border border-[#46b8bc] bg-white text-[24px] font-light leading-none text-[#46b8bc] transition hover:bg-[#f4ffff]",
+                disabled ? "pointer-events-none" : "cursor-pointer"
+              )}
+              aria-label="Add photos"
+            >
+              +
+            </label>
+          )}
         </div>
-      )}
+
+        <p className="mt-[14px] text-[11px] leading-none text-[#a1aaae]">
+          Click and drag to rearrange
+        </p>
+      </div>
     </div>
   );
 };

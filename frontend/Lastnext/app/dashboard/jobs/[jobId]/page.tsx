@@ -1,19 +1,113 @@
-import { notFound } from 'next/navigation';
-import { fetchJob, fetchProperties } from '@/app/lib/data.server';
-import { getServerSession } from '@/app/lib/session.server';
-import type { Metadata, ResolvingMetadata } from 'next';
-import { MapPin, Clock, Calendar, User, CheckCircle2, MessageSquare, StickyNote, AlertTriangle } from 'lucide-react';
-import { StatusBadge, PriorityBadge } from '@/app/components/pcms-ui';
-import { Badge } from '@/app/components/ui/badge';
-import { Job, Property, JobStatus, JobPriority } from '@/app/lib/types';
-import Image from 'next/image';
-import { fixImageUrl } from '@/app/lib/utils/image-utils';
-import { JobHeroImage, GalleryImage } from '@/app/components/ui/OptimizedImageEnhanced';
-import { getDisplayName } from '@/app/lib/utils/display-name';
-import JobCommentsSection from '@/app/components/jobs/JobCommentsSection';
-import { BeforeAfterCompare } from '@/app/components/jobs/BeforeAfterCompare';
-import { JobAuditTimeline } from '@/app/components/jobs/JobAuditTimeline';
-import { ReassignJobButton } from '@/app/components/jobs/ReassignJobButton';
+import { notFound } from "next/navigation";
+import { fetchJob, fetchProperties } from "@/app/lib/data.server";
+import { getServerSession } from "@/app/lib/session.server";
+import type { Metadata, ResolvingMetadata } from "next";
+import {
+  MapPin,
+  Clock,
+  Calendar,
+  User,
+  CheckCircle2,
+  MessageSquare,
+  StickyNote,
+  AlertTriangle,
+} from "lucide-react";
+import { StatusBadge, PriorityBadge } from "@/app/components/pcms-ui";
+import { Badge } from "@/app/components/ui/badge";
+import { Job, JobImage } from "@/app/lib/types";
+import Image from "next/image";
+import { fixImageUrl } from "@/app/lib/utils/image-utils";
+import { getDisplayName } from "@/app/lib/utils/display-name";
+import JobCommentsSection from "@/app/components/jobs/JobCommentsSection";
+import { BeforeAfterCompare } from "@/app/components/jobs/BeforeAfterCompare";
+import { JobAuditTimeline } from "@/app/components/jobs/JobAuditTimeline";
+import { ReassignJobButton } from "@/app/components/jobs/ReassignJobButton";
+
+const getPropertyKey = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" || typeof value === "number")
+    return String(value);
+  if (typeof value === "object") {
+    const record = value as {
+      property_id?: unknown;
+      id?: unknown;
+      property?: unknown;
+    };
+    return getPropertyKey(record.property_id ?? record.id ?? record.property);
+  }
+  return null;
+};
+
+const getJobPropertyIds = (job: Job): Set<string> => {
+  const ids = new Set<string>();
+  const add = (value: unknown) => {
+    const key = getPropertyKey(value);
+    if (key) ids.add(key);
+  };
+
+  add(job.property_id);
+  job.properties?.forEach(add);
+  job.rooms?.forEach((room) => {
+    add(room.property_id);
+    room.properties?.forEach(add);
+  });
+  if (job.area?.property_id) add(job.area.property_id);
+
+  return ids;
+};
+
+type PropertyAwareJobImage = JobImage & {
+  property_id?: string | number | null;
+  property?:
+    | string
+    | number
+    | { property_id?: string | number; id?: string | number }
+    | null;
+  properties?: Array<
+    string | number | { property_id?: string | number; id?: string | number }
+  >;
+};
+
+const getImagePropertyIds = (image: PropertyAwareJobImage): string[] => {
+  const ids: string[] = [];
+  const add = (value: unknown) => {
+    const key = getPropertyKey(value);
+    if (key) ids.push(key);
+  };
+
+  add(image.property_id);
+  add(image.property);
+  image.properties?.forEach(add);
+
+  return ids;
+};
+
+const getImageUrl = (image: JobImage): string | null =>
+  image.jpeg_url || image.image_url || null;
+
+const getPropertyFilteredImageUrls = (job: Job): string[] => {
+  const jobPropertyIds = getJobPropertyIds(job);
+  const imageRecords = job.images as PropertyAwareJobImage[] | undefined;
+
+  if (!imageRecords?.length || jobPropertyIds.size === 0) {
+    return job.image_urls || [];
+  }
+
+  const filteredImageUrls = imageRecords
+    .filter((image) => {
+      const imagePropertyIds = getImagePropertyIds(image);
+      return (
+        imagePropertyIds.length === 0 ||
+        imagePropertyIds.some((id) => jobPropertyIds.has(id))
+      );
+    })
+    .map(getImageUrl)
+    .filter((url): url is string => Boolean(url));
+
+  return filteredImageUrls.length > 0
+    ? filteredImageUrls
+    : job.image_urls || [];
+};
 
 type Props = {
   params: Promise<{ jobId: string }>;
@@ -22,7 +116,7 @@ type Props = {
 
 export async function generateMetadata(
   { params }: Props,
-  parent: ResolvingMetadata
+  parent: ResolvingMetadata,
 ): Promise<Metadata> {
   try {
     const { jobId } = await params;
@@ -32,7 +126,7 @@ export async function generateMetadata(
 
     if (!job) {
       return {
-        title: 'Job Not Found',
+        title: "Job Not Found",
       };
     }
 
@@ -41,13 +135,15 @@ export async function generateMetadata(
       title: `${job.priority} | Job #${job.job_id}`,
       description: job.description || `Details for job ${job.id || job.job_id}`,
       openGraph: {
-        images: job.image_urls?.[0] ? [job.image_urls[0], ...previousImages] : ['/job-default-image.jpg', ...previousImages],
+        images: job.image_urls?.[0]
+          ? [job.image_urls[0], ...previousImages]
+          : ["/job-default-image.jpg", ...previousImages],
       },
     };
   } catch (error) {
-    console.error('Error generating metadata:', error);
+    console.error("Error generating metadata:", error);
     return {
-      title: 'Error Loading Job',
+      title: "Error Loading Job",
     };
   }
 }
@@ -66,15 +162,15 @@ export default async function JobPage({ params }: Props) {
       notFound();
     }
 
-    // Debug logging for job data
+    const propertyFilteredImageUrls = getPropertyFilteredImageUrls(job);
 
     const formatDate = (dateString: string) => {
-      return new Date(dateString).toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
+      return new Date(dateString).toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     };
 
@@ -98,7 +194,7 @@ export default async function JobPage({ params }: Props) {
             </a>
           </div>
         </div>
-        
+
         <div className="pcms-section-card space-y-4 p-5 text-[var(--pcms-text)] sm:p-6">
           {/* Basic Info */}
           <div className="flex items-center gap-2">
@@ -116,7 +212,9 @@ export default async function JobPage({ params }: Props) {
               <MessageSquare className="w-4 h-4 text-[var(--pcms-text-muted)] mt-1 flex-shrink-0" />
               <div>
                 <span className="font-semibold">Description:</span>
-                <p className="mt-1 text-sm leading-relaxed text-[var(--pcms-text-muted)]">{job.description}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--pcms-text-muted)]">
+                  {job.description}
+                </p>
               </div>
             </div>
           )}
@@ -126,20 +224,23 @@ export default async function JobPage({ params }: Props) {
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-[var(--pcms-text-muted)]" />
               <span>
-                <span className="font-semibold">Created:</span> {formatDate(job.created_at)}
+                <span className="font-semibold">Created:</span>{" "}
+                {formatDate(job.created_at)}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-[var(--pcms-text-muted)]" />
               <span>
-                <span className="font-semibold">Updated:</span> {formatDate(job.updated_at)}
+                <span className="font-semibold">Updated:</span>{" "}
+                {formatDate(job.updated_at)}
               </span>
             </div>
             {job.completed_at && (
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
                 <span>
-                  <span className="font-semibold">Completed:</span> {formatDate(job.completed_at)}
+                  <span className="font-semibold">Completed:</span>{" "}
+                  {formatDate(job.completed_at)}
                 </span>
               </div>
             )}
@@ -150,8 +251,11 @@ export default async function JobPage({ params }: Props) {
             <div className="flex items-center gap-2">
               <User className="w-4 h-4 text-[var(--pcms-text-muted)]" />
               <span>
-                <span className="font-semibold">Assigned to:</span>{' '}
-                {getDisplayName(job.user, job.technician_name || job.user_name || 'Unknown Technician')}
+                <span className="font-semibold">Assigned to:</span>{" "}
+                {getDisplayName(
+                  job.user,
+                  job.technician_name || job.user_name || "Unknown Technician",
+                )}
               </span>
             </div>
           )}
@@ -164,26 +268,26 @@ export default async function JobPage({ params }: Props) {
                 <span className="font-semibold">Rooms:</span>
               </div>
               <ul className="ml-6 list-disc text-sm">
-                {job.rooms.map(room => (
+                {job.rooms.map((room) => (
                   <li key={room.room_id}>
                     {(() => {
                       const roomParts = [];
-                      
+
                       // Add room ID if available
                       if (room.room_id) {
                         roomParts.push(`Room ID: #${room.room_id}`);
                       }
-                      
+
                       // Add room type if available
                       if (room.room_type) {
                         roomParts.push(`Type: ${room.room_type}`);
                       }
-                      
+
                       // Add room name
-                      const roomName = room.name || 'Unknown Room';
+                      const roomName = room.name || "Unknown Room";
                       roomParts.push(roomName);
-                      
-                      return roomParts.join(' | ');
+
+                      return roomParts.join(" | ");
                     })()}
                   </li>
                 ))}
@@ -211,11 +315,16 @@ export default async function JobPage({ params }: Props) {
               </div>
               <ul className="ml-6 list-disc text-sm">
                 {job.properties.map((propId, index) => {
-                  const propKey = typeof propId === 'object' && propId ? 
-                    String(propId.property_id || propId.id || index) : 
-                    String(propId);
-                  const prop = properties.find(p => p.property_id === propKey);
-                  return <li key={propKey}>{prop?.name || `ID: ${propKey}`}</li>;
+                  const propKey =
+                    typeof propId === "object" && propId
+                      ? String(propId.property_id || propId.id || index)
+                      : String(propId);
+                  const prop = properties.find(
+                    (p) => p.property_id === propKey,
+                  );
+                  return (
+                    <li key={propKey}>{prop?.name || `ID: ${propKey}`}</li>
+                  );
                 })}
               </ul>
             </div>
@@ -227,7 +336,9 @@ export default async function JobPage({ params }: Props) {
               <StickyNote className="w-4 h-4 text-[var(--pcms-text-muted)] mt-1 flex-shrink-0" />
               <div>
                 <span className="font-semibold">Remarks:</span>
-                <p className="mt-1 text-sm leading-relaxed text-[var(--pcms-text-muted)]">{job.remarks}</p>
+                <p className="mt-1 text-sm leading-relaxed text-[var(--pcms-text-muted)]">
+                  {job.remarks}
+                </p>
               </div>
             </div>
           )}
@@ -249,29 +360,39 @@ export default async function JobPage({ params }: Props) {
           />
 
           {/* Images */}
-          {job.image_urls && job.image_urls.length > 0 && (
+          {propertyFilteredImageUrls.length > 0 && (
             <div className="space-y-2">
-              <h2 className="text-lg font-black text-[var(--pcms-text)]">All images</h2>
+              <h2 className="text-lg font-black text-[var(--pcms-text)]">
+                All images
+              </h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {job.image_urls.map((url, index) => {
+                {propertyFilteredImageUrls.map((url, index) => {
                   // Use the fixImageUrl utility to properly handle different URL formats
                   const imageUrl = fixImageUrl(url);
-                  
+
                   // Debug logging for image URLs
-                  
+
                   // Use original URL if fixImageUrl returns null
                   const finalImageUrl = imageUrl || url;
-                  
+
                   if (!finalImageUrl) {
                     return (
-                      <div key={index} className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-[1.5rem] bg-[var(--pcms-surface-soft)] shadow-[var(--pcms-shadow-sm)]">
-                        <span className="text-[var(--pcms-text-muted)]">No Image</span>
+                      <div
+                        key={index}
+                        className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-[1.5rem] bg-[var(--pcms-surface-soft)] shadow-[var(--pcms-shadow-sm)]"
+                      >
+                        <span className="text-[var(--pcms-text-muted)]">
+                          No Image
+                        </span>
                       </div>
                     );
                   }
-                  
+
                   return (
-                    <div key={index} className="relative h-56 w-full overflow-hidden rounded-[1.5rem] shadow-[var(--pcms-shadow-sm)]">
+                    <div
+                      key={index}
+                      className="relative h-56 w-full overflow-hidden rounded-[1.5rem] shadow-[var(--pcms-shadow-sm)]"
+                    >
                       <Image
                         src={finalImageUrl}
                         alt={`Job image ${index + 1}`}
@@ -279,7 +400,7 @@ export default async function JobPage({ params }: Props) {
                         className="object-cover"
                         quality={85}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        unoptimized={finalImageUrl.startsWith('http')}
+                        unoptimized={finalImageUrl.startsWith("http")}
                         placeholder="blur"
                         blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
                       />
@@ -293,10 +414,16 @@ export default async function JobPage({ params }: Props) {
           {/* Topics */}
           {job.topics && job.topics.length > 0 && (
             <div className="space-y-1">
-              <h2 className="text-lg font-black text-[var(--pcms-text)]">Topics</h2>
+              <h2 className="text-lg font-black text-[var(--pcms-text)]">
+                Topics
+              </h2>
               <div className="flex flex-wrap gap-2">
-                {job.topics.map(topic => (
-                  <Badge key={topic.id || topic.title} variant="outline" className="text-sm">
+                {job.topics.map((topic) => (
+                  <Badge
+                    key={topic.id || topic.title}
+                    variant="outline"
+                    className="text-sm"
+                  >
                     {topic.title}
                   </Badge>
                 ))}
@@ -313,8 +440,11 @@ export default async function JobPage({ params }: Props) {
       </div>
     );
   } catch (error) {
-    console.error(`Error loading job page for jobId=${await params.then(p => p.jobId)}:`, error);
-    throw new Error('Failed to load job page. Please try again later.');
+    console.error(
+      `Error loading job page for jobId=${await params.then((p) => p.jobId)}:`,
+      error,
+    );
+    throw new Error("Failed to load job page. Please try again later.");
   }
 }
 

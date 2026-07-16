@@ -31,20 +31,27 @@ const MAX_PRINTABLE_PHOTOS = 6;
 
 function getImageDedupeKey(url: string): string {
   const withoutQuery = url.split(/[?#]/)[0];
+  let pathname: string;
 
   try {
-    const parsed = new URL(withoutQuery, 'https://pcms.local');
-    return decodeURIComponent(parsed.pathname)
-      .replace(/\\/g, '/')
-      .replace(/^\/media\/(?:media\/)+/i, '/media/')
-      .toLowerCase();
+    pathname = new URL(withoutQuery, 'https://pcms.local').pathname;
   } catch {
-    return decodeURIComponent(withoutQuery)
-      .replace(/\\/g, '/')
-      .replace(/^https?:\/\/[^/]+/i, '')
-      .replace(/^\/media\/(?:media\/)+/i, '/media/')
-      .toLowerCase();
+    pathname = withoutQuery.replace(/^https?:\/\/[^/]+/i, '');
   }
+
+  const normalizedPath = decodeURIComponent(pathname)
+    .replace(/\\/g, '/')
+    .replace(/^\/media\/(?:media\/)+/i, '/media/')
+    .toLowerCase();
+
+  // The API can expose the same uploaded photo twice: once as the original
+  // image URL and once as its generated JPEG URL. Those URLs only differ by
+  // extension, so compare media paths by their base filename.
+  if (normalizedPath.startsWith('/media/maintenance_job_images/')) {
+    return normalizedPath.replace(/\.(?:jpe?g|png|gif|webp)$/i, '');
+  }
+
+  return normalizedPath;
 }
 
 function getPrintableImageUrls(job: Job): { displayUrls: string[]; totalCount: number } {

@@ -29,14 +29,36 @@ function formatDate(value: string | null | undefined): string {
 
 const MAX_PRINTABLE_PHOTOS = 6;
 
+function getImageDedupeKey(url: string): string {
+  const withoutQuery = url.split(/[?#]/)[0];
+
+  try {
+    const parsed = new URL(withoutQuery, 'https://pcms.local');
+    return decodeURIComponent(parsed.pathname)
+      .replace(/\\/g, '/')
+      .replace(/^\/media\/(?:media\/)+/i, '/media/')
+      .toLowerCase();
+  } catch {
+    return decodeURIComponent(withoutQuery)
+      .replace(/\\/g, '/')
+      .replace(/^https?:\/\/[^/]+/i, '')
+      .replace(/^\/media\/(?:media\/)+/i, '/media/')
+      .toLowerCase();
+  }
+}
+
 function getPrintableImageUrls(job: Job): { displayUrls: string[]; totalCount: number } {
   const seen = new Set<string>();
   const urls: string[] = [];
 
   const addUrl = (rawUrl: string | null | undefined) => {
     const normalizedUrl = fixImageUrl(rawUrl) || rawUrl?.trim();
-    if (!normalizedUrl || seen.has(normalizedUrl)) return;
-    seen.add(normalizedUrl);
+    if (!normalizedUrl) return;
+
+    const key = getImageDedupeKey(normalizedUrl);
+    if (seen.has(key)) return;
+
+    seen.add(key);
     urls.push(normalizedUrl);
   };
 

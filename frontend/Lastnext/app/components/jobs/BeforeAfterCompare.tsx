@@ -333,6 +333,7 @@ export function BeforeAfterCompare({
   const currentAfter = after[afterIdx % Math.max(after.length, 1)];
 
   const canSlider = before.length > 0 && after.length > 0;
+  const hasSingleImageGroup = before.length === 0 || after.length === 0;
 
   return (
     <section className={cn('space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5', className)}>
@@ -383,8 +384,13 @@ export function BeforeAfterCompare({
       {canSlider && mode === 'slider' ? (
         <SliderCompare before={currentBefore} after={currentAfter} />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {before.length > 0 ? (
+        <div
+          className={cn(
+            'grid gap-3',
+            hasSingleImageGroup ? 'grid-cols-1' : 'sm:grid-cols-2',
+          )}
+        >
+          {before.length > 0 && (
             <SideCard
               image={currentBefore}
               label="Before"
@@ -395,10 +401,6 @@ export function BeforeAfterCompare({
               onPrev={() => setBeforeIdx((i) => (i - 1 + before.length) % before.length)}
               onNext={() => setBeforeIdx((i) => (i + 1) % before.length)}
             />
-          ) : (
-            <div className="grid aspect-video place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center text-sm font-semibold text-slate-500">
-              No before photo
-            </div>
           )}
           {after.length > 0 ? (
             <SideCard

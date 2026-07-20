@@ -110,7 +110,7 @@ const KIND_META: Record<ActivityKind, { icon: LucideIcon; label: (job: Job) => s
   },
   overdue: {
     icon: AlertTriangle,
-    label: () => 'Open more than 3 days — needs follow-up',
+    label: () => 'Pending more than 3 days — needs follow-up',
     toneRing: 'ring-rose-200',
     toneIcon: 'bg-rose-600 text-white',
   },

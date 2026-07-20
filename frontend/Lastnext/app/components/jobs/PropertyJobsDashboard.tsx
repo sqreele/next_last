@@ -61,7 +61,7 @@ import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 type WorkflowStatusKey = JobStatus | "defect";
 
 const DASHBOARD_STATUS_FLOW: Array<{ key: WorkflowStatusKey; label: string }> = [
-  { key: "pending", label: "Open" },
+  { key: "pending", label: "Pending" },
   { key: "in_progress", label: "In Progress" },
   { key: "waiting_sparepart", label: "Waiting Spare Part" },
   { key: "completed", label: "Completed" },

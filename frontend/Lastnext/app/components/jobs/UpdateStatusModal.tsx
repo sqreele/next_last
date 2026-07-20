@@ -33,7 +33,7 @@ interface UpdateStatusModalProps {
 }
 
 const ALL_STATUSES: Array<{ value: JobStatus; label: string; hint: string }> = [
-  { value: 'pending' as JobStatus, label: 'Open', hint: 'Awaiting assignment or triage' },
+  { value: 'pending' as JobStatus, label: 'Pending', hint: 'Awaiting assignment or triage' },
   { value: 'in_progress' as JobStatus, label: 'In Progress', hint: 'Technician is working on it' },
   { value: 'waiting_sparepart' as JobStatus, label: 'Waiting Sparepart', hint: 'Blocked on parts arrival' },
   { value: 'completed' as JobStatus, label: 'Completed', hint: 'Done — ready for verification' },

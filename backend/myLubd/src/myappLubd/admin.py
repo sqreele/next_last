@@ -930,10 +930,10 @@ class JobImageTopicFilter(admin.SimpleListFilter):
 class JobAdmin(admin.ModelAdmin):
     list_per_page = 25
     form = JobAdminForm
-    list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_rooms_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
+    list_display = ['job_id', 'get_description_display', 'get_topics_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_rooms_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
     list_filter = ['status', 'priority', 'is_defective', 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
-    search_fields = ['rooms__name']
-    search_help_text = 'Search by room name only.'
+    search_fields = ['description', 'topics__title', 'rooms__name']
+    search_help_text = 'Search by description, topic title, or room name.'
     readonly_fields = ['job_id', 'updated_by', 'inventory_items_display', 'preventive_maintenance_images']
     filter_horizontal = ['rooms', 'topics']
     inlines = [JobImageInline]

@@ -665,10 +665,7 @@ export async function fetchRoom(roomId: string, accessToken?: string): Promise<R
 }
 
 export async function fetchJobsForRoom(roomId: string, accessToken?: string): Promise<Job[]> {
-  const response = await fetchWithToken<{results: Job[]}>(`/api/v1/jobs/?room_id=${roomId}`, accessToken);
-  const jobs = response.results || [];
-  const sanitizedJobs = sanitizeJobsData(jobs);
-  return fixJobsImageUrls(sanitizedJobs);
+  return fetchAllJobs(accessToken, `room_id=${encodeURIComponent(roomId)}`);
 }
 
 export async function updateUserProfile(auth0Profile: any, accessToken?: string): Promise<boolean> {

@@ -932,7 +932,7 @@ class JobAdmin(admin.ModelAdmin):
     form = JobAdminForm
     list_display = ['job_id', 'get_description_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_rooms_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
     list_filter = ['status', 'priority', 'is_defective', 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
-    search_fields = ['job_id', 'description', 'user__username', 'updated_by__username', 'topics__title']
+    search_fields = ['job_id', 'description', 'user__username', 'updated_by__username', 'topics__title', 'rooms__name', '=rooms__room_id']
     readonly_fields = ['job_id', 'updated_by', 'inventory_items_display', 'preventive_maintenance_images']
     filter_horizontal = ['rooms', 'topics']
     inlines = [JobImageInline]

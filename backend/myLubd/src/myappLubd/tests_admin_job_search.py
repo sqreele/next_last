@@ -29,11 +29,20 @@ class JobAdminSearchTests(TestCase):
 
         self.assertIn(self.job, queryset)
 
-    def test_search_matches_room_id(self):
+    def test_search_does_not_match_room_id(self):
         queryset, _ = self.admin.get_search_results(
             self.request,
             Job.objects.all(),
             str(self.room.room_id),
         )
 
-        self.assertIn(self.job, queryset)
+        self.assertNotIn(self.job, queryset)
+
+    def test_search_does_not_match_description(self):
+        queryset, _ = self.admin.get_search_results(
+            self.request,
+            Job.objects.all(),
+            'Replace air filter',
+        )
+
+        self.assertNotIn(self.job, queryset)

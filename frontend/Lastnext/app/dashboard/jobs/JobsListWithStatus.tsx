@@ -14,7 +14,7 @@ interface JobsListWithStatusProps {
 
 const TABS: Array<{ value: TabValue; label: string }> = [
   { value: 'all', label: 'All' },
-  { value: 'pending', label: 'Open' },
+  { value: 'pending', label: 'Pending' },
   { value: 'in_progress', label: 'In progress' },
   { value: 'waiting_sparepart', label: 'Waiting parts' },
   { value: 'completed', label: 'Completed' },

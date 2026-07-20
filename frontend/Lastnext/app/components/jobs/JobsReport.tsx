@@ -47,7 +47,7 @@ import type { UtilityConsumptionRow } from '@/app/dashboard/utility-consumption/
 
 const STATUS_FILTER_OPTIONS: Array<{ value: JobStatus | 'all'; label: string }> = [
   { value: 'all', label: 'All statuses' },
-  { value: 'pending', label: 'Open' },
+  { value: 'pending', label: 'Pending' },
   { value: 'in_progress', label: 'In progress' },
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },

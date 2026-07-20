@@ -50,7 +50,7 @@ const en = {
 
   // KPI tiles
   'kpi.totalJobs': 'Total jobs',
-  'kpi.open': 'Open',
+  'kpi.open': 'Pending',
   'kpi.inProgress': 'In progress',
   'kpi.completed': 'Completed',
   'kpi.overdue': 'Overdue',

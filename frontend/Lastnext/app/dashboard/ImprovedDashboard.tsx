@@ -49,7 +49,7 @@ import { TechnicianKpiBoard } from '@/app/components/dashboard/TechnicianKpiBoar
 type StatTone = 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'secondary';
 
 const STATUS_SUMMARY: Array<{ value: string; label: string; tone: StatTone }> = [
-  { value: 'pending', label: 'Open', tone: 'primary' },
+  { value: 'pending', label: 'Pending', tone: 'primary' },
   { value: 'assigned', label: 'Assigned', tone: 'info' },
   { value: 'in_progress', label: 'In Progress', tone: 'warning' },
   { value: 'waiting_sparepart', label: 'Waiting Spare Part', tone: 'warning' },
@@ -62,7 +62,7 @@ const STATUS_SUMMARY: Array<{ value: string; label: string; tone: StatTone }> = 
 
 const TAB_CONFIG = [
   { value: 'all', label: 'All Jobs' },
-  { value: 'pending', label: 'Open' },
+  { value: 'pending', label: 'Pending' },
   { value: 'in_progress', label: 'In Progress' },
   { value: 'waiting_sparepart', label: 'Waiting Spare Part' },
   { value: 'completed', label: 'Completed' },
@@ -197,7 +197,7 @@ export default function ImprovedDashboard() {
       if (job.is_defective) countByStatus.defect = (countByStatus.defect || 0) + 1;
     });
 
-    countByStatus.open = stats.pending || countByStatus.open || 0;
+    countByStatus.pending = stats.pending || countByStatus.pending || 0;
     countByStatus.in_progress = stats.inProgress || countByStatus.in_progress || 0;
     countByStatus.waiting_spare_part = stats.waitingSparepart || countByStatus.waiting_spare_part || 0;
     countByStatus.completed = stats.completed || countByStatus.completed || 0;
@@ -304,7 +304,7 @@ export default function ImprovedDashboard() {
 
     return {
       total,
-      open: countByStatus.open || 0,
+      open: countByStatus.pending || 0,
       inProgress: countByStatus.in_progress || 0,
       completed,
       verified,
@@ -432,7 +432,7 @@ export default function ImprovedDashboard() {
               <span className="sneat-welcome-card__eyebrow">Welcome back</span>
               <h2>Operations on track!</h2>
               <p className="sneat-welcome-card__lead">
-                {metrics.completionRate}% of maintenance work is complete this period. Keep momentum on open and overdue jobs.
+                {metrics.completionRate}% of maintenance work is complete this period. Keep momentum on pending and overdue jobs.
               </p>
               <span className="sneat-welcome-card__big">{metrics.completionRate}%</span>
               <span className="sneat-welcome-card__caption">Completion rate across {metrics.total} jobs</span>
@@ -462,7 +462,7 @@ export default function ImprovedDashboard() {
                   <span className="sneat-stat-card__icon sneat-stat-card__icon--info"><Clock className="h-5 w-5" /></span>
                   <button type="button" className="sneat-card__menu" aria-label="More"><MoreVertical className="h-4 w-4" /></button>
                 </div>
-                <span className="sneat-stat-card__label">Open</span>
+                <span className="sneat-stat-card__label">Pending</span>
                 <strong className="sneat-stat-card__value">{metrics.open}</strong>
                 <span className="sneat-muted">Awaiting assignment</span>
               </div>

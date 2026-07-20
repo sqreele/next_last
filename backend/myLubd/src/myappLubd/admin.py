@@ -1288,6 +1288,13 @@ class JobAdmin(admin.ModelAdmin):
             base_dir = getattr(settings, 'BASE_DIR', '')
             project_root = os.path.dirname(base_dir) if base_dir else ''
             candidates = [
+                # Image-level fonts are copied before Docker mounts /app/static as a volume.
+                (
+                    '/usr/local/share/fonts/mylubd/Sarabun-Regular.ttf',
+                    '/usr/local/share/fonts/mylubd/Sarabun-Bold.ttf',
+                    'Sarabun-Regular',
+                    'Sarabun-Bold'
+                ),
                 # Collected static root (Docker runtime mounts to /app/static)
                 (
                     os.path.join(getattr(settings, 'STATIC_ROOT', ''), 'fonts', 'Sarabun-Regular.ttf'),

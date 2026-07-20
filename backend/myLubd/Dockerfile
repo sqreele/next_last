@@ -37,6 +37,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY ./src .
 
+# Keep Thai PDF fonts outside /app/static because runtime static volumes can mask it.
+RUN mkdir -p /usr/local/share/fonts/mylubd && \
+    cp /app/static/fonts/Sarabun-Regular.ttf /usr/local/share/fonts/mylubd/Sarabun-Regular.ttf && \
+    cp /app/static/fonts/Sarabun-Bold.ttf /usr/local/share/fonts/mylubd/Sarabun-Bold.ttf
+
 # Set up entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

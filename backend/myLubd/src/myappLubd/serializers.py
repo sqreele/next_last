@@ -532,6 +532,7 @@ class JobSerializer(serializers.ModelSerializer):
     rooms = RoomSummarySerializer(many=True, read_only=True)
     topic_data = serializers.JSONField(write_only=True)
     room_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    property_id = serializers.CharField(write_only=True, required=False, allow_blank=True)
     image_urls = serializers.SerializerMethodField()
     area = AreaSummarySerializer(read_only=True)
     area_id = serializers.PrimaryKeyRelatedField(
@@ -549,7 +550,7 @@ class JobSerializer(serializers.ModelSerializer):
             'updated_by', 'description', 'status', 'priority',
             'remarks', 'created_at', 'updated_at', 'completed_at', 'is_defective',
             'rooms', 'topics', 'images', 'profile_image', 'room_type', 'name',
-            'topic_data', 'room_id', 'image_urls', 'is_preventivemaintenance',
+            'topic_data', 'room_id', 'property_id', 'image_urls', 'is_preventivemaintenance',
             'area', 'area_id', 'area_name', 'comments_count',
         ]
         read_only_fields = [
@@ -585,6 +586,7 @@ class JobSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Updated date cannot be before created date")
 
         room_id = data.get('room_id')
+        property_id = str(data.get('property_id') or '').strip()
         area = data.get('area')
         if room_id and area is not None:
             try:
@@ -596,7 +598,28 @@ class JobSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'area_id': 'Selected area must belong to the same property as the selected room.'
                 })
-        
+
+        if property_id:
+            property_q = Q(property_id=property_id)
+            if property_id.isdigit():
+                property_q |= Q(id=int(property_id))
+            property_obj = Property.objects.filter(property_q).first()
+            if not property_obj:
+                raise serializers.ValidationError({'property_id': 'Invalid property ID'})
+            if room_id:
+                try:
+                    room = Room.objects.prefetch_related('properties').get(room_id=room_id)
+                except Room.DoesNotExist:
+                    raise serializers.ValidationError({'room_id': 'Invalid room ID'})
+                if not room.properties.filter(id=property_obj.id).exists():
+                    raise serializers.ValidationError({
+                        'room_id': 'Selected room does not belong to the selected property.'
+                    })
+            if area is not None and area.property_id != property_obj.id:
+                raise serializers.ValidationError({
+                    'area_id': 'Selected area does not belong to the selected property.'
+                })
+
         return data
 
     def get_user(self, obj):
@@ -683,6 +706,7 @@ class JobSerializer(serializers.ModelSerializer):
         validated_data.pop('user', None)
         validated_data.pop('username', None)
         validated_data.pop('user_id', None)
+        validated_data.pop('property_id', None)
 
         topic_data = validated_data.pop('topic_data', None)
         room_id = validated_data.pop('room_id', None)

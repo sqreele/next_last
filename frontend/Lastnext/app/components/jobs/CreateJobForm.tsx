@@ -395,17 +395,28 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     if (typeof data === 'string') return data;
     if (typeof data !== 'object') return fallbackMessage;
 
-    const payload = data as Record<string, unknown>;
-    const directMessage = payload.detail || payload.message || payload.error;
-    const fieldErrors = Object.entries(payload)
-      .filter(([key]) => !['detail', 'message', 'error', 'non_field_errors'].includes(key))
-      .map(([key, value]) => {
-        if (Array.isArray(value)) return `${key}: ${value.join(', ')}`;
-        return `${key}: ${String(value)}`;
-      });
+    const normalizeErrorValue = (value: unknown): string => {
+      if (Array.isArray(value)) return value.map(normalizeErrorValue).join(', ');
+      if (value && typeof value === 'object') {
+        return Object.entries(value as Record<string, unknown>)
+          .map(([nestedKey, nestedValue]) => `${nestedKey}: ${normalizeErrorValue(nestedValue)}`)
+          .join(', ');
+      }
+      return String(value);
+    };
 
-    const nonFieldErrors = Array.isArray(payload.non_field_errors)
-      ? payload.non_field_errors.join(', ')
+    const payload = data as Record<string, unknown>;
+    const details = payload.details && typeof payload.details === 'object'
+      ? (payload.details as Record<string, unknown>)
+      : null;
+    const errorPayload = details || payload;
+    const directMessage = errorPayload.detail || errorPayload.message || (!details ? errorPayload.error : null);
+    const fieldErrors = Object.entries(errorPayload)
+      .filter(([key]) => !['detail', 'message', 'error', 'non_field_errors'].includes(key))
+      .map(([key, value]) => `${key}: ${normalizeErrorValue(value)}`);
+
+    const nonFieldErrors = Array.isArray(errorPayload.non_field_errors)
+      ? errorPayload.non_field_errors.map(normalizeErrorValue).join(', ')
       : null;
 
     const parts = [

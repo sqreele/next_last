@@ -1,4 +1,5 @@
 import os
+import re
 from django.contrib import admin
 from django.utils.html import format_html, format_html_join
 from django.utils import timezone
@@ -896,16 +897,24 @@ class FloorFilter(admin.SimpleListFilter):
     @staticmethod
     def _floor_from_room_name(room_name):
         room_name = str(room_name or '').strip()
-        if not room_name or not room_name[0].isdigit():
+        if not room_name:
             return None
-        if len(room_name) == 4 and room_name.startswith('1') and room_name[1].isdigit():
-            return room_name[1]
-        return room_name[0]
+
+        match = re.search(r'\d+', room_name)
+        if not match:
+            return None
+
+        room_code = match.group(0)
+        if len(room_code) == 4 and room_code.startswith('1') and room_code[1].isdigit():
+            return room_code[1]
+        if len(room_code) >= 3:
+            return room_code[0]
+        return None
 
     @staticmethod
     def _floor_regex(floor):
         floor = str(floor).strip()
-        return rf'(^1{floor}[0-9]{{2}}$)|(^{floor}[0-9]{{2,}}$)'
+        return rf'(^|\D)(1{floor}[0-9]{{2}}|{floor}[0-9]{{2,}})(\D|$)'
 
 class RoomFilter(admin.SimpleListFilter):
     title = 'room'

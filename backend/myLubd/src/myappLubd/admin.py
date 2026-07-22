@@ -843,8 +843,69 @@ class PropertyFilter(admin.SimpleListFilter):
 
     def queryset(self, request, queryset):
         if self.value():
-            return queryset.filter(rooms__properties__id=self.value()).distinct()
+            return queryset.filter(
+                Q(rooms__properties__id=self.value()) | Q(area__property__id=self.value())
+            ).distinct()
         return queryset
+
+
+class AreaFilter(admin.SimpleListFilter):
+    title = 'area'
+    parameter_name = 'area'
+
+    def lookups(self, request, model_admin):
+        areas_queryset = Area.objects.select_related('property').filter(jobs__isnull=False)
+
+        selected_property = request.GET.get('property')
+        if selected_property:
+            areas_queryset = areas_queryset.filter(property__id=selected_property)
+
+        return [
+            (str(area.id), f"{area.name} ({area.property.name})" if area.property else area.name)
+            for area in areas_queryset.order_by('property__name', 'name').distinct()
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(area__id=self.value()).distinct()
+        return queryset
+
+
+class FloorFilter(admin.SimpleListFilter):
+    title = 'floor'
+    parameter_name = 'floor'
+
+    def lookups(self, request, model_admin):
+        rooms_queryset = Room.objects.filter(jobs__isnull=False)
+
+        selected_property = request.GET.get('property')
+        if selected_property:
+            rooms_queryset = rooms_queryset.filter(properties__id=selected_property)
+
+        floors = sorted(
+            {self._floor_from_room_name(name) for name in rooms_queryset.values_list('name', flat=True)},
+            key=lambda floor: int(floor) if str(floor).isdigit() else str(floor),
+        )
+        return [(floor, floor) for floor in floors if floor]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(rooms__name__regex=self._floor_regex(self.value())).distinct()
+        return queryset
+
+    @staticmethod
+    def _floor_from_room_name(room_name):
+        room_name = str(room_name or '').strip()
+        if not room_name or not room_name[0].isdigit():
+            return None
+        if len(room_name) == 4 and room_name.startswith('1') and room_name[1].isdigit():
+            return room_name[1]
+        return room_name[0]
+
+    @staticmethod
+    def _floor_regex(floor):
+        floor = str(floor).strip()
+        return rf'(^1{floor}[0-9]{{2}}$)|(^{floor}[0-9]{{2,}}$)'
 
 class RoomFilter(admin.SimpleListFilter):
     title = 'room'
@@ -948,10 +1009,10 @@ class JobImageTopicFilter(admin.SimpleListFilter):
 class JobAdmin(admin.ModelAdmin):
     list_per_page = 25
     form = JobAdminForm
-    list_display = ['job_id', 'get_description_display', 'get_topics_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_rooms_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
-    list_filter = ['status', 'priority', IsDefectFilter, 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
-    search_fields = ['description', 'topics__title', 'rooms__name']
-    search_help_text = 'Search by description, topic title, or room name.'
+    list_display = ['job_id', 'get_description_display', 'get_topics_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_location_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
+    list_filter = ['status', 'priority', IsDefectFilter, 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, AreaFilter, FloorFilter, RoomFilter, TopicFilter]
+    search_fields = ['description', 'topics__title', 'rooms__name', 'area__name', 'area__property__name']
+    search_help_text = 'Search by description, topic title, room name, area name, or area property.'
     readonly_fields = ['job_id', 'updated_by', 'inventory_items_display', 'preventive_maintenance_images']
     filter_horizontal = ['rooms', 'topics']
     inlines = [JobImageInline]
@@ -963,7 +1024,7 @@ class JobAdmin(admin.ModelAdmin):
             'fields': ('user', 'updated_by')
         }),
         ('Related Items', {
-            'fields': ('rooms', 'topics')
+            'fields': ('rooms', 'area', 'topics')
         }),
         ('Inventory Used', {
             'fields': ('inventory_items_display',),
@@ -1005,6 +1066,37 @@ class JobAdmin(admin.ModelAdmin):
         rooms = [room.name or room.room_type for room in rooms_qs]
         return ", ".join(rooms) if rooms else "-"
     get_rooms_display.short_description = 'Room names'
+
+    def _job_location_parts(self, obj):
+        rooms = self.get_rooms_display(obj)
+        area_name = obj.area.name if obj.area else "-"
+        property_name = obj.area.property.name if obj.area and obj.area.property else "-"
+        floor_names = sorted(
+            {FloorFilter._floor_from_room_name(room.name) for room in obj.rooms.all()},
+            key=lambda floor: int(floor) if str(floor).isdigit() else str(floor),
+        )
+        floor_display = ", ".join(floor for floor in floor_names if floor) or "-"
+        return {
+            'rooms': rooms,
+            'area': area_name,
+            'floor': floor_display,
+            'property': property_name,
+        }
+
+    def get_location_display(self, obj):
+        location = self._job_location_parts(obj)
+
+        return format_html(
+            '<div style="font-size: 12px; line-height: 1.35;">'
+            '<div><strong>Rooms:</strong> {}</div>'
+            '<div><strong>Area:</strong> {}</div>'
+            '<div><strong>Floor:</strong> {}</div>'
+            '</div>',
+            location['rooms'],
+            location['area'],
+            location['floor'],
+        )
+    get_location_display.short_description = 'Location'
 
 
     def get_updated_by_display(self, obj):
@@ -1230,7 +1322,7 @@ class JobAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         self._request = request
-        return super().get_queryset(request).select_related('user', 'updated_by').prefetch_related('rooms__properties', 'topics', 'preventivemaintenance_set')
+        return super().get_queryset(request).select_related('user', 'updated_by', 'area', 'area__property').prefetch_related('rooms__properties', 'topics', 'preventivemaintenance_set')
 
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
@@ -1287,7 +1379,7 @@ class JobAdmin(admin.ModelAdmin):
         from xml.sax.saxutils import escape as xml_escape
 
         # Prefetch related data to avoid N+1 queries
-        qs = queryset.select_related('user').prefetch_related('rooms__properties', 'rooms', 'topics', 'job_images').order_by('created_at')
+        qs = queryset.select_related('user', 'area', 'area__property').prefetch_related('rooms__properties', 'rooms', 'topics', 'job_images').order_by('created_at')
 
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=48, bottomMargin=36)
@@ -1708,20 +1800,20 @@ class JobAdmin(admin.ModelAdmin):
             # Date formatting like frontend
             created_txt = job.created_at.strftime('%m/%d/%Y %H:%M') if job.created_at else 'N/A'
             completed_txt = job.completed_at.strftime('%m/%d/%Y %H:%M') if job.completed_at else ''
-            # Include both room type and name
-            rooms_list = [f"{r.room_type} - {r.name}" for r in job.rooms.all()]
-            rooms_str = ", ".join(rooms_list) if rooms_list else 'N/A'
+            location = self._job_location_parts(job)
 
             # Build status table rows with Location at the top
-            status_table_rows = []
-            
-            # Location first (if available)
-            if rooms_str != 'N/A':
-                status_table_rows.extend([
-                    [_make_paragraph('<font color="#6b7280" size="7"><b>Location:</b></font>', styles['ThaiSmall'])],
-                    [_make_paragraph(f'<font size="8">{_escape_text(rooms_str)}</font>', styles['ThaiNormal'])],
-                    [Spacer(1, 3)],
-                ])
+            status_table_rows = [
+                [_make_paragraph('<font color="#6b7280" size="7"><b>Rooms:</b></font>', styles['ThaiSmall'])],
+                [_make_paragraph(f'<font size="8">{_escape_text(location["rooms"])}</font>', styles['ThaiNormal'])],
+                [Spacer(1, 2)],
+                [_make_paragraph('<font color="#6b7280" size="7"><b>Area:</b></font>', styles['ThaiSmall'])],
+                [_make_paragraph(f'<font size="8">{_escape_text(location["area"])}</font>', styles['ThaiNormal'])],
+                [Spacer(1, 2)],
+                [_make_paragraph('<font color="#6b7280" size="7"><b>Floor:</b></font>', styles['ThaiSmall'])],
+                [_make_paragraph(f'<font size="8">{_escape_text(location["floor"])}</font>', styles['ThaiNormal'])],
+                [Spacer(1, 3)],
+            ]
             
             # Status
             status_table_rows.extend([
@@ -1802,7 +1894,7 @@ class JobAdmin(admin.ModelAdmin):
         from reportlab.graphics.charts.piecharts import Pie
         from reportlab.graphics.charts.barcharts import VerticalBarChart
 
-        qs = queryset.select_related('user').prefetch_related('rooms', 'topics').order_by('created_at')
+        qs = queryset.select_related('user', 'area', 'area__property').prefetch_related('rooms', 'topics').order_by('created_at')
         total_jobs = qs.count()
 
         status_counts = Counter(job.status for job in qs)
@@ -1834,14 +1926,23 @@ class JobAdmin(admin.ModelAdmin):
 
         topic_counts = Counter()
         room_counts = Counter()
+        area_counts = Counter()
+        floor_counts = Counter()
         for job in qs:
             for topic in job.topics.all():
                 topic_counts[topic.title] += 1
             for room in job.rooms.all():
                 room_counts[room.name] += 1
+                floor = FloorFilter._floor_from_room_name(room.name)
+                if floor:
+                    floor_counts[floor] += 1
+            if job.area:
+                area_counts[job.area.name] += 1
 
         top_topics = topic_counts.most_common(10)
         top_rooms = room_counts.most_common(10)
+        top_areas = area_counts.most_common(10)
+        top_floors = floor_counts.most_common(10)
 
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=48, bottomMargin=36)
@@ -1899,7 +2000,7 @@ class JobAdmin(admin.ModelAdmin):
             story.append(Spacer(1, 0.2 * inch))
 
         story.append(PageBreak())
-        story.append(Paragraph("Top Topics & Rooms", styles['Heading2']))
+        story.append(Paragraph("Top Topics, Rooms, Areas & Floors", styles['Heading2']))
 
         topics_table_data = [['Topic', 'Jobs']]
         for name, count in top_topics:
@@ -1913,8 +2014,22 @@ class JobAdmin(admin.ModelAdmin):
         if len(rooms_table_data) == 1:
             rooms_table_data.append(['No rooms available', '0'])
 
+        areas_table_data = [['Area', 'Jobs']]
+        for name, count in top_areas:
+            areas_table_data.append([name, str(count)])
+        if len(areas_table_data) == 1:
+            areas_table_data.append(['No areas available', '0'])
+
+        floors_table_data = [['Floor', 'Jobs']]
+        for name, count in top_floors:
+            floors_table_data.append([name, str(count)])
+        if len(floors_table_data) == 1:
+            floors_table_data.append(['No floors available', '0'])
+
         topics_table = Table(topics_table_data, colWidths=[3.5 * inch, 1 * inch])
         rooms_table = Table(rooms_table_data, colWidths=[3.5 * inch, 1 * inch])
+        areas_table = Table(areas_table_data, colWidths=[3.5 * inch, 1 * inch])
+        floors_table = Table(floors_table_data, colWidths=[3.5 * inch, 1 * inch])
 
         table_style = TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
@@ -1925,12 +2040,20 @@ class JobAdmin(admin.ModelAdmin):
         ])
         topics_table.setStyle(table_style)
         rooms_table.setStyle(table_style)
+        areas_table.setStyle(table_style)
+        floors_table.setStyle(table_style)
 
         story.append(Paragraph("Top Topics", styles['Heading3']))
         story.append(topics_table)
         story.append(Spacer(1, 0.3 * inch))
         story.append(Paragraph("Top Rooms", styles['Heading3']))
         story.append(rooms_table)
+        story.append(Spacer(1, 0.3 * inch))
+        story.append(Paragraph("Top Areas", styles['Heading3']))
+        story.append(areas_table)
+        story.append(Spacer(1, 0.3 * inch))
+        story.append(Paragraph("Top Floors", styles['Heading3']))
+        story.append(floors_table)
 
         doc.build(story)
         buffer.seek(0)
@@ -1946,7 +2069,7 @@ class JobAdmin(admin.ModelAdmin):
         from django.utils import timezone
         
         # Prefetch related data to avoid N+1 queries
-        qs = queryset.select_related('user').prefetch_related('rooms__properties', 'rooms', 'topics', 'job_images').order_by('created_at')
+        qs = queryset.select_related('user', 'area', 'area__property').prefetch_related('rooms__properties', 'rooms', 'topics', 'job_images').order_by('created_at')
         
         # Create the HttpResponse object with CSV header
         filename = f"jobs_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
@@ -1963,7 +2086,9 @@ class JobAdmin(admin.ModelAdmin):
             'Priority',
             'Defect by',
             'Topics',
-            'Location (Room Type - Room Name)',
+            'Rooms (Room Type - Room Name)',
+            'Area',
+            'Floor',
             'Properties',
             'Remarks',
             'Is Defective',
@@ -1985,8 +2110,11 @@ class JobAdmin(admin.ModelAdmin):
             # Get topics
             topics = ", ".join([t.title for t in job.topics.all()])
             
-            # Get rooms with type
+            # Get rooms, area, and floor using the same location helper as the admin/PDF views
             rooms = ", ".join([f"{r.room_type} - {r.name}" for r in job.rooms.all()])
+            location = self._job_location_parts(job)
+            area = location['area'] if location['area'] != '-' else ''
+            floor = location['floor'] if location['floor'] != '-' else ''
             
             # Get properties
             properties = []
@@ -1996,6 +2124,10 @@ class JobAdmin(admin.ModelAdmin):
                         prop_display = f"{prop.property_id} - {prop.name}"
                         if prop_display not in properties:
                             properties.append(prop_display)
+            if job.area and job.area.property:
+                prop_display = f"{job.area.property.property_id} - {job.area.property.name}"
+                if prop_display not in properties:
+                    properties.append(prop_display)
             properties_str = ", ".join(properties)
             
             # Format dates
@@ -2015,6 +2147,8 @@ class JobAdmin(admin.ModelAdmin):
                 user_info,
                 topics,
                 rooms,
+                area,
+                floor,
                 properties_str,
                 job.remarks or '',
                 'Yes' if job.is_defective else 'No',

@@ -2753,13 +2753,19 @@ class RoomViewSet(viewsets.ModelViewSet):
 
     @staticmethod
     def _floor_from_room_name(room_name):
-        code = str(room_name or '').strip()
-        if not code.isdigit():
+        room_name = str(room_name or '').strip()
+        if not room_name:
             return None
-        if len(code) == 4 and code.startswith('1'):
-            return code[1]
-        if len(code) >= 3:
-            return code[0]
+
+        match = re.search(r'\d+', room_name)
+        if not match:
+            return None
+
+        room_code = match.group(0)
+        if len(room_code) == 4 and room_code.startswith('1') and room_code[1].isdigit():
+            return room_code[1]
+        if len(room_code) >= 3:
+            return room_code[0]
         return None
 
     def list(self, request, *args, **kwargs):
@@ -2814,8 +2820,8 @@ class RoomViewSet(viewsets.ModelViewSet):
             if not floor_str:
                 return queryset
             return queryset.filter(
-                Q(name__regex=rf'^1{floor_str}[0-9]{{2}}$') |
-                Q(name__regex=rf'^{floor_str}[0-9]{{2,}}$')
+                Q(name__regex=rf'(^|\D)1{floor_str}[0-9]{{2}}(\D|$)') |
+                Q(name__regex=rf'(^|\D){floor_str}[0-9]{{2,}}(\D|$)')
             )
 
         def apply_property_filter(queryset, prop_value):

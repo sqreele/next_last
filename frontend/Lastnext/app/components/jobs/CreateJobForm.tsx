@@ -332,6 +332,34 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     return [];
   }, []);
 
+  const getFloorFromRoomName = useCallback((roomName: unknown): string | null => {
+    const code = String(roomName ?? '').trim();
+    if (!code) return null;
+
+    const numericMatch = code.match(/\d+/);
+    if (!numericMatch) return null;
+
+    const numericCode = numericMatch[0];
+    if (numericCode.length === 4 && numericCode.startsWith('1')) {
+      return numericCode[1];
+    }
+    if (numericCode.length >= 3) {
+      return numericCode[0];
+    }
+
+    return null;
+  }, []);
+
+  const deriveFloorsFromRooms = useCallback((roomsList: Room[]): string[] => {
+    return Array.from(
+      new Set(
+        roomsList
+          .map((room) => getFloorFromRoomName(room?.name))
+          .filter((floor): floor is string => Boolean(floor)),
+      ),
+    ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  }, [getFloorFromRoomName]);
+
   const normalizeFloorsResponse = useCallback((data: unknown): string[] => {
     const rawFloors = Array.isArray(data)
       ? data
@@ -578,23 +606,23 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
   }, [session?.user?.accessToken, selectedProperty, currentPropertyId, normalizeRoomsResponse, showErrorToast, t]);
 
   const fetchFloorsForArea = useCallback(async (areaId: number | null) => {
-    if (!session?.user?.accessToken || !areaId) {
+    const propertyParam = selectedProperty || currentPropertyId || undefined;
+    if (!session?.user?.accessToken || (!areaId && !propertyParam)) {
       setFloors([]);
       return;
     }
-
-    const propertyParam = selectedProperty || currentPropertyId || undefined;
     setIsFloorLoading(true);
     try {
       const response = await axios.get(`/api/rooms/`, {
         withCredentials: true,
         params: {
           floors_only: 'true',
-          area_id: areaId,
+          ...(areaId ? { area_id: areaId } : {}),
           ...(propertyParam ? { property: propertyParam } : {}),
         },
       });
-      setFloors(normalizeFloorsResponse(response.data));
+      const fetchedFloors = normalizeFloorsResponse(response.data);
+      setFloors(fetchedFloors.length ? fetchedFloors : deriveFloorsFromRooms(rooms));
     } catch (error) {
       console.error('Error fetching floors:', error);
       const errorMessage = formatApiError(error, t('createJob.error.fetchFloors'));
@@ -604,7 +632,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     } finally {
       setIsFloorLoading(false);
     }
-  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, normalizeFloorsResponse, showErrorToast, t]);
+  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, normalizeFloorsResponse, deriveFloorsFromRooms, rooms, showErrorToast, t]);
 
   const fetchData = useCallback(async () => {
     if (!session?.user?.accessToken) {
@@ -629,11 +657,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
           params: { is_active: 'true', ...(propertyParam ? { property_id: propertyParam } : {}) },
         }),
       ]);
-      setRooms(normalizeRoomsResponse(roomsResponse.data));
+      const initialRooms = normalizeRoomsResponse(roomsResponse.data);
+      setRooms(initialRooms);
       setTopics(topicsResponse.data);
       const areasData = areasResponse.data;
       const areasList: Area[] = Array.isArray(areasData) ? areasData : (areasData?.results || []);
       setAreas(areasList);
+      setFloors(deriveFloorsFromRooms(initialRooms));
     } catch (error) {
       console.error('Error fetching data:', error);
       const errorMessage = formatApiError(error, t('createJob.error.fetchData'));
@@ -642,7 +672,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
     } finally {
       clearLoadingAfterMinTime();
     }
-  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, clearLoadingAfterMinTime, normalizeRoomsResponse, showErrorToast, t]);
+  }, [session?.user?.accessToken, selectedProperty, currentPropertyId, clearLoadingAfterMinTime, normalizeRoomsResponse, deriveFloorsFromRooms, showErrorToast, t]);
 
   useEffect(() => {
     if (session?.user?.accessToken) {
@@ -951,6 +981,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                         void fetchFloorsForArea(nextAreaId);
                         void fetchRooms(nextAreaId, null);
                       } else {
+                        void fetchFloorsForArea(null);
                         void fetchRooms(null, null);
                       }
                     }}
@@ -988,7 +1019,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                 {/* Floor Selection */}
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-[#2f3a3f]">
-                    {t('createJob.floor')} <span className="text-xs font-medium text-slate-600">{t('createJob.selectAreaFirst')}</span>
+                    {t('createJob.floor')} {!selectedProperty && <span className="text-xs font-medium text-slate-600">{t('createJob.selectProperty')}</span>}
                   </Label>
                   <Select
                     value={values.floor || 'none'}
@@ -999,11 +1030,13 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                       setFieldTouched('room', false, false);
                       setRooms([]);
 
-                      if (values.area_id && nextFloor) {
+                      if (nextFloor) {
                         void fetchRooms(values.area_id, nextFloor);
+                      } else {
+                        void fetchRooms(values.area_id, null);
                       }
                     }}
-                    disabled={isSubmitting || isFloorLoading || !values.area_id}
+                    disabled={isSubmitting || isFloorLoading || !selectedProperty}
                   >
                     <SelectTrigger className={`h-11 rounded-[4px] ${FIELD_BASE_CLASS}`}>
                       {isFloorLoading ? (
@@ -1049,7 +1082,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({ onJobCreated }
                     disabled={isSubmitting}
                     loading={isRoomLoading}
                     emptyText={values.area_id && values.floor ? t('createJob.noRoomsFloor') : t('createJob.noRooms')}
-                    placeholder={values.area_id && !values.floor ? t('createJob.selectFloorOrRoom') : t('createJob.selectRoomNumber')}
+                    placeholder={!values.floor ? t('createJob.selectFloorOrRoom') : t('createJob.selectRoomNumber')}
                   />
                   {values.floor && !isRoomLoading && rooms.length === 0 && (
                     <p className="text-sm font-medium text-slate-600">{t('createJob.noRoomsFloor')}</p>

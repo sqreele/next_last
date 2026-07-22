@@ -887,6 +887,24 @@ class TopicFilter(admin.SimpleListFilter):
             return queryset.filter(topics__id=self.value()).distinct()
         return queryset
 
+
+class IsDefectFilter(admin.SimpleListFilter):
+    title = 'is defect'
+    parameter_name = 'is_defect'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('1', 'Yes'),
+            ('0', 'No'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == '1':
+            return queryset.filter(is_defective=True)
+        if self.value() == '0':
+            return queryset.filter(is_defective=False)
+        return queryset
+
 # Filters specifically for JobImage admin
 class JobImagePropertyFilter(admin.SimpleListFilter):
     title = 'property'
@@ -931,7 +949,7 @@ class JobAdmin(admin.ModelAdmin):
     list_per_page = 25
     form = JobAdminForm
     list_display = ['job_id', 'get_description_display', 'get_topics_display', 'get_status_display_colored', 'get_priority_display_colored', 'get_rooms_display', 'get_inventory_items_display', 'get_timestamps_display', 'is_preventivemaintenance']
-    list_filter = ['status', 'priority', 'is_defective', 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
+    list_filter = ['status', 'priority', IsDefectFilter, 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, RoomFilter, TopicFilter]
     search_fields = ['description', 'topics__title', 'rooms__name']
     search_help_text = 'Search by description, topic title, or room name.'
     readonly_fields = ['job_id', 'updated_by', 'inventory_items_display', 'preventive_maintenance_images']

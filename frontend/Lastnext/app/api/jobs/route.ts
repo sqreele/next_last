@@ -82,9 +82,15 @@ export async function POST(request: NextRequest) {
     const response = await fetch(`${API_CONFIG.baseUrl}/api/v1/jobs/`, fetchOptions);
 
     if (!response.ok) {
-      console.error('Failed to create job:', response.status, response.statusText);
+      let errorData: unknown = null;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { detail: response.statusText || 'Failed to create job' };
+      }
+      console.error('Failed to create job:', response.status, response.statusText, errorData);
       return NextResponse.json(
-        { error: 'Failed to create job' }, 
+        { error: 'Failed to create job', details: errorData },
         { status: response.status }
       );
     }

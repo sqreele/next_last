@@ -2,7 +2,7 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 
-from .admin import JobAdmin
+from .admin import IsDefectFilter, JobAdmin
 from .models import Job, Room
 
 
@@ -46,3 +46,38 @@ class JobAdminSearchTests(TestCase):
         )
 
         self.assertNotIn(self.job, queryset)
+
+
+class IsDefectFilterTests(TestCase):
+    def setUp(self):
+        self.request = RequestFactory().get('/admin/myappLubd/job/?is_defect=1')
+        self.user = User.objects.create_user(username='engineer-filter', password='pw12345!')
+        self.defect_job = Job.objects.create(
+            user=self.user,
+            description='Defect job',
+            remarks='Admin filter test',
+            status='pending',
+            priority='medium',
+            is_defective=True,
+        )
+        self.non_defect_job = Job.objects.create(
+            user=self.user,
+            description='Non defect job',
+            remarks='Admin filter test',
+            status='pending',
+            priority='medium',
+            is_defective=False,
+        )
+
+    def test_is_defect_filter_uses_requested_query_parameter(self):
+        defect_filter = IsDefectFilter(
+            self.request,
+            {'is_defect': '1'},
+            Job,
+            JobAdmin(Job, AdminSite()),
+        )
+
+        queryset = defect_filter.queryset(self.request, Job.objects.all())
+
+        self.assertIn(self.defect_job, queryset)
+        self.assertNotIn(self.non_defect_job, queryset)

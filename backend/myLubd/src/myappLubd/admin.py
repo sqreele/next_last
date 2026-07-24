@@ -120,25 +120,17 @@ def _excel_image_for_export(image_path, drawing_image_cls):
     """Return an openpyxl image that is safe to save inside an XLSX file.
 
     openpyxl can instantiate previews for some upload formats that XLSX
-    packaging cannot save reliably. Skip known slow/unsupported camera formats
-    and convert other uncommon formats to PNG before embedding a preview.
+    packaging cannot save reliably. Convert uncommon camera/phone formats to
+    a small PNG preview before embedding them.
     """
     from io import BytesIO
     from PIL import Image as PILImage
 
     supported_formats = {'gif', 'jpeg', 'png'}
     supported_extensions = {'.gif', '.jpeg', '.jpg', '.png'}
-    url_only_extensions = {'.mpo'}
 
     image_extension = os.path.splitext(image_path)[1].lower()
-    if image_extension in url_only_extensions:
-        raise UnsupportedExcelImagePreview('Image format is not safe to preview during export.')
-
-    max_convert_file_size = 5 * 1024 * 1024
-    max_convert_pixels = 12_000_000
-
-    if os.path.getsize(image_path) > max_convert_file_size:
-        raise UnsupportedExcelImagePreview('Image file is too large to safely preview during export.')
+    max_convert_pixels = 50_000_000
 
     with PILImage.open(image_path) as pil_image:
         image_format = (pil_image.format or '').lower()
@@ -147,7 +139,7 @@ def _excel_image_for_export(image_path, drawing_image_cls):
 
         width, height = pil_image.size
         if width * height > max_convert_pixels:
-            raise UnsupportedExcelImagePreview('Image dimensions are too large to safely preview during export.')
+            pil_image.thumbnail((3000, 3000))
 
         # Use the first frame for multi-picture formats such as MPO. Convert to
         # an Excel-friendly color mode before saving as PNG.
@@ -2302,27 +2294,38 @@ class JobAdmin(admin.ModelAdmin):
         sheet = workbook.active
         sheet.title = 'Jobs'
 
+        qs = list(queryset.select_related('user', 'area', 'area__property').prefetch_related(
+            'rooms__properties', 'rooms', 'topics', 'job_images'
+        ).order_by('created_at'))
+        max_image_count = max(
+            (sum(1 for image in job.job_images.all() if image.image) for job in qs),
+            default=0,
+        )
+        image_preview_headers = [
+            f'Image Preview {index}' for index in range(1, max_image_count + 1)
+        ] or ['Image Preview']
+
         headers = [
             'Job ID', 'Description', 'Status', 'Priority', 'Defect by',
             'Topics', 'Rooms (Room Type - Room Name)', 'Area', 'Floor',
             'Properties', 'Remarks', 'Is Defective', 'Is Preventive Maintenance',
-            'Created At', 'Updated At', 'Completed At', 'Image Preview', 'Image URLs',
+            'Created At', 'Updated At', 'Completed At', *image_preview_headers, 'Image URLs',
             'Image Export Notes',
         ]
         sheet.append(headers)
         sheet.freeze_panes = 'A2'
         sheet.row_dimensions[1].height = 24
 
-        image_column = headers.index('Image Preview') + 1
+        image_columns = [
+            headers.index(image_preview_header) + 1
+            for image_preview_header in image_preview_headers
+        ]
         image_url_column = headers.index('Image URLs') + 1
         note_column = headers.index('Image Export Notes') + 1
-        sheet.column_dimensions[get_column_letter(image_column)].width = 22
+        for image_column in image_columns:
+            sheet.column_dimensions[get_column_letter(image_column)].width = 22
         sheet.column_dimensions[get_column_letter(image_url_column)].width = 55
         sheet.column_dimensions[get_column_letter(note_column)].width = 55
-
-        qs = queryset.select_related('user', 'area', 'area__property').prefetch_related(
-            'rooms__properties', 'rooms', 'topics', 'job_images'
-        ).order_by('created_at')
 
         converted_image_buffers = []
 
@@ -2361,22 +2364,31 @@ class JobAdmin(admin.ModelAdmin):
             image_urls = [_absolute_file_url(request, image.image) for image in images]
             image_urls = [url for url in image_urls if url]
 
+            image_preview_values = ['Embedded' if image_index < len(images) else '' for image_index in range(len(image_preview_headers))]
+            if not images:
+                image_preview_values[0] = 'No image'
+
             sheet.append([
                 job.job_id, job.description or '', status, priority, user_info,
                 topics, rooms, area, floor, ", ".join(properties), job.remarks or '',
                 'Yes' if job.is_defective else 'No',
                 'Yes' if job.is_preventivemaintenance else 'No',
                 created_at, updated_at, completed_at,
-                'Embedded below' if images else 'No image',
+                *image_preview_values,
                 '\n'.join(image_urls),
                 _image_export_note(len(image_urls)),
             ])
             sheet.row_dimensions[row_index].height = 90 if images else 22
 
-            first_image = images[0] if images else None
-            if first_image and hasattr(first_image.image, 'path') and os.path.exists(first_image.image.path):
+            for image_index, job_image in enumerate(images):
+                if image_index >= len(image_columns):
+                    break
+                image_column = image_columns[image_index]
+                if not hasattr(job_image.image, 'path') or not os.path.exists(job_image.image.path):
+                    sheet.cell(row=row_index, column=image_column).value = 'Image URL only (file not available)'
+                    continue
                 try:
-                    excel_image, converted_buffer = _excel_image_for_export(first_image.image.path, drawing_image.Image)
+                    excel_image, converted_buffer = _excel_image_for_export(job_image.image.path, drawing_image.Image)
                     if converted_buffer is not None:
                         # openpyxl reads image data while saving, so keep the
                         # converted in-memory PNG alive until workbook.save().
@@ -2385,14 +2397,12 @@ class JobAdmin(admin.ModelAdmin):
                     excel_image.height = 90
                     sheet.add_image(excel_image, f'{get_column_letter(image_column)}{row_index}')
                 except Exception:
-                    # Some uploaded image formats (for example .mpo files from
-                    # phones/cameras) can be stored by Django but cannot be
-                    # embedded by openpyxl/Pillow during XLSX export. Keep the
-                    # admin action usable by leaving the URL in the export.
+                    # Keep the admin action usable if an individual upload is
+                    # unreadable/corrupt while still exporting the URL.
                     sheet.cell(row=row_index, column=image_column).value = 'Image URL only (unsupported Excel preview)'
 
         for column_index, header in enumerate(headers, start=1):
-            if column_index not in {image_column, image_url_column, note_column}:
+            if column_index not in {*image_columns, image_url_column, note_column}:
                 sheet.column_dimensions[get_column_letter(column_index)].width = min(max(len(header) + 2, 14), 35)
 
         buffer = BytesIO()

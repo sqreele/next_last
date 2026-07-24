@@ -73,6 +73,43 @@ from .models import (
     InventoryUsage,
 )
 
+
+
+def _absolute_file_url(request, file_field):
+    """Return an absolute URL for a file field so CSV exports can link images."""
+    if not file_field or not hasattr(file_field, 'url'):
+        return ''
+    try:
+        url = file_field.url
+    except ValueError:
+        return ''
+    if request is not None:
+        return request.build_absolute_uri(url)
+    return url
+
+
+def _spreadsheet_image_formula(image_url):
+    """Return a spreadsheet IMAGE formula for apps that can render image URLs."""
+    if not image_url:
+        return ''
+    escaped_url = image_url.replace('"', '""')
+    return f'=IMAGE("{escaped_url}")'
+
+
+def _image_export_note(image_count):
+    """Explain how image data appears in CSV exports.
+
+    CSV files are plain text and cannot contain embedded image binaries. The
+    export includes both direct URLs and optional spreadsheet formulas instead,
+    so users can either click the links or render the images in spreadsheet apps
+    that support IMAGE formulas.
+    """
+    if image_count <= 0:
+        return 'No images attached to this record.'
+    if image_count == 1:
+        return 'CSV cannot embed images; open the Image URL or use the IMAGE formula in a supported spreadsheet.'
+    return f'CSV cannot embed images; {image_count} image URLs/formulas are separated by new lines.'
+
 # Custom Date Joined Month Filter for Admin
 class DateJoinedMonthFilter(admin.SimpleListFilter):
     title = 'date joined (month)'
@@ -1342,7 +1379,7 @@ class JobAdmin(admin.ModelAdmin):
         formset.save_m2m()
 
     # Admin actions for timestamp management and export
-    actions = ['update_timestamps_to_now', 'reset_completed_timestamps', 'export_jobs_pdf', 'export_jobs_csv', 'export_jobs_chart_pdf']
+    actions = ['update_timestamps_to_now', 'reset_completed_timestamps', 'export_jobs_pdf', 'export_jobs_csv', 'export_jobs_excel', 'export_jobs_chart_pdf']
 
     def update_timestamps_to_now(self, request, queryset):
         """Update selected jobs' timestamps to current time"""
@@ -2105,6 +2142,9 @@ class JobAdmin(admin.ModelAdmin):
             'Created At',
             'Updated At',
             'Completed At',
+            'Image URLs',
+            'Image Formulas (Excel/Google Sheets)',
+            'Image Export Notes',
         ])
         
         # Write data rows
@@ -2147,6 +2187,16 @@ class JobAdmin(admin.ModelAdmin):
             # Get status display
             status = job.get_status_display() if hasattr(job, 'get_status_display') else job.status
             priority = job.get_priority_display() if hasattr(job, 'get_priority_display') else job.priority
+
+            # CSV files cannot embed binary images, so include absolute image URLs
+            # plus IMAGE formulas for spreadsheet apps that support rendering them.
+            image_urls = [
+                _absolute_file_url(request, image.image)
+                for image in job.job_images.all()
+                if image.image
+            ]
+            image_urls = [url for url in image_urls if url]
+            image_formulas = [_spreadsheet_image_formula(url) for url in image_urls]
             
             writer.writerow([
                 job.job_id,
@@ -2165,10 +2215,118 @@ class JobAdmin(admin.ModelAdmin):
                 created_at,
                 updated_at,
                 completed_at,
+                '\n'.join(image_urls),
+                '\n'.join(image_formulas),
+                _image_export_note(len(image_urls)),
             ])
         
         return response
     export_jobs_csv.short_description = "Export selected/filtered jobs to CSV"
+
+    def export_jobs_excel(self, request, queryset):
+        """Export selected/filtered jobs to Excel and embed the first job image."""
+        import importlib
+
+        openpyxl = importlib.import_module('openpyxl')
+        drawing_image = importlib.import_module('openpyxl.drawing.image')
+        get_column_letter = importlib.import_module('openpyxl.utils').get_column_letter
+
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = 'Jobs'
+
+        headers = [
+            'Job ID', 'Description', 'Status', 'Priority', 'Defect by',
+            'Topics', 'Rooms (Room Type - Room Name)', 'Area', 'Floor',
+            'Properties', 'Remarks', 'Is Defective', 'Is Preventive Maintenance',
+            'Created At', 'Updated At', 'Completed At', 'Image Preview', 'Image URLs',
+            'Image Export Notes',
+        ]
+        sheet.append(headers)
+        sheet.freeze_panes = 'A2'
+        sheet.row_dimensions[1].height = 24
+
+        image_column = headers.index('Image Preview') + 1
+        image_url_column = headers.index('Image URLs') + 1
+        note_column = headers.index('Image Export Notes') + 1
+        sheet.column_dimensions[get_column_letter(image_column)].width = 22
+        sheet.column_dimensions[get_column_letter(image_url_column)].width = 55
+        sheet.column_dimensions[get_column_letter(note_column)].width = 55
+
+        qs = queryset.select_related('user', 'area', 'area__property').prefetch_related(
+            'rooms__properties', 'rooms', 'topics', 'job_images'
+        ).order_by('created_at')
+
+        for row_index, job in enumerate(qs, start=2):
+            user_info = ''
+            if job.user:
+                user_info = f"{job.user.username}"
+                if job.user.first_name or job.user.last_name:
+                    user_info += f" ({job.user.first_name} {job.user.last_name})".strip()
+
+            topics = ", ".join([t.title for t in job.topics.all()])
+            rooms = ", ".join([f"{r.room_type} - {r.name}" for r in job.rooms.all()])
+            location = self._job_location_parts(job)
+            area = location['area'] if location['area'] != '-' else ''
+            floor = location['floor'] if location['floor'] != '-' else ''
+
+            properties = []
+            if job.rooms.exists():
+                for room in job.rooms.all():
+                    for prop in room.properties.all():
+                        prop_display = f"{prop.property_id} - {prop.name}"
+                        if prop_display not in properties:
+                            properties.append(prop_display)
+            if job.area and job.area.property:
+                prop_display = f"{job.area.property.property_id} - {job.area.property.name}"
+                if prop_display not in properties:
+                    properties.append(prop_display)
+
+            created_at = job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else ''
+            updated_at = job.updated_at.strftime('%Y-%m-%d %H:%M:%S') if job.updated_at else ''
+            completed_at = job.completed_at.strftime('%Y-%m-%d %H:%M:%S') if job.completed_at else ''
+            status = job.get_status_display() if hasattr(job, 'get_status_display') else job.status
+            priority = job.get_priority_display() if hasattr(job, 'get_priority_display') else job.priority
+
+            images = [image for image in job.job_images.all() if image.image]
+            image_urls = [_absolute_file_url(request, image.image) for image in images]
+            image_urls = [url for url in image_urls if url]
+
+            sheet.append([
+                job.job_id, job.description or '', status, priority, user_info,
+                topics, rooms, area, floor, ", ".join(properties), job.remarks or '',
+                'Yes' if job.is_defective else 'No',
+                'Yes' if job.is_preventivemaintenance else 'No',
+                created_at, updated_at, completed_at,
+                'Embedded below' if images else 'No image',
+                '\n'.join(image_urls),
+                _image_export_note(len(image_urls)),
+            ])
+            sheet.row_dimensions[row_index].height = 90 if images else 22
+
+            first_image = images[0] if images else None
+            if first_image and hasattr(first_image.image, 'path') and os.path.exists(first_image.image.path):
+                excel_image = drawing_image.Image(first_image.image.path)
+                excel_image.width = 120
+                excel_image.height = 90
+                sheet.add_image(excel_image, f'{get_column_letter(image_column)}{row_index}')
+
+        for column_index, header in enumerate(headers, start=1):
+            if column_index not in {image_column, image_url_column, note_column}:
+                sheet.column_dimensions[get_column_letter(column_index)].width = min(max(len(header) + 2, 14), 35)
+
+        buffer = BytesIO()
+        workbook.save(buffer)
+        buffer.seek(0)
+
+        filename = f"jobs_{timezone.now().strftime('%Y_%m_%d_%H%M')}.xlsx"
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+    export_jobs_excel.short_description = "Export selected/filtered jobs to Excel with image previews"
 
 @admin.register(JobImage)
 class JobImageAdmin(admin.ModelAdmin):
@@ -2222,6 +2380,8 @@ class JobImageAdmin(admin.ModelAdmin):
             'ID',
             'Job ID',
             'Image URL',
+            'Image Formula (Excel/Google Sheets)',
+            'Image Export Note',
             'Uploaded By',
             'Uploaded By Email',
             'Uploaded At',
@@ -2231,7 +2391,9 @@ class JobImageAdmin(admin.ModelAdmin):
             writer.writerow([
                 img.id,
                 img.job.job_id if img.job else '',
-                img.image.url if img.image and hasattr(img.image, 'url') else '',
+                _absolute_file_url(request, img.image),
+                _spreadsheet_image_formula(_absolute_file_url(request, img.image)),
+                _image_export_note(1 if _absolute_file_url(request, img.image) else 0),
                 img.uploaded_by.username if img.uploaded_by else '',
                 img.uploaded_by.email if img.uploaded_by else '',
                 img.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') if img.uploaded_at else '',

@@ -139,13 +139,18 @@ def _excel_image_for_export(image_path, drawing_image_cls):
         except EOFError:
             pass
 
+        # Build only a small preview for Excel. Some phone/camera uploads can
+        # be very large, and encoding the full image can exceed the gunicorn
+        # request timeout while exporting.
+        max_preview_size = (120, 90)
         converted = pil_image.copy()
+        converted.thumbnail(max_preview_size)
         if converted.mode not in ('RGB', 'RGBA'):
             converted = converted.convert('RGB')
 
         buffer = BytesIO()
         buffer.name = 'image.png'
-        converted.save(buffer, format='PNG')
+        converted.save(buffer, format='PNG', optimize=False)
         buffer.seek(0)
         return drawing_image_cls(buffer), buffer
 # Custom Date Joined Month Filter for Admin

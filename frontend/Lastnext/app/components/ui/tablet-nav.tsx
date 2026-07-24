@@ -1,17 +1,12 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { Button } from './button';
-import { 
-  Search,
-  Bell,
-  Menu,
-  Package2
-} from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from './sheet';
-import { primaryNavigationItems } from '@/app/lib/navigation';
+import React from "react";
+import { Button } from "./button";
+import { Search, Bell, Menu, Package2 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "./sheet";
+import { primaryNavigationItems } from "@/app/lib/navigation";
 
 interface TabletNavProps {
   className?: string;
@@ -24,11 +19,15 @@ export function TabletNav({ className }: TabletNavProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   return (
-    <nav className={`tablet:flex desktop:hidden items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm ${className || ''}`}>
+    <nav
+      className={`tablet:flex desktop:hidden items-center justify-between p-4 bg-card border-b border-border shadow-soft ${className || ""}`}
+    >
       <div className="flex items-center gap-4">
         <Link href="/dashboard" className="flex items-center gap-2">
           <Package2 className="h-8 w-8 text-blue-600" />
-          <span className="font-bold text-xl text-gray-800">HotelEngPro</span>
+          <span className="font-bold text-xl text-foreground">
+            HotelCare Pro
+          </span>
         </Link>
       </div>
 
@@ -36,10 +35,10 @@ export function TabletNav({ className }: TabletNavProps) {
         {/* Quick Actions */}
         <div className="hidden tablet:flex items-center gap-2">
           <Button variant="ghost" size="sm" className="p-2">
-            <Search className="w-5 h-5 text-gray-600" />
+            <Search className="w-5 h-5 text-muted-foreground" />
           </Button>
           <Button variant="ghost" size="sm" className="p-2 relative">
-            <Bell className="w-5 h-5 text-gray-600" />
+            <Bell className="w-5 h-5 text-muted-foreground" />
             <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
           </Button>
         </div>
@@ -47,17 +46,25 @@ export function TabletNav({ className }: TabletNavProps) {
         {/* Navigation Menu */}
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="sm" className="tablet:flex desktop:hidden">
+            <Button
+              variant="outline"
+              size="sm"
+              className="tablet:flex desktop:hidden"
+            >
               <Menu className="w-5 h-5" />
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-80">
-            <SheetTitle className="text-lg font-semibold mb-6">Navigation</SheetTitle>
+            <SheetTitle className="text-lg font-semibold mb-6">
+              Navigation
+            </SheetTitle>
             <nav className="space-y-2">
               {navigationItems.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const isActive =
+                  pathname === item.href ||
+                  pathname.startsWith(`${item.href}/`);
                 const Icon = item.icon;
-                
+
                 return (
                   <Link
                     key={item.name}
@@ -65,9 +72,10 @@ export function TabletNav({ className }: TabletNavProps) {
                     onClick={() => setIsOpen(false)}
                     className={`
                       flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all
-                      ${isActive
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                      ${
+                        isActive
+                          ? "bg-blue-600 text-white shadow-soft"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }
                     `}
                   >
@@ -92,21 +100,23 @@ export function TabletGridLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function TabletCard({ 
-  children, 
+export function TabletCard({
+  children,
   className = "",
-  colSpan = "tablet:col-span-6"
-}: { 
+  colSpan = "tablet:col-span-6",
+}: {
   children: React.ReactNode;
   className?: string;
   colSpan?: string;
 }) {
   return (
-    <div className={`
-      bg-white rounded-xl shadow-sm border border-gray-200 p-6
-      hover:shadow-md transition-shadow duration-200
+    <div
+      className={`
+      bg-card rounded-xl shadow-soft border border-border p-6
+      hover:shadow-soft transition-shadow duration-200
       ${colSpan} ${className}
-    `}>
+    `}
+    >
       {children}
     </div>
   );

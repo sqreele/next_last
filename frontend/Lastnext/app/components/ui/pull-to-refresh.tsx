@@ -18,7 +18,10 @@ interface PullToRefreshProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
-export const PullToRefresh = React.forwardRef<HTMLDivElement, PullToRefreshProps>(
+export const PullToRefresh = React.forwardRef<
+  HTMLDivElement,
+  PullToRefreshProps
+>(
   (
     {
       onRefresh,
@@ -31,12 +34,13 @@ export const PullToRefresh = React.forwardRef<HTMLDivElement, PullToRefreshProps
     },
     _forwardedRef,
   ) => {
-    const { ref, pullDistance, isRefreshing } = usePullToRefresh<HTMLDivElement>({
-      onRefresh,
-      enabled,
-      threshold,
-      scrollTargetRef,
-    });
+    const { ref, pullDistance, isRefreshing } =
+      usePullToRefresh<HTMLDivElement>({
+        onRefresh,
+        enabled,
+        threshold,
+        scrollTargetRef,
+      });
 
     const progress = Math.min(1, pullDistance / threshold);
     const indicatorVisible = pullDistance > 6 || isRefreshing;
@@ -56,7 +60,7 @@ export const PullToRefresh = React.forwardRef<HTMLDivElement, PullToRefreshProps
         >
           <div
             className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white shadow-md",
+              "flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card shadow-soft",
               isRefreshing && "animate-pulse",
             )}
             style={{

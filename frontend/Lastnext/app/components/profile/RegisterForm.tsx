@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import FormField from './FormField';
-import { RegisterFormData, ErrorState,} from '@/app/lib/types';
-import axios from 'axios';
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import FormField from "./FormField";
+import { RegisterFormData, ErrorState } from "@/app/lib/types";
+import axios from "axios";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-export default function RegisterForm() { 
+export default function RegisterForm() {
   const router = useRouter();
   const [error, setError] = useState<ErrorState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,56 +26,58 @@ export default function RegisterForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-   
+
     const formData = new FormData(e.currentTarget);
     if (!validateForm(formData)) {
       setLoading(false);
       return;
     }
-   
+
     const registrationData: RegisterFormData = {
       username: formData.get("username") as string,
       email: formData.get("email") as string,
       password: formData.get("password") as string,
     };
-   
+
     try {
       const response = await axios.post(
         `${API_URL}/api/v1/auth/register/`,
         registrationData,
         {
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
-          withCredentials: true
-        }
+          withCredentials: true,
+        },
       );
-     
+
       if (response.data.access) {
-        router.push('/auth/login');
+        router.push("/auth/login");
       }
-     } catch (error) {
+    } catch (error) {
       if (axios.isAxiosError(error)) {
         const errors = error.response?.data;
-        
-        if (typeof errors === 'object') {
+
+        if (typeof errors === "object") {
           const firstError = Object.values(errors)[0];
           setError({
-            message: Array.isArray(firstError) ? firstError[0] : String(firstError),
-            field: Object.keys(errors)[0]
+            message: Array.isArray(firstError)
+              ? firstError[0]
+              : String(firstError),
+            field: Object.keys(errors)[0],
           });
         } else {
-          setError({ 
-            message: errors?.detail || errors?.message || 'Registration failed'
+          setError({
+            message: errors?.detail || errors?.message || "Registration failed",
           });
         }
       } else {
-        setError({ message: 'Registration failed' });
+        setError({ message: "Registration failed" });
       }
-     } finally {
+    } finally {
       setLoading(false);
-     }
-   };
+    }
+  };
   return (
     <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
       {error && (
@@ -84,11 +86,30 @@ export default function RegisterForm() {
         </div>
       )}
 
-      <div className="rounded-md shadow-sm space-y-4">
-        <FormField id="username" label="Username" error={error?.field === 'username' ? error.message : undefined} />
-        <FormField id="email" label="Email" type="email" error={error?.field === 'email' ? error.message : undefined} />
-        <FormField id="password" label="Password" type="password" error={error?.field === 'password' ? error.message : undefined} />
-        <FormField id="confirmPassword" label="Confirm Password" type="password" error={error?.field === 'confirmPassword' ? error.message : undefined} />
+      <div className="rounded-md shadow-soft space-y-4">
+        <FormField
+          id="username"
+          label="Username"
+          error={error?.field === "username" ? error.message : undefined}
+        />
+        <FormField
+          id="email"
+          label="Email"
+          type="email"
+          error={error?.field === "email" ? error.message : undefined}
+        />
+        <FormField
+          id="password"
+          label="Password"
+          type="password"
+          error={error?.field === "password" ? error.message : undefined}
+        />
+        <FormField
+          id="confirmPassword"
+          label="Confirm Password"
+          type="password"
+          error={error?.field === "confirmPassword" ? error.message : undefined}
+        />
       </div>
 
       <button
@@ -102,7 +123,10 @@ export default function RegisterForm() {
       </button>
 
       <div className="text-center mt-4">
-        <Link href="/auth/login" className="text-sm text-indigo-600 hover:text-indigo-500">
+        <Link
+          href="/auth/login"
+          className="text-sm text-indigo-600 hover:text-indigo-500"
+        >
           Already have an account? Sign in
         </Link>
       </div>

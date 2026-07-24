@@ -1,7 +1,9 @@
-import { Card, CardContent } from '@/app/components/ui/card';
+import { Card, CardContent } from "@/app/components/ui/card";
 
-function SkeletonBlock({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-gray-200 ${className}`} />;
+function SkeletonBlock({ className = "" }: { className?: string }) {
+  return (
+    <div className={`animate-pulse rounded-xl bg-gray-200 ${className}`} />
+  );
 }
 
 export default function Loading() {
@@ -29,7 +31,7 @@ export default function Loading() {
         <CardContent className="p-4 sm:p-5">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="rounded-xl border border-gray-200 p-4">
+              <div key={index} className="rounded-xl border border-border p-4">
                 <SkeletonBlock className="h-5 w-28" />
                 <SkeletonBlock className="mt-3 h-4 w-20" />
               </div>

@@ -1,14 +1,14 @@
-// Centralized SEO Configuration for HotelEngPro
+// Centralized SEO Configuration for HotelCare Pro
 // Use this for consistent branding across all pages
 
 export const seoConfig = {
-  siteName: 'HotelEngPro',
-  siteUrl: 'https://pcms.live',
-  defaultTitle: 'HotelEngPro - Hotel Engineering & Maintenance Dashboard',
-  titleTemplate: '%s | HotelEngPro',
-  defaultDescription: 'HotelEngPro - Professional hotel engineering and maintenance management platform. Streamline property maintenance, track jobs, and manage tasks efficiently for hotels and hospitality.',
+  siteName: 'HotelCare Pro',
+  siteUrl: 'https://hotelcarepro.com',
+  defaultTitle: 'HotelCare Pro - Smart Hotel Maintenance and Engineering Management Software',
+  titleTemplate: '%s | HotelCare Pro',
+  defaultDescription: 'Manage work orders, preventive maintenance, assets, rooms, technicians and engineering reports in one HotelCare Pro platform.',
   defaultKeywords: [
-    'HotelEngPro',
+    'HotelCare Pro',
     'hotel engineering',
     'hotel maintenance',
     'property maintenance',
@@ -23,11 +23,11 @@ export const seoConfig = {
     'hotel facilities',
   ],
   author: {
-    name: 'HotelEngPro',
-    url: 'https://pcms.live',
+    name: 'HotelCare Pro',
+    url: 'https://hotelcarepro.com',
   },
   twitter: {
-    handle: '@HotelEngPro',
+    handle: '@HotelCarePro',
     cardType: 'summary_large_image' as const,
   },
   openGraph: {
@@ -35,10 +35,10 @@ export const seoConfig = {
     locale: 'en_US',
     images: [
       {
-        url: 'https://pcms.live/og-image.jpg',
+        url: 'https://hotelcarepro.com/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'HotelEngPro - Hotel Engineering & Maintenance Dashboard',
+        alt: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',
       },
     ],
   },
@@ -48,63 +48,63 @@ export const seoConfig = {
 export const pageMetadata = {
   dashboard: {
     title: 'Dashboard',
-    description: 'HotelEngPro Dashboard - View and manage all your hotel maintenance jobs, equipment status, and facility operations in one place.',
-    keywords: ['dashboard', 'hotel management', 'maintenance overview', 'job tracking', 'HotelEngPro'],
+    description: 'HotelCare Pro Dashboard - View and manage all your hotel maintenance jobs, equipment status, and facility operations in one place.',
+    keywords: ['dashboard', 'hotel management', 'maintenance overview', 'job tracking', 'HotelCare Pro'],
   },
   myJobs: {
     title: 'My Jobs',
-    description: 'View and manage your assigned hotel maintenance jobs with HotelEngPro. Track progress, update status, and complete tasks efficiently.',
-    keywords: ['my jobs', 'assigned tasks', 'maintenance jobs', 'job management', 'HotelEngPro'],
+    description: 'View and manage your assigned hotel maintenance jobs with HotelCare Pro. Track progress, update status, and complete tasks efficiently.',
+    keywords: ['my jobs', 'assigned tasks', 'maintenance jobs', 'job management', 'HotelCare Pro'],
   },
   createJob: {
     title: 'Create Job',
-    description: 'Create a new hotel maintenance job effortlessly with HotelEngPro. Assign tasks, set priorities, and upload images with our intuitive form.',
-    keywords: ['create job', 'new maintenance task', 'job creation', 'HotelEngPro'],
+    description: 'Create a new hotel maintenance job effortlessly with HotelCare Pro. Assign tasks, set priorities, and upload images with our intuitive form.',
+    keywords: ['create job', 'new maintenance task', 'job creation', 'HotelCare Pro'],
   },
   preventiveMaintenance: {
     title: 'Preventive Maintenance',
-    description: 'Schedule and manage preventive maintenance tasks for your hotel equipment with HotelEngPro. Reduce downtime and extend equipment life.',
-    keywords: ['preventive maintenance', 'scheduled maintenance', 'equipment care', 'PM schedule', 'HotelEngPro'],
+    description: 'Schedule and manage preventive maintenance tasks for your hotel equipment with HotelCare Pro. Reduce downtime and extend equipment life.',
+    keywords: ['preventive maintenance', 'scheduled maintenance', 'equipment care', 'PM schedule', 'HotelCare Pro'],
   },
   machines: {
     title: 'Equipment & Machines',
-    description: 'Manage all hotel equipment and machines with HotelEngPro. Track maintenance history, schedules, and equipment status.',
-    keywords: ['equipment', 'machines', 'hotel equipment', 'equipment management', 'HotelEngPro'],
+    description: 'Manage all hotel equipment and machines with HotelCare Pro. Track maintenance history, schedules, and equipment status.',
+    keywords: ['equipment', 'machines', 'hotel equipment', 'equipment management', 'HotelCare Pro'],
   },
   rooms: {
     title: 'Rooms Management',
-    description: 'Manage hotel rooms and their maintenance needs with HotelEngPro. Track room status, issues, and maintenance history.',
-    keywords: ['rooms', 'room management', 'hotel rooms', 'room maintenance', 'HotelEngPro'],
+    description: 'Manage hotel rooms and their maintenance needs with HotelCare Pro. Track room status, issues, and maintenance history.',
+    keywords: ['rooms', 'room management', 'hotel rooms', 'room maintenance', 'HotelCare Pro'],
   },
   roomsByTopic: {
     title: 'Rooms by Topic',
-    description: 'View hotel rooms organized by maintenance topics with HotelEngPro. Easily identify and address common issues across rooms.',
-    keywords: ['rooms by topic', 'maintenance topics', 'room issues', 'HotelEngPro'],
+    description: 'View hotel rooms organized by maintenance topics with HotelCare Pro. Easily identify and address common issues across rooms.',
+    keywords: ['rooms by topic', 'maintenance topics', 'room issues', 'HotelCare Pro'],
   },
   inventory: {
     title: 'Inventory',
-    description: 'Manage hotel maintenance inventory and spare parts with HotelEngPro. Track stock levels, orders, and usage.',
-    keywords: ['inventory', 'spare parts', 'stock management', 'maintenance supplies', 'HotelEngPro'],
+    description: 'Manage hotel maintenance inventory and spare parts with HotelCare Pro. Track stock levels, orders, and usage.',
+    keywords: ['inventory', 'spare parts', 'stock management', 'maintenance supplies', 'HotelCare Pro'],
   },
   reports: {
     title: 'Jobs Report',
-    description: 'Generate and view hotel maintenance reports with HotelEngPro. Analyze performance, trends, and operational efficiency.',
-    keywords: ['reports', 'analytics', 'maintenance reports', 'performance tracking', 'HotelEngPro'],
+    description: 'Generate and view hotel maintenance reports with HotelCare Pro. Analyze performance, trends, and operational efficiency.',
+    keywords: ['reports', 'analytics', 'maintenance reports', 'performance tracking', 'HotelCare Pro'],
   },
   profile: {
     title: 'Profile',
-    description: 'Manage your HotelEngPro profile settings, preferences, and account information.',
-    keywords: ['profile', 'account settings', 'user preferences', 'HotelEngPro'],
+    description: 'Manage your HotelCare Pro profile settings, preferences, and account information.',
+    keywords: ['profile', 'account settings', 'user preferences', 'HotelCare Pro'],
   },
   login: {
     title: 'Sign In',
-    description: 'Sign in to HotelEngPro - Your professional hotel engineering and maintenance management platform.',
-    keywords: ['login', 'sign in', 'HotelEngPro access', 'hotel management'],
+    description: 'Sign in to HotelCare Pro - Your professional hotel engineering and maintenance management platform.',
+    keywords: ['login', 'sign in', 'HotelCare Pro access', 'hotel management'],
   },
   register: {
     title: 'Create Account',
-    description: 'Create your HotelEngPro account and start managing your hotel engineering and maintenance operations.',
-    keywords: ['register', 'sign up', 'create account', 'HotelEngPro'],
+    description: 'Create your HotelCare Pro account and start managing your hotel engineering and maintenance operations.',
+    keywords: ['register', 'sign up', 'create account', 'HotelCare Pro'],
   },
 };
 
@@ -132,4 +132,3 @@ export function generatePageMetadata(pageKey: keyof typeof pageMetadata) {
     },
   };
 }
-

@@ -1,11 +1,16 @@
-'use client';
+"use client";
 
-import React, { ReactNode } from 'react';
-import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
-import { Shield, AlertTriangle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
-import { PageLoader } from '@/app/components/ui/loading';
+import React, { ReactNode } from "react";
+import { useSessionGuard } from "@/app/lib/hooks/useSessionGuard";
+import { Shield, AlertTriangle } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Button } from "@/app/components/ui/button";
+import { PageLoader } from "@/app/components/ui/loading";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -20,8 +25,13 @@ interface LoadingFallbackProps {
   message?: string;
 }
 
-const LoadingFallback: React.FC<LoadingFallbackProps> = ({ message = 'Loading...' }) => (
-  <PageLoader label={message} description="Checking your secure PCMS session before opening the workspace." />
+const LoadingFallback: React.FC<LoadingFallbackProps> = ({
+  message = "Loading...",
+}) => (
+  <PageLoader
+    label={message}
+    description="Checking your secure HotelCare Pro session before opening the workspace."
+  />
 );
 
 interface UnauthorizedFallbackProps {
@@ -29,7 +39,10 @@ interface UnauthorizedFallbackProps {
   redirectTo?: string;
 }
 
-const UnauthorizedFallback: React.FC<UnauthorizedFallbackProps> = ({ onRetry, redirectTo = '/auth/login' }) => (
+const UnauthorizedFallback: React.FC<UnauthorizedFallbackProps> = ({
+  onRetry,
+  redirectTo = "/auth/login",
+}) => (
   <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center p-4">
     <Card className="max-w-md w-full">
       <CardContent className="p-8 text-center space-y-6">
@@ -37,8 +50,10 @@ const UnauthorizedFallback: React.FC<UnauthorizedFallbackProps> = ({ onRetry, re
           <Shield className="w-10 h-10 text-red-600" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-          <p className="text-gray-600">You need to be logged in to access this page.</p>
+          <h1 className="text-2xl font-bold text-foreground">Access Denied</h1>
+          <p className="text-muted-foreground">
+            You need to be logged in to access this page.
+          </p>
         </div>
         <div className="flex flex-col gap-3">
           {onRetry && (
@@ -68,8 +83,12 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error, onRetry }) => (
           <AlertTriangle className="w-10 h-10 text-red-600" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-gray-900">Authentication Error</h1>
-          <p className="text-gray-600">{error.message || 'An error occurred during authentication.'}</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            Authentication Error
+          </h1>
+          <p className="text-muted-foreground">
+            {error.message || "An error occurred during authentication."}
+          </p>
         </div>
         <div className="flex flex-col gap-3">
           {onRetry && (
@@ -89,23 +108,18 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error, onRetry }) => (
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requireAuth = true,
-  redirectTo = '/auth/login',
+  redirectTo = "/auth/login",
   fallback,
   showLoadingSpinner = true,
   onUnauthorized,
 }) => {
-  const {
-    isAuthenticated,
-    isLoading,
-    user,
-    accessToken,
-    redirectToLogin,
-  } = useSessionGuard({
-    redirectTo,
-    requireAuth,
-    onUnauthorized,
-    showToast: true,
-  });
+  const { isAuthenticated, isLoading, user, accessToken, redirectToLogin } =
+    useSessionGuard({
+      redirectTo,
+      requireAuth,
+      onUnauthorized,
+      showToast: true,
+    });
 
   // If authentication is not required, render children directly
   if (!requireAuth) {
@@ -117,11 +131,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (fallback) {
       return <>{fallback}</>;
     }
-    
+
     if (showLoadingSpinner) {
       return <LoadingFallback message="Checking authentication..." />;
     }
-    
+
     return null;
   }
 
@@ -130,7 +144,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (fallback) {
       return <>{fallback}</>;
     }
-    
+
     return (
       <UnauthorizedFallback
         onRetry={() => window.location.reload()}
@@ -146,7 +160,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 // Higher-order component for easier usage
 export function withAuth<P extends object>(
   Component: React.ComponentType<P>,
-  options: Omit<ProtectedRouteProps, 'children'> = {}
+  options: Omit<ProtectedRouteProps, "children"> = {},
 ) {
   const WrappedComponent = (props: P) => (
     <ProtectedRoute {...options}>
@@ -155,7 +169,7 @@ export function withAuth<P extends object>(
   );
 
   WrappedComponent.displayName = `withAuth(${Component.displayName || Component.name})`;
-  
+
   return WrappedComponent;
 }
 

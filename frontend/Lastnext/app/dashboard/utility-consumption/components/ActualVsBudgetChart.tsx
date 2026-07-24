@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   Bar,
@@ -10,7 +10,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from "recharts";
 
 interface ActualVsBudgetChartProps {
   data: Array<{
@@ -22,20 +22,25 @@ interface ActualVsBudgetChartProps {
 }
 
 function formatBarLabel(v: number | string | null | undefined) {
-  if (v == null || v === '') return '';
-  const n = typeof v === 'number' ? v : Number(v);
-  if (Number.isNaN(n) || n === 0) return '';
+  if (v == null || v === "") return "";
+  const n = typeof v === "number" ? v : Number(v);
+  if (Number.isNaN(n) || n === 0) return "";
   if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (Math.abs(n) >= 10_000) return `${(n / 1000).toFixed(0)}k`;
   return String(Math.round(n));
 }
 
-export default function ActualVsBudgetChart({ data, yearLabel }: ActualVsBudgetChartProps) {
+export default function ActualVsBudgetChart({
+  data,
+  yearLabel,
+}: ActualVsBudgetChartProps) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-slate-900">Actual vs Budget</h3>
-        <p className="text-sm text-slate-500">{`Total Electricity vs Budget (${yearLabel})`}</p>
+        <h3 className="text-lg font-semibold text-foreground">
+          Actual vs Budget
+        </h3>
+        <p className="text-sm text-muted-foreground">{`Total Electricity vs Budget (${yearLabel})`}</p>
       </div>
       <div className="h-80 w-full min-h-[20rem]">
         <ResponsiveContainer width="100%" height="100%">
@@ -55,7 +60,12 @@ export default function ActualVsBudgetChart({ data, yearLabel }: ActualVsBudgetC
             />
             <Tooltip />
             <Legend />
-            <Bar dataKey="totalelectricity" name="Actual" fill="#0ea5e9" radius={[0, 4, 4, 0]}>
+            <Bar
+              dataKey="totalelectricity"
+              name="Actual"
+              fill="#0ea5e9"
+              radius={[0, 4, 4, 0]}
+            >
               <LabelList
                 dataKey="totalelectricity"
                 position="right"

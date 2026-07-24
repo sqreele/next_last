@@ -364,16 +364,16 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
           </div>
           <div className="flex flex-col items-center gap-2">
             <div className="rounded-md border border-slate-300 bg-white p-2">
-              <QRCode value={qrValue} size={104} aria-label="Open this job in PCMS" />
+              <QRCode value={qrValue} size={104} aria-label="Open this job in HotelCare Pro" />
             </div>
             <p className="max-w-[7rem] text-center text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-              Scan to open in PCMS
+              Scan to open in HotelCare Pro
             </p>
           </div>
         </section>
 
         <footer className="mt-8 border-t border-slate-200 pt-3 text-[10px] font-medium text-slate-500">
-          Printed {new Date().toLocaleString()} · PCMS Hotel Maintenance
+          Printed {new Date().toLocaleString()} · HotelCare Pro Hotel Maintenance
         </footer>
       </div>
     </div>

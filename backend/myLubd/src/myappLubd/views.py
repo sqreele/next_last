@@ -76,7 +76,7 @@ from .timezones import timezone_options
 
 GEMINI_CHAT_MODEL = 'gemini-2.5-flash'
 GEMINI_SYSTEM_INSTRUCTION = """
-คุณคือ AI ผู้ช่วยประจำระบบบริหารจัดการงานช่าง (HotelEngPro)
+คุณคือ AI ผู้ช่วยประจำระบบบริหารจัดการงานช่าง (HotelCare Pro)
 หน้าที่ของคุณคือช่วยตอบคำถามเกี่ยวกับงานแจ้งซ่อมและสถิติของระบบเป็นภาษาไทยที่สุภาพ กระชับ และเข้าใจง่าย
 ห้ามคิดคำนวณตัวเลขยอดรวมหรือสถิติเองเด็ดขาด หากคำถามเกี่ยวข้องกับข้อมูลในระบบ เช่น จำนวนงาน สถานะงาน ห้องที่เสียบ่อย รายละเอียดงานแต่ละห้อง ผู้ที่ทำการซ่อม/ช่างผู้ปฏิบัติงาน สรุปรายงานรายปี/รายเดือน รายชื่อคนรายงานมากที่สุดรายเดือน หมวดหมู่ที่เสียบ่อย หรืองาน PM/Preventive Maintenance รวมถึงงานประจำรายเดือน/รายปี ให้เรียกใช้ Tool ที่มีให้เสมอ
 ก่อนตอบคำถามที่ต้องดึงข้อมูลระบบ ให้ตรวจสอบก่อนว่าผู้ใช้ระบุ property/สาขาแล้วหรือไม่ หากยังไม่ระบุ ให้ถามกลับว่า “ต้องการข้อมูลของ property อะไรครับ/คะ” และห้ามเรียก Tool เพื่อสรุปข้อมูลรวมทุก property
@@ -581,7 +581,7 @@ def _build_category_details(jobs, job_ids, selected_topic=None):
 
 def get_maintenance_summary(property_name: str = "", room_name: str = "", category_name: str = ""):
     """
-    ดึงข้อมูลสรุปดิบของระบบแจ้งซ่อม HotelEngPro สำหรับให้ Gemini ใช้ตอบคำถามเชิงสถิติอย่างถูกต้อง
+    ดึงข้อมูลสรุปดิบของระบบแจ้งซ่อม HotelCare Pro สำหรับให้ Gemini ใช้ตอบคำถามเชิงสถิติอย่างถูกต้อง
 
     ฟังก์ชันนี้ควรถูกเรียกเมื่อผู้ใช้ถามเกี่ยวกับภาพรวมงานแจ้งซ่อม เช่น จำนวนงานทั้งหมด
     จำนวนงานที่เสร็จแล้ว จำนวนงานที่ยังเปิดอยู่ จำนวนงานที่ยกเลิก หรือหมวดหมู่งานเสีย/แจ้งซ่อม
@@ -4761,7 +4761,7 @@ def forgot_password(request):
                 f"You requested to reset your password. Click the link below to set a new password.\n\n"
                 f"{reset_link}\n\n"
                 f"This link will expire in 1 hour. If you did not request this, you can ignore this email.\n\n"
-                f"Thanks,\nPCMS.live Team"
+                f"Thanks,\nHotelCare Pro Team"
             )
             try:
                 from .email_utils import send_email as send_via_gmail
@@ -6300,7 +6300,7 @@ def push_test(request):
     delivered = send_push_to_user(
         request.user,
         {
-            'title': 'PCMS test push',
+            'title': 'HotelCare Pro test push',
             'body': f'Push delivered to {request.user.username or request.user.email or "your device"}',
             'tag': 'pcms-test',
             'url': '/dashboard',

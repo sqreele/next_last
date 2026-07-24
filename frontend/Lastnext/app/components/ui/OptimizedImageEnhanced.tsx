@@ -5,17 +5,17 @@
 
 "use client";
 
-import React, { useState, useCallback } from 'react';
-import Image, { ImageProps } from 'next/image';
-import { cn } from '@/app/lib/utils/cn';
-import { 
-  getOptimizedImageProps, 
-  IMAGE_PRESETS, 
+import React, { useState, useCallback } from "react";
+import Image, { ImageProps } from "next/image";
+import { cn } from "@/app/lib/utils/cn";
+import {
+  getOptimizedImageProps,
+  IMAGE_PRESETS,
   ImagePresetOptions,
-  isExternalImage 
-} from '@/app/lib/utils/universal-image-optimization';
+  isExternalImage,
+} from "@/app/lib/utils/universal-image-optimization";
 
-interface OptimizedImageEnhancedProps extends Omit<ImageProps, 'src' | 'alt'> {
+interface OptimizedImageEnhancedProps extends Omit<ImageProps, "src" | "alt"> {
   src: string;
   alt: string;
   preset?: keyof typeof IMAGE_PRESETS;
@@ -31,7 +31,7 @@ interface OptimizedImageEnhancedProps extends Omit<ImageProps, 'src' | 'alt'> {
 export function OptimizedImageEnhanced({
   src,
   alt,
-  preset = 'JOB_CARD',
+  preset = "JOB_CARD",
   options,
   fallback,
   className,
@@ -46,17 +46,19 @@ export function OptimizedImageEnhanced({
 
   const imageOptions = options || IMAGE_PRESETS[preset];
   const { width, height, quality, priority, ...restProps } = props;
-  
+
   // Check if this is an external image that should be unoptimized
-  const isExternalImage = src.startsWith('http') || src.startsWith('/media/') || src.includes('/media/');
-  
+  const isExternalImage =
+    src.startsWith("http") ||
+    src.startsWith("/media/") ||
+    src.includes("/media/");
+
   const optimizedProps = getOptimizedImageProps(src, alt, imageOptions, {
-    width: typeof width === 'string' ? parseInt(width) : width,
-    height: typeof height === 'string' ? parseInt(height) : height,
-    quality: typeof quality === 'string' ? parseInt(quality) : quality,
+    width: typeof width === "string" ? parseInt(width) : width,
+    height: typeof height === "string" ? parseInt(height) : height,
+    quality: typeof quality === "string" ? parseInt(quality) : quality,
     priority,
   });
-  
 
   const handleLoad = useCallback(() => {
     setIsLoading(false);
@@ -78,10 +80,12 @@ export function OptimizedImageEnhanced({
   // If there's an error and no fallback, show a placeholder
   if (hasError) {
     return (
-      <div className={cn(
-        "flex items-center justify-center bg-gray-100 text-gray-400",
-        className
-      )}>
+      <div
+        className={cn(
+          "flex items-center justify-center bg-muted text-muted-foreground",
+          className,
+        )}
+      >
         <svg
           className="w-8 h-8"
           fill="none"
@@ -102,11 +106,11 @@ export function OptimizedImageEnhanced({
   return (
     <div className={cn("relative overflow-hidden", containerClassName)}>
       {isLoading && showLoadingSpinner && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
-          <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+        <div className="absolute inset-0 flex items-center justify-center bg-muted z-10">
+          <div className="w-6 h-6 border-2 border-border border-t-blue-600 rounded-full animate-spin" />
         </div>
       )}
-      
+
       {isExternalImage ? (
         <img
           src={src}
@@ -116,13 +120,21 @@ export function OptimizedImageEnhanced({
           className={cn(
             "transition-opacity duration-300",
             isLoading ? "opacity-0" : "opacity-100",
-            className
+            className,
           )}
           onLoad={handleLoad}
           onError={handleError}
           {...(() => {
             // Filter out Next.js Image specific props that shouldn't be passed to HTML img
-            const { fill, sizes, priority, quality, placeholder, blurDataURL, ...htmlProps } = props;
+            const {
+              fill,
+              sizes,
+              priority,
+              quality,
+              placeholder,
+              blurDataURL,
+              ...htmlProps
+            } = props;
             return htmlProps;
           })()}
         />
@@ -133,7 +145,7 @@ export function OptimizedImageEnhanced({
           className={cn(
             "transition-opacity duration-300",
             isLoading ? "opacity-0" : "opacity-100",
-            className
+            className,
           )}
           onLoad={handleLoad}
           onError={handleError}
@@ -144,36 +156,38 @@ export function OptimizedImageEnhanced({
 }
 
 // Preset-specific components for common use cases
-export function JobCardImage({ src, alt, ...props }: Omit<OptimizedImageEnhancedProps, 'preset'>) {
+export function JobCardImage({
+  src,
+  alt,
+  ...props
+}: Omit<OptimizedImageEnhancedProps, "preset">) {
   return (
-    <OptimizedImageEnhanced
-      src={src}
-      alt={alt}
-      preset="JOB_CARD"
-      {...props}
-    />
+    <OptimizedImageEnhanced src={src} alt={alt} preset="JOB_CARD" {...props} />
   );
 }
 
-export function JobHeroImage({ src, alt, ...props }: Omit<OptimizedImageEnhancedProps, 'preset'>) {
+export function JobHeroImage({
+  src,
+  alt,
+  ...props
+}: Omit<OptimizedImageEnhancedProps, "preset">) {
   return (
-    <OptimizedImageEnhanced
-      src={src}
-      alt={alt}
-      preset="JOB_HERO"
-      {...props}
-    />
+    <OptimizedImageEnhanced src={src} alt={alt} preset="JOB_HERO" {...props} />
   );
 }
 
-export function ProfileImage({ src, alt, ...props }: Omit<OptimizedImageEnhancedProps, 'preset'>) {
+export function ProfileImage({
+  src,
+  alt,
+  ...props
+}: Omit<OptimizedImageEnhancedProps, "preset">) {
   return (
     <OptimizedImageEnhanced
       src={src}
       alt={alt}
       preset="PROFILE"
       fallback={
-        <div className="flex items-center justify-center bg-gray-100 text-gray-400">
+        <div className="flex items-center justify-center bg-muted text-muted-foreground">
           <svg
             className="w-8 h-8"
             fill="none"
@@ -194,35 +208,32 @@ export function ProfileImage({ src, alt, ...props }: Omit<OptimizedImageEnhanced
   );
 }
 
-export function ThumbnailImage({ src, alt, ...props }: Omit<OptimizedImageEnhancedProps, 'preset'>) {
+export function ThumbnailImage({
+  src,
+  alt,
+  ...props
+}: Omit<OptimizedImageEnhancedProps, "preset">) {
   return (
-    <OptimizedImageEnhanced
-      src={src}
-      alt={alt}
-      preset="THUMBNAIL"
-      {...props}
-    />
+    <OptimizedImageEnhanced src={src} alt={alt} preset="THUMBNAIL" {...props} />
   );
 }
 
-export function GalleryImage({ src, alt, ...props }: Omit<OptimizedImageEnhancedProps, 'preset'>) {
+export function GalleryImage({
+  src,
+  alt,
+  ...props
+}: Omit<OptimizedImageEnhancedProps, "preset">) {
   return (
-    <OptimizedImageEnhanced
-      src={src}
-      alt={alt}
-      preset="GALLERY"
-      {...props}
-    />
+    <OptimizedImageEnhanced src={src} alt={alt} preset="GALLERY" {...props} />
   );
 }
 
-export function PreviewImage({ src, alt, ...props }: Omit<OptimizedImageEnhancedProps, 'preset'>) {
+export function PreviewImage({
+  src,
+  alt,
+  ...props
+}: Omit<OptimizedImageEnhancedProps, "preset">) {
   return (
-    <OptimizedImageEnhanced
-      src={src}
-      alt={alt}
-      preset="PREVIEW"
-      {...props}
-    />
+    <OptimizedImageEnhanced src={src} alt={alt} preset="PREVIEW" {...props} />
   );
 }

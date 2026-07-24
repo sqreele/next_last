@@ -172,7 +172,7 @@ services:
       - media_volume:/usr/share/nginx/html/media:ro
     environment:
       - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
-      - DOMAIN=${DOMAIN:-pcms.live}
+      - DOMAIN=${DOMAIN:-hotelcarepro.com}
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 30s

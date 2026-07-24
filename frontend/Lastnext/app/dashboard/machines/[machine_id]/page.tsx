@@ -1,12 +1,18 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, use, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from '@/app/lib/session.client';
-import apiClient from '@/app/lib/api-client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
-import { Badge } from '@/app/components/ui/badge';
+import React, { useState, useEffect, use, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/app/lib/session.client";
+import apiClient from "@/app/lib/api-client";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/app/components/ui/card";
+import { Button } from "@/app/components/ui/button";
+import { Badge } from "@/app/components/ui/badge";
 import {
   ArrowLeft,
   Wrench,
@@ -27,26 +33,26 @@ import {
   XCircle,
   FilePlus2,
   Hash,
-  ImageIcon
-} from 'lucide-react';
-import { fixImageUrl } from '@/app/lib/utils/image-utils';
-import Link from 'next/link';
-import { useUser } from '@/app/lib/stores/mainStore';
-import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
-import { getDisplayName } from '@/app/lib/utils/display-name';
-import dynamic from 'next/dynamic';
+  ImageIcon,
+} from "lucide-react";
+import { fixImageUrl } from "@/app/lib/utils/image-utils";
+import Link from "next/link";
+import { useUser } from "@/app/lib/stores/mainStore";
+import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
+import { getDisplayName } from "@/app/lib/utils/display-name";
+import dynamic from "next/dynamic";
 
 // Dynamically import QRCode to avoid SSR issues
 const QRCode = dynamic(
-  () => import('react-qr-code').then((mod: any) => mod.default || mod),
+  () => import("react-qr-code").then((mod: any) => mod.default || mod),
   {
     ssr: false,
     loading: () => (
-      <div className="w-[200px] h-[200px] flex items-center justify-center text-gray-400">
+      <div className="w-[200px] h-[200px] flex items-center justify-center text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     ),
-  }
+  },
 ) as React.ComponentType<{
   value: string;
   size?: number;
@@ -109,10 +115,14 @@ const getUserDisplayName = (userDetails?: {
   last_name?: string;
   full_name?: string;
 }) => {
-  return getDisplayName(userDetails, 'Unknown Technician');
+  return getDisplayName(userDetails, "Unknown Technician");
 };
 
-export default function MachineDetailPage({ params }: { params: Promise<{ machine_id: string }> }) {
+export default function MachineDetailPage({
+  params,
+}: {
+  params: Promise<{ machine_id: string }>;
+}) {
   const unwrappedParams = use(params);
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -124,35 +134,42 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
   const [loadingHistory, setLoadingHistory] = useState(false);
   const qrCodeRef = useRef<HTMLDivElement>(null);
 
-  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
+  const { recordLoaderShown, clearLoadingAfterMinTime } =
+    useMinLoaderTime(setLoading);
 
   // Verify equipment location against selected property
   const verifyMachineProperty = (): { matches: boolean; message: string } => {
     if (!selectedProperty || !machine) {
-      return { matches: true, message: 'No property selected or machine not loaded' };
+      return {
+        matches: true,
+        message: "No property selected or machine not loaded",
+      };
     }
-    
+
     const machinePropertyId = machine.property?.property_id;
     const matches = machinePropertyId === selectedProperty;
-    
+
     if (matches) {
-      return { matches: true, message: `Equipment is verified to be at ${machine.property?.name || 'selected property'}` };
+      return {
+        matches: true,
+        message: `Equipment is verified to be at ${machine.property?.name || "selected property"}`,
+      };
     } else {
-      return { 
-        matches: false, 
-        message: `Equipment is located at ${machine.property?.name || 'different property'}, not the selected property` 
+      return {
+        matches: false,
+        message: `Equipment is located at ${machine.property?.name || "different property"}, not the selected property`,
       };
     }
   };
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login');
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
     }
   }, [status, router]);
 
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (status === "authenticated") {
       fetchMachineDetails();
     }
   }, [status, unwrappedParams.machine_id, selectedProperty]);
@@ -163,17 +180,24 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
     setLoadingHistory(true);
     setError(null);
     try {
-      const response = await apiClient.get(`/api/v1/machines/${unwrappedParams.machine_id}/`, {
-        params: selectedProperty ? { property_id: selectedProperty } : undefined,
-      });
+      const response = await apiClient.get(
+        `/api/v1/machines/${unwrappedParams.machine_id}/`,
+        {
+          params: selectedProperty
+            ? { property_id: selectedProperty }
+            : undefined,
+        },
+      );
       setMachine(response.data);
-      
+
       // Extract PM history from the machine data
       if (response.data.preventive_maintenances) {
         const historyData = response.data.preventive_maintenances;
         // Sort by scheduled date (most recent first)
-        historyData.sort((a: PMHistory, b: PMHistory) => 
-          new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime()
+        historyData.sort(
+          (a: PMHistory, b: PMHistory) =>
+            new Date(b.scheduled_date).getTime() -
+            new Date(a.scheduled_date).getTime(),
         );
         setPMHistory(historyData);
       } else {
@@ -183,8 +207,8 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
       }
       setLoadingHistory(false);
     } catch (err: any) {
-      console.error('Error fetching machine details:', err);
-      setError(err.message || 'Failed to load machine details');
+      console.error("Error fetching machine details:", err);
+      setError(err.message || "Failed to load machine details");
       setLoadingHistory(false);
     } finally {
       clearLoadingAfterMinTime();
@@ -194,27 +218,31 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
   const fetchPMHistory = async () => {
     setLoadingHistory(true);
     try {
-      const response = await apiClient.get('/api/v1/preventive-maintenance/', {
+      const response = await apiClient.get("/api/v1/preventive-maintenance/", {
         params: {
           machine_id: unwrappedParams.machine_id,
           page_size: 100,
           ...(selectedProperty ? { property_id: selectedProperty } : {}),
-        }
+        },
       });
 
       let historyData: PMHistory[] = [];
       if (Array.isArray(response.data)) {
         historyData = response.data;
-      } else if (response.data && 'results' in response.data) {
+      } else if (response.data && "results" in response.data) {
         historyData = response.data.results || [];
       }
 
       // Sort by scheduled date (most recent first)
-      historyData.sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime());
+      historyData.sort(
+        (a, b) =>
+          new Date(b.scheduled_date).getTime() -
+          new Date(a.scheduled_date).getTime(),
+      );
 
       setPMHistory(historyData);
     } catch (err: any) {
-      console.error('Error fetching PM history:', err);
+      console.error("Error fetching PM history:", err);
       // Don't set error, just leave history empty
       setPMHistory([]);
     } finally {
@@ -224,23 +252,23 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-300';
-      case 'overdue':
-        return 'bg-red-100 text-red-800 border-red-300';
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case "completed":
+        return "bg-green-100 text-green-800 border-green-300";
+      case "overdue":
+        return "bg-red-100 text-red-800 border-red-300";
+      case "in_progress":
+        return "bg-blue-100 text-blue-800 border-blue-300";
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return "bg-muted text-foreground border-border";
     }
   };
 
   // Generate machine URL for QR code
   const getMachineUrl = () => {
-    if (typeof window !== 'undefined' && machine?.machine_id) {
+    if (typeof window !== "undefined" && machine?.machine_id) {
       return `${window.location.origin}/dashboard/machines/${machine.machine_id}`;
     }
-    return '';
+    return "";
   };
 
   // Get machine image URL
@@ -255,17 +283,19 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
     if (!qrCodeRef.current || !machine) return;
 
     try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
       // Get SVG element
-      const svgElement = qrCodeRef.current.querySelector('svg');
+      const svgElement = qrCodeRef.current.querySelector("svg");
       if (!svgElement) return;
 
       // Convert SVG to data URL
       const svgData = new XMLSerializer().serializeToString(svgElement);
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const svgBlob = new Blob([svgData], {
+        type: "image/svg+xml;charset=utf-8",
+      });
       const svgUrl = URL.createObjectURL(svgBlob);
 
       // Create image from SVG
@@ -273,7 +303,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
       img.onload = () => {
         canvas.width = img.width;
         canvas.height = img.height;
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = "white";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
 
@@ -281,7 +311,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
         canvas.toBlob((blob) => {
           if (blob) {
             const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
+            const link = document.createElement("a");
             link.href = url;
             link.download = `machine-${machine.machine_id}-qr-code.png`;
             document.body.appendChild(link);
@@ -294,7 +324,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
       };
       img.src = svgUrl;
     } catch (error) {
-      console.error('Error downloading QR code:', error);
+      console.error("Error downloading QR code:", error);
     }
   };
 
@@ -302,7 +332,7 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
   const printQRCode = () => {
     if (!qrCodeRef.current) return;
 
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
     const qrContent = qrCodeRef.current.innerHTML;
@@ -357,12 +387,12 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
     }, 250);
   };
 
-  if (status === 'loading' || loading) {
+  if (status === "loading" || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading machine details...</p>
+          <p className="text-muted-foreground">Loading machine details...</p>
         </div>
       </div>
     );
@@ -375,7 +405,9 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-4">
               <AlertCircle className="h-6 w-6 text-red-600" />
-              <p className="text-red-800 font-semibold">{error || 'Machine not found'}</p>
+              <p className="text-red-800 font-semibold">
+                {error || "Machine not found"}
+              </p>
             </div>
             <Button asChild variant="outline">
               <Link href="/dashboard/machines">
@@ -392,9 +424,11 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
   const propertyVerification = verifyMachineProperty();
   const createPreventiveLink = machine
     ? `/dashboard/preventive-maintenance/create?machine_id=${encodeURIComponent(machine.machine_id)}${
-        machine.property?.property_id ? `&property_id=${encodeURIComponent(machine.property.property_id)}` : ''
+        machine.property?.property_id
+          ? `&property_id=${encodeURIComponent(machine.property.property_id)}`
+          : ""
       }`
-    : '/dashboard/preventive-maintenance/create';
+    : "/dashboard/preventive-maintenance/create";
 
   return (
     <div className="w-full max-w-none space-y-4 px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
@@ -409,14 +443,16 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
           </Button>
           <div className="flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-3">
-              <h1 className="flex items-center gap-3 text-2xl font-bold text-gray-900 sm:text-3xl">
+              <h1 className="flex items-center gap-3 text-2xl font-bold text-foreground sm:text-3xl">
                 <div className="p-2 bg-blue-100 rounded-lg">
                   <Wrench className="h-6 w-6 text-blue-600" />
                 </div>
                 {machine.name}
               </h1>
             </div>
-            <p className="text-gray-600 mt-1 font-mono text-sm">ID: {machine.machine_id}</p>
+            <p className="text-muted-foreground mt-1 font-mono text-sm">
+              ID: {machine.machine_id}
+            </p>
           </div>
         </div>
         <div className="grid w-full gap-2 self-start sm:flex sm:w-auto sm:items-center">
@@ -431,7 +467,13 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
 
       {/* Property Verification Alert */}
       {selectedProperty && machine && (
-        <Card className={propertyVerification.matches ? "border-green-200 bg-green-50" : "border-orange-200 bg-orange-50"}>
+        <Card
+          className={
+            propertyVerification.matches
+              ? "border-green-200 bg-green-50"
+              : "border-orange-200 bg-orange-50"
+          }
+        >
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               {propertyVerification.matches ? (
@@ -440,15 +482,20 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
                 <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
               )}
               <div className="flex-1">
-                <h3 className={`font-semibold mb-1 ${propertyVerification.matches ? 'text-green-900' : 'text-orange-900'}`}>
+                <h3
+                  className={`font-semibold mb-1 ${propertyVerification.matches ? "text-green-900" : "text-orange-900"}`}
+                >
                   Location Verification
                 </h3>
-                <p className={`text-sm ${propertyVerification.matches ? 'text-green-800' : 'text-orange-800'}`}>
+                <p
+                  className={`text-sm ${propertyVerification.matches ? "text-green-800" : "text-orange-800"}`}
+                >
                   {propertyVerification.message}
                 </p>
                 {!propertyVerification.matches && (
                   <p className="text-xs text-orange-700 mt-2">
-                    This equipment belongs to a different property. Please verify the location before performing maintenance.
+                    This equipment belongs to a different property. Please
+                    verify the location before performing maintenance.
                   </p>
                 )}
               </div>
@@ -470,10 +517,10 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
-            <div 
+            <div
               ref={qrCodeRef}
-              className="bg-white p-4 rounded-lg border-2 border-gray-200 flex-shrink-0"
-              style={{ display: 'inline-block' }}
+              className="bg-card p-4 rounded-lg border-2 border-border flex-shrink-0"
+              style={{ display: "inline-block" }}
             >
               {machine?.machine_id && getMachineUrl() ? (
                 <QRCode
@@ -484,25 +531,37 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
                   bgColor="#ffffff"
                 />
               ) : (
-                <div className="w-[100px] h-[100px] flex items-center justify-center text-gray-400">
+                <div className="w-[100px] h-[100px] flex items-center justify-center text-muted-foreground">
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
               )}
             </div>
             <div className="flex-1 space-y-4">
               <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Machine Information</p>
-                <div className="space-y-1 text-sm text-gray-600">
-                  <p><span className="font-medium">ID:</span> {machine.machine_id}</p>
-                  <p><span className="font-medium">Name:</span> {machine.name}</p>
+                <p className="text-sm font-medium text-muted-foreground mb-2">
+                  Machine Information
+                </p>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  <p>
+                    <span className="font-medium">ID:</span>{" "}
+                    {machine.machine_id}
+                  </p>
+                  <p>
+                    <span className="font-medium">Name:</span> {machine.name}
+                  </p>
                   {machine.location && (
-                    <p><span className="font-medium">Location:</span> {machine.location}</p>
+                    <p>
+                      <span className="font-medium">Location:</span>{" "}
+                      {machine.location}
+                    </p>
                   )}
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Quick Access URL</p>
-                <p className="text-xs text-gray-500 break-all font-mono bg-gray-50 p-2 rounded">
+                <p className="text-sm font-medium text-muted-foreground mb-2">
+                  Quick Access URL
+                </p>
+                <p className="text-xs text-muted-foreground break-all font-mono bg-muted p-2 rounded">
                   {getMachineUrl()}
                 </p>
               </div>
@@ -542,23 +601,24 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
         <CardContent className="space-y-4">
           {/* Machine Image */}
           {getMachineImageUrl() && (
-            <div className="pb-4 border-b border-gray-200">
-              <p className="text-sm text-gray-600 mb-3 flex items-center gap-1">
+            <div className="pb-4 border-b border-border">
+              <p className="text-sm text-muted-foreground mb-3 flex items-center gap-1">
                 <ImageIcon className="h-4 w-4" />
                 Equipment Photo
               </p>
               <div className="w-full">
-                <div className="relative aspect-video rounded-lg border-2 border-gray-200 bg-gray-50 overflow-hidden">
+                <div className="relative aspect-video rounded-lg border-2 border-border bg-muted overflow-hidden">
                   <img
                     src={getMachineImageUrl()!}
                     alt={`${machine.name} image`}
                     className="w-full h-full object-contain"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      const fallback = target.nextElementSibling as HTMLElement | null;
+                      target.style.display = "none";
+                      const fallback =
+                        target.nextElementSibling as HTMLElement | null;
                       if (fallback) {
-                        fallback.style.display = 'flex';
+                        fallback.style.display = "flex";
                       }
                     }}
                   />
@@ -572,36 +632,44 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
 
           {machine.description && (
             <div className="pb-4">
-              <p className="text-sm text-gray-600 mb-2">Description</p>
-              <p className="text-gray-900">{machine.description}</p>
+              <p className="text-sm text-muted-foreground mb-2">Description</p>
+              <p className="text-foreground">{machine.description}</p>
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {machine.category && (
               <div>
-                <p className="text-sm text-gray-600 mb-1">Category</p>
-                <Badge variant="secondary" className="text-sm">{machine.category}</Badge>
+                <p className="text-sm text-muted-foreground mb-1">Category</p>
+                <Badge variant="secondary" className="text-sm">
+                  {machine.category}
+                </Badge>
               </div>
             )}
 
             {machine.brand && (
               <div>
-                <p className="text-sm text-gray-600 mb-1">Brand</p>
-                <p className="font-medium text-gray-900">{machine.brand}</p>
+                <p className="text-sm text-muted-foreground mb-1">Brand</p>
+                <p className="font-medium text-foreground">{machine.brand}</p>
               </div>
             )}
 
             {machine.status && (
               <div>
-                <p className="text-sm text-gray-600 mb-1">Status</p>
-                <Badge className={
-                  machine.status === 'active' ? 'bg-green-100 text-green-800' :
-                  machine.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
-                  machine.status === 'repair' ? 'bg-orange-100 text-orange-800' :
-                  machine.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
-                  'bg-red-100 text-red-800'
-                }>
+                <p className="text-sm text-muted-foreground mb-1">Status</p>
+                <Badge
+                  className={
+                    machine.status === "active"
+                      ? "bg-green-100 text-green-800"
+                      : machine.status === "maintenance"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : machine.status === "repair"
+                          ? "bg-orange-100 text-orange-800"
+                          : machine.status === "inactive"
+                            ? "bg-muted text-foreground"
+                            : "bg-red-100 text-red-800"
+                  }
+                >
                   {machine.status.toUpperCase()}
                 </Badge>
               </div>
@@ -609,48 +677,60 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
 
             {machine.serial_number && (
               <div>
-                <p className="text-sm text-gray-600 mb-1">Serial Number</p>
-                <p className="font-medium text-gray-900 font-mono">{machine.serial_number}</p>
+                <p className="text-sm text-muted-foreground mb-1">
+                  Serial Number
+                </p>
+                <p className="font-medium text-foreground font-mono">
+                  {machine.serial_number}
+                </p>
               </div>
             )}
 
             {machine.location && (
               <div>
-                <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
                   <MapPin className="h-4 w-4" />
                   Location
                 </p>
-                <p className="font-medium text-gray-900">{machine.location}</p>
+                <p className="font-medium text-foreground">
+                  {machine.location}
+                </p>
               </div>
             )}
 
             {machine.property && (
               <div>
-                <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
                   <Building className="h-4 w-4" />
                   Property
                 </p>
-                <p className="font-medium text-gray-900">{machine.property.name}</p>
+                <p className="font-medium text-foreground">
+                  {machine.property.name}
+                </p>
               </div>
             )}
 
             {machine.installation_date && (
               <div>
-                <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   Installation Date
                 </p>
-                <p className="font-medium text-gray-900">{new Date(machine.installation_date).toLocaleDateString()}</p>
+                <p className="font-medium text-foreground">
+                  {new Date(machine.installation_date).toLocaleDateString()}
+                </p>
               </div>
             )}
 
             {machine.last_maintenance_date && (
               <div>
-                <p className="text-sm text-gray-600 mb-1 flex items-center gap-1">
+                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
                   <Clock className="h-4 w-4" />
                   Last Maintenance
                 </p>
-                <p className="font-medium text-gray-900">{new Date(machine.last_maintenance_date).toLocaleDateString()}</p>
+                <p className="font-medium text-foreground">
+                  {new Date(machine.last_maintenance_date).toLocaleDateString()}
+                </p>
               </div>
             )}
           </div>
@@ -665,102 +745,130 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
             Preventive Maintenance History
           </CardTitle>
           <CardDescription>
-            {pmHistory.length} maintenance record{pmHistory.length !== 1 ? 's' : ''} found
+            {pmHistory.length} maintenance record
+            {pmHistory.length !== 1 ? "s" : ""} found
           </CardDescription>
         </CardHeader>
         <CardContent>
           {loadingHistory ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-              <p className="ml-3 text-gray-600">Loading maintenance history...</p>
+              <p className="ml-3 text-muted-foreground">
+                Loading maintenance history...
+              </p>
             </div>
           ) : pmHistory.length === 0 ? (
             <div className="text-center py-12">
-              <History className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 font-medium mb-2">No maintenance history found</p>
-              <p className="text-sm text-gray-500">This machine has no preventive maintenance records yet</p>
+              <History className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground font-medium mb-2">
+                No maintenance history found
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This machine has no preventive maintenance records yet
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
               {pmHistory.map((record) => (
-                <div key={record.pm_id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                <div
+                  key={record.pm_id}
+                  className="border border-border rounded-lg p-4 hover:bg-muted transition-colors"
+                >
                   <div className="flex flex-col lg:flex-row gap-4">
                     {/* Main Info */}
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <Link 
-                              href={`/dashboard/preventive-maintenance/${record.pm_id}`}
-                              className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors block"
-                            >
-                              {record.pmtitle || 'Untitled Maintenance'}
-                            </Link>
-                            {record.procedure_template_name && (
-                              <p className="text-sm text-gray-600 mt-1">
-                                Template: {record.procedure_template_name}
-                              </p>
-                            )}
-                          </div>
-                          <Badge className={getStatusColor(record.status)}>
-                            {record.status ? record.status.replace('_', ' ').toUpperCase() : 'SCHEDULED'}
-                          </Badge>
-                        </div>
-
-                        {/* Details Grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                          {record.pm_id && (
-                            <div className="flex items-center gap-2">
-                              <Hash className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                              <div>
-                                <p className="text-xs text-gray-500">PM ID</p>
-                                <Link 
-                                  href={`/dashboard/preventive-maintenance/${record.pm_id}`}
-                                  className="font-mono text-sm text-gray-900 hover:text-blue-600 hover:underline transition-colors"
-                                >
-                                  {record.pm_id}
-                                </Link>
-                              </div>
-                            </div>
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <Link
+                            href={`/dashboard/preventive-maintenance/${record.pm_id}`}
+                            className="text-lg font-semibold text-foreground hover:text-blue-600 transition-colors block"
+                          >
+                            {record.pmtitle || "Untitled Maintenance"}
+                          </Link>
+                          {record.procedure_template_name && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Template: {record.procedure_template_name}
+                            </p>
                           )}
+                        </div>
+                        <Badge className={getStatusColor(record.status)}>
+                          {record.status
+                            ? record.status.replace("_", " ").toUpperCase()
+                            : "SCHEDULED"}
+                        </Badge>
+                      </div>
+
+                      {/* Details Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                        {record.pm_id && (
                           <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                            <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                             <div>
-                              <p className="text-xs text-gray-500">Scheduled</p>
-                              <p className="font-medium text-gray-900">
-                                {new Date(record.scheduled_date).toLocaleDateString()}
+                              <p className="text-xs text-muted-foreground">
+                                PM ID
+                              </p>
+                              <Link
+                                href={`/dashboard/preventive-maintenance/${record.pm_id}`}
+                                className="font-mono text-sm text-foreground hover:text-blue-600 hover:underline transition-colors"
+                              >
+                                {record.pm_id}
+                              </Link>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">
+                              Scheduled
+                            </p>
+                            <p className="font-medium text-foreground">
+                              {new Date(
+                                record.scheduled_date,
+                              ).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        {record.completed_date && (
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">
+                                Completed
+                              </p>
+                              <p className="font-medium text-green-700">
+                                {new Date(
+                                  record.completed_date,
+                                ).toLocaleDateString()}
                               </p>
                             </div>
                           </div>
+                        )}
 
-                          {record.completed_date && (
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
-                              <div>
-                                <p className="text-xs text-gray-500">Completed</p>
-                                <p className="font-medium text-green-700">
-                                  {new Date(record.completed_date).toLocaleDateString()}
-                                </p>
-                              </div>
+                        {record.created_by_details && (
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">
+                                Created By
+                              </p>
+                              <p className="font-medium text-foreground">
+                                {getUserDisplayName(record.created_by_details)}
+                              </p>
                             </div>
-                          )}
-
-                          {record.created_by_details && (
-                            <div className="flex items-center gap-2">
-                              <Users className="h-4 w-4 text-purple-500 flex-shrink-0" />
-                              <div>
-                                <p className="text-xs text-gray-500">Created By</p>
-                                <p className="font-medium text-gray-900">
-                                  {getUserDisplayName(record.created_by_details)}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
+                      </div>
 
                       {record.notes && (
-                        <div className="pt-2 border-t border-gray-200">
-                          <p className="text-xs text-gray-500 mb-1">Notes:</p>
-                          <p className="text-sm text-gray-700">{record.notes}</p>
+                        <div className="pt-2 border-t border-border">
+                          <p className="text-xs text-muted-foreground mb-1">
+                            Notes:
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {record.notes}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -776,15 +884,19 @@ export default function MachineDetailPage({ params }: { params: Promise<{ machin
       {(machine.created_at || machine.updated_at) && (
         <Card>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-muted-foreground">
               {machine.created_at && (
                 <div>
-                  <p>Created: {new Date(machine.created_at).toLocaleString()}</p>
+                  <p>
+                    Created: {new Date(machine.created_at).toLocaleString()}
+                  </p>
                 </div>
               )}
               {machine.updated_at && (
                 <div>
-                  <p>Updated: {new Date(machine.updated_at).toLocaleString()}</p>
+                  <p>
+                    Updated: {new Date(machine.updated_at).toLocaleString()}
+                  </p>
                 </div>
               )}
             </div>

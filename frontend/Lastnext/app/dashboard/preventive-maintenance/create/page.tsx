@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import PreventiveMaintenanceForm from '@/app/components/preventive/PreventiveMaintenanceForm';
-import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
-import { useProperties, useUser } from '@/app/lib/stores/mainStore';
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import PreventiveMaintenanceForm from "@/app/components/preventive/PreventiveMaintenanceForm";
+import { PreventiveMaintenance } from "@/app/lib/preventiveMaintenanceModels";
+import { useProperties, useUser } from "@/app/lib/stores/mainStore";
 
 // Create page content component that doesn't require context
 function CreatePageContent() {
@@ -16,8 +16,14 @@ function CreatePageContent() {
   const { selectedPropertyId, setSelectedPropertyId } = useUser();
   const { properties } = useProperties();
 
-  const queryMachineId = useMemo(() => searchParams.get('machine_id') ?? undefined, [searchParams]);
-  const queryPropertyId = useMemo(() => searchParams.get('property_id'), [searchParams]);
+  const queryMachineId = useMemo(
+    () => searchParams.get("machine_id") ?? undefined,
+    [searchParams],
+  );
+  const queryPropertyId = useMemo(
+    () => searchParams.get("property_id"),
+    [searchParams],
+  );
 
   useEffect(() => {
     if (!queryPropertyId) {
@@ -35,15 +41,18 @@ function CreatePageContent() {
     }
 
     const hasAccessToProperty = properties.some(
-      (property) => property.property_id === queryPropertyId
+      (property) => property.property_id === queryPropertyId,
     );
 
     if (hasAccessToProperty) {
       setSelectedPropertyId(queryPropertyId);
     } else {
       console.warn(
-        '[PreventiveMaintenanceCreate] Query property is not in the user property list',
-        { queryPropertyId, availableProperties: properties.map(p => p.property_id) }
+        "[PreventiveMaintenanceCreate] Query property is not in the user property list",
+        {
+          queryPropertyId,
+          availableProperties: properties.map((p) => p.property_id),
+        },
       );
     }
   }, [properties, queryPropertyId, selectedPropertyId, setSelectedPropertyId]);
@@ -51,26 +60,28 @@ function CreatePageContent() {
   // Handle successful form submission
   const handleSuccess = (data: PreventiveMaintenance) => {
     // Log the full data structure for debugging
-    
+
     // Store the data in state for possible use in the UI
     setSubmittedData(data);
     setIsSubmitted(true);
-    
+
     // Redirect after a short delay to show success message
     setTimeout(() => {
       try {
         // Check if pm_id exists, with multiple safety checks
-        if (data && typeof data === 'object' && 'pm_id' in data && data.pm_id) {
+        if (data && typeof data === "object" && "pm_id" in data && data.pm_id) {
           const pmId = data.pm_id;
           router.push(`/dashboard/preventive-maintenance/${pmId}`);
         } else {
-          console.warn('PM ID is undefined or invalid, redirecting to dashboard instead');
-          router.push('/dashboard/preventive-maintenance');
+          console.warn(
+            "PM ID is undefined or invalid, redirecting to dashboard instead",
+          );
+          router.push("/dashboard/preventive-maintenance");
         }
       } catch (error) {
-        console.error('Error during redirect:', error);
+        console.error("Error during redirect:", error);
         // Fallback to dashboard on any error
-        router.push('/dashboard/preventive-maintenance');
+        router.push("/dashboard/preventive-maintenance");
       }
     }, 1500);
   };
@@ -78,31 +89,31 @@ function CreatePageContent() {
   return (
     <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Create Preventive Maintenance</h1>
-        <Link 
-          href="/dashboard/preventive-maintenance" 
-          className="inline-flex items-center justify-center bg-gray-100 py-2 px-4 rounded-md text-gray-700 hover:bg-gray-200 text-sm sm:text-base transition-colors min-h-[44px] touch-target"
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">
+          Create Preventive Maintenance
+        </h1>
+        <Link
+          href="/dashboard/preventive-maintenance"
+          className="inline-flex items-center justify-center bg-muted py-2 px-4 rounded-md text-muted-foreground hover:bg-gray-200 text-sm sm:text-base transition-colors min-h-[44px] touch-target"
         >
           Back to List
         </Link>
       </div>
 
-        {isSubmitted ? (
+      {isSubmitted ? (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
           <p>Preventive maintenance created successfully! Redirecting...</p>
           {submittedData && submittedData.pm_id && (
-            <p className="mt-2 text-sm">
-              Record ID: {submittedData.pm_id}
-            </p>
+            <p className="mt-2 text-sm">Record ID: {submittedData.pm_id}</p>
           )}
         </div>
-        ) : (
-          <PreventiveMaintenanceForm
-            onSuccessAction={handleSuccess}
-            machineId={queryMachineId}
-            key={`${queryMachineId}-${selectedPropertyId}`}
-          />
-        )}
+      ) : (
+        <PreventiveMaintenanceForm
+          onSuccessAction={handleSuccess}
+          machineId={queryMachineId}
+          key={`${queryMachineId}-${selectedPropertyId}`}
+        />
+      )}
     </div>
   );
 }
@@ -110,7 +121,7 @@ function CreatePageContent() {
 // Main page component
 export default function CreatePreventiveMaintenancePage() {
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-muted min-h-screen">
       <CreatePageContent />
     </div>
   );

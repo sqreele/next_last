@@ -4,7 +4,7 @@
 
 set -e
 
-echo "🔄 Updating Cloudflare SSL Certificates for pcms.live"
+echo "🔄 Updating Cloudflare SSL Certificates for hotelcarepro.com"
 echo "===================================================="
 
 # Configuration paths
@@ -205,7 +205,7 @@ main() {
         echo ""
         echo "🔗 Cloudflare Dashboard:"
         echo "   SSL/TLS → Origin Server → Create Certificate"
-        echo "   Hostnames: pcms.live, www.pcms.live"
+        echo "   Hostnames: hotelcarepro.com, www.hotelcarepro.com"
         echo ""
         exit 0
     fi
@@ -270,7 +270,7 @@ main() {
     
     # Test SSL connection
     print_info "Testing SSL connection..."
-    if timeout 10 openssl s_client -connect pcms.live:443 -servername pcms.live </dev/null >/dev/null 2>&1; then
+    if timeout 10 openssl s_client -connect hotelcarepro.com:443 -servername hotelcarepro.com </dev/null >/dev/null 2>&1; then
         print_status "SSL connection test passed"
     else
         print_warning "SSL connection test failed (this might be normal if DNS isn't pointing to your server yet)"
@@ -283,8 +283,8 @@ main() {
     openssl x509 -in "$CERT_FILE" -text -noout | grep -E "(Subject:|DNS:|Not Before|Not After)" | sed 's/^/   /'
     echo ""
     echo "🔗 Useful commands:"
-    echo "   Test SSL: openssl s_client -connect pcms.live:443 -servername pcms.live"
-    echo "   Check site: curl -Ik https://pcms.live"
+    echo "   Test SSL: openssl s_client -connect hotelcarepro.com:443 -servername hotelcarepro.com"
+    echo "   Check site: curl -Ik https://hotelcarepro.com"
     echo "   View logs: docker compose logs nginx"
     echo ""
 }

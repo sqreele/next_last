@@ -26,8 +26,9 @@ const BottomSheetOverlay = React.forwardRef<
 ));
 BottomSheetOverlay.displayName = "BottomSheetOverlay";
 
-interface BottomSheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+interface BottomSheetContentProps extends React.ComponentPropsWithoutRef<
+  typeof DialogPrimitive.Content
+> {
   showHandle?: boolean;
   showClose?: boolean;
 }
@@ -89,7 +90,7 @@ const BottomSheetContent = React.forwardRef<
         <DialogPrimitive.Content
           ref={setRefs}
           className={cn(
-            "fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-3xl border-t border-slate-200 bg-background shadow-[0_-12px_40px_rgba(15,23,42,0.18)]",
+            "fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col rounded-t-3xl border-t border-border bg-background shadow-[0_-12px_40px_rgba(15,23,42,0.18)]",
             "pb-[calc(env(safe-area-inset-bottom)+0.5rem)]",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
@@ -115,7 +116,7 @@ const BottomSheetContent = React.forwardRef<
           {showClose && (
             <DialogPrimitive.Close
               data-bottom-sheet-close
-              className="absolute right-3 top-3 rounded-full bg-slate-100 p-2 text-slate-700 transition-colors hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="absolute right-3 top-3 rounded-full bg-muted p-2 text-muted-foreground transition-colors hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -133,10 +134,7 @@ const BottomSheetHeader = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn(
-      "flex flex-col space-y-1.5 pb-3 text-left",
-      className,
-    )}
+    className={cn("flex flex-col space-y-1.5 pb-3 text-left", className)}
     {...props}
   />
 );
@@ -148,7 +146,7 @@ const BottomSheetFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "sticky bottom-0 -mx-5 mt-4 flex flex-col gap-2 border-t border-slate-200 bg-background px-5 pb-2 pt-3",
+      "sticky bottom-0 -mx-5 mt-4 flex flex-col gap-2 border-t border-border bg-background px-5 pb-2 pt-3",
       className,
     )}
     {...props}
@@ -163,7 +161,7 @@ const BottomSheetTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-lg font-bold leading-tight tracking-tight text-slate-900",
+      "text-lg font-bold leading-tight tracking-tight text-foreground",
       className,
     )}
     {...props}
@@ -177,7 +175,7 @@ const BottomSheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-slate-600", className)}
+    className={cn("text-sm text-muted-foreground", className)}
     {...props}
   />
 ));

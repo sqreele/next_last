@@ -10,13 +10,13 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "w-full max-w-none rounded-[var(--pcms-radius)] border border-[var(--pcms-border)] bg-white/95 text-[var(--pcms-text)] shadow-[var(--pcms-shadow-card)] backdrop-blur-sm transition-all duration-200",
+      "w-full max-w-none rounded-xl border border-border bg-card text-card-foreground shadow-soft",
       {
-        "rounded-[1.25rem] shadow-[var(--pcms-shadow-sm)]":
+        "rounded-xl":
           variant === "mobile",
-        "tablet:rounded-[1.5rem] tablet:shadow-[var(--pcms-shadow)]":
+        "tablet:rounded-xl":
           variant === "tablet",
-        "cursor-pointer touch-manipulation hover:-translate-y-0.5 hover:border-[var(--pcms-border-strong)] hover:shadow-[var(--pcms-shadow)] active:translate-y-0":
+        "cursor-pointer touch-manipulation transition-colors hover:border-foreground/25 hover:bg-muted/20 motion-reduce:transition-none":
           variant === "interactive",
       },
       className,
@@ -34,7 +34,7 @@ const CardHeader = React.forwardRef<
     ref={ref}
     className={cn(
       "flex flex-col space-y-1.5",
-      "p-4 mobile:p-5 tablet:p-6",
+      "p-4 md:p-5",
       className,
     )}
     {...props}
@@ -49,7 +49,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-lg mobile:text-xl tablet:text-2xl font-black leading-tight tracking-[-0.025em] text-balance text-[var(--pcms-text)]",
+      "text-base font-semibold leading-6 text-card-foreground",
       className,
     )}
     {...props}
@@ -63,7 +63,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm leading-6 text-[var(--pcms-text-muted)]", className)}
+    className={cn("text-sm leading-5 text-muted-foreground", className)}
     {...props}
   />
 ));
@@ -75,7 +75,7 @@ const CardContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("pt-0", "p-4 mobile:p-5 tablet:p-6", className)}
+    className={cn("p-4 pt-0 md:p-5 md:pt-0", className)}
     {...props}
   />
 ));
@@ -89,8 +89,8 @@ const CardFooter = React.forwardRef<
     ref={ref}
     className={cn(
       "flex items-center pt-0",
-      "p-4 mobile:p-5 tablet:p-6",
-      "flex-col mobile:flex-row gap-2 mobile:gap-4",
+      "p-4 pt-0 md:p-5 md:pt-0",
+      "flex-col sm:flex-row gap-2 sm:gap-3",
       className,
     )}
     {...props}

@@ -356,8 +356,8 @@ class Command(BaseCommand):
                 "recent_jobs": stats['recent_jobs'],
                 "room_stats": stats['room_stats'],
                 "topic_stats": stats['topic_stats'],
-                "brand_name": "PCMS",
-                "base_url": getattr(settings, "FRONTEND_BASE_URL", "https://pcms.live"),
+                "brand_name": "HotelCare Pro",
+                "base_url": getattr(settings, "FRONTEND_BASE_URL", "https://hotelcarepro.com"),
             }
             
             html_body = render_to_string("emails/property_jobs_summary.html", context)

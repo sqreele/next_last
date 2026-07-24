@@ -74,6 +74,28 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Canonical interaction behavior for the application shell. */
+* {
+  border-color: hsl(var(--border));
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 
 /* Safe area utilities for devices with notches/home indicators */
 .safe-top {
@@ -247,6 +269,109 @@ body {
   }
 }
 
+/* Canonical application surface layer.
+   Kept last so legacy feature styles resolve to one predictable system. */
+:root {
+  --pcms-app-bg: hsl(210 20% 98%);
+  --pcms-surface: hsl(var(--card));
+  --pcms-surface-soft: hsl(var(--muted));
+  --pcms-border: hsl(var(--border));
+  --pcms-text: hsl(var(--foreground));
+  --pcms-text-muted: hsl(var(--muted-foreground));
+  --pcms-radius: 0.75rem;
+  --pcms-radius-lg: 0.75rem;
+  --pcms-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --pcms-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+body,
+.pcms-app-shell,
+.pcms-app-shell main {
+  background: var(--pcms-app-bg);
+}
+
+.pcms-page-header,
+.pcms-section-card,
+.pcms-card-modern,
+.sneat-card,
+.sneat-welcome-card,
+.sneat-stat-card,
+.sneat-chart-card {
+  border: 1px solid var(--pcms-border);
+  border-radius: var(--pcms-radius);
+  background: var(--pcms-surface);
+  box-shadow: var(--pcms-shadow-sm);
+  backdrop-filter: none;
+}
+
+.pcms-page-header {
+  padding: clamp(1rem, 2vw, 1.5rem);
+}
+
+.pcms-page-header h1 {
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.pcms-section-card {
+  padding: clamp(1rem, 2vw, 1.5rem);
+}
+
+.pcms-eyebrow,
+.pcms-section-card__header h2 {
+  font-weight: 600;
+}
+
+.pcms-search-input {
+  min-height: 2.75rem;
+  border-radius: 0.5rem;
+  background: var(--pcms-surface);
+  box-shadow: var(--pcms-shadow-sm);
+}
+
+.pcms-search-input input {
+  min-height: 2.75rem;
+  font-weight: 400;
+}
+
+.sneat-tabs {
+  gap: 0.25rem;
+  border-radius: 0.625rem;
+  background: var(--pcms-surface-soft);
+  padding: 0.25rem;
+}
+
+.sneat-tabs button {
+  min-height: 2.5rem;
+  border-radius: 0.5rem;
+}
+
+.pcms-floating-action {
+  min-width: 3rem;
+  min-height: 3rem;
+  border-radius: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .pcms-page-header {
+    margin-inline: 0;
+    border-radius: var(--pcms-radius);
+  }
+
+  .pcms-section-card,
+  .pcms-job-grid article {
+    border-radius: var(--pcms-radius);
+  }
+
+  button,
+  [role="button"],
+  a[role="button"] {
+    min-height: 2.75rem;
+  }
+}
+
 /* Tablet-specific styles */
 @media (min-width: 768px) and (max-width: 1023px) {
   .tablet-grid-2 {
@@ -411,7 +536,7 @@ body {
   --input: 217 33% 22%;
   --ring: 217 91% 60%;
 
-  /* PCMS app tokens (used by the Sneat-style components in the dashboard). */
+  /* HotelCare Pro app tokens (used by the Sneat-style components in the dashboard). */
   --pcms-app-bg: #0b1220;
   --pcms-surface: #111a2e;
   --pcms-surface-soft: #0f1729;
@@ -1014,7 +1139,7 @@ body {
   }
 }
 
-/* PCMS 2026 soft mobile-first hotel maintenance design system */
+/* HotelCare Pro 2026 soft mobile-first hotel maintenance design system */
 @layer base {
   :root {
     --pcms-app-bg: #eefbff;
@@ -1540,7 +1665,7 @@ body {
   }
 }
 
-/* PCMS global workflow color system: final specificity layer for priority, status, and actions. */
+/* HotelCare Pro global workflow color system: final specificity layer for priority, status, and actions. */
 @layer base {
   :root {
     --priority-low-bg: #dcfce7;
@@ -1925,7 +2050,7 @@ body {
   }
 }
 
-/* PCMS dashboard SaaS polish: centralized spacing, typography, cards, and responsive grids. */
+/* HotelCare Pro dashboard SaaS polish: centralized spacing, typography, cards, and responsive grids. */
 @layer base {
   :root {
     --pcms-space-1: 0.25rem;
@@ -2523,7 +2648,7 @@ body {
   }
 }
 
-/* PCMS mobile-first polish: final layout, navigation, table, button, and workflow status refinements. */
+/* HotelCare Pro mobile-first polish: final layout, navigation, table, button, and workflow status refinements. */
 @layer base {
   :root {
     --status-pending-bg: #e2e8f0;

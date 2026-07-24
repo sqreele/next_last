@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from "react";
 import {
   Search,
   Filter as FilterIcon,
@@ -9,7 +9,7 @@ import {
   X,
   Calendar as CalendarIcon,
   Sparkles,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   BottomSheet,
   BottomSheetContent,
@@ -17,15 +17,16 @@ import {
   BottomSheetFooter,
   BottomSheetTitle,
   BottomSheetDescription,
-} from '@/app/components/ui/bottom-sheet';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Badge } from '@/app/components/ui/badge';
-import { StatusBadge, PriorityBadge } from '@/app/components/pcms-ui';
-import { JobStatus, JobPriority, SortOrder } from '@/app/lib/types';
-import { cn } from '@/app/lib/utils/cn';
+} from "@/app/components/ui/bottom-sheet";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Badge } from "@/app/components/ui/badge";
+import { StatusBadge, PriorityBadge } from "@/app/components/pcms-ui";
+import { JobStatus, JobPriority, SortOrder } from "@/app/lib/types";
+import { cn } from "@/app/lib/utils/cn";
 
-export type DateFilter = 'all' | 'today' | 'yesterday' | 'thisWeek' | 'thisMonth' | 'custom';
+export type DateFilter =
+  "all" | "today" | "yesterday" | "thisWeek" | "thisMonth" | "custom";
 
 export interface JobListFilters {
   search: string;
@@ -48,21 +49,21 @@ interface JobListMobileToolbarProps {
 }
 
 const ALL_STATUSES: JobStatus[] = [
-  'pending',
-  'in_progress',
-  'waiting_sparepart',
-  'completed',
-  'cancelled',
+  "pending",
+  "in_progress",
+  "waiting_sparepart",
+  "completed",
+  "cancelled",
 ];
 
-const ALL_PRIORITIES: JobPriority[] = ['low', 'medium', 'high'];
+const ALL_PRIORITIES: JobPriority[] = ["low", "medium", "high"];
 
 const DATE_OPTIONS: Array<{ value: DateFilter; label: string }> = [
-  { value: 'all', label: 'All time' },
-  { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: 'thisWeek', label: 'This week' },
-  { value: 'thisMonth', label: 'This month' },
+  { value: "all", label: "All time" },
+  { value: "today", label: "Today" },
+  { value: "yesterday", label: "Yesterday" },
+  { value: "thisWeek", label: "This week" },
+  { value: "thisMonth", label: "This month" },
 ];
 
 function countActive(filters: JobListFilters): number {
@@ -72,7 +73,7 @@ function countActive(filters: JobListFilters): number {
   if (filters.priorities.length) n += 1;
   if (filters.pmOnly !== null) n += 1;
   if (filters.defectOnly !== null) n += 1;
-  if (filters.dateFilter !== 'all') n += 1;
+  if (filters.dateFilter !== "all") n += 1;
   return n;
 }
 
@@ -102,12 +103,12 @@ export function JobListMobileToolbar({
 
   const clearAll = () => {
     const cleared: JobListFilters = {
-      search: '',
+      search: "",
       statuses: [],
       priorities: [],
       pmOnly: null,
       defectOnly: null,
-      dateFilter: 'all',
+      dateFilter: "all",
     };
     setDraft(cleared);
     onFiltersChange(cleared);
@@ -131,23 +132,25 @@ export function JobListMobileToolbar({
   };
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn("space-y-2", className)}>
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
             value={filters.search}
-            onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
+            onChange={(e) =>
+              onFiltersChange({ ...filters, search: e.target.value })
+            }
             placeholder="Search jobs, rooms, topics..."
-            className="h-11 rounded-xl border-2 border-slate-200 bg-white pl-9 text-sm"
+            className="h-11 rounded-xl border-2 border-border bg-card pl-9 text-sm"
             aria-label="Search jobs"
           />
           {filters.search && (
             <button
               type="button"
-              onClick={() => onFiltersChange({ ...filters, search: '' })}
-              className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              onClick={() => onFiltersChange({ ...filters, search: "" })}
+              className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-muted-foreground"
               aria-label="Clear search"
             >
               <X className="h-4 w-4" />
@@ -159,8 +162,8 @@ export function JobListMobileToolbar({
           variant="outline"
           size="icon"
           onClick={() => setOpen(true)}
-          className="relative h-11 w-11 flex-none rounded-xl border-2 border-slate-200 bg-white p-0"
-          aria-label={`Open filters${activeCount ? `, ${activeCount} active` : ''}`}
+          className="relative h-11 w-11 flex-none rounded-xl border-2 border-border bg-card p-0"
+          aria-label={`Open filters${activeCount ? `, ${activeCount} active` : ""}`}
         >
           <FilterIcon className="h-4 w-4" aria-hidden="true" />
           {activeCount > 0 && (
@@ -171,34 +174,38 @@ export function JobListMobileToolbar({
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-600">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-muted-foreground">
         <span>{resultCount} jobs</span>
         <div className="flex flex-none items-center gap-1.5">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => onSortChange(sortOrder === 'Newest first' ? 'Oldest first' : 'Newest first')}
-            className="h-9 rounded-full border-slate-200 bg-white px-3 text-xs font-bold"
+            onClick={() =>
+              onSortChange(
+                sortOrder === "Newest first" ? "Oldest first" : "Newest first",
+              )
+            }
+            className="h-9 rounded-full border-border bg-card px-3 text-xs font-bold"
             aria-label={`Sort: ${sortOrder}, tap to flip`}
           >
             <ArrowDownUp className="mr-1 h-3.5 w-3.5" />
-            {sortOrder === 'Newest first' ? 'Newest' : 'Oldest'}
+            {sortOrder === "Newest first" ? "Newest" : "Oldest"}
           </Button>
           <Button
             type="button"
-            variant={selectionEnabled ? 'default' : 'outline'}
+            variant={selectionEnabled ? "default" : "outline"}
             size="sm"
             onClick={onToggleSelection}
             className={cn(
-              'h-9 rounded-full px-3 text-xs font-bold',
+              "h-9 rounded-full px-3 text-xs font-bold",
               selectionEnabled
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'border-slate-200 bg-white',
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "border-border bg-card",
             )}
           >
             <CheckSquare className="mr-1 h-3.5 w-3.5" />
-            {selectionEnabled ? 'Done' : 'Select'}
+            {selectionEnabled ? "Done" : "Select"}
           </Button>
         </div>
       </div>
@@ -215,7 +222,7 @@ export function JobListMobileToolbar({
                   statuses: filters.statuses.filter((s) => s !== status),
                 })
               }
-              className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700 hover:bg-slate-200"
+              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground hover:bg-slate-200"
               aria-label={`Remove status filter ${status}`}
             >
               <StatusBadge status={status} size="sm" />
@@ -232,17 +239,17 @@ export function JobListMobileToolbar({
                   priorities: filters.priorities.filter((s) => s !== priority),
                 })
               }
-              className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700 hover:bg-slate-200"
+              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground hover:bg-slate-200"
               aria-label={`Remove priority filter ${priority}`}
             >
               <PriorityBadge priority={priority} />
               <X className="h-3 w-3" />
             </button>
           ))}
-          {filters.dateFilter !== 'all' && (
+          {filters.dateFilter !== "all" && (
             <button
               type="button"
-              onClick={() => onFiltersChange({ ...filters, dateFilter: 'all' })}
+              onClick={() => onFiltersChange({ ...filters, dateFilter: "all" })}
               className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-700 hover:bg-blue-100"
             >
               <CalendarIcon className="h-3 w-3" />
@@ -256,7 +263,7 @@ export function JobListMobileToolbar({
               onClick={() => onFiltersChange({ ...filters, pmOnly: null })}
               className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
             >
-              {filters.pmOnly ? 'PM only' : 'Non-PM only'}
+              {filters.pmOnly ? "PM only" : "Non-PM only"}
               <X className="h-3 w-3" />
             </button>
           )}
@@ -266,7 +273,7 @@ export function JobListMobileToolbar({
               onClick={() => onFiltersChange({ ...filters, defectOnly: null })}
               className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-700 hover:bg-rose-100"
             >
-              {filters.defectOnly ? 'Defective' : 'Non-defective'}
+              {filters.defectOnly ? "Defective" : "Non-defective"}
               <X className="h-3 w-3" />
             </button>
           )}
@@ -291,7 +298,9 @@ export function JobListMobileToolbar({
 
           <div className="space-y-5">
             <section className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Status</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Status
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {ALL_STATUSES.map((status) => {
                   const active = draft.statuses.includes(status);
@@ -302,10 +311,10 @@ export function JobListMobileToolbar({
                       onClick={() => toggleStatus(status)}
                       aria-pressed={active}
                       className={cn(
-                        'rounded-xl border-2 p-1.5 transition-all touch-manipulation',
+                        "rounded-xl border-2 p-1.5 transition-all touch-manipulation",
                         active
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-slate-200 bg-white hover:border-slate-300',
+                          ? "border-blue-600 bg-blue-50"
+                          : "border-border bg-card hover:border-border",
                       )}
                     >
                       <StatusBadge status={status} size="sm" />
@@ -316,7 +325,9 @@ export function JobListMobileToolbar({
             </section>
 
             <section className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Priority</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Priority
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {ALL_PRIORITIES.map((priority) => {
                   const active = draft.priorities.includes(priority);
@@ -327,10 +338,10 @@ export function JobListMobileToolbar({
                       onClick={() => togglePriority(priority)}
                       aria-pressed={active}
                       className={cn(
-                        'rounded-xl border-2 p-1.5 transition-all touch-manipulation',
+                        "rounded-xl border-2 p-1.5 transition-all touch-manipulation",
                         active
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-slate-200 bg-white hover:border-slate-300',
+                          ? "border-blue-600 bg-blue-50"
+                          : "border-border bg-card hover:border-border",
                       )}
                     >
                       <PriorityBadge priority={priority} />
@@ -341,7 +352,9 @@ export function JobListMobileToolbar({
             </section>
 
             <section className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Date created</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Date created
+              </h3>
               <div className="grid grid-cols-2 gap-2">
                 {DATE_OPTIONS.map((option) => {
                   const active = draft.dateFilter === option.value;
@@ -349,13 +362,15 @@ export function JobListMobileToolbar({
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => setDraft({ ...draft, dateFilter: option.value })}
+                      onClick={() =>
+                        setDraft({ ...draft, dateFilter: option.value })
+                      }
                       aria-pressed={active}
                       className={cn(
-                        'min-h-[44px] rounded-xl border-2 px-3 py-2 text-sm font-semibold transition-all touch-manipulation',
+                        "min-h-[44px] rounded-xl border-2 px-3 py-2 text-sm font-semibold transition-all touch-manipulation",
                         active
-                          ? 'border-blue-600 bg-blue-50 text-blue-900'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
+                          ? "border-blue-600 bg-blue-50 text-blue-900"
+                          : "border-border bg-card text-muted-foreground hover:border-border",
                       )}
                     >
                       {option.label}
@@ -366,25 +381,31 @@ export function JobListMobileToolbar({
             </section>
 
             <section className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Job type</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Job type
+              </h3>
               <div className="grid grid-cols-3 gap-2">
-                {([
-                  { label: 'Any', value: null },
-                  { label: 'PM only', value: true },
-                  { label: 'Non-PM', value: false },
-                ] as const).map((option) => {
+                {(
+                  [
+                    { label: "Any", value: null },
+                    { label: "PM only", value: true },
+                    { label: "Non-PM", value: false },
+                  ] as const
+                ).map((option) => {
                   const active = draft.pmOnly === option.value;
                   return (
                     <button
                       key={String(option.value)}
                       type="button"
-                      onClick={() => setDraft({ ...draft, pmOnly: option.value })}
+                      onClick={() =>
+                        setDraft({ ...draft, pmOnly: option.value })
+                      }
                       aria-pressed={active}
                       className={cn(
-                        'min-h-[44px] rounded-xl border-2 px-2 py-2 text-xs font-bold transition-all touch-manipulation sm:text-sm',
+                        "min-h-[44px] rounded-xl border-2 px-2 py-2 text-xs font-bold transition-all touch-manipulation sm:text-sm",
                         active
-                          ? 'border-indigo-600 bg-indigo-50 text-indigo-900'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-900"
+                          : "border-border bg-card text-muted-foreground hover:border-border",
                       )}
                     >
                       <Sparkles className="mr-1 inline h-3.5 w-3.5" />
@@ -396,25 +417,31 @@ export function JobListMobileToolbar({
             </section>
 
             <section className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Defects</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Defects
+              </h3>
               <div className="grid grid-cols-3 gap-2">
-                {([
-                  { label: 'Any', value: null },
-                  { label: 'Defective', value: true },
-                  { label: 'Non-defective', value: false },
-                ] as const).map((option) => {
+                {(
+                  [
+                    { label: "Any", value: null },
+                    { label: "Defective", value: true },
+                    { label: "Non-defective", value: false },
+                  ] as const
+                ).map((option) => {
                   const active = draft.defectOnly === option.value;
                   return (
                     <button
                       key={String(option.value)}
                       type="button"
-                      onClick={() => setDraft({ ...draft, defectOnly: option.value })}
+                      onClick={() =>
+                        setDraft({ ...draft, defectOnly: option.value })
+                      }
                       aria-pressed={active}
                       className={cn(
-                        'min-h-[44px] rounded-xl border-2 px-2 py-2 text-xs font-bold transition-all touch-manipulation sm:text-sm',
+                        "min-h-[44px] rounded-xl border-2 px-2 py-2 text-xs font-bold transition-all touch-manipulation sm:text-sm",
                         active
-                          ? 'border-rose-600 bg-rose-50 text-rose-900'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
+                          ? "border-rose-600 bg-rose-50 text-rose-900"
+                          : "border-border bg-card text-muted-foreground hover:border-border",
                       )}
                     >
                       {option.label}

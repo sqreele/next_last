@@ -35,8 +35,8 @@ const nextConfig = {
       { protocol: 'http', hostname: 'localhost', port: '8000', pathname: '/media/**' },
       { protocol: 'http', hostname: '0.0.0.0', port: '8000', pathname: '/media/**' },
       // Production
-      { protocol: 'https', hostname: 'pcms.live', port: '', pathname: '/media/**' },
-      { protocol: 'https', hostname: 'www.pcms.live', port: '', pathname: '/media/**' },
+      { protocol: 'https', hostname: 'hotelcarepro.com', port: '', pathname: '/media/**' },
+      { protocol: 'https', hostname: 'www.hotelcarepro.com', port: '', pathname: '/media/**' },
       // Docker networking
       { protocol: 'http', hostname: 'backend', port: '8000', pathname: '/media/**' },
       { protocol: 'http', hostname: 'django-backend', port: '8000', pathname: '/media/**' },
@@ -82,7 +82,7 @@ const nextConfig = {
         source: '/api/:path*',
         headers: [
           { key: 'Access-Control-Allow-Credentials', value: 'true' },
-          { key: 'Access-Control-Allow-Origin', value: process.env.AUTH0_BASE_URL || 'https://pcms.live' },
+          { key: 'Access-Control-Allow-Origin', value: process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com' },
           { key: 'Access-Control-Allow-Methods', value: 'GET,DELETE,PATCH,POST,PUT' },
           { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization' },
         ],

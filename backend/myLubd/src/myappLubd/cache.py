@@ -1,5 +1,5 @@
 """
-Cache utilities for the PCMS API
+Cache utilities for the HotelCare Pro API
 """
 from django.core.cache import cache
 from django.conf import settings

@@ -1,23 +1,40 @@
-'use client';
+"use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
-import { Plus, Pencil, Trash2, MapPin, AlertCircle, Loader, Search, X } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
-import { Textarea } from '@/app/components/ui/textarea';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/app/components/ui/select';
-import { Badge } from '@/app/components/ui/badge';
-import { Alert, AlertDescription } from '@/app/components/ui/alert';
+  Plus,
+  Pencil,
+  Trash2,
+  MapPin,
+  AlertCircle,
+  Loader,
+  Search,
+  X,
+} from "lucide-react";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
+import { Textarea } from "@/app/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-} from '@/app/components/ui/dialog';
-import { useToast } from '@/app/components/ui/use-toast';
-import { useUser } from '@/app/lib/stores/mainStore';
-import type { Area, Property } from '@/app/lib/types';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/app/components/ui/select";
+import { Badge } from "@/app/components/ui/badge";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
+import { useToast } from "@/app/components/ui/use-toast";
+import { useUser } from "@/app/lib/stores/mainStore";
+import type { Area, Property } from "@/app/lib/types";
 
 type AreaFormState = {
   id?: number;
@@ -28,9 +45,9 @@ type AreaFormState = {
 };
 
 const emptyForm: AreaFormState = {
-  name: '',
-  description: '',
-  property_id: '',
+  name: "",
+  description: "",
+  property_id: "",
   is_active: true,
 };
 
@@ -38,12 +55,12 @@ function getErrorMessage(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
     const data = err.response?.data as any;
     if (!data) return err.message || fallback;
-    if (typeof data === 'string') return data;
+    if (typeof data === "string") return data;
     if (data.detail) return String(data.detail);
     const fieldMsgs = Object.entries(data)
-      .filter(([k]) => k !== 'detail')
-      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`);
-    return fieldMsgs.length ? fieldMsgs.join(' | ') : err.message || fallback;
+      .filter(([k]) => k !== "detail")
+      .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`);
+    return fieldMsgs.length ? fieldMsgs.join(" | ") : err.message || fallback;
   }
   if (err instanceof Error) return err.message || fallback;
   return fallback;
@@ -54,8 +71,10 @@ const AreasClient: React.FC = () => {
   const { toast } = useToast();
   const [areas, setAreas] = useState<Area[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState<
+    "all" | "active" | "inactive"
+  >("all");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,8 +95,8 @@ const AreasClient: React.FC = () => {
     if (!selectedPropertyId) return null;
     const match = propertyOptions.find(
       (p: any) =>
-        String(p?.property_id ?? '') === String(selectedPropertyId) ||
-        String(p?.id ?? '') === String(selectedPropertyId)
+        String(p?.property_id ?? "") === String(selectedPropertyId) ||
+        String(p?.id ?? "") === String(selectedPropertyId),
     );
     if (!match) return null;
     return (match as any).id != null ? String((match as any).id) : null;
@@ -87,8 +106,8 @@ const AreasClient: React.FC = () => {
     if (!selectedPropertyId) return null;
     const match = propertyOptions.find(
       (p: any) =>
-        String(p?.property_id ?? '') === String(selectedPropertyId) ||
-        String(p?.id ?? '') === String(selectedPropertyId)
+        String(p?.property_id ?? "") === String(selectedPropertyId) ||
+        String(p?.id ?? "") === String(selectedPropertyId),
     );
     return (match as any)?.name || null;
   }, [selectedPropertyId, propertyOptions]);
@@ -99,15 +118,19 @@ const AreasClient: React.FC = () => {
     try {
       const params: Record<string, string> = {};
       if (selectedPropertyPk) params.property_id = selectedPropertyPk;
-      if (activeFilter !== 'all') params.is_active = String(activeFilter === 'active');
+      if (activeFilter !== "all")
+        params.is_active = String(activeFilter === "active");
       if (search.trim()) params.search = search.trim();
 
-      const res = await axios.get('/api/areas/', { params, withCredentials: true });
+      const res = await axios.get("/api/areas/", {
+        params,
+        withCredentials: true,
+      });
       const data = res.data;
-      const list: Area[] = Array.isArray(data) ? data : (data?.results || []);
+      const list: Area[] = Array.isArray(data) ? data : data?.results || [];
       setAreas(list);
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to load areas'));
+      setError(getErrorMessage(err, "Failed to load areas"));
     } finally {
       setLoading(false);
     }
@@ -115,23 +138,30 @@ const AreasClient: React.FC = () => {
 
   const fetchProperties = useCallback(async () => {
     try {
-      const res = await axios.get('/api/properties/', { withCredentials: true });
+      const res = await axios.get("/api/properties/", {
+        withCredentials: true,
+      });
       const data = res.data;
-      const list: Property[] = Array.isArray(data) ? data : (data?.results || []);
+      const list: Property[] = Array.isArray(data) ? data : data?.results || [];
       setProperties(list);
     } catch {
       // Fall back to user profile properties
     }
   }, []);
 
-  useEffect(() => { fetchProperties(); }, [fetchProperties]);
-  useEffect(() => { fetchAreas(); }, [fetchAreas]);
+  useEffect(() => {
+    fetchProperties();
+  }, [fetchProperties]);
+  useEffect(() => {
+    fetchAreas();
+  }, [fetchAreas]);
 
   const openCreate = () => {
     setForm({
       ...emptyForm,
-      property_id: selectedPropertyPk
-        || (propertyOptions[0]?.id != null ? String(propertyOptions[0].id) : ''),
+      property_id:
+        selectedPropertyPk ||
+        (propertyOptions[0]?.id != null ? String(propertyOptions[0].id) : ""),
     });
     setDialogOpen(true);
   };
@@ -140,7 +170,7 @@ const AreasClient: React.FC = () => {
     setForm({
       id: area.id,
       name: area.name,
-      description: area.description || '',
+      description: area.description || "",
       property_id: String(area.property),
       is_active: area.is_active,
     });
@@ -149,11 +179,19 @@ const AreasClient: React.FC = () => {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      toast({ title: 'Validation', description: 'Name is required', variant: 'destructive' });
+      toast({
+        title: "Validation",
+        description: "Name is required",
+        variant: "destructive",
+      });
       return;
     }
     if (!form.property_id) {
-      toast({ title: 'Validation', description: 'Property is required', variant: 'destructive' });
+      toast({
+        title: "Validation",
+        description: "Property is required",
+        variant: "destructive",
+      });
       return;
     }
     setSaving(true);
@@ -165,20 +203,22 @@ const AreasClient: React.FC = () => {
         property_id: Number(form.property_id),
       };
       if (form.id) {
-        await axios.patch(`/api/areas/${form.id}/`, payload, { withCredentials: true });
-        toast({ title: 'Area updated', variant: 'success' });
+        await axios.patch(`/api/areas/${form.id}/`, payload, {
+          withCredentials: true,
+        });
+        toast({ title: "Area updated", variant: "success" });
       } else {
-        await axios.post('/api/areas/', payload, { withCredentials: true });
-        toast({ title: 'Area created', variant: 'success' });
+        await axios.post("/api/areas/", payload, { withCredentials: true });
+        toast({ title: "Area created", variant: "success" });
       }
       setDialogOpen(false);
       setForm(emptyForm);
       fetchAreas();
     } catch (err) {
       toast({
-        title: 'Error',
-        description: getErrorMessage(err, 'Failed to save area'),
-        variant: 'destructive',
+        title: "Error",
+        description: getErrorMessage(err, "Failed to save area"),
+        variant: "destructive",
       });
     } finally {
       setSaving(false);
@@ -188,15 +228,17 @@ const AreasClient: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await axios.delete(`/api/areas/${deleteTarget.id}/`, { withCredentials: true });
-      toast({ title: 'Area deactivated', variant: 'success' });
+      await axios.delete(`/api/areas/${deleteTarget.id}/`, {
+        withCredentials: true,
+      });
+      toast({ title: "Area deactivated", variant: "success" });
       setDeleteTarget(null);
       fetchAreas();
     } catch (err) {
       toast({
-        title: 'Error',
-        description: getErrorMessage(err, 'Failed to delete area'),
-        variant: 'destructive',
+        title: "Error",
+        description: getErrorMessage(err, "Failed to delete area"),
+        variant: "destructive",
       });
     }
   };
@@ -205,15 +247,18 @@ const AreasClient: React.FC = () => {
     <div className="space-y-4 p-4 sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Areas</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-semibold text-foreground">Areas</h1>
+          <p className="text-sm text-muted-foreground">
             Manage property areas / zones used in maintenance jobs.
             {selectedPropertyId ? (
-              <span className="ml-1 text-gray-700">
-                Property: <strong>{selectedPropertyName || selectedPropertyId}</strong>
+              <span className="ml-1 text-muted-foreground">
+                Property:{" "}
+                <strong>{selectedPropertyName || selectedPropertyId}</strong>
               </span>
             ) : (
-              <span className="ml-1 text-gray-500">Showing all properties</span>
+              <span className="ml-1 text-muted-foreground">
+                Showing all properties
+              </span>
             )}
           </p>
         </div>
@@ -224,9 +269,14 @@ const AreasClient: React.FC = () => {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <Label className="text-xs text-gray-500">Status</Label>
-          <Select value={activeFilter} onValueChange={(v) => setActiveFilter(v as any)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+          <Label className="text-xs text-muted-foreground">Status</Label>
+          <Select
+            value={activeFilter}
+            onValueChange={(v) => setActiveFilter(v as any)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="active">Active</SelectItem>
@@ -235,9 +285,9 @@ const AreasClient: React.FC = () => {
           </Select>
         </div>
         <div>
-          <Label className="text-xs text-gray-500">Search</Label>
+          <Label className="text-xs text-muted-foreground">Search</Label>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -251,17 +301,19 @@ const AreasClient: React.FC = () => {
       {error && (
         <Alert className="border-red-200 bg-red-50">
           <AlertCircle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-sm text-red-800">{error}</AlertDescription>
+          <AlertDescription className="text-sm text-red-800">
+            {error}
+          </AlertDescription>
         </Alert>
       )}
 
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border bg-card">
         {loading ? (
-          <div className="flex items-center justify-center p-10 text-sm text-gray-500">
+          <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
             <Loader className="mr-2 h-4 w-4 animate-spin" /> Loading areas…
           </div>
         ) : areas.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-gray-500">
+          <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
             <MapPin className="h-8 w-8 text-gray-300" />
             <p>No areas found</p>
             <Button variant="outline" size="sm" onClick={openCreate}>
@@ -270,77 +322,134 @@ const AreasClient: React.FC = () => {
           </div>
         ) : (
           <>
-          <div className="grid gap-3 p-3 md:hidden">
-            {areas.map((area) => (
-              <article key={area.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="truncate text-sm font-bold text-gray-900">{area.name}</h3>
-                    <p className="mt-1 text-xs font-medium text-gray-500">{area.property_name || 'No property'}</p>
-                  </div>
-                  {area.is_active ? (
-                    <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-gray-500">Inactive</Badge>
-                  )}
-                </div>
-                {area.description ? (
-                  <p className="mt-3 line-clamp-2 text-sm text-gray-600">{area.description}</p>
-                ) : null}
-                <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                  <span className="text-xs font-semibold text-gray-500">{area.jobs_count ?? 0} jobs</span>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(area)} aria-label={`Edit ${area.name}`}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(area)} aria-label={`Delete ${area.name}`}>
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-          <table className="hidden min-w-full text-sm md:table">
-            <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
-              <tr>
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Property</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2">Jobs</th>
-                <th className="px-4 py-2 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
+            <div className="grid gap-3 p-3 md:hidden">
               {areas.map((area) => (
-                <tr key={area.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{area.name}</div>
-                    {area.description ? (
-                      <div className="text-xs text-gray-500 line-clamp-1">{area.description}</div>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3 text-gray-700">{area.property_name || '-'}</td>
-                  <td className="px-4 py-3">
+                <article
+                  key={area.id}
+                  className="rounded-xl border border-border bg-card p-4 shadow-soft"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-sm font-bold text-foreground">
+                        {area.name}
+                      </h3>
+                      <p className="mt-1 text-xs font-medium text-muted-foreground">
+                        {area.property_name || "No property"}
+                      </p>
+                    </div>
                     {area.is_active ? (
-                      <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
+                      <Badge
+                        variant="default"
+                        className="bg-green-100 text-green-800 hover:bg-green-100"
+                      >
+                        Active
+                      </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-gray-500">Inactive</Badge>
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground"
+                      >
+                        Inactive
+                      </Badge>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-gray-700">{area.jobs_count ?? 0}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(area)}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(area)}>
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </td>
-                </tr>
+                  </div>
+                  {area.description ? (
+                    <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
+                      {area.description}
+                    </p>
+                  ) : null}
+                  <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {area.jobs_count ?? 0} jobs
+                    </span>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEdit(area)}
+                        aria-label={`Edit ${area.name}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteTarget(area)}
+                        aria-label={`Delete ${area.name}`}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  </div>
+                </article>
               ))}
-            </tbody>
-          </table>
+            </div>
+            <table className="hidden min-w-full text-sm md:table">
+              <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2">Name</th>
+                  <th className="px-4 py-2">Property</th>
+                  <th className="px-4 py-2">Status</th>
+                  <th className="px-4 py-2">Jobs</th>
+                  <th className="px-4 py-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {areas.map((area) => (
+                  <tr key={area.id} className="hover:bg-muted">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-foreground">
+                        {area.name}
+                      </div>
+                      {area.description ? (
+                        <div className="text-xs text-muted-foreground line-clamp-1">
+                          {area.description}
+                        </div>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {area.property_name || "-"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {area.is_active ? (
+                        <Badge
+                          variant="default"
+                          className="bg-green-100 text-green-800 hover:bg-green-100"
+                        >
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="text-muted-foreground"
+                        >
+                          Inactive
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {area.jobs_count ?? 0}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEdit(area)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteTarget(area)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </>
         )}
       </div>
@@ -348,20 +457,26 @@ const AreasClient: React.FC = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{form.id ? 'Edit Area' : 'Add Area'}</DialogTitle>
+            <DialogTitle>{form.id ? "Edit Area" : "Add Area"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
               <Label>Property</Label>
               <Select
                 value={form.property_id}
-                onValueChange={(v) => setForm((f) => ({ ...f, property_id: v }))}
+                onValueChange={(v) =>
+                  setForm((f) => ({ ...f, property_id: v }))
+                }
                 disabled={Boolean(form.id)}
               >
-                <SelectTrigger><SelectValue placeholder="Select a property" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a property" />
+                </SelectTrigger>
                 <SelectContent>
                   {propertyOptions.map((p) => (
-                    <SelectItem key={String(p.id)} value={String(p.id)}>{p.name}</SelectItem>
+                    <SelectItem key={String(p.id)} value={String(p.id)}>
+                      {p.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -370,7 +485,9 @@ const AreasClient: React.FC = () => {
               <Label>Name</Label>
               <Input
                 value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, name: e.target.value }))
+                }
                 placeholder="e.g. Lobby, Pump Room"
                 maxLength={150}
               />
@@ -379,7 +496,9 @@ const AreasClient: React.FC = () => {
               <Label>Description</Label>
               <Textarea
                 value={form.description}
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, description: e.target.value }))
+                }
                 placeholder="Optional"
                 rows={3}
               />
@@ -389,34 +508,49 @@ const AreasClient: React.FC = () => {
                 id="is_active"
                 type="checkbox"
                 checked={form.is_active}
-                onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, is_active: e.target.checked }))
+                }
               />
               <Label htmlFor="is_active">Active</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              disabled={saving}
+            >
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {form.id ? 'Save' : 'Create'}
+              {form.id ? "Save" : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(deleteTarget)} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Deactivate area?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-600">
-            This will mark the area “{deleteTarget?.name}” as inactive. Existing jobs keep their reference.
+          <p className="text-sm text-muted-foreground">
+            This will mark the area “{deleteTarget?.name}” as inactive. Existing
+            jobs keep their reference.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-            <Button onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
               <Trash2 className="mr-1 h-4 w-4" /> Deactivate
             </Button>
           </DialogFooter>

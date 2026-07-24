@@ -106,7 +106,7 @@ function LoginContent() {
               <Building className="h-5 w-5" />
             </div>
             <span className="text-lg font-bold text-[var(--pcms-text)]">
-              PCMS
+              HotelCare Pro
             </span>
           </div>
           <span className="hidden text-xs font-semibold text-[var(--pcms-text-muted)] sm:inline">
@@ -130,7 +130,7 @@ function LoginContent() {
               <div className="space-y-5 lg:pr-6">
                 <div className="inline-flex items-center gap-2 rounded-full border border-blue-200/70 bg-white/80 px-3 py-1 text-xs font-bold text-blue-700 backdrop-blur">
                   <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                  Property Care Maintenance System
+                  Smart Hotel Maintenance and Engineering Management Software
                 </div>
                 <h1 className="text-balance text-3xl font-bold leading-tight text-[var(--pcms-text)] sm:text-5xl">
                   Hotel maintenance,{' '}
@@ -173,7 +173,7 @@ function LoginContent() {
                     <Shield className="h-6 w-6" />
                   </div>
                   <CardTitle className="text-2xl text-slate-900">
-                    Sign in to PCMS
+                    Sign in to HotelCare Pro
                   </CardTitle>
                   <p className="text-sm text-slate-600">
                     Access your maintenance dashboard and properties.
@@ -215,7 +215,7 @@ function LoginContent() {
         </div>
 
         <footer className="mt-auto text-center text-xs text-slate-500">
-          © {new Date().getFullYear()} PCMS · Hotel maintenance operations
+          © {new Date().getFullYear()} HotelCare Pro · Hotel maintenance operations
         </footer>
       </div>
     </div>

@@ -1,7 +1,14 @@
-'use client';
+"use client";
 
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import type { PieLabelRenderProps } from 'recharts';
+import {
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
+import type { PieLabelRenderProps } from "recharts";
 
 interface JobPmPieChartProps {
   pmJobs: number;
@@ -12,37 +19,49 @@ interface JobPmPieChartProps {
   } | null;
 }
 
-const COLORS = ['#10b981', '#f97316'];
+const COLORS = ["#10b981", "#f97316"];
 
 function renderLabel(entry: PieLabelRenderProps) {
   const { name, value, percent } = entry;
-  const v = typeof value === 'number' ? value : Number(value);
-  const p = typeof percent === 'number' ? percent : Number(percent);
-  if (!v || Number.isNaN(v)) return '';
-  const pct = Number.isFinite(p) ? (p * 100).toFixed(1) : '0.0';
+  const v = typeof value === "number" ? value : Number(value);
+  const p = typeof percent === "number" ? percent : Number(percent);
+  if (!v || Number.isNaN(v)) return "";
+  const pct = Number.isFinite(p) ? (p * 100).toFixed(1) : "0.0";
   return `${name}: ${v} (${pct}%)`;
 }
 
-export default function JobPmPieChart({ pmJobs, nonPmJobs, topTopic }: JobPmPieChartProps) {
+export default function JobPmPieChart({
+  pmJobs,
+  nonPmJobs,
+  topTopic,
+}: JobPmPieChartProps) {
   const data = [
-    { name: 'PM Jobs', value: pmJobs },
-    { name: 'Non-PM Jobs', value: nonPmJobs },
+    { name: "PM Jobs", value: pmJobs },
+    { name: "Non-PM Jobs", value: nonPmJobs },
   ];
 
   const total = pmJobs + nonPmJobs;
   const hasData = total > 0;
-  const bestTopic = topTopic ? `${topTopic.topic} (${topTopic.count})` : 'No topic data';
+  const bestTopic = topTopic
+    ? `${topTopic.topic} (${topTopic.count})`
+    : "No topic data";
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-slate-900">Job type distribution</h3>
-        <p className="text-sm text-slate-500">
+        <h3 className="text-lg font-semibold text-foreground">
+          Job type distribution
+        </h3>
+        <p className="text-sm text-muted-foreground">
           PM vs Non-PM job share
-          {total > 0 ? <span className="text-slate-400"> · {total} total</span> : null}.
+          {total > 0 ? (
+            <span className="text-muted-foreground"> · {total} total</span>
+          ) : null}
+          .
         </p>
-        <p className="mt-1 text-xs text-slate-500">
-          Top job topic: <span className="font-medium text-slate-700">{bestTopic}</span>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Top job topic:{" "}
+          <span className="font-medium text-muted-foreground">{bestTopic}</span>
         </p>
       </div>
       {hasData ? (
@@ -58,26 +77,34 @@ export default function JobPmPieChart({ pmJobs, nonPmJobs, topTopic }: JobPmPieC
                 outerRadius={100}
                 innerRadius={55}
                 paddingAngle={3}
-                labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
+                labelLine={{ stroke: "#94a3b8", strokeWidth: 1 }}
                 label={renderLabel}
               >
                 {data.map((entry, index) => (
-                  <Cell key={`${entry.name}-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell
+                    key={`${entry.name}-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
                 ))}
               </Pie>
               <Tooltip
                 formatter={(value: number | string, name) => {
-                  const n = typeof value === 'number' ? value : Number(value);
-                  const share = total > 0 ? ((n / total) * 100).toFixed(1) : '0.0';
+                  const n = typeof value === "number" ? value : Number(value);
+                  const share =
+                    total > 0 ? ((n / total) * 100).toFixed(1) : "0.0";
                   return [`${n} (${share}%)`, name];
                 }}
               />
-              <Legend formatter={(value) => <span className="text-xs text-slate-700">{value}</span>} />
+              <Legend
+                formatter={(value) => (
+                  <span className="text-xs text-muted-foreground">{value}</span>
+                )}
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="flex h-[18rem] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
+        <div className="flex h-[18rem] items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
           No PM/non-PM split data for selected filters.
         </div>
       )}

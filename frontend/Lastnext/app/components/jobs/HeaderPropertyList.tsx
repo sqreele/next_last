@@ -10,38 +10,51 @@ import {
 import { Button } from "@/app/components/ui/button";
 import { ChevronDown, Building2, Loader2 } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
-import { useMainStore } from '@/app/lib/stores/mainStore';
-import { filterPropertiesForUser, getPropertyId } from '@/app/lib/security/propertyAccess';
+import { useMainStore } from "@/app/lib/stores/mainStore";
+import {
+  filterPropertiesForUser,
+  getPropertyId,
+} from "@/app/lib/security/propertyAccess";
 
 const HeaderPropertyList = React.memo(() => {
   // Use more specific selectors to prevent unnecessary re-renders
-  const selectedProperty = useMainStore(state => state.selectedPropertyId);
-  const setSelectedProperty = useMainStore(state => state.setSelectedPropertyId);
-  const userProperties = useMainStore(state => state.properties);
-  const userProfile = useMainStore(state => state.userProfile);
-  const propertyLoading = useMainStore(state => state.propertyLoading);
-  
+  const selectedProperty = useMainStore((state) => state.selectedPropertyId);
+  const setSelectedProperty = useMainStore(
+    (state) => state.setSelectedPropertyId,
+  );
+  const userProperties = useMainStore((state) => state.properties);
+  const userProfile = useMainStore((state) => state.userProfile);
+  const propertyLoading = useMainStore((state) => state.propertyLoading);
+
   // Debug logging to help identify infinite loops
-  useEffect(() => {
-  }, [selectedProperty, userProperties?.length, propertyLoading]);
-  
+  useEffect(() => {}, [
+    selectedProperty,
+    userProperties?.length,
+    propertyLoading,
+  ]);
+
   // Helper function to safely get the display name from any property object format
   const getPropertyName = useCallback((property: any): string => {
     if (!property) return "Select Property";
-    if (typeof property === "string" || typeof property === "number") return `Property ${property}`;
+    if (typeof property === "string" || typeof property === "number")
+      return `Property ${property}`;
     return property.name || `Property ${getPropertyId(property)}`;
   }, []);
 
   // Memoize the properties array to prevent unnecessary re-renders
-  const safeProperties = useMemo(() => 
-    filterPropertiesForUser(Array.isArray(userProperties) ? userProperties : [], userProfile), 
-    [userProperties, userProfile]
+  const safeProperties = useMemo(
+    () =>
+      filterPropertiesForUser(
+        Array.isArray(userProperties) ? userProperties : [],
+        userProfile,
+      ),
+    [userProperties, userProfile],
   );
 
   // Find current property by selectedProperty ID - memoized with stable dependencies
   const currentProperty = useMemo(() => {
     if (!safeProperties.length) return null;
-    
+
     if (selectedProperty) {
       for (const prop of safeProperties) {
         const propId = getPropertyId(prop);
@@ -50,7 +63,7 @@ const HeaderPropertyList = React.memo(() => {
         }
       }
     }
-    
+
     return safeProperties[0];
   }, [safeProperties, selectedProperty]);
 
@@ -62,7 +75,7 @@ const HeaderPropertyList = React.memo(() => {
         setSelectedProperty(propId);
       }
     },
-    [setSelectedProperty, selectedProperty]
+    [setSelectedProperty, selectedProperty],
   );
 
   const isSelectorLocked = safeProperties.length === 1;
@@ -73,7 +86,7 @@ const HeaderPropertyList = React.memo(() => {
       <Button
         variant="outline"
         disabled
-        className="flex items-center gap-2 w-full sm:w-auto h-12 px-4 bg-white border-gray-300 text-gray-500"
+        className="flex items-center gap-2 w-full sm:w-auto h-12 px-4 bg-card border-border text-muted-foreground"
       >
         <Loader2 className="h-4 w-4 animate-spin" />
         Loading...
@@ -87,7 +100,7 @@ const HeaderPropertyList = React.memo(() => {
       <Button
         variant="outline"
         disabled
-        className="flex items-center gap-2 w-full sm:w-auto h-12 px-4 bg-white border-gray-300 text-gray-500"
+        className="flex items-center gap-2 w-full sm:w-auto h-12 px-4 bg-card border-border text-muted-foreground"
       >
         <Building2 className="h-4 w-4" />
         No Properties
@@ -102,20 +115,26 @@ const HeaderPropertyList = React.memo(() => {
           <Button
             variant="outline"
             disabled={isSelectorLocked}
-            aria-label={isSelectorLocked ? "Property selector locked to your assigned property" : "Select property"}
-            className="flex items-center justify-between gap-2 w-full sm:w-auto h-12 px-4 bg-white border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-100"
+            aria-label={
+              isSelectorLocked
+                ? "Property selector locked to your assigned property"
+                : "Select property"
+            }
+            className="flex items-center justify-between gap-2 w-full sm:w-auto h-12 px-4 bg-card border-border hover:bg-muted disabled:cursor-not-allowed disabled:opacity-100"
           >
             <div className="flex items-center gap-2 truncate">
-              <Building2 className="h-4 w-4 flex-shrink-0 text-gray-600" />
-              <span className="truncate text-gray-700">
+              <Building2 className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+              <span className="truncate text-muted-foreground">
                 {getPropertyName(currentProperty)}
               </span>
             </div>
-            {!isSelectorLocked && <ChevronDown className="h-4 w-4 flex-shrink-0 text-gray-400" />}
+            {!isSelectorLocked && (
+              <ChevronDown className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-full min-w-[200px] max-w-[90vw] bg-white border-gray-200 shadow-md rounded-md mt-1"
+          className="w-full min-w-[200px] max-w-[90vw] bg-card border-border shadow-soft rounded-md mt-1"
           align="start"
         >
           {safeProperties.map((property: any, index: number) => (
@@ -126,7 +145,7 @@ const HeaderPropertyList = React.memo(() => {
                 "flex items-center gap-2 px-3 py-2.5 text-base cursor-pointer min-h-[44px]",
                 selectedProperty === getPropertyId(property)
                   ? "bg-blue-600 text-white"
-                  : "hover:bg-gray-100 text-gray-700"
+                  : "hover:bg-muted text-muted-foreground",
               )}
             >
               <Building2 className="h-4 w-4 flex-shrink-0" />
@@ -139,6 +158,6 @@ const HeaderPropertyList = React.memo(() => {
   );
 });
 
-HeaderPropertyList.displayName = 'HeaderPropertyList';
+HeaderPropertyList.displayName = "HeaderPropertyList";
 
 export default HeaderPropertyList;

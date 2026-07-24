@@ -3,18 +3,18 @@ import { randomUUID } from 'crypto';
 import { clearSessionCookie, getSessionFromRequest, sanitizeSessionForClient } from '@/app/lib/auth0/session-cookie';
 
 function resolveAudience(raw?: string | null): string {
-  const fallback = 'https://pcms.live/api';
+  const fallback = 'https://hotelcarepro.com/api';
   if (!raw) {
     return fallback;
   }
   const trimmed = raw.trim().replace(/\/$/, '');
   // Explicit fixes for common misconfigurations
   if (
-    trimmed === 'https://pcms.live' ||
-    trimmed === 'http://pcms.live' ||
-    trimmed === 'https://www.pcms.live'
+    trimmed === 'https://hotelcarepro.com' ||
+    trimmed === 'http://hotelcarepro.com' ||
+    trimmed === 'https://www.hotelcarepro.com'
   ) {
-    return 'https://pcms.live/api';
+    return 'https://hotelcarepro.com/api';
   }
   if (trimmed.endsWith('/api')) {
     return trimmed;
@@ -22,7 +22,7 @@ function resolveAudience(raw?: string | null): string {
   // If value is our domain without path, append /api
   try {
     const u = new URL(trimmed);
-    if (u.hostname.endsWith('pcms.live') && u.pathname === '') {
+    if (u.hostname.endsWith('hotelcarepro.com') && u.pathname === '') {
       return `${trimmed}/api`;
     }
   } catch {
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
           return response;
         } catch (loginError) {
           console.error('Auth0 login error:', loginError);
-          const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
+          const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
           return NextResponse.redirect(`${baseUrl}/login?error=login_failed`);
         }
       
@@ -80,11 +80,11 @@ export async function GET(request: NextRequest) {
           // For Auth0 callback, we need to handle the authorization code
           // This is typically done by the Auth0 SDK automatically
           // For now, redirect to profile page and let the client handle the session
-          const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
+          const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
           return NextResponse.redirect(`${baseUrl}/dashboard/profile`);
         } catch (callbackError) {
           console.error('Auth0 callback error:', callbackError);
-          const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
+          const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
           return NextResponse.redirect(`${baseUrl}/login?error=callback_failed`);
         }
       
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
           // For Auth0 v4, we need to construct the logout URL manually
           const domain = process.env.AUTH0_DOMAIN;
           const clientId = process.env.AUTH0_CLIENT_ID;
-          const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
+          const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
           
           if (!domain || !clientId) {
             console.error('Missing required Auth0 environment variables');
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
         } catch (logoutError) {
           console.error('Auth0 logout error:', logoutError);
           // Fallback logout - clear cookie and redirect
-          const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
+          const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
           const response = NextResponse.redirect(baseUrl);
           clearSessionCookie(response);
           return response;

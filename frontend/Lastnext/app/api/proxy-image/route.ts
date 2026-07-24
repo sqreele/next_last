@@ -74,7 +74,7 @@ export async function GET(request: Request) {
     // Fetch the remote image
     const res = await fetch(targetUrl, {
       headers: {
-        'User-Agent': 'PCMS-PDF-ImageProxy/1.0',
+        'User-Agent': 'HotelCarePro-PDF-ImageProxy/1.0',
         'Accept': 'image/*,*/*;q=0.8',
         'Cache-Control': 'no-cache',
       },
@@ -142,4 +142,3 @@ export async function GET(request: Request) {
     return new Response(`Proxy error: ${err?.message || 'unknown error'}`, { status: 500 });
   }
 }
-

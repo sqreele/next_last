@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
+import React from "react";
+import Link from "next/link";
+import { useSessionGuard } from "@/app/lib/hooks/useSessionGuard";
 import {
   Building,
   Wrench,
@@ -14,68 +14,68 @@ import {
   Play,
   Star,
   Zap,
-} from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
+} from "lucide-react";
+import { Button } from "@/app/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from '@/app/components/ui/card';
-import { getDisplayName } from '@/app/lib/utils/display-name';
+} from "@/app/components/ui/card";
+import { getDisplayName } from "@/app/lib/utils/display-name";
+import { relatedMarketingLinks } from "@/app/lib/marketing-pages";
 
 const features = [
   {
     icon: Building,
-    iconClass: 'text-blue-600 bg-blue-50',
-    title: 'Property Management',
+    iconClass: "text-blue-600 bg-blue-50",
+    title: "Property Management",
     description:
-      'Manage multiple properties and facilities from a single, unified workspace.',
+      "Manage multiple properties and facilities from a single, unified workspace.",
   },
   {
     icon: Wrench,
-    iconClass: 'text-emerald-600 bg-emerald-50',
-    title: 'Preventive Maintenance',
+    iconClass: "text-emerald-600 bg-emerald-50",
+    title: "Preventive Maintenance",
     description:
-      'Schedule and track maintenance tasks before issues become costly breakdowns.',
+      "Schedule and track maintenance tasks before issues become costly breakdowns.",
   },
   {
     icon: Shield,
-    iconClass: 'text-purple-600 bg-purple-50',
-    title: 'Security & Compliance',
+    iconClass: "text-purple-600 bg-purple-50",
+    title: "Security & Compliance",
     description:
-      'Keep every facility aligned with safety and regulatory requirements.',
+      "Keep every facility aligned with safety and regulatory requirements.",
   },
   {
     icon: Users,
-    iconClass: 'text-orange-600 bg-orange-50',
-    title: 'Team Collaboration',
+    iconClass: "text-orange-600 bg-orange-50",
+    title: "Team Collaboration",
     description:
-      'Coordinate technicians, vendors, and managers with real-time updates.',
+      "Coordinate technicians, vendors, and managers with real-time updates.",
   },
   {
     icon: BarChart3,
-    iconClass: 'text-rose-600 bg-rose-50',
-    title: 'Analytics & Reporting',
-    description:
-      'Track performance, downtime, and cost across every property.',
+    iconClass: "text-rose-600 bg-rose-50",
+    title: "Analytics & Reporting",
+    description: "Track performance, downtime, and cost across every property.",
   },
   {
     icon: CheckCircle,
-    iconClass: 'text-teal-600 bg-teal-50',
-    title: 'Quality Assurance',
+    iconClass: "text-teal-600 bg-teal-50",
+    title: "Quality Assurance",
     description:
-      'Automated quality checks and approvals keep service standards high.',
+      "Automated quality checks and approvals keep service standards high.",
   },
 ];
 
 const benefits = [
-  'Reduce maintenance costs by up to 30%',
-  'Increase equipment lifespan by 40%',
-  'Improve team productivity by 50%',
-  'Ensure 99.9% compliance rate',
-  'Real-time monitoring and alerts',
-  'Mobile-first responsive design',
+  "Reduce maintenance costs by up to 30%",
+  "Increase equipment lifespan by 40%",
+  "Improve team productivity by 50%",
+  "Ensure 99.9% compliance rate",
+  "Real-time monitoring and alerts",
+  "Mobile-first responsive design",
 ];
 
 export default function LandingPage() {
@@ -97,7 +97,7 @@ export default function LandingPage() {
               <Building className="h-5 w-5" />
             </span>
             <span className="text-lg font-bold text-[var(--pcms-text)] sm:text-xl">
-              HotelEngPro
+              HotelCare Pro
             </span>
           </Link>
 
@@ -105,7 +105,7 @@ export default function LandingPage() {
             {isAuthenticated ? (
               <>
                 <span className="hidden text-sm text-slate-600 sm:block">
-                  Welcome back, {getDisplayName(user, 'User')}
+                  Welcome back, {getDisplayName(user, "User")}
                 </span>
                 <Button asChild size="sm">
                   <Link href="/dashboard">
@@ -116,7 +116,12 @@ export default function LandingPage() {
               </>
             ) : (
               <>
-                <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="hidden sm:inline-flex"
+                >
                   <Link href="/auth/login">Sign In</Link>
                 </Button>
                 <Button size="sm" asChild>
@@ -136,18 +141,16 @@ export default function LandingPage() {
             New: AI-Powered Maintenance Predictions
           </span>
 
+          <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--pcms-primary-strong)]">
+            HotelCare Pro
+          </p>
           <h1 className="mb-6 text-balance text-4xl font-bold leading-tight text-[var(--pcms-text)] sm:text-5xl lg:text-6xl">
-            Streamline your{' '}
-            <span className="text-[var(--pcms-primary-strong)]">
-              hotel engineering
-            </span>{' '}
-            operations
+            Smart Hotel Maintenance and Engineering Management Software
           </h1>
 
           <p className="mx-auto mb-10 max-w-2xl text-balance text-base text-[var(--pcms-text-muted)] sm:text-lg lg:text-xl">
-            The complete hotel engineering and maintenance management
-            platform — maintain properties, coordinate teams, and optimize
-            costs with intelligent automation.
+            Manage work orders, preventive maintenance, assets, rooms,
+            technicians and engineering reports in one platform.
           </p>
 
           <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
@@ -166,7 +169,12 @@ export default function LandingPage() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button size="lg" variant="outline" asChild className="text-base">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  asChild
+                  className="text-base"
+                >
                   <Link href="#demo">
                     <Play className="mr-2 h-4 w-4" />
                     Watch Demo
@@ -195,14 +203,17 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-20">
+      <section
+        id="features"
+        className="px-4 py-14 sm:px-6 sm:py-18 lg:px-8 lg:py-20"
+      >
         <div className="mx-auto max-w-7xl">
           <div className="mb-12 text-center sm:mb-16">
             <h2 className="mb-4 text-balance text-3xl font-bold text-[var(--pcms-text)] sm:text-4xl">
               Everything you need for hotel engineering management
             </h2>
             <p className="mx-auto max-w-2xl text-balance text-base text-[var(--pcms-text-muted)] sm:text-lg">
-              From preventive maintenance to team coordination, HotelEngPro
+              From preventive maintenance to team coordination, HotelCare Pro
               has the tools your engineering team needs every day.
             </p>
           </div>
@@ -249,8 +260,8 @@ export default function LandingPage() {
                 Transform your hotel engineering operations
               </h2>
               <p className="mb-8 text-balance text-base text-[var(--pcms-text-muted)] sm:text-lg">
-                Join thousands of hotel engineers who have revolutionized
-                their maintenance processes with HotelEngPro.
+                Join thousands of hotel engineers who have revolutionized their
+                maintenance processes with HotelCare Pro.
               </p>
 
               <ul className="space-y-3">
@@ -276,7 +287,7 @@ export default function LandingPage() {
                   Trusted by hotel industry leaders
                 </h3>
                 <p className="mb-8 text-center text-sm text-blue-100 sm:text-base">
-                  Join hotels that trust HotelEngPro with their engineering
+                  Join hotels that trust HotelCare Pro with their engineering
                   management
                 </p>
                 <div className="grid grid-cols-2 gap-6 text-center">
@@ -306,8 +317,8 @@ export default function LandingPage() {
             Ready to get started?
           </h2>
           <p className="mb-8 text-balance text-base text-slate-300 sm:text-lg">
-            Join thousands of hotel engineers who have already transformed
-            their maintenance operations with HotelEngPro.
+            Join thousands of hotel engineers who have already transformed their
+            maintenance operations with HotelCare Pro.
           </p>
 
           <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
@@ -348,7 +359,7 @@ export default function LandingPage() {
               <div className="mb-4 flex items-center gap-2">
                 <Building className="h-6 w-6 text-blue-500" />
                 <span className="text-lg font-bold text-white">
-                  HotelEngPro
+                  HotelCare Pro
                 </span>
               </div>
               <p className="text-sm leading-relaxed">
@@ -382,24 +393,16 @@ export default function LandingPage() {
 
             <div>
               <h4 className="mb-4 text-sm font-semibold uppercase tracking-wide text-white">
-                Company
+                Solutions
               </h4>
               <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/auth/login" className="hover:text-white">
-                    About
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/auth/login" className="hover:text-white">
-                    Contact
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/auth/login" className="hover:text-white">
-                    Careers
-                  </Link>
-                </li>
+                {relatedMarketingLinks.slice(0, 5).map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="hover:text-white">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -408,27 +411,22 @@ export default function LandingPage() {
                 Support
               </h4>
               <ul className="space-y-2 text-sm">
-                <li>
-                  <Link href="/auth/login" className="hover:text-white">
-                    Help Center
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/auth/login" className="hover:text-white">
-                    Documentation
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/auth/login" className="hover:text-white">
-                    System Status
-                  </Link>
-                </li>
+                {relatedMarketingLinks.slice(5).map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="hover:text-white">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
 
           <div className="mt-10 border-t border-slate-800 pt-6 text-center text-xs sm:text-sm">
-            <p>&copy; {new Date().getFullYear()} HotelEngPro. All rights reserved.</p>
+            <p>
+              &copy; {new Date().getFullYear()} HotelCare Pro. All rights
+              reserved.
+            </p>
           </div>
         </div>
       </footer>

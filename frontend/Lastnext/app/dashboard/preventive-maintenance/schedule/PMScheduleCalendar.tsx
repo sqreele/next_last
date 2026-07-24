@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   CalendarDays,
   ChevronLeft,
@@ -12,18 +12,20 @@ import {
   Sparkles,
   ArrowRight,
   Plus,
-} from 'lucide-react';
-import { useSession } from '@/app/lib/session.client';
-import { fetchWithToken } from '@/app/lib/data.server';
-import { Button } from '@/app/components/ui/button';
-import { cn } from '@/app/lib/utils/cn';
-import { useUser } from '@/app/lib/stores/mainStore';
+} from "lucide-react";
+import { useSession } from "@/app/lib/session.client";
+import { fetchWithToken } from "@/app/lib/data.server";
+import { Button } from "@/app/components/ui/button";
+import { cn } from "@/app/lib/utils/cn";
+import { useUser } from "@/app/lib/stores/mainStore";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:8000"
+    : "https://hotelcarepro.com");
 
-type StatusFilter = 'open' | 'completed' | 'all';
+type StatusFilter = "open" | "completed" | "all";
 
 interface PMItem {
   pm_id: string;
@@ -54,13 +56,13 @@ interface ScheduleResponse {
 
 function toISODate(date: Date): string {
   const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
 function parseISODate(s: string): Date {
-  const [y, m, d] = s.split('-').map(Number);
+  const [y, m, d] = s.split("-").map(Number);
   return new Date(y, (m || 1) - 1, d || 1);
 }
 
@@ -73,7 +75,7 @@ function startOfWeekMonday(date: Date): Date {
   return d;
 }
 
-const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function PMScheduleCalendar() {
   const { data: session } = useSession();
@@ -83,7 +85,7 @@ export function PMScheduleCalendar() {
     d.setHours(0, 0, 0, 0);
     return d;
   });
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
   const [days, setDays] = useState(30);
   const [data, setData] = useState<ScheduleResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -107,13 +109,13 @@ export function PMScheduleCalendar() {
     const token = session?.user?.accessToken;
     if (!token) {
       setLoading(false);
-      setError('Sign in to view the PM schedule.');
+      setError("Sign in to view the PM schedule.");
       return;
     }
     if (!selectedPropertyId) {
       setData(null);
       setLoading(false);
-      setError('Select a property to view the PM schedule.');
+      setError("Select a property to view the PM schedule.");
       return;
     }
     setLoading(true);
@@ -133,7 +135,7 @@ export function PMScheduleCalendar() {
       })
       .catch((err: any) => {
         if (cancelled) return;
-        setError(err?.message || 'Failed to load PM schedule.');
+        setError(err?.message || "Failed to load PM schedule.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -141,7 +143,13 @@ export function PMScheduleCalendar() {
     return () => {
       cancelled = true;
     };
-  }, [gridStart, days, statusFilter, selectedPropertyId, session?.user?.accessToken]);
+  }, [
+    gridStart,
+    days,
+    statusFilter,
+    selectedPropertyId,
+    session?.user?.accessToken,
+  ]);
 
   const dayIndex = useMemo(() => {
     const map = new Map<string, DayBucket>();
@@ -151,7 +159,7 @@ export function PMScheduleCalendar() {
 
   const selectedBucket = selectedDate ? dayIndex.get(selectedDate) : null;
   const todayKey = toISODate(new Date());
-  const windowLabel = `${gridStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${gridCells[gridCells.length - 1]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  const windowLabel = `${gridStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${gridCells[gridCells.length - 1]?.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 
   const totalOpen = useMemo(
     () => (data?.days || []).reduce((sum, b) => sum + b.open_count, 0),
@@ -168,17 +176,17 @@ export function PMScheduleCalendar() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-col gap-3 rounded-[18px] border border-[var(--pcms-border)] bg-white/90 p-4 shadow-[var(--pcms-shadow-sm)] backdrop-blur sm:p-5">
+      <header className="flex flex-col gap-3 rounded-xl border border-[var(--pcms-border)] bg-card/90 p-4 shadow-[var(--pcms-shadow-soft)] backdrop-blur sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600 text-white shadow">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-blue-600 text-white shadow">
               <CalendarDays className="h-5 w-5" />
             </span>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
+              <h1 className="text-xl font-bold text-foreground sm:text-2xl">
                 PM Calendar
               </h1>
-              <p className="text-xs font-medium text-slate-600 sm:text-sm">
+              <p className="text-xs font-medium text-muted-foreground sm:text-sm">
                 Plan upcoming preventive maintenance across {days} days.
               </p>
             </div>
@@ -236,29 +244,33 @@ export function PMScheduleCalendar() {
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <div className="ml-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
+            <div className="ml-2 rounded-full bg-muted px-3 py-1 text-xs font-bold text-muted-foreground">
               {windowLabel}
             </div>
           </div>
 
           <div className="flex items-center gap-1.5">
-            {(['open', 'completed', 'all'] as StatusFilter[]).map((value) => (
+            {(["open", "completed", "all"] as StatusFilter[]).map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setStatusFilter(value)}
                 aria-pressed={statusFilter === value}
                 className={cn(
-                  'h-9 rounded-full px-3 text-xs font-bold transition-colors',
+                  "h-9 rounded-full px-3 text-xs font-bold transition-colors",
                   statusFilter === value
-                    ? 'bg-slate-900 text-white'
-                    : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                    ? "bg-slate-900 text-white"
+                    : "border border-border bg-card text-muted-foreground hover:bg-muted",
                 )}
               >
-                {value === 'all' ? 'All' : value === 'open' ? 'Open' : 'Completed'}
+                {value === "all"
+                  ? "All"
+                  : value === "open"
+                    ? "Open"
+                    : "Completed"}
               </button>
             ))}
-            <div className="ml-2 flex h-9 items-center gap-1 rounded-full border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700">
+            <div className="ml-2 flex h-9 items-center gap-1 rounded-full border border-border bg-card px-2 text-xs font-bold text-muted-foreground">
               <span>Days:</span>
               {[14, 30, 60].map((value) => (
                 <button
@@ -266,8 +278,10 @@ export function PMScheduleCalendar() {
                   type="button"
                   onClick={() => setDays(value)}
                   className={cn(
-                    'rounded-full px-2 py-0.5 transition-colors',
-                    days === value ? 'bg-slate-900 text-white' : 'hover:bg-slate-100',
+                    "rounded-full px-2 py-0.5 transition-colors",
+                    days === value
+                      ? "bg-slate-900 text-white"
+                      : "hover:bg-muted",
                   )}
                 >
                   {value}
@@ -283,7 +297,9 @@ export function PMScheduleCalendar() {
               className="h-9"
               aria-label="Refresh"
             >
-              <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+              <RefreshCw
+                className={cn("h-3.5 w-3.5", loading && "animate-spin")}
+              />
             </Button>
           </div>
         </div>
@@ -308,17 +324,17 @@ export function PMScheduleCalendar() {
         </div>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
-        <div className="hidden grid-cols-7 gap-1 pb-2 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500 sm:grid">
+      <section className="rounded-xl border border-border bg-card p-3 shadow-soft sm:p-4">
+        <div className="hidden grid-cols-7 gap-1 pb-2 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:grid">
           {WEEKDAY_LABELS.map((label) => (
             <div key={label}>{label}</div>
           ))}
         </div>
         <div
           className={cn(
-            'grid gap-1',
-            'grid-cols-2 sm:grid-cols-7',
-            loading && 'opacity-70',
+            "grid gap-1",
+            "grid-cols-2 sm:grid-cols-7",
+            loading && "opacity-70",
           )}
         >
           {gridCells.map((date) => {
@@ -338,23 +354,29 @@ export function PMScheduleCalendar() {
                 onClick={() => setSelectedDate(isSelected ? null : key)}
                 aria-pressed={isSelected}
                 className={cn(
-                  'group flex h-24 flex-col items-stretch rounded-xl border-2 p-2 text-left transition-all sm:h-28',
-                  isSelected ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-200' : 'border-slate-200 bg-white hover:border-slate-300',
-                  totalItems === 0 && 'bg-slate-50',
-                  overdue > 0 && !isSelected && 'border-rose-300 bg-rose-50/40',
+                  "group flex h-24 flex-col items-stretch rounded-xl border-2 p-2 text-left transition-all sm:h-28",
+                  isSelected
+                    ? "border-blue-600 bg-blue-50 ring-2 ring-blue-200"
+                    : "border-border bg-card hover:border-border",
+                  totalItems === 0 && "bg-muted",
+                  overdue > 0 && !isSelected && "border-rose-300 bg-rose-50/40",
                 )}
               >
                 <div className="flex items-baseline justify-between">
                   <span
                     className={cn(
-                      'inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-black',
-                      isToday ? 'bg-blue-600 text-white' : inPast ? 'text-slate-500' : 'text-slate-900',
+                      "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-black",
+                      isToday
+                        ? "bg-blue-600 text-white"
+                        : inPast
+                          ? "text-muted-foreground"
+                          : "text-foreground",
                     )}
                   >
                     {date.getDate()}
                   </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    {date.toLocaleDateString('en-US', { month: 'short' })}
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {date.toLocaleDateString("en-US", { month: "short" })}
                   </span>
                 </div>
                 <div className="mt-1 flex flex-1 flex-col gap-0.5 text-[11px] font-bold">
@@ -377,7 +399,7 @@ export function PMScheduleCalendar() {
                     </span>
                   )}
                   {totalItems === 0 && !loading && (
-                    <span className="text-[10px] font-medium text-slate-400">
+                    <span className="text-[10px] font-medium text-muted-foreground">
                       No PM
                     </span>
                   )}
@@ -388,7 +410,7 @@ export function PMScheduleCalendar() {
         </div>
 
         {loading && !data && (
-          <div className="flex items-center justify-center gap-2 pt-3 text-sm font-medium text-slate-500">
+          <div className="flex items-center justify-center gap-2 pt-3 text-sm font-medium text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading schedule...
           </div>
         )}
@@ -397,20 +419,21 @@ export function PMScheduleCalendar() {
       {selectedBucket && (
         <section
           aria-label={`Items on ${selectedDate}`}
-          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+          className="rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5"
         >
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold text-slate-900 sm:text-lg">
-                {parseISODate(selectedBucket.date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric',
+              <h2 className="text-base font-bold text-foreground sm:text-lg">
+                {parseISODate(selectedBucket.date).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
                 })}
               </h2>
-              <p className="text-xs font-medium text-slate-500">
-                {selectedBucket.items.length} item{selectedBucket.items.length === 1 ? '' : 's'} on this day
+              <p className="text-xs font-medium text-muted-foreground">
+                {selectedBucket.items.length} item
+                {selectedBucket.items.length === 1 ? "" : "s"} on this day
               </p>
             </div>
             <Button
@@ -423,7 +446,7 @@ export function PMScheduleCalendar() {
             </Button>
           </div>
           {selectedBucket.items.length === 0 ? (
-            <p className="px-1 py-6 text-center text-sm font-medium text-slate-500">
+            <p className="px-1 py-6 text-center text-sm font-medium text-muted-foreground">
               No PM scheduled for this day.
             </p>
           ) : (
@@ -432,14 +455,14 @@ export function PMScheduleCalendar() {
                 <li key={item.pm_id}>
                   <Link
                     href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                    className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-50"
+                    className="flex items-start justify-between gap-3 rounded-xl border border-border p-3 transition-colors hover:border-border hover:bg-muted"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-900 line-clamp-2">
-                        {item.pmtitle || 'Preventive maintenance'}
+                      <p className="text-sm font-bold text-foreground line-clamp-2">
+                        {item.pmtitle || "Preventive maintenance"}
                       </p>
-                      <p className="text-xs font-semibold text-slate-500">
-                        #{item.pm_id} · {item.frequency || 'one-off'}
+                      <p className="text-xs font-semibold text-muted-foreground">
+                        #{item.pm_id} · {item.frequency || "one-off"}
                       </p>
                     </div>
                     <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700">
@@ -453,9 +476,10 @@ export function PMScheduleCalendar() {
         </section>
       )}
 
-      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs font-medium text-slate-600">
+      <div className="rounded-xl border border-dashed border-border bg-muted p-3 text-xs font-medium text-muted-foreground">
         <Sparkles className="mr-1 inline h-3 w-3 text-blue-500" />
-        Tap any day with items to see what's scheduled. Cells with red borders include overdue work.
+        Tap any day with items to see what's scheduled. Cells with red borders
+        include overdue work.
       </div>
     </div>
   );

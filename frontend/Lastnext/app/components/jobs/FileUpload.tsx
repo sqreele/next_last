@@ -1,13 +1,23 @@
 "use client";
 
-import React, { useState, useCallback, useEffect, ChangeEventHandler, useId, useMemo } from "react";
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  ChangeEventHandler,
+  useId,
+  useMemo,
+} from "react";
 import Image from "next/image";
 import { X, AlertCircle, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { cn } from "@/app/lib/utils/cn";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 
-function formatMessage(template: string, values: Record<string, string | number>) {
+function formatMessage(
+  template: string,
+  values: Record<string, string | number>,
+) {
   return Object.entries(values).reduce(
     (message, [key, value]) => message.replaceAll(`{${key}}`, String(value)),
     template,
@@ -36,7 +46,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [loadedPreviews, setLoadedPreviews] = useState<Record<string, boolean>>({});
+  const [loadedPreviews, setLoadedPreviews] = useState<Record<string, boolean>>(
+    {},
+  );
   const generatedInputId = useId();
   const inputId = `pcms-file-input-${generatedInputId}`;
   const cameraInputId = `pcms-camera-input-${generatedInputId}`;
@@ -44,21 +56,30 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const validateFiles = useCallback(
     (files: File[]): string | null => {
       if (files.length + selectedFiles.length > maxFiles) {
-        return formatMessage(t('fileUpload.maxFiles'), { max: maxFiles });
+        return formatMessage(t("fileUpload.maxFiles"), { max: maxFiles });
       }
       // Validate type
-      const invalidTypes = files.filter((file) => !file.type.startsWith("image/"));
+      const invalidTypes = files.filter(
+        (file) => !file.type.startsWith("image/"),
+      );
       if (invalidTypes.length > 0) {
-        return formatMessage(t('fileUpload.onlyImages'), { files: invalidTypes.map(f => f.name).join(', ') });
+        return formatMessage(t("fileUpload.onlyImages"), {
+          files: invalidTypes.map((f) => f.name).join(", "),
+        });
       }
       // Validate size
-      const oversizedFiles = files.filter((file) => file.size > maxSize * 1024 * 1024);
+      const oversizedFiles = files.filter(
+        (file) => file.size > maxSize * 1024 * 1024,
+      );
       if (oversizedFiles.length > 0) {
-        return formatMessage(t('fileUpload.tooLarge'), { files: oversizedFiles.map(f => f.name).join(', '), max: maxSize });
+        return formatMessage(t("fileUpload.tooLarge"), {
+          files: oversizedFiles.map((f) => f.name).join(", "),
+          max: maxSize,
+        });
       }
       return null;
     },
-    [maxFiles, maxSize, selectedFiles.length, t]
+    [maxFiles, maxSize, selectedFiles.length, t],
   );
 
   const handleFiles = useCallback(
@@ -77,7 +98,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onFileSelect(newFiles);
       }
     },
-    [disabled, validateFiles, selectedFiles, maxFiles, onFileSelect]
+    [disabled, validateFiles, selectedFiles, maxFiles, onFileSelect],
   );
 
   const handleFileChange: ChangeEventHandler<HTMLInputElement> = useCallback(
@@ -86,7 +107,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       handleFiles(files);
       e.target.value = ""; // Reset input
     },
-    [handleFiles]
+    [handleFiles],
   );
 
   const removeFile = useCallback(
@@ -107,7 +128,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       });
       setValidationError(null);
     },
-    [onFileSelect, disabled]
+    [onFileSelect, disabled],
   );
 
   const handleDrop = useCallback(
@@ -117,12 +138,12 @@ const FileUpload: React.FC<FileUploadProps> = ({
       const files = Array.from(e.dataTransfer.files);
       handleFiles(files);
     },
-    [handleFiles]
+    [handleFiles],
   );
 
   const previewUrls = useMemo(
     () => selectedFiles.map((file) => URL.createObjectURL(file)),
-    [selectedFiles]
+    [selectedFiles],
   );
 
   useEffect(() => {
@@ -162,9 +183,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       <div
         className={cn(
-          "w-full rounded-[4px] border border-[#e2e6e8] bg-white p-4 transition-colors",
+          "w-full rounded-[4px] border border-[#e2e6e8] bg-card p-4 transition-colors",
           isDragging && "border-[#46b8bc] bg-[#f8ffff]",
-          disabled && "opacity-60"
+          disabled && "opacity-60",
         )}
         onDragOver={(e) => {
           e.preventDefault();
@@ -175,17 +196,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[12px] leading-5 text-[#8a9499]">
-            {formatMessage(t('fileUpload.addPhotos'), { max: maxFiles })}{' '}
-            <span className="text-[#a1aaae]">{t('fileUpload.rearrange')}</span>
+            {formatMessage(t("fileUpload.addPhotos"), { max: maxFiles })}{" "}
+            <span className="text-[#a1aaae]">{t("fileUpload.rearrange")}</span>
           </p>
           <label
             htmlFor={inputId}
             className={cn(
-              "inline-flex min-h-9 shrink-0 touch-manipulation items-center justify-center rounded-[4px] border border-[#46b8bc] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#269fa8] transition hover:bg-[#f4ffff] active:scale-[0.98]",
-              disabled ? "pointer-events-none" : "cursor-pointer"
+              "inline-flex min-h-9 shrink-0 touch-manipulation items-center justify-center rounded-[4px] border border-[#46b8bc] bg-card px-3 py-1.5 text-[12px] font-semibold text-[#269fa8] transition hover:bg-[#f4ffff] active:scale-[0.98]",
+              disabled ? "pointer-events-none" : "cursor-pointer",
             )}
           >
-            {t('fileUpload.choosePhotos')}
+            {t("fileUpload.choosePhotos")}
           </label>
         </div>
 
@@ -193,27 +214,34 @@ const FileUpload: React.FC<FileUploadProps> = ({
           {selectedFiles.map((file, index) => (
             <div
               key={`${file.name}-${index}-${file.lastModified}`}
-              className="group relative h-[90px] w-[90px] shrink-0 overflow-hidden rounded-[4px] bg-slate-100"
+              className="group relative h-[90px] w-[90px] shrink-0 overflow-hidden rounded-[4px] bg-muted"
             >
               {!loadedPreviews[file.name] && (
-                <div className="absolute inset-0 z-10 grid place-items-center bg-slate-100">
+                <div className="absolute inset-0 z-10 grid place-items-center bg-muted">
                   <Loader2 className="h-4 w-4 animate-spin text-[#269fa8]" />
                 </div>
               )}
               <Image
                 src={previewUrls[index]}
-                alt={formatMessage(t('fileUpload.previewAlt'), { n: index + 1 })}
+                alt={formatMessage(t("fileUpload.previewAlt"), {
+                  n: index + 1,
+                })}
                 fill
-                className={cn("object-cover transition-opacity duration-200", loadedPreviews[file.name] ? "opacity-100" : "opacity-0")}
+                className={cn(
+                  "object-cover transition-opacity duration-200",
+                  loadedPreviews[file.name] ? "opacity-100" : "opacity-0",
+                )}
                 sizes="90px"
-                onLoad={() => setLoadedPreviews((prev) => ({ ...prev, [file.name]: true }))}
+                onLoad={() =>
+                  setLoadedPreviews((prev) => ({ ...prev, [file.name]: true }))
+                }
               />
               {!disabled && (
                 <button
                   type="button"
-                  className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-[#6f7c82] opacity-0 transition hover:text-red-500 group-hover:opacity-100 focus:opacity-100"
+                  className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-card/90 text-[#6f7c82] opacity-0 transition hover:text-red-500 group-hover:opacity-100 focus:opacity-100"
                   onClick={() => removeFile(index)}
-                  aria-label={t('fileUpload.removeFile')}
+                  aria-label={t("fileUpload.removeFile")}
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -225,10 +253,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <label
               htmlFor={inputId}
               className={cn(
-                "grid h-[30px] w-[30px] shrink-0 touch-manipulation place-items-center self-center rounded-[4px] border border-[#46b8bc] bg-white text-[24px] font-light leading-none text-[#46b8bc] transition hover:bg-[#f4ffff]",
-                disabled ? "pointer-events-none" : "cursor-pointer"
+                "grid h-[30px] w-[30px] shrink-0 touch-manipulation place-items-center self-center rounded-[4px] border border-[#46b8bc] bg-card text-[24px] font-light leading-none text-[#46b8bc] transition hover:bg-[#f4ffff]",
+                disabled ? "pointer-events-none" : "cursor-pointer",
               )}
-              aria-label={t('fileUpload.addPhotosLabel')}
+              aria-label={t("fileUpload.addPhotosLabel")}
             >
               +
             </label>

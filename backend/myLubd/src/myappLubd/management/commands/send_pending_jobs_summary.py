@@ -137,7 +137,7 @@ class Command(BaseCommand):
                         try:
                             # Build full URL for the image
                             media_url = getattr(settings, 'MEDIA_URL', '/media/')
-                            base_url = getattr(settings, 'FRONTEND_BASE_URL', 'https://pcms.live')
+                            base_url = getattr(settings, 'FRONTEND_BASE_URL', 'https://hotelcarepro.com')
                             # Remove trailing slash from base_url if present
                             base_url = base_url.rstrip('/')
                             
@@ -362,8 +362,8 @@ class Command(BaseCommand):
                 "property_name": property_name,
                 "stats": stats,
                 "job_details": job_details,
-                "brand_name": "PCMS",
-                "base_url": getattr(settings, "FRONTEND_BASE_URL", "https://pcms.live"),
+                "brand_name": "HotelCare Pro",
+                "base_url": getattr(settings, "FRONTEND_BASE_URL", "https://hotelcarepro.com"),
             }
             
             html_body = render_to_string("emails/pending_jobs_summary.html", context)

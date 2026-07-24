@@ -5,7 +5,7 @@ import { OfflineRetryButton } from '@/app/components/pwa/OfflineRetryButton';
 
 export const metadata: Metadata = {
   title: 'Offline',
-  description: 'You are currently offline. PCMS will resume once your connection returns.',
+  description: 'You are currently offline. HotelCare Pro will resume once your connection returns.',
   robots: { index: false, follow: false },
 };
 
@@ -19,7 +19,7 @@ export default function OfflinePage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-black tracking-tight text-slate-900">You&apos;re offline</h1>
           <p className="text-sm font-medium text-slate-600">
-            PCMS needs a connection to load fresh work orders. Cached pages remain available, and any
+            HotelCare Pro needs a connection to load fresh work orders. Cached pages remain available, and any
             updates you queue will sync once you&apos;re back online.
           </p>
         </div>

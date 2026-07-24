@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger
-} from '@/app/components/ui/tooltip';
-import { cn } from '@/app/lib/utils/cn'; // Using cn instead of clsx for consistency
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+  TooltipTrigger,
+} from "@/app/components/ui/tooltip";
+import { cn } from "@/app/lib/utils/cn"; // Using cn instead of clsx for consistency
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface NavItemProps {
   href: string;
@@ -26,7 +26,7 @@ export function NavItem({
   children,
   icon,
   showTooltip = true,
-  onClick
+  onClick,
 }: NavItemProps) {
   const pathname = usePathname();
   const isActive = pathname === href;
@@ -39,10 +39,10 @@ export function NavItem({
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   // Handle both the component's onClick and any parent onClick
@@ -60,25 +60,25 @@ export function NavItem({
       href={href}
       onClick={handleClick}
       className={cn(
-        'group relative flex items-center justify-center rounded-lg transition-all duration-200 ease-in-out',
-        'h-10 w-10 md:h-9 md:w-9', // Slightly larger on mobile for better touch targets
+        "group relative flex items-center justify-center rounded-lg transition-all duration-200 ease-in-out",
+        "h-10 w-10 md:h-9 md:w-9", // Slightly larger on mobile for better touch targets
         isActive
-          ? 'bg-primary text-primary-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-foreground',
+          ? "bg-primary text-primary-foreground shadow-soft"
+          : "text-muted-foreground hover:bg-muted dark:hover:bg-gray-800 hover:text-foreground",
         {
-          'scale-[0.98] transition-transform duration-100': isActive, // Subtle pressed effect
-        }
+          "scale-[0.98] transition-transform duration-100": isActive, // Subtle pressed effect
+        },
       )}
-      aria-current={isActive ? 'page' : undefined}
+      aria-current={isActive ? "page" : undefined}
     >
       {/* Icon wrapper with consistent sizing */}
       <span className="flex items-center justify-center h-5 w-5">
         {children}
       </span>
-      
+
       {/* Always include the label for screen readers */}
       <span className="sr-only">{label}</span>
-      
+
       {/* Show active indicator dot for mobile (no tooltip) */}
       {isActive && isMounted && isMobile && (
         <span className="absolute -bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary-foreground" />
@@ -95,12 +95,10 @@ export function NavItem({
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
-        <TooltipTrigger asChild>
-          {navItem}
-        </TooltipTrigger>
-        <TooltipContent 
+        <TooltipTrigger asChild>{navItem}</TooltipTrigger>
+        <TooltipContent
           side="right"
-          align="center" 
+          align="center"
           className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground"
         >
           {label}

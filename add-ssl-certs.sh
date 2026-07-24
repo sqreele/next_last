@@ -3,7 +3,7 @@
 
 set -e
 
-echo "🔐 SSL Certificate Installation for pcms.live"
+echo "🔐 SSL Certificate Installation for hotelcarepro.com"
 echo "============================================="
 
 SSL_DIR="./nginx/ssl"
@@ -40,7 +40,7 @@ case $choice in
         echo "📋 Cloudflare Origin Certificate Setup:"
         echo "1. Go to Cloudflare Dashboard → SSL/TLS → Origin Server"
         echo "2. Click 'Create Certificate'"
-        echo "3. Configure: RSA 2048, hostnames: pcms.live, www.pcms.live"
+        echo "3. Configure: RSA 2048, hostnames: hotelcarepro.com, www.hotelcarepro.com"
         echo "4. Copy the certificate and private key"
         echo ""
         
@@ -60,14 +60,14 @@ case $choice in
         print_status "Cloudflare Origin certificates saved"
         
         # Enable SSL configuration
-        if [ -f "$CONF_DIR/pcms.live.ssl.conf.disabled" ]; then
-            cp "$CONF_DIR/pcms.live.ssl.conf.disabled" "$CONF_DIR/pcms.live.ssl.conf"
+        if [ -f "$CONF_DIR/hotelcarepro.com.ssl.conf.disabled" ]; then
+            cp "$CONF_DIR/hotelcarepro.com.ssl.conf.disabled" "$CONF_DIR/hotelcarepro.com.ssl.conf"
             print_status "SSL configuration enabled"
         fi
         
         # Disable HTTP-only configuration
-        if [ -f "$CONF_DIR/pcms.live.cloudflare.conf" ]; then
-            mv "$CONF_DIR/pcms.live.cloudflare.conf" "$CONF_DIR/pcms.live.cloudflare.conf.disabled"
+        if [ -f "$CONF_DIR/hotelcarepro.com.cloudflare.conf" ]; then
+            mv "$CONF_DIR/hotelcarepro.com.cloudflare.conf" "$CONF_DIR/hotelcarepro.com.cloudflare.conf.disabled"
             print_status "HTTP-only configuration disabled"
         fi
         
@@ -96,7 +96,7 @@ case $choice in
         print_status "SSL certificates saved"
         
         # Create custom SSL configuration for regular certificates
-        cat > "$CONF_DIR/pcms.live.ssl.conf" << 'EOF'
+        cat > "$CONF_DIR/hotelcarepro.com.ssl.conf" << 'EOF'
 # HTTPS server for regular SSL certificates
 
 upstream frontend {
@@ -111,7 +111,7 @@ upstream backend {
 server {
     listen 80;
     listen [::]:80;
-    server_name pcms.live www.pcms.live;
+    server_name hotelcarepro.com www.hotelcarepro.com;
     return 301 https://$server_name$request_uri;
 }
 
@@ -120,7 +120,7 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name pcms.live www.pcms.live;
+    server_name hotelcarepro.com www.hotelcarepro.com;
 
     # SSL certificates
     ssl_certificate     /etc/nginx/ssl/server.crt;
@@ -144,7 +144,7 @@ server {
     client_max_body_size 10M;
 
     # Your existing location blocks would go here...
-    # Copy from pcms.live.cloudflare.conf and adjust headers
+    # Copy from hotelcarepro.com.cloudflare.conf and adjust headers
     
     location / {
         proxy_pass http://frontend;
@@ -175,8 +175,8 @@ EOF
         print_status "Custom SSL configuration created"
         
         # Disable HTTP-only configuration
-        if [ -f "$CONF_DIR/pcms.live.cloudflare.conf" ]; then
-            mv "$CONF_DIR/pcms.live.cloudflare.conf" "$CONF_DIR/pcms.live.cloudflare.conf.disabled"
+        if [ -f "$CONF_DIR/hotelcarepro.com.cloudflare.conf" ]; then
+            mv "$CONF_DIR/hotelcarepro.com.cloudflare.conf" "$CONF_DIR/hotelcarepro.com.cloudflare.conf.disabled"
             print_status "HTTP-only configuration disabled"
         fi
         ;;
@@ -200,11 +200,11 @@ if docker compose exec nginx nginx -t; then
     print_status "SSL certificates installed successfully!"
     echo ""
     echo "🔗 Test your HTTPS site:"
-    echo "   https://pcms.live"
+    echo "   https://hotelcarepro.com"
     echo ""
     echo "🧪 Verify SSL:"
-    echo "   openssl s_client -connect pcms.live:443 -servername pcms.live"
-    echo "   curl -Ik https://pcms.live"
+    echo "   openssl s_client -connect hotelcarepro.com:443 -servername hotelcarepro.com"
+    echo "   curl -Ik https://hotelcarepro.com"
     
 else
     print_error "Nginx configuration test failed!"

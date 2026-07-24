@@ -1,38 +1,48 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from '@/app/lib/session.client';
-import { useUser } from '@/app/lib/stores/mainStore';
-import apiClient from '@/app/lib/api-client';
-import MachineService from '@/app/lib/MachineService';
-import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Input } from '@/app/components/ui/input';
-import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import { fixImageUrl } from '@/app/lib/utils/image-utils';
+import React, { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/app/lib/session.client";
+import { useUser } from "@/app/lib/stores/mainStore";
+import apiClient from "@/app/lib/api-client";
+import MachineService from "@/app/lib/MachineService";
+import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Input } from "@/app/components/ui/input";
+import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { fixImageUrl } from "@/app/lib/utils/image-utils";
+import { FeedbackState } from "@/app/components/feedback/FeedbackState";
+import { PageContainer } from "@/app/components/layout/PageContainer";
+import {
+  DashboardKpiSkeleton,
+  SkeletonList,
+} from "@/app/components/ui/loading";
 import {
   Wrench,
   Search,
   MapPin,
   Calendar,
   FileText,
-  Loader2,
   ChevronLeft,
   ChevronRight,
   LayoutGrid,
   List,
   Filter,
-} from 'lucide-react';
-import Link from 'next/link';
+} from "lucide-react";
+import Link from "next/link";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/app/components/ui/select';
+} from "@/app/components/ui/select";
 
 interface Machine {
   machine_id: string;
@@ -58,7 +68,7 @@ interface Machine {
 }
 
 function normalizeCategory(value?: string | null): string {
-  return (value ?? '').trim().toLowerCase();
+  return (value ?? "").trim().toLowerCase();
 }
 
 interface PreventiveMaintenanceRow {
@@ -73,23 +83,24 @@ export default function MachinesListPage() {
   const [allMachines, setAllMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [totalCount, setTotalCount] = useState(0);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
-  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
+  const { recordLoaderShown, clearLoadingAfterMinTime } =
+    useMinLoaderTime(setLoading);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login');
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
     }
   }, [status, router]);
 
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (status === "authenticated") {
       fetchMachines();
     }
   }, [status, selectedProperty]);
@@ -105,26 +116,36 @@ export default function MachinesListPage() {
     setError(null);
     try {
       const machineService = new MachineService();
-      const machineResponse = await machineService.getMachines(selectedProperty || undefined);
+      const machineResponse = await machineService.getMachines(
+        selectedProperty || undefined,
+      );
 
       if (!machineResponse.success || !machineResponse.data) {
-        throw new Error(machineResponse.message || 'Failed to load machines');
+        throw new Error(machineResponse.message || "Failed to load machines");
       }
 
       const allMachines = machineResponse.data as Machine[];
       setTotalCount(allMachines.length);
 
       // Fetch PM rows once, then aggregate by machine_id to avoid N+1 requests.
-      const pmByMachine = new Map<string, { count: number; lastMaintenance?: string }>();
+      const pmByMachine = new Map<
+        string,
+        { count: number; lastMaintenance?: string }
+      >();
       try {
         const pmParams: Record<string, string | number> = { page_size: 1000 };
         if (selectedProperty) {
           pmParams.property_id = selectedProperty;
         }
-        const pmResponse = await apiClient.get('/api/v1/preventive-maintenance/', {
-          params: pmParams,
-        });
-        const pmRows: PreventiveMaintenanceRow[] = Array.isArray(pmResponse.data)
+        const pmResponse = await apiClient.get(
+          "/api/v1/preventive-maintenance/",
+          {
+            params: pmParams,
+          },
+        );
+        const pmRows: PreventiveMaintenanceRow[] = Array.isArray(
+          pmResponse.data,
+        )
           ? pmResponse.data
           : pmResponse.data?.results || [];
 
@@ -133,12 +154,16 @@ export default function MachinesListPage() {
           (pm.machines || []).forEach((machineRef) => {
             const machineId = machineRef?.machine_id;
             if (!machineId) return;
-            const current = pmByMachine.get(machineId) ?? { count: 0, lastMaintenance: undefined };
+            const current = pmByMachine.get(machineId) ?? {
+              count: 0,
+              lastMaintenance: undefined,
+            };
             current.count += 1;
             if (
               scheduled &&
               (!current.lastMaintenance ||
-                new Date(scheduled).getTime() > new Date(current.lastMaintenance).getTime())
+                new Date(scheduled).getTime() >
+                  new Date(current.lastMaintenance).getTime())
             ) {
               current.lastMaintenance = scheduled;
             }
@@ -146,7 +171,10 @@ export default function MachinesListPage() {
           });
         });
       } catch (pmError) {
-        console.error('Error fetching preventive maintenance aggregation:', pmError);
+        console.error(
+          "Error fetching preventive maintenance aggregation:",
+          pmError,
+        );
       }
 
       const machinesWithCounts = allMachines.map((machine) => {
@@ -155,15 +183,16 @@ export default function MachinesListPage() {
           ...machine,
           pm_count:
             aggregated?.count ??
-            (typeof machine.pm_count === 'number' ? machine.pm_count : 0),
-          last_maintenance: aggregated?.lastMaintenance ?? machine.last_maintenance,
+            (typeof machine.pm_count === "number" ? machine.pm_count : 0),
+          last_maintenance:
+            aggregated?.lastMaintenance ?? machine.last_maintenance,
         };
       });
 
       setAllMachines(machinesWithCounts);
     } catch (err: any) {
-      console.error('Error fetching machines:', err);
-      setError(err.message || 'Failed to load machines');
+      console.error("Error fetching machines:", err);
+      setError(err.message || "Failed to load machines");
       setAllMachines([]);
     } finally {
       clearLoadingAfterMinTime();
@@ -181,15 +210,19 @@ export default function MachinesListPage() {
       if (!categoryMap.has(key)) categoryMap.set(key, raw);
     });
     return Array.from(categoryMap.entries())
-      .sort((a, b) => a[1].localeCompare(b[1], undefined, { sensitivity: 'base' }))
+      .sort((a, b) =>
+        a[1].localeCompare(b[1], undefined, { sensitivity: "base" }),
+      )
       .map(([value, label]) => ({ value, label }));
   }, [allMachines]);
 
   useEffect(() => {
-    if (selectedCategory === 'all') return;
-    const exists = categories.some((category) => category.value === selectedCategory);
+    if (selectedCategory === "all") return;
+    const exists = categories.some(
+      (category) => category.value === selectedCategory,
+    );
     if (!exists) {
-      setSelectedCategory('all');
+      setSelectedCategory("all");
     }
   }, [categories, selectedCategory]);
 
@@ -200,11 +233,11 @@ export default function MachinesListPage() {
       machine.machine_id?.toLowerCase().includes(searchLower) ||
       machine.location?.toLowerCase().includes(searchLower) ||
       machine.category?.toLowerCase().includes(searchLower);
-    
+
     const matchesCategory =
-      selectedCategory === 'all' ||
+      selectedCategory === "all" ||
       normalizeCategory(machine.category) === selectedCategory;
-    
+
     return matchesSearch && matchesCategory;
   });
 
@@ -218,37 +251,29 @@ export default function MachinesListPage() {
   }, [filteredMachines, page, pageSize]);
 
   const getMachineImageUrl = (machine: Machine): string | null => {
-    const candidate = machine.image_url || machine.image?.image_url || machine.image?.url;
+    const candidate =
+      machine.image_url || machine.image?.image_url || machine.image?.url;
     return candidate ? fixImageUrl(candidate) : null;
   };
 
-  if (status === 'loading' || loading) {
+  if (status === "loading" || loading) {
     return (
-      <div
-        className="flex min-h-[60vh] flex-col items-center justify-center gap-5"
-        aria-live="polite"
-        aria-busy="true"
-        role="status"
-      >
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-        </div>
-        <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
-          Loading machines…
-        </p>
-      </div>
+      <PageContainer aria-busy="true" aria-label="Loading equipment">
+        <DashboardKpiSkeleton />
+        <SkeletonList rows={6} />
+      </PageContainer>
     );
   }
 
   if (error) {
     return (
-      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <p className="text-red-800">{error}</p>
-          </CardContent>
-        </Card>
-      </div>
+      <PageContainer>
+        <FeedbackState
+          variant="error"
+          title="Unable to load equipment"
+          description={error}
+        />
+      </PageContainer>
     );
   }
 
@@ -261,14 +286,15 @@ export default function MachinesListPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 sm:gap-3 sm:text-3xl">
+            <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground sm:gap-3 sm:text-3xl">
               <Wrench className="h-7 w-7 text-blue-600 sm:h-8 sm:w-8" />
               Machines
             </h1>
           </div>
-          <p className="text-gray-600 mt-1">
-            {totalCount} machine{totalCount !== 1 ? 's' : ''} total
-            {(searchTerm || selectedCategory !== 'all') && ` (${filteredMachines.length} filtered)`}
+          <p className="text-muted-foreground mt-1">
+            {totalCount} machine{totalCount !== 1 ? "s" : ""} total
+            {(searchTerm || selectedCategory !== "all") &&
+              ` (${filteredMachines.length} filtered)`}
           </p>
         </div>
       </div>
@@ -279,7 +305,7 @@ export default function MachinesListPage() {
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Search */}
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Search by name, ID, location, or category..."
@@ -288,11 +314,14 @@ export default function MachinesListPage() {
                 className="pl-10"
               />
             </div>
-            
+
             {/* Category Filter */}
             <div className="grid gap-2 sm:flex sm:items-center">
-              <Filter className="h-5 w-5 text-gray-400" />
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <Filter className="h-5 w-5 text-muted-foreground" />
+              <Select
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
+              >
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
@@ -310,17 +339,17 @@ export default function MachinesListPage() {
             {/* View Toggle */}
             <div className="flex items-center gap-2 border rounded-md p-1">
               <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setViewMode('grid')}
+                onClick={() => setViewMode("grid")}
                 className="h-9 px-3"
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
               <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                variant={viewMode === "list" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setViewMode('list')}
+                onClick={() => setViewMode("list")}
                 className="h-9 px-3"
               >
                 <List className="h-4 w-4" />
@@ -332,16 +361,18 @@ export default function MachinesListPage() {
 
       {/* Machines Grid/List */}
       {filteredMachines.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Wrench className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Machines Found</h3>
-            <p className="text-gray-600">
-              {(searchTerm || selectedCategory !== 'all') ? 'Try adjusting your search or filter criteria' : 'No machines available for this property'}
-            </p>
-          </CardContent>
-        </Card>
-      ) : viewMode === 'grid' ? (
+        <FeedbackState
+          variant={
+            searchTerm || selectedCategory !== "all" ? "no-results" : "empty"
+          }
+          title="No equipment found"
+          description={
+            searchTerm || selectedCategory !== "all"
+              ? "Try adjusting your search or filter criteria."
+              : "No equipment is available for this property."
+          }
+        />
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
           {paginatedMachines.map((machine) => {
             const machineImageUrl = getMachineImageUrl(machine);
@@ -352,11 +383,11 @@ export default function MachinesListPage() {
                 href={`/dashboard/machines/${machine.machine_id}`}
                 className="block group"
               >
-                <Card className="h-full hover:shadow-lg transition-shadow border-2 hover:border-blue-300">
+                <Card variant="interactive" className="h-full">
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
-                        <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50 sm:h-[150px] sm:w-[150px]">
+                        <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted sm:h-32 sm:w-32">
                           {machineImageUrl ? (
                             <>
                               <img
@@ -365,28 +396,31 @@ export default function MachinesListPage() {
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  const fallback = target.nextElementSibling as HTMLElement | null;
+                                  target.style.display = "none";
+                                  const fallback =
+                                    target.nextElementSibling as HTMLElement | null;
                                   if (fallback) {
-                                    fallback.style.display = 'flex';
+                                    fallback.style.display = "flex";
                                   }
                                 }}
                               />
-                              <div className="hidden w-full h-full items-center justify-center bg-blue-50 text-blue-600">
+                              <div className="hidden h-full w-full items-center justify-center bg-muted text-muted-foreground">
                                 <Wrench className="h-10 w-10" />
                               </div>
                             </>
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-blue-50 text-blue-600">
+                            <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
                               <Wrench className="h-10 w-10" />
                             </div>
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                          <h3 className="truncate font-semibold text-foreground">
                             {machine.name}
                           </h3>
-                          <p className="text-xs text-gray-500 font-mono">{machine.machine_id}</p>
+                          <p className="font-mono text-xs text-muted-foreground">
+                            {machine.machine_id}
+                          </p>
                         </div>
                       </div>
                     </CardTitle>
@@ -401,27 +435,32 @@ export default function MachinesListPage() {
                     )}
 
                     {machine.location && (
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         <span className="truncate">{machine.location}</span>
                       </div>
                     )}
 
-                    <div className="pt-3 border-t border-gray-200 space-y-2">
+                    <div className="pt-3 border-t border-border space-y-2">
                       <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-gray-600">
+                        <div className="flex items-center gap-2 text-muted-foreground">
                           <FileText className="h-4 w-4 text-purple-500" />
                           <span>PM Records</span>
                         </div>
-                        <span className="font-semibold text-gray-900">
+                        <span className="font-semibold text-foreground">
                           {machine.pm_count || 0}
                         </span>
                       </div>
 
                       {machine.last_maintenance && (
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
-                          <span>Last PM: {new Date(machine.last_maintenance).toLocaleDateString()}</span>
+                          <span>
+                            Last PM:{" "}
+                            {new Date(
+                              machine.last_maintenance,
+                            ).toLocaleDateString()}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -441,30 +480,60 @@ export default function MachinesListPage() {
                   <button
                     key={machine.machine_id}
                     type="button"
-                    onClick={() => router.push(`/dashboard/machines/${machine.machine_id}`)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:border-blue-300"
+                    onClick={() =>
+                      router.push(`/dashboard/machines/${machine.machine_id}`)
+                    }
+                    className="w-full rounded-xl border border-border bg-card p-3 text-left shadow-soft transition hover:border-blue-300"
                   >
                     <div className="flex gap-3">
-                      <div className="flex h-20 w-20 flex-none items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-blue-50 text-blue-600">
+                      <div className="flex h-20 w-20 flex-none items-center justify-center overflow-hidden rounded-xl border border-border bg-blue-50 text-blue-600">
                         {machineImageUrl ? (
-                          <img src={machineImageUrl} alt={`${machine.name} image`} className="h-full w-full object-cover" />
+                          <img
+                            src={machineImageUrl}
+                            alt={`${machine.name} image`}
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
                           <Wrench className="h-8 w-8" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-sm font-bold text-gray-900">{machine.name}</h3>
-                        <p className="mt-0.5 font-mono text-xs text-gray-500">{machine.machine_id}</p>
+                        <h3 className="truncate text-sm font-bold text-foreground">
+                          {machine.name}
+                        </h3>
+                        <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                          {machine.machine_id}
+                        </p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          {machine.category ? <Badge variant="secondary" className="text-xs">{machine.category}</Badge> : null}
-                          <Badge variant="outline" className="text-xs">{machine.pm_count || 0} PM</Badge>
+                          {machine.category ? (
+                            <Badge variant="secondary" className="text-xs">
+                              {machine.category}
+                            </Badge>
+                          ) : null}
+                          <Badge variant="outline" className="text-xs">
+                            {machine.pm_count || 0} PM
+                          </Badge>
                         </div>
                       </div>
                     </div>
-                    <div className="mt-3 grid gap-1.5 border-t border-slate-100 pt-3 text-xs font-medium text-gray-600">
-                      <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-gray-400" />{machine.location || 'No location'}</span>
-                      <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-gray-400" />{machine.last_maintenance ? new Date(machine.last_maintenance).toLocaleDateString() : 'No maintenance yet'}</span>
-                      <span>{machine.property_name || machine.property?.name || 'No property'}</span>
+                    <div className="mt-3 grid gap-1.5 border-t border-border pt-3 text-xs font-medium text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                        {machine.location || "No location"}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                        {machine.last_maintenance
+                          ? new Date(
+                              machine.last_maintenance,
+                            ).toLocaleDateString()
+                          : "No maintenance yet"}
+                      </span>
+                      <span>
+                        {machine.property_name ||
+                          machine.property?.name ||
+                          "No property"}
+                      </span>
                     </div>
                   </button>
                 );
@@ -473,42 +542,46 @@ export default function MachinesListPage() {
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <tr className="border-b border-border bg-muted">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Image
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Machine
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Category
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Location
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       PM Records
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Last Maintenance
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                       Property
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-card divide-y divide-gray-200">
                   {paginatedMachines.map((machine) => {
                     const machineImageUrl = getMachineImageUrl(machine);
 
                     return (
                       <tr
                         key={machine.machine_id}
-                        onClick={() => router.push(`/dashboard/machines/${machine.machine_id}`)}
+                        onClick={() =>
+                          router.push(
+                            `/dashboard/machines/${machine.machine_id}`,
+                          )
+                        }
                         className="hover:bg-blue-50 transition-colors cursor-pointer"
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="w-[150px] h-[150px] rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
+                          <div className="w-[150px] h-[150px] rounded-lg border border-border bg-muted overflow-hidden flex items-center justify-center">
                             {machineImageUrl ? (
                               <>
                                 <img
@@ -517,10 +590,11 @@ export default function MachinesListPage() {
                                   className="w-full h-full object-cover"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    const fallback = target.nextElementSibling as HTMLElement | null;
+                                    target.style.display = "none";
+                                    const fallback =
+                                      target.nextElementSibling as HTMLElement | null;
                                     if (fallback) {
-                                      fallback.style.display = 'flex';
+                                      fallback.style.display = "flex";
                                     }
                                   }}
                                 />
@@ -541,10 +615,10 @@ export default function MachinesListPage() {
                               <Wrench className="h-4 w-4 text-blue-600" />
                             </div>
                             <div>
-                              <div className="text-sm font-medium text-gray-900">
+                              <div className="text-sm font-medium text-foreground">
                                 {machine.name}
                               </div>
-                              <div className="text-xs text-gray-500 font-mono">
+                              <div className="text-xs text-muted-foreground font-mono">
                                 {machine.machine_id}
                               </div>
                             </div>
@@ -556,40 +630,52 @@ export default function MachinesListPage() {
                               {machine.category}
                             </Badge>
                           ) : (
-                            <span className="text-sm text-gray-400">—</span>
+                            <span className="text-sm text-muted-foreground">
+                              —
+                            </span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {machine.location ? (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <MapPin className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
                               <span>{machine.location}</span>
                             </div>
                           ) : (
-                            <span className="text-sm text-gray-400">—</span>
+                            <span className="text-sm text-muted-foreground">
+                              —
+                            </span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2 text-sm">
                             <FileText className="h-4 w-4 text-purple-500" />
-                            <span className="font-semibold text-gray-900">
+                            <span className="font-semibold text-foreground">
                               {machine.pm_count || 0}
                             </span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {machine.last_maintenance ? (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <Calendar className="h-4 w-4 text-gray-400" />
-                              <span>{new Date(machine.last_maintenance).toLocaleDateString()}</span>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span>
+                                {new Date(
+                                  machine.last_maintenance,
+                                ).toLocaleDateString()}
+                              </span>
                             </div>
                           ) : (
-                            <span className="text-sm text-gray-400">—</span>
+                            <span className="text-sm text-muted-foreground">
+                              —
+                            </span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-600">
-                            {machine.property_name || machine.property?.name || '—'}
+                          <span className="text-sm text-muted-foreground">
+                            {machine.property_name ||
+                              machine.property?.name ||
+                              "—"}
                           </span>
                         </td>
                       </tr>
@@ -607,10 +693,12 @@ export default function MachinesListPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-sm text-gray-600">
-                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, visibleCount)} of {visibleCount} machine{visibleCount !== 1 ? 's' : ''}
+              <div className="text-sm text-muted-foreground">
+                Showing {(page - 1) * pageSize + 1} to{" "}
+                {Math.min(page * pageSize, visibleCount)} of {visibleCount}{" "}
+                machine{visibleCount !== 1 ? "s" : ""}
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -621,7 +709,7 @@ export default function MachinesListPage() {
                   <ChevronLeft className="h-4 w-4 mr-1" />
                   Previous
                 </Button>
-                
+
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum;
@@ -634,11 +722,11 @@ export default function MachinesListPage() {
                     } else {
                       pageNum = page - 2 + i;
                     }
-                    
+
                     return (
                       <Button
                         key={pageNum}
-                        variant={page === pageNum ? 'default' : 'outline'}
+                        variant={page === pageNum ? "default" : "outline"}
                         size="sm"
                         onClick={() => setPage(pageNum)}
                         className="min-w-[2.5rem]"
@@ -648,7 +736,7 @@ export default function MachinesListPage() {
                     );
                   })}
                 </div>
-                
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -659,16 +747,18 @@ export default function MachinesListPage() {
                   <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
-              
+
               <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">Per page:</label>
+                <label className="text-sm text-muted-foreground">
+                  Per page:
+                </label>
                 <select
                   value={pageSize}
                   onChange={(e) => {
                     setPageSize(Number(e.target.value));
                     setPage(1); // Reset to first page when changing page size
                   }}
-                  className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+                  className="border border-border rounded-md px-3 py-1 text-sm"
                 >
                   <option value={12}>12</option>
                   <option value={24}>24</option>

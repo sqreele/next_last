@@ -1,11 +1,11 @@
 // app/components/auth/AuthStatus.tsx
-'use client';
+"use client";
 
-import { useAuth } from '@/app/lib/hooks/useAuth';
-import { appSignOut } from '@/app/lib/logout';
-import { ROUTES } from '@/app/lib/config';
-import { ProfileImage } from '@/app/components/ui/UniversalImage';
-import { getDisplayName } from '@/app/lib/utils/display-name';
+import { useAuth } from "@/app/lib/hooks/useAuth";
+import { appSignOut } from "@/app/lib/logout";
+import { ROUTES } from "@/app/lib/config";
+import { ProfileImage } from "@/app/components/ui/UniversalImage";
+import { getDisplayName } from "@/app/lib/utils/display-name";
 
 interface AuthStatusProps {
   showUserInfo?: boolean;
@@ -13,10 +13,10 @@ interface AuthStatusProps {
   className?: string;
 }
 
-export default function AuthStatus({ 
-  showUserInfo = true, 
+export default function AuthStatus({
+  showUserInfo = true,
   showLogoutButton = true,
-  className = '' 
+  className = "",
 }: AuthStatusProps) {
   const { user, isAuthenticated, isLoading, error } = useAuth();
 
@@ -24,7 +24,9 @@ export default function AuthStatus({
     return (
       <div className={`flex items-center space-x-2 ${className}`}>
         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
-        <span className="text-sm text-gray-500">Checking authentication...</span>
+        <span className="text-sm text-muted-foreground">
+          Checking authentication...
+        </span>
       </div>
     );
   }
@@ -33,8 +35,18 @@ export default function AuthStatus({
     return (
       <div className={`flex items-center space-x-2 ${className}`}>
         <div className="text-red-500">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+            />
           </svg>
         </div>
         <span className="text-sm text-red-600">Authentication error</span>
@@ -51,12 +63,22 @@ export default function AuthStatus({
   if (!isAuthenticated) {
     return (
       <div className={`flex items-center space-x-2 ${className}`}>
-        <div className="text-gray-400">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        <div className="text-muted-foreground">
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            />
           </svg>
         </div>
-        <span className="text-sm text-gray-500">Not signed in</span>
+        <span className="text-sm text-muted-foreground">Not signed in</span>
       </div>
     );
   }
@@ -68,7 +90,7 @@ export default function AuthStatus({
           {user.profile_image ? (
             <ProfileImage
               src={user.profile_image}
-              alt={getDisplayName(user, 'User')}
+              alt={getDisplayName(user, "User")}
               className="h-6 w-6 rounded-full object-cover"
               width={24}
               height={24}
@@ -76,21 +98,25 @@ export default function AuthStatus({
           ) : (
             <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center">
               <span className="text-xs font-medium text-indigo-600">
-                {getDisplayName(user, 'U').charAt(0).toUpperCase()}
+                {getDisplayName(user, "U").charAt(0).toUpperCase()}
               </span>
             </div>
           )}
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-gray-900">{getDisplayName(user, 'Unknown Technician')}</span>
-            <span className="text-xs text-gray-500">{user.positions}</span>
+            <span className="text-sm font-medium text-foreground">
+              {getDisplayName(user, "Unknown Technician")}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {user.positions}
+            </span>
           </div>
         </div>
       )}
-      
+
       {showLogoutButton && (
         <button
           onClick={() => appSignOut({ callbackUrl: ROUTES.signIn })}
-          className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          className="text-sm text-muted-foreground hover:text-muted-foreground transition-colors"
         >
           Sign out
         </button>

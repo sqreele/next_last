@@ -1,5 +1,5 @@
 #!/bin/bash
-# 🔐 Update SSL Certificates Script for pcms.live
+# 🔐 Update SSL Certificates Script for hotelcarepro.com
 
 set -e
 
@@ -38,12 +38,12 @@ ls -la "$SSL_DIR/"
 echo ""
 print_info "To get your Cloudflare Origin Certificate:"
 echo "1. Go to: https://dash.cloudflare.com/"
-echo "2. Select your domain: pcms.live"
+echo "2. Select your domain: hotelcarepro.com"
 echo "3. Navigate to: SSL/TLS → Origin Server"
 echo "4. Click: Create Certificate"
 echo "5. Configure:"
 echo "   - Key Type: RSA (2048)"
-echo "   - Hostnames: pcms.live, www.pcms.live"
+echo "   - Hostnames: hotelcarepro.com, www.hotelcarepro.com"
 echo "   - Validity: 15 years"
 echo "6. Copy both the certificate and private key"
 
@@ -153,4 +153,4 @@ echo ""
 print_warning "Remember to:"
 echo "1. Set Cloudflare SSL mode to 'Full (strict)'"
 echo "2. Enable 'Always Use HTTPS' in Cloudflare"
-echo "3. Test your site: https://pcms.live"
+echo "3. Test your site: https://hotelcarepro.com"

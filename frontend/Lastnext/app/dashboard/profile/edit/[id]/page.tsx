@@ -1,50 +1,67 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { User2, Mail, Shield, Save, ArrowLeft, AlertCircle, Building2, Check } from 'lucide-react';
-import Link from 'next/link';
-import { Button } from '@/app/components/ui/button';
+import React, { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import {
+  User2,
+  Mail,
+  Shield,
+  Save,
+  ArrowLeft,
+  AlertCircle,
+  Building2,
+  Check,
+} from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/app/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/app/components/ui/card';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
-import { useUser, useProperties } from '@/app/lib/stores/mainStore';
-import { updateUserProfile } from '@/app/lib/data.server';
+} from "@/app/components/ui/card";
+import { Input } from "@/app/components/ui/input";
+import { Label } from "@/app/components/ui/label";
+import { useUser, useProperties } from "@/app/lib/stores/mainStore";
+import { updateUserProfile } from "@/app/lib/data.server";
 
 export default function EditProfilePage() {
   const params = useParams();
   const router = useRouter();
-  const { userProfile, selectedPropertyId: selectedProperty, setSelectedPropertyId: setSelectedProperty } = useUser();
-  const { properties: userProperties, propertyLoading: loading } = useProperties();
-  
+  const {
+    userProfile,
+    selectedPropertyId: selectedProperty,
+    setSelectedPropertyId: setSelectedProperty,
+  } = useUser();
+  const { properties: userProperties, propertyLoading: loading } =
+    useProperties();
+
   // Since we don't have refetch and forceRefresh in the new store, we'll handle it differently
   const refetch = () => Promise.resolve(userProfile);
   const forceRefresh = () => Promise.resolve(userProfile);
-  
+
   // Check if user has properties
   const hasProperties = userProperties && userProperties.length > 0;
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    positions: ''
+    username: "",
+    email: "",
+    positions: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const profileId = params.id as string;
 
   useEffect(() => {
     if (userProfile) {
       setFormData({
-        username: userProfile.username || '',
-        email: userProfile.email || '',
-        positions: userProfile.positions || ''
+        username: userProfile.username || "",
+        email: userProfile.email || "",
+        positions: userProfile.positions || "",
       });
     }
   }, [userProfile]);
@@ -97,9 +114,9 @@ export default function EditProfilePage() {
   }
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -109,60 +126,59 @@ export default function EditProfilePage() {
     setMessage(null);
 
     try {
-      
       // Create Auth0 profile data structure
       const auth0Profile = {
         email: formData.email,
         nickname: formData.username,
-        name: formData.username
+        name: formData.username,
       };
 
       // Get the current session to extract the access token
-      const sessionResponse = await fetch('/api/auth/session-compat', {
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+      const sessionResponse = await fetch("/api/auth/session-compat", {
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
       });
-      
+
       if (!sessionResponse.ok) {
-        throw new Error('Failed to get session for profile update');
+        throw new Error("Failed to get session for profile update");
       }
-      
+
       const session = await sessionResponse.json();
       const accessToken = session?.user?.accessToken;
-      
+
       if (!accessToken) {
-        throw new Error('No access token available for profile update');
+        throw new Error("No access token available for profile update");
       }
 
       // Call the backend profile update endpoint with the access token
       const success = await updateUserProfile(auth0Profile, accessToken);
-      
+
       if (success) {
         setMessage({
-          type: 'success',
-          text: 'Profile updated successfully! Refreshing data and redirecting...'
+          type: "success",
+          text: "Profile updated successfully! Refreshing data and redirecting...",
         });
-        
+
         // Force refresh of user context data
         if (forceRefresh) {
           await forceRefresh();
         }
-        
+
         // Redirect back to profile page after a short delay
         setTimeout(() => {
-          router.push('/dashboard/profile');
+          router.push("/dashboard/profile");
         }, 2000);
       } else {
         setMessage({
-          type: 'error',
-          text: 'Failed to update profile. Please try again.'
+          type: "error",
+          text: "Failed to update profile. Please try again.",
         });
       }
     } catch (error) {
-      console.error('❌ Error updating profile:', error);
+      console.error("❌ Error updating profile:", error);
       setMessage({
-        type: 'error',
-        text: `An error occurred while updating your profile: ${error instanceof Error ? error.message : 'Unknown error'}`
+        type: "error",
+        text: `An error occurred while updating your profile: ${error instanceof Error ? error.message : "Unknown error"}`,
       });
     } finally {
       setIsSubmitting(false);
@@ -182,19 +198,25 @@ export default function EditProfilePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl sm:text-2xl font-bold">Edit Profile</CardTitle>
-          <CardDescription>Update your personal information and preferences</CardDescription>
+          <CardTitle className="text-xl sm:text-2xl font-bold">
+            Edit Profile
+          </CardTitle>
+          <CardDescription>
+            Update your personal information and preferences
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {message && (
-              <div className={`p-4 rounded-lg border ${
-                message.type === 'success' 
-                  ? 'border-green-200 bg-green-50 text-green-800' 
-                  : 'border-red-200 bg-red-50 text-red-800'
-              }`}>
+              <div
+                className={`p-4 rounded-lg border ${
+                  message.type === "success"
+                    ? "border-green-200 bg-green-50 text-green-800"
+                    : "border-red-200 bg-red-50 text-red-800"
+                }`}
+              >
                 <div className="flex items-center gap-2">
-                  {message.type === 'success' ? (
+                  {message.type === "success" ? (
                     <div className="w-4 h-4 rounded-full bg-green-500" />
                   ) : (
                     <AlertCircle className="w-4 h-4" />
@@ -206,13 +228,14 @@ export default function EditProfilePage() {
 
             {/* Test button to verify form submission */}
             <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800 mb-2">Debug: Test form submission</p>
-              <Button 
-                type="button" 
-                variant="outline" 
+              <p className="text-sm text-blue-800 mb-2">
+                Debug: Test form submission
+              </p>
+              <Button
+                type="button"
+                variant="outline"
                 size="sm"
-                onClick={() => {
-                }}
+                onClick={() => {}}
               >
                 Test Form Data
               </Button>
@@ -229,7 +252,9 @@ export default function EditProfilePage() {
                 <Input
                   id="username"
                   value={formData.username}
-                  onChange={(e) => handleInputChange('username', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("username", e.target.value)
+                  }
                   placeholder="Enter your username"
                   disabled={isSubmitting}
                 />
@@ -246,13 +271,11 @@ export default function EditProfilePage() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="Enter your email address"
                   disabled={isSubmitting}
                 />
               </div>
-
-
 
               <div className="space-y-2">
                 <Label htmlFor="positions">
@@ -264,7 +287,9 @@ export default function EditProfilePage() {
                 <Input
                   id="positions"
                   value={formData.positions}
-                  onChange={(e) => handleInputChange('positions', e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("positions", e.target.value)
+                  }
                   placeholder="Enter your position or role"
                   disabled={isSubmitting}
                 />
@@ -281,7 +306,7 @@ export default function EditProfilePage() {
                 <div className="text-sm text-muted-foreground mb-3">
                   Select the property you want to manage by default
                 </div>
-                
+
                 {hasProperties ? (
                   <div className="grid gap-3">
                     {userProperties.map((property) => (
@@ -289,10 +314,12 @@ export default function EditProfilePage() {
                         key={property.property_id}
                         className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
                           selectedProperty === String(property.property_id)
-                            ? 'border-blue-400 bg-blue-50'
-                            : 'border-gray-200 hover:border-blue-200 hover:bg-blue-50'
+                            ? "border-blue-400 bg-blue-50"
+                            : "border-border hover:border-blue-200 hover:bg-blue-50"
                         }`}
-                        onClick={() => setSelectedProperty(String(property.property_id))}
+                        onClick={() =>
+                          setSelectedProperty(String(property.property_id))
+                        }
                       >
                         <div className="flex items-center gap-3">
                           <Building2 className="w-4 h-4 text-muted-foreground" />
@@ -310,7 +337,7 @@ export default function EditProfilePage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                  <div className="p-4 border border-border rounded-lg bg-muted">
                     <div className="text-center text-sm text-muted-foreground">
                       No properties available for selection
                     </div>
@@ -326,22 +353,25 @@ export default function EditProfilePage() {
                     <span className="font-medium">Default Property Set</span>
                   </div>
                   <div className="text-sm text-green-700 mt-1">
-                    You will manage: {userProperties.find(p => String(p.property_id) === selectedProperty)?.name || 'Unknown Property'}
+                    You will manage:{" "}
+                    {userProperties.find(
+                      (p) => String(p.property_id) === selectedProperty,
+                    )?.name || "Unknown Property"}
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="sticky bottom-[4.5rem] -mx-4 grid gap-2 border-t border-slate-200 bg-white px-4 py-3 sm:static sm:mx-0 sm:flex sm:border-t-0 sm:px-0 sm:py-4">
+            <div className="sticky bottom-[4.5rem] -mx-4 grid gap-2 border-t border-border bg-card px-4 py-3 sm:static sm:mx-0 sm:flex sm:border-t-0 sm:px-0 sm:py-4">
               <Button
                 type="submit"
                 disabled={isSubmitting}
                 className="w-full sm:w-auto"
               >
                 <Save className="w-4 h-4 mr-2" />
-                {isSubmitting ? 'Saving...' : 'Save Changes'}
+                {isSubmitting ? "Saving..." : "Save Changes"}
               </Button>
-              
+
               <Link href="/dashboard/profile" className="w-full sm:w-auto">
                 <Button variant="outline" className="w-full">
                   Cancel

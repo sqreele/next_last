@@ -17,7 +17,7 @@ const Table = React.forwardRef<HTMLTableElement, TableProps>(
     <TableMobileCardsContext.Provider value={mobileCards}>
       <div
         className={cn(
-          "relative w-full rounded-[var(--pcms-radius)] border border-[var(--pcms-border)] bg-white/95 shadow-[var(--pcms-shadow-sm)]",
+          "relative w-full rounded-xl border border-border bg-card shadow-soft",
           mobileCards
             ? "overflow-visible mobile:border-0 mobile:bg-transparent mobile:shadow-none"
             : "overflow-x-auto",
@@ -45,7 +45,7 @@ const TableHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn("bg-[var(--pcms-surface-soft)] [&_tr]:border-b", className)}
+    className={cn("bg-muted/50 [&_tr]:border-b", className)}
     {...props}
   />
 ));
@@ -94,9 +94,9 @@ const TableRow = React.forwardRef<
     <tr
       ref={ref}
       className={cn(
-        "border-b border-[var(--pcms-border)] transition-colors hover:bg-[var(--pcms-primary-soft)] data-[state=selected]:bg-[var(--pcms-primary-soft)]",
+        "border-b border-border transition-colors hover:bg-muted/40 data-[state=selected]:bg-muted",
         mobileCards &&
-          "mobile:mb-3 mobile:flex mobile:flex-col mobile:gap-2 mobile:rounded-2xl mobile:border mobile:border-slate-200 mobile:bg-white mobile:p-4 mobile:shadow-sm mobile:hover:bg-white mobile:active:scale-[0.99] mobile:transition-transform",
+          "mobile:mb-3 mobile:flex mobile:flex-col mobile:gap-2 mobile:rounded-xl mobile:border mobile:border-border mobile:bg-card mobile:p-4 mobile:shadow-soft mobile:hover:bg-card",
         className,
       )}
       {...props}
@@ -112,7 +112,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-12 px-4 text-left align-middle text-xs font-black uppercase tracking-[0.08em] text-[var(--pcms-text-muted)] [&:has([role=checkbox])]:pr-0",
+      "h-11 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wider text-muted-foreground [&:has([role=checkbox])]:pr-0",
       className,
     )}
     {...props}
@@ -132,7 +132,7 @@ const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
       <td
         ref={ref}
         className={cn(
-          "p-4 align-middle text-[var(--pcms-text)] [&:has([role=checkbox])]:pr-0",
+          "p-4 align-middle text-foreground [&:has([role=checkbox])]:pr-0",
           mobileCards &&
             "mobile:flex mobile:items-center mobile:justify-between mobile:gap-3 mobile:p-0 mobile:text-sm",
           className,
@@ -142,10 +142,10 @@ const TableCell = React.forwardRef<HTMLTableCellElement, TableCellProps>(
       >
         {mobileCards && mobileLabel ? (
           <>
-            <span className="hidden mobile:inline text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <span className="hidden mobile:inline text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {mobileLabel}
             </span>
-            <span className="min-w-0 mobile:text-right mobile:font-medium mobile:text-slate-900">
+            <span className="min-w-0 mobile:text-right mobile:font-medium mobile:text-foreground">
               {children}
             </span>
           </>

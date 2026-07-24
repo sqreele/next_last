@@ -4,16 +4,17 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Search, RefreshCw, Home, FileText, Settings, Plus } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
-import { humanize } from '@/app/components/StatusBadge';
 import { useLocale } from '@/app/lib/i18n/LocaleProvider';
 import type { DictKey } from '@/app/lib/i18n/dictionary';
+import { getPriorityConfig, normalizePriorityValue } from '@/app/design-system/priority-config';
+import { FeedbackState } from '@/app/components/feedback/FeedbackState';
 export { StatusBadge, getStatusBadgeConfig, humanize, normalizeStatus } from '@/app/components/StatusBadge';
 
 export function MobileTopBar({ title, actions }: { title: string; actions?: React.ReactNode }) {
   return (
     <div className="pcms-section-card flex items-center justify-between gap-3 p-2.5 md:p-3">
       <div className="min-w-0 px-2">
-        <p className="pcms-eyebrow">PCMS</p>
+        <p className="pcms-eyebrow">HotelCare Pro</p>
         <h2 className="truncate text-xl font-bold text-[var(--pcms-text)] md:text-2xl">{title}</h2>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
@@ -47,7 +48,7 @@ export function PageHeader({ title, description, actions }: { title: string; des
   return (
     <div className="pcms-page-header">
       <div>
-        <p className="pcms-eyebrow">Property Care Maintenance System</p>
+        <p className="pcms-eyebrow">Smart Hotel Maintenance and Engineering Management Software</p>
         <h1>{title}</h1>
         {description ? <p className="pcms-page-description">{description}</p> : null}
       </div>
@@ -81,9 +82,7 @@ export function SkeletonCard() {
 }
 
 export function normalizePriority(priority?: string) {
-  const key = (priority || 'medium').trim().toLowerCase().replace(/[-\s]+/g, '_');
-  if (key === 'urgent') return 'critical';
-  return key;
+  return normalizePriorityValue(priority);
 }
 
 const PRIORITY_I18N: Record<string, DictKey> = {
@@ -97,9 +96,16 @@ export function PriorityBadge({ priority }: { priority?: string }) {
   const normalized = normalizePriority(priority);
   const { t } = useLocale();
   const dictKey = PRIORITY_I18N[normalized];
-  const label = dictKey ? t(dictKey) : humanize(normalized);
+  const config = getPriorityConfig(priority);
+  const label = dictKey ? t(dictKey) : config.label;
   return (
-    <span className={cn('pcms-priority-badge', `pcms-priority-badge--${normalized}`)} title={label}>
+    <span
+      className={cn(
+        'inline-flex min-h-7 items-center rounded-full border px-2.5 py-1 text-xs font-semibold',
+        config.className,
+      )}
+      title={config.description}
+    >
       {label}
     </span>
   );
@@ -115,14 +121,7 @@ export function SearchInput({ className, ...props }: React.InputHTMLAttributes<H
 }
 
 export function EmptyState({ title, description, action }: { title: string; description?: string; action?: React.ReactNode }) {
-  return (
-    <div className="pcms-empty-state">
-      <div className="pcms-empty-state__mark" />
-      <h3>{title}</h3>
-      {description ? <p>{description}</p> : null}
-      {action ? <div>{action}</div> : null}
-    </div>
-  );
+  return <FeedbackState title={title} description={description} action={action} />;
 }
 
 export function SkeletonList({ rows = 4 }: { rows?: number }) {

@@ -1,7 +1,14 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { BarChart3, RefreshCw, Filter, Plus, Bug, CalendarDays } from 'lucide-react';
+import Link from "next/link";
+import {
+  BarChart3,
+  RefreshCw,
+  Filter,
+  Plus,
+  Bug,
+  CalendarDays,
+} from "lucide-react";
 
 interface DesktopHeaderProps {
   currentFilters: any;
@@ -24,24 +31,29 @@ export default function DesktopHeader({
   onRefresh,
   onToggleFilters,
   onTestFiltering,
-  onDebugMachine
+  onDebugMachine,
 }: DesktopHeaderProps) {
   return (
     <div className="hidden md:block container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl py-8">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Preventive Maintenance</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-foreground">
+            Preventive Maintenance
+          </h1>
+          <p className="text-muted-foreground mt-1">
             Manage your scheduled maintenance tasks
             {currentFilters.machine && (
-              <span className="text-blue-600 font-medium"> • Filtered by: {getMachineNameById(currentFilters.machine)}</span>
+              <span className="text-blue-600 font-medium">
+                {" "}
+                • Filtered by: {getMachineNameById(currentFilters.machine)}
+              </span>
             )}
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-3">
           {/* DEBUG BUTTONS - Remove in production */}
-          {process.env.NODE_ENV === 'development' && (
+          {process.env.NODE_ENV === "development" && (
             <div className="flex gap-2">
               <button
                 onClick={onTestFiltering}
@@ -61,10 +73,10 @@ export default function DesktopHeader({
               </button>
             </div>
           )}
-          
+
           <Link
             href="/dashboard/preventive-maintenance"
-            className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted transition-colors"
           >
             <BarChart3 className="h-4 w-4 mr-2" />
             Dashboard
@@ -72,27 +84,31 @@ export default function DesktopHeader({
 
           <Link
             href="/dashboard/preventive-maintenance/schedule"
-            className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted transition-colors"
           >
             <CalendarDays className="h-4 w-4 mr-2" />
             Calendar
           </Link>
-          
+
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="flex items-center px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
             title="Refresh Data"
             aria-label="Refresh maintenance data"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+            />
             Refresh
           </button>
-          
+
           <button
             onClick={onToggleFilters}
             className={`flex items-center px-4 py-2 border rounded-lg transition-colors ${
-              showFilters ? 'bg-blue-50 border-blue-200 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+              showFilters
+                ? "bg-blue-50 border-blue-200 text-blue-700"
+                : "border-border text-muted-foreground hover:bg-muted"
             }`}
             aria-label="Toggle maintenance filters"
           >
@@ -104,7 +120,7 @@ export default function DesktopHeader({
               </span>
             )}
           </button>
-          
+
           <Link
             href="/dashboard/preventive-maintenance/create"
             className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

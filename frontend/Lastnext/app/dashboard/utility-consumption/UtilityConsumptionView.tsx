@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
-import ActualVsBudgetChart from './components/ActualVsBudgetChart';
-import BudgetStatusPieChart from './components/BudgetStatusPieChart';
-import FiltersBar from './components/FiltersBar';
-import SummaryCards from './components/SummaryCards';
-import YoYLineChart from './components/YoYLineChart';
-import type { MetricKey, MonthName, UtilityConsumptionRow } from './types';
-import { useUser } from '@/app/lib/stores/mainStore';
+import { useEffect, useMemo, useState } from "react";
+import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
+import ActualVsBudgetChart from "./components/ActualVsBudgetChart";
+import BudgetStatusPieChart from "./components/BudgetStatusPieChart";
+import FiltersBar from "./components/FiltersBar";
+import SummaryCards from "./components/SummaryCards";
+import YoYLineChart from "./components/YoYLineChart";
+import type { MetricKey, MonthName, UtilityConsumptionRow } from "./types";
+import { useUser } from "@/app/lib/stores/mainStore";
 import {
   buildBudgetStatusPieData,
   buildPrimaryYearSeries,
@@ -18,12 +18,15 @@ import {
   filterRowsByMonth,
   metricOptions,
   sortRows,
-} from './utils/data';
+} from "./utils/data";
 
-const metricLabelMap = metricOptions.reduce<Record<MetricKey, string>>((acc, option) => {
-  acc[option.value] = option.label;
-  return acc;
-}, {} as Record<MetricKey, string>);
+const metricLabelMap = metricOptions.reduce<Record<MetricKey, string>>(
+  (acc, option) => {
+    acc[option.value] = option.label;
+    return acc;
+  },
+  {} as Record<MetricKey, string>,
+);
 
 export default function UtilityConsumptionView() {
   const [rows, setRows] = useState<UtilityConsumptionRow[]>([]);
@@ -31,10 +34,11 @@ export default function UtilityConsumptionView() {
   const [error, setError] = useState<string | null>(null);
   const [selectedYears, setSelectedYears] = useState<number[]>([]);
   const [primaryYear, setPrimaryYear] = useState<number | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<MonthName | 'All'>('All');
-  const [selectedMetric, setSelectedMetric] = useState<MetricKey>('totalkwh');
+  const [selectedMonth, setSelectedMonth] = useState<MonthName | "All">("All");
+  const [selectedMetric, setSelectedMetric] = useState<MetricKey>("totalkwh");
   const { selectedPropertyId: selectedProperty } = useUser();
-  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
+  const { recordLoaderShown, clearLoadingAfterMinTime } =
+    useMinLoaderTime(setLoading);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -51,21 +55,21 @@ export default function UtilityConsumptionView() {
         setLoading(true);
         setError(null);
         const params = new URLSearchParams();
-        params.set('property_id', selectedProperty);
+        params.set("property_id", selectedProperty);
         const response = await fetch(
           `/api/utility/consumption?${params.toString()}`,
-          { signal: controller.signal }
+          { signal: controller.signal },
         );
         if (!response.ok) {
-          throw new Error('Unable to load utility consumption data.');
+          throw new Error("Unable to load utility consumption data.");
         }
         const payload: UtilityConsumptionRow[] = await response.json();
         setRows(sortRows(payload));
       } catch (err) {
-        if (err instanceof Error && err.name === 'AbortError') {
+        if (err instanceof Error && err.name === "AbortError") {
           return;
         }
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         clearLoadingAfterMinTime();
       }
@@ -84,23 +88,37 @@ export default function UtilityConsumptionView() {
 
   useEffect(() => {
     if (availableYears.length === 0) return;
-    const preferredPrimaryYear = availableYears.includes(2025) ? 2025 : availableYears[0];
+    const preferredPrimaryYear = availableYears.includes(2025)
+      ? 2025
+      : availableYears[0];
     setPrimaryYear((current) => current ?? preferredPrimaryYear);
     setSelectedYears((current) => {
       if (current.length > 0) return current;
-      return [preferredPrimaryYear, ...availableYears.filter((year) => year !== preferredPrimaryYear).slice(0, 1)];
+      return [
+        preferredPrimaryYear,
+        ...availableYears
+          .filter((year) => year !== preferredPrimaryYear)
+          .slice(0, 1),
+      ];
     });
   }, [availableYears]);
 
-  const activeYears = selectedYears.length > 0 ? selectedYears : availableYears.slice(0, 2);
+  const activeYears =
+    selectedYears.length > 0 ? selectedYears : availableYears.slice(0, 2);
   const monthFilteredRows = filterRowsByMonth(rows, selectedMonth);
-  const yearFilteredRows = monthFilteredRows.filter((row) => activeYears.includes(row.year));
+  const yearFilteredRows = monthFilteredRows.filter((row) =>
+    activeYears.includes(row.year),
+  );
 
-  const summary = useMemo(() => calculateSummary(yearFilteredRows), [yearFilteredRows]);
+  const summary = useMemo(
+    () => calculateSummary(yearFilteredRows),
+    [yearFilteredRows],
+  );
 
   const comparisonContext = useMemo(
-    () => buildUtilityComparisonRows(monthFilteredRows, selectedMonth, activeYears),
-    [monthFilteredRows, selectedMonth, activeYears]
+    () =>
+      buildUtilityComparisonRows(monthFilteredRows, selectedMonth, activeYears),
+    [monthFilteredRows, selectedMonth, activeYears],
   );
 
   const previousSummary = useMemo(() => {
@@ -119,14 +137,19 @@ export default function UtilityConsumptionView() {
 
   const budgetStatusPie = useMemo(
     () => buildBudgetStatusPieData(yearFilteredRows),
-    [yearFilteredRows]
+    [yearFilteredRows],
   );
 
   const comparisonScopeNote = useMemo(() => {
     if (activeYears.length <= 1 || !comparisonMeta) return null;
-    if (comparisonMeta.mode === 'year_over_year') {
-      const prevYears = [...new Set(activeYears.map((y) => y - 1))].sort((a, b) => a - b);
-      const label = prevYears.length === 1 ? `${prevYears[0]}` : `${prevYears[0]}–${prevYears[prevYears.length - 1]}`;
+    if (comparisonMeta.mode === "year_over_year") {
+      const prevYears = [...new Set(activeYears.map((y) => y - 1))].sort(
+        (a, b) => a - b,
+      );
+      const label =
+        prevYears.length === 1
+          ? `${prevYears[0]}`
+          : `${prevYears[0]}–${prevYears[prevYears.length - 1]}`;
       return `Multiple years selected: the card baseline is the combined total for ${label} (each selected year compared to the year before), versus your current filter total.`;
     }
     return `Multiple years selected: the card baseline sums the prior calendar month for each selected year (e.g. Feb vs Mar), compared to your current filter total.`;
@@ -134,7 +157,7 @@ export default function UtilityConsumptionView() {
 
   const yoyData = useMemo(
     () => buildYoYSeries(monthFilteredRows, activeYears, selectedMetric),
-    [monthFilteredRows, activeYears, selectedMetric]
+    [monthFilteredRows, activeYears, selectedMetric],
   );
 
   const primaryYearSeries = useMemo(() => {
@@ -143,12 +166,12 @@ export default function UtilityConsumptionView() {
   }, [monthFilteredRows, primaryYear]);
 
   const waterYoYData = useMemo(
-    () => buildYoYSeries(monthFilteredRows, activeYears, 'water'),
-    [monthFilteredRows, activeYears]
+    () => buildYoYSeries(monthFilteredRows, activeYears, "water"),
+    [monthFilteredRows, activeYears],
   );
   const nightSaleYoYData = useMemo(
-    () => buildYoYSeries(monthFilteredRows, activeYears, 'nightsale'),
-    [monthFilteredRows, activeYears]
+    () => buildYoYSeries(monthFilteredRows, activeYears, "nightsale"),
+    [monthFilteredRows, activeYears],
   );
 
   const isEmpty = !loading && !error && selectedProperty && rows.length === 0;
@@ -168,31 +191,37 @@ export default function UtilityConsumptionView() {
       />
 
       {loading && (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center">
-          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
-          <p className="text-sm text-slate-500">Loading utility consumption...</p>
+        <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-border border-t-slate-600" />
+          <p className="text-sm text-muted-foreground">
+            Loading utility consumption...
+          </p>
         </div>
       )}
 
       {error && !loading && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-600">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-600">
           {error}
         </div>
       )}
 
       {!selectedProperty && !loading && !error && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
-          <h2 className="text-lg font-semibold text-slate-900">Select a property</h2>
-          <p className="mt-2 text-sm text-slate-500">
+        <div className="rounded-xl border border-border bg-card p-10 text-center">
+          <h2 className="text-lg font-semibold text-foreground">
+            Select a property
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
             Choose a property from the header to load utility consumption data.
           </p>
         </div>
       )}
 
       {isEmpty && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
-          <h2 className="text-lg font-semibold text-slate-900">No data available</h2>
-          <p className="mt-2 text-sm text-slate-500">
+        <div className="rounded-xl border border-border bg-card p-10 text-center">
+          <h2 className="text-lg font-semibold text-foreground">
+            No data available
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
             No utility data found. Adjust filters or check the data source.
           </p>
         </div>
@@ -214,7 +243,7 @@ export default function UtilityConsumptionView() {
             />
             <ActualVsBudgetChart
               data={primaryYearSeries}
-              yearLabel={primaryYear ? primaryYear.toString() : ''}
+              yearLabel={primaryYear ? primaryYear.toString() : ""}
             />
           </div>
 
@@ -223,8 +252,16 @@ export default function UtilityConsumptionView() {
               data={budgetStatusPie.data}
               budgetUnsetForAllMonths={budgetStatusPie.budgetUnsetForAllMonths}
             />
-            <YoYLineChart data={waterYoYData} years={activeYears} metricLabel="Water" />
-            <YoYLineChart data={nightSaleYoYData} years={activeYears} metricLabel="Night Sale" />
+            <YoYLineChart
+              data={waterYoYData}
+              years={activeYears}
+              metricLabel="Water"
+            />
+            <YoYLineChart
+              data={nightSaleYoYData}
+              years={activeYears}
+              metricLabel="Night Sale"
+            />
           </div>
         </div>
       )}

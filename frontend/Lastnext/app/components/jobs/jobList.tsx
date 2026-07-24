@@ -1,23 +1,32 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { Check } from 'lucide-react';
-import { useUser, useProperties } from '@/app/lib/stores/mainStore';
-import MaintenanceJobCard from '@/app/components/jobs/MaintenanceJobCard';
-import Pagination from '@/app/components/jobs/Pagination';
-import JobActions from '@/app/components/jobs/JobActions';
-import { JobListMobileToolbar, type JobListFilters } from '@/app/components/jobs/JobListMobileToolbar';
-import { JobBatchActionBar } from '@/app/components/jobs/JobBatchActionBar';
-import { Job, TabValue, Property, SortOrder } from '@/app/lib/types';
-import { EmptyState, LoadingSkeleton } from '@/app/components/pcms-ui';
-import { cn } from '@/app/lib/utils/cn';
+import { useState, useEffect, useMemo } from "react";
+import { Check } from "lucide-react";
+import { useUser, useProperties } from "@/app/lib/stores/mainStore";
+import MaintenanceJobCard from "@/app/components/jobs/MaintenanceJobCard";
+import Pagination from "@/app/components/jobs/Pagination";
+import JobActions from "@/app/components/jobs/JobActions";
 import {
-  startOfDay, endOfDay, subDays,
-  startOfWeek, endOfWeek, startOfMonth, endOfMonth,
-  isWithinInterval
-} from 'date-fns';
+  JobListMobileToolbar,
+  type JobListFilters,
+} from "@/app/components/jobs/JobListMobileToolbar";
+import { JobBatchActionBar } from "@/app/components/jobs/JobBatchActionBar";
+import { Job, TabValue, Property, SortOrder } from "@/app/lib/types";
+import { EmptyState, LoadingSkeleton } from "@/app/components/pcms-ui";
+import { cn } from "@/app/lib/utils/cn";
+import {
+  startOfDay,
+  endOfDay,
+  subDays,
+  startOfWeek,
+  endOfWeek,
+  startOfMonth,
+  endOfMonth,
+  isWithinInterval,
+} from "date-fns";
 
-type DateFilter = "all" | "today" | "yesterday" | "thisWeek" | "thisMonth" | "custom";
+type DateFilter =
+  "all" | "today" | "yesterday" | "thisWeek" | "thisMonth" | "custom";
 
 interface JobListProps {
   jobs: Job[];
@@ -25,16 +34,27 @@ interface JobListProps {
   properties: Property[];
   selectedRoom?: string | null;
   onRoomFilter?: (roomId: string | null) => void;
-  viewMode?: 'grid' | 'list';
+  viewMode?: "grid" | "list";
   onRefresh?: () => Promise<void> | void;
 }
 
-export default function JobList({ jobs, filter, properties, selectedRoom, onRoomFilter, viewMode = 'grid', onRefresh }: JobListProps) {
+export default function JobList({
+  jobs,
+  filter,
+  properties,
+  selectedRoom,
+  onRoomFilter,
+  viewMode = "grid",
+  onRefresh,
+}: JobListProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("Newest first");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
-  const [customDateRange, setCustomDateRange] = useState<{ start?: Date, end?: Date }>({});
+  const [customDateRange, setCustomDateRange] = useState<{
+    start?: Date;
+    end?: Date;
+  }>({});
   const { selectedPropertyId: selectedProperty } = useUser();
   const { properties: globalProperties } = useProperties();
 
@@ -42,12 +62,17 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     const identifiers = new Set<string>();
     if (selectedProperty) identifiers.add(String(selectedProperty));
 
-    const propertyList = Array.isArray(properties) && properties.length > 0
-      ? properties
-      : (Array.isArray(globalProperties) ? globalProperties : []);
+    const propertyList =
+      Array.isArray(properties) && properties.length > 0
+        ? properties
+        : Array.isArray(globalProperties)
+          ? globalProperties
+          : [];
 
     const matched = propertyList.find(
-      (p) => String(p.property_id) === String(selectedProperty) || String(p.id) === String(selectedProperty),
+      (p) =>
+        String(p.property_id) === String(selectedProperty) ||
+        String(p.id) === String(selectedProperty),
     );
 
     if (matched) {
@@ -65,12 +90,12 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   // Mobile toolbar filters — applied AFTER the legacy filters above so the desktop
   // JobActions controls keep working unchanged.
   const [mobileFilters, setMobileFilters] = useState<JobListFilters>({
-    search: '',
+    search: "",
     statuses: [],
     priorities: [],
     pmOnly: null,
     defectOnly: null,
-    dateFilter: 'all',
+    dateFilter: "all",
   });
 
   // Batch selection state
@@ -94,7 +119,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   const handleDateFilterChange = (
     filterType: DateFilter,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
   ) => {
     setIsLoading(true);
     setDateFilter(filterType);
@@ -112,19 +137,31 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
     switch (dateFilter) {
       case "today":
-        return isWithinInterval(jobDate, { start: startOfDay(now), end: endOfDay(now) });
+        return isWithinInterval(jobDate, {
+          start: startOfDay(now),
+          end: endOfDay(now),
+        });
       case "yesterday":
         const yesterday = subDays(now, 1);
-        return isWithinInterval(jobDate, { start: startOfDay(yesterday), end: endOfDay(yesterday) });
+        return isWithinInterval(jobDate, {
+          start: startOfDay(yesterday),
+          end: endOfDay(yesterday),
+        });
       case "thisWeek":
-        return isWithinInterval(jobDate, { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) });
+        return isWithinInterval(jobDate, {
+          start: startOfWeek(now, { weekStartsOn: 1 }),
+          end: endOfWeek(now, { weekStartsOn: 1 }),
+        });
       case "thisMonth":
-        return isWithinInterval(jobDate, { start: startOfMonth(now), end: endOfMonth(now) });
+        return isWithinInterval(jobDate, {
+          start: startOfMonth(now),
+          end: endOfMonth(now),
+        });
       case "custom":
         if (customDateRange.start && customDateRange.end) {
           return isWithinInterval(jobDate, {
             start: startOfDay(customDateRange.start),
-            end: endOfDay(customDateRange.end)
+            end: endOfDay(customDateRange.end),
           });
         }
         return true;
@@ -145,9 +182,9 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
     if (Array.isArray(job.properties)) {
       for (const prop of job.properties) {
-        if (typeof prop === 'string' || typeof prop === 'number') {
+        if (typeof prop === "string" || typeof prop === "number") {
           if (matches(prop)) return true;
-        } else if (prop && typeof prop === 'object') {
+        } else if (prop && typeof prop === "object") {
           if (matches(prop.property_id)) return true;
           if (matches(prop.id)) return true;
         }
@@ -156,9 +193,9 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
     if (job.profile_image && Array.isArray(job.profile_image.properties)) {
       for (const prop of job.profile_image.properties) {
-        if (prop && typeof prop === 'object') {
-          if ('property_id' in prop && matches(prop.property_id)) return true;
-          if ('id' in prop && matches(prop.id)) return true;
+        if (prop && typeof prop === "object") {
+          if ("property_id" in prop && matches(prop.property_id)) return true;
+          if ("id" in prop && matches(prop.id)) return true;
         }
       }
     }
@@ -166,7 +203,8 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     const area = job.area;
     if (area) {
       if (matches(area.property_id)) return true;
-      if (matches((area as { property_uuid?: unknown }).property_uuid)) return true;
+      if (matches((area as { property_uuid?: unknown }).property_uuid))
+        return true;
     }
 
     if (Array.isArray(job.rooms)) {
@@ -174,9 +212,13 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
         if (matches(room.property_id)) return true;
         if (Array.isArray(room.properties)) {
           for (const prop of room.properties) {
-            if (typeof prop === 'string' || typeof prop === 'number') {
+            if (typeof prop === "string" || typeof prop === "number") {
               if (matches(prop)) return true;
-            } else if (prop && typeof prop === 'object' && 'property_id' in prop) {
+            } else if (
+              prop &&
+              typeof prop === "object" &&
+              "property_id" in prop
+            ) {
               if (matches(prop.property_id)) return true;
             }
           }
@@ -187,7 +229,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     return false;
   };
 
-  const filteredJobs = jobs.filter(job => {
+  const filteredJobs = jobs.filter((job) => {
     if (!doesMatchHeaderProperty(job)) {
       return false;
     }
@@ -219,48 +261,46 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     // Status filtering
     let matchesStatus = true;
     switch (filter) {
-      case 'all':
+      case "all":
         matchesStatus = true;
         break;
-      case 'pending':
-        matchesStatus = job.status === 'pending';
+      case "pending":
+        matchesStatus = job.status === "pending";
         break;
-      case 'in_progress':
-        matchesStatus = job.status === 'in_progress';
+      case "in_progress":
+        matchesStatus = job.status === "in_progress";
         break;
-      case 'completed':
-        matchesStatus = job.status === 'completed';
+      case "completed":
+        matchesStatus = job.status === "completed";
         break;
-      case 'cancelled':
-        matchesStatus = job.status === 'cancelled';
+      case "cancelled":
+        matchesStatus = job.status === "cancelled";
         break;
-      case 'waiting_sparepart':
-        matchesStatus = job.status === 'waiting_sparepart';
+      case "waiting_sparepart":
+        matchesStatus = job.status === "waiting_sparepart";
         break;
-      case 'defect':
+      case "defect":
         matchesStatus = job.is_defective === true;
         break;
-      case 'preventive_maintenance':
+      case "preventive_maintenance":
         matchesStatus = job.is_preventivemaintenance === true;
         break;
     }
-    
+
     // Debug logging for defect and in_progress filters
-    if (filter === 'defect' && process.env.NODE_ENV === 'development') {
+    if (filter === "defect" && process.env.NODE_ENV === "development") {
     }
-    if (filter === 'in_progress' && process.env.NODE_ENV === 'development') {
+    if (filter === "in_progress" && process.env.NODE_ENV === "development") {
     }
-    
-    
+
     // Status filtering enabled
-    
+
     if (!matchesStatus) return false;
 
     const dateFilterResult = applyDateFilter(job);
-    
+
     return dateFilterResult;
   });
-
 
   // Apply mobile toolbar filters on top of legacy filters
   const filteredJobsWithMobile = useMemo(() => {
@@ -279,7 +319,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
           j.area_name,
         ]
           .filter(Boolean)
-          .join(' ')
+          .join(" ")
           .toLowerCase();
         return haystack.includes(term);
       });
@@ -288,33 +328,48 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
       out = out.filter((j) => mobileFilters.statuses.includes(j.status as any));
     }
     if (mobileFilters.priorities.length) {
-      out = out.filter((j) => mobileFilters.priorities.includes(j.priority as any));
+      out = out.filter((j) =>
+        mobileFilters.priorities.includes(j.priority as any),
+      );
     }
     if (mobileFilters.pmOnly !== null) {
-      out = out.filter((j) => Boolean(j.is_preventivemaintenance) === mobileFilters.pmOnly);
+      out = out.filter(
+        (j) => Boolean(j.is_preventivemaintenance) === mobileFilters.pmOnly,
+      );
     }
     if (mobileFilters.defectOnly !== null) {
-      out = out.filter((j) => Boolean(j.is_defective) === mobileFilters.defectOnly);
+      out = out.filter(
+        (j) => Boolean(j.is_defective) === mobileFilters.defectOnly,
+      );
     }
-    if (mobileFilters.dateFilter !== 'all') {
+    if (mobileFilters.dateFilter !== "all") {
       const now = new Date();
       out = out.filter((j) => {
         if (!j.created_at) return false;
         const d = new Date(j.created_at);
         switch (mobileFilters.dateFilter) {
-          case 'today':
-            return isWithinInterval(d, { start: startOfDay(now), end: endOfDay(now) });
-          case 'yesterday': {
+          case "today":
+            return isWithinInterval(d, {
+              start: startOfDay(now),
+              end: endOfDay(now),
+            });
+          case "yesterday": {
             const y = subDays(now, 1);
-            return isWithinInterval(d, { start: startOfDay(y), end: endOfDay(y) });
+            return isWithinInterval(d, {
+              start: startOfDay(y),
+              end: endOfDay(y),
+            });
           }
-          case 'thisWeek':
+          case "thisWeek":
             return isWithinInterval(d, {
               start: startOfWeek(now, { weekStartsOn: 1 }),
               end: endOfWeek(now, { weekStartsOn: 1 }),
             });
-          case 'thisMonth':
-            return isWithinInterval(d, { start: startOfMonth(now), end: endOfMonth(now) });
+          case "thisMonth":
+            return isWithinInterval(d, {
+              start: startOfMonth(now),
+              end: endOfMonth(now),
+            });
           default:
             return true;
         }
@@ -324,11 +379,10 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
   }, [filteredJobs, mobileFilters]);
 
   const sortedJobs = [...filteredJobsWithMobile].sort((a, b) => {
-    const dateA = new Date(a.created_at || '').getTime();
-    const dateB = new Date(b.created_at || '').getTime();
+    const dateA = new Date(a.created_at || "").getTime();
+    const dateB = new Date(b.created_at || "").getTime();
     return sortOrder === "Newest first" ? dateB - dateA : dateA - dateB;
   });
-
 
   const totalPages = Math.ceil(sortedJobs.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -339,10 +393,16 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
     setIsLoading(true);
     setCurrentPage(page);
     window.scrollTo({
-      top: document.querySelector('.job-grid-container')?.getBoundingClientRect().top
-        ? window.scrollY + (document.querySelector('.job-grid-container')?.getBoundingClientRect().top || 0) - 80
+      top: document
+        .querySelector(".job-grid-container")
+        ?.getBoundingClientRect().top
+        ? window.scrollY +
+          (document
+            .querySelector(".job-grid-container")
+            ?.getBoundingClientRect().top || 0) -
+          80
         : 0,
-      behavior: 'smooth'
+      behavior: "smooth",
     });
     setTimeout(() => setIsLoading(false), 300);
   };
@@ -416,7 +476,11 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
         <EmptyState
           title="No maintenance jobs found"
-          description={selectedProperty ? 'No jobs match the selected header property, room, date, status, or search filters.' : 'No jobs match the selected room, date, status, or search filters.'}
+          description={
+            selectedProperty
+              ? "No jobs match the selected header property, room, date, status, or search filters."
+              : "No jobs match the selected room, date, status, or search filters."
+          }
         />
       </div>
     );
@@ -440,8 +504,9 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
         />
       </div>
 
-      <div className="hidden rounded-full bg-white/70 px-4 py-2 text-sm font-bold text-[var(--pcms-text-muted)] shadow-[var(--pcms-shadow-sm)] md:block">
-        Showing {Math.min(currentJobs.length, itemsPerPage)} of {sortedJobs.length} maintenance jobs
+      <div className="hidden rounded-full bg-card/70 px-4 py-2 text-sm font-bold text-[var(--pcms-text-muted)] shadow-[var(--pcms-shadow-soft)] md:block">
+        Showing {Math.min(currentJobs.length, itemsPerPage)} of{" "}
+        {sortedJobs.length} maintenance jobs
       </div>
 
       {isLoading ? (
@@ -450,10 +515,13 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
         </div>
       ) : (
         <div className="job-grid-container -mx-3 mb-10 sm:mx-0">
-          <div className={viewMode === 'list'
-            ? "gap-4 space-y-4"
-            : "pcms-job-grid auto-rows-fr"
-          }>
+          <div
+            className={
+              viewMode === "list"
+                ? "gap-4 space-y-4"
+                : "pcms-job-grid auto-rows-fr"
+            }
+          >
             {currentJobs.map((job, index) => {
               const jobIdStr = String(job.job_id || `job-${index}`);
               const selected = selectedJobIds.has(jobIdStr);
@@ -464,7 +532,10 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
               );
               if (!selectionEnabled) {
                 return (
-                  <div key={jobIdStr} className={viewMode === 'list' ? "h-full w-full" : "h-full"}>
+                  <div
+                    key={jobIdStr}
+                    className={viewMode === "list" ? "h-full w-full" : "h-full"}
+                  >
                     {cardEl}
                   </div>
                 );
@@ -475,19 +546,21 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
                   key={jobIdStr}
                   onClick={() => toggleSelection(jobIdStr)}
                   aria-pressed={selected}
-                  aria-label={`${selected ? 'Deselect' : 'Select'} job ${jobIdStr}`}
+                  aria-label={`${selected ? "Deselect" : "Select"} job ${jobIdStr}`}
                   className={cn(
-                    'relative block w-full rounded-2xl text-left transition-all',
-                    viewMode === 'list' ? 'h-full' : 'h-full',
-                    selected ? 'ring-4 ring-blue-500 ring-offset-2' : 'ring-2 ring-transparent hover:ring-blue-200',
+                    "relative block w-full rounded-xl text-left transition-all",
+                    viewMode === "list" ? "h-full" : "h-full",
+                    selected
+                      ? "ring-4 ring-blue-500 ring-offset-2"
+                      : "ring-2 ring-transparent hover:ring-blue-200",
                   )}
                 >
                   <span
                     className={cn(
-                      'absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full border-2 shadow-sm',
+                      "absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full border-2 shadow-soft",
                       selected
-                        ? 'border-blue-600 bg-blue-600 text-white'
-                        : 'border-slate-300 bg-white/90 text-transparent',
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-border bg-card/90 text-transparent",
                     )}
                     aria-hidden="true"
                   >
@@ -503,7 +576,7 @@ export default function JobList({ jobs, filter, properties, selectedRoom, onRoom
 
       {totalPages > 1 && (
         <div className="mt-8 flex items-center justify-center px-0 sm:px-4">
-          <div className="rounded-full border border-[var(--pcms-border)] bg-white/90 p-2 shadow-[var(--pcms-shadow-sm)] touch-action-manipulation">
+          <div className="rounded-full border border-[var(--pcms-border)] bg-card/90 p-2 shadow-[var(--pcms-shadow-soft)] touch-action-manipulation">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   CartesianGrid,
@@ -10,15 +10,15 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from "recharts";
 
 interface TopicJobsLineChartProps {
   data: Array<{ topic: string; count: number; pm?: number; nonPm?: number }>;
 }
 
 function formatCountLabel(v: number | string) {
-  const n = typeof v === 'number' ? v : Number(v);
-  if (Number.isNaN(n) || n === 0) return '';
+  const n = typeof v === "number" ? v : Number(v);
+  if (Number.isNaN(n) || n === 0) return "";
   return String(n);
 }
 
@@ -37,15 +37,22 @@ export default function TopicJobsLineChart({ data }: TopicJobsLineChartProps) {
   }));
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-slate-900">Job count by topic</h3>
-        <p className="text-sm text-slate-500">Top topics based on selected period filters.</p>
+        <h3 className="text-lg font-semibold text-foreground">
+          Job count by topic
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Top topics based on selected period filters.
+        </p>
       </div>
       {hasData ? (
         <div className="h-[18rem] w-full min-h-[18rem] sm:h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ left: 8, right: 16, top: 28, bottom: 24 }}>
+            <LineChart
+              data={chartData}
+              margin={{ left: 8, right: 16, top: 28, bottom: 24 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="shortTopic"
@@ -56,10 +63,16 @@ export default function TopicJobsLineChart({ data }: TopicJobsLineChartProps) {
                 textAnchor="end"
                 height={52}
               />
-              <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
+              <YAxis
+                stroke="#64748b"
+                tick={{ fontSize: 11 }}
+                allowDecimals={false}
+              />
               <Tooltip
-                formatter={(value: number | string) => [value, 'Jobs']}
-                labelFormatter={(_, payload) => payload?.[0]?.payload?.topic ?? ''}
+                formatter={(value: number | string) => [value, "Jobs"]}
+                labelFormatter={(_, payload) =>
+                  payload?.[0]?.payload?.topic ?? ""
+                }
               />
               <Legend />
               <Line
@@ -91,11 +104,10 @@ export default function TopicJobsLineChart({ data }: TopicJobsLineChartProps) {
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="flex h-[18rem] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
+        <div className="flex h-[18rem] items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
           No topic data for selected filters.
         </div>
       )}
     </div>
   );
 }
-

@@ -1,10 +1,15 @@
-'use client';
+"use client";
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { AlertTriangle, RefreshCw, LogIn } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, RefreshCw, LogIn } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Button } from "@/app/components/ui/button";
 
 interface Props {
   children: ReactNode;
@@ -30,8 +35,8 @@ export class AuthErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('AuthErrorBoundary caught an error:', error, errorInfo);
-    
+    console.error("AuthErrorBoundary caught an error:", error, errorInfo);
+
     this.setState({
       error,
       errorInfo,
@@ -50,38 +55,39 @@ export class AuthErrorBoundary extends Component<Props, State> {
 
   private isAuthError(error: Error): boolean {
     const authErrorKeywords = [
-      'unauthorized',
-      'unauthenticated',
-      'authentication',
-      'token',
-      'session',
-      'login',
-      '401',
-      '403',
-      'forbidden',
+      "unauthorized",
+      "unauthenticated",
+      "authentication",
+      "token",
+      "session",
+      "login",
+      "401",
+      "403",
+      "forbidden",
     ];
 
     const errorMessage = error.message.toLowerCase();
-    const errorStack = error.stack?.toLowerCase() || '';
+    const errorStack = error.stack?.toLowerCase() || "";
 
-    return authErrorKeywords.some(keyword => 
-      errorMessage.includes(keyword) || errorStack.includes(keyword)
+    return authErrorKeywords.some(
+      (keyword) =>
+        errorMessage.includes(keyword) || errorStack.includes(keyword),
     );
   }
 
   private handleAuthError(error: Error) {
     // Store the current page for redirect after login
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const currentPath = window.location.pathname + window.location.search;
-      if (currentPath !== '/auth/login') {
-        sessionStorage.setItem('redirectAfterLogin', currentPath);
+      if (currentPath !== "/auth/login") {
+        sessionStorage.setItem("redirectAfterLogin", currentPath);
       }
     }
 
     // Redirect to login if enabled
     if (this.props.redirectToLogin !== false) {
       setTimeout(() => {
-        window.location.href = '/auth/login';
+        window.location.href = "/auth/login";
       }, 2000); // Give user time to see the error
     }
   }
@@ -91,7 +97,7 @@ export class AuthErrorBoundary extends Component<Props, State> {
   };
 
   private handleGoToLogin = () => {
-    window.location.href = '/auth/login';
+    window.location.href = "/auth/login";
   };
 
   private handleRefresh = () => {
@@ -105,7 +111,8 @@ export class AuthErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      const isAuthError = this.state.error && this.isAuthError(this.state.error);
+      const isAuthError =
+        this.state.error && this.isAuthError(this.state.error);
 
       return (
         <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-50 flex items-center justify-center p-4">
@@ -114,23 +121,24 @@ export class AuthErrorBoundary extends Component<Props, State> {
               <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
                 <AlertTriangle className="w-10 h-10 text-red-600" />
               </div>
-              
+
               <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {isAuthError ? 'Authentication Error' : 'Something Went Wrong'}
+                <h1 className="text-2xl font-bold text-foreground">
+                  {isAuthError
+                    ? "Authentication Error"
+                    : "Something Went Wrong"}
                 </h1>
-                <p className="text-gray-600">
-                  {isAuthError 
-                    ? 'Your session may have expired or you need to log in again.'
-                    : 'An unexpected error occurred. Please try again.'
-                  }
+                <p className="text-muted-foreground">
+                  {isAuthError
+                    ? "Your session may have expired or you need to log in again."
+                    : "An unexpected error occurred. Please try again."}
                 </p>
                 {this.state.error && (
                   <details className="text-left">
-                    <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
+                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-muted-foreground">
                       Error Details
                     </summary>
-                    <div className="mt-2 p-3 bg-gray-100 rounded text-xs text-gray-600 font-mono">
+                    <div className="mt-2 p-3 bg-muted rounded text-xs text-muted-foreground font-mono">
                       {this.state.error.message}
                     </div>
                   </details>
@@ -144,7 +152,11 @@ export class AuthErrorBoundary extends Component<Props, State> {
                       <LogIn className="w-4 h-4 mr-2" />
                       Go to Login
                     </Button>
-                    <Button onClick={this.handleRefresh} variant="outline" className="w-full">
+                    <Button
+                      onClick={this.handleRefresh}
+                      variant="outline"
+                      className="w-full"
+                    >
                       <RefreshCw className="w-4 h-4 mr-2" />
                       Refresh Page
                     </Button>
@@ -154,7 +166,11 @@ export class AuthErrorBoundary extends Component<Props, State> {
                     <Button onClick={this.handleRetry} className="w-full">
                       Try Again
                     </Button>
-                    <Button onClick={this.handleRefresh} variant="outline" className="w-full">
+                    <Button
+                      onClick={this.handleRefresh}
+                      variant="outline"
+                      className="w-full"
+                    >
                       <RefreshCw className="w-4 h-4 mr-2" />
                       Refresh Page
                     </Button>
@@ -162,16 +178,17 @@ export class AuthErrorBoundary extends Component<Props, State> {
                 )}
               </div>
 
-              {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
-                <details className="text-left w-full">
-                  <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
-                    Stack Trace (Development)
-                  </summary>
-                  <div className="mt-2 p-3 bg-gray-100 rounded text-xs text-gray-600 font-mono overflow-auto max-h-40">
-                    {this.state.errorInfo.componentStack}
-                  </div>
-                </details>
-              )}
+              {process.env.NODE_ENV === "development" &&
+                this.state.errorInfo && (
+                  <details className="text-left w-full">
+                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-muted-foreground">
+                      Stack Trace (Development)
+                    </summary>
+                    <div className="mt-2 p-3 bg-muted rounded text-xs text-muted-foreground font-mono overflow-auto max-h-40">
+                      {this.state.errorInfo.componentStack}
+                    </div>
+                  </details>
+                )}
             </CardContent>
           </Card>
         </div>
@@ -186,22 +203,26 @@ export class AuthErrorBoundary extends Component<Props, State> {
 export function useAuthErrorHandler() {
   const router = useRouter();
 
-  const handleAuthError = React.useCallback((error: Error) => {
-    if (error.message.toLowerCase().includes('unauthorized') || 
-        error.message.toLowerCase().includes('authentication')) {
-      
-      // Store current page for redirect after login
-      if (typeof window !== 'undefined') {
-        const currentPath = window.location.pathname + window.location.search;
-        if (currentPath !== '/auth/login') {
-          sessionStorage.setItem('redirectAfterLogin', currentPath);
+  const handleAuthError = React.useCallback(
+    (error: Error) => {
+      if (
+        error.message.toLowerCase().includes("unauthorized") ||
+        error.message.toLowerCase().includes("authentication")
+      ) {
+        // Store current page for redirect after login
+        if (typeof window !== "undefined") {
+          const currentPath = window.location.pathname + window.location.search;
+          if (currentPath !== "/auth/login") {
+            sessionStorage.setItem("redirectAfterLogin", currentPath);
+          }
         }
-      }
 
-      // Redirect to login
-      router.push('/auth/login');
-    }
-  }, [router]);
+        // Redirect to login
+        router.push("/auth/login");
+      }
+    },
+    [router],
+  );
 
   return { handleAuthError };
 }

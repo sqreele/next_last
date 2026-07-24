@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { BarChart3, RefreshCw, Filter, Plus, CalendarDays } from 'lucide-react';
+import Link from "next/link";
+import { BarChart3, RefreshCw, Filter, Plus, CalendarDays } from "lucide-react";
 
 interface MobileHeaderProps {
   totalCount: number;
@@ -22,14 +22,14 @@ export default function MobileHeader({
   showFilters,
   activeFiltersCount,
   onRefresh,
-  onToggleFilters
+  onToggleFilters,
 }: MobileHeaderProps) {
   return (
-    <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-4 md:hidden">
+    <div className="sticky top-0 z-10 bg-card border-b border-border px-4 py-4 md:hidden">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Maintenance</h1>
-          <p className="text-sm text-gray-600">
+          <h1 className="text-xl font-bold text-foreground">Maintenance</h1>
+          <p className="text-sm text-muted-foreground">
             {totalCount} tasks • {overdueCount} overdue
             {currentFilters.machine && (
               <span className="text-blue-600"> • Filtered</span>
@@ -39,7 +39,7 @@ export default function MobileHeader({
         <div className="flex items-center space-x-2">
           <Link
             href="/dashboard/preventive-maintenance"
-            className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
             title="Dashboard"
             aria-label="Open maintenance dashboard"
           >
@@ -47,7 +47,7 @@ export default function MobileHeader({
           </Link>
           <Link
             href="/dashboard/preventive-maintenance/schedule"
-            className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
             title="Calendar"
             aria-label="Open maintenance calendar"
           >
@@ -56,16 +56,20 @@ export default function MobileHeader({
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="p-2 text-gray-600 hover:text-gray-900 disabled:opacity-50 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-50 rounded-lg hover:bg-muted transition-colors"
             title="Refresh"
             aria-label="Refresh maintenance data"
           >
-            <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`}
+            />
           </button>
           <button
             onClick={onToggleFilters}
             className={`relative p-2 rounded-lg transition-colors ${
-              showFilters ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
+              showFilters
+                ? "bg-blue-50 text-blue-700"
+                : "text-muted-foreground hover:bg-muted"
             }`}
             aria-label="Toggle maintenance filters"
           >

@@ -53,7 +53,7 @@ services:
       - EMAIL_HOST=smtp.gmail.com
       - EMAIL_PORT=587
       - EMAIL_USE_TLS=True
-      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-no-reply@pcms.live}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-no-reply@hotelcarepro.com}
       - EMAIL_REQUIRE_AUTH=True
       - APP_BASE_URL=http://localhost:3000
     ports:

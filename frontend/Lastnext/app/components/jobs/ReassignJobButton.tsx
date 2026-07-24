@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useMemo, useState } from 'react';
-import { UserPlus, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useMemo, useState } from "react";
+import { UserPlus, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,20 +9,25 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/app/components/ui/dialog';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Textarea } from '@/app/components/ui/textarea';
-import { useSession } from '@/app/lib/session.client';
-import { useDetailedUsers, type DetailedUser } from '@/app/lib/hooks/useDetailedUsers';
-import { fetchWithToken } from '@/app/lib/data.server';
-import { Job } from '@/app/lib/types';
-import { getDisplayName } from '@/app/lib/utils/display-name';
-import { cn } from '@/app/lib/utils/cn';
+} from "@/app/components/ui/dialog";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
+import { Textarea } from "@/app/components/ui/textarea";
+import { useSession } from "@/app/lib/session.client";
+import {
+  useDetailedUsers,
+  type DetailedUser,
+} from "@/app/lib/hooks/useDetailedUsers";
+import { fetchWithToken } from "@/app/lib/data.server";
+import { Job } from "@/app/lib/types";
+import { getDisplayName } from "@/app/lib/utils/display-name";
+import { cn } from "@/app/lib/utils/cn";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:8000"
+    : "https://hotelcarepro.com");
 
 interface ReassignJobButtonProps {
   job: Job;
@@ -30,13 +35,17 @@ interface ReassignJobButtonProps {
   className?: string;
 }
 
-export function ReassignJobButton({ job, onComplete, className }: ReassignJobButtonProps) {
+export function ReassignJobButton({
+  job,
+  onComplete,
+  className,
+}: ReassignJobButtonProps) {
   const { data: session } = useSession();
   const { users, loading: usersLoading } = useDetailedUsers();
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<DetailedUser | null>(null);
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,12 +56,15 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
     const ids = new Set<string>();
     const addProperty = (value: unknown) => {
       if (value === null || value === undefined) return;
-      if (typeof value === 'string' || typeof value === 'number') {
+      if (typeof value === "string" || typeof value === "number") {
         ids.add(String(value));
         return;
       }
-      if (typeof value === 'object') {
-        const obj = value as { property_id?: string | number; id?: string | number };
+      if (typeof value === "object") {
+        const obj = value as {
+          property_id?: string | number;
+          id?: string | number;
+        };
         if (obj.property_id != null) ids.add(String(obj.property_id));
         if (obj.id != null) ids.add(String(obj.id));
       }
@@ -69,9 +81,10 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
     const term = search.trim().toLowerCase();
     const scope = jobPropertyIds.size
       ? users.filter((user) =>
-          (user.properties || []).some((p) =>
-            jobPropertyIds.has(String(p.property_id)) ||
-            jobPropertyIds.has(String((p as { id?: string }).id)),
+          (user.properties || []).some(
+            (p) =>
+              jobPropertyIds.has(String(p.property_id)) ||
+              jobPropertyIds.has(String((p as { id?: string }).id)),
           ),
         )
       : users;
@@ -87,7 +100,7 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
           user.full_name,
         ]
           .filter(Boolean)
-          .join(' ')
+          .join(" ")
           .toLowerCase();
         return haystack.includes(term);
       })
@@ -95,19 +108,19 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
   }, [search, users, jobPropertyIds]);
 
   const currentAssignee =
-    typeof job.user === 'object' && job.user
+    typeof job.user === "object" && job.user
       ? (job.user as { username?: string }).username
-      : job.user_name || String(job.user || 'Unassigned');
+      : job.user_name || String(job.user || "Unassigned");
 
   const handleSubmit = async () => {
     setError(null);
     if (!selected) {
-      setError('Pick a teammate to assign this job to.');
+      setError("Pick a teammate to assign this job to.");
       return;
     }
     const token = session?.user?.accessToken;
     if (!token) {
-      setError('Session expired — please sign in again.');
+      setError("Session expired — please sign in again.");
       return;
     }
     setSubmitting(true);
@@ -115,7 +128,7 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
       await fetchWithToken(
         `${API_BASE_URL}/api/v1/jobs/${job.job_id}/reassign/`,
         token,
-        'POST',
+        "POST",
         {
           user_id: selected.id,
           note: note.trim() || undefined,
@@ -123,10 +136,10 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
       );
       setOpen(false);
       setSelected(null);
-      setNote('');
+      setNote("");
       onComplete?.();
     } catch (err: any) {
-      setError(err?.message || 'Could not reassign the job.');
+      setError(err?.message || "Could not reassign the job.");
     } finally {
       setSubmitting(false);
     }
@@ -139,35 +152,38 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
         setOpen(next);
         if (!next) {
           setSelected(null);
-          setNote('');
+          setNote("");
           setError(null);
-          setSearch('');
+          setSearch("");
         }
       }}
     >
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className={cn('h-10', className)}
+          className={cn("h-10", className)}
           aria-label="Reassign this job"
         >
           <UserPlus className="mr-2 h-4 w-4" />
           Reassign
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-2xl bg-white p-0 sm:max-w-md">
-        <DialogHeader className="border-b border-slate-200 px-5 py-4 text-left">
-          <DialogTitle className="text-lg font-bold text-slate-900">
+      <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl bg-card p-0 sm:max-w-md">
+        <DialogHeader className="border-b border-border px-5 py-4 text-left">
+          <DialogTitle className="text-lg font-bold text-foreground">
             Reassign job
           </DialogTitle>
-          <p className="text-xs font-medium text-slate-600">
+          <p className="text-xs font-medium text-muted-foreground">
             #{job.job_id} · currently {currentAssignee}
           </p>
         </DialogHeader>
 
         <div className="space-y-4 px-5 py-4">
           <div className="space-y-1.5">
-            <label htmlFor="reassign-search" className="text-sm font-bold text-slate-900">
+            <label
+              htmlFor="reassign-search"
+              className="text-sm font-bold text-foreground"
+            >
               Search teammate
             </label>
             <Input
@@ -175,24 +191,28 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Name, username, or email"
-              className="h-11 border-2 border-slate-300 text-sm"
+              className="h-11 border-2 border-border text-sm"
               autoFocus
             />
           </div>
 
-          <div className="max-h-[40vh] space-y-1.5 overflow-y-auto rounded-xl border-2 border-slate-200 bg-white p-1">
+          <div className="max-h-[40vh] space-y-1.5 overflow-y-auto rounded-xl border-2 border-border bg-card p-1">
             {usersLoading && !users.length ? (
-              <div className="flex items-center gap-2 px-3 py-6 text-sm font-medium text-slate-500">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading teammates...
+              <div className="flex items-center gap-2 px-3 py-6 text-sm font-medium text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading
+                teammates...
               </div>
             ) : filtered.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm font-medium text-slate-500">
+              <p className="px-3 py-6 text-center text-sm font-medium text-muted-foreground">
                 No teammates match. Try a different search.
               </p>
             ) : (
               filtered.map((user) => {
                 const active = selected?.id === user.id;
-                const displayName = getDisplayName(user, user.username || user.email);
+                const displayName = getDisplayName(
+                  user,
+                  user.username || user.email,
+                );
                 return (
                   <button
                     key={user.id}
@@ -200,23 +220,28 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
                     onClick={() => setSelected(user)}
                     aria-pressed={active}
                     className={cn(
-                      'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors touch-manipulation',
+                      "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors touch-manipulation",
                       active
-                        ? 'bg-blue-50 ring-2 ring-blue-500'
-                        : 'hover:bg-slate-50',
+                        ? "bg-blue-50 ring-2 ring-blue-500"
+                        : "hover:bg-muted",
                     )}
                   >
-                    <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-slate-200 text-xs font-bold text-slate-700">
-                      {(displayName || '?').slice(0, 2).toUpperCase()}
+                    <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-slate-200 text-xs font-bold text-muted-foreground">
+                      {(displayName || "?").slice(0, 2).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-slate-900 line-clamp-1">{displayName}</p>
-                      <p className="text-xs font-medium text-slate-500 line-clamp-1">
+                      <p className="text-sm font-bold text-foreground line-clamp-1">
+                        {displayName}
+                      </p>
+                      <p className="text-xs font-medium text-muted-foreground line-clamp-1">
                         {user.positions || user.email || `User #${user.id}`}
                       </p>
                     </div>
                     {active && (
-                      <CheckCircle2 className="h-4 w-4 flex-none text-blue-600" aria-hidden="true" />
+                      <CheckCircle2
+                        className="h-4 w-4 flex-none text-blue-600"
+                        aria-hidden="true"
+                      />
                     )}
                   </button>
                 );
@@ -225,17 +250,23 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="reassign-note" className="text-sm font-bold text-slate-900">
-              Note <span className="text-xs font-medium text-slate-500">(optional)</span>
+            <label
+              htmlFor="reassign-note"
+              className="text-sm font-bold text-foreground"
+            >
+              Note{" "}
+              <span className="text-xs font-medium text-muted-foreground">
+                (optional)
+              </span>
             </label>
             <Textarea
               id="reassign-note"
               value={note}
               onChange={(event) => setNote(event.target.value.slice(0, 300))}
               placeholder="Why are we moving this? Anything they should know?"
-              className="min-h-[72px] border-2 border-slate-300 text-sm"
+              className="min-h-[72px] border-2 border-border text-sm"
             />
-            <p className="text-right text-[11px] font-medium text-slate-500">
+            <p className="text-right text-[11px] font-medium text-muted-foreground">
               {note.length}/300
             </p>
           </div>
@@ -248,7 +279,7 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
           )}
         </div>
 
-        <DialogFooter className="sticky bottom-0 flex-col gap-2 border-t border-slate-200 bg-white px-5 py-3 sm:flex-row sm:justify-end">
+        <DialogFooter className="sticky bottom-0 flex-col gap-2 border-t border-border bg-card px-5 py-3 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="outline"
@@ -270,7 +301,7 @@ export function ReassignJobButton({ job, onComplete, className }: ReassignJobBut
                 Reassigning...
               </>
             ) : (
-              'Reassign'
+              "Reassign"
             )}
           </Button>
         </DialogFooter>

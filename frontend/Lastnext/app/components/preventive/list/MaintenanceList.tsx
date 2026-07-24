@@ -6,6 +6,7 @@ import MaintenanceItem from './MaintenanceItem';
 
 // Define the sort field type
 type SortField = 'date' | 'status' | 'machine';
+type StatusInfo = { text: string; color: string; icon: string };
 
 interface MaintenanceListProps {
   items: PreventiveMaintenance[];
@@ -17,10 +18,9 @@ interface MaintenanceListProps {
   sortBy: SortField;
   sortOrder: 'asc' | 'desc';
   formatDate: (date: string) => string;
-  getMachineNames: (machines: any) => string;
-  getStatusInfo: (item: PreventiveMaintenance) => any;
+  getMachineNames: (machines: PreventiveMaintenance['machines']) => string;
+  getStatusInfo: (item: PreventiveMaintenance) => StatusInfo;
   // getFrequencyText removed - frequency no longer displayed
-  currentFilters: any;
   verifyPMProperty?: (item: PreventiveMaintenance) => { matches: boolean; message: string; machinesAtProperty: number; totalMachines: number };
   selectedProperty?: string | null;
 }
@@ -38,55 +38,54 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
   getMachineNames,
   getStatusInfo,
   // getFrequencyText removed
-  currentFilters,
   verifyPMProperty,
   selectedProperty,
 }) => {
   return (
-    <div className="bg-white md:border md:border-gray-200 md:rounded-lg overflow-hidden">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
       {/* Desktop Header */}
-      <div className="hidden md:block bg-gray-50 px-6 py-3 border-b border-gray-200">
+      <div className="hidden border-b border-border bg-muted/50 px-5 py-3 md:block">
         <div className="flex items-center">
           <div className="w-8">
             <input
               type="checkbox"
               checked={selectedItems.length === items.length && items.length > 0}
               onChange={(e) => onSelectAll(e.target.checked)}
-              className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
             />
           </div>
           
           <div className="flex-1 grid grid-cols-6 gap-4 ml-4">
             <button
               onClick={() => onSort('date')}
-              className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 focus:outline-none"
+              className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground focus:outline-none"
             >
               Date {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
 
-            <div className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <div className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Next Due
             </div>
             
             <button
               onClick={() => onSort('status')}
-              className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 focus:outline-none"
+              className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground focus:outline-none"
             >
               Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
             
             <button
               onClick={() => onSort('machine')}
-              className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:text-gray-700 focus:outline-none"
+              className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground focus:outline-none"
             >
               Machine {sortBy === 'machine' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
             
-            <div className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <div className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Task Template
             </div>
             
-            <div className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <div className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Actions
             </div>
           </div>
@@ -94,7 +93,7 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
       </div>
 
       {/* Items */}
-      <div className="divide-y divide-gray-200">
+      <div className="divide-y divide-border">
         {items.map((item) => (
           <MaintenanceItem
             key={item.pm_id}

@@ -1,13 +1,18 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useSession } from '@/app/lib/session.client';
-import { useRouter } from 'next/navigation';
-import apiClient from '@/app/lib/api-client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
-import { Badge } from '@/app/components/ui/badge';
-import { Input } from '@/app/components/ui/input';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useSession } from "@/app/lib/session.client";
+import { useRouter } from "next/navigation";
+import apiClient from "@/app/lib/api-client";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Button } from "@/app/components/ui/button";
+import { Badge } from "@/app/components/ui/badge";
+import { Input } from "@/app/components/ui/input";
 import {
   Settings,
   Plus,
@@ -23,9 +28,9 @@ import {
   Users,
   FileText,
   AlertTriangle,
-  Loader
-} from 'lucide-react';
-import Link from 'next/link';
+  Loader,
+} from "lucide-react";
+import Link from "next/link";
 
 interface MaintenanceTask {
   id: number;
@@ -55,20 +60,20 @@ interface PaginatedMaintenanceResponse {
 }
 
 const frequencyColors: Record<string, string> = {
-  daily: 'bg-red-100 text-red-800 border-red-200',
-  weekly: 'bg-orange-100 text-orange-800 border-orange-200',
-  monthly: 'bg-blue-100 text-blue-800 border-blue-200',
-  quarterly: 'bg-green-100 text-green-800 border-green-200',
-  semi_annual: 'bg-purple-100 text-purple-800 border-purple-200',
-  annual: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-  custom: 'bg-gray-100 text-gray-800 border-gray-200',
+  daily: "bg-red-100 text-red-800 border-red-200",
+  weekly: "bg-orange-100 text-orange-800 border-orange-200",
+  monthly: "bg-blue-100 text-blue-800 border-blue-200",
+  quarterly: "bg-green-100 text-green-800 border-green-200",
+  semi_annual: "bg-purple-100 text-purple-800 border-purple-200",
+  annual: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  custom: "bg-muted text-foreground border-border",
 };
 
 const difficultyColors: Record<string, string> = {
-  beginner: 'bg-green-100 text-green-800',
-  intermediate: 'bg-yellow-100 text-yellow-800',
-  advanced: 'bg-orange-100 text-orange-800',
-  expert: 'bg-red-100 text-red-800',
+  beginner: "bg-green-100 text-green-800",
+  intermediate: "bg-yellow-100 text-yellow-800",
+  advanced: "bg-orange-100 text-orange-800",
+  expert: "bg-red-100 text-red-800",
 };
 
 const MIN_LOADER_MS = 400;
@@ -102,115 +107,135 @@ export default function MaintenanceTasksPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [frequencyFilter, setFrequencyFilter] = useState<string>('all');
-  const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [frequencyFilter, setFrequencyFilter] = useState<string>("all");
+  const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
   const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login');
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
     }
   }, [status, router]);
 
-  const fetchTasks = useCallback(async (pageToLoad: number = page, pageSizeToUse: number = pageSize) => {
-    loaderShownAtRef.current = Date.now();
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiClient.get('/api/v1/maintenance-procedures/', {
-        params: {
-          page: pageToLoad,
-          page_size: pageSizeToUse,
-        },
-      });
-      
-      // Handle both array and paginated response formats
-      let taskData: MaintenanceTask[] = [];
-      let total = 0;
-      let totalPagesValue = 1;
-      let responsePageSize = pageSizeToUse;
-      let currentPageFromResponse: number | undefined;
+  const fetchTasks = useCallback(
+    async (pageToLoad: number = page, pageSizeToUse: number = pageSize) => {
+      loaderShownAtRef.current = Date.now();
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await apiClient.get(
+          "/api/v1/maintenance-procedures/",
+          {
+            params: {
+              page: pageToLoad,
+              page_size: pageSizeToUse,
+            },
+          },
+        );
 
-      if (Array.isArray(response.data)) {
-        taskData = response.data;
-        total = taskData.length;
-        totalPagesValue = 1;
-      } else if (response.data && typeof response.data === 'object') {
-        const data = response.data as PaginatedMaintenanceResponse;
-        if (Array.isArray(data.results)) {
-          taskData = data.results;
-        }
-        total = typeof data.count === 'number' ? data.count : taskData.length;
-        if (typeof data.page_size === 'number' && data.page_size > 0) {
-          responsePageSize = data.page_size;
-        }
-        if (typeof data.total_pages === 'number' && data.total_pages > 0) {
-          totalPagesValue = data.total_pages;
-        }
-        if (typeof data.current_page === 'number' && data.current_page > 0) {
-          currentPageFromResponse = data.current_page;
-        }
-      } else if (response.data) {
-        // Fallback: try to use response.data directly
-        taskData = [response.data as MaintenanceTask];
-        total = taskData.length;
-        totalPagesValue = 1;
-      }
+        // Handle both array and paginated response formats
+        let taskData: MaintenanceTask[] = [];
+        let total = 0;
+        let totalPagesValue = 1;
+        let responsePageSize = pageSizeToUse;
+        let currentPageFromResponse: number | undefined;
 
-      if ((!totalPagesValue || totalPagesValue < 1) && total > 0 && responsePageSize > 0) {
-        totalPagesValue = Math.max(1, Math.ceil(total / responsePageSize));
-      }
-      setTasks(taskData);
-      setFilteredTasks(taskData);
-      setTotalCount(total);
-      setTotalPages(total > 0 ? totalPagesValue : 1);
+        if (Array.isArray(response.data)) {
+          taskData = response.data;
+          total = taskData.length;
+          totalPagesValue = 1;
+        } else if (response.data && typeof response.data === "object") {
+          const data = response.data as PaginatedMaintenanceResponse;
+          if (Array.isArray(data.results)) {
+            taskData = data.results;
+          }
+          total = typeof data.count === "number" ? data.count : taskData.length;
+          if (typeof data.page_size === "number" && data.page_size > 0) {
+            responsePageSize = data.page_size;
+          }
+          if (typeof data.total_pages === "number" && data.total_pages > 0) {
+            totalPagesValue = data.total_pages;
+          }
+          if (typeof data.current_page === "number" && data.current_page > 0) {
+            currentPageFromResponse = data.current_page;
+          }
+        } else if (response.data) {
+          // Fallback: try to use response.data directly
+          taskData = [response.data as MaintenanceTask];
+          total = taskData.length;
+          totalPagesValue = 1;
+        }
 
-      if (typeof currentPageFromResponse === 'number' && currentPageFromResponse > 0 && currentPageFromResponse !== page) {
-        setPage(currentPageFromResponse);
-      }
+        if (
+          (!totalPagesValue || totalPagesValue < 1) &&
+          total > 0 &&
+          responsePageSize > 0
+        ) {
+          totalPagesValue = Math.max(1, Math.ceil(total / responsePageSize));
+        }
+        setTasks(taskData);
+        setFilteredTasks(taskData);
+        setTotalCount(total);
+        setTotalPages(total > 0 ? totalPagesValue : 1);
 
-      if (responsePageSize > 0 && responsePageSize !== pageSize) {
-        setPageSize(responsePageSize);
+        if (
+          typeof currentPageFromResponse === "number" &&
+          currentPageFromResponse > 0 &&
+          currentPageFromResponse !== page
+        ) {
+          setPage(currentPageFromResponse);
+        }
+
+        if (responsePageSize > 0 && responsePageSize !== pageSize) {
+          setPageSize(responsePageSize);
+        }
+      } catch (err: any) {
+        console.error("Error fetching maintenance tasks:", err);
+        if (err?.status === 404 && pageToLoad > 1) {
+          setPage(1);
+        }
+        setError(err?.message || "Failed to load maintenance tasks");
+        setTasks([]);
+        setFilteredTasks([]);
+        setTotalCount(0);
+        setTotalPages(1);
+      } finally {
+        clearLoadingAfterMinTime();
       }
-    } catch (err: any) {
-      console.error('Error fetching maintenance tasks:', err);
-      if (err?.status === 404 && pageToLoad > 1) {
-        setPage(1);
-      }
-      setError(err?.message || 'Failed to load maintenance tasks');
-      setTasks([]);
-      setFilteredTasks([]);
-      setTotalCount(0);
-      setTotalPages(1);
-    } finally {
-      clearLoadingAfterMinTime();
-    }
-  }, [page, pageSize, clearLoadingAfterMinTime]);
+    },
+    [page, pageSize, clearLoadingAfterMinTime],
+  );
 
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (status === "authenticated") {
       fetchTasks(page, pageSize);
     }
   }, [status, page, pageSize, fetchTasks]);
 
-  const handlePageChange = useCallback((newPage: number) => {
-    if (newPage === page) return;
-    if (newPage < 1) return;
-    if (totalCount > 0 && newPage > totalPages) return;
-    setPage(newPage);
-    setExpandedTaskId(null);
-  }, [page, totalCount, totalPages]);
+  const handlePageChange = useCallback(
+    (newPage: number) => {
+      if (newPage === page) return;
+      if (newPage < 1) return;
+      if (totalCount > 0 && newPage > totalPages) return;
+      setPage(newPage);
+      setExpandedTaskId(null);
+    },
+    [page, totalCount, totalPages],
+  );
 
-  const handlePageSizeChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newSize = Number(event.target.value);
-    if (Number.isNaN(newSize) || newSize <= 0) {
-      return;
-    }
-    setPage(1);
-    setPageSize(newSize);
-    setExpandedTaskId(null);
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (event: React.ChangeEvent<HTMLSelectElement>) => {
+      const newSize = Number(event.target.value);
+      if (Number.isNaN(newSize) || newSize <= 0) {
+        return;
+      }
+      setPage(1);
+      setPageSize(newSize);
+      setExpandedTaskId(null);
+    },
+    [],
+  );
 
   const handleRefresh = useCallback(() => {
     fetchTasks(page, pageSize);
@@ -230,20 +255,22 @@ export default function MaintenanceTasksPage() {
     // Search filter
     if (searchQuery) {
       filtered = filtered.filter(
-      (task) =>
-        task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.description.toLowerCase().includes(searchQuery.toLowerCase())
+        (task) =>
+          task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          task.description.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
 
     // Frequency filter
-    if (frequencyFilter !== 'all') {
+    if (frequencyFilter !== "all") {
       filtered = filtered.filter((task) => task.frequency === frequencyFilter);
     }
 
     // Difficulty filter
-    if (difficultyFilter !== 'all') {
-      filtered = filtered.filter((task) => task.difficulty_level === difficultyFilter);
+    if (difficultyFilter !== "all") {
+      filtered = filtered.filter(
+        (task) => task.difficulty_level === difficultyFilter,
+      );
     }
 
     setFilteredTasks(filtered);
@@ -251,18 +278,18 @@ export default function MaintenanceTasksPage() {
 
   const getFrequencyLabel = (freq: string) => {
     const labels: Record<string, string> = {
-      daily: 'Daily',
-      weekly: 'Weekly',
-      monthly: 'Monthly',
-      quarterly: 'Quarterly',
-      semi_annual: 'Semi-Annual',
-      annual: 'Annual',
-      custom: 'Custom',
+      daily: "Daily",
+      weekly: "Weekly",
+      monthly: "Monthly",
+      quarterly: "Quarterly",
+      semi_annual: "Semi-Annual",
+      annual: "Annual",
+      custom: "Custom",
     };
     return labels[freq] || freq;
   };
 
-  if (status === 'loading' || loading) {
+  if (status === "loading" || loading) {
     return (
       <div
         className="flex min-h-[60vh] flex-col items-center justify-center gap-5"
@@ -273,7 +300,7 @@ export default function MaintenanceTasksPage() {
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
           <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
         </div>
-        <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+        <p className="text-center text-lg font-medium text-muted-foreground sm:text-xl">
           Loading maintenance tasks…
         </p>
       </div>
@@ -285,12 +312,13 @@ export default function MaintenanceTasksPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2">
             <Settings className="h-8 w-8 text-blue-600" />
             Maintenance Tasks
           </h1>
-          <p className="text-gray-600 mt-1">
-            Manage generic maintenance task templates (not tied to specific equipment)
+          <p className="text-muted-foreground mt-1">
+            Manage generic maintenance task templates (not tied to specific
+            equipment)
           </p>
         </div>
         <Button asChild>
@@ -301,186 +329,217 @@ export default function MaintenanceTasksPage() {
         </Button>
       </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Tasks</p>
-                  <p className="text-2xl font-bold text-gray-900">{totalCount}</p>
-                </div>
-                <Wrench className="h-8 w-8 text-blue-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Daily/Weekly (this page)</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {tasks.filter((t) => t.frequency === 'daily' || t.frequency === 'weekly').length}
-                  </p>
-                </div>
-                <Clock className="h-8 w-8 text-orange-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Expert Level (this page)</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {tasks.filter((t) => t.difficulty_level === 'expert' || t.difficulty_level === 'advanced').length}
-                  </p>
-                </div>
-                <AlertCircle className="h-8 w-8 text-red-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Stats card for steps - HIDDEN */}
-          {false && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600">With Steps</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {tasks.filter((t) => (t as any).steps && (t as any).steps.length > 0).length}
-                    </p>
-                  </div>
-                  <CheckCircle2 className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-      {/* Filters & Search */}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search tasks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              {/* Frequency Filter */}
-              <select
-                value={frequencyFilter}
-                onChange={(e) => setFrequencyFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Frequencies</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="semi_annual">Semi-Annual</option>
-                <option value="annual">Annual</option>
-                <option value="custom">Custom</option>
-              </select>
-
-              {/* Difficulty Filter */}
-              <select
-                value={difficultyFilter}
-                onChange={(e) => setDifficultyFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Difficulties</option>
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-                <option value="expert">Expert</option>
-              </select>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">
-                  Showing {hasResults ? `${startIndex}-${endIndex}` : 0} of {totalCount} tasks
+                <p className="text-sm text-muted-foreground">Total Tasks</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {totalCount}
                 </p>
-                {tasks.length > 0 && (
-                  <p className="text-xs text-gray-500">
-                    Filtered view: {filteredTasks.length} of {tasks.length} on this page
-                  </p>
-                )}
               </div>
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
+              <Wrench className="h-8 w-8 text-blue-600" />
             </div>
           </CardContent>
         </Card>
 
-        {/* Pagination Controls */}
-        {totalCount > 0 && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-gray-600">
-                Page {Math.min(page, totalPagesDisplay)} of {totalPagesDisplay}
-              </p>
-              <p className="text-xs text-gray-500">
-                Rows {hasResults ? `${startIndex}-${endIndex}` : '0-0'} • {totalCount} total tasks
-              </p>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Daily/Weekly (this page)
+                </p>
+                <p className="text-2xl font-bold text-foreground">
+                  {
+                    tasks.filter(
+                      (t) =>
+                        t.frequency === "daily" || t.frequency === "weekly",
+                    ).length
+                  }
+                </p>
+              </div>
+              <Clock className="h-8 w-8 text-orange-600" />
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-600">Rows per page</span>
-                <select
-                  value={pageSize}
-                  onChange={handlePageSizeChange}
-                  className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {[10, 20, 50, 100].map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  Expert Level (this page)
+                </p>
+                <p className="text-2xl font-bold text-foreground">
+                  {
+                    tasks.filter(
+                      (t) =>
+                        t.difficulty_level === "expert" ||
+                        t.difficulty_level === "advanced",
+                    ).length
+                  }
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(page - 1)}
-                  disabled={!hasPreviousPage || loading}
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(page + 1)}
-                  disabled={!hasNextPage || loading}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats card for steps - HIDDEN */}
+        {false && (
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">With Steps</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {
+                      tasks.filter(
+                        (t) => (t as any).steps && (t as any).steps.length > 0,
+                      ).length
+                    }
+                  </p>
+                </div>
+                <CheckCircle2 className="h-8 w-8 text-green-600" />
               </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Filters & Search */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search tasks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Frequency Filter */}
+            <select
+              value={frequencyFilter}
+              onChange={(e) => setFrequencyFilter(e.target.value)}
+              className="px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Frequencies</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="semi_annual">Semi-Annual</option>
+              <option value="annual">Annual</option>
+              <option value="custom">Custom</option>
+            </select>
+
+            {/* Difficulty Filter */}
+            <select
+              value={difficultyFilter}
+              onChange={(e) => setDifficultyFilter(e.target.value)}
+              className="px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Difficulties</option>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+              <option value="expert">Expert</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
+            <div>
+              <p className="text-sm text-muted-foreground">
+                Showing {hasResults ? `${startIndex}-${endIndex}` : 0} of{" "}
+                {totalCount} tasks
+              </p>
+              {tasks.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Filtered view: {filteredTasks.length} of {tasks.length} on
+                  this page
+                </p>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pagination Controls */}
+      {totalCount > 0 && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">
+              Page {Math.min(page, totalPagesDisplay)} of {totalPagesDisplay}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Rows {hasResults ? `${startIndex}-${endIndex}` : "0-0"} •{" "}
+              {totalCount} total tasks
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Rows per page
+              </span>
+              <select
+                value={pageSize}
+                onChange={handlePageSizeChange}
+                className="px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {[10, 20, 50, 100].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(page - 1)}
+                disabled={!hasPreviousPage || loading}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(page + 1)}
+                disabled={!hasNextPage || loading}
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (
@@ -496,11 +555,13 @@ export default function MaintenanceTasksPage() {
         {filteredTasks.length === 0 ? (
           <Card>
             <CardContent className="pt-6 text-center py-12">
-              <Wrench className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">
-                {searchQuery || frequencyFilter !== 'all' || difficultyFilter !== 'all'
-                  ? 'No tasks found matching your filters'
-                  : 'No maintenance tasks yet. Create your first task to get started.'}
+              <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                {searchQuery ||
+                frequencyFilter !== "all" ||
+                difficultyFilter !== "all"
+                  ? "No tasks found matching your filters"
+                  : "No maintenance tasks yet. Create your first task to get started."}
               </p>
               {tasks.length === 0 && (
                 <Button asChild className="mt-4">
@@ -514,118 +575,167 @@ export default function MaintenanceTasksPage() {
           </Card>
         ) : (
           filteredTasks.map((task) => (
-            <Card 
-              key={task.id} 
-              className="hover:shadow-lg transition-all border-l-4"
-              style={{ borderLeftColor: task.frequency === 'daily' ? '#dc2626' : task.frequency === 'weekly' ? '#ea580c' : '#3b82f6' }}
+            <Card
+              key={task.id}
+              className="hover:shadow-card transition-all border-l-4"
+              style={{
+                borderLeftColor:
+                  task.frequency === "daily"
+                    ? "#dc2626"
+                    : task.frequency === "weekly"
+                      ? "#ea580c"
+                      : "#3b82f6",
+              }}
             >
-              <CardContent 
-                className="pt-6 cursor-pointer" 
+              <CardContent
+                className="pt-6 cursor-pointer"
                 onClick={(e) => {
                   // Allow clicking anywhere on the card except badges to navigate
-                  if ((e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('.badge-container')) {
+                  if (
+                    (e.target as HTMLElement).closest("a") ||
+                    (e.target as HTMLElement).closest(".badge-container")
+                  ) {
                     return;
                   }
                   router.push(`/dashboard/maintenance-tasks/${task.id}`);
                 }}
               >
-                  <div className="flex flex-col sm:flex-row justify-between gap-4">
-                    <div className="flex-1 space-y-3">
-                      {/* Header */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-start gap-2">
-                            <Settings className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
-                            <div>
-                              <h3 className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors">
-                            {task.name}
-                          </h3>
-                            </div>
+                <div className="flex flex-col sm:flex-row justify-between gap-4">
+                  <div className="flex-1 space-y-3">
+                    {/* Header */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-start gap-2">
+                          <Settings className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
+                          <div>
+                            <h3 className="text-lg font-semibold text-foreground hover:text-blue-600 transition-colors">
+                              {task.name}
+                            </h3>
                           </div>
                         </div>
-                        <Link href={`/dashboard/maintenance-tasks/${task.id}`}>
-                          <Button variant="ghost" size="sm" className="gap-1">
-                            View Details
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                        </Link>
                       </div>
+                      <Link href={`/dashboard/maintenance-tasks/${task.id}`}>
+                        <Button variant="ghost" size="sm" className="gap-1">
+                          View Details
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
 
-                      {/* Description */}
-                      <p className="text-sm text-gray-700 line-clamp-2">{task.description}</p>
+                    {/* Description */}
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {task.description}
+                    </p>
 
-                      {/* Badges */}
-                      <div className="flex flex-wrap items-center gap-2 badge-container">
-                        <Badge className={frequencyColors[task.frequency] || 'bg-gray-100 text-gray-800'}>
-                          {getFrequencyLabel(task.frequency)}
+                    {/* Badges */}
+                    <div className="flex flex-wrap items-center gap-2 badge-container">
+                      <Badge
+                        className={
+                          frequencyColors[task.frequency] ||
+                          "bg-muted text-foreground"
+                        }
+                      >
+                        {getFrequencyLabel(task.frequency)}
+                      </Badge>
+
+                      <Badge
+                        className={
+                          difficultyColors[task.difficulty_level] ||
+                          "bg-muted text-foreground"
+                        }
+                      >
+                        {task.difficulty_level.charAt(0).toUpperCase() +
+                          task.difficulty_level.slice(1)}
+                      </Badge>
+
+                      {task.estimated_duration && (
+                        <Badge
+                          variant="outline"
+                          className="flex items-center gap-1"
+                        >
+                          <Clock className="h-3 w-3" />
+                          {task.estimated_duration}
                         </Badge>
-                        
-                        <Badge className={difficultyColors[task.difficulty_level] || 'bg-gray-100 text-gray-800'}>
-                          {task.difficulty_level.charAt(0).toUpperCase() + task.difficulty_level.slice(1)}
-                        </Badge>
+                      )}
 
-                        {task.estimated_duration && (
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {task.estimated_duration}
-                          </Badge>
-                        )}
-
-                        {/* Steps badge - HIDDEN */}
-                        {false && (task as any).steps && (task as any).steps.length > 0 && (
-                          <Badge variant="outline" className="flex items-center gap-1">
+                      {/* Steps badge - HIDDEN */}
+                      {false &&
+                        (task as any).steps &&
+                        (task as any).steps.length > 0 && (
+                          <Badge
+                            variant="outline"
+                            className="flex items-center gap-1"
+                          >
                             <CheckCircle2 className="h-3 w-3" />
                             {(task as any).steps.length} Steps
                           </Badge>
                         )}
 
-                        {task.responsible_department && (
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <Users className="h-3 w-3" />
-                            {task.responsible_department}
-                          </Badge>
-                        )}
+                      {task.responsible_department && (
+                        <Badge
+                          variant="outline"
+                          className="flex items-center gap-1"
+                        >
+                          <Users className="h-3 w-3" />
+                          {task.responsible_department}
+                        </Badge>
+                      )}
 
-                        {task.safety_notes && (
-                          <Badge variant="outline" className="flex items-center gap-1 bg-yellow-50 text-yellow-800 border-yellow-300">
-                            <AlertTriangle className="h-3 w-3" />
-                            Safety Notes
-                          </Badge>
-                        )}
+                      {task.safety_notes && (
+                        <Badge
+                          variant="outline"
+                          className="flex items-center gap-1 bg-yellow-50 text-yellow-800 border-yellow-300"
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                          Safety Notes
+                        </Badge>
+                      )}
 
-                        {task.required_tools && (
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <FileText className="h-3 w-3" />
-                            Tools Required
-                          </Badge>
-                        )}
-                      </div>
+                      {task.required_tools && (
+                        <Badge
+                          variant="outline"
+                          className="flex items-center gap-1"
+                        >
+                          <FileText className="h-3 w-3" />
+                          Tools Required
+                        </Badge>
+                      )}
+                    </div>
 
-                      {/* Quick Preview on Expand - Steps removed */}
-                      {false && expandedTaskId === task.id && (task as any).steps && (task as any).steps.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
-                          <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    {/* Quick Preview on Expand - Steps removed */}
+                    {false &&
+                      expandedTaskId === task.id &&
+                      (task as any).steps &&
+                      (task as any).steps.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-border">
+                          <h4 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
                             <CheckCircle2 className="h-4 w-4" />
                             Procedure Steps Preview (First 3)
                           </h4>
                           <div className="space-y-2">
-                            {(task as any).steps.slice(0, 3).map((step: any, idx: number) => (
-                              <div key={idx} className="flex gap-2 text-sm">
-                                <span className="font-semibold text-blue-600">{step.step_number}.</span>
-                                <span className="text-gray-700">{step.title}</span>
-                              </div>
-                            ))}
+                            {(task as any).steps
+                              .slice(0, 3)
+                              .map((step: any, idx: number) => (
+                                <div key={idx} className="flex gap-2 text-sm">
+                                  <span className="font-semibold text-blue-600">
+                                    {step.step_number}.
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    {step.title}
+                                  </span>
+                                </div>
+                              ))}
                             {(task as any).steps.length > 3 && (
-                              <p className="text-xs text-gray-500 italic">
+                              <p className="text-xs text-muted-foreground italic">
                                 +{(task as any).steps.length - 3} more steps...
                               </p>
                             )}
                           </div>
                         </div>
                       )}
-                    </div>
                   </div>
-                </CardContent>
+                </div>
+              </CardContent>
             </Card>
           ))
         )}
@@ -633,4 +743,3 @@ export default function MaintenanceTasksPage() {
     </div>
   );
 }
-

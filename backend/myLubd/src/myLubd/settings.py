@@ -57,8 +57,8 @@ _default_allowed_hosts = [
     'localhost',
     '127.0.0.1',
     '[::1]',
-    'pcms.live',
-    'www.pcms.live',
+    'hotelcarepro.com',
+    'www.hotelcarepro.com',
     'django-backend',
     'backend',
     # Include with port for internal Docker communication
@@ -259,15 +259,15 @@ def _normalize_auth0_audience(aud: Optional[str]) -> Optional[str]:
         return None
     value = aud.strip().rstrip('/')
     # Fix common misconfiguration where base domain is used without /api
-    if value in ('https://pcms.live', 'http://pcms.live', 'https://www.pcms.live'):
-        return 'https://pcms.live/api'
+    if value in ('https://hotelcarepro.com', 'http://hotelcarepro.com', 'https://www.hotelcarepro.com'):
+        return 'https://hotelcarepro.com/api'
     if value.endswith('/api'):
         return value
     try:
         from urllib.parse import urlparse
         host = urlparse(value).netloc
         path = urlparse(value).path
-        if host.endswith('pcms.live') and (path == '' or path == '/'):
+        if host.endswith('hotelcarepro.com') and (path == '' or path == '/'):
             return f"{value}/api"
     except Exception:
         pass
@@ -413,13 +413,13 @@ EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'False') == 'True'
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL') or os.getenv('EMAIL_HOST_USER', 'no-reply@pcms.live')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL') or os.getenv('EMAIL_HOST_USER', 'no-reply@hotelcarepro.com')
 SERVER_EMAIL = os.getenv('SERVER_EMAIL') or DEFAULT_FROM_EMAIL
 # Recipients override for daily summary (comma-separated string)
 DAILY_SUMMARY_RECIPIENTS = os.getenv('DAILY_SUMMARY_RECIPIENTS')
 
 # Base URL for links in emails (frontend site)
-FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'https://pcms.live')
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'https://hotelcarepro.com')
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
@@ -440,14 +440,14 @@ if _env_cors_origins:
 else:
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:3000",
-        "https://pcms.live",
-        "https://www.pcms.live",
+        "https://hotelcarepro.com",
+        "https://www.hotelcarepro.com",
         "http://nextjs-frontend:3000",
     ]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
-      "https://pcms.live",
-    "https://www.pcms.live",
+      "https://hotelcarepro.com",
+    "https://www.hotelcarepro.com",
     "http://nextjs-frontend:3000",
      
 ]

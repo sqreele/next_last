@@ -39,8 +39,8 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
       // In production, convert to the production domain
       if (process.env.NODE_ENV === 'production') {
         const productionUrl = normalizedInput
-          .replace('http://backend:8000', 'https://pcms.live')
-          .replace('http://django-backend:8000', 'https://pcms.live');
+          .replace('http://backend:8000', 'https://hotelcarepro.com')
+          .replace('http://django-backend:8000', 'https://hotelcarepro.com');
         return productionUrl;
       } else {
         // In development, convert to localhost URLs for browser access
@@ -63,7 +63,7 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
     }
     
     // For production URLs, return as-is
-    if (normalizedInput.includes('pcms.live') || normalizedInput.includes('www.pcms.live')) {
+    if (normalizedInput.includes('hotelcarepro.com') || normalizedInput.includes('www.hotelcarepro.com')) {
       return encodeURI(normalizedInput);
     }
     

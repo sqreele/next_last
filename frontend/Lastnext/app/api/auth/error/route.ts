@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
         process.env.AUTH0_BASE_URL ||
         process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
         process.env.APP_BASE_URL ||
-        'https://pcms.live';
+        'https://hotelcarepro.com';
       const errorUrl = new URL('/auth/error', baseUrl);
       errorUrl.searchParams.set('error', ERROR_TYPES.SESSION_EXPIRED);
       
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       process.env.AUTH0_BASE_URL ||
       process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
       process.env.APP_BASE_URL ||
-      'https://pcms.live';
+      'https://hotelcarepro.com';
     const errorUrl = new URL('/auth/error', baseUrl);
     errorUrl.searchParams.set('error', error);
     return NextResponse.redirect(errorUrl);
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       process.env.AUTH0_BASE_URL ||
       process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
       process.env.APP_BASE_URL ||
-      'https://pcms.live';
+      'https://hotelcarepro.com';
     const errorUrl = new URL('/auth/error', baseUrl);
     errorUrl.searchParams.set('error', ERROR_TYPES.SESSION_EXPIRED);
     

@@ -188,7 +188,7 @@ export default async function JobPage({ params }: Props) {
             <ReassignJobButton job={job} />
             <a
               href={`/dashboard/jobs/${job.job_id}/print/`}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 sm:w-auto"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-bold text-muted-foreground hover:bg-muted sm:w-auto"
             >
               Printable work order
             </a>
@@ -379,7 +379,7 @@ export default async function JobPage({ params }: Props) {
                     return (
                       <div
                         key={index}
-                        className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-[1.5rem] bg-[var(--pcms-surface-soft)] shadow-[var(--pcms-shadow-sm)]"
+                        className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-[1.5rem] bg-[var(--pcms-surface-soft)] shadow-[var(--pcms-shadow-soft)]"
                       >
                         <span className="text-[var(--pcms-text-muted)]">
                           No Image
@@ -391,7 +391,7 @@ export default async function JobPage({ params }: Props) {
                   return (
                     <div
                       key={index}
-                      className="relative h-56 w-full overflow-hidden rounded-[1.5rem] shadow-[var(--pcms-shadow-sm)]"
+                      className="relative h-56 w-full overflow-hidden rounded-[1.5rem] shadow-[var(--pcms-shadow-soft)]"
                     >
                       <Image
                         src={finalImageUrl}

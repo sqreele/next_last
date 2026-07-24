@@ -152,7 +152,7 @@ function drawFooter(doc: jsPDF, page: number, pageCount: number) {
   doc.setFontSize(9);
   doc.setTextColor(140);
   doc.text(`Page ${page} of ${pageCount}`, width - MARGIN, height - 18, { align: 'right' });
-  doc.text('PCMS — Hotel Maintenance Report', MARGIN, height - 18);
+  doc.text('HotelCare Pro — Hotel Maintenance Report', MARGIN, height - 18);
   doc.setTextColor(0);
 }
 

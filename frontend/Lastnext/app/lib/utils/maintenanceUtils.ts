@@ -49,31 +49,12 @@ export function getStatusInfo(item: PreventiveMaintenance) {
   };
 }
 
-export function getMachineNames(machines: any): string {
-  if (!machines) return 'None';
-  
-  if (Array.isArray(machines)) {
-    if (machines.length === 0) return 'None';
-    
-    const names = machines
-      .map(machine => {
-        if (typeof machine === 'string') return machine;
-        if (typeof machine === 'object' && machine.name) return machine.name;
-        if (typeof machine === 'object' && machine.machine_name) return machine.machine_name;
-        return 'Unknown';
-      })
-      .filter(name => name !== 'Unknown');
-    
-    return names.length > 0 ? names.join(', ') : 'Unknown';
-  }
-  
-  if (typeof machines === 'object') {
-    return machines.name || machines.machine_name || 'Unknown';
-  }
-  
-  if (typeof machines === 'string') {
-    return machines;
-  }
-  
-  return 'Unknown';
+export function getMachineNames(machines: PreventiveMaintenance['machines']): string {
+  if (!machines?.length) return 'None';
+
+  const names = machines
+    .map((machine) => machine.name || machine.machine_id)
+    .filter(Boolean);
+
+  return names.length > 0 ? names.join(', ') : 'Unknown';
 }

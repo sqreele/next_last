@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { Job } from '@/app/lib/types';
-import MaintenanceJobCard from '@/app/components/jobs/MaintenanceJobCard';
-import { Badge } from '@/app/components/ui/badge';
-import { Card, CardContent } from '@/app/components/ui/card';
-import { SearchInput, MobileTopBar } from '@/app/components/pcms-ui';
-import { AlertCircle, MapPin } from 'lucide-react';
-import { useUser, useProperties } from '@/app/lib/stores/mainStore';
-import { filterJobsByProperty } from '@/app/lib/utils/property-filter';
+import React from "react";
+import { Job } from "@/app/lib/types";
+import MaintenanceJobCard from "@/app/components/jobs/MaintenanceJobCard";
+import { Badge } from "@/app/components/ui/badge";
+import { Card, CardContent } from "@/app/components/ui/card";
+import { SearchInput, MobileTopBar } from "@/app/components/pcms-ui";
+import { AlertCircle, MapPin } from "lucide-react";
+import { useUser, useProperties } from "@/app/lib/stores/mainStore";
+import { filterJobsByProperty } from "@/app/lib/utils/property-filter";
 
 type AreaGroup = {
   key: string;
@@ -17,8 +17,8 @@ type AreaGroup = {
   jobs: Job[];
 };
 
-const NO_AREA_KEY = '__no_area__';
-const NO_AREA_LABEL = 'No Area';
+const NO_AREA_KEY = "__no_area__";
+const NO_AREA_LABEL = "No Area";
 
 function getAreaLabel(job: Job): string {
   const areaName = job.area?.name || job.area_name;
@@ -29,7 +29,8 @@ function getAreaKey(job: Job): string {
   const areaId = job.area?.id || job.area_id;
   if (areaId) return `area-${areaId}`;
   const areaName = job.area?.name || job.area_name;
-  if (areaName && areaName.trim()) return `area-name-${areaName.trim().toLowerCase()}`;
+  if (areaName && areaName.trim())
+    return `area-name-${areaName.trim().toLowerCase()}`;
   return NO_AREA_KEY;
 }
 
@@ -41,12 +42,19 @@ function sortGroups(groups: AreaGroup[]): AreaGroup[] {
   return groups.sort((a, b) => {
     if (a.key === NO_AREA_KEY) return 1;
     if (b.key === NO_AREA_KEY) return -1;
-    return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' });
+    return a.label.localeCompare(b.label, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
   });
 }
 
-export default function JobsByAreaClient({ initialJobs }: { initialJobs: Job[] }) {
-  const [query, setQuery] = React.useState('');
+export default function JobsByAreaClient({
+  initialJobs,
+}: {
+  initialJobs: Job[];
+}) {
+  const [query, setQuery] = React.useState("");
   const { selectedPropertyId } = useUser();
   const { properties } = useProperties();
 
@@ -59,17 +67,23 @@ export default function JobsByAreaClient({ initialJobs }: { initialJobs: Job[] }
     const term = query.trim().toLowerCase();
     if (!term) return propertyScopedJobs;
 
-    return propertyScopedJobs.filter((job) => [
-      job.job_id,
-      job.description,
-      job.remarks,
-      job.status,
-      job.priority,
-      job.topics?.[0]?.title,
-      job.rooms?.[0]?.name,
-      job.area?.name,
-      job.area_name,
-    ].some((value) => String(value || '').toLowerCase().includes(term)));
+    return propertyScopedJobs.filter((job) =>
+      [
+        job.job_id,
+        job.description,
+        job.remarks,
+        job.status,
+        job.priority,
+        job.topics?.[0]?.title,
+        job.rooms?.[0]?.name,
+        job.area?.name,
+        job.area_name,
+      ].some((value) =>
+        String(value || "")
+          .toLowerCase()
+          .includes(term),
+      ),
+    );
   }, [propertyScopedJobs, query]);
 
   const groups = React.useMemo(() => {
@@ -94,25 +108,36 @@ export default function JobsByAreaClient({ initialJobs }: { initialJobs: Job[] }
     return sortGroups(Array.from(byArea.values()));
   }, [filteredJobs]);
 
-  const noAreaCount = groups.find((group) => group.key === NO_AREA_KEY)?.jobs.length || 0;
+  const noAreaCount =
+    groups.find((group) => group.key === NO_AREA_KEY)?.jobs.length || 0;
 
   return (
     <div className="space-y-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
       <MobileTopBar title="Jobs by Area" />
 
-      <Card className="border-cyan-100 bg-white/95 shadow-sm">
+      <Card className="border-cyan-100 bg-card/95 shadow-soft">
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-700">Maintenance locations</p>
-              <h1 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Jobs by Area</h1>
-              <p className="text-sm font-semibold text-slate-600">
-                {filteredJobs.length} job{filteredJobs.length === 1 ? '' : 's'} grouped into {groups.length} area{groups.length === 1 ? '' : 's'}.
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-700">
+                Maintenance locations
+              </p>
+              <h1 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+                Jobs by Area
+              </h1>
+              <p className="text-sm font-semibold text-muted-foreground">
+                {filteredJobs.length} job{filteredJobs.length === 1 ? "" : "s"}{" "}
+                grouped into {groups.length} area
+                {groups.length === 1 ? "" : "s"}.
               </p>
             </div>
             {noAreaCount > 0 && (
-              <Badge variant="outline" className="w-fit border-amber-200 bg-amber-50 px-3 py-1 text-amber-800">
-                <AlertCircle className="mr-1.5 h-3.5 w-3.5" /> {noAreaCount} No Area
+              <Badge
+                variant="outline"
+                className="w-fit border-amber-200 bg-amber-50 px-3 py-1 text-amber-800"
+              >
+                <AlertCircle className="mr-1.5 h-3.5 w-3.5" /> {noAreaCount} No
+                Area
               </Badge>
             )}
           </div>
@@ -130,11 +155,13 @@ export default function JobsByAreaClient({ initialJobs }: { initialJobs: Job[] }
                 <a
                   key={group.key}
                   href={`#${group.key}`}
-                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm touch-manipulation"
+                  className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs font-black text-muted-foreground shadow-soft touch-manipulation"
                 >
                   <MapPin className="h-3.5 w-3.5 text-cyan-600" />
                   <span>{group.label}</span>
-                  <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">{group.jobs.length}</span>
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    {group.jobs.length}
+                  </span>
                 </a>
               ))}
             </div>
@@ -143,32 +170,48 @@ export default function JobsByAreaClient({ initialJobs }: { initialJobs: Job[] }
       </Card>
 
       {groups.length === 0 ? (
-        <Card className="border-dashed border-slate-300 bg-white/80">
+        <Card className="border-dashed border-border bg-card/80">
           <CardContent className="p-8 text-center">
-            <p className="text-lg font-black text-slate-900">No jobs found</p>
-            <p className="mt-1 text-sm font-medium text-slate-600">Create a job with Area = Bathroom to see it grouped under Bathroom here.</p>
+            <p className="text-lg font-black text-foreground">No jobs found</p>
+            <p className="mt-1 text-sm font-medium text-muted-foreground">
+              Create a job with Area = Bathroom to see it grouped under Bathroom
+              here.
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-6">
           {groups.map((group) => (
-            <section key={group.key} id={group.key} className="scroll-mt-24 space-y-3">
-              <div className="sticky top-0 z-10 rounded-2xl border border-white/80 bg-white/90 px-3 py-3 shadow-sm backdrop-blur sm:static sm:px-4">
+            <section
+              key={group.key}
+              id={group.key}
+              className="scroll-mt-24 space-y-3"
+            >
+              <div className="sticky top-0 z-10 rounded-xl border border-white/80 bg-card/90 px-3 py-3 shadow-soft backdrop-blur sm:static sm:px-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
                     <h2 className="flex items-center gap-2 text-xl font-black tracking-tight text-slate-950">
                       <MapPin className="h-5 w-5 shrink-0 text-cyan-600" />
                       <span className="truncate">{group.label}</span>
                     </h2>
-                    {group.propertyName && <p className="mt-0.5 text-xs font-bold text-slate-500">{group.propertyName}</p>}
+                    {group.propertyName && (
+                      <p className="mt-0.5 text-xs font-bold text-muted-foreground">
+                        {group.propertyName}
+                      </p>
+                    )}
                   </div>
-                  <Badge className="bg-cyan-600 text-white">{group.jobs.length} job{group.jobs.length === 1 ? '' : 's'}</Badge>
+                  <Badge className="bg-cyan-600 text-white">
+                    {group.jobs.length} job{group.jobs.length === 1 ? "" : "s"}
+                  </Badge>
                 </div>
               </div>
 
               <div className="pcms-job-grid auto-rows-fr">
                 {group.jobs.map((job) => (
-                  <div key={job.job_id} className="h-full touch-action-manipulation">
+                  <div
+                    key={job.job_id}
+                    className="h-full touch-action-manipulation"
+                  >
                     <MaintenanceJobCard job={job} />
                   </div>
                 ))}

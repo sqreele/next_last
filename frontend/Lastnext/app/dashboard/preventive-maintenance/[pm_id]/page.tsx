@@ -1,27 +1,29 @@
 // PreventiveMaintenanceDetailPage.tsx (Server Component)
 
-import { Suspense } from 'react';
-import PreventiveMaintenanceClient from '@/app/dashboard/preventive-maintenance/[pm_id]/PreventiveMaintenanceClient'; // Ensure this path is correct
-import { notFound } from 'next/navigation';
-import { Topic } from '@/app/lib/types'; // Ensure this path is correct
+import { Suspense } from "react";
+import PreventiveMaintenanceClient from "@/app/dashboard/preventive-maintenance/[pm_id]/PreventiveMaintenanceClient"; // Ensure this path is correct
+import { notFound } from "next/navigation";
+import { Topic } from "@/app/lib/types"; // Ensure this path is correct
 import {
   PreventiveMaintenance,
-  getMachineDetails
-} from '@/app/lib/preventiveMaintenanceModels'; // Ensure this path is correct
+  getMachineDetails,
+} from "@/app/lib/preventiveMaintenanceModels"; // Ensure this path is correct
 
 // Import server-side session from Auth0 compat
 import { getServerSession } from "@/app/lib/session.server";
-import { API_CONFIG } from '@/app/lib/config';
+import { API_CONFIG } from "@/app/lib/config";
 
 // Function to check if topics is a Topic[]
 function isTopicArray(topics: Topic[] | number[]): topics is Topic[] {
-  return topics.length === 0 || (topics.length > 0 && typeof topics[0] !== 'number');
+  return (
+    topics.length === 0 || (topics.length > 0 && typeof topics[0] !== "number")
+  );
 }
 
 // Helper function to handle machines array
 function renderMachines(machines: any[] | null | undefined) {
   if (!machines || machines.length === 0) {
-    return <p className="text-gray-500 italic">No machines assigned</p>;
+    return <p className="text-muted-foreground italic">No machines assigned</p>;
   }
 
   return (
@@ -31,7 +33,7 @@ function renderMachines(machines: any[] | null | undefined) {
         return (
           <span
             key={index}
-            className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full"
+            className="inline-flex items-center px-3 py-1 bg-muted text-foreground text-sm rounded-full"
           >
             {machineName ? `${machineName} (${machineId})` : machineId}
           </span>
@@ -42,8 +44,9 @@ function renderMachines(machines: any[] | null | undefined) {
 }
 
 // MODIFIED Function to fetch Preventive Maintenance from API (Server Component)
-async function getPreventiveMaintenance(pmId: string): Promise<PreventiveMaintenance | null> {
-
+async function getPreventiveMaintenance(
+  pmId: string,
+): Promise<PreventiveMaintenance | null> {
   // 1. Get the server-side session
   const session = await getServerSession();
 
@@ -52,7 +55,9 @@ async function getPreventiveMaintenance(pmId: string): Promise<PreventiveMainten
   const accessToken = session?.user?.accessToken as string | undefined;
 
   if (!accessToken) {
-    console.error(`[SERVER_FETCH] No access token found in session for PM ID: ${pmId}. User might not be authenticated or token is missing in session.`);
+    console.error(
+      `[SERVER_FETCH] No access token found in session for PM ID: ${pmId}. User might not be authenticated or token is missing in session.`,
+    );
     // For a protected route, typically you wouldn't proceed.
     // Throwing an error or returning null will lead to notFound() or an error boundary.
     return null; // Or throw new Error("Authentication required");
@@ -62,29 +67,36 @@ async function getPreventiveMaintenance(pmId: string): Promise<PreventiveMainten
 
   try {
     const response = await fetch(targetUrl, {
-      cache: 'no-store',
+      cache: "no-store",
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${accessToken}`, // 3. Include the Authorization header
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        Authorization: `Bearer ${accessToken}`, // 3. Include the Authorization header
       },
     });
 
     if (!response.ok) {
-      console.error(`[SERVER_FETCH] API Error for PM ${pmId}: Status ${response.status} - ${response.statusText}`);
+      console.error(
+        `[SERVER_FETCH] API Error for PM ${pmId}: Status ${response.status} - ${response.statusText}`,
+      );
       if (response.status === 404) {
         return null;
       }
       // If it's 401, it means the token was rejected (e.g., expired and not refreshed server-side, or invalid)
       // A more advanced server-side flow might attempt a refresh here, but it's complex.
       // For now, a failed auth attempt will lead to an error.
-      throw new Error(`Failed to fetch maintenance data: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch maintenance data: ${response.status} ${response.statusText}`,
+      );
     }
 
     const data = await response.json();
     return data as PreventiveMaintenance;
   } catch (error) {
-    console.error(`[SERVER_FETCH] Exception while fetching maintenance data for ${pmId}:`, error);
+    console.error(
+      `[SERVER_FETCH] Exception while fetching maintenance data for ${pmId}:`,
+      error,
+    );
     // Re-throw the error to be handled by Next.js (e.g., error page or notFound)
     throw error;
   }
@@ -117,7 +129,9 @@ export default async function PreventiveMaintenanceDetailPage(props: {
   try {
     maintenanceData = await getPreventiveMaintenance(pmId);
   } catch (error: any) {
-    console.error(`[PAGE_ERROR] Failed to load data for PM ${pmId}: ${error.message}`);
+    console.error(
+      `[PAGE_ERROR] Failed to load data for PM ${pmId}: ${error.message}`,
+    );
     // If getPreventiveMaintenance throws (e.g., for a 500 error or non-404/non-401 that we didn't handle as null),
     // this catch block will handle it. We can then decide to call notFound() or let Next.js show an error page.
     // If the error is critical and means data can't be shown, notFound() or a custom error display is appropriate.
@@ -128,24 +142,32 @@ export default async function PreventiveMaintenanceDetailPage(props: {
   }
 
   const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     try {
-        return new Date(dateString).toLocaleDateString('th-TH', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+      return new Date(dateString).toLocaleDateString("th-TH", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
     } catch (e) {
-        console.warn(`[formatDate] Invalid date string provided: ${dateString}`);
-        return 'Invalid Date';
+      console.warn(`[formatDate] Invalid date string provided: ${dateString}`);
+      return "Invalid Date";
     }
   };
 
   return (
     <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl">
-      <h1 className="text-2xl font-bold mb-4">Preventive Maintenance Details</h1>
+      <h1 className="text-2xl font-bold mb-4">
+        Preventive Maintenance Details
+      </h1>
 
-       <Suspense fallback={<div className="text-center py-4">Loading interactive components...</div>}>
+      <Suspense
+        fallback={
+          <div className="text-center py-4">
+            Loading interactive components...
+          </div>
+        }
+      >
         <PreventiveMaintenanceClient maintenanceData={maintenanceData} />
       </Suspense>
     </div>

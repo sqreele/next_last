@@ -174,6 +174,25 @@ class JobAdminCsvExportTests(TestCase):
         self.assertEqual(row[16], 'Image URL only (unsupported Excel preview)')
         self.assertEqual(row[17], self.request.build_absolute_uri(image.image.url))
 
+    def test_excel_image_conversion_skips_mpo_without_opening_pillow(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+
+        class CapturingDrawingImage:
+            def __init__(self, image_buffer):
+                self.image_buffer = image_buffer
+
+        with TemporaryDirectory() as temporary_directory:
+            image_path = Path(temporary_directory) / 'stereo.mpo'
+            image_path.write_bytes(b'not-real-mpo-image-bytes')
+
+            with patch('PIL.Image.open') as image_open:
+                with self.assertRaises(ValueError):
+                    _excel_image_for_export(str(image_path), CapturingDrawingImage)
+
+            image_open.assert_not_called()
+
     def test_excel_image_conversion_uses_thumbnail_preview(self):
         from io import BytesIO
         from pathlib import Path

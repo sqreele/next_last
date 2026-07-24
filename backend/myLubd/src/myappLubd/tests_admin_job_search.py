@@ -2,7 +2,7 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 
-from .admin import IsDefectFilter, JobAdmin
+from .admin import IsDefectFilter, JobAdmin, _excel_image_for_export
 from .models import Job, Room
 
 
@@ -173,6 +173,32 @@ class JobAdminCsvExportTests(TestCase):
         row = next(workbook.active.iter_rows(min_row=2, max_row=2, values_only=True))
         self.assertEqual(row[16], 'Image URL only (unsupported Excel preview)')
         self.assertEqual(row[17], self.request.build_absolute_uri(image.image.url))
+
+    def test_excel_image_conversion_uses_thumbnail_preview(self):
+        from io import BytesIO
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from PIL import Image as PILImage
+
+        class CapturingDrawingImage:
+            def __init__(self, image_buffer):
+                self.image_buffer = image_buffer
+
+        with TemporaryDirectory() as temporary_directory:
+            image_path = Path(temporary_directory) / 'large-preview.bmp'
+            PILImage.new('RGB', (800, 600), color='blue').save(image_path, format='BMP')
+
+            excel_image, converted_buffer = _excel_image_for_export(
+                str(image_path),
+                CapturingDrawingImage,
+            )
+
+            self.assertIs(excel_image.image_buffer, converted_buffer)
+            converted_buffer.seek(0)
+            with PILImage.open(BytesIO(converted_buffer.getvalue())) as converted_image:
+                self.assertEqual(converted_image.format, 'PNG')
+                self.assertLessEqual(converted_image.width, 120)
+                self.assertLessEqual(converted_image.height, 90)
 
     def test_export_jobs_excel_converts_images_with_unsupported_extensions(self):
         from django.core.files.uploadedfile import SimpleUploadedFile

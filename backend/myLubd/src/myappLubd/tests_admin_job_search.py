@@ -173,3 +173,28 @@ class JobAdminCsvExportTests(TestCase):
         row = next(workbook.active.iter_rows(min_row=2, max_row=2, values_only=True))
         self.assertEqual(row[16], 'Image URL only (unsupported Excel preview)')
         self.assertEqual(row[17], self.request.build_absolute_uri(image.image.url))
+
+    def test_export_jobs_excel_converts_images_with_unsupported_extensions(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from io import BytesIO
+        from openpyxl import load_workbook
+        from PIL import Image as PILImage
+
+        image_buffer = BytesIO()
+        PILImage.new('RGB', (1, 1), color='red').save(image_buffer, format='JPEG')
+        image_buffer.seek(0)
+        image = self.job.job_images.create(
+            uploaded_by=self.user,
+            image=SimpleUploadedFile(
+                'camera-upload.jfif',
+                image_buffer.getvalue(),
+                content_type='image/jpeg',
+            ),
+        )
+
+        response = self.admin.export_jobs_excel(self.request, Job.objects.filter(pk=self.job.pk))
+
+        workbook = load_workbook(BytesIO(response.content))
+        row = next(workbook.active.iter_rows(min_row=2, max_row=2, values_only=True))
+        self.assertEqual(row[16], 'Embedded below')
+        self.assertEqual(row[17], self.request.build_absolute_uri(image.image.url))

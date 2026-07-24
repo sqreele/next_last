@@ -112,6 +112,10 @@ def _image_export_note(image_count):
 
 
 
+class UnsupportedExcelImagePreview(ValueError):
+    """Raised when an upload should be exported as a URL instead of an XLSX preview."""
+
+
 def _excel_image_for_export(image_path, drawing_image_cls):
     """Return an openpyxl image that is safe to save inside an XLSX file.
 
@@ -126,11 +130,21 @@ def _excel_image_for_export(image_path, drawing_image_cls):
     supported_formats = {'gif', 'jpeg', 'png'}
     supported_extensions = {'.gif', '.jpeg', '.jpg', '.png'}
 
+    max_convert_file_size = 5 * 1024 * 1024
+    max_convert_pixels = 12_000_000
+
+    if os.path.getsize(image_path) > max_convert_file_size:
+        raise UnsupportedExcelImagePreview('Image file is too large to safely preview during export.')
+
     with PILImage.open(image_path) as pil_image:
         image_format = (pil_image.format or '').lower()
         image_extension = os.path.splitext(image_path)[1].lower()
         if image_format in supported_formats and image_extension in supported_extensions:
             return drawing_image_cls(image_path), None
+
+        width, height = pil_image.size
+        if width * height > max_convert_pixels:
+            raise UnsupportedExcelImagePreview('Image dimensions are too large to safely preview during export.')
 
         # Use the first frame for multi-picture formats such as MPO. Convert to
         # an Excel-friendly color mode before saving as PNG.

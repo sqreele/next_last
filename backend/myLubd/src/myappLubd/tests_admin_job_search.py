@@ -200,6 +200,24 @@ class JobAdminCsvExportTests(TestCase):
                 self.assertLessEqual(converted_image.width, 120)
                 self.assertLessEqual(converted_image.height, 90)
 
+
+    def test_excel_image_conversion_skips_large_files(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch
+
+        class CapturingDrawingImage:
+            def __init__(self, image_buffer):
+                self.image_buffer = image_buffer
+
+        with TemporaryDirectory() as temporary_directory:
+            image_path = Path(temporary_directory) / 'oversized.bmp'
+            image_path.write_bytes(b'0')
+
+            with patch('os.path.getsize', return_value=(5 * 1024 * 1024) + 1):
+                with self.assertRaises(ValueError):
+                    _excel_image_for_export(str(image_path), CapturingDrawingImage)
+
     def test_export_jobs_excel_converts_images_with_unsupported_extensions(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         from io import BytesIO

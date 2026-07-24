@@ -9,9 +9,13 @@ import { jsPDF } from 'jspdf';
 import { Job, Property } from '@/app/lib/types';
 import { JobsReportSummary } from '@/app/lib/utils/excel-export';
 import { getDisplayName } from '@/app/lib/utils/display-name';
+import { getJobImageUrls } from '@/app/lib/utils/csv-export';
+import { fixImageUrl } from '@/app/lib/utils/image-utils';
 
 export interface PdfExportOptions {
   propertyName?: string;
+  includeImages?: boolean;
+  maxImageColumns?: number;
   summary?: JobsReportSummary;
   generatedAt?: Date;
   filterDescription?: string;
@@ -64,6 +68,82 @@ function drawHeader(doc: jsPDF, title: string, subtitle: string) {
   doc.setTextColor(110);
   doc.text(subtitle, MARGIN, MARGIN + 16);
   doc.setTextColor(0);
+}
+
+async function imageUrlToDataUrl(url: string): Promise<string | null> {
+  try {
+    const resolvedUrl = fixImageUrl(url) || url;
+    const response = await fetch(resolvedUrl, { credentials: 'include' });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    if (!blob.type.startsWith('image/')) return null;
+
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn('Unable to embed report image in PDF:', error);
+    return null;
+  }
+}
+
+async function drawImageSection(
+  doc: jsPDF,
+  jobs: Job[],
+  options: PdfExportOptions,
+): Promise<void> {
+  const maxImages = Math.max(1, options.maxImageColumns ?? 3);
+  const jobsWithImages = jobs
+    .map((job) => ({ job, urls: getJobImageUrls(job).slice(0, maxImages) }))
+    .filter(({ urls }) => urls.length > 0);
+
+  if (jobsWithImages.length === 0) return;
+
+  doc.addPage();
+  drawHeader(doc, 'Job photos', `Showing up to ${maxImages} images per job`);
+  let y = MARGIN + 48;
+  const thumbWidth = 120;
+  const thumbHeight = 90;
+  const gap = 12;
+
+  for (const { job, urls } of jobsWithImages) {
+    if (y + thumbHeight + 36 > doc.internal.pageSize.height - MARGIN) {
+      doc.addPage();
+      drawHeader(doc, 'Job photos', `Showing up to ${maxImages} images per job`);
+      y = MARGIN + 48;
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(`${safe(job.job_id, 'Job')} — ${safe(job.description, 'No description').slice(0, 85)}`, MARGIN, y);
+    y += 14;
+
+    let x = MARGIN;
+    for (const url of urls) {
+      const dataUrl = await imageUrlToDataUrl(url);
+      doc.setDrawColor(220);
+      doc.rect(x, y, thumbWidth, thumbHeight);
+      if (dataUrl) {
+        doc.addImage(dataUrl, getImageFormat(dataUrl), x + 2, y + 2, thumbWidth - 4, thumbHeight - 4, undefined, 'FAST');
+      } else {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.text('Image could not be loaded', x + 8, y + 38, { maxWidth: thumbWidth - 16 });
+        doc.text(url, x + 8, y + 52, { maxWidth: thumbWidth - 16 });
+      }
+      x += thumbWidth + gap;
+    }
+    y += thumbHeight + 24;
+  }
+}
+
+function getImageFormat(dataUrl: string): 'JPEG' | 'PNG' | 'WEBP' {
+  if (dataUrl.startsWith('data:image/png')) return 'PNG';
+  if (dataUrl.startsWith('data:image/webp')) return 'WEBP';
+  return 'JPEG';
 }
 
 function drawFooter(doc: jsPDF, page: number, pageCount: number) {
@@ -204,11 +284,11 @@ function drawTableRow(
   return y + rowHeight;
 }
 
-export function exportJobsReportToPdf(
+export async function exportJobsReportToPdf(
   jobs: Job[],
   properties: Property[] = [],
   options: PdfExportOptions = {},
-): void {
+): Promise<void> {
   const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'landscape' });
   const generated = options.generatedAt ?? new Date();
   const title = `${options.propertyName ?? 'All properties'} — Jobs Report`;
@@ -238,6 +318,10 @@ export function exportJobsReportToPdf(
     }
     y = drawTableRow(doc, y, job, properties, COLUMNS, index % 2 === 1);
   });
+
+  if (options.includeImages) {
+    await drawImageSection(doc, jobs, options);
+  }
 
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i += 1) {

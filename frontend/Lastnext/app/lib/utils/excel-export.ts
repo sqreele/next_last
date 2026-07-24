@@ -13,6 +13,7 @@ import { Job, Property } from '@/app/lib/types';
 import {
   CSVExportOptions,
   getJobsCSVHeaders,
+  getJobImageUrls,
   jobToCSVRow,
 } from '@/app/lib/utils/csv-export';
 
@@ -105,6 +106,11 @@ function buildBreakdownSheet(
   return sheet;
 }
 
+function excelImageFormula(url: string): string {
+  const safeUrl = url.replace(/"/g, '""');
+  return `IMAGE("${safeUrl}")`;
+}
+
 function buildJobsSheet(
   jobs: Job[],
   properties: Property[],
@@ -114,7 +120,26 @@ function buildJobsSheet(
   const dataRows = jobs.map((job) => jobToCSVRow(job, properties, options));
   const rows: (string | number)[][] = [headers, ...dataRows];
   const sheet = XLSX.utils.aoa_to_sheet(rows);
-  sheet['!cols'] = autoSizeColumns(rows);
+
+  if (options.includeImages) {
+    const maxImageColumns = Math.max(1, options.maxImageColumns ?? 3);
+    const firstImageColumn = headers.length - maxImageColumns;
+    jobs.forEach((job, jobIndex) => {
+      getJobImageUrls(job).slice(0, maxImageColumns).forEach((url, imageIndex) => {
+        const cellAddress = XLSX.utils.encode_cell({ r: jobIndex + 1, c: firstImageColumn + imageIndex });
+        sheet[cellAddress] = { t: 's', f: excelImageFormula(url), v: url };
+      });
+    });
+  }
+
+  sheet['!cols'] = autoSizeColumns(rows).map((col, index) => (
+    options.includeImages && index >= headers.length - Math.max(1, options.maxImageColumns ?? 3)
+      ? { wch: 18 }
+      : col
+  ));
+  if (options.includeImages && rows.length > 1) {
+    sheet['!rows'] = rows.map((_, index) => (index === 0 ? { hpt: 20 } : { hpt: 90 }));
+  }
   if (rows.length > 1) {
     sheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } }) };
   }

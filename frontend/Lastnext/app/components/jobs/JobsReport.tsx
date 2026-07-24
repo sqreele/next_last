@@ -1098,7 +1098,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
     try {
       setIsGeneratingCsv(true);
       const csvContent = jobsToCSV(filteredReportJobs, userProperties, {
-        includeImages: false,
+        includeImages: true,
+        maxImageColumns: 3,
         includeUserDetails: true,
         includeRoomDetails: true,
         includePropertyDetails: true,
@@ -1128,7 +1129,8 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
         summary: statistics,
         filterDescription: buildFilterDescription(),
         filename: buildExportFilename('xlsx'),
-        includeImages: false,
+        includeImages: true,
+        maxImageColumns: 3,
         includeUserDetails: true,
         includeRoomDetails: true,
         includePropertyDetails: true,
@@ -1151,11 +1153,13 @@ export default function JobsReport({ jobs = [], filter = 'all', onRefresh }: Job
       setIsGeneratingPdf(true);
       const propertyName = currentProperty?.name || `Property ${selectedProperty}`;
       await new Promise((resolve) => setTimeout(resolve, 0));
-      exportJobsReportToPdf(filteredReportJobs, userProperties, {
+      await exportJobsReportToPdf(filteredReportJobs, userProperties, {
         propertyName,
         summary: statistics,
         filterDescription: buildFilterDescription(),
         filename: buildExportFilename('pdf'),
+        includeImages: true,
+        maxImageColumns: 3,
       });
     } catch (error: any) {
       console.error('Error generating PDF:', error);

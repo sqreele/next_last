@@ -12,6 +12,25 @@ export interface CSVExportOptions {
   includeRoomDetails?: boolean;
   includePropertyDetails?: boolean;
   dateFormat?: 'iso' | 'local' | 'readable';
+  /** Number of image URL columns to add when includeImages is true. */
+  maxImageColumns?: number;
+}
+
+/**
+ * Return unique image URLs for a job in display order.
+ */
+export function getJobImageUrls(job: Job): string[] {
+  const urls: string[] = [];
+
+  if (job.images && job.images.length > 0) {
+    urls.push(...job.images.map(img => img.image_url).filter(Boolean));
+  }
+
+  if (job.image_urls && job.image_urls.length > 0) {
+    urls.push(...job.image_urls.filter(Boolean));
+  }
+
+  return Array.from(new Set(urls));
 }
 
 /**
@@ -84,20 +103,6 @@ export function jobToCSVRow(
     ).join('; ');
   };
 
-  const getImageUrls = (job: Job): string => {
-    const urls: string[] = [];
-    
-    if (job.images && job.images.length > 0) {
-      urls.push(...job.images.map(img => img.image_url).filter(Boolean));
-    }
-    
-    if (job.image_urls && job.image_urls.length > 0) {
-      urls.push(...job.image_urls.filter(Boolean));
-    }
-    
-    return urls.join('; ');
-  };
-
   const getTopics = (topics: any[] | undefined): string => {
     if (!topics || topics.length === 0) return 'N/A';
     return topics.map(topic => topic.title || topic.name || 'Unknown').join('; ');
@@ -145,7 +150,11 @@ export function jobToCSVRow(
 
   // Images
   if (includeImages) {
-    row.push(getImageUrls(job));
+    const maxImageColumns = Math.max(1, options.maxImageColumns ?? 3);
+    const imageUrls = getJobImageUrls(job);
+    for (let index = 0; index < maxImageColumns; index += 1) {
+      row.push(imageUrls[index] ?? '');
+    }
   }
 
   return row;
@@ -191,7 +200,10 @@ export function getJobsCSVHeaders(options: CSVExportOptions = {}): string[] {
   headers.push('Topics');
 
   if (includeImages) {
-    headers.push('Image URLs');
+    const maxImageColumns = Math.max(1, options.maxImageColumns ?? 3);
+    for (let index = 1; index <= maxImageColumns; index += 1) {
+      headers.push(`Image ${index}`);
+    }
   }
 
   return headers;

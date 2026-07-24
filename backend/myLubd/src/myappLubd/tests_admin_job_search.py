@@ -81,3 +81,42 @@ class IsDefectFilterTests(TestCase):
 
         self.assertIn(self.defect_job, queryset)
         self.assertNotIn(self.non_defect_job, queryset)
+
+
+class JobAdminCsvExportTests(TestCase):
+    def setUp(self):
+        self.request = RequestFactory().get('/admin/myappLubd/job/')
+        self.admin = JobAdmin(Job, AdminSite())
+        self.user = User.objects.create_user(username='csv-engineer', password='pw12345!')
+        self.job = Job.objects.create(
+            user=self.user,
+            description='CSV export image test',
+            remarks='Includes image URL',
+            status='pending',
+            priority='medium',
+        )
+
+    def test_export_jobs_csv_includes_image_urls_and_display_formulas(self):
+        from csv import DictReader
+        from io import StringIO
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        image = self.job.job_images.create(
+            uploaded_by=self.user,
+            image=SimpleUploadedFile(
+                'before.jpg',
+                b'not-real-image-bytes',
+                content_type='image/jpeg',
+            ),
+        )
+
+        response = self.admin.export_jobs_csv(self.request, Job.objects.filter(pk=self.job.pk))
+        rows = list(DictReader(StringIO(response.content.decode())))
+
+        expected_url = self.request.build_absolute_uri(image.image.url)
+        self.assertEqual(rows[0]['Image URLs'], expected_url)
+        self.assertEqual(
+            rows[0]['Image Formulas (Excel/Google Sheets)'],
+            f'=IMAGE("{expected_url}")',
+        )
+        self.assertIn('CSV cannot embed images', rows[0]['Image Export Notes'])

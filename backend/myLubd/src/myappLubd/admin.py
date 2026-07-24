@@ -97,18 +97,17 @@ def _spreadsheet_image_formula(image_url):
 
 
 def _image_export_note(image_count):
-    """Explain how image data appears in CSV exports.
+    """Explain how image data appears in spreadsheet exports.
 
-    CSV files are plain text and cannot contain embedded image binaries. The
-    export includes both direct URLs and optional spreadsheet formulas instead,
-    so users can either click the links or render the images in spreadsheet apps
-    that support IMAGE formulas.
+    CSV and Google Sheets exports include direct image URLs plus IMAGE formulas.
+    Google Sheets can render formulas for supported, reachable image URLs; Excel
+    users can still click the URL when the formula is not rendered.
     """
     if image_count <= 0:
         return 'No images attached to this record.'
     if image_count == 1:
-        return 'CSV cannot embed images; open the Image URL or use the IMAGE formula in a supported spreadsheet.'
-    return f'CSV cannot embed images; {image_count} image URLs/formulas are separated by new lines.'
+        return 'Open the Image URL or use the IMAGE formula in Google Sheets/supported spreadsheet apps.'
+    return f'{image_count} image URLs and IMAGE formulas are separated by new lines.'
 
 # Custom Date Joined Month Filter for Admin
 class DateJoinedMonthFilter(admin.SimpleListFilter):
@@ -1379,7 +1378,7 @@ class JobAdmin(admin.ModelAdmin):
         formset.save_m2m()
 
     # Admin actions for timestamp management and export
-    actions = ['update_timestamps_to_now', 'reset_completed_timestamps', 'export_jobs_pdf', 'export_jobs_csv', 'export_jobs_excel', 'export_jobs_chart_pdf']
+    actions = ['update_timestamps_to_now', 'reset_completed_timestamps', 'export_jobs_pdf', 'export_jobs_csv', 'export_jobs_google_sheets_csv', 'export_jobs_excel', 'export_jobs_chart_pdf']
 
     def update_timestamps_to_now(self, request, queryset):
         """Update selected jobs' timestamps to current time"""
@@ -2223,6 +2222,13 @@ class JobAdmin(admin.ModelAdmin):
         return response
     export_jobs_csv.short_description = "Export selected/filtered jobs to CSV"
 
+    def export_jobs_google_sheets_csv(self, request, queryset):
+        """Export jobs as a Google Sheets-friendly CSV with IMAGE formulas."""
+        response = self.export_jobs_csv(request, queryset)
+        response['Content-Disposition'] = response['Content-Disposition'].replace('jobs_', 'jobs_google_sheets_')
+        return response
+    export_jobs_google_sheets_csv.short_description = "Export selected/filtered jobs to Google Sheets CSV"
+
     def export_jobs_excel(self, request, queryset):
         """Export selected/filtered jobs to Excel and embed the first job image."""
         import importlib
@@ -2306,10 +2312,17 @@ class JobAdmin(admin.ModelAdmin):
 
             first_image = images[0] if images else None
             if first_image and hasattr(first_image.image, 'path') and os.path.exists(first_image.image.path):
-                excel_image = drawing_image.Image(first_image.image.path)
-                excel_image.width = 120
-                excel_image.height = 90
-                sheet.add_image(excel_image, f'{get_column_letter(image_column)}{row_index}')
+                try:
+                    excel_image = drawing_image.Image(first_image.image.path)
+                    excel_image.width = 120
+                    excel_image.height = 90
+                    sheet.add_image(excel_image, f'{get_column_letter(image_column)}{row_index}')
+                except Exception:
+                    # Some uploaded image formats (for example .mpo files from
+                    # phones/cameras) can be stored by Django but cannot be
+                    # embedded by openpyxl/Pillow during XLSX export. Keep the
+                    # admin action usable by leaving the URL in the export.
+                    sheet.cell(row=row_index, column=image_column).value = 'Image URL only (unsupported Excel preview)'
 
         for column_index, header in enumerate(headers, start=1):
             if column_index not in {image_column, image_url_column, note_column}:

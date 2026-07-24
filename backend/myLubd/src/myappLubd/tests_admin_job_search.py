@@ -120,3 +120,56 @@ class JobAdminCsvExportTests(TestCase):
             f'=IMAGE("{expected_url}")',
         )
         self.assertIn('CSV cannot embed images', rows[0]['Image Export Notes'])
+
+    def test_export_jobs_google_sheets_csv_uses_image_formulas(self):
+        from csv import DictReader
+        from io import StringIO
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        image = self.job.job_images.create(
+            uploaded_by=self.user,
+            image=SimpleUploadedFile(
+                'before-for-sheets.jpg',
+                b'not-real-image-bytes',
+                content_type='image/jpeg',
+            ),
+        )
+
+        response = self.admin.export_jobs_google_sheets_csv(self.request, Job.objects.filter(pk=self.job.pk))
+        rows = list(DictReader(StringIO(response.content.decode())))
+
+        expected_url = self.request.build_absolute_uri(image.image.url)
+        self.assertIn('jobs_google_sheets_', response['Content-Disposition'])
+        self.assertEqual(rows[0]['Image URLs'], expected_url)
+        self.assertEqual(
+            rows[0]['Image Formulas (Excel/Google Sheets)'],
+            f'=IMAGE("{expected_url}")',
+        )
+
+    def test_export_jobs_excel_leaves_mpo_images_as_urls(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from unittest.mock import patch
+
+        image = self.job.job_images.create(
+            uploaded_by=self.user,
+            image=SimpleUploadedFile(
+                'stereo.mpo',
+                b'not-real-mpo-image-bytes',
+                content_type='image/mpo',
+            ),
+        )
+
+        with patch('openpyxl.drawing.image.Image', side_effect=KeyError('.mpo')):
+            response = self.admin.export_jobs_excel(self.request, Job.objects.filter(pk=self.job.pk))
+
+        self.assertEqual(
+            response['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        from io import BytesIO
+        from openpyxl import load_workbook
+
+        workbook = load_workbook(BytesIO(response.content))
+        row = next(workbook.active.iter_rows(min_row=2, max_row=2, values_only=True))
+        self.assertEqual(row[16], 'Image URL only (unsupported Excel preview)')
+        self.assertEqual(row[17], self.request.build_absolute_uri(image.image.url))

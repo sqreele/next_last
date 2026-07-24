@@ -119,16 +119,20 @@ class UnsupportedExcelImagePreview(ValueError):
 def _excel_image_for_export(image_path, drawing_image_cls):
     """Return an openpyxl image that is safe to save inside an XLSX file.
 
-    openpyxl can instantiate previews for Pillow-readable formats such as MPO,
-    but XLSX packaging only knows common image MIME types. Converting uncommon
-    formats to PNG before adding them prevents save-time KeyError failures like
-    KeyError('.mpo') while still embedding a preview.
+    openpyxl can instantiate previews for some upload formats that XLSX
+    packaging cannot save reliably. Skip known slow/unsupported camera formats
+    and convert other uncommon formats to PNG before embedding a preview.
     """
     from io import BytesIO
     from PIL import Image as PILImage
 
     supported_formats = {'gif', 'jpeg', 'png'}
     supported_extensions = {'.gif', '.jpeg', '.jpg', '.png'}
+    url_only_extensions = {'.mpo'}
+
+    image_extension = os.path.splitext(image_path)[1].lower()
+    if image_extension in url_only_extensions:
+        raise UnsupportedExcelImagePreview('Image format is not safe to preview during export.')
 
     max_convert_file_size = 5 * 1024 * 1024
     max_convert_pixels = 12_000_000
@@ -138,7 +142,6 @@ def _excel_image_for_export(image_path, drawing_image_cls):
 
     with PILImage.open(image_path) as pil_image:
         image_format = (pil_image.format or '').lower()
-        image_extension = os.path.splitext(image_path)[1].lower()
         if image_format in supported_formats and image_extension in supported_extensions:
             return drawing_image_cls(image_path), None
 

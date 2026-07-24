@@ -124,10 +124,12 @@ def _excel_image_for_export(image_path, drawing_image_cls):
     from PIL import Image as PILImage
 
     supported_formats = {'gif', 'jpeg', 'png'}
+    supported_extensions = {'.gif', '.jpeg', '.jpg', '.png'}
 
     with PILImage.open(image_path) as pil_image:
         image_format = (pil_image.format or '').lower()
-        if image_format in supported_formats:
+        image_extension = os.path.splitext(image_path)[1].lower()
+        if image_format in supported_formats and image_extension in supported_extensions:
             return drawing_image_cls(image_path), None
 
         # Use the first frame for multi-picture formats such as MPO. Convert to

@@ -110,6 +110,42 @@ def _image_export_note(image_count):
         return 'CSV cannot embed images; open the Image URL or use the IMAGE formula in a supported spreadsheet.'
     return f'CSV cannot embed images; {image_count} image URLs/formulas are separated by new lines.'
 
+
+
+def _excel_image_for_export(image_path, drawing_image_cls):
+    """Return an openpyxl image that is safe to save inside an XLSX file.
+
+    openpyxl can instantiate previews for Pillow-readable formats such as MPO,
+    but XLSX packaging only knows common image MIME types. Converting uncommon
+    formats to PNG before adding them prevents save-time KeyError failures like
+    KeyError('.mpo') while still embedding a preview.
+    """
+    from io import BytesIO
+    from PIL import Image as PILImage
+
+    supported_formats = {'gif', 'jpeg', 'png'}
+
+    with PILImage.open(image_path) as pil_image:
+        image_format = (pil_image.format or '').lower()
+        if image_format in supported_formats:
+            return drawing_image_cls(image_path), None
+
+        # Use the first frame for multi-picture formats such as MPO. Convert to
+        # an Excel-friendly color mode before saving as PNG.
+        try:
+            pil_image.seek(0)
+        except EOFError:
+            pass
+
+        converted = pil_image.copy()
+        if converted.mode not in ('RGB', 'RGBA'):
+            converted = converted.convert('RGB')
+
+        buffer = BytesIO()
+        buffer.name = 'image.png'
+        converted.save(buffer, format='PNG')
+        buffer.seek(0)
+        return drawing_image_cls(buffer), buffer
 # Custom Date Joined Month Filter for Admin
 class DateJoinedMonthFilter(admin.SimpleListFilter):
     title = 'date joined (month)'
@@ -2264,6 +2300,8 @@ class JobAdmin(admin.ModelAdmin):
             'rooms__properties', 'rooms', 'topics', 'job_images'
         ).order_by('created_at')
 
+        converted_image_buffers = []
+
         for row_index, job in enumerate(qs, start=2):
             user_info = ''
             if job.user:
@@ -2314,7 +2352,11 @@ class JobAdmin(admin.ModelAdmin):
             first_image = images[0] if images else None
             if first_image and hasattr(first_image.image, 'path') and os.path.exists(first_image.image.path):
                 try:
-                    excel_image = drawing_image.Image(first_image.image.path)
+                    excel_image, converted_buffer = _excel_image_for_export(first_image.image.path, drawing_image.Image)
+                    if converted_buffer is not None:
+                        # openpyxl reads image data while saving, so keep the
+                        # converted in-memory PNG alive until workbook.save().
+                        converted_image_buffers.append(converted_buffer)
                     excel_image.width = 120
                     excel_image.height = 90
                     sheet.add_image(excel_image, f'{get_column_letter(image_column)}{row_index}')

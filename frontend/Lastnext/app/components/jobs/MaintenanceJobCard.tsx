@@ -89,13 +89,13 @@ export default function MaintenanceJobCard({
   return (
     <article
       className={cn(
-        "group h-full rounded-xl border border-border bg-card shadow-soft transition-colors duration-150 hover:border-foreground/25 motion-reduce:transition-none",
+        "group overflow-hidden rounded-xl border border-border bg-card shadow-soft transition-colors duration-150 hover:border-foreground/25 motion-reduce:transition-none",
         viewMode === "list" && "sm:min-h-0",
       )}
     >
       <Link
         href={detailHref}
-        className="flex h-full min-h-64 flex-col overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex min-h-64 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         aria-label={`Open maintenance job ${job.job_id}`}
       >
         <div className="relative h-36 w-full border-b border-border bg-muted">
@@ -154,7 +154,7 @@ export default function MaintenanceJobCard({
             </div>
           </dl>
 
-          <div className="mt-auto flex items-center justify-between border-t border-border pt-4">
+          <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
             <span className="text-xs text-muted-foreground">
               Updated {formatDate(job.updated_at)}
             </span>

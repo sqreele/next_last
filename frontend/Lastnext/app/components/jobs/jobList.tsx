@@ -514,19 +514,19 @@ export default function JobList({
           <LoadingSkeleton rows={6} />
         </div>
       ) : (
-        <div className="job-grid-container -mx-3 mb-10 sm:mx-0">
+        <div className="job-grid-container mb-10">
           <div
             className={
               viewMode === "list"
                 ? "gap-4 space-y-4"
-                : "pcms-job-grid auto-rows-fr"
+                : "pcms-job-grid items-start"
             }
           >
             {currentJobs.map((job, index) => {
               const jobIdStr = String(job.job_id || `job-${index}`);
               const selected = selectedJobIds.has(jobIdStr);
               const cardEl = (
-                <div className="h-full touch-action-manipulation">
+                <div className="touch-action-manipulation">
                   <MaintenanceJobCard job={job} viewMode={viewMode} />
                 </div>
               );
@@ -534,7 +534,7 @@ export default function JobList({
                 return (
                   <div
                     key={jobIdStr}
-                    className={viewMode === "list" ? "h-full w-full" : "h-full"}
+                    className={viewMode === "list" ? "w-full" : undefined}
                   >
                     {cardEl}
                   </div>
@@ -549,7 +549,7 @@ export default function JobList({
                   aria-label={`${selected ? "Deselect" : "Select"} job ${jobIdStr}`}
                   className={cn(
                     "relative block w-full rounded-xl text-left transition-all",
-                    viewMode === "list" ? "h-full" : "h-full",
+                    viewMode === "list" && "h-full",
                     selected
                       ? "ring-4 ring-blue-500 ring-offset-2"
                       : "ring-2 ring-transparent hover:ring-blue-200",

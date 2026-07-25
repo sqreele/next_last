@@ -228,9 +228,9 @@ export default function LandingPage() {
                 >
                   <CardHeader>
                     <div
-                      className={`mb-3 grid h-11 w-11 place-items-center rounded-xl ${feature.iconClass}`}
+                      className={`pcms-icon-box mb-3 rounded-xl ${feature.iconClass}`}
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon aria-hidden="true" />
                     </div>
                     <CardTitle className="text-lg sm:text-xl">
                       {feature.title}

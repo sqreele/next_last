@@ -11,18 +11,23 @@
   --popover: 0 0% 100%;
   --popover-foreground: 222.2 47.4% 11.2%;
   --primary: 220 88% 51%;
+  --primary-hover: 220 88% 40%;
   --primary-foreground: 0 0% 100%;
   --secondary: 210 40% 96.1%;
+  --secondary-hover: 214 32% 91%;
   --secondary-foreground: 222.2 47.4% 11.2%;
   --muted: 210 40% 96.1%;
   --muted-foreground: 215.4 16.3% 46.9%;
   --accent: 210 40% 96.1%;
   --accent-foreground: 222.2 47.4% 11.2%;
   --destructive: 0 84.2% 60.2%;
+  --destructive-hover: 0 74% 42%;
   --destructive-foreground: 0 0% 100%;
   --success: 142 71% 45%;
+  --success-hover: 142 72% 29%;
   --success-foreground: 0 0% 100%;
   --warning: 24.6 95% 53.1%;
+  --warning-hover: 21 90% 40%;
   --warning-foreground: 0 0% 100%;
   --info: 217 91% 60%;
   --info-foreground: 0 0% 100%;
@@ -517,18 +522,23 @@ body,
   --popover: 222 47% 10%;
   --popover-foreground: 210 40% 96%;
   --primary: 217 91% 60%;
+  --primary-hover: 213 94% 68%;
   --primary-foreground: 222 47% 11%;
   --secondary: 217 33% 17%;
+  --secondary-hover: 215 25% 27%;
   --secondary-foreground: 210 40% 96%;
   --muted: 217 33% 17%;
   --muted-foreground: 215 20% 65%;
   --accent: 217 33% 17%;
   --accent-foreground: 210 40% 96%;
   --destructive: 0 75% 55%;
+  --destructive-hover: 0 84% 65%;
   --destructive-foreground: 210 40% 96%;
   --success: 142 65% 50%;
+  --success-hover: 142 69% 58%;
   --success-foreground: 222 47% 11%;
   --warning: 24 95% 60%;
+  --warning-hover: 27 96% 68%;
   --warning-foreground: 222 47% 11%;
   --info: 217 91% 65%;
   --info-foreground: 222 47% 11%;
@@ -749,6 +759,24 @@ body {
 }
 
 @layer components {
+  /* Keeps decorative icon tiles visually identical regardless of SVG geometry
+     or the width available to their parent card. */
+  .pcms-icon-box {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    flex: 0 0 2.75rem;
+    place-items: center;
+  }
+  .pcms-icon-box > svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex: none;
+    stroke-width: 2;
+  }
+
   .pcms-page-header {
     display: flex;
     align-items: flex-end;

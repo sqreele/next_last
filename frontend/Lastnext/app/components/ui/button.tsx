@@ -10,14 +10,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-primary bg-primary text-primary-foreground shadow-soft hover:bg-primary/90",
-        destructive: "border-destructive bg-destructive text-destructive-foreground shadow-soft hover:bg-destructive/90",
-        outline: "border-border bg-background text-foreground shadow-soft hover:bg-muted",
-        secondary: "border-secondary bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        success: "border-success bg-success text-success-foreground shadow-soft hover:bg-success/90",
-        warning: "border-warning bg-warning text-warning-foreground shadow-soft hover:bg-warning/90",
-        ghost: "border-transparent bg-transparent text-foreground shadow-none hover:bg-muted",
-        link: "h-auto min-h-0 rounded-none border-0 bg-transparent p-0 text-primary underline-offset-4 shadow-none hover:underline active:scale-100",
+        default: "border-primary bg-primary text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))]",
+        destructive: "border-destructive bg-destructive text-destructive-foreground shadow-soft hover:border-[hsl(var(--destructive-hover))] hover:bg-[hsl(var(--destructive-hover))]",
+        outline: "border-border bg-background text-foreground shadow-soft hover:border-primary/30 hover:bg-primary/10 hover:text-primary",
+        secondary: "border-secondary bg-secondary text-secondary-foreground hover:border-[hsl(var(--secondary-hover))] hover:bg-[hsl(var(--secondary-hover))]",
+        success: "border-success bg-success text-success-foreground shadow-soft hover:border-[hsl(var(--success-hover))] hover:bg-[hsl(var(--success-hover))]",
+        warning: "border-warning bg-warning text-warning-foreground shadow-soft hover:border-[hsl(var(--warning-hover))] hover:bg-[hsl(var(--warning-hover))]",
+        ghost: "border-transparent bg-transparent text-foreground shadow-none hover:bg-primary/10 hover:text-primary",
+        link: "h-auto min-h-0 rounded-none border-0 bg-transparent p-0 text-primary underline-offset-4 shadow-none hover:text-[hsl(var(--primary-hover))] hover:underline active:scale-100",
       },
       size: {
         default: "h-11 px-4 py-2",

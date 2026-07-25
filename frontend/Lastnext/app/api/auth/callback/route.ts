@@ -36,17 +36,31 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
+    const authError = searchParams.get('error');
+    const authErrorDescription = searchParams.get('error_description');
     const expectedState = request.cookies.get('auth0_login_state')?.value;
     const baseUrl = process.env.AUTH0_BASE_URL || request.nextUrl.origin;
 
+    if (authError) {
+      console.error('Auth0 authorization failed:', authError, authErrorDescription);
+      const errorUrl = new URL('/auth/login', baseUrl);
+      errorUrl.searchParams.set('error', authError);
+      if (authErrorDescription) {
+        errorUrl.searchParams.set('error_description', authErrorDescription);
+      }
+      const errorResponse = NextResponse.redirect(errorUrl);
+      errorResponse.cookies.delete('auth0_login_state');
+      return errorResponse;
+    }
+
     if (!code) {
       console.error('No authorization code provided');
-      return NextResponse.redirect(`${baseUrl}/login?error=no_code`);
+      return NextResponse.redirect(`${baseUrl}/auth/login?error=no_code`);
     }
 
     if (!state || !expectedState || state !== expectedState) {
       console.error('OAuth state validation failed');
-      const invalidStateRedirect = NextResponse.redirect(`${baseUrl}/login?error=invalid_state`);
+      const invalidStateRedirect = NextResponse.redirect(`${baseUrl}/auth/login?error=invalid_state`);
       invalidStateRedirect.cookies.delete('auth0_login_state');
       return invalidStateRedirect;
     }

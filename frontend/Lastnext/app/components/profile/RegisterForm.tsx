@@ -4,6 +4,8 @@ import Link from "next/link";
 import FormField from "./FormField";
 import { RegisterFormData, ErrorState } from "@/app/lib/types";
 import axios from "axios";
+import { ArrowRight, Loader2, LockKeyhole } from "lucide-react";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function RegisterForm() {
@@ -79,35 +81,47 @@ export default function RegisterForm() {
     }
   };
   return (
-    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+    <form className="space-y-5" onSubmit={handleSubmit}>
       {error && (
-        <div className="bg-red-50 text-red-500 p-4 rounded-md">
+        <div
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          role="alert"
+        >
+          <span className="font-semibold">Unable to create account.</span>{" "}
           {error.message}
         </div>
       )}
 
-      <div className="rounded-md shadow-soft space-y-4">
+      <div className="space-y-4">
         <FormField
           id="username"
           label="Username"
+          autoComplete="username"
+          placeholder="Choose a username"
           error={error?.field === "username" ? error.message : undefined}
         />
         <FormField
           id="email"
-          label="Email"
+          label="Work email"
           type="email"
+          autoComplete="email"
+          placeholder="name@hotel.com"
           error={error?.field === "email" ? error.message : undefined}
         />
         <FormField
           id="password"
           label="Password"
           type="password"
+          autoComplete="new-password"
+          placeholder="Create a secure password"
           error={error?.field === "password" ? error.message : undefined}
         />
         <FormField
           id="confirmPassword"
           label="Confirm Password"
           type="password"
+          autoComplete="new-password"
+          placeholder="Enter your password again"
           error={error?.field === "confirmPassword" ? error.message : undefined}
         />
       </div>
@@ -115,19 +129,40 @@ export default function RegisterForm() {
       <button
         type="submit"
         disabled={loading}
-        className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
-          loading ? "bg-indigo-400" : "bg-indigo-600 hover:bg-indigo-700"
-        } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+        className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/15 transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200 disabled:pointer-events-none disabled:opacity-60"
       >
-        {loading ? "Creating account..." : "Register"}
+        {loading ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Creating account…
+          </>
+        ) : (
+          <>
+            Create account
+            <ArrowRight className="ml-auto h-4 w-4" />
+          </>
+        )}
       </button>
 
-      <div className="text-center mt-4">
+      <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
+        <span className="mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full bg-blue-50 text-blue-700">
+          <LockKeyhole className="h-3.5 w-3.5" />
+        </span>
+        <p className="text-xs leading-5 text-slate-600">
+          By creating an account, you agree to use HotelCare Pro only for your
+          authorized properties and operational responsibilities.
+        </p>
+      </div>
+
+      <div className="text-center">
         <Link
           href="/auth/login"
-          className="text-sm text-indigo-600 hover:text-indigo-500"
+          className="text-sm text-slate-500"
         >
-          Already have an account? Sign in
+          Already have an account?{" "}
+          <span className="font-semibold text-blue-700 underline-offset-4 hover:underline">
+            Sign in
+          </span>
         </Link>
       </div>
     </form>

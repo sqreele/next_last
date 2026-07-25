@@ -158,8 +158,28 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed(_('Token validation failed.'))
 
     def _get_or_create_user_from_claims(self, claims):
-        # Prefer email for identity when available; fallback to sub
-        email = claims.get('email')
+        # Auth0 does not include profile claims in access tokens for custom APIs
+        # by default. A Post Login Action adds the verified email using this
+        # namespaced claim so users keep their existing Django identity (and
+        # property access) when an Auth0 tenant changes.
+        claim_namespace = getattr(
+            settings,
+            'AUTH0_CLAIM_NAMESPACE',
+            'https://hotelcarepro.com',
+        ).rstrip('/')
+        standard_email = claims.get('email')
+        namespaced_email = claims.get(f'{claim_namespace}/email')
+        namespaced_email_verified = claims.get(
+            f'{claim_namespace}/email_verified'
+        )
+
+        # Only trust the custom email as an identity key when Auth0 explicitly
+        # says that it is verified. Preserve compatibility with standard OIDC
+        # email claims, which this backend already supported.
+        email = standard_email
+        if not email and namespaced_email and namespaced_email_verified is True:
+            email = namespaced_email
+
         sub = claims.get('sub') or ''
 
         logger.debug(f"Processing claims for email: {email}, sub: {sub}")
@@ -204,11 +224,11 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
         # Get profile information from JWT claims
         profile_updated = False
         
-        # Extract email from claims if available
-        if claims.get('email') and user.email != claims['email']:
-            user.email = claims['email']
+        # Extract the resolved standard or verified namespaced email.
+        if email and user.email != email:
+            user.email = email
             profile_updated = True
-            logger.debug(f"Updated email from JWT claims: {claims['email']}")
+            logger.debug("Updated email from verified JWT claims")
         
         # Extract given_name (first name) from claims
         if claims.get('given_name') and user.first_name != claims['given_name']:
@@ -258,4 +278,3 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
         logger.debug(f"Final user profile for {username}: email={user.email}, first_name={user.first_name}, last_name={user.last_name}")
 
         return user
-

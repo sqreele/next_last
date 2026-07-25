@@ -258,19 +258,19 @@ def _normalize_auth0_audience(aud: Optional[str]) -> Optional[str]:
     if not aud:
         return None
     value = aud.strip().rstrip('/')
+    # The current Auth0 API identifier is the api.hotelcarepro.com origin
+    # itself. Normalize the earlier accidental `/api` suffix so existing
+    # deployments cannot reject otherwise valid tokens after an env update.
+    if value in (
+        'https://api.hotelcarepro.com',
+        'https://api.hotelcarepro.com/api',
+    ):
+        return 'https://api.hotelcarepro.com'
     # Fix common misconfiguration where base domain is used without /api
     if value in ('https://hotelcarepro.com', 'http://hotelcarepro.com', 'https://www.hotelcarepro.com'):
         return 'https://hotelcarepro.com/api'
     if value.endswith('/api'):
         return value
-    try:
-        from urllib.parse import urlparse
-        host = urlparse(value).netloc
-        path = urlparse(value).path
-        if host.endswith('hotelcarepro.com') and (path == '' or path == '/'):
-            return f"{value}/api"
-    except Exception:
-        pass
     return value
 
 AUTH0_AUDIENCE = _normalize_auth0_audience(_raw_auth0_audience)

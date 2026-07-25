@@ -109,7 +109,7 @@ async function readSessionCookie(
     }
 
     if (cookieValue.startsWith(`${SEALED_COOKIE_VERSION}.`)) {
-      return openSealedSessionCookie(cookieValue);
+      return await openSealedSessionCookie(cookieValue);
     }
   } catch (error) {
     console.error("Error opening auth0_session cookie:", error);

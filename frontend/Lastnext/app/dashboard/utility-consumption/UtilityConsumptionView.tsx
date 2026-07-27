@@ -177,7 +177,7 @@ export default function UtilityConsumptionView() {
   const isEmpty = !loading && !error && selectedProperty && rows.length === 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <FiltersBar
         availableYears={availableYears}
         selectedYears={activeYears}
@@ -228,14 +228,14 @@ export default function UtilityConsumptionView() {
       )}
 
       {!loading && !error && !isEmpty && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <SummaryCards
             summary={summary}
             comparison={comparisonMeta}
             comparisonScopeNote={comparisonScopeNote}
           />
 
-          <div className="grid gap-6 xl:grid-cols-2">
+          <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-2">
             <YoYLineChart
               data={yoyData}
               years={activeYears}
@@ -247,7 +247,7 @@ export default function UtilityConsumptionView() {
             />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 gap-4 sm:gap-6 lg:grid-cols-2 xl:grid-cols-3">
             <BudgetStatusPieChart
               data={budgetStatusPie.data}
               budgetUnsetForAllMonths={budgetStatusPie.budgetUnsetForAllMonths}

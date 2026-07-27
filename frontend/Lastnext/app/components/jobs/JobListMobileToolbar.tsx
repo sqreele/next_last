@@ -8,7 +8,6 @@ import {
   CheckSquare,
   X,
   Calendar as CalendarIcon,
-  Sparkles,
 } from "lucide-react";
 import {
   BottomSheet,
@@ -21,8 +20,8 @@ import {
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Badge } from "@/app/components/ui/badge";
-import { StatusBadge, PriorityBadge } from "@/app/components/pcms-ui";
-import { JobStatus, JobPriority, SortOrder } from "@/app/lib/types";
+import { PriorityBadge } from "@/app/components/pcms-ui";
+import { JobPriority, SortOrder } from "@/app/lib/types";
 import { cn } from "@/app/lib/utils/cn";
 
 export type DateFilter =
@@ -30,10 +29,7 @@ export type DateFilter =
 
 export interface JobListFilters {
   search: string;
-  statuses: JobStatus[];
   priorities: JobPriority[];
-  pmOnly: boolean | null;
-  defectOnly: boolean | null;
   dateFilter: DateFilter;
 }
 
@@ -48,14 +44,6 @@ interface JobListMobileToolbarProps {
   className?: string;
 }
 
-const ALL_STATUSES: JobStatus[] = [
-  "pending",
-  "in_progress",
-  "waiting_sparepart",
-  "completed",
-  "cancelled",
-];
-
 const ALL_PRIORITIES: JobPriority[] = ["low", "medium", "high"];
 
 const DATE_OPTIONS: Array<{ value: DateFilter; label: string }> = [
@@ -69,10 +57,7 @@ const DATE_OPTIONS: Array<{ value: DateFilter; label: string }> = [
 function countActive(filters: JobListFilters): number {
   let n = 0;
   if (filters.search.trim()) n += 1;
-  if (filters.statuses.length) n += 1;
   if (filters.priorities.length) n += 1;
-  if (filters.pmOnly !== null) n += 1;
-  if (filters.defectOnly !== null) n += 1;
   if (filters.dateFilter !== "all") n += 1;
   return n;
 }
@@ -104,24 +89,13 @@ export function JobListMobileToolbar({
   const clearAll = () => {
     const cleared: JobListFilters = {
       search: "",
-      statuses: [],
       priorities: [],
-      pmOnly: null,
-      defectOnly: null,
       dateFilter: "all",
     };
     setDraft(cleared);
     onFiltersChange(cleared);
   };
 
-  const toggleStatus = (value: JobStatus) => {
-    setDraft((d) => ({
-      ...d,
-      statuses: d.statuses.includes(value)
-        ? d.statuses.filter((s) => s !== value)
-        : [...d.statuses, value],
-    }));
-  };
   const togglePriority = (value: JobPriority) => {
     setDraft((d) => ({
       ...d,
@@ -212,23 +186,6 @@ export function JobListMobileToolbar({
 
       {activeCount > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          {filters.statuses.map((status) => (
-            <button
-              key={`fs-${status}`}
-              type="button"
-              onClick={() =>
-                onFiltersChange({
-                  ...filters,
-                  statuses: filters.statuses.filter((s) => s !== status),
-                })
-              }
-              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground hover:bg-slate-200"
-              aria-label={`Remove status filter ${status}`}
-            >
-              <StatusBadge status={status} size="sm" />
-              <X className="h-3 w-3" />
-            </button>
-          ))}
           {filters.priorities.map((priority) => (
             <button
               key={`fp-${priority}`}
@@ -257,26 +214,6 @@ export function JobListMobileToolbar({
               <X className="h-3 w-3" />
             </button>
           )}
-          {filters.pmOnly !== null && (
-            <button
-              type="button"
-              onClick={() => onFiltersChange({ ...filters, pmOnly: null })}
-              className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100"
-            >
-              {filters.pmOnly ? "PM only" : "Non-PM only"}
-              <X className="h-3 w-3" />
-            </button>
-          )}
-          {filters.defectOnly !== null && (
-            <button
-              type="button"
-              onClick={() => onFiltersChange({ ...filters, defectOnly: null })}
-              className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-700 hover:bg-rose-100"
-            >
-              {filters.defectOnly ? "Defective" : "Non-defective"}
-              <X className="h-3 w-3" />
-            </button>
-          )}
           <button
             type="button"
             onClick={clearAll}
@@ -297,33 +234,6 @@ export function JobListMobileToolbar({
           </BottomSheetHeader>
 
           <div className="space-y-5">
-            <section className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Status
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {ALL_STATUSES.map((status) => {
-                  const active = draft.statuses.includes(status);
-                  return (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => toggleStatus(status)}
-                      aria-pressed={active}
-                      className={cn(
-                        "rounded-xl border-2 p-1.5 transition-all touch-manipulation",
-                        active
-                          ? "border-blue-600 bg-blue-50"
-                          : "border-border bg-card hover:border-border",
-                      )}
-                    >
-                      <StatusBadge status={status} size="sm" />
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
             <section className="space-y-2">
               <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Priority
@@ -380,76 +290,6 @@ export function JobListMobileToolbar({
               </div>
             </section>
 
-            <section className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Job type
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    { label: "Any", value: null },
-                    { label: "PM only", value: true },
-                    { label: "Non-PM", value: false },
-                  ] as const
-                ).map((option) => {
-                  const active = draft.pmOnly === option.value;
-                  return (
-                    <button
-                      key={String(option.value)}
-                      type="button"
-                      onClick={() =>
-                        setDraft({ ...draft, pmOnly: option.value })
-                      }
-                      aria-pressed={active}
-                      className={cn(
-                        "min-h-[44px] rounded-xl border-2 px-2 py-2 text-xs font-bold transition-all touch-manipulation sm:text-sm",
-                        active
-                          ? "border-indigo-600 bg-indigo-50 text-indigo-900"
-                          : "border-border bg-card text-muted-foreground hover:border-border",
-                      )}
-                    >
-                      <Sparkles className="mr-1 inline h-3.5 w-3.5" />
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Defects
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
-                {(
-                  [
-                    { label: "Any", value: null },
-                    { label: "Defective", value: true },
-                    { label: "Non-defective", value: false },
-                  ] as const
-                ).map((option) => {
-                  const active = draft.defectOnly === option.value;
-                  return (
-                    <button
-                      key={String(option.value)}
-                      type="button"
-                      onClick={() =>
-                        setDraft({ ...draft, defectOnly: option.value })
-                      }
-                      aria-pressed={active}
-                      className={cn(
-                        "min-h-[44px] rounded-xl border-2 px-2 py-2 text-xs font-bold transition-all touch-manipulation sm:text-sm",
-                        active
-                          ? "border-rose-600 bg-rose-50 text-rose-900"
-                          : "border-border bg-card text-muted-foreground hover:border-border",
-                      )}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
           </div>
 
           <BottomSheetFooter>

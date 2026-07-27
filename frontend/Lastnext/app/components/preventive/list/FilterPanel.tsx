@@ -68,7 +68,7 @@ export default function FilterPanel({
   };
 
   return (
-    <div className="bg-card border-b border-border px-4 py-4">
+    <div className="rounded-xl border border-border bg-card px-3 py-4 shadow-soft sm:px-4">
       {/* Search */}
       <div className="relative mb-4">
         <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
@@ -117,7 +117,7 @@ export default function FilterPanel({
       {/* Expandable sections */}
       <div className="space-y-3">
         <FilterSection title="Status & Frequency">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <select
               value={currentFilters.status || ""}
               onChange={(e) => onFilterChangeAction("status", e.target.value)}
@@ -161,7 +161,7 @@ export default function FilterPanel({
                 </option>
               ))}
             </select>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1">
                   Start Date

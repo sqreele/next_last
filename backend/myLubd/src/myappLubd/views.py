@@ -4608,7 +4608,6 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        logger.debug(f"Register request payload: {request.data}")
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
@@ -4620,15 +4619,21 @@ class RegisterView(APIView):
                 refresh_token=str(refresh),
                 expires_at=timezone.now() + timedelta(days=30),
             )
-            response_data = {
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
-                'session_token': session.session_token,
-                'user_id': user.id,
-            }
-            logger.info(f"User registered: {user.username} - Response: {response_data}")
-            return Response(response_data, status=status.HTTP_201_CREATED)
-        logger.warning(f"Registration failed: {serializer.errors}")
+            logger.info("Local user registered successfully: user_id=%s", user.id)
+            return Response(
+                {
+                    'access': str(refresh.access_token),
+                    'refresh': str(refresh),
+                    'session_token': session.session_token,
+                    'user_id': user.id,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
+        logger.warning(
+            "Local registration validation failed: fields=%s",
+            list(serializer.errors.keys()),
+        )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LogoutView(APIView):

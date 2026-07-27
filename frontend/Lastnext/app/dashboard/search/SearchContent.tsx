@@ -336,7 +336,7 @@ export default function SearchContent() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsList className="mb-6 grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
           <TabsTrigger value="all">All Results ({totalResults})</TabsTrigger>
           <TabsTrigger value="jobs">Jobs ({filteredJobs.length})</TabsTrigger>
           <TabsTrigger value="properties">
@@ -353,7 +353,7 @@ export default function SearchContent() {
               <h2 className="text-xl font-semibold text-muted-foreground">
                 Jobs
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
                 {filteredJobs.slice(0, 3).map((job) => (
                   <JobCard
                     key={job.job_id}
@@ -376,7 +376,7 @@ export default function SearchContent() {
               <h2 className="text-xl font-semibold text-muted-foreground">
                 Properties
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
                 {filteredProperties.slice(0, 3).map((property) => (
                   <PropertyCard
                     key={property.property_id}
@@ -401,7 +401,7 @@ export default function SearchContent() {
               <h2 className="text-xl font-semibold text-muted-foreground">
                 Rooms
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
                 {filteredRooms.slice(0, 3).map((room) => {
                   const relatedJob = jobs.find((job) =>
                     job?.rooms?.some(
@@ -437,7 +437,7 @@ export default function SearchContent() {
         </TabsContent>
 
         <TabsContent value="jobs" className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
             {filteredJobs.map((job) => (
               <JobCard
                 key={job.job_id}
@@ -451,7 +451,7 @@ export default function SearchContent() {
         </TabsContent>
 
         <TabsContent value="properties" className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
             {filteredProperties.map((property) => (
               <PropertyCard
                 key={property.property_id}
@@ -464,7 +464,7 @@ export default function SearchContent() {
         </TabsContent>
 
         <TabsContent value="rooms" className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
             {filteredRooms.map((room) => {
               const relatedJob = jobs.find((job) =>
                 job?.rooms?.some(

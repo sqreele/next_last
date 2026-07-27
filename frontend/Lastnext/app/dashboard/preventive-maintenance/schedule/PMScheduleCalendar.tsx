@@ -12,6 +12,8 @@ import {
   Sparkles,
   ArrowRight,
   Plus,
+  ListChecks,
+  LayoutDashboard,
 } from "lucide-react";
 import { useSession } from "@/app/lib/session.client";
 import { fetchWithToken } from "@/app/lib/data.server";
@@ -176,6 +178,51 @@ export function PMScheduleCalendar() {
 
   return (
     <div className="space-y-4">
+      <nav
+        className="pcms-section-card p-3 sm:p-4"
+        aria-label="Easy preventive maintenance schedule menu"
+      >
+        <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted-foreground">
+          Easy menu
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Link
+            href="/dashboard/preventive-maintenance"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+          >
+            <ListChecks className="h-4 w-4" aria-hidden="true" />
+            PM List
+          </Link>
+          <Link
+            href="/dashboard/preventive-maintenance/create"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[var(--pcms-primary)] px-3 py-2 text-sm font-bold text-white transition-colors hover:bg-[var(--pcms-primary-hover)]"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Create PM
+          </Link>
+          <Link
+            href="/dashboard/preventive-maintenance/dashboard"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+          >
+            <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
+            Dashboard
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              const d = new Date();
+              d.setHours(0, 0, 0, 0);
+              setAnchor(d);
+              setSelectedDate(toISODate(d));
+            }}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+          >
+            <CalendarDays className="h-4 w-4" aria-hidden="true" />
+            Today
+          </button>
+        </div>
+      </nav>
+
       <header className="flex flex-col gap-3 rounded-xl border border-[var(--pcms-border)] bg-card/90 p-4 shadow-[var(--pcms-shadow-soft)] backdrop-blur sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -190,27 +237,6 @@ export function PMScheduleCalendar() {
                 Plan upcoming preventive maintenance across {days} days.
               </p>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/dashboard/preventive-maintenance/create"
-              className="inline-flex h-10 items-center gap-1 rounded-full bg-[var(--pcms-primary)] px-3 text-sm font-bold text-white hover:bg-[var(--pcms-primary-hover)]"
-            >
-              <Plus className="h-4 w-4" /> New PM
-            </Link>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const d = new Date();
-                d.setHours(0, 0, 0, 0);
-                setAnchor(d);
-              }}
-              className="h-10"
-            >
-              Today
-            </Button>
           </div>
         </div>
 
@@ -249,7 +275,7 @@ export function PMScheduleCalendar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="-mx-1 flex w-[calc(100%+0.5rem)] items-center gap-1.5 overflow-x-auto px-1 pb-1 scrollbar-none sm:mx-0 sm:w-auto sm:overflow-visible sm:p-0">
             {(["open", "completed", "all"] as StatusFilter[]).map((value) => (
               <button
                 key={value}
@@ -304,15 +330,24 @@ export function PMScheduleCalendar() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-xs font-bold">
-          <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-blue-900">
-            Open · {totalOpen}
+        <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-bold sm:text-xs">
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-1.5 py-2 text-blue-900 sm:px-3">
+            <span className="block text-base sm:inline sm:text-xs">
+              {totalOpen}
+            </span>{" "}
+            Open
           </div>
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-rose-900">
-            Overdue · {totalOverdue}
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-1.5 py-2 text-rose-900 sm:px-3">
+            <span className="block text-base sm:inline sm:text-xs">
+              {totalOverdue}
+            </span>{" "}
+            Overdue
           </div>
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900">
-            Completed · {totalCompleted}
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-1.5 py-2 text-emerald-900 sm:px-3">
+            <span className="block text-base sm:inline sm:text-xs">
+              {totalCompleted}
+            </span>{" "}
+            Completed
           </div>
         </div>
       </header>
@@ -324,7 +359,7 @@ export function PMScheduleCalendar() {
         </div>
       )}
 
-      <section className="rounded-xl border border-border bg-card p-3 shadow-soft sm:p-4">
+      <section className="rounded-xl border border-border bg-card p-2 shadow-soft sm:p-4">
         <div className="hidden grid-cols-7 gap-1 pb-2 text-center text-[11px] font-bold uppercase tracking-wider text-muted-foreground sm:grid">
           {WEEKDAY_LABELS.map((label) => (
             <div key={label}>{label}</div>
@@ -332,7 +367,7 @@ export function PMScheduleCalendar() {
         </div>
         <div
           className={cn(
-            "grid gap-1",
+            "grid gap-2 sm:gap-1",
             "grid-cols-2 sm:grid-cols-7",
             loading && "opacity-70",
           )}
@@ -375,7 +410,10 @@ export function PMScheduleCalendar() {
                   >
                     {date.getDate()}
                   </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[9px] font-bold uppercase tracking-wide text-muted-foreground sm:text-[10px] sm:tracking-wider">
+                    <span className="sm:hidden">
+                      {date.toLocaleDateString("en-US", { weekday: "short" })} ·{" "}
+                    </span>
                     {date.toLocaleDateString("en-US", { month: "short" })}
                   </span>
                 </div>
@@ -417,13 +455,20 @@ export function PMScheduleCalendar() {
       </section>
 
       {selectedBucket && (
-        <section
-          aria-label={`Items on ${selectedDate}`}
-          className="rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5"
-        >
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-foreground sm:text-lg">
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-30 bg-black/30 sm:hidden"
+            onClick={() => setSelectedDate(null)}
+            aria-label="Close selected day"
+          />
+          <section
+            aria-label={`Items on ${selectedDate}`}
+            className="fixed inset-x-2 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 max-h-[65dvh] overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-2xl sm:static sm:max-h-none sm:rounded-xl sm:p-5 sm:shadow-soft"
+          >
+          <div className="sticky -top-4 z-10 mb-3 flex items-start justify-between gap-3 border-b border-border bg-card pb-3 pt-1 sm:static sm:border-0 sm:pb-0 sm:pt-0">
+            <div className="min-w-0">
+              <h2 className="break-words text-base font-bold text-foreground sm:text-lg">
                 {parseISODate(selectedBucket.date).toLocaleDateString("en-US", {
                   weekday: "long",
                   month: "long",
@@ -441,6 +486,7 @@ export function PMScheduleCalendar() {
               variant="ghost"
               size="sm"
               onClick={() => setSelectedDate(null)}
+              className="min-h-10 shrink-0"
             >
               Close
             </Button>
@@ -461,11 +507,11 @@ export function PMScheduleCalendar() {
                       <p className="text-sm font-bold text-foreground line-clamp-2">
                         {item.pmtitle || "Preventive maintenance"}
                       </p>
-                      <p className="text-xs font-semibold text-muted-foreground">
+                      <p className="break-all text-xs font-semibold text-muted-foreground">
                         #{item.pm_id} · {item.frequency || "one-off"}
                       </p>
                     </div>
-                    <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700">
+                    <span className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-blue-700">
                       Open <ArrowRight className="h-3 w-3" />
                     </span>
                   </Link>
@@ -473,7 +519,8 @@ export function PMScheduleCalendar() {
               ))}
             </ul>
           )}
-        </section>
+          </section>
+        </>
       )}
 
       <div className="rounded-xl border border-dashed border-border bg-muted p-3 text-xs font-medium text-muted-foreground">

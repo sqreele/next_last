@@ -325,20 +325,20 @@ export default function PreventiveMaintenanceDashboard() {
 
   return (
     <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">
           Preventive Maintenance Dashboard
         </h1>
-        <div className="flex space-x-3">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:space-x-3">
           <Link
             href="/dashboard/preventive-maintenance"
-            className="bg-muted py-2 px-4 rounded-md text-muted-foreground hover:bg-gray-200"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-muted px-3 py-2 text-center text-sm font-semibold text-muted-foreground hover:bg-gray-200 sm:px-4"
           >
             View All Tasks
           </Link>
           <Link
             href="/dashboard/preventive-maintenance/create"
-            className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-blue-700 sm:px-4"
           >
             Create New
           </Link>
@@ -399,9 +399,9 @@ export default function PreventiveMaintenanceDashboard() {
       )}
 
       {/* Main Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="mb-6 grid grid-cols-2 gap-3 md:mb-8 md:gap-6 lg:grid-cols-4">
         {/* Total */}
-        <div className="bg-card rounded-lg shadow p-6">
+        <div className="rounded-lg bg-card p-4 shadow sm:p-6">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-blue-100 text-blue-600">
               <svg
@@ -423,7 +423,7 @@ export default function PreventiveMaintenanceDashboard() {
               <p className="text-sm font-medium text-muted-foreground">
                 Total Tasks
               </p>
-              <p className="text-3xl font-bold text-foreground">
+              <p className="text-2xl font-bold text-foreground sm:text-3xl">
                 {statistics.counts.total}
               </p>
             </div>
@@ -431,7 +431,7 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
 
         {/* Pending */}
-        <div className="bg-card rounded-lg shadow p-6">
+        <div className="rounded-lg bg-card p-4 shadow sm:p-6">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
               <svg
@@ -453,7 +453,7 @@ export default function PreventiveMaintenanceDashboard() {
               <p className="text-sm font-medium text-muted-foreground">
                 Pending
               </p>
-              <p className="text-3xl font-bold text-foreground">
+              <p className="text-2xl font-bold text-foreground sm:text-3xl">
                 {statistics.counts.pending}
               </p>
             </div>
@@ -461,7 +461,7 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
 
         {/* Overdue */}
-        <div className="bg-card rounded-lg shadow p-6">
+        <div className="rounded-lg bg-card p-4 shadow sm:p-6">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-red-100 text-red-600">
               <svg
@@ -483,7 +483,7 @@ export default function PreventiveMaintenanceDashboard() {
               <p className="text-sm font-medium text-muted-foreground">
                 Overdue
               </p>
-              <p className="text-3xl font-bold text-red-600">
+              <p className="text-2xl font-bold text-red-600 sm:text-3xl">
                 {statistics.counts.overdue}
               </p>
             </div>
@@ -491,7 +491,7 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
 
         {/* Completed */}
-        <div className="bg-card rounded-lg shadow p-6">
+        <div className="rounded-lg bg-card p-4 shadow sm:p-6">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-green-100 text-green-600">
               <svg
@@ -513,7 +513,7 @@ export default function PreventiveMaintenanceDashboard() {
               <p className="text-sm font-medium text-muted-foreground">
                 Completed
               </p>
-              <p className="text-3xl font-bold text-green-600">
+              <p className="text-2xl font-bold text-green-600 sm:text-3xl">
                 {statistics.counts.completed}
               </p>
             </div>
@@ -613,12 +613,12 @@ export default function PreventiveMaintenanceDashboard() {
 
       {/* Enhanced Upcoming Maintenance Section */}
       <div className="bg-card rounded-lg shadow mb-8">
-        <div className="px-6 py-4 border-b">
-          <div className="flex justify-between items-center">
+        <div className="border-b px-4 py-4 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-semibold text-muted-foreground">
               Upcoming Maintenance
             </h2>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-3 sm:space-x-4">
               <span className="text-sm text-muted-foreground">
                 Total: {upcomingTotal} tasks
               </span>

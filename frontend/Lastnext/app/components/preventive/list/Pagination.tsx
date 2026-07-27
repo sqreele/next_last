@@ -25,8 +25,8 @@ export default function Pagination({
   return (
     <>
       {/* Mobile Pagination */}
-      <div className="md:hidden bg-card border-t border-border px-4 py-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="rounded-xl border border-border bg-card px-3 py-3 shadow-soft md:hidden">
+        <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-sm text-muted-foreground">
             {startItem}-{endItem} of {totalCount}
           </span>
@@ -41,39 +41,27 @@ export default function Pagination({
           </select>
         </div>
 
-        <div className="flex items-center justify-center space-x-2">
+        <div className="grid grid-cols-[3rem_1fr_3rem] items-center gap-2">
           <button
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
-            className="flex items-center px-4 py-2 text-sm border border-border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+            className="grid h-11 w-12 place-items-center rounded-lg border border-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Previous page"
           >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Prev
+            <ChevronLeft className="h-5 w-5" />
           </button>
 
-          <div className="flex items-center space-x-1">
-            {generatePageNumbers(currentPage, totalPages, 5).map((pageNum) => (
-              <button
-                key={pageNum}
-                onClick={() => onPageChange(pageNum)}
-                className={`min-w-[44px] h-[44px] text-sm rounded-lg transition-colors ${
-                  currentPage === pageNum
-                    ? "bg-blue-600 text-white"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                {pageNum}
-              </button>
-            ))}
-          </div>
+          <span className="text-center text-sm font-bold text-foreground">
+            Page {currentPage} of {totalPages}
+          </span>
 
           <button
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
-            className="flex items-center px-4 py-2 text-sm border border-border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+            className="grid h-11 w-12 place-items-center rounded-lg border border-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Next page"
           >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
+            <ChevronRight className="h-5 w-5" />
           </button>
         </div>
       </div>

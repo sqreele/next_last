@@ -91,10 +91,7 @@ export default function JobList({
   // JobActions controls keep working unchanged.
   const [mobileFilters, setMobileFilters] = useState<JobListFilters>({
     search: "",
-    statuses: [],
     priorities: [],
-    pmOnly: null,
-    defectOnly: null,
     dateFilter: "all",
   });
 
@@ -324,22 +321,9 @@ export default function JobList({
         return haystack.includes(term);
       });
     }
-    if (mobileFilters.statuses.length) {
-      out = out.filter((j) => mobileFilters.statuses.includes(j.status as any));
-    }
     if (mobileFilters.priorities.length) {
       out = out.filter((j) =>
         mobileFilters.priorities.includes(j.priority as any),
-      );
-    }
-    if (mobileFilters.pmOnly !== null) {
-      out = out.filter(
-        (j) => Boolean(j.is_preventivemaintenance) === mobileFilters.pmOnly,
-      );
-    }
-    if (mobileFilters.defectOnly !== null) {
-      out = out.filter(
-        (j) => Boolean(j.is_defective) === mobileFilters.defectOnly,
       );
     }
     if (mobileFilters.dateFilter !== "all") {

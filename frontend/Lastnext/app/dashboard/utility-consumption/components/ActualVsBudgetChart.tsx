@@ -35,14 +35,14 @@ export default function ActualVsBudgetChart({
   yearLabel,
 }: ActualVsBudgetChartProps) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
+    <div className="min-w-0 rounded-xl border border-border bg-card p-3 shadow-soft sm:p-5">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-foreground">
           Actual vs Budget
         </h3>
         <p className="text-sm text-muted-foreground">{`Total Electricity vs Budget (${yearLabel})`}</p>
       </div>
-      <div className="h-80 w-full min-h-[20rem]">
+      <div className="h-64 w-full min-w-0 sm:h-80 sm:min-h-[20rem]">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             layout="vertical"

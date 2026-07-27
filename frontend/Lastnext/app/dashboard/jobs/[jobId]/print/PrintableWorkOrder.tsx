@@ -270,7 +270,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
         </div>
       )}
 
-      <div ref={printableContentRef} className="bg-white px-8 py-8 sm:px-10">
+      <div ref={printableContentRef} className="bg-white px-4 py-6 sm:px-10 sm:py-8">
         <header className="flex items-start justify-between gap-6 border-b-2 border-slate-900 pb-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-500">
@@ -294,7 +294,7 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
           </div>
         </header>
 
-        <section className="mt-5 grid grid-cols-3 gap-4 text-sm">
+        <section className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 sm:gap-4">
           <Field label="Topic">{job.topics?.[0]?.title || '—'}</Field>
           <Field label="Assigned to">
             {getDisplayName(job.user, job.technician_name || job.user_name || '—')}

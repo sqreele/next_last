@@ -37,7 +37,15 @@ import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import { LocaleToggle } from "@/app/components/i18n/LocaleToggle";
 
 function isNavItemActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const bestMatch = navigationGroups
+    .flatMap((group) => group.items)
+    .filter(
+      (item) =>
+        pathname === item.href || pathname.startsWith(`${item.href}/`),
+    )
+    .sort((a, b) => b.href.length - a.href.length)[0];
+
+  return bestMatch?.href === href;
 }
 
 export default function DashboardLayout({

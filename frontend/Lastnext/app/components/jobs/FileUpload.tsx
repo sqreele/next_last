@@ -199,15 +199,26 @@ const FileUpload: React.FC<FileUploadProps> = ({
             {formatMessage(t("fileUpload.addPhotos"), { max: maxFiles })}{" "}
             <span className="text-[#a1aaae]">{t("fileUpload.rearrange")}</span>
           </p>
-          <label
-            htmlFor={inputId}
-            className={cn(
-              "inline-flex min-h-9 shrink-0 touch-manipulation items-center justify-center rounded-[4px] border border-[#46b8bc] bg-card px-3 py-1.5 text-[12px] font-semibold text-[#269fa8] transition hover:bg-[#f4ffff] active:scale-[0.98]",
-              disabled ? "pointer-events-none" : "cursor-pointer",
-            )}
-          >
-            {t("fileUpload.choosePhotos")}
-          </label>
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <label
+              htmlFor={inputId}
+              className={cn(
+                "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-md border border-[#46b8bc] bg-card px-3 py-2 text-[12px] font-semibold text-[#269fa8] transition hover:bg-[#f4ffff] active:scale-[0.98]",
+                disabled ? "pointer-events-none" : "cursor-pointer",
+              )}
+            >
+              {t("fileUpload.choosePhotos")}
+            </label>
+            <label
+              htmlFor={cameraInputId}
+              className={cn(
+                "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-md border border-[#46b8bc] bg-[#f4ffff] px-3 py-2 text-[12px] font-semibold text-[#269fa8] transition active:scale-[0.98] sm:hidden",
+                disabled ? "pointer-events-none" : "cursor-pointer",
+              )}
+            >
+              Take photo
+            </label>
+          </div>
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-[10px]">
@@ -239,7 +250,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               {!disabled && (
                 <button
                   type="button"
-                  className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-card/90 text-[#6f7c82] opacity-0 transition hover:text-red-500 group-hover:opacity-100 focus:opacity-100"
+                  className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full bg-card/90 text-red-600 shadow-sm transition hover:text-red-700 sm:h-7 sm:w-7 sm:text-[#6f7c82] sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
                   onClick={() => removeFile(index)}
                   aria-label={t("fileUpload.removeFile")}
                 >
@@ -253,7 +264,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <label
               htmlFor={inputId}
               className={cn(
-                "grid h-[30px] w-[30px] shrink-0 touch-manipulation place-items-center self-center rounded-[4px] border border-[#46b8bc] bg-card text-[24px] font-light leading-none text-[#46b8bc] transition hover:bg-[#f4ffff]",
+                "grid h-11 w-11 shrink-0 touch-manipulation place-items-center self-center rounded-md border border-[#46b8bc] bg-card text-[24px] font-light leading-none text-[#46b8bc] transition hover:bg-[#f4ffff] sm:h-[30px] sm:w-[30px]",
                 disabled ? "pointer-events-none" : "cursor-pointer",
               )}
               aria-label={t("fileUpload.addPhotosLabel")}

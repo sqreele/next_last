@@ -110,8 +110,9 @@ export default function RegisterPage() {
                 Create your account
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">
-                Enter your details below. Property access is assigned separately by
-                your HotelCare Pro administrator.
+                Create your account through our secure registration service.
+                Property access is assigned separately by your HotelCare Pro
+                administrator.
               </p>
             </div>
 

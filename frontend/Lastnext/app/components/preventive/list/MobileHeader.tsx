@@ -25,10 +25,12 @@ export default function MobileHeader({
   onToggleFilters,
 }: MobileHeaderProps) {
   return (
-    <div className="sticky top-0 z-10 bg-card border-b border-border px-4 py-4 md:hidden">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Maintenance</h1>
+    <div className="rounded-xl border border-border bg-card px-3 py-3 shadow-soft md:hidden">
+      <div className="space-y-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold leading-tight text-foreground">
+            Preventive Maintenance
+          </h1>
           <p className="text-sm text-muted-foreground">
             {totalCount} tasks • {overdueCount} overdue
             {currentFilters.machine && (
@@ -36,10 +38,10 @@ export default function MobileHeader({
             )}
           </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="grid grid-cols-5 gap-2">
           <Link
-            href="/dashboard/preventive-maintenance"
-            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
+            href="/dashboard/preventive-maintenance/dashboard"
+            className="grid h-11 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             title="Dashboard"
             aria-label="Open maintenance dashboard"
           >
@@ -47,7 +49,7 @@ export default function MobileHeader({
           </Link>
           <Link
             href="/dashboard/preventive-maintenance/schedule"
-            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors"
+            className="grid h-11 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             title="Calendar"
             aria-label="Open maintenance calendar"
           >
@@ -56,7 +58,7 @@ export default function MobileHeader({
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="p-2 text-muted-foreground hover:text-foreground disabled:opacity-50 rounded-lg hover:bg-muted transition-colors"
+            className="grid h-11 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
             title="Refresh"
             aria-label="Refresh maintenance data"
           >
@@ -66,10 +68,10 @@ export default function MobileHeader({
           </button>
           <button
             onClick={onToggleFilters}
-            className={`relative p-2 rounded-lg transition-colors ${
+            className={`relative grid h-11 place-items-center rounded-lg border transition-colors ${
               showFilters
-                ? "bg-blue-50 text-blue-700"
-                : "text-muted-foreground hover:bg-muted"
+                ? "border-blue-300 bg-blue-50 text-blue-700"
+                : "border-border text-muted-foreground hover:bg-muted"
             }`}
             aria-label="Toggle maintenance filters"
           >
@@ -82,7 +84,7 @@ export default function MobileHeader({
           </button>
           <Link
             href="/dashboard/preventive-maintenance/create"
-            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="grid h-11 place-items-center rounded-lg bg-blue-600 text-white transition-colors hover:bg-blue-700"
             aria-label="Create new maintenance task"
           >
             <Plus className="h-5 w-5" />

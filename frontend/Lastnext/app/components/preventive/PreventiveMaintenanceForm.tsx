@@ -1365,7 +1365,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   }
 
   return (
-    <div className="bg-card shadow-soft rounded-lg p-3 sm:p-4 md:p-6 pb-28 md:pb-6">
+    <div className="rounded-xl border border-border bg-card p-3 pb-28 shadow-soft sm:p-4 sm:pb-28 md:p-6 md:pb-6">
       {(error || submitError) && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4">
           <div className="flex justify-between items-start gap-2">
@@ -1625,6 +1625,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               <Field type="hidden" name="assigned_to" />
 
               {/* Maintenance Task Template Selection */}
+              <h2 className="mb-3 text-xs font-black uppercase tracking-wider text-blue-700">
+                1. Maintenance details
+              </h2>
               <div className="mb-4 sm:mb-6">
                 <label
                   htmlFor="procedure_template"
@@ -1815,6 +1818,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               </div>
 
               {/* Scheduled Date */}
+              <h2 className="mb-3 border-t border-border pt-4 text-xs font-black uppercase tracking-wider text-blue-700 sm:pt-5">
+                2. Schedule
+              </h2>
               <div className="mb-4 sm:mb-6">
                 <label
                   htmlFor="scheduled_date"
@@ -1925,7 +1931,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   as="select"
                   id="frequency"
                   name="frequency"
-                  className={`w-full p-2 border rounded-md ${
+                  className={`min-h-11 w-full rounded-md border p-2.5 text-base sm:p-3 sm:text-sm ${
                     errors.frequency && touched.frequency
                       ? "border-red-500"
                       : "border-border"
@@ -1959,7 +1965,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                     name="custom_days"
                     min="1"
                     max="365"
-                    className={`w-full p-2 border rounded-md ${
+                    className={`min-h-11 w-full rounded-md border p-2.5 text-base sm:p-3 sm:text-sm ${
                       errors.custom_days && touched.custom_days
                         ? "border-red-500"
                         : "border-border"
@@ -1974,6 +1980,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               )}
 
               {/* Notes */}
+              <h2 className="mb-3 border-t border-border pt-4 text-xs font-black uppercase tracking-wider text-blue-700 sm:pt-5">
+                3. Additional details
+              </h2>
               <div className="mb-4 sm:mb-6">
                 <label
                   htmlFor="notes"
@@ -2012,6 +2021,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               )}
 
               {/* Machines Selection */}
+              <h2 className="mb-3 border-t border-border pt-4 text-xs font-black uppercase tracking-wider text-blue-700 sm:pt-5">
+                4. Equipment
+              </h2>
               {values.procedure_template === "" ? (
                 <div className="mb-4 sm:mb-6 rounded-md border border-blue-200 bg-blue-50 p-3 sm:p-4 text-sm text-blue-800">
                   Select a Maintenance Task Template first to see related
@@ -2093,7 +2105,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                                   className="relative"
                                 >
                                   <label
-                                    className={`flex items-start sm:items-center gap-2 sm:gap-3 py-2 ${isPreSelected ? "cursor-default" : "cursor-pointer touch-feedback"}`}
+                                    className={`flex min-h-11 items-start gap-2 rounded-lg px-2 py-2 sm:items-center sm:gap-3 ${isPreSelected ? "cursor-default" : "cursor-pointer touch-feedback hover:bg-muted"}`}
                                   >
                                     <Field name="selected_machine_ids">
                                       {({
@@ -2203,6 +2215,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               )}
 
               {/* Image Uploads */}
+              <h2 className="mb-3 border-t border-border pt-4 text-xs font-black uppercase tracking-wider text-blue-700 sm:pt-5">
+                5. Photos
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2">
@@ -2233,7 +2248,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                           setBeforeImagePreview(null);
                           setFieldValue("before_image_file", null);
                         }}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center shadow-soft"
+                        className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full bg-red-500 p-1 text-white shadow-soft"
                         aria-label="Remove before image"
                       >
                         ×
@@ -2270,7 +2285,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                           setAfterImagePreview(null);
                           setFieldValue("after_image_file", null);
                         }}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center shadow-soft"
+                        className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center rounded-full bg-red-500 p-1 text-white shadow-soft"
                         aria-label="Remove after image"
                       >
                         ×
@@ -2327,7 +2342,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       <span>
                         {pmId || actualInitialData
                           ? "Update Maintenance"
-                          : "Create Maintenance"}
+                          : "Create PM"}
                       </span>
                     )}
                   </button>

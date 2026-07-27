@@ -75,7 +75,7 @@ export default function DesktopHeader({
           )}
 
           <Link
-            href="/dashboard/preventive-maintenance"
+            href="/dashboard/preventive-maintenance/dashboard"
             className="flex items-center px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted transition-colors"
           >
             <BarChart3 className="h-4 w-4 mr-2" />

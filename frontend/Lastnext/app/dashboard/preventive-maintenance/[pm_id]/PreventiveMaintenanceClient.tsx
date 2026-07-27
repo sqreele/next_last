@@ -645,7 +645,7 @@ export default function PreventiveMaintenanceClient({
               key={index}
               className="bg-gradient-to-r from-slate-50 to-gray-50 p-4 rounded-xl border border-border hover:shadow-soft transition-all duration-200"
             >
-              <div className="flex items-center gap-4">
+              <div className="flex items-start gap-3 sm:items-center sm:gap-4">
                 {machineImageUrl ? (
                   <button
                     type="button"
@@ -675,13 +675,22 @@ export default function PreventiveMaintenanceClient({
                     <Wrench className="h-7 w-7 text-muted-foreground" />
                   </div>
                 )}
-                <div className="flex-1">
-                  <p className="font-semibold text-foreground">
+                <div className="min-w-0 flex-1">
+                  <p className="break-words font-semibold text-foreground">
                     {machineName || "Unnamed Machine"}
                   </p>
-                  <p className="text-sm text-muted-foreground font-mono">
+                  <p className="break-all font-mono text-xs text-muted-foreground sm:text-sm">
                     {machineId}
                   </p>
+                  {machineId && (
+                    <Link
+                      href={`/dashboard/machines/${encodeURIComponent(String(machineId))}`}
+                      className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+                    >
+                      View machine
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
@@ -745,19 +754,70 @@ export default function PreventiveMaintenanceClient({
 
   return (
     <>
+      <nav
+        className="pcms-section-card mb-4 p-3 sm:p-4"
+        aria-label="Easy preventive maintenance menu"
+      >
+        <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted-foreground">
+          Easy menu
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Link
+            href="/dashboard/preventive-maintenance"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+          >
+            <ArrowUpRight
+              className="h-4 w-4 rotate-180"
+              aria-hidden="true"
+            />
+            PM List
+          </Link>
+
+          <Link
+            href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+          >
+            <Settings className="h-4 w-4" aria-hidden="true" />
+            Edit
+          </Link>
+
+          <button
+            type="button"
+            onClick={handleExportPdf}
+            disabled={isExportingPdf}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" aria-hidden="true" />
+            {isExportingPdf ? "Generating..." : "PDF"}
+          </button>
+
+          {!maintenanceData.completed_date && (
+            <button
+              type="button"
+              onClick={handleMarkComplete}
+              disabled={isCompleting}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-green-300 bg-green-50 px-3 py-2 text-sm font-bold text-green-800 transition-colors hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <CheckCircle className="h-4 w-4" aria-hidden="true" />
+              {isCompleting ? "Completing..." : "Complete"}
+            </button>
+          )}
+        </div>
+      </nav>
+
       <div className="overflow-hidden rounded-xl border border-[var(--pcms-border)] bg-card shadow-[var(--pcms-shadow-soft)]">
         {/* Modern Header */}
-        <div className="border-b border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] px-5 py-5 sm:px-8 sm:py-6">
+        <div className="border-b border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] px-4 py-4 sm:px-8 sm:py-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 rounded-xl">
-                <Wrench className="h-8 w-8 text-blue-600" />
+            <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+              <div className="shrink-0 rounded-xl bg-blue-100 p-2.5 sm:p-3">
+                <Wrench className="h-6 w-6 text-blue-600 sm:h-8 sm:w-8" />
               </div>
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">
-                  Maintenance Details
+              <div className="min-w-0">
+                <h2 className="text-xl font-bold leading-tight text-foreground sm:text-2xl">
+                  Preventive Maintenance
                 </h2>
-                <p className="text-muted-foreground mt-1">
+                <p className="mt-1 break-all font-mono text-xs text-muted-foreground sm:text-sm">
                   ID: {maintenanceData.pm_id}
                 </p>
               </div>
@@ -779,7 +839,7 @@ export default function PreventiveMaintenanceClient({
                   <p className="text-sm font-medium text-muted-foreground">
                     Maintenance ID
                   </p>
-                  <p className="text-lg font-semibold text-foreground">
+                  <p className="break-all font-mono text-base font-semibold text-foreground sm:text-lg">
                     {maintenanceData.pm_id}
                   </p>
                 </div>
@@ -796,7 +856,7 @@ export default function PreventiveMaintenanceClient({
                     className={`h-5 w-5 ${maintenanceData.procedure_template_id || maintenanceData.procedure_template ? "text-indigo-600" : "text-muted-foreground"}`}
                   />
                 </div>
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-muted-foreground">
                     Maintenance Task Template
                   </p>
@@ -805,14 +865,14 @@ export default function PreventiveMaintenanceClient({
                     <>
                       <Link
                         href={`/dashboard/maintenance-tasks/${maintenanceData.procedure_template_id || maintenanceData.procedure_template}`}
-                        className="text-lg font-semibold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 font-mono"
+                        className="flex items-start gap-1 break-all font-mono text-base font-semibold text-indigo-600 hover:text-indigo-800 hover:underline sm:text-lg"
                       >
                         {maintenanceData.procedure_template_id ||
                           maintenanceData.procedure_template}
-                        <ArrowUpRight className="h-4 w-4" />
+                        <ArrowUpRight className="mt-1 h-4 w-4 shrink-0" />
                       </Link>
                       {maintenanceData.procedure_template_name && (
-                        <p className="text-xs text-muted-foreground mt-1 truncate">
+                        <p className="mt-1 break-words text-xs text-muted-foreground">
                           {maintenanceData.procedure_template_name}
                         </p>
                       )}
@@ -916,35 +976,6 @@ export default function PreventiveMaintenanceClient({
               </div>
             )}
 
-            {(maintenanceData.procedure_template_id ||
-              maintenanceData.procedure_template) && (
-              <div className="bg-card p-4 rounded-xl border border-border shadow-soft hover:shadow-soft transition-shadow">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <FileText className="h-5 w-5 text-orange-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Task Template
-                    </p>
-                    <Link
-                      href={`/dashboard/maintenance-tasks/${maintenanceData.procedure_template_id || maintenanceData.procedure_template}`}
-                      className="text-lg font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
-                    >
-                      {maintenanceData.procedure_template_name ||
-                        "Task Template"}
-                      <ArrowUpRight className="h-4 w-4" />
-                    </Link>
-                    <p className="text-xs text-muted-foreground mt-1 font-mono">
-                      ID:{" "}
-                      {maintenanceData.procedure_template_id ||
-                        maintenanceData.procedure_template}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {maintenanceData.next_due_date && (
               <div className="bg-card p-4 rounded-xl border border-border shadow-soft hover:shadow-soft transition-shadow">
                 <div className="flex items-center gap-3">
@@ -966,12 +997,12 @@ export default function PreventiveMaintenanceClient({
         </div>
 
         {/* Modern Maintenance Details Section */}
-        <div className="px-8 py-6">
+        <div className="px-4 py-4 sm:px-8 sm:py-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column */}
             <div className="space-y-6">
               {/* Maintenance Title */}
-              <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-6 shadow-[var(--pcms-shadow-soft)]">
+              <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] sm:p-6">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <FileText className="h-5 w-5 text-blue-600" />
@@ -980,14 +1011,14 @@ export default function PreventiveMaintenanceClient({
                     Maintenance Title
                   </h4>
                 </div>
-                <p className="text-xl font-medium text-foreground leading-relaxed">
+                <p className="break-words text-base font-medium leading-relaxed text-foreground sm:text-xl">
                   {maintenanceData.pmtitle || "No title provided"}
                 </p>
               </div>
 
               {/* Maintenance Procedure */}
               {maintenanceData.procedure && (
-                <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-6 shadow-[var(--pcms-shadow-soft)]">
+                <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] sm:p-6">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-green-100 rounded-lg">
                       <Clipboard className="h-5 w-5 text-green-600" />
@@ -997,7 +1028,7 @@ export default function PreventiveMaintenanceClient({
                     </h4>
                   </div>
                   <div className="bg-card/60 p-4 rounded-xl">
-                    <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                    <p className="break-words whitespace-pre-wrap text-foreground leading-relaxed">
                       {maintenanceData.procedure}
                     </p>
                   </div>
@@ -1006,7 +1037,7 @@ export default function PreventiveMaintenanceClient({
 
               {/* Notes */}
               {maintenanceData.notes && (
-                <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-6 shadow-[var(--pcms-shadow-soft)]">
+                <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] sm:p-6">
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-purple-100 rounded-lg">
                       <FileText className="h-5 w-5 text-purple-600" />
@@ -1016,7 +1047,7 @@ export default function PreventiveMaintenanceClient({
                     </h4>
                   </div>
                   <div className="bg-card/60 p-4 rounded-xl">
-                    <p className="text-foreground whitespace-pre-wrap leading-relaxed">
+                    <p className="break-words whitespace-pre-wrap text-foreground leading-relaxed">
                       {maintenanceData.notes}
                     </p>
                   </div>
@@ -1030,8 +1061,8 @@ export default function PreventiveMaintenanceClient({
         </div>
 
         {/* Modern Machines Section */}
-        <div className="px-8 py-6 border-t border-border">
-          <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-6 shadow-[var(--pcms-shadow-soft)]">
+        <div className="border-t border-border px-4 py-4 sm:px-8 sm:py-6">
+          <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] sm:p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-muted rounded-lg">
                 <Wrench className="h-6 w-6 text-muted-foreground" />
@@ -1040,13 +1071,15 @@ export default function PreventiveMaintenanceClient({
                 Associated Machines
               </h3>
             </div>
-            <div className="bg-card/80 p-4 rounded-xl">{renderMachines()}</div>
+            <div className="rounded-xl bg-card/80 p-0 sm:p-4">
+              {renderMachines()}
+            </div>
           </div>
         </div>
 
         {/* Modern Images Section */}
-        <div className="px-8 py-6 border-t border-border">
-          <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-6 shadow-[var(--pcms-shadow-soft)]">
+        <div className="border-t border-border px-4 py-4 sm:px-8 sm:py-6">
+          <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] sm:p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-amber-100 rounded-lg">
                 <Camera className="h-6 w-6 text-amber-600" />
@@ -1178,7 +1211,7 @@ export default function PreventiveMaintenanceClient({
         )}
 
         {/* Modern Action Buttons */}
-        <div className="px-8 py-6 border-t border-border bg-muted">
+        <div className="border-t border-border bg-muted px-4 py-4 sm:px-8 sm:py-6">
           <div className="flex flex-col sm:flex-row justify-between gap-4">
             <Link
               href="/dashboard/preventive-maintenance"
@@ -1204,7 +1237,7 @@ export default function PreventiveMaintenanceClient({
                 <button
                   onClick={handleMarkComplete}
                   disabled={isCompleting}
-                  className={`pcms-btn pcms-btn-success flex items-center gap-2 px-6 py-3 ${
+                  className={`pcms-btn pcms-btn-success flex items-center justify-center gap-2 px-6 py-3 ${
                     isCompleting ? "opacity-50 cursor-not-allowed" : ""
                   }`}
                 >

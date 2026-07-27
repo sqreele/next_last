@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
       
       if (!domain || !clientId || !clientSecret) {
         console.error('Missing required Auth0 environment variables');
-        return NextResponse.redirect(`${baseUrl}/login?error=config_error`);
+        return NextResponse.redirect(`${baseUrl}/auth/login?error=config_error`);
       }
 
       const tokenResponse = await fetch(`https://${domain}/oauth/token`, {
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
         const errorText = await tokenResponse.text();
         console.error('Token exchange failed:', tokenResponse.status, errorText);
         return NextResponse.redirect(
-          `${baseUrl}/login?error=token_exchange_failed`
+          `${baseUrl}/auth/login?error=token_exchange_failed`
         );
       }
 
@@ -273,8 +273,8 @@ export async function GET(request: NextRequest) {
       let redirectUrl = `${baseUrl}/dashboard`;
       
       if (isNewUser) {
-        // New user - redirect to onboarding
-        redirectUrl = `${baseUrl}/auth/onboarding`;
+        // Property access is granted by an administrator, never self-assigned.
+        redirectUrl = `${baseUrl}/auth/access-pending`;
       } else {
       }
 
@@ -293,7 +293,7 @@ export async function GET(request: NextRequest) {
     } catch (tokenError) {
       console.error('Token exchange error:', tokenError);
       const tokenErrorRedirect = NextResponse.redirect(
-        `${process.env.AUTH0_BASE_URL || request.nextUrl.origin}/login?error=token_exchange_error`
+        `${process.env.AUTH0_BASE_URL || request.nextUrl.origin}/auth/login?error=token_exchange_error`
       );
       tokenErrorRedirect.cookies.delete('auth0_login_state');
       return tokenErrorRedirect;
@@ -302,7 +302,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Auth0 callback error:', error);
     const callbackErrorRedirect = NextResponse.redirect(
-      `${process.env.AUTH0_BASE_URL || request.nextUrl.origin}/login?error=callback_error`
+      `${process.env.AUTH0_BASE_URL || request.nextUrl.origin}/auth/login?error=callback_error`
     );
     callbackErrorRedirect.cookies.delete('auth0_login_state');
     return callbackErrorRedirect;

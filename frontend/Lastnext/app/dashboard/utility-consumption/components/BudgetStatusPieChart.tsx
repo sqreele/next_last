@@ -8,7 +8,6 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import type { PieLabelRenderProps } from "recharts";
 
 const colors = ["#22c55e", "#f97316"];
 
@@ -18,15 +17,6 @@ interface BudgetStatusPieChartProps {
   budgetUnsetForAllMonths?: boolean;
 }
 
-function renderStatusLabel(entry: PieLabelRenderProps) {
-  const { name, value, percent } = entry;
-  const v = typeof value === "number" ? value : Number(value);
-  const p = typeof percent === "number" ? percent : Number(percent);
-  if (!v || Number.isNaN(v)) return "";
-  const pct = Number.isFinite(p) ? (p * 100).toFixed(1) : "0.0";
-  return `${name}: ${v} (${pct}%)`;
-}
-
 export default function BudgetStatusPieChart({
   data,
   budgetUnsetForAllMonths = false,
@@ -34,7 +24,7 @@ export default function BudgetStatusPieChart({
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
+    <div className="min-w-0 rounded-xl border border-border bg-card p-3 shadow-soft sm:p-5">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-foreground">
           Budget status by month
@@ -57,7 +47,7 @@ export default function BudgetStatusPieChart({
           </p>
         ) : null}
       </div>
-      <div className="h-72 w-full min-h-[18rem]">
+      <div className="h-64 w-full min-w-0 sm:h-72 sm:min-h-[18rem]">
         {total === 0 ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             No monthly rows in the current filter.
@@ -71,11 +61,9 @@ export default function BudgetStatusPieChart({
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                outerRadius={100}
-                innerRadius={52}
+                outerRadius={82}
+                innerRadius={46}
                 paddingAngle={2}
-                labelLine={{ stroke: "#94a3b8", strokeWidth: 1 }}
-                label={renderStatusLabel}
               >
                 {data.map((entry, index) => (
                   <Cell

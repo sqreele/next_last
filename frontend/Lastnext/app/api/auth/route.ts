@@ -51,13 +51,28 @@ export async function GET(request: NextRequest) {
           const scope = 'openid profile email offline_access';
           const audience = resolveAudience(process.env.AUTH0_AUDIENCE);
           const state = randomUUID();
+          const screenHint = searchParams.get('screen_hint');
 
           if (!domain || !clientId) {
             console.error('Missing required Auth0 environment variables');
-            return NextResponse.redirect(`${baseUrl}/login?error=config_error`);
+            return NextResponse.redirect(`${baseUrl}/auth/login?error=config_error`);
           }
 
-          const loginUrl = `https://${domain}/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(`${baseUrl}/api/auth/callback`)}&scope=${encodeURIComponent(scope)}&audience=${encodeURIComponent(audience)}&state=${encodeURIComponent(state)}`;
+          const authorizationUrl = new URL(`https://${domain}/authorize`);
+          authorizationUrl.searchParams.set('response_type', 'code');
+          authorizationUrl.searchParams.set('client_id', clientId);
+          authorizationUrl.searchParams.set(
+            'redirect_uri',
+            `${baseUrl}/api/auth/callback`,
+          );
+          authorizationUrl.searchParams.set('scope', scope);
+          authorizationUrl.searchParams.set('audience', audience);
+          authorizationUrl.searchParams.set('state', state);
+          if (screenHint === 'signup') {
+            authorizationUrl.searchParams.set('screen_hint', 'signup');
+          }
+
+          const loginUrl = authorizationUrl.toString();
 
           const response = NextResponse.redirect(loginUrl);
           response.cookies.set('auth0_login_state', state, {
@@ -71,7 +86,7 @@ export async function GET(request: NextRequest) {
         } catch (loginError) {
           console.error('Auth0 login error:', loginError);
           const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
-          return NextResponse.redirect(`${baseUrl}/login?error=login_failed`);
+          return NextResponse.redirect(`${baseUrl}/auth/login?error=login_failed`);
         }
       
       case 'callback':
@@ -85,7 +100,7 @@ export async function GET(request: NextRequest) {
         } catch (callbackError) {
           console.error('Auth0 callback error:', callbackError);
           const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
-          return NextResponse.redirect(`${baseUrl}/login?error=callback_failed`);
+          return NextResponse.redirect(`${baseUrl}/auth/login?error=callback_failed`);
         }
       
       case 'logout':
@@ -98,7 +113,7 @@ export async function GET(request: NextRequest) {
           
           if (!domain || !clientId) {
             console.error('Missing required Auth0 environment variables');
-            return NextResponse.redirect(`${baseUrl}/login?error=config_error`);
+            return NextResponse.redirect(`${baseUrl}/auth/login?error=config_error`);
           }
           
           const logoutUrl = `https://${domain}/v2/logout?client_id=${clientId}&returnTo=${encodeURIComponent(baseUrl)}`;
@@ -148,7 +163,7 @@ export async function POST(request: NextRequest) {
       case 'refresh':
         // Handle token refresh - Auth0 handles this automatically
         // For now, return success as the SDK manages token refresh
-        return NextResponse.json({ success: true, message: 'Token refresh handled by Auth0 SDK' });
+        return NextResponse.json({ success: true, message: 'Token refresh handled by the identity service' });
       
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

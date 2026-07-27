@@ -33,15 +33,9 @@ import BulkActions from "@/app/components/preventive/list/BulkActions";
 import LoadingState from "@/app/components/preventive/list/LoadingState";
 import EmptyState from "@/app/components/preventive/list/EmptyState";
 import ErrorDisplay from "@/app/components/preventive/list/ErrorDisplay";
-import Link from "next/link";
 import {
-  Filter,
-  Plus,
-  FileText,
   CheckCircle2,
   AlertTriangle,
-  XCircle,
-  Building,
 } from "lucide-react";
 
 // Import utility functions
@@ -690,11 +684,12 @@ function PreventiveMaintenanceListPageContent() {
         </div>
       )}
 
-      {/* Property Match Confirmation */}
+      {/* Property Match Confirmation (desktop only; the mobile header already
+          shows the verified/overdue summary) */}
       {selectedProperty &&
         mismatchedPMItems.length === 0 &&
         matchingPMItems.length > 0 && (
-          <div className="mb-4 w-full max-w-none lg:mx-auto lg:max-w-7xl">
+          <div className="mb-4 hidden w-full max-w-none md:block lg:mx-auto lg:max-w-7xl">
             <div className="rounded-xl border border-green-200 bg-green-50 p-4">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
@@ -830,33 +825,6 @@ function PreventiveMaintenanceListPageContent() {
           return null;
         })()}
 
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className={`inline-flex min-h-[44px] items-center justify-center rounded-full border px-4 py-2 font-semibold transition-colors ${
-              showFilters
-                ? "border-blue-200 bg-blue-50 text-blue-700"
-                : "border-[var(--pcms-border)] text-[var(--pcms-text-muted)] hover:bg-[var(--pcms-surface-soft)]"
-            }`}
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
-            {activeFiltersCount > 0 && (
-              <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
-                {activeFiltersCount}
-              </span>
-            )}
-          </button>
-
-          <Link
-            href="/dashboard/preventive-maintenance/create"
-            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-[var(--pcms-primary)] px-4 py-2 font-semibold text-white transition-colors hover:bg-[var(--pcms-primary-hover)]"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Maintenance
-          </Link>
-        </div>
       </div>
 
       {/* Delete Modal */}

@@ -174,19 +174,19 @@ export default function SummaryCards({
           {comparisonScopeNote}
         </p>
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         {cards.map((card) => (
           <div
             key={card.key}
-            className="rounded-xl border border-border bg-card p-5 shadow-soft"
+            className="rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5"
           >
             <div
               className={`h-1.5 w-14 rounded-full bg-gradient-to-r ${card.accent}`}
             />
-            <p className="mt-4 text-sm font-medium text-muted-foreground">
+            <p className="mt-3 text-sm font-medium text-muted-foreground sm:mt-4">
               {card.label}
             </p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums text-foreground">
+            <p className="mt-1.5 text-xl font-bold tabular-nums text-foreground sm:mt-2 sm:text-2xl">
               {values[card.key]}
             </p>
             {comparison ? (

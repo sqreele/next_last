@@ -1,6 +1,7 @@
 import {
   BotMessageSquare,
   Building2,
+  CalendarDays,
   ClipboardList,
   FileText,
   Home,
@@ -33,13 +34,14 @@ export const navigationGroups: readonly NavigationGroup[] = [
       { name: "Work Orders", shortName: "Jobs", href: "/dashboard/my-jobs", icon: ClipboardList },
       { name: "Create Job", shortName: "Create", href: "/dashboard/create-job", icon: Plus },
       { name: "Preventive Maintenance", shortName: "PM", href: "/dashboard/preventive-maintenance", icon: Wrench },
+      { name: "PM Schedule", shortName: "Schedule", href: "/dashboard/preventive-maintenance/schedule", icon: CalendarDays },
     ],
   },
   {
     label: "Property",
     items: [
       { name: "Rooms", href: "/dashboard/rooms/by-topics", icon: Building2 },
-      { name: "Equipment", href: "/dashboard/machines", icon: Wrench },
+      { name: "Machines", href: "/dashboard/machines", icon: Wrench },
       { name: "Areas", href: "/dashboard/areas", icon: MapPin },
       { name: "Inventory", href: "/dashboard/inventory", icon: Package },
       { name: "Utilities", href: "/dashboard/utility-consumption", icon: Zap },

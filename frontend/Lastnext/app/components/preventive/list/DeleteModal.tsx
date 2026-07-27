@@ -11,7 +11,7 @@ interface DeleteModalProps {
 const DeleteModal: React.FC<DeleteModalProps> = ({ onConfirm, onCancel }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-card rounded-lg p-6 w-full max-w-md">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-card p-4 sm:p-6">
         <div className="flex items-center mb-4">
           <div className="flex-shrink-0">
             <div className="bg-red-100 rounded-full p-2">
@@ -34,13 +34,13 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ onConfirm, onCancel }) => {
         <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-muted-foreground border border-border rounded-lg hover:bg-muted w-full sm:w-auto transition-colors"
+            className="min-h-11 w-full rounded-lg border border-border px-4 py-2 text-muted-foreground transition-colors hover:bg-muted sm:w-auto"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 w-full sm:w-auto transition-colors"
+            className="min-h-11 w-full rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 sm:w-auto"
           >
             Delete Task
           </button>

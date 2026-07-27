@@ -57,7 +57,7 @@ import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import Pagination from "@/app/components/jobs/Pagination";
 import UpdateStatusButton from "@/app/components/jobs/UpdateStatusButton";
 import { StatusBadge } from "@/app/components/StatusBadge";
-import { FloatingActionButton, PriorityBadge } from "@/app/components/pcms-ui";
+import { FloatingActionButton } from "@/app/components/pcms-ui";
 import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 import { PageContainer } from "@/app/components/layout/PageContainer";
 import { PageHeader, SectionHeader } from "@/app/components/layout/PageHeader";
@@ -218,37 +218,50 @@ function MyJobsSkeleton() {
   );
 }
 
-function JobStatusSummary({ jobs }: { jobs: Job[] }) {
+function JobStatusSummary({
+  jobs,
+  activeStatus,
+  onStatusChange,
+}: {
+  jobs: Job[];
+  activeStatus: FilterState["status"];
+  onStatusChange: (status: FilterState["status"]) => void;
+}) {
   const metrics = [
     {
       label: "Total Jobs",
       value: jobs.length,
       tone: "text-foreground",
       icon: Briefcase,
+      status: "all" as const,
     },
     {
       label: "In Progress",
       value: countByStatus(jobs, "in_progress"),
       tone: "text-warning",
       icon: Wrench,
+      status: "in_progress" as const,
     },
     {
       label: "Waiting",
       value: countByStatus(jobs, "waiting_sparepart"),
       tone: "text-violet-600 dark:text-violet-300",
       icon: Clock3,
+      status: "waiting_sparepart" as const,
     },
     {
       label: "Completed",
       value: countByStatus(jobs, "completed"),
       tone: "text-success",
       icon: CheckCircle2,
+      status: "completed" as const,
     },
     {
       label: "Overdue",
       value: jobs.filter(isOverdue).length,
       tone: "text-destructive",
       icon: TimerReset,
+      status: "overdue" as const,
     },
   ];
 
@@ -260,9 +273,24 @@ function JobStatusSummary({ jobs }: { jobs: Job[] }) {
       {metrics.map((metric) => {
         const Icon = metric.icon;
         return (
-          <div
+          <button
+            type="button"
             key={metric.label}
-            className="rounded-xl border border-border bg-card p-4 shadow-soft"
+            onClick={() =>
+              onStatusChange(
+                activeStatus === metric.status && metric.status !== "all"
+                  ? "all"
+                  : metric.status,
+              )
+            }
+            aria-pressed={activeStatus === metric.status}
+            className={cn(
+              "min-h-24 rounded-xl border bg-card p-4 text-left shadow-soft transition-all hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transform-none",
+              activeStatus === metric.status
+                ? "border-blue-500 bg-blue-50/70 ring-1 ring-blue-500 dark:bg-blue-950/30"
+                : "border-border",
+              metric.label === "Overdue" && "col-span-2 lg:col-span-1",
+            )}
           >
             <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-medium">{metric.label}</p>
@@ -271,7 +299,12 @@ function JobStatusSummary({ jobs }: { jobs: Job[] }) {
             <p className="mt-3 text-2xl font-semibold leading-none sm:text-3xl">
               {metric.value}
             </p>
-          </div>
+            {activeStatus === metric.status && (
+              <span className="mt-2 block text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+                Selected
+              </span>
+            )}
+          </button>
         );
       })}
     </section>
@@ -315,8 +348,8 @@ function FilterBar({
         ) : null}
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_1fr_auto]">
-        <label className="space-y-1.5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_1fr]">
+        <label className="space-y-1.5 sm:col-span-2 lg:col-span-1">
           <span className="text-sm font-medium text-foreground">Search</span>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -414,16 +447,6 @@ function FilterBar({
           </div>
         </label>
 
-        <div className="flex items-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onReset}
-            className="w-full lg:w-auto"
-          >
-            Reset Filters
-          </Button>
-        </div>
       </div>
     </section>
   );
@@ -454,21 +477,20 @@ function JobCard({ job, onEdit, onDelete, onStatusUpdated }: JobActionProps) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <p className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
             <Home
-              className="h-4 w-4 text-muted-foreground"
+              className="h-4 w-4 shrink-0 text-muted-foreground"
               aria-hidden="true"
             />
-            {location}
+            <span className="truncate">{location}</span>
           </p>
           <h3 className="mt-2 line-clamp-2 text-base font-semibold leading-6 text-card-foreground">
             {getJobTitle(job)}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">#{job.job_id}</p>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex shrink-0 flex-col items-end gap-2">
           <StatusBadge status={overdue ? "overdue" : job.status} />
-          <PriorityBadge priority={job.priority} />
         </div>
       </div>
 
@@ -488,7 +510,7 @@ function JobCard({ job, onEdit, onDelete, onStatusUpdated }: JobActionProps) {
       </p>
 
       <div
-        className="mt-5 flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center"
+        className="mt-5 grid grid-cols-2 gap-2 border-t border-border pt-4 sm:flex sm:items-center"
         onClick={(event) => event.stopPropagation()}
       >
         <Button
@@ -506,8 +528,8 @@ function JobCard({ job, onEdit, onDelete, onStatusUpdated }: JobActionProps) {
           className="h-11 w-full sm:w-auto"
           buttonText="Update Status"
         />
-        <details className="relative sm:ml-auto">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-muted-foreground hover:bg-muted">
+        <details className="relative col-span-2 sm:ml-auto">
+          <summary className="flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-muted-foreground hover:bg-muted sm:border-0">
             <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
             More
           </summary>
@@ -569,15 +591,20 @@ const EditDialog: React.FC<EditDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[520px]">
-        <form onSubmit={onSubmit}>
-          <DialogHeader>
-            <DialogTitle>Edit Job #{job?.job_id}</DialogTitle>
+      <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-hidden rounded-2xl p-0 sm:max-h-[90vh] sm:max-w-[520px]">
+        <form
+          onSubmit={onSubmit}
+          className="flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col sm:max-h-[90vh]"
+        >
+          <DialogHeader className="shrink-0 border-b border-border px-4 pb-4 pt-5 pr-12 text-left sm:px-6 sm:pt-6">
+            <DialogTitle className="break-all text-lg sm:text-xl">
+              Edit Job #{job?.job_id}
+            </DialogTitle>
             <DialogDescription>
               Update this maintenance job and save your changes.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-4 py-4 sm:px-6">
             <label className="space-y-2">
               <span className="text-sm font-medium text-muted-foreground">
                 Description
@@ -617,9 +644,9 @@ const EditDialog: React.FC<EditDialogProps> = ({
                     <Badge
                       key={topic.id}
                       variant="secondary"
-                      className="gap-1 pr-1"
+                      className="max-w-full gap-1 pr-1"
                     >
-                      {topic.title}
+                      <span className="min-w-0 truncate">{topic.title}</span>
                       <button
                         type="button"
                         className="rounded-full p-0.5 hover:bg-slate-300"
@@ -644,9 +671,9 @@ const EditDialog: React.FC<EditDialogProps> = ({
               )}
 
               {availableTopicsForSelection.length ? (
-                <div className="flex gap-2">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                   <Select value={newTopicId} onValueChange={setNewTopicId}>
-                    <SelectTrigger className="flex-1">
+                    <SelectTrigger className="h-11 min-w-0">
                       <SelectValue placeholder="Add topic" />
                     </SelectTrigger>
                     <SelectContent>
@@ -662,6 +689,7 @@ const EditDialog: React.FC<EditDialogProps> = ({
                     variant="outline"
                     onClick={handleAddTopic}
                     disabled={!newTopicId}
+                    className="h-11"
                   >
                     Add
                   </Button>
@@ -700,16 +728,21 @@ const EditDialog: React.FC<EditDialogProps> = ({
               </label>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0 gap-2 border-t border-border bg-card px-4 py-4 sm:px-6">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
+              className="min-h-11 w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="min-h-11 w-full sm:w-auto"
+            >
               {isSubmitting ? (
                 <Loader className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
@@ -729,22 +762,28 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
   isSubmitting,
 }) => (
   <AlertDialog open={isOpen} onOpenChange={onClose}>
-    <AlertDialogContent>
+    <AlertDialogContent className="w-[calc(100%-1rem)] rounded-2xl sm:max-w-md">
       <AlertDialogHeader>
-        <AlertDialogTitle>Delete this job?</AlertDialogTitle>
-        <AlertDialogDescription>
+        <AlertDialogTitle className="text-left">
+          Delete this job?
+        </AlertDialogTitle>
+        <AlertDialogDescription className="text-left leading-6">
           This action cannot be undone. The maintenance job will be permanently
           removed.
         </AlertDialogDescription>
       </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel onClick={onClose} disabled={isSubmitting}>
+      <AlertDialogFooter className="gap-2">
+        <AlertDialogCancel
+          onClick={onClose}
+          disabled={isSubmitting}
+          className="min-h-11 w-full sm:w-auto"
+        >
           Cancel
         </AlertDialogCancel>
         <AlertDialogAction
           onClick={onConfirm}
           disabled={isSubmitting}
-          className="bg-red-600 hover:bg-red-700"
+          className="min-h-11 w-full bg-red-600 hover:bg-red-700 sm:w-auto"
         >
           {isSubmitting ? (
             <Loader className="mr-2 h-4 w-4 animate-spin" />
@@ -845,9 +884,6 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
       refreshJobs();
     }
   }, [
-    filters.search,
-    filters.status,
-    filters.room,
     selectedProperty,
     sessionStatus,
     refreshJobs,
@@ -1031,7 +1067,13 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
           }
         />
 
-        <JobStatusSummary jobs={jobs} />
+        <JobStatusSummary
+          jobs={jobs}
+          activeStatus={filters.status}
+          onStatusChange={(status) =>
+            setFilters((current) => ({ ...current, status }))
+          }
+        />
 
         <FilterBar
           filters={filters}

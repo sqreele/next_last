@@ -3,12 +3,14 @@ import { fetchJob, fetchProperties } from "@/app/lib/data.server";
 import { getServerSession } from "@/app/lib/session.server";
 import type { Metadata, ResolvingMetadata } from "next";
 import {
+  ArrowLeft,
   MapPin,
   Clock,
   Calendar,
   User,
   CheckCircle2,
   MessageSquare,
+  Printer,
   StickyNote,
   AlertTriangle,
 } from "lucide-react";
@@ -22,6 +24,7 @@ import JobCommentsSection from "@/app/components/jobs/JobCommentsSection";
 import { BeforeAfterCompare } from "@/app/components/jobs/BeforeAfterCompare";
 import { JobAuditTimeline } from "@/app/components/jobs/JobAuditTimeline";
 import { ReassignJobButton } from "@/app/components/jobs/ReassignJobButton";
+import Link from "next/link";
 
 const getPropertyKey = (value: unknown): string | null => {
   if (value === null || value === undefined) return null;
@@ -184,16 +187,36 @@ export default async function JobPage({ params }: Props) {
               <PriorityBadge priority={job.priority} />
             </h1>
           </div>
-          <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
-            <ReassignJobButton job={job} />
+        </div>
+
+        <nav
+          className="pcms-section-card p-3 sm:p-4"
+          aria-label="Easy job menu"
+        >
+          <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted-foreground">
+            Easy menu
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <Link
+              href="/dashboard/jobs"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Jobs
+            </Link>
+            <ReassignJobButton
+              job={job}
+              className="min-h-12 w-full rounded-xl px-3 text-sm font-bold"
+            />
             <a
               href={`/dashboard/jobs/${job.job_id}/print/`}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-bold text-muted-foreground hover:bg-muted sm:w-auto"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
             >
-              Printable work order
+              <Printer className="h-4 w-4" aria-hidden="true" />
+              Print
             </a>
           </div>
-        </div>
+        </nav>
 
         <div className="pcms-section-card space-y-4 p-5 text-[var(--pcms-text)] sm:p-6">
           {/* Basic Info */}

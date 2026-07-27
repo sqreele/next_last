@@ -262,10 +262,10 @@ export default function ProfileDisplay() {
               />
             ))}
             
-            {/* Display Auth0 ID separately */}
+            {/* Display the external identity ID separately */}
             <ProfileField
               icon={User}
-              label="Auth0 ID"
+              label="Account ID"
               value={String(userProfile.id)}
             />
           </div>

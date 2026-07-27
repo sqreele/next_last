@@ -78,11 +78,11 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                     type="checkbox"
                     checked={isSelected}
                     onChange={(e) => onSelect(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 rounded border-border focus:ring-blue-500"
+                    className="h-5 w-5 flex-none rounded border-border text-blue-600 focus:ring-blue-500"
                   />
                   <Link
                     href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                    className="text-sm font-medium text-foreground hover:text-blue-600 truncate"
+                    className="min-w-0 text-base font-semibold text-foreground hover:text-blue-600"
                   >
                     {item.pmtitle || `Task ${item.pm_id}`}
                   </Link>
@@ -123,21 +123,21 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                   <div className="flex items-center space-x-2">
                     <Link
                       href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                      className="p-1 text-blue-600 hover:text-blue-800"
+                      className="grid h-10 w-10 place-items-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-800"
                       title="View Details"
                     >
                       <Eye className="h-4 w-4" />
                     </Link>
                     <Link
                       href={`/dashboard/preventive-maintenance/edit/${item.pm_id}`}
-                      className="p-1 text-muted-foreground hover:text-foreground"
+                      className="grid h-10 w-10 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                       title="Edit"
                     >
                       <Edit className="h-4 w-4" />
                     </Link>
                     <button
                       onClick={() => onDelete(item.pm_id)}
-                      className="p-1 text-red-600 hover:text-red-800"
+                      className="grid h-10 w-10 place-items-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-800"
                       title="Delete"
                     >
                       <Trash2 className="h-4 w-4" />

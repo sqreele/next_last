@@ -75,6 +75,7 @@ const AreasClient: React.FC = () => {
     "all" | "active" | "inactive"
   >("all");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,7 +121,7 @@ const AreasClient: React.FC = () => {
       if (selectedPropertyPk) params.property_id = selectedPropertyPk;
       if (activeFilter !== "all")
         params.is_active = String(activeFilter === "active");
-      if (search.trim()) params.search = search.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
 
       const res = await axios.get("/api/areas/", {
         params,
@@ -134,7 +135,7 @@ const AreasClient: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedPropertyPk, activeFilter, search]);
+  }, [selectedPropertyPk, activeFilter, debouncedSearch]);
 
   const fetchProperties = useCallback(async () => {
     try {
@@ -152,6 +153,12 @@ const AreasClient: React.FC = () => {
   useEffect(() => {
     fetchProperties();
   }, [fetchProperties]);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
   useEffect(() => {
     fetchAreas();
   }, [fetchAreas]);
@@ -244,7 +251,7 @@ const AreasClient: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 p-4 sm:p-6">
+    <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Areas</h1>
@@ -262,12 +269,12 @@ const AreasClient: React.FC = () => {
             )}
           </p>
         </div>
-        <Button onClick={openCreate} className="gap-1">
+        <Button onClick={openCreate} className="w-full gap-1 sm:w-auto">
           <Plus className="h-4 w-4" /> Add Area
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-2 sm:p-4">
         <div>
           <Label className="text-xs text-muted-foreground">Status</Label>
           <Select
@@ -292,8 +299,18 @@ const AreasClient: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name or description"
-              className="pl-8"
+              className="pl-8 pr-10"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-1 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -307,7 +324,13 @@ const AreasClient: React.FC = () => {
         </Alert>
       )}
 
-      <div className="rounded-lg border bg-card">
+      {!loading && !error && (
+        <p className="text-xs font-medium text-muted-foreground">
+          {areas.length} area{areas.length === 1 ? "" : "s"} found
+        </p>
+      )}
+
+      <div className="overflow-hidden rounded-xl border bg-card">
         {loading ? (
           <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
             <Loader className="mr-2 h-4 w-4 animate-spin" /> Loading areas…
@@ -330,7 +353,7 @@ const AreasClient: React.FC = () => {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="truncate text-sm font-bold text-foreground">
+                      <h3 className="break-words text-base font-bold text-foreground">
                         {area.name}
                       </h3>
                       <p className="mt-1 text-xs font-medium text-muted-foreground">
@@ -367,6 +390,7 @@ const AreasClient: React.FC = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => openEdit(area)}
+                        className="min-h-11 min-w-11"
                         aria-label={`Edit ${area.name}`}
                       >
                         <Pencil className="h-4 w-4" />
@@ -375,6 +399,7 @@ const AreasClient: React.FC = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => setDeleteTarget(area)}
+                        className="min-h-11 min-w-11"
                         aria-label={`Delete ${area.name}`}
                       >
                         <Trash2 className="h-4 w-4 text-red-600" />

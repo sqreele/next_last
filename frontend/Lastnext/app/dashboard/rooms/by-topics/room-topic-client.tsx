@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Room, Topic, Property, Job } from "@/app/lib/types";
 import { Card, CardContent } from "@/app/components/ui/card";
-import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/app/components/ui/alert";
 import {
@@ -82,6 +81,7 @@ export default function RoomsByTopicClient({
   const [selectedTopicId, setSelectedTopicId] = React.useState<number | null>(
     null,
   );
+  const [topicMenuOpen, setTopicMenuOpen] = React.useState(false);
   const [isRetrying, setIsRetrying] = React.useState(false);
   const { selectedPropertyId } = useUser();
 
@@ -101,9 +101,6 @@ export default function RoomsByTopicClient({
     () => (Array.isArray(jobs) ? jobs.filter(Boolean) : []),
     [jobs],
   );
-
-  const getVariant = (active: boolean): "default" | "outline" =>
-    active ? "default" : "outline";
 
   const handleRetry = React.useCallback(() => {
     setIsRetrying(true);
@@ -309,25 +306,25 @@ export default function RoomsByTopicClient({
                 </Button>
               )}
 
-              <Popover>
+              <Popover open={topicMenuOpen} onOpenChange={setTopicMenuOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="min-h-11 flex-1 justify-center px-3 sm:flex-none"
+                    className="min-h-11 min-w-0 flex-1 justify-center px-3 sm:w-64 sm:flex-none"
                   >
-                    <Filter className="mr-2 h-4 w-4" />
-                    <span className="truncate">
+                    <Filter className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="min-w-0 flex-1 truncate text-left">
                       {selectedTopic
                         ? selectedTopic.title || "Untitled topic"
                         : "Select Topic"}
                     </span>
-                    <span className="ml-2 text-xs text-muted-foreground">
+                    <span className="ml-2 shrink-0 text-xs text-muted-foreground">
                       {selectedTopic
                         ? topicCounts.get(selectedTopicId || 0) || 0
                         : allCount}
                     </span>
-                    <ChevronDown className="ml-2 h-4 w-4 opacity-60" />
+                    <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-60" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -340,7 +337,10 @@ export default function RoomsByTopicClient({
                       <CommandEmpty>No topics found.</CommandEmpty>
                       <CommandGroup heading="Topics">
                         <CommandItem
-                          onSelect={() => setSelectedTopicId(null)}
+                          onSelect={() => {
+                            setSelectedTopicId(null);
+                            setTopicMenuOpen(false);
+                          }}
                           className="flex min-h-11 items-center justify-between"
                         >
                           <span>All</span>
@@ -355,13 +355,16 @@ export default function RoomsByTopicClient({
                             <CommandItem
                               key={topicId}
                               value={topic.title || `Topic ${topicId}`}
-                              onSelect={() => setSelectedTopicId(topicId)}
+                              onSelect={() => {
+                                setSelectedTopicId(topicId);
+                                setTopicMenuOpen(false);
+                              }}
                               className="flex min-h-11 items-center justify-between"
                             >
-                              <span className="truncate">
+                              <span className="min-w-0 flex-1 truncate">
                                 {topic.title || "Untitled topic"}
                               </span>
-                              <span className="ml-3 text-xs text-muted-foreground">
+                              <span className="ml-3 shrink-0 text-xs text-muted-foreground">
                                 {topicCounts.get(topicId) || 0}
                               </span>
                             </CommandItem>
@@ -375,35 +378,6 @@ export default function RoomsByTopicClient({
             </div>
           </div>
 
-          <div className="mt-4 -mx-1 overflow-x-auto scrollbar-none">
-            <div className="flex min-w-max items-center gap-2 px-1">
-              <Badge
-                variant={getVariant(selectedTopicId === null)}
-                className="cursor-pointer whitespace-nowrap px-3 py-2"
-                onClick={() => setSelectedTopicId(null)}
-              >
-                All{" "}
-                <span className="ml-1 text-[10px] opacity-80">{allCount}</span>
-              </Badge>
-              {visibleTopics.map((topic) => {
-                const topicId = getTopicId(topic);
-                if (topicId === null) return null;
-                return (
-                  <Badge
-                    key={topicId}
-                    variant={getVariant(selectedTopicId === topicId)}
-                    className="cursor-pointer whitespace-nowrap px-3 py-2"
-                    onClick={() => setSelectedTopicId(topicId)}
-                  >
-                    {topic.title || "Untitled topic"}{" "}
-                    <span className="ml-1 text-[10px] opacity-80">
-                      {topicCounts.get(topicId) || 0}
-                    </span>
-                  </Badge>
-                );
-              })}
-            </div>
-          </div>
         </CardContent>
       </Card>
 
@@ -436,10 +410,10 @@ export default function RoomsByTopicClient({
                 const roomType = room?.room_type || "Room";
                 const card = (
                   <div className="block min-h-20 rounded-xl border border-border p-4 transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary">
-                    <div className="font-medium text-foreground">
+                    <div className="break-words font-semibold text-foreground">
                       {roomName}
                     </div>
-                    <div className="mt-1 text-sm text-muted-foreground">
+                    <div className="mt-1 break-words text-sm text-muted-foreground">
                       {roomType}
                     </div>
                   </div>

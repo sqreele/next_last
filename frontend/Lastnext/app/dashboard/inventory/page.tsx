@@ -30,6 +30,7 @@ import {
   LayoutGrid,
   List,
   Filter,
+  Minus,
   Plus,
   AlertTriangle,
   CheckCircle2,
@@ -140,6 +141,7 @@ export default function InventoryPage() {
   const [lowStockOnly, setLowStockOnly] = useState<boolean>(false);
   const [selectedJobFilter, setSelectedJobFilter] = useState<string>("all");
   const [selectedPmFilter, setSelectedPmFilter] = useState<string>("all");
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [rooms, setRooms] = useState<
     Array<{ room_id: string; roomname: string }>
   >([]);
@@ -553,6 +555,21 @@ export default function InventoryPage() {
   const lowStockCount = inventory.filter(
     (item) => item.status === "low_stock" || item.status === "out_of_stock",
   ).length;
+  const activeFilterCount = [
+    selectedCategory !== "all",
+    selectedStatus !== "all",
+    selectedRoom !== "all",
+    lowStockOnly,
+    selectedJobFilter !== "all",
+    selectedPmFilter !== "all",
+  ].filter(Boolean).length;
+  const parsedUseQuantity = Number.parseInt(useQuantity, 10) || 0;
+  const remainingQuantity = selectedItem
+    ? Math.max(0, selectedItem.quantity - parsedUseQuantity)
+    : 0;
+  const invalidUseQuantity =
+    parsedUseQuantity <= 0 ||
+    (selectedItem ? parsedUseQuantity > selectedItem.quantity : true);
 
   return (
     <div className="w-full max-w-none space-y-4 px-3 pb-4 pt-2 sm:px-4 md:px-5 lg:mx-auto lg:max-w-7xl desktop:max-w-[94rem]">
@@ -583,7 +600,7 @@ export default function InventoryPage() {
               ` (${filteredInventory.length} filtered)`}
           </p>
         </div>
-        <div className="grid w-full gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
           <InventoryCsvImport
             currentPropertyId={selectedProperty}
             onImported={() => {
@@ -598,7 +615,7 @@ export default function InventoryPage() {
                 Add Item
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-4 sm:max-w-2xl sm:p-6">
               <DialogHeader>
                 <DialogTitle>Add New Inventory Item</DialogTitle>
                 <DialogDescription>
@@ -685,7 +702,7 @@ export default function InventoryPage() {
 
       {/* Search and Filters */}
       <Card className="pcms-section-card">
-        <CardContent className="pt-6">
+        <CardContent className="p-3 sm:p-6">
           <div className="flex flex-col gap-4">
             {/* First Row: Search and View Toggle */}
             <div className="flex flex-col sm:flex-row gap-4">
@@ -708,6 +725,7 @@ export default function InventoryPage() {
                   size="sm"
                   onClick={() => setViewMode("grid")}
                   className="h-9 rounded-full px-3"
+                  aria-label="Show inventory as cards"
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
@@ -716,15 +734,38 @@ export default function InventoryPage() {
                   size="sm"
                   onClick={() => setViewMode("list")}
                   className="h-9 rounded-full px-3"
+                  aria-label="Show inventory as a list"
                 >
                   <List className="h-4 w-4" />
                 </Button>
               </div>
             </div>
 
+            <Button
+              type="button"
+              variant={activeFilterCount > 0 ? "default" : "outline"}
+              onClick={() => setShowMobileFilters((value) => !value)}
+              className="min-h-11 w-full justify-between sm:hidden"
+              aria-expanded={showMobileFilters}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Filters
+              </span>
+              <span className="text-xs font-bold">
+                {activeFilterCount > 0
+                  ? `${activeFilterCount} active`
+                  : showMobileFilters
+                    ? "Hide"
+                    : "Show"}
+              </span>
+            </Button>
+
             {/* Second Row: All Filters */}
-            <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
-              <Filter className="h-5 w-5 text-muted-foreground" />
+            <div
+              className={`${showMobileFilters ? "grid" : "hidden"} gap-3 rounded-xl border border-border bg-muted/40 p-3 sm:flex sm:flex-wrap sm:items-center sm:border-0 sm:bg-transparent sm:p-0`}
+            >
+              <Filter className="hidden h-5 w-5 text-muted-foreground sm:block" />
 
               {/* Category Filter */}
               <Select
@@ -866,8 +907,9 @@ export default function InventoryPage() {
                     setSelectedPmFilter("all");
                     setSearchTerm("");
                     setPage(1);
+                    setShowMobileFilters(false);
                   }}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="min-h-11 w-full text-red-600 hover:bg-red-50 hover:text-red-700 sm:w-auto"
                 >
                   <XCircle className="h-4 w-4 mr-1" />
                   {t("inventory.clearFilters")}
@@ -1304,7 +1346,7 @@ export default function InventoryPage() {
 
       {/* Restock Dialog */}
       <Dialog open={showRestockDialog} onOpenChange={setShowRestockDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-4 sm:max-w-lg sm:p-6">
           <DialogHeader>
             <DialogTitle>Restock Item</DialogTitle>
             <DialogDescription>
@@ -1369,41 +1411,105 @@ export default function InventoryPage() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[92vh] gap-0 sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Use Item</DialogTitle>
+            <DialogTitle className="text-xl font-black">Use Item</DialogTitle>
             <DialogDescription>
-              Subtract quantity from {selectedItem?.name}
+              Record inventory used for a maintenance job.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div>
-              <Label htmlFor="use-quantity">Quantity to Use</Label>
-              <Input
-                id="use-quantity"
-                type="number"
-                min="1"
-                max={selectedItem?.quantity}
-                value={useQuantity}
-                onChange={(e) => setUseQuantity(e.target.value)}
-                placeholder="Enter quantity"
-              />
-            </div>
-            {selectedItem && (
-              <div className="text-sm text-muted-foreground">
-                Current: {selectedItem.quantity} {selectedItem.unit}
-                {useQuantity && (
-                  <span className="ml-2 font-semibold">
-                    →{" "}
-                    {Math.max(
-                      0,
-                      selectedItem.quantity - (parseInt(useQuantity) || 0),
-                    )}{" "}
-                    {selectedItem.unit}
-                  </span>
-                )}
+
+          {selectedItem && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-border bg-muted/60 p-3">
+              <span className="grid h-12 w-12 flex-none place-items-center rounded-xl bg-card text-2xl shadow-sm">
+                {CATEGORY_ICONS[selectedItem.category] || "📋"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-black text-foreground">
+                  {selectedItem.name}
+                </p>
+                <p className="truncate font-mono text-xs text-muted-foreground">
+                  {selectedItem.item_id}
+                </p>
               </div>
-            )}
+              <div className="flex-none text-right">
+                <p className="text-lg font-black text-foreground">
+                  {selectedItem.quantity}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedItem.unit} available
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="use-quantity" className="text-sm font-bold">
+                Quantity to use
+              </Label>
+              <div className="grid grid-cols-[3rem_1fr_3rem] items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 w-12 rounded-xl p-0"
+                  onClick={() =>
+                    setUseQuantity(String(Math.max(0, parsedUseQuantity - 1)))
+                  }
+                  disabled={parsedUseQuantity <= 0}
+                  aria-label="Decrease quantity"
+                >
+                  <Minus className="h-5 w-5" />
+                </Button>
+                <Input
+                  id="use-quantity"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  max={selectedItem?.quantity}
+                  value={useQuantity}
+                  onChange={(e) => setUseQuantity(e.target.value)}
+                  placeholder="0"
+                  className="h-12 rounded-xl text-center text-lg font-black"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 w-12 rounded-xl p-0"
+                  onClick={() =>
+                    setUseQuantity(
+                      String(
+                        Math.min(
+                          selectedItem?.quantity || 0,
+                          parsedUseQuantity + 1,
+                        ),
+                      ),
+                    )
+                  }
+                  disabled={
+                    !selectedItem ||
+                    parsedUseQuantity >= selectedItem.quantity
+                  }
+                  aria-label="Increase quantity"
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </div>
+              {selectedItem && parsedUseQuantity > 0 && (
+                <div
+                  className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-bold ${
+                    invalidUseQuantity
+                      ? "bg-red-50 text-red-700"
+                      : "bg-emerald-50 text-emerald-700"
+                  }`}
+                >
+                  <span>Remaining stock</span>
+                  <span>
+                    {remainingQuantity} {selectedItem.unit}
+                  </span>
+                </div>
+              )}
+            </div>
 
             {/* Job Selection */}
             <div>
@@ -1417,10 +1523,10 @@ export default function InventoryPage() {
                   value={selectedJobId || undefined}
                   onValueChange={(value) => setSelectedJobId(value || "")}
                 >
-                  <SelectTrigger id="use-job">
+                  <SelectTrigger id="use-job" className="h-12 rounded-xl">
                     <SelectValue placeholder="Select a job (optional)" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[45vh]">
                     {userJobs.length > 0 ? (
                       userJobs.map((job) => (
                         <SelectItem key={job.job_id} value={job.job_id}>
@@ -1458,10 +1564,10 @@ export default function InventoryPage() {
                   value={selectedPmId || undefined}
                   onValueChange={(value) => setSelectedPmId(value || "")}
                 >
-                  <SelectTrigger id="use-pm">
+                  <SelectTrigger id="use-pm" className="h-12 rounded-xl">
                     <SelectValue placeholder="Select a PM (optional)" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[45vh]">
                     {userPMs.length > 0 ? (
                       userPMs.map((pm) => (
                         <SelectItem key={pm.pm_id} value={pm.pm_id}>
@@ -1489,9 +1595,10 @@ export default function InventoryPage() {
               what it was used for.
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="!grid grid-cols-2 gap-2 sm:!flex">
             <Button
               variant="outline"
+              className="h-12 w-full rounded-xl"
               onClick={() => {
                 setShowUseDialog(false);
                 setUseQuantity("");
@@ -1504,13 +1611,8 @@ export default function InventoryPage() {
             </Button>
             <Button
               onClick={handleUse}
-              disabled={
-                !useQuantity ||
-                parseInt(useQuantity) <= 0 ||
-                (selectedItem
-                  ? parseInt(useQuantity) > selectedItem.quantity
-                  : false)
-              }
+              className="h-12 w-full rounded-xl bg-blue-600 font-bold text-white hover:bg-blue-700"
+              disabled={invalidUseQuantity}
             >
               Use
             </Button>
@@ -1522,24 +1624,28 @@ export default function InventoryPage() {
       {filteredInventory.length > 0 && totalPages > 1 && (
         <Card>
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-sm text-muted-foreground">
+            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+              <div className="text-center text-sm text-muted-foreground sm:text-left">
                 Showing {(page - 1) * pageSize + 1} to{" "}
                 {Math.min(page * pageSize, totalCount)} of {totalCount} items
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-2 sm:flex sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setPage(page - 1)}
                   disabled={page <= 1}
                 >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Previous
+                  <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Previous</span>
                 </Button>
 
-                <div className="flex items-center gap-1">
+                <span className="text-center text-sm font-bold text-foreground sm:hidden">
+                  {page} / {totalPages}
+                </span>
+
+                <div className="hidden items-center gap-1 sm:flex">
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum;
                     if (totalPages <= 5) {
@@ -1572,12 +1678,12 @@ export default function InventoryPage() {
                   onClick={() => setPage(page + 1)}
                   disabled={page >= totalPages}
                 >
-                  Next
-                  <ChevronRight className="h-4 w-4 ml-1" />
+                  <span className="hidden sm:inline">Next</span>
+                  <ChevronRight className="h-4 w-4 sm:ml-1" />
                 </Button>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex w-full items-center justify-center gap-2 sm:w-auto">
                 <label className="text-sm text-muted-foreground">
                   Per page:
                 </label>

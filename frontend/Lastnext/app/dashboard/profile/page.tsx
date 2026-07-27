@@ -155,7 +155,7 @@ export default function ProfilePage() {
   return (
     <div className="w-full px-3 pb-4 pt-2 sm:px-4 md:px-5">
       <div className="pcms-page-header mb-4">
-        <div>
+        <div className="min-w-0">
           <p className="pcms-eyebrow">Account workspace</p>
           <h1>Profile</h1>
           <p className="pcms-page-description">
@@ -169,8 +169,8 @@ export default function ProfilePage() {
           {/* Profile Information */}
           <div className="lg:col-span-2">
             <Card>
-              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+              <CardHeader className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                <div className="min-w-0">
                   <CardTitle className="text-xl">
                     Personal Information
                   </CardTitle>
@@ -178,15 +178,22 @@ export default function ProfilePage() {
                     Your account details and preferences
                   </CardDescription>
                 </div>
-                <Button variant="outline" size="sm">
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="min-h-11 w-full sm:w-auto"
+                >
+                  <Link href={`/dashboard/profile/edit/${user.id}`}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Profile
+                  </Link>
                 </Button>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center gap-4">
+              <CardContent className="space-y-4 p-4 pt-0 sm:space-y-6 sm:p-6 sm:pt-0">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                   {profileImageUrl ? (
-                    <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-blue-200">
+                    <div className="relative h-16 w-16 flex-none overflow-hidden rounded-full border-2 border-blue-200 sm:h-20 sm:w-20">
                       <Image
                         src={profileImageUrl}
                         alt={`${displayName}'s profile`}
@@ -202,22 +209,22 @@ export default function ProfilePage() {
                           );
                         }}
                       />
-                      <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200 hidden">
-                        <span className="text-2xl font-bold text-blue-600">
+                      <div className="hidden h-16 w-16 items-center justify-center rounded-full border-2 border-blue-200 bg-blue-100 sm:h-20 sm:w-20">
+                        <span className="text-xl font-bold text-blue-600 sm:text-2xl">
                           {getUserInitials(displayName)}
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200">
-                      <span className="text-2xl font-bold text-blue-600">
+                    <div className="flex h-16 w-16 flex-none items-center justify-center rounded-full border-2 border-blue-200 bg-blue-100 sm:h-20 sm:w-20">
+                      <span className="text-xl font-bold text-blue-600 sm:text-2xl">
                         {getUserInitials(displayName)}
                       </span>
                     </div>
                   )}
-                  <div>
-                    <h3 className="text-lg font-semibold">{displayName}</h3>
-                    <Badge variant="secondary">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-lg font-bold">{displayName}</h3>
+                    <Badge variant="secondary" className="mt-1 max-w-full truncate">
                       {user.positions || "User"}
                     </Badge>
                   </div>
@@ -225,38 +232,40 @@ export default function ProfilePage() {
 
                 {/* Profile Details */}
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-3">
-                      <Mail className="w-5 h-5 text-muted-foreground" />
-                      <div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+                    <div className="flex min-w-0 items-center gap-3 rounded-xl bg-muted/60 p-3">
+                      <div className="grid h-10 w-10 flex-none place-items-center rounded-full bg-card">
+                        <Mail className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground">
                           Email
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="break-all text-sm text-muted-foreground">
                           {user.email || "Not provided"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                    <div className="flex min-w-0 items-center gap-3 rounded-xl bg-muted/60 p-3">
+                      <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-card">
                         <Shield className="w-5 h-5 text-muted-foreground" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground">
                           Position
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="break-words text-sm text-muted-foreground">
                           {user.positions || "N/A"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                    <div className="flex min-w-0 items-center gap-3 rounded-xl bg-muted/60 p-3">
+                      <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-card">
                         <Calendar className="w-5 h-5 text-muted-foreground" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground">
                           Member Since
                         </p>
@@ -268,15 +277,15 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                    <div className="flex min-w-0 items-center gap-3 rounded-xl bg-muted/60 p-3">
+                      <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-card">
                         <User2 className="w-5 h-5 text-muted-foreground" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground">
                           Account
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="break-words text-sm text-muted-foreground">
                           {displayName || user.email || "N/A"}
                         </p>
                       </div>
@@ -290,11 +299,11 @@ export default function ProfilePage() {
           {/* Quick Actions */}
           <div className="space-y-6">
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4 sm:p-6">
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <Button asChild className="w-full justify-start">
+              <CardContent className="grid gap-2 p-4 pt-0 sm:p-6 sm:pt-0">
+                <Button asChild className="min-h-11 w-full justify-start">
                   <Link href="/dashboard">
                     <Building className="w-4 h-4 mr-2" />
                     Go to Dashboard
@@ -303,7 +312,7 @@ export default function ProfilePage() {
                 <Button
                   asChild
                   variant="outline"
-                  className="w-full justify-start"
+                  className="min-h-11 w-full justify-start"
                 >
                   <Link href="/dashboard/create-job">
                     <Pencil className="w-4 h-4 mr-2" />
@@ -313,7 +322,7 @@ export default function ProfilePage() {
                 <Button
                   asChild
                   variant="outline"
-                  className="w-full justify-start"
+                  className="min-h-11 w-full justify-start"
                 >
                   <Link href="/dashboard/preventive-maintenance">
                     <CheckCircle className="w-4 h-4 mr-2" />
@@ -325,7 +334,7 @@ export default function ProfilePage() {
 
             {/* Properties Summary */}
             <Card>
-              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardHeader className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                 <div>
                   <CardTitle className="text-lg">Properties</CardTitle>
                   <CardDescription>Your managed properties</CardDescription>
@@ -335,6 +344,7 @@ export default function ProfilePage() {
                   size="sm"
                   onClick={fetchUserProperties}
                   disabled={loadingProperties}
+                  className="min-h-11 w-full sm:w-auto"
                 >
                   {loadingProperties ? (
                     <div className="w-4 h-4 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
@@ -343,7 +353,7 @@ export default function ProfilePage() {
                   )}
                 </Button>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
                 {loadingProperties ? (
                   <div className="text-center py-4">
                     <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
@@ -384,7 +394,7 @@ export default function ProfilePage() {
                     <p className="text-sm font-medium">
                       Error loading properties
                     </p>
-                    <p className="text-xs text-red-400 mt-1">
+                    <p className="mt-1 break-words text-xs text-red-400">
                       {propertiesError}
                     </p>
                     <Button

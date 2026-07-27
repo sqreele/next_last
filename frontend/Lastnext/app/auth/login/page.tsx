@@ -43,7 +43,7 @@ const authErrorMessages: Record<string, string> = {
   config_error: 'Authentication is not configured correctly. Please contact support.',
   invalid_request: 'This sign-in request could not be completed.',
   invalid_state: 'Your sign-in session expired. Please start again.',
-  no_code: 'Auth0 did not return a valid sign-in code. Please start again.',
+  no_code: 'The identity service did not return a valid sign-in code. Please start again.',
   token_exchange_error: 'We could not securely complete sign in. Please try again.',
   token_exchange_failed: 'We could not verify the sign-in response. Please try again.',
 };
@@ -85,7 +85,7 @@ function LoginContent() {
     }
   }, [isAuthenticated, sessionLoading, router]);
 
-  const handleAuth0Login = () => {
+  const handleSecureLogin = () => {
     setIsRedirecting(true);
     router.push('/api/auth/login');
   };
@@ -152,7 +152,7 @@ function LoginContent() {
 
         <div className="relative flex items-center gap-2 text-xs text-slate-500">
           <LockKeyhole className="h-3.5 w-3.5" />
-          Enterprise-grade authentication powered by Auth0
+          Secure authentication for hotel operations
         </div>
       </section>
 
@@ -209,13 +209,13 @@ function LoginContent() {
             )}
 
             <Button
-              onClick={handleAuth0Login}
+              onClick={handleSecureLogin}
               className="h-12 w-full rounded-xl shadow-lg shadow-blue-600/15"
               size="lg"
               isLoading={isRedirecting}
               loadingText="Opening secure sign in…"
             >
-              Continue with Auth0
+              Continue securely
               <ArrowRight className="ml-auto h-4 w-4" />
             </Button>
 
@@ -224,8 +224,8 @@ function LoginContent() {
                 <Check className="h-3.5 w-3.5" />
               </span>
               <p className="text-xs leading-5 text-slate-600">
-                Your credentials are handled securely by Auth0. HotelCare Pro never
-                stores your password.
+                Your credentials are handled by our secure identity service.
+                HotelCare Pro never stores your password.
               </p>
             </div>
 

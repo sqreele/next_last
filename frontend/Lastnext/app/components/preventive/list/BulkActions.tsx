@@ -11,22 +11,22 @@ interface BulkActionsProps {
 
 const BulkActions: React.FC<BulkActionsProps> = ({ selectedCount, onBulkDelete, onClear }) => {
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mx-4 md:mx-0 mb-4 md:mb-6">
-      <div className="flex items-center justify-between">
+    <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3 md:mb-6 md:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-blue-700 text-sm md:text-base font-medium">
           {selectedCount} item(s) selected
         </span>
         <div className="flex gap-2">
           <button
             onClick={onBulkDelete}
-            className="px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors"
+            className="min-h-11 rounded-lg bg-red-600 px-3 py-2 text-sm text-white transition-colors hover:bg-red-700"
           >
             <Trash2 className="h-4 w-4 inline mr-1" />
             Delete
           </button>
           <button
             onClick={onClear}
-            className="px-3 py-1.5 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors"
+            className="min-h-11 rounded-lg bg-gray-600 px-3 py-2 text-sm text-white transition-colors hover:bg-gray-700"
           >
             Clear
           </button>

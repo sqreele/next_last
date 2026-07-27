@@ -186,7 +186,7 @@ export default function EditProfilePage() {
   };
 
   return (
-    <div className="w-full max-w-none px-3 py-4 sm:px-6 lg:mx-auto lg:max-w-2xl space-y-6">
+    <div className="w-full max-w-none space-y-4 px-3 py-4 sm:space-y-6 sm:px-6 lg:mx-auto lg:max-w-2xl">
       <div className="flex items-center gap-4">
         <Link href="/dashboard/profile">
           <Button variant="ghost" size="sm">
@@ -197,7 +197,7 @@ export default function EditProfilePage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4 sm:p-6">
           <CardTitle className="text-xl sm:text-2xl font-bold">
             Edit Profile
           </CardTitle>
@@ -205,8 +205,8 @@ export default function EditProfilePage() {
             Update your personal information and preferences
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {message && (
               <div
                 className={`p-4 rounded-lg border ${
@@ -225,21 +225,6 @@ export default function EditProfilePage() {
                 </div>
               </div>
             )}
-
-            {/* Test button to verify form submission */}
-            <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800 mb-2">
-                Debug: Test form submission
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {}}
-              >
-                Test Form Data
-              </Button>
-            </div>
 
             <div className="grid gap-4">
               <div className="space-y-2">
@@ -310,9 +295,10 @@ export default function EditProfilePage() {
                 {hasProperties ? (
                   <div className="grid gap-3">
                     {userProperties.map((property) => (
-                      <div
+                      <button
+                        type="button"
                         key={property.property_id}
-                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                        className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors ${
                           selectedProperty === String(property.property_id)
                             ? "border-blue-400 bg-blue-50"
                             : "border-border hover:border-blue-200 hover:bg-blue-50"
@@ -321,11 +307,11 @@ export default function EditProfilePage() {
                           setSelectedProperty(String(property.property_id))
                         }
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
                           <Building2 className="w-4 h-4 text-muted-foreground" />
-                          <div>
-                            <div className="font-medium">{property.name}</div>
-                            <div className="text-sm text-muted-foreground">
+                          <div className="min-w-0">
+                            <div className="truncate font-medium">{property.name}</div>
+                            <div className="truncate text-sm text-muted-foreground">
                               ID: {property.property_id}
                             </div>
                           </div>
@@ -333,7 +319,7 @@ export default function EditProfilePage() {
                         {selectedProperty === String(property.property_id) && (
                           <Check className="w-5 h-5 text-blue-600" />
                         )}
-                      </div>
+                      </button>
                     ))}
                   </div>
                 ) : (

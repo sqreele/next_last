@@ -39,12 +39,12 @@ export default function MetricLineChart({
   const yAxisDomain = yAxisMax === undefined ? ["auto", "auto"] : [0, yAxisMax];
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
+    <div className="min-w-0 rounded-xl border border-border bg-card p-3 shadow-soft sm:p-5">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
-      <div className="h-72 w-full min-h-[18rem]">
+      <div className="h-64 w-full min-w-0 sm:h-72 sm:min-h-[18rem]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}

@@ -157,10 +157,6 @@ export default async function PreventiveMaintenanceDetailPage(props: {
 
   return (
     <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl">
-      <h1 className="text-2xl font-bold mb-4">
-        Preventive Maintenance Details
-      </h1>
-
       <Suspense
         fallback={
           <div className="text-center py-4">

@@ -435,31 +435,34 @@ export default function MachineDetailPage({
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 lg:flex-1">
-          <Button asChild variant="outline" size="sm">
+          <Button asChild variant="outline" size="sm" className="self-start">
             <Link href="/dashboard/machines">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Link>
           </Button>
           <div className="flex-1">
-            <div className="mb-2 flex flex-wrap items-center gap-3">
-              <h1 className="flex items-center gap-3 text-2xl font-bold text-foreground sm:text-3xl">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Wrench className="h-6 w-6 text-blue-600" />
-                </div>
-                {machine.name}
+            <div className="mb-2 min-w-0">
+              <h1 className="flex min-w-0 items-start gap-2 text-xl font-bold text-foreground sm:items-center sm:gap-3 sm:text-3xl">
+                <span className="shrink-0 rounded-lg bg-blue-100 p-2">
+                  <Wrench className="h-5 w-5 text-blue-600 sm:h-6 sm:w-6" />
+                </span>
+                <span className="min-w-0 break-words">{machine.name}</span>
               </h1>
             </div>
-            <p className="text-muted-foreground mt-1 font-mono text-sm">
+            <p className="mt-1 break-all font-mono text-xs text-muted-foreground sm:text-sm">
               ID: {machine.machine_id}
             </p>
           </div>
         </div>
         <div className="grid w-full gap-2 self-start sm:flex sm:w-auto sm:items-center">
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="w-full sm:w-auto">
             <Link href={createPreventiveLink}>
               <FilePlus2 className="h-4 w-4 mr-2" />
-              Create Preventive Maintenance
+              <span className="sm:hidden">Create PM</span>
+              <span className="hidden sm:inline">
+                Create Preventive Maintenance
+              </span>
             </Link>
           </Button>
         </div>
@@ -515,11 +518,11 @@ export default function MachineDetailPage({
             Scan this QR code to quickly access this machine's details
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
             <div
               ref={qrCodeRef}
-              className="bg-card p-4 rounded-lg border-2 border-border flex-shrink-0"
+              className="mx-auto flex-shrink-0 rounded-lg border-2 border-border bg-card p-4 md:mx-0"
               style={{ display: "inline-block" }}
             >
               {machine?.machine_id && getMachineUrl() ? (
@@ -542,11 +545,11 @@ export default function MachineDetailPage({
                   Machine Information
                 </p>
                 <div className="space-y-1 text-sm text-muted-foreground">
-                  <p>
+                  <p className="break-all">
                     <span className="font-medium">ID:</span>{" "}
                     {machine.machine_id}
                   </p>
-                  <p>
+                  <p className="break-words">
                     <span className="font-medium">Name:</span> {machine.name}
                   </p>
                   {machine.location && (
@@ -565,12 +568,12 @@ export default function MachineDetailPage({
                   {getMachineUrl()}
                 </p>
               </div>
-              <div className="flex gap-2 pt-2">
+              <div className="grid grid-cols-1 gap-2 pt-2 sm:flex">
                 <Button
                   onClick={downloadQRCode}
                   variant="outline"
                   size="sm"
-                  className="flex items-center gap-2"
+                  className="w-full items-center gap-2 sm:w-auto"
                 >
                   <Download className="h-4 w-4" />
                   Download QR Code
@@ -579,7 +582,7 @@ export default function MachineDetailPage({
                   onClick={printQRCode}
                   variant="outline"
                   size="sm"
-                  className="flex items-center gap-2"
+                  className="w-full items-center gap-2 sm:w-auto"
                 >
                   <Printer className="h-4 w-4" />
                   Print QR Code
@@ -598,7 +601,7 @@ export default function MachineDetailPage({
             Machine Information
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-4 sm:px-6">
           {/* Machine Image */}
           {getMachineImageUrl() && (
             <div className="pb-4 border-b border-border">
@@ -637,7 +640,7 @@ export default function MachineDetailPage({
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
             {machine.category && (
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Category</p>
@@ -680,7 +683,7 @@ export default function MachineDetailPage({
                 <p className="text-sm text-muted-foreground mb-1">
                   Serial Number
                 </p>
-                <p className="font-medium text-foreground font-mono">
+                <p className="break-all font-mono font-medium text-foreground">
                   {machine.serial_number}
                 </p>
               </div>
@@ -749,7 +752,7 @@ export default function MachineDetailPage({
             {pmHistory.length !== 1 ? "s" : ""} found
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           {loadingHistory ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -772,16 +775,16 @@ export default function MachineDetailPage({
               {pmHistory.map((record) => (
                 <div
                   key={record.pm_id}
-                  className="border border-border rounded-lg p-4 hover:bg-muted transition-colors"
+                  className="rounded-lg border border-border p-3 transition-colors hover:bg-muted sm:p-4"
                 >
                   <div className="flex flex-col lg:flex-row gap-4">
                     {/* Main Info */}
                     <div className="flex-1 space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
+                      <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3">
+                        <div className="min-w-0 flex-1">
                           <Link
                             href={`/dashboard/preventive-maintenance/${record.pm_id}`}
-                            className="text-lg font-semibold text-foreground hover:text-blue-600 transition-colors block"
+                            className="block break-words text-base font-semibold text-foreground transition-colors hover:text-blue-600 sm:text-lg"
                           >
                             {record.pmtitle || "Untitled Maintenance"}
                           </Link>
@@ -791,7 +794,9 @@ export default function MachineDetailPage({
                             </p>
                           )}
                         </div>
-                        <Badge className={getStatusColor(record.status)}>
+                        <Badge
+                          className={`shrink-0 ${getStatusColor(record.status)}`}
+                        >
                           {record.status
                             ? record.status.replace("_", " ").toUpperCase()
                             : "SCHEDULED"}
@@ -799,7 +804,7 @@ export default function MachineDetailPage({
                       </div>
 
                       {/* Details Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                      <div className="grid grid-cols-1 gap-3 text-sm min-[390px]:grid-cols-2 lg:grid-cols-4">
                         {record.pm_id && (
                           <div className="flex items-center gap-2">
                             <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -809,7 +814,7 @@ export default function MachineDetailPage({
                               </p>
                               <Link
                                 href={`/dashboard/preventive-maintenance/${record.pm_id}`}
-                                className="font-mono text-sm text-foreground hover:text-blue-600 hover:underline transition-colors"
+                                className="break-all font-mono text-sm text-foreground transition-colors hover:text-blue-600 hover:underline"
                               >
                                 {record.pm_id}
                               </Link>

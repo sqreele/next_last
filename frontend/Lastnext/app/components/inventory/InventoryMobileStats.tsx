@@ -33,10 +33,14 @@ export function InventoryMobileStats({
   onToggleLowStock,
   className,
 }: InventoryMobileStatsProps) {
-  const inStock = items.filter((i) => i.status === "in_stock").length;
+  const inStock = items.filter(
+    (i) => i.status === "available" || i.status === "in_stock",
+  ).length;
   const lowStock = items.filter((i) => i.status === "low_stock").length;
   const outOfStock = items.filter((i) => i.status === "out_of_stock").length;
-  const orderedCount = items.filter((i) => i.status === "ordered").length;
+  const orderedCount = items.filter(
+    (i) => i.status === "ordered" || i.status === "reserved",
+  ).length;
 
   const inventoryValue = items.reduce((sum, i) => {
     if (typeof i.unit_price === "number" && typeof i.quantity === "number") {

@@ -95,73 +95,77 @@ export default function MaintenanceJobCard({
     >
       <Link
         href={detailHref}
-        className="flex min-h-64 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex h-full min-h-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         aria-label={`Open maintenance job ${job.job_id}`}
       >
-        <div className="relative h-36 w-full border-b border-border bg-muted">
+        <div className="job-card-image relative h-28 w-full border-b border-border bg-muted md:h-32 lg:h-36">
           {imageUrl && !imageFailed ? (
             <Image
               src={imageUrl}
               alt={`Maintenance job at ${getLocation(job)}`}
               fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 360px"
+              sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, 20vw"
               className="object-cover"
               onError={() => setImageFailed(true)}
               unoptimized={imageUrl.startsWith("http")}
             />
           ) : (
             <div className="grid h-full place-items-center text-muted-foreground">
-              <span className="flex items-center gap-2 text-sm">
-                <ImageIcon className="h-5 w-5" aria-hidden="true" />
-                No job photo
+              <span className="job-card-photo-label flex flex-col items-center gap-1 text-center text-xs md:flex-row md:gap-2 md:text-sm">
+                <ImageIcon className="h-4 w-4 md:h-5 md:w-5" aria-hidden="true" />
+                <span>No job photo</span>
               </span>
             </div>
           )}
         </div>
 
-        <div className="flex flex-1 flex-col p-4 md:p-5">
-          <div className="flex items-start justify-between gap-3">
+        <div className="job-card-content flex flex-1 flex-col p-3 md:p-4 lg:p-5">
+          <div className="flex flex-col items-start gap-2 lg:flex-row lg:justify-between lg:gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <div className="job-card-location flex items-center gap-1.5 text-xs font-medium text-foreground md:text-sm">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground md:h-4 md:w-4" aria-hidden="true" />
                 <span className="truncate">{getLocation(job)}</span>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="job-card-id mt-1 text-[11px] text-muted-foreground md:text-xs">
                 Job #{job.job_id || "New"}
               </p>
             </div>
             <PriorityBadge priority={job.priority || job.urgency} />
           </div>
 
-          <h2 className="mt-4 line-clamp-2 text-base font-semibold leading-6 text-card-foreground">
+          <h2 className="job-card-title mt-3 line-clamp-2 text-sm font-semibold leading-5 text-card-foreground md:text-base md:leading-6">
             {getProblemSummary(job)}
           </h2>
 
-          <div className="mt-3">
+          <div className="job-card-status mt-2.5 md:mt-3">
             <StatusBadge status={job.status} size="sm" />
           </div>
 
-          <dl className="mt-5 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <dl className="job-card-meta mt-3 grid gap-1.5 text-xs text-muted-foreground md:mt-4 md:gap-2 md:text-sm xl:grid-cols-2">
+            <div className="flex min-w-0 items-center gap-1.5 md:gap-2">
+              <UserRound className="h-3.5 w-3.5 shrink-0 md:h-4 md:w-4" aria-hidden="true" />
               <dt className="sr-only">Assigned technician</dt>
               <dd className="truncate">{getAssignee(job)}</dd>
             </div>
-            <div className="flex min-w-0 items-center gap-2">
-              <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <div className="flex min-w-0 items-center gap-1.5 md:gap-2">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0 md:h-4 md:w-4" aria-hidden="true" />
               <dt className="sr-only">Created time</dt>
-              <dd className="truncate">Created {formatDate(job.created_at)}</dd>
+              <dd className="truncate">
+                <span className="hidden md:inline">Created </span>
+                {formatDate(job.created_at)}
+              </dd>
             </div>
           </dl>
 
-          <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
-            <span className="text-xs text-muted-foreground">
+          <div className="job-card-footer mt-3 flex items-center justify-between gap-1 border-t border-border pt-3 md:mt-4 md:pt-4">
+            <span className="hidden truncate text-xs text-muted-foreground md:block">
               Updated {formatDate(job.updated_at)}
             </span>
-            <span className="inline-flex items-center gap-1 text-sm font-semibold text-foreground">
-              View job
+            <span className="job-card-action inline-flex items-center gap-1 text-xs font-semibold text-foreground md:ml-auto md:text-sm">
+              View
+              <span className="hidden md:inline"> job</span>
               <ArrowRight
-                className="h-4 w-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none"
+                className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none md:h-4 md:w-4"
                 aria-hidden="true"
               />
             </span>

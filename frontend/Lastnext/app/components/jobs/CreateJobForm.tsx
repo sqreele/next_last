@@ -18,7 +18,6 @@ import {
   Loader,
   AlertCircle,
   CheckCircle,
-  Search,
   Check,
   ArrowLeft,
   ClipboardList,
@@ -47,6 +46,7 @@ import { useSession, signIn } from "@/app/lib/session.client";
 import { Label } from "@/app/components/ui/label";
 import { Input } from "@/app/components/ui/input";
 import RoomAutocomplete from "@/app/components/jobs/RoomAutocomplete";
+import TopicPicker from "@/app/components/jobs/TopicPicker";
 import FileUpload from "@/app/components/jobs/FileUpload";
 import { Room, TopicFromAPI, Area, Property } from "@/app/lib/types";
 import { useRouter } from "next/navigation";
@@ -475,7 +475,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const [currentPropertyId, setCurrentPropertyId] = useState<string | null>(
     null,
   );
-  const [categorySearch, setCategorySearch] = useState("");
 
   const normalizeRoomsResponse = useCallback((data: unknown): Room[] => {
     if (Array.isArray(data)) return data as Room[];
@@ -1320,7 +1319,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     description: "",
                                   });
                                   setFieldTouched("topic.title", false, false);
-                                  setCategorySearch("");
                                   setFloors([]);
                                   setRooms([]);
                                 }}
@@ -1654,154 +1652,23 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 </p>
                               </div>
 
-                              {values.topic.title && (
-                                <div className="rounded-[4px] border border-[#46b8bc] bg-[#f8ffff] p-3">
-                                  <p className="mb-2 text-xs font-semibold uppercase text-[#269fa8]">
-                                    {t("createJob.selectedCategory")}
-                                  </p>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setFieldValue("topic", {
-                                        title: "",
-                                        description: "",
-                                      });
-                                      setFieldTouched(
-                                        "topic.title",
-                                        true,
-                                        false,
-                                      );
-                                    }}
-                                    disabled={isSubmitting}
-                                    className={`inline-flex min-h-10 touch-manipulation items-center gap-2 rounded-[4px] border border-[#46b8bc] bg-[#46b8bc] px-3 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#269fa8] active:scale-[0.98] ${
-                                      isSubmitting
-                                        ? "cursor-not-allowed opacity-60"
-                                        : ""
-                                    }`}
-                                  >
-                                    <Check className="h-4 w-4" aria-hidden />
-                                    {values.topic.title}
-                                  </button>
-                                </div>
-                              )}
-
-                              {topics.length > 8 && (
-                                <div className="relative">
-                                  <Search
-                                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                                    aria-hidden
-                                  />
-                                  <Input
-                                    type="search"
-                                    value={categorySearch}
-                                    onChange={(event) =>
-                                      setCategorySearch(event.target.value)
-                                    }
-                                    placeholder={t(
-                                      "createJob.searchCategories",
-                                    )}
-                                    aria-label={t("createJob.searchCategories")}
-                                    className={`h-11 rounded-[4px] pl-10 text-sm ${FIELD_BASE_CLASS}`}
-                                    disabled={isSubmitting}
-                                  />
-                                </div>
-                              )}
-
-                              {(() => {
-                                const trimmedCategorySearch = categorySearch
-                                  .trim()
-                                  .toLowerCase();
-                                const visibleTopics = trimmedCategorySearch
-                                  ? topics.filter((topic) =>
-                                      topic.title
-                                        .toLowerCase()
-                                        .includes(trimmedCategorySearch),
-                                    )
-                                  : topics;
-                                const hasCategoryError = Boolean(
+                              <TopicPicker
+                                topics={topics}
+                                value={values.topic}
+                                onChange={(topic) => {
+                                  setFieldValue("topic", topic);
+                                  setFieldTouched(
+                                    "topic.title",
+                                    true,
+                                    false,
+                                  );
+                                }}
+                                disabled={isSubmitting}
+                                invalid={Boolean(
                                   (touched.topic?.title || submitCount > 0) &&
-                                  errors.topic?.title,
-                                );
-                                const hasManyTopics = topics.length > 12;
-
-                                return (
-                                  <div
-                                    role="listbox"
-                                    aria-label={t("createJob.chooseCategory")}
-                                    aria-multiselectable="false"
-                                    aria-invalid={hasCategoryError}
-                                    className={`flex flex-wrap gap-2 rounded-[4px] border bg-card p-2 sm:gap-3 sm:p-3 ${
-                                      hasManyTopics
-                                        ? "max-h-64 overflow-y-auto pr-2"
-                                        : ""
-                                    } ${hasCategoryError ? "border-red-300 ring-2 ring-red-100" : "border-border"}`}
-                                  >
-                                    {topics.length ? (
-                                      visibleTopics.map((topic) => {
-                                        const isSelected =
-                                          values.topic.title === topic.title;
-
-                                        return (
-                                          <button
-                                            key={topic.id}
-                                            type="button"
-                                            role="option"
-                                            aria-selected={isSelected}
-                                            onClick={() => {
-                                              setFieldValue(
-                                                "topic",
-                                                isSelected
-                                                  ? {
-                                                      title: "",
-                                                      description: "",
-                                                    }
-                                                  : {
-                                                      title: topic.title,
-                                                      description:
-                                                        topic.description || "",
-                                                    },
-                                              );
-                                              setFieldTouched(
-                                                "topic.title",
-                                                true,
-                                                false,
-                                              );
-                                            }}
-                                            disabled={isSubmitting}
-                                            className={`inline-flex min-h-9 touch-manipulation items-center gap-2 rounded-[4px] border px-3 py-1.5 text-[13px] font-semibold transition-all duration-200 active:scale-[0.98] sm:px-4 ${
-                                              isSelected
-                                                ? "border-[#46b8bc] bg-[#46b8bc] text-white"
-                                                : "border-[#e2e6e8] bg-[#FBFBFD] text-[#5B6785] hover:border-[#46b8bc] hover:bg-[#f8ffff]"
-                                            } ${isSubmitting ? "cursor-not-allowed opacity-60" : ""}`}
-                                          >
-                                            {isSelected && (
-                                              <Check
-                                                className="h-4 w-4"
-                                                aria-hidden
-                                              />
-                                            )}
-                                            <span>{topic.title}</span>
-                                          </button>
-                                        );
-                                      })
-                                    ) : (
-                                      <div className="flex min-h-10 items-center rounded-[4px] border border-[#e2e6e8] bg-card px-4 py-2 text-sm font-semibold text-[#8a9499]">
-                                        {t("createJob.loadingTopics")}
-                                      </div>
-                                    )}
-
-                                    {topics.length > 0 &&
-                                      visibleTopics.length === 0 && (
-                                        <div className="flex min-h-10 items-center rounded-[4px] border border-dashed border-[#e2e6e8] bg-[#fafafa] px-4 py-2 text-sm font-semibold text-[#6f7c82]">
-                                          {formatMessage(
-                                            t("createJob.noCategoryMatch"),
-                                            { search: categorySearch },
-                                          )}
-                                        </div>
-                                      )}
-                                  </div>
-                                );
-                              })()}
+                                    errors.topic?.title,
+                                )}
+                              />
 
                               {(touched.topic?.title || submitCount > 0) &&
                                 errors.topic?.title && (

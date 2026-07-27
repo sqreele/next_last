@@ -28,6 +28,7 @@ import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import { useSession, signIn } from "@/app/lib/session.client";
 import { Label } from "@/app/components/ui/label";
 import RoomAutocomplete from "./RoomAutocomplete";
+import TopicPicker from "./TopicPicker";
 import FileUpload from "./FileUpload";
 import { Room, TopicFromAPI } from "@/app/lib/types"; // Ensure types path is correct
 
@@ -349,6 +350,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({
               errors,
               touched,
               setFieldValue,
+              setFieldTouched,
               isSubmitting: formikIsSubmitting,
             }) => (
               // Use formikIsSubmitting
@@ -432,38 +434,22 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({
                 </div>
                 <div>
                   <Label>Topic</Label>
-                  <Select
-                    value={values.topic.title} // Bind to topic title
-                    onValueChange={(value) => {
-                      const selectedTopic = topics.find(
-                        (t) => t.title === value,
-                      );
-                      if (selectedTopic) {
-                        setFieldValue("topic", {
-                          // Set the whole topic object
-                          title: selectedTopic.title,
-                          description: selectedTopic.description || "",
-                        });
-                      } else {
-                        // Handle case where selection might be cleared or invalid
-                        setFieldValue("topic", { title: "", description: "" });
-                      }
-                    }}
-                    name="topic.title" // Target title for validation linkage if needed
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select Topic" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {topics.map((topic) => (
-                        <SelectItem key={topic.id} value={topic.title}>
-                          {topic.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="mt-1">
+                    <TopicPicker
+                      topics={topics}
+                      value={values.topic}
+                      onChange={(topic) => {
+                        setFieldValue("topic", topic);
+                        setFieldTouched("topic.title", true, false);
+                      }}
+                      disabled={formikIsSubmitting || isLoadingFormData}
+                      invalid={Boolean(
+                        touched.topic?.title && errors.topic?.title,
+                      )}
+                    />
+                  </div>
                   {touched.topic?.title && errors.topic?.title && (
-                    <p className="text-sm text-red-500 mt-1">
+                    <p className="mt-1 text-sm text-destructive">
                       {errors.topic.title}
                     </p>
                   )}

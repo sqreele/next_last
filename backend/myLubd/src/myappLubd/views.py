@@ -1941,15 +1941,30 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         end_dt = start_dt + timedelta(days=days)
 
         status_filter = (request.query_params.get('status') or 'open').lower()
-        qs = self.get_queryset().filter(scheduled_date__gte=start_dt, scheduled_date__lt=end_dt)
+        if status_filter not in {'open', 'completed', 'all'}:
+            status_filter = 'open'
+
+        # A completed recurring PM keeps its original scheduled date and stores
+        # its next occurrence in next_due_date. Include both fields in the
+        # candidate query; filtering only on scheduled_date made the machine's
+        # "Next Due" value disappear from the calendar.
+        scheduled_in_window = Q(scheduled_date__gte=start_dt, scheduled_date__lt=end_dt)
+        next_due_in_window = Q(next_due_date__gte=start_dt, next_due_date__lt=end_dt)
         if status_filter == 'open':
-            qs = qs.filter(completed_date__isnull=True)
+            occurrence_filter = (
+                Q(completed_date__isnull=True) & scheduled_in_window
+            ) | (Q(completed_date__isnull=False) & next_due_in_window)
         elif status_filter == 'completed':
-            qs = qs.filter(completed_date__isnull=False)
-        qs = qs.order_by('scheduled_date')
+            occurrence_filter = Q(completed_date__isnull=False) & scheduled_in_window
+        else:
+            occurrence_filter = scheduled_in_window | (
+                Q(completed_date__isnull=False) & next_due_in_window
+            )
+
+        qs = self.get_queryset().filter(occurrence_filter).distinct().order_by('scheduled_date')
 
         serializer = PreventiveMaintenanceListSerializer(qs, many=True, context={'request': request})
-        items = serializer.data
+        items_by_id = {str(item.get('pm_id')): item for item in serializer.data}
 
         # Bucket by local date string YYYY-MM-DD. We pre-build every day in the
         # range so the client can render an even calendar without filling gaps.
@@ -1971,23 +1986,50 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             cursor += timedelta(days=1)
 
         now = timezone.now()
-        for pm in qs:
-            key = pm.scheduled_date.date().isoformat()
+
+        def add_occurrence(pm, occurrence_date, occurrence_type, calendar_status):
+            local_date = timezone.localtime(occurrence_date)
+            key = local_date.date().isoformat()
             bucket = bucket_index.get(key)
             if bucket is None:
-                continue
-            bucket['items'].append(
-                next(
-                    (i for i in items if str(i.get('pm_id')) == str(pm.pm_id)),
-                    None,
-                )
-            )
-            if pm.completed_date is not None:
+                return
+            serialized = items_by_id.get(str(pm.pm_id))
+            if serialized:
+                item = dict(serialized)
+                item['calendar_date'] = occurrence_date.isoformat()
+                item['occurrence_type'] = occurrence_type
+                item['calendar_status'] = calendar_status
+                bucket['items'].append(item)
+
+            if calendar_status == 'completed':
                 bucket['completed_count'] += 1
-            elif pm.scheduled_date < now:
+            elif occurrence_date < now:
                 bucket['overdue_count'] += 1
             else:
                 bucket['open_count'] += 1
+
+        for pm in qs:
+            if (
+                status_filter in {'open', 'all'}
+                and pm.completed_date is None
+                and start_dt <= pm.scheduled_date < end_dt
+            ):
+                add_occurrence(pm, pm.scheduled_date, 'scheduled', 'open')
+
+            if (
+                status_filter in {'completed', 'all'}
+                and pm.completed_date is not None
+                and start_dt <= pm.scheduled_date < end_dt
+            ):
+                add_occurrence(pm, pm.scheduled_date, 'scheduled', 'completed')
+
+            if (
+                status_filter in {'open', 'all'}
+                and pm.completed_date is not None
+                and pm.next_due_date is not None
+                and start_dt <= pm.next_due_date < end_dt
+            ):
+                add_occurrence(pm, pm.next_due_date, 'next_due', 'open')
 
         # Drop None entries that snuck in from missing pm_id matches.
         for bucket in days_out:
@@ -1997,7 +2039,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             'from': start_dt.date().isoformat(),
             'to': (end_dt - timedelta(days=1)).date().isoformat(),
             'days': days_out,
-            'total': qs.count(),
+            'total': sum(len(bucket['items']) for bucket in days_out),
             'status': status_filter,
         })
 

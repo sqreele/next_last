@@ -33,6 +33,9 @@ interface PMItem {
   status?: string;
   frequency?: string;
   priority?: string;
+  calendar_date?: string;
+  occurrence_type?: 'scheduled' | 'next_due';
+  calendar_status?: 'open' | 'completed';
 }
 
 interface DayBucket {
@@ -441,6 +444,15 @@ export function PMScheduleCalendar() {
                       <p className="text-xs font-semibold text-slate-500">
                         #{item.pm_id} · {item.frequency || 'one-off'}
                       </p>
+                      {item.calendar_date && (
+                        <p className="mt-1 text-xs font-semibold text-slate-600">
+                          {item.occurrence_type === 'next_due' ? 'Next due' : 'Scheduled'} ·{' '}
+                          {new Date(item.calendar_date).toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      )}
                     </div>
                     <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700">
                       Open <ArrowRight className="h-3 w-3" />

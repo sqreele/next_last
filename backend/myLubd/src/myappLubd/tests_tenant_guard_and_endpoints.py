@@ -232,6 +232,38 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
         # Cap is 180.
         self.assertEqual(len(resp.data['days']), 180)
 
+    def test_open_schedule_includes_completed_pm_next_due_date(self):
+        next_due = timezone.now() + timedelta(days=5)
+        completed_pm = PreventiveMaintenance.objects.create(
+            pmtitle='Recurring filter replacement',
+            scheduled_date=timezone.now() - timedelta(days=25),
+            completed_date=timezone.now() - timedelta(days=24),
+            next_due_date=next_due,
+            frequency='monthly',
+            status='completed',
+        )
+        completed_pm.job = Job.objects.create(
+            user=self.user,
+            description='Recurring filter replacement',
+            remarks='',
+            status='completed',
+            priority='medium',
+            is_preventivemaintenance=True,
+        )
+        completed_pm.job.rooms.set([self.room])
+        completed_pm.save(update_fields=['job'])
+
+        _login(self.client, self.user)
+        resp = self.client.get('/api/v1/preventive-maintenance/schedule/?days=30&status=open')
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        due_date = timezone.localtime(next_due).date().isoformat()
+        due_bucket = next(day for day in resp.data['days'] if day['date'] == due_date)
+        occurrence = next(item for item in due_bucket['items'] if item['pm_id'] == completed_pm.pm_id)
+        self.assertEqual(occurrence['occurrence_type'], 'next_due')
+        self.assertEqual(occurrence['calendar_status'], 'open')
+        self.assertEqual(due_bucket['open_count'], 1)
+
     def test_schedule_is_tenant_scoped(self):
         other = User.objects.create_user(username='outsider', password='pw12345!')
         _login(self.client, other)

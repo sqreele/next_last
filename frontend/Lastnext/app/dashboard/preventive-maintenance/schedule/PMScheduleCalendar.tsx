@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   CalendarDays,
   ChevronLeft,
@@ -12,21 +12,24 @@ import {
   Sparkles,
   ArrowRight,
   Plus,
-} from 'lucide-react';
-import { useSession } from '@/app/lib/session.client';
-import { fetchWithToken } from '@/app/lib/data.server';
-import { Button } from '@/app/components/ui/button';
-import { cn } from '@/app/lib/utils/cn';
-import { useUser } from '@/app/lib/stores/mainStore';
+} from "lucide-react";
+import { useSession } from "@/app/lib/session.client";
+import { fetchWithToken } from "@/app/lib/data.server";
+import { Button } from "@/app/components/ui/button";
+import { cn } from "@/app/lib/utils/cn";
+import { useUser } from "@/app/lib/stores/mainStore";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:8000"
+    : "https://pcms.live");
 
-type StatusFilter = 'open' | 'completed' | 'all';
+type StatusFilter = "open" | "completed" | "all";
 
 interface PMItem {
-  pm_id: string;
+  pm_id?: string | null;
+  plan_id?: string;
   pmtitle?: string;
   scheduled_date?: string;
   completed_date?: string | null;
@@ -35,8 +38,10 @@ interface PMItem {
   frequency?: string;
   priority?: string;
   calendar_date?: string;
-  occurrence_type?: 'scheduled' | 'next_due';
-  calendar_status?: 'open' | 'completed';
+  occurrence_type?: "scheduled" | "next_due" | "projected" | "generated";
+  calendar_status?: "open" | "completed" | "projected" | "generated";
+  generated_pm_id?: string | null;
+  lead_time_days?: number;
 }
 
 interface DayBucket {
@@ -58,13 +63,13 @@ interface ScheduleResponse {
 
 function toISODate(date: Date): string {
   const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
 
 function parseISODate(s: string): Date {
-  const [y, m, d] = s.split('-').map(Number);
+  const [y, m, d] = s.split("-").map(Number);
   return new Date(y, (m || 1) - 1, d || 1);
 }
 
@@ -77,7 +82,7 @@ function startOfWeekMonday(date: Date): Date {
   return d;
 }
 
-const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function PMScheduleCalendar() {
   const { data: session } = useSession();
@@ -87,7 +92,7 @@ export function PMScheduleCalendar() {
     d.setHours(0, 0, 0, 0);
     return d;
   });
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
   const [days, setDays] = useState(30);
   const [data, setData] = useState<ScheduleResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,13 +116,13 @@ export function PMScheduleCalendar() {
     const token = session?.user?.accessToken;
     if (!token) {
       setLoading(false);
-      setError('Sign in to view the PM schedule.');
+      setError("Sign in to view the PM schedule.");
       return;
     }
     if (!selectedPropertyId) {
       setData(null);
       setLoading(false);
-      setError('Select a property to view the PM schedule.');
+      setError("Select a property to view the PM schedule.");
       return;
     }
     setLoading(true);
@@ -125,7 +130,7 @@ export function PMScheduleCalendar() {
     const from = toISODate(gridStart);
     const params = new URLSearchParams({
       from,
-      days: String(days),
+      days: String(Math.min(days, 180)),
       status: statusFilter,
       property_id: selectedPropertyId,
     });
@@ -137,7 +142,7 @@ export function PMScheduleCalendar() {
       })
       .catch((err: any) => {
         if (cancelled) return;
-        setError(err?.message || 'Failed to load PM schedule.');
+        setError(err?.message || "Failed to load PM schedule.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -145,7 +150,13 @@ export function PMScheduleCalendar() {
     return () => {
       cancelled = true;
     };
-  }, [gridStart, days, statusFilter, selectedPropertyId, session?.user?.accessToken]);
+  }, [
+    gridStart,
+    days,
+    statusFilter,
+    selectedPropertyId,
+    session?.user?.accessToken,
+  ]);
 
   const dayIndex = useMemo(() => {
     const map = new Map<string, DayBucket>();
@@ -155,7 +166,7 @@ export function PMScheduleCalendar() {
 
   const selectedBucket = selectedDate ? dayIndex.get(selectedDate) : null;
   const todayKey = toISODate(new Date());
-  const windowLabel = `${gridStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${gridCells[gridCells.length - 1]?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  const windowLabel = `${gridStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${gridCells[gridCells.length - 1]?.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 
   const totalOpen = useMemo(
     () => (data?.days || []).reduce((sum, b) => sum + b.open_count, 0),
@@ -183,7 +194,8 @@ export function PMScheduleCalendar() {
                 PM Calendar
               </h1>
               <p className="text-xs font-medium text-slate-600 sm:text-sm">
-                Plan upcoming preventive maintenance across {days} days.
+                Plan projected and generated preventive maintenance across{" "}
+                {days} days.
               </p>
             </div>
           </div>
@@ -246,32 +258,38 @@ export function PMScheduleCalendar() {
           </div>
 
           <div className="flex items-center gap-1.5">
-            {(['open', 'completed', 'all'] as StatusFilter[]).map((value) => (
+            {(["open", "completed", "all"] as StatusFilter[]).map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setStatusFilter(value)}
                 aria-pressed={statusFilter === value}
                 className={cn(
-                  'h-9 rounded-full px-3 text-xs font-bold transition-colors',
+                  "h-9 rounded-full px-3 text-xs font-bold transition-colors",
                   statusFilter === value
-                    ? 'bg-slate-900 text-white'
-                    : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                    ? "bg-slate-900 text-white"
+                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
                 )}
               >
-                {value === 'all' ? 'All' : value === 'open' ? 'Open' : 'Completed'}
+                {value === "all"
+                  ? "All"
+                  : value === "open"
+                    ? "Open"
+                    : "Completed"}
               </button>
             ))}
             <div className="ml-2 flex h-9 items-center gap-1 rounded-full border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700">
               <span>Days:</span>
-              {[14, 30, 60].map((value) => (
+              {[30, 60, 180, 365].map((value) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setDays(value)}
                   className={cn(
-                    'rounded-full px-2 py-0.5 transition-colors',
-                    days === value ? 'bg-slate-900 text-white' : 'hover:bg-slate-100',
+                    "rounded-full px-2 py-0.5 transition-colors",
+                    days === value
+                      ? "bg-slate-900 text-white"
+                      : "hover:bg-slate-100",
                   )}
                 >
                   {value}
@@ -287,7 +305,9 @@ export function PMScheduleCalendar() {
               className="h-9"
               aria-label="Refresh"
             >
-              <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+              <RefreshCw
+                className={cn("h-3.5 w-3.5", loading && "animate-spin")}
+              />
             </Button>
           </div>
         </div>
@@ -320,9 +340,9 @@ export function PMScheduleCalendar() {
         </div>
         <div
           className={cn(
-            'grid gap-1',
-            'grid-cols-2 sm:grid-cols-7',
-            loading && 'opacity-70',
+            "grid gap-1",
+            "grid-cols-2 sm:grid-cols-7",
+            loading && "opacity-70",
           )}
         >
           {gridCells.map((date) => {
@@ -344,23 +364,29 @@ export function PMScheduleCalendar() {
                 onClick={() => setSelectedDate(isSelected ? null : key)}
                 aria-pressed={isSelected}
                 className={cn(
-                  'group flex h-24 flex-col items-stretch rounded-xl border-2 p-2 text-left transition-all sm:h-28',
-                  isSelected ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-200' : 'border-slate-200 bg-white hover:border-slate-300',
-                  totalItems === 0 && 'bg-slate-50',
-                  overdue > 0 && !isSelected && 'border-rose-300 bg-rose-50/40',
+                  "group flex h-24 flex-col items-stretch rounded-xl border-2 p-2 text-left transition-all sm:h-28",
+                  isSelected
+                    ? "border-blue-600 bg-blue-50 ring-2 ring-blue-200"
+                    : "border-slate-200 bg-white hover:border-slate-300",
+                  totalItems === 0 && "bg-slate-50",
+                  overdue > 0 && !isSelected && "border-rose-300 bg-rose-50/40",
                 )}
               >
                 <div className="flex items-baseline justify-between">
                   <span
                     className={cn(
-                      'inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-black',
-                      isToday ? 'bg-blue-600 text-white' : inPast ? 'text-slate-500' : 'text-slate-900',
+                      "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-black",
+                      isToday
+                        ? "bg-blue-600 text-white"
+                        : inPast
+                          ? "text-slate-500"
+                          : "text-slate-900",
                     )}
                   >
                     {date.getDate()}
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    {date.toLocaleDateString('en-US', { month: 'short' })}
+                    {date.toLocaleDateString("en-US", { month: "short" })}
                   </span>
                 </div>
                 <div className="mt-1 flex flex-1 flex-col gap-0.5 text-[11px] font-bold">
@@ -386,19 +412,25 @@ export function PMScheduleCalendar() {
                     <div className="mt-1 space-y-0.5 overflow-hidden">
                       {previewItems.map((item) => (
                         <div
-                          key={`${item.pm_id}-${item.occurrence_type || 'scheduled'}`}
+                          key={`${item.pm_id || item.plan_id}-${item.calendar_date || item.scheduled_date}-${item.occurrence_type || "scheduled"}`}
                           className={cn(
-                            'truncate rounded-md px-1.5 py-0.5 text-[10px] font-extrabold leading-4',
-                            item.occurrence_type === 'next_due'
-                              ? 'bg-amber-100 text-amber-900'
-                              : item.calendar_status === 'completed'
-                                ? 'bg-emerald-100 text-emerald-900'
-                                : 'bg-blue-100 text-blue-900',
+                            "truncate rounded-md px-1.5 py-0.5 text-[10px] font-extrabold leading-4",
+                            item.occurrence_type === "projected"
+                              ? "bg-purple-100 text-purple-900"
+                              : item.occurrence_type === "next_due"
+                                ? "bg-amber-100 text-amber-900"
+                                : item.calendar_status === "completed"
+                                  ? "bg-emerald-100 text-emerald-900"
+                                  : "bg-blue-100 text-blue-900",
                           )}
-                          title={`${item.occurrence_type === 'next_due' ? 'Next due' : 'Scheduled'}: ${item.pmtitle || item.pm_id}`}
+                          title={`${item.occurrence_type === "projected" ? "Projected" : item.occurrence_type === "next_due" ? "Next due" : "Scheduled"}: ${item.pmtitle || item.pm_id || item.plan_id}`}
                         >
-                          {item.occurrence_type === 'next_due' ? 'Next due: ' : ''}
-                          {item.pmtitle || `#${item.pm_id}`}
+                          {item.occurrence_type === "projected"
+                            ? "Plan: "
+                            : item.occurrence_type === "next_due"
+                              ? "Next due: "
+                              : ""}
+                          {item.pmtitle || `#${item.pm_id || item.plan_id}`}
                         </div>
                       ))}
                       {hiddenItems > 0 && (
@@ -434,15 +466,16 @@ export function PMScheduleCalendar() {
           <div className="mb-3 flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-slate-900 sm:text-lg">
-                {parseISODate(selectedBucket.date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric',
+                {parseISODate(selectedBucket.date).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
                 })}
               </h2>
               <p className="text-xs font-medium text-slate-500">
-                {selectedBucket.items.length} item{selectedBucket.items.length === 1 ? '' : 's'} on this day
+                {selectedBucket.items.length} item
+                {selectedBucket.items.length === 1 ? "" : "s"} on this day
               </p>
             </div>
             <Button
@@ -460,35 +493,62 @@ export function PMScheduleCalendar() {
             </p>
           ) : (
             <ul className="space-y-2">
-              {selectedBucket.items.map((item) => (
-                <li key={item.pm_id}>
-                  <Link
-                    href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                    className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-50"
-                  >
+              {selectedBucket.items.map((item) => {
+                const targetPmId = item.generated_pm_id || item.pm_id;
+                const itemKey = `${targetPmId || item.plan_id}-${item.calendar_date || item.scheduled_date}`;
+                const cardBody = (
+                  <>
                     <div className="min-w-0">
                       <p className="text-sm font-bold text-slate-900 line-clamp-2">
-                        {item.pmtitle || 'Preventive maintenance'}
+                        {item.pmtitle || "Preventive maintenance"}
                       </p>
                       <p className="text-xs font-semibold text-slate-500">
-                        #{item.pm_id} · {item.frequency || 'one-off'}
+                        {targetPmId
+                          ? `#${targetPmId}`
+                          : `Plan #${item.plan_id}`}{" "}
+                        · {item.frequency || "one-off"}
                       </p>
                       {item.calendar_date && (
                         <p className="mt-1 text-xs font-semibold text-slate-600">
-                          {item.occurrence_type === 'next_due' ? 'Next due' : 'Scheduled'} ·{' '}
-                          {new Date(item.calendar_date).toLocaleTimeString('en-US', {
-                            hour: 'numeric',
-                            minute: '2-digit',
-                          })}
+                          {item.occurrence_type === "projected"
+                            ? "Projected"
+                            : item.occurrence_type === "next_due"
+                              ? "Next due"
+                              : "Scheduled"}{" "}
+                          ·{" "}
+                          {new Date(item.calendar_date).toLocaleTimeString(
+                            "en-US",
+                            {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            },
+                          )}
                         </p>
                       )}
                     </div>
                     <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700">
-                      Open <ArrowRight className="h-3 w-3" />
+                      {targetPmId ? "Open" : "Projected"}{" "}
+                      <ArrowRight className="h-3 w-3" />
                     </span>
-                  </Link>
-                </li>
-              ))}
+                  </>
+                );
+                return (
+                  <li key={itemKey}>
+                    {targetPmId ? (
+                      <Link
+                        href={`/dashboard/preventive-maintenance/${targetPmId}`}
+                        className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-50"
+                      >
+                        {cardBody}
+                      </Link>
+                    ) : (
+                      <div className="flex items-start justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50/50 p-3">
+                        {cardBody}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -496,7 +556,8 @@ export function PMScheduleCalendar() {
 
       <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs font-medium text-slate-600">
         <Sparkles className="mr-1 inline h-3 w-3 text-blue-500" />
-        Tap any day with items to see what's scheduled. Cells with red borders include overdue work.
+        Tap any day with items to see what's scheduled. Cells with red borders
+        include overdue work.
       </div>
     </div>
   );

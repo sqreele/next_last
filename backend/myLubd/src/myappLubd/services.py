@@ -19,7 +19,7 @@ import logging
 
 from .models import (
     Job, Property, Room, Topic, UserProfile, 
-    PreventiveMaintenance, Machine, MaintenanceProcedure
+    PreventiveMaintenance, Machine, MaintenanceProcedure, PMMasterPlan
 )
 from .optimizations import QueryOptimizer, CacheOptimizer
 from .cache_enhanced import cache_manager, cache_invalidation
@@ -761,6 +761,115 @@ class PreventiveMaintenanceService:
 
         raise ValidationError(f"Unsupported frequency: {frequency}")
 
+
+    @staticmethod
+    def iter_due_dates(frequency: str, custom_days: Optional[int], start_date: datetime, end_date: datetime, tzinfo=None):
+        """Yield completion-based projected due dates from start_date through end_date."""
+        if timezone.is_naive(start_date):
+            start_date = timezone.make_aware(start_date, tzinfo or timezone.get_default_timezone())
+        cursor = start_date
+        guard = 0
+        while cursor < end_date and guard < 400:
+            yield cursor
+            cursor = PreventiveMaintenanceService.calculate_next_due_date(frequency, custom_days, cursor, tzinfo)
+            guard += 1
+
+    @staticmethod
+    def project_master_plan(plan: PMMasterPlan, start_dt: datetime, end_dt: datetime) -> List[Dict[str, Any]]:
+        """Project virtual occurrences for a master plan without creating PM records."""
+        tzinfo = object_timezone(plan)
+        base = plan.last_completed_date or plan.next_due_date or plan.start_date
+        if timezone.is_naive(base):
+            base = timezone.make_aware(base, tzinfo)
+        # If the base is before the window, walk forward until it reaches or passes start_dt.
+        cursor = base
+        guard = 0
+        while cursor < start_dt and guard < 400:
+            cursor = PreventiveMaintenanceService.calculate_next_due_date(plan.frequency, plan.custom_days, cursor, tzinfo)
+            guard += 1
+
+        existing = {
+            timezone.localtime(pm.occurrence_due_date or pm.scheduled_date, tzinfo).date().isoformat(): pm
+            for pm in plan.generated_maintenances.all()
+            if pm.occurrence_due_date or pm.scheduled_date
+        }
+        out = []
+        for due in PreventiveMaintenanceService.iter_due_dates(plan.frequency, plan.custom_days, cursor, end_dt, tzinfo):
+            if due < start_dt:
+                continue
+            key = timezone.localtime(due, tzinfo).date().isoformat()
+            generated = existing.get(key)
+            out.append({
+                'plan_id': plan.plan_id,
+                'title': plan.title,
+                'due_date': due,
+                'occurrence_date': due,
+                'lead_time_days': plan.lead_time_days,
+                'frequency': plan.frequency,
+                'custom_days': plan.custom_days,
+                'calendar_status': 'generated' if generated else 'projected',
+                'occurrence_type': 'generated' if generated else 'projected',
+                'generated_pm_id': generated.pm_id if generated else None,
+                'assigned_to_id': plan.assigned_to_id,
+                'machine_ids': list(plan.machines.values_list('machine_id', flat=True)),
+            })
+        return out
+
+    @staticmethod
+    def materialize_master_plan_occurrences(cutoff: datetime, user=None, dry_run: bool = False, limit: int = 500) -> Dict[str, Any]:
+        """Create actual PM records for active master-plan occurrences due by cutoff + lead window."""
+        now = timezone.now()
+        created = []
+        skipped = 0
+        plans = (
+            PMMasterPlan.objects.filter(active=True)
+            .select_related('created_by', 'assigned_to', 'procedure_template')
+            .prefetch_related('topics', 'machines')
+            .order_by('next_due_date', 'start_date')
+        )
+        for plan in plans:
+            if len(created) >= limit:
+                break
+            lead_cutoff = cutoff + timezone.timedelta(days=plan.lead_time_days)
+            projections = PreventiveMaintenanceService.project_master_plan(plan, now - timezone.timedelta(days=365), lead_cutoff)
+            for occurrence in projections:
+                if len(created) >= limit:
+                    break
+                due = occurrence['due_date']
+                if due > lead_cutoff or occurrence.get('generated_pm_id'):
+                    skipped += 1
+                    continue
+                if dry_run:
+                    created.append({'plan_id': plan.plan_id, 'due_date': due.isoformat(), 'pm_id': None})
+                    continue
+                with transaction.atomic():
+                    locked = PMMasterPlan.objects.select_for_update().get(pk=plan.pk)
+                    existing = PreventiveMaintenance.objects.filter(master_plan=locked, occurrence_due_date=due).first()
+                    if existing:
+                        skipped += 1
+                        continue
+                    pm = PreventiveMaintenance.objects.create(
+                        master_plan=locked,
+                        occurrence_due_date=due,
+                        generated_at=timezone.now(),
+                        pmtitle=locked.title,
+                        scheduled_date=due,
+                        frequency=locked.frequency,
+                        custom_days=locked.custom_days,
+                        next_due_date=None,
+                        status='pending',
+                        notes=locked.notes,
+                        procedure=locked.procedure,
+                        procedure_template=locked.procedure_template,
+                        assigned_to=locked.assigned_to,
+                        created_by=locked.created_by,
+                        remarks=locked.remarks,
+                    )
+                    pm.topics.set(locked.topics.all())
+                    pm.machines.set(locked.machines.all())
+                    created.append({'plan_id': locked.plan_id, 'due_date': due.isoformat(), 'pm_id': pm.pm_id})
+        return {'created': created, 'created_count': len(created), 'skipped': skipped, 'dry_run': dry_run}
+
     @staticmethod
     def update_status(
         maintenance: PreventiveMaintenance,
@@ -801,11 +910,17 @@ class PreventiveMaintenanceService:
             maintenance.next_due_date = next_due_date
             maintenance.save(update_fields=['status', 'completed_date', 'next_due_date', 'updated_at'])
 
-            next_schedule = PreventiveMaintenanceService.create_next_occurrence(
-                maintenance,
-                next_due_date,
-                user,
-            )
+            if maintenance.master_plan_id:
+                plan = maintenance.master_plan
+                plan.last_completed_date = completed_date
+                plan.next_due_date = next_due_date
+                plan.save(update_fields=['last_completed_date', 'next_due_date', 'updated_at'])
+            else:
+                next_schedule = PreventiveMaintenanceService.create_next_occurrence(
+                    maintenance,
+                    next_due_date,
+                    user,
+                )
         else:
             maintenance.status = normalized_status
             maintenance.save(update_fields=['status', 'updated_at'])

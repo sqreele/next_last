@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
     Room, Topic, JobImage, Job, Property, UserProfile, Session,
-    PreventiveMaintenance, Machine, MaintenanceProcedure, MaintenanceTaskImage,
+    PreventiveMaintenance, PMMasterPlan, Machine, MaintenanceProcedure, MaintenanceTaskImage,
     UtilityConsumption, Inventory, Area, JobComment, Tenant,
     TenantMembership, SubscriptionPlan, TenantSubscription, UsageMetric,
     InventoryUsage,
@@ -963,7 +963,8 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
             'pm_id', 'pmtitle', 'job_id', 'job_description', 'scheduled_date', 'completed_date',
             'frequency', 'next_due_date', 'status', 'topics', 'machines', 'property_id',
             'procedure', 'notes', 'before_image_url', 'after_image_url', 'procedure_template',
-            'procedure_template_id', 'procedure_template_name', 'assigned_to_details',
+            'procedure_template_id', 'procedure_template_name', 'master_plan', 'occurrence_due_date',
+            'generated_at', 'assigned_to_details',
             'created_by_details', 'assigned_to_name', 'technician_name', 'created_by_name'
         ]
         list_serializer_class = serializers.ListSerializer
@@ -1213,6 +1214,80 @@ class MachinePreventiveMaintenanceSerializer(serializers.ModelSerializer):
                 instance.save(update_fields=['last_maintenance_date', 'updated_at'])
         return instance
 
+
+class PMMasterPlanSerializer(serializers.ModelSerializer):
+    topics = TopicSerializer(many=True, read_only=True)
+    topic_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False, allow_empty=True)
+    machines = MachineSerializer(many=True, read_only=True)
+    machine_ids = serializers.ListField(child=serializers.CharField(), write_only=True, required=False, allow_empty=True)
+    procedure_template_name = serializers.CharField(source='procedure_template.name', read_only=True)
+    assigned_to_details = UserSummarySerializer(source='assigned_to', read_only=True)
+    created_by_details = UserSummarySerializer(source='created_by', read_only=True)
+    property_id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PMMasterPlan
+        fields = [
+            'plan_id', 'title', 'topics', 'topic_ids', 'machines', 'machine_ids',
+            'property_id', 'procedure_template', 'procedure_template_name', 'frequency',
+            'custom_days', 'start_date', 'lead_time_days', 'assigned_to',
+            'assigned_to_details', 'created_by_details', 'active', 'last_completed_date',
+            'next_due_date', 'notes', 'procedure', 'remarks', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['plan_id', 'created_by_details', 'last_completed_date', 'next_due_date', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'procedure_template': {'required': False, 'allow_null': True},
+            'custom_days': {'required': False, 'allow_null': True},
+            'assigned_to': {'required': False, 'allow_null': True},
+            'notes': {'required': False, 'allow_null': True},
+            'procedure': {'required': False, 'allow_null': True},
+            'remarks': {'required': False, 'allow_null': True},
+        }
+
+    def get_property_id(self, obj):
+        machine = obj.machines.first()
+        return machine.property.property_id if machine and machine.property else None
+
+    def validate(self, data):
+        frequency = data.get('frequency', getattr(self.instance, 'frequency', None))
+        custom_days = data.get('custom_days', getattr(self.instance, 'custom_days', None))
+        if frequency == 'custom' and not custom_days:
+            raise serializers.ValidationError({'custom_days': 'Custom days value is required when frequency is Custom.'})
+        machine_ids = data.get('machine_ids')
+        if self.instance is None and not machine_ids:
+            raise serializers.ValidationError({'machine_ids': 'At least one machine is required.'})
+        if machine_ids:
+            machines = Machine.objects.filter(machine_id__in=machine_ids)
+            if machines.count() != len(set(machine_ids)):
+                raise serializers.ValidationError({'machine_ids': 'One or more machine_ids are invalid.'})
+            property_ids = set(m.property_id for m in machines)
+            if len(property_ids) > 1:
+                raise serializers.ValidationError({'machine_ids': 'All machines must belong to the same property.'})
+        return data
+
+    def create(self, validated_data):
+        topic_ids = validated_data.pop('topic_ids', [])
+        machine_ids = validated_data.pop('machine_ids', [])
+        if validated_data.get('next_due_date') is None:
+            validated_data['next_due_date'] = validated_data.get('start_date')
+        plan = PMMasterPlan.objects.create(**validated_data)
+        if topic_ids:
+            plan.topics.set(topic_ids)
+        if machine_ids:
+            plan.machines.set(Machine.objects.filter(machine_id__in=machine_ids))
+        return plan
+
+    def update(self, instance, validated_data):
+        topic_ids = validated_data.pop('topic_ids', None)
+        machine_ids = validated_data.pop('machine_ids', None)
+        plan = super().update(instance, validated_data)
+        if topic_ids is not None:
+            plan.topics.set(topic_ids)
+        if machine_ids is not None:
+            plan.machines.set(Machine.objects.filter(machine_id__in=machine_ids))
+        return plan
+
+
 # ----- Preventive Maintenance Serializers -----
 
 
@@ -1272,7 +1347,8 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
             'procedure_template_id', 'procedure_template_name', 'created_by', 'updated_at',
             'is_overdue', 'days_remaining', 'machine_ids', 'machines', 'property_id',
             'assigned_to', 'assigned_to_details', 'created_by_details',
-            'assigned_to_name', 'technician_name', 'created_by_name'
+            'assigned_to_name', 'technician_name', 'created_by_name',
+            'master_plan', 'occurrence_due_date', 'generated_at'
         ]
         read_only_fields = [
             'pm_id', 'created_by', 'updated_at', 'next_due_date', 'procedure_template_id',
@@ -2009,6 +2085,7 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
             'property_id', 'machine_ids', 'machines', 'frequency', 'custom_days', 'next_due_date',
             'before_image', 'after_image', 'before_image_url', 'after_image_url', 'notes',
             'procedure', 'procedure_template', 'assigned_to', 'remarks',
+            'master_plan', 'occurrence_due_date', 'generated_at',
             'assigned_to_details', 'created_by', 'created_by_details', 'updated_at',
             'assigned_to_name', 'technician_name', 'created_by_name'
         ]

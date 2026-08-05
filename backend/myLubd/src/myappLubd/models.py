@@ -259,6 +259,20 @@ class PreventiveMaintenance(models.Model):
     # Maximum image dimensions
     MAX_SIZE = (800, 800)
     job = models.ForeignKey('Job', on_delete=models.SET_NULL, null=True, blank=True)
+    master_plan = models.ForeignKey(
+        'PMMasterPlan',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='generated_maintenances',
+        help_text='Recurring PM master plan that generated this actual work record',
+    )
+    occurrence_due_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Original projected due date for this generated occurrence',
+    )
+    generated_at = models.DateTimeField(null=True, blank=True)
     pmtitle = models.TextField(default='No title')
     pm_id = models.CharField(
         max_length=16,
@@ -433,6 +447,13 @@ class PreventiveMaintenance(models.Model):
         ordering = ['-scheduled_date']
         verbose_name = 'Preventive Maintenance'
         verbose_name_plural = 'Preventive Maintenance'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['master_plan', 'occurrence_due_date'],
+                condition=Q(master_plan__isnull=False, occurrence_due_date__isnull=False),
+                name='uniq_pm_master_plan_occurrence',
+            ),
+        ]
         indexes = [
             # ✅ PERFORMANCE: Enhanced database indexes following ER diagram
             models.Index(fields=['procedure_template']),  # FK to MaintenanceTask (task_id)
@@ -1302,6 +1323,65 @@ class Session(models.Model):
         return f"Session for {self.user.username} - Expires: {self.expires_at}"
     
     
+
+class PMMasterPlan(models.Model):
+    """Recurring preventive-maintenance rule used to project and generate actual PM work."""
+
+    plan_id = models.CharField(max_length=16, unique=True, blank=True, editable=False)
+    title = models.TextField(default='No title')
+    machines = models.ManyToManyField('Machine', related_name='pm_master_plans', blank=True)
+    topics = models.ManyToManyField('Topic', related_name='pm_master_plans', blank=True)
+    procedure_template = models.ForeignKey(
+        'MaintenanceProcedure',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pm_master_plans',
+    )
+    frequency = models.CharField(max_length=20, choices=PreventiveMaintenance.FREQUENCY_CHOICES, default='monthly')
+    custom_days = models.PositiveIntegerField(null=True, blank=True)
+    start_date = models.DateTimeField()
+    lead_time_days = models.PositiveIntegerField(default=7)
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_pm_master_plans',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='created_pm_master_plans',
+    )
+    active = models.BooleanField(default=True)
+    last_completed_date = models.DateTimeField(null=True, blank=True)
+    next_due_date = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True, null=True)
+    procedure = models.TextField(blank=True, null=True)
+    remarks = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['next_due_date', 'start_date']
+        indexes = [
+            models.Index(fields=['plan_id'], name='myappLubd_p_plan_id_6073a9_idx'),
+            models.Index(fields=['active', 'next_due_date'], name='myappLubd_p_active_13cd43_idx'),
+            models.Index(fields=['start_date'], name='myappLubd_p_start_d_887e07_idx'),
+        ]
+
+    def __str__(self):
+        return f"{self.plan_id or 'PMPLAN'} - {self.title}"
+
+    def save(self, *args, **kwargs):
+        if not self.plan_id:
+            self.plan_id = f"PMP{get_random_string(length=8, allowed_chars='0123456789ABCDEF')}"
+        if self.next_due_date is None:
+            self.next_due_date = self.last_completed_date or self.start_date
+        super().save(*args, **kwargs)
+
+
 class Machine(models.Model):
     STATUS_CHOICES = [
         ('active', 'Active'),

@@ -39,16 +39,17 @@ services:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
     # Frontend traffic is routed through Nginx.
     expose:
       - "3000"
     depends_on:
-      - backend
-      - db
+      backend:
+        condition: service_healthy
     networks:
       - app-network
 
@@ -61,12 +62,18 @@ services:
       - "6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command:
+      - /bin/sh
+      - -c
+      - exec redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru $${REDIS_PASSWORD:+--requirepass "$$REDIS_PASSWORD"}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli $${REDIS_PASSWORD:+-a \"$$REDIS_PASSWORD\"} ping | grep -q PONG"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
     networks:
       - app-network
 
@@ -77,7 +84,6 @@ services:
     container_name: django-backend
     restart: unless-stopped
     volumes:
-      - ./backend/myLubd/src:/app/src
       - static_volume:/app/static
       - media_volume:/app/media
       - backup_volume:/root/my_project/backend/backups
@@ -86,7 +92,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: myLubd.settings
       PYTHONPATH: /app
-      DEBUG: 1
+      DEBUG: "0"
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1 [::1] ${DOMAIN} www.${DOMAIN} django-backend backend
       DJANGO_CORS_ORIGINS: https://${DOMAIN}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN}
@@ -120,17 +126,20 @@ services:
       GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID}
       GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET}
       GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN}
-      REDIS_URL: redis://redis:6379/1
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/1}
     healthcheck:
       test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/api/v1/health/'); response = conn.getresponse(); exit(0 if response.status == 200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
     expose:
       - "8000"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - app-network
 
@@ -147,10 +156,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-mylubd_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mylubd_password}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mylubd_user} -d ${POSTGRES_DB:-mylubd_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     # PostgreSQL is only available inside the Docker network.
     expose:
       - "5432"
@@ -170,17 +180,16 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
       - static_volume:/usr/share/nginx/html/static:ro
       - media_volume:/usr/share/nginx/html/media:ro
-    environment:
-      - NGINX_ENVSUBST_TEMPLATE_SUFFIX=.template
-      - DOMAIN=${DOMAIN:-hotelcarepro.com}
     healthcheck:
       test: ["CMD", "nginx", "-t"]
       interval: 30s
       timeout: 10s
       retries: 3
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     networks:
       - app-network
 

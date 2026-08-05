@@ -30,6 +30,7 @@ interface PMItem {
   pmtitle?: string;
   scheduled_date?: string;
   completed_date?: string | null;
+  next_due_date?: string | null;
   status?: string;
   frequency?: string;
   priority?: string;
@@ -334,6 +335,8 @@ export function PMScheduleCalendar() {
             const overdue = bucket?.overdue_count || 0;
             const open = bucket?.open_count || 0;
             const completed = bucket?.completed_count || 0;
+            const previewItems = bucket?.items.slice(0, 2) || [];
+            const hiddenItems = Math.max(0, totalItems - previewItems.length);
             return (
               <button
                 key={key}
@@ -378,6 +381,32 @@ export function PMScheduleCalendar() {
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
                       {completed} done
                     </span>
+                  )}
+                  {previewItems.length > 0 && (
+                    <div className="mt-1 space-y-0.5 overflow-hidden">
+                      {previewItems.map((item) => (
+                        <div
+                          key={`${item.pm_id}-${item.occurrence_type || 'scheduled'}`}
+                          className={cn(
+                            'truncate rounded-md px-1.5 py-0.5 text-[10px] font-extrabold leading-4',
+                            item.occurrence_type === 'next_due'
+                              ? 'bg-amber-100 text-amber-900'
+                              : item.calendar_status === 'completed'
+                                ? 'bg-emerald-100 text-emerald-900'
+                                : 'bg-blue-100 text-blue-900',
+                          )}
+                          title={`${item.occurrence_type === 'next_due' ? 'Next due' : 'Scheduled'}: ${item.pmtitle || item.pm_id}`}
+                        >
+                          {item.occurrence_type === 'next_due' ? 'Next due: ' : ''}
+                          {item.pmtitle || `#${item.pm_id}`}
+                        </div>
+                      ))}
+                      {hiddenItems > 0 && (
+                        <div className="px-1.5 text-[10px] font-bold text-slate-500">
+                          +{hiddenItems} more
+                        </div>
+                      )}
+                    </div>
                   )}
                   {totalItems === 0 && !loading && (
                     <span className="text-[10px] font-medium text-slate-400">

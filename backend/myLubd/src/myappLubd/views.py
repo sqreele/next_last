@@ -17,7 +17,7 @@ from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When,
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import models, transaction
 from .models import (
-    UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance,
+    UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, PMMasterPlan,
     JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory,
     Area, JobComment, PushSubscription, Tenant,
     TenantMembership, SubscriptionPlan, TenantSubscription, UsageMetric,
@@ -29,7 +29,7 @@ from .serializers import (
     UserProfileSerializer, PropertySerializer, RoomSerializer, TopicSerializer, JobSerializer,
     UserSerializer, PreventiveMaintenanceSerializer, PreventiveMaintenanceCreateUpdateSerializer,
     PreventiveMaintenanceCompleteSerializer, PreventiveMaintenanceListSerializer,
-    PreventiveMaintenanceDetailSerializer, PropertyPMStatusSerializer,
+    PreventiveMaintenanceDetailSerializer, PropertyPMStatusSerializer, PMMasterPlanSerializer,
     MachineSerializer, MachineListSerializer, MachineDetailSerializer,
     MachineCreateSerializer, MachineUpdateSerializer, MachinePreventiveMaintenanceSerializer,
     MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer,
@@ -1602,6 +1602,39 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     ordering = ['-scheduled_date']
     permission_classes = [IsAuthenticated]
 
+
+    def _get_master_plan_queryset(self):
+        queryset = PMMasterPlan.objects.select_related(
+            'created_by', 'assigned_to', 'procedure_template'
+        ).prefetch_related('topics', 'machines', 'machines__property')
+        property_filter = self.request.query_params.get('property_id')
+        user = self.request.user
+        if not (user.is_staff or user.is_superuser):
+            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
+            queryset = queryset.filter(machines__property__in=accessible_property_ids)
+        if property_filter:
+            queryset = queryset.filter(machines__property__property_id=property_filter)
+        return queryset.distinct()
+
+    def _serialize_projected_plan_item(self, occurrence):
+        due = occurrence['due_date']
+        return {
+            'pm_id': occurrence.get('generated_pm_id'),
+            'plan_id': occurrence['plan_id'],
+            'pmtitle': occurrence['title'],
+            'scheduled_date': due.isoformat(),
+            'completed_date': None,
+            'next_due_date': due.isoformat(),
+            'status': occurrence['calendar_status'],
+            'frequency': occurrence['frequency'],
+            'calendar_date': due.isoformat(),
+            'occurrence_type': occurrence['occurrence_type'],
+            'calendar_status': occurrence['calendar_status'],
+            'generated_pm_id': occurrence.get('generated_pm_id'),
+            'lead_time_days': occurrence.get('lead_time_days'),
+            'machine_ids': occurrence.get('machine_ids', []),
+        }
+
     def list(self, request, *args, **kwargs):
         """
         List preventive maintenance items with pagination.
@@ -1888,6 +1921,63 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         }
         return Response(response_data)
 
+
+    @action(detail=False, methods=['get', 'post'], url_path='plans')
+    def plans(self, request):
+        """List or create PM master plans / recurring rules."""
+        if request.method.lower() == 'get':
+            queryset = self._get_master_plan_queryset()
+            serializer = PMMasterPlanSerializer(queryset, many=True, context={'request': request})
+            return Response(serializer.data)
+
+        serializer = PMMasterPlanSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        plan = serializer.save(created_by=request.user)
+        return Response(PMMasterPlanSerializer(plan, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['get'], url_path='projection')
+    def projection(self, request):
+        """Return virtual PM master-plan occurrences without creating actual PM records."""
+        from datetime import datetime
+        from_param = request.query_params.get('from')
+        days_param = request.query_params.get('days', '365')
+        try:
+            days = max(1, min(int(days_param), 366))
+        except (TypeError, ValueError):
+            days = 365
+        if from_param:
+            try:
+                start_dt = datetime.fromisoformat(from_param.replace('Z', '+00:00'))
+                if timezone.is_naive(start_dt):
+                    start_dt = timezone.make_aware(start_dt, timezone.get_current_timezone())
+            except ValueError:
+                start_dt = timezone.now()
+        else:
+            start_dt = timezone.now()
+        start_dt = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_dt = start_dt + timedelta(days=days)
+        occurrences = []
+        for plan in self._get_master_plan_queryset().filter(active=True):
+            occurrences.extend(PreventiveMaintenanceService.project_master_plan(plan, start_dt, end_dt))
+        occurrences.sort(key=lambda item: item['due_date'])
+        return Response({
+            'from': start_dt.date().isoformat(),
+            'to': (end_dt - timedelta(days=1)).date().isoformat(),
+            'total': len(occurrences),
+            'items': [self._serialize_projected_plan_item(item) for item in occurrences],
+        })
+
+    @action(detail=False, methods=['post'], url_path='materialize-plans')
+    def materialize_plans(self, request):
+        """Generate actual PM forms whose master-plan occurrences are inside their lead window."""
+        dry_run = str(request.data.get('dry_run', '')).lower() in {'1', 'true', 'yes'}
+        result = PreventiveMaintenanceService.materialize_master_plan_occurrences(
+            cutoff=timezone.now(),
+            user=request.user,
+            dry_run=dry_run,
+        )
+        return Response(result)
+
     @action(detail=False, methods=['get'])
     def upcoming(self, request):
         """
@@ -2040,6 +2130,27 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 and start_dt <= pm.next_due_date < end_dt
             ):
                 add_occurrence(pm, pm.next_due_date, 'next_due', 'open')
+
+
+        # Add virtual PM Master Plan projections. These calendar entries are not
+        # actual PreventiveMaintenance records until the materialization window.
+        if status_filter in {'open', 'all'}:
+            for plan in self._get_master_plan_queryset().filter(active=True):
+                for occurrence in PreventiveMaintenanceService.project_master_plan(plan, start_dt, end_dt):
+                    if occurrence.get('generated_pm_id'):
+                        continue
+                    due = occurrence['due_date']
+                    local_date = timezone.localtime(due)
+                    key = local_date.date().isoformat()
+                    bucket = bucket_index.get(key)
+                    if bucket is None:
+                        continue
+                    item = self._serialize_projected_plan_item(occurrence)
+                    bucket['items'].append(item)
+                    if due < now:
+                        bucket['overdue_count'] += 1
+                    else:
+                        bucket['open_count'] += 1
 
         # Drop None entries that snuck in from missing pm_id matches.
         for bucket in days_out:

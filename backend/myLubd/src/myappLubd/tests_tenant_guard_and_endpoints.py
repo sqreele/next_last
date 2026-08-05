@@ -18,6 +18,7 @@ from .models import (
     JobComment,
     Machine,
     PreventiveMaintenance,
+    PMMasterPlan,
     Property,
     Room,
     Topic,
@@ -343,3 +344,69 @@ class PreventiveMaintenanceCreateTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
         pm = PreventiveMaintenance.objects.get(pmtitle='Inspect laundry extractor')
         self.assertEqual(list(pm.machines.values_list('machine_id', flat=True)), [self.machine.machine_id])
+
+
+class PMMasterPlanWorkflowTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='planner', password='pw12345!')
+        self.prop = Property.objects.create(name='Hotel Plan')
+        self.prop.users.add(self.user)
+        self.machine = Machine.objects.create(
+            machine_id='MPLAN001',
+            name='Plan pump',
+            category='Pump',
+            property=self.prop,
+        )
+
+    def test_projection_includes_master_plan_without_pm_record(self):
+        plan = PMMasterPlan.objects.create(
+            title='Pump service plan',
+            start_date=timezone.now() + timedelta(days=10),
+            frequency='custom',
+            custom_days=30,
+            lead_time_days=7,
+            created_by=self.user,
+            assigned_to=self.user,
+        )
+        plan.machines.set([self.machine])
+
+        _login(self.client, self.user)
+        resp = self.client.get('/api/v1/preventive-maintenance/schedule/?days=30&status=open')
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        items = [item for bucket in resp.data['days'] for item in bucket['items']]
+        projected = next(item for item in items if item.get('plan_id') == plan.plan_id)
+        self.assertEqual(projected['occurrence_type'], 'projected')
+        self.assertIsNone(projected['pm_id'])
+        self.assertFalse(PreventiveMaintenance.objects.filter(master_plan=plan).exists())
+
+    def test_materialize_master_plan_is_idempotent_and_completion_based(self):
+        plan = PMMasterPlan.objects.create(
+            title='Completion based service',
+            start_date=timezone.now() + timedelta(days=2),
+            frequency='custom',
+            custom_days=30,
+            lead_time_days=7,
+            created_by=self.user,
+            assigned_to=self.user,
+        )
+        plan.machines.set([self.machine])
+
+        from .services import PreventiveMaintenanceService
+
+        first = PreventiveMaintenanceService.materialize_master_plan_occurrences(cutoff=timezone.now())
+        second = PreventiveMaintenanceService.materialize_master_plan_occurrences(cutoff=timezone.now())
+
+        self.assertEqual(first['created_count'], 1)
+        self.assertEqual(second['created_count'], 0)
+        pm = PreventiveMaintenance.objects.get(master_plan=plan)
+        completed_date = timezone.now() + timedelta(days=5)
+        PreventiveMaintenanceService.update_status(pm, 'completed', self.user, completed_date=completed_date)
+
+        plan.refresh_from_db()
+        pm.refresh_from_db()
+        self.assertEqual(PreventiveMaintenance.objects.filter(master_plan=plan).count(), 1)
+        self.assertEqual(pm.status, 'completed')
+        self.assertEqual(plan.last_completed_date.date(), completed_date.date())
+        self.assertEqual(plan.next_due_date.date(), (completed_date + timedelta(days=30)).date())

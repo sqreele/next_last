@@ -251,24 +251,41 @@ function PreventiveMaintenanceListPageContent() {
       if (end_date) newParams.end_date = end_date;
       if (machine_id) newParams.machine_id = machine_id;
 
-      // Check if params actually changed before updating and fetching
-      const currentPMParams = pmFilterParams;
-      const paramsChanged = 
-        currentPMParams.page !== currentPage ||
-        currentPMParams.page_size !== currentPageSize ||
-        (status && status !== 'all' && currentPMParams.status !== status) ||
-        (frequency && frequency !== 'all' && currentPMParams.frequency !== frequency) ||
-        (search && currentPMParams.search !== search) ||
-        (start_date && currentPMParams.start_date !== start_date) ||
-        (end_date && currentPMParams.end_date !== end_date) ||
-        (machine_id && currentPMParams.machine_id !== machine_id);
+      // Check all active and cleared params before updating and fetching.
+      // The previous checks only compared truthy UI filter values, so clearing a
+      // filter (for example search or machine) could leave the stale backend
+      // filter in place and make pagination counts/page links appear wrong.
+      const normalizedCurrentPMParams: Record<string, any> = {
+        page: Number(pmFilterParams.page) || 1,
+        page_size: Number(pmFilterParams.page_size) || 10,
+      };
+
+      ['status', 'frequency', 'search', 'start_date', 'end_date', 'machine_id'].forEach((key) => {
+        const value = pmFilterParams[key as keyof typeof pmFilterParams];
+        if (value !== null && value !== undefined && value !== '') {
+          normalizedCurrentPMParams[key] = value;
+        }
+      });
+
+      const paramsChanged = JSON.stringify(normalizedCurrentPMParams) !== JSON.stringify(newParams);
 
       if (paramsChanged) {
-        // Update the PM store filter params
-        setFilterParams(newParams);
+        const clearedParams = {
+          status: '',
+          frequency: '',
+          search: '',
+          start_date: '',
+          end_date: '',
+          machine_id: '',
+          ...newParams,
+        };
+
+        // Update the PM store filter params, explicitly clearing filters that
+        // are no longer active so stale filters do not affect pagination.
+        setFilterParams(clearedParams);
         
         // Trigger fetch with the updated params
-        fetchMaintenanceItems(newParams);
+        fetchMaintenanceItems(clearedParams);
       }
     }, 300);
 
@@ -666,9 +683,10 @@ function PreventiveMaintenanceListPageContent() {
                   handleFilterChangeWrapper('page', newPage);
                 }}
                 onPageSizeChange={(newSize) => {
-                  // Reset to page 1 when changing page size
-                  handleFilterChangeWrapper('page', 1);
-                  handleFilterChangeWrapper('pageSize', newSize);
+                  // Reset to page 1 and apply the new size atomically to avoid
+                  // fetching an intermediate page with the previous page size.
+                  setPage(1);
+                  setPageSize(newSize);
                 }}
               />
             );

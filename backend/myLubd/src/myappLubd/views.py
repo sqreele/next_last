@@ -1656,15 +1656,8 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         
         return obj
 
-    def get_queryset(self):
-        """
-        Return a queryset filtered by request parameters.
-        Supports filtering by:
-        - status (completed, pending, overdue)
-        - topic_id
-        - date_from & date_to
-        - pm_id (exact match)
-        """
+    def _get_base_queryset(self):
+        """Return PMs scoped to the authenticated user's accessible properties."""
         # ✅ PERFORMANCE: Optimize query with select_related and prefetch_related
         queryset = PreventiveMaintenance.objects.select_related(
             'job',  # Foreign key
@@ -1681,11 +1674,6 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             'job__rooms__properties',  # Properties through rooms
         )
 
-        pm_id = self.request.query_params.get('pm_id')
-        status_param = self.request.query_params.get('status')
-        topic_id = self.request.query_params.get('topic_id')
-        date_from = self.request.query_params.get('date_from')
-        date_to = self.request.query_params.get('date_to')
         property_filter = self.request.query_params.get('property_id')
         machine_filter = self.request.query_params.get('machine_id')
 
@@ -1717,6 +1705,25 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
 
         if machine_filter:
             queryset = queryset.filter(machines__machine_id=machine_filter)
+
+        return queryset.distinct()
+
+    def get_queryset(self):
+        """
+        Return a queryset filtered by request parameters.
+        Supports filtering by:
+        - status (completed, pending, overdue)
+        - topic_id
+        - date_from & date_to
+        - pm_id (exact match)
+        """
+        queryset = self._get_base_queryset()
+
+        pm_id = self.request.query_params.get('pm_id')
+        status_param = self.request.query_params.get('status')
+        topic_id = self.request.query_params.get('topic_id')
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
 
         if pm_id:
             queryset = queryset.filter(pm_id__icontains=pm_id)
@@ -1961,7 +1968,10 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 Q(completed_date__isnull=False) & next_due_in_window
             )
 
-        qs = self.get_queryset().filter(occurrence_filter).distinct().order_by('scheduled_date')
+        # Use only tenant/property/machine scoping here. Generic list filters such
+        # as date_from/date_to target scheduled_date only, which would hide a
+        # completed recurring PM whose next_due_date is inside this schedule window.
+        qs = self._get_base_queryset().filter(occurrence_filter).distinct().order_by('scheduled_date')
 
         serializer = PreventiveMaintenanceListSerializer(qs, many=True, context={'request': request})
         items_by_id = {str(item.get('pm_id')): item for item in serializer.data}

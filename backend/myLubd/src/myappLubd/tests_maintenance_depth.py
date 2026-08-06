@@ -123,6 +123,26 @@ class MaintenanceDepthTests(TestCase):
         self.assertEqual(pm.status, 'completed')
         self.assertEqual(self.inventory.quantity, 4)
         self.assertEqual(MaintenanceChecklist.objects.filter(maintenance=pm, is_completed=True).count(), 2)
+
+    def test_pm_detail_allows_property_assigned_through_user_profile(self):
+        self.prop.users.remove(self.user)
+        self.user.userprofile.properties.add(self.prop)
+        pm = PreventiveMaintenance.objects.create(
+            pmtitle='Profile property PM',
+            scheduled_date=timezone.now(),
+            frequency='monthly',
+            status='pending',
+            created_by=self.user,
+        )
+        pm.machines.add(self.machine)
+        self._login()
+
+        response = self.client.get(
+            f'/api/v1/preventive-maintenance/{pm.pm_id}/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(response.data['pm_id'], pm.pm_id)
         self.assertTrue(InventoryUsage.objects.filter(preventive_maintenance=pm, quantity=1).exists())
         self.assertIsNotNone(self.machine.last_maintenance_date)
 

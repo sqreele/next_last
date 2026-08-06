@@ -286,7 +286,9 @@ const nextConfig = {
   
   async rewrites() {
     const privateApi = process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
-    const mediaApi = process.env.NEXT_MEDIA_API_URL || 'http://localhost:8000';
+    // Rewrites execute inside the Next.js process. In Docker, localhost points
+    // back to the frontend container, so media must use the backend service.
+    const mediaApi = process.env.NEXT_MEDIA_API_URL || privateApi;
     
     // In production, don't proxy media files - let nginx handle them directly
     if (process.env.NODE_ENV === 'production') {

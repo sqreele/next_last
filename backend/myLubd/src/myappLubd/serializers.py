@@ -19,6 +19,7 @@ from django.db.models import Q
 from django.db.utils import ProgrammingError
 from django.utils import timezone
 from django.core.validators import FileExtensionValidator
+from django.core.files.storage import default_storage
 from django.conf import settings
 from datetime import timedelta
 from pathlib import Path
@@ -422,8 +423,22 @@ class JobImageSerializer(serializers.ModelSerializer):
             except Exception:
                 pass
 
+        # Old rows can contain template fragments such as %Y/%m or a JPEG
+        # filename that was never written. Do not expose a URL that is known to
+        # return 404; consumers can fall back to image_url instead.
+        normalized_path = jp.lstrip('/\\')
+        media_prefix = (getattr(settings, 'MEDIA_URL', '/media/') or '/media/').strip('/')
+        if media_prefix and normalized_path.startswith(f'{media_prefix}/'):
+            normalized_path = normalized_path[len(media_prefix) + 1:]
+        try:
+            if '%' in normalized_path or not default_storage.exists(normalized_path):
+                return None
+        except Exception:
+            # Remote/custom storage may not support an existence check.
+            pass
+
         request = self.context.get('request')
-        return _build_media_absolute_uri(request, jp)
+        return _build_media_absolute_uri(request, normalized_path)
 
 # Topic serializer
 class TopicSerializer(serializers.ModelSerializer):
@@ -685,7 +700,15 @@ class JobSerializer(serializers.ModelSerializer):
         seen = set()
         try:
             for image in obj.job_images.all():
-                candidates = [getattr(image, 'jpeg_path', None)]
+                candidates = []
+                jpeg_path = getattr(image, 'jpeg_path', None)
+                if jpeg_path:
+                    jpeg_name = str(jpeg_path).lstrip('/\\')
+                    try:
+                        if '%' not in jpeg_name and default_storage.exists(jpeg_name):
+                            candidates.append(jpeg_name)
+                    except Exception:
+                        candidates.append(jpeg_name)
                 if getattr(image, 'image', None):
                     candidates.append(getattr(image.image, 'url', image.image.name))
                 for candidate in candidates:

@@ -21,6 +21,7 @@ export function usePreventiveMaintenanceActions() {
   const { selectedProperty } = useAuthStore();
   const accessToken = session?.user?.accessToken || null;
   const loaderShownAtRef = useRef<number | null>(null);
+  const maintenanceRequestRef = useRef(0);
 
   const {
     maintenanceItems,
@@ -118,6 +119,11 @@ export function usePreventiveMaintenanceActions() {
       return;
     }
 
+    // Only the newest pagination/filter request may update the list. Without
+    // this guard, a slower response for page 1 can overwrite page 2 after the
+    // user navigates quickly.
+    const requestId = ++maintenanceRequestRef.current;
+
     // Get current items count to determine if we should show loading state
     // Only show full loading state if we don't have existing data (initial load)
     // This prevents data from disappearing during refresh
@@ -139,6 +145,8 @@ export function usePreventiveMaintenanceActions() {
 
       const service = createPreventiveMaintenanceService(accessToken);
       const response = await service.getAllPreventiveMaintenance(fetchParams);
+
+      if (requestId !== maintenanceRequestRef.current) return;
       
       if (response.success && response.data) {
         let items: any[];
@@ -214,6 +222,7 @@ export function usePreventiveMaintenanceActions() {
         }
       }
     } catch (error: unknown) {
+      if (requestId !== maintenanceRequestRef.current) return;
       const errorMessage = error instanceof Error ? error.message : 'An error occurred while fetching maintenance items';
       logger.error('Error fetching maintenance items', error);
       setError(errorMessage);
@@ -223,6 +232,7 @@ export function usePreventiveMaintenanceActions() {
         setMaintenanceItems([]);
       }
     } finally {
+      if (requestId !== maintenanceRequestRef.current) return;
       if (loaderShownAtRef.current != null) {
         clearLoadingAfterMinTime();
       } else {

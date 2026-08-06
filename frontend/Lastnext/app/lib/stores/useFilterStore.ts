@@ -77,6 +77,22 @@ export const useFilterStore = create<FilterState>()(
     }),
     {
       name: "filter-storage",
+      version: 2,
+      migrate: (persistedState) => {
+        const saved = (persistedState || {}) as Partial<FilterState>;
+        // Deliberately omit page: hydration then keeps the store default of 1.
+        return {
+          status: saved.status ?? 'all',
+          priority: saved.priority ?? 'all',
+          timeRange: saved.timeRange ?? 'all',
+          propertyId: saved.propertyId ?? null,
+          frequency: saved.frequency ?? 'all',
+          start_date: saved.start_date ?? '',
+          end_date: saved.end_date ?? '',
+          page_size: saved.page_size ?? 10,
+          machine_id: saved.machine_id ?? '',
+        };
+      },
       partialize: (state) => ({
         status: state.status,
         priority: state.priority,
@@ -85,7 +101,6 @@ export const useFilterStore = create<FilterState>()(
         frequency: state.frequency,
         start_date: state.start_date,
         end_date: state.end_date,
-        page: state.page,
         page_size: state.page_size,
         machine_id: state.machine_id,
       }),

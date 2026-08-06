@@ -448,7 +448,7 @@ function PreventiveMaintenanceListPageContent() {
           totalCount,
           page_size
         });
-        setPage(1);
+        setPage(totalPages);
       }
     }
   }, [totalPages, totalCount, page, page_size, setPage]);
@@ -650,9 +650,7 @@ function PreventiveMaintenanceListPageContent() {
                   handleFilterChangeWrapper('page', newPage);
                 }}
                 onPageSizeChange={(newSize) => {
-                  // Reset to page 1 and apply the new size atomically to avoid
-                  // fetching an intermediate page with the previous page size.
-                  setPage(1);
+                  // setPageSize resets page to 1 in the same store update.
                   setPageSize(newSize);
                 }}
               />

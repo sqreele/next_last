@@ -249,7 +249,11 @@ export function JobAuditTimeline({ jobId, className }: JobAuditTimelineProps) {
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 100vw, 320px"
-                        unoptimized={(event.image_url || "").startsWith("http")}
+                        loading="lazy"
+                        unoptimized={
+                          (event.image_url || "").startsWith("http") ||
+                          (event.image_url || "").includes("/media/")
+                        }
                       />
                     </div>
                   )}

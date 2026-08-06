@@ -3,61 +3,12 @@ set -e
 
 echo "🚀 Setting up Next.js application..."
 
-# Function to check if database is ready
-check_database() {
-    echo "🔍 Checking database connectivity..."
-    max_attempts=30
-    attempt=1
-    
-    while [ $attempt -le $max_attempts ]; do
-        # Use a simple connection test with timeout
-        if timeout 5 node -e "
-            const { Pool } = require('pg');
-            const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-            pool.query('SELECT 1')
-                .then(() => { console.log('DB connected'); process.exit(0); })
-                .catch(() => process.exit(1));
-        " 2>/dev/null; then
-            echo "✅ Database is ready!"
-            return 0
-        fi
-        
-        echo "⏳ Waiting for database... (attempt $attempt/$max_attempts)"
-        sleep 2
-        attempt=$((attempt + 1))
-    done
-    
-    echo "❌ Database is not ready after $max_attempts attempts"
-    return 1
-}
-
-# Function to setup database schema
-setup_database() {
-    echo "📋 Database setup not needed (using direct database connection)..."
-}
-
-# Function to run database migrations (alternative to db push)
-run_migrations() {
-    echo "🔄 Database migrations not needed (using direct database connection)..."
-}
-
 # Main setup process
 main() {
     echo "🔧 Starting application setup..."
 
-    # Check if we should skip database setup
-    if [ "$SKIP_DB_SETUP" = "true" ]; then
-        echo "⏭️  Skipping database setup (SKIP_DB_SETUP=true)"
-    else
-        # Wait for database to be ready
-        if check_database; then
-            # Setup database
-            setup_database
-        else
-            echo "⚠️  Database not ready, but continuing with application startup..."
-        fi
-    fi
-    
+    # Database readiness is owned by the backend. Blocking here can keep the
+    # HTTP server down long enough for Docker to mark this container unhealthy.
     echo "🎉 Setup complete! Starting Next.js application..."
     echo "🌐 Application will be available on port ${PORT:-3000}"
     

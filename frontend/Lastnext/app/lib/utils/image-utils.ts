@@ -21,8 +21,13 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
 
   const mediaIndex = normalizedInput.indexOf('/media/');
 
-  // Normalize absolute filesystem paths or duplicated media prefixes from Django.
-  if (mediaIndex >= 0 && !/^https?:\/\//i.test(normalizedInput)) {
+  // Django can build absolute media URLs using the host that received the API
+  // request (for example the Docker-only `backend:8000` host). Always serve
+  // application media through the browser's current origin instead. Besides
+  // making those internal hosts reachable, this also keeps machine photos
+  // working when the frontend is exposed through a domain other than the API's
+  // configured canonical domain.
+  if (mediaIndex >= 0) {
     const mediaPath = normalizedInput.slice(mediaIndex).replace(/^\/media\/(?:media\/)+/i, '/media/');
     return encodeURI(mediaPath);
   }
@@ -218,4 +223,4 @@ export function sanitizeJobsData(jobs: any[]): any[] {
     .filter(job => job && typeof job === 'object')
     .map(job => sanitizeJobData(job))
     .filter(job => job !== null);
-} 
+}

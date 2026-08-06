@@ -158,43 +158,52 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed(_('Token validation failed.'))
 
     def _get_or_create_user_from_claims(self, claims):
-        # Prefer email for identity when available; fallback to sub
-        email = claims.get('email')
+        # Accounts and property access are provisioned by an administrator. Auth0
+        # only proves ownership of an existing, verified email address; it must
+        # never create an account or fall back to a potentially colliding username.
+        claim_namespace = getattr(settings, 'AUTH0_CLAIM_NAMESPACE', 'https://hotelcarepro.com').rstrip('/')
+        email = (
+            claims.get(f'{claim_namespace}/email')
+            or claims.get('email')
+            or ''
+        ).strip()
+        email_verified = claims.get(f'{claim_namespace}/email_verified')
+        if email_verified is None:
+            # Temporary compatibility for tokens issued before namespaced claims
+            # were added to the Auth0 Post Login Action.
+            email_verified = claims.get('email_verified')
         sub = claims.get('sub') or ''
 
         logger.debug(f"Processing claims for email: {email}, sub: {sub}")
 
-        # Build a deterministic username from email or sub
-        if email:
-            base_username = email.split('@')[0]
-        else:
-            base_username = sub.replace('|', '_') or 'auth0_user'
+        if not email:
+            logger.warning("Auth0 token is missing the email claim")
+            raise exceptions.AuthenticationFailed(_('A verified email address is required.'))
 
-        username = base_username[:150]  # Django's default max_length for username
+        if email_verified is not True:
+            logger.warning("Auth0 email is not verified: %s", email)
+            raise exceptions.AuthenticationFailed(_('Email address is not verified.'))
 
-        user = None
-
-        if email:
-            user = User.objects.filter(email__iexact=email).first()
-            logger.debug(f"Found user by email: {user}")
-
-        if not user:
-            # Try match by a sanitized version of sub stored as username
-            user = User.objects.filter(username=username).first()
-            logger.debug(f"Found user by username: {user}")
-
-        if not user:
-            # Create a new local user
-            first_name = claims.get('given_name', '')
-            last_name = claims.get('family_name', '')
-            user = User.objects.create(
-                username=username,
-                email=email or '',
-                first_name=first_name[:30],
-                last_name=last_name[:150],
-                is_active=True,
+        matching_users = User.objects.filter(email__iexact=email)
+        match_count = matching_users.count()
+        if match_count == 0:
+            logger.warning("No pre-provisioned account found for Auth0 email: %s", email)
+            raise exceptions.AuthenticationFailed(
+                _('No account is registered for this email address. Please contact an administrator.')
             )
-            logger.info(f"Created new user: {username}")
+        if match_count > 1:
+            logger.error("Multiple local accounts use Auth0 email: %s", email)
+            raise exceptions.AuthenticationFailed(
+                _('Multiple accounts are registered for this email address. Please contact an administrator.')
+            )
+
+        user = matching_users.first()
+        if not user.is_active:
+            logger.warning("Inactive account attempted Auth0 login: %s", email)
+            raise exceptions.AuthenticationFailed(_('This account is inactive.'))
+
+        username = user.username
+        logger.debug(f"Matched pre-provisioned user by verified email: {user}")
 
         # Extract user profile information from JWT claims and available data
         # Since we can't use Management API without client_credentials grant type,
@@ -205,10 +214,10 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
         profile_updated = False
         
         # Extract email from claims if available
-        if claims.get('email') and user.email != claims['email']:
-            user.email = claims['email']
+        if email and user.email != email:
+            user.email = email
             profile_updated = True
-            logger.debug(f"Updated email from JWT claims: {claims['email']}")
+            logger.debug(f"Updated email from JWT claims: {email}")
         
         # Extract given_name (first name) from claims
         if claims.get('given_name') and user.first_name != claims['given_name']:
@@ -258,4 +267,3 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
         logger.debug(f"Final user profile for {username}: email={user.email}, first_name={user.first_name}, last_name={user.last_name}")
 
         return user
-

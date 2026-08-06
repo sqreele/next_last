@@ -258,16 +258,24 @@ def _normalize_auth0_audience(aud: Optional[str]) -> Optional[str]:
     if not aud:
         return None
     value = aud.strip().rstrip('/')
-    # Fix common misconfiguration where base domain is used without /api
-    if value in ('https://pcms.live', 'http://pcms.live', 'https://www.pcms.live'):
-        return 'https://pcms.live/api'
+    # Current Auth0 API identifier. Normalize the accidental /api suffix used
+    # by an earlier deployment to the identifier configured in Auth0.
+    if value in (
+        'https://api.hotelcarepro.com',
+        'https://api.hotelcarepro.com/api',
+        'https://hotelcarepro.com',
+        'http://hotelcarepro.com',
+        'https://www.hotelcarepro.com',
+        'https://hotelcarepro.com/api',
+    ):
+        return 'https://api.hotelcarepro.com'
     if value.endswith('/api'):
         return value
     try:
         from urllib.parse import urlparse
         host = urlparse(value).netloc
         path = urlparse(value).path
-        if host.endswith('pcms.live') and (path == '' or path == '/'):
+        if host.endswith('hotelcarepro.com') and (path == '' or path == '/'):
             return f"{value}/api"
     except Exception:
         pass
@@ -288,6 +296,7 @@ if not _auth0_domain and _auth0_issuer:
 
 AUTH0_DOMAIN = _auth0_domain
 AUTH0_ISSUER = _auth0_issuer or (f"https://{AUTH0_DOMAIN}/" if AUTH0_DOMAIN else None)
+AUTH0_CLAIM_NAMESPACE = os.getenv('AUTH0_CLAIM_NAMESPACE', 'https://hotelcarepro.com').rstrip('/')
 
 # Auth0 Management API credentials for fetching user details
 AUTH0_CLIENT_ID = os.getenv('AUTH0_CLIENT_ID')

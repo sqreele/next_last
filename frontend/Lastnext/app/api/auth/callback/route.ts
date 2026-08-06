@@ -55,20 +55,22 @@ export async function GET(request: NextRequest) {
     try {
       const resolveAudience = (raw?: string | null): string => {
         // Use server-side environment variable as fallback
-        const fallback = process.env.AUTH0_AUDIENCE || 'https://pcms.live/api';
+        const fallback = process.env.AUTH0_AUDIENCE || 'https://api.hotelcarepro.com';
         if (!raw) return fallback;
         const trimmed = raw.trim().replace(/\/$/, '');
         if (
-          trimmed === 'https://pcms.live' ||
-          trimmed === 'http://pcms.live' ||
-          trimmed === 'https://www.pcms.live'
+          trimmed === 'https://api.hotelcarepro.com/api' ||
+          trimmed === 'https://hotelcarepro.com' ||
+          trimmed === 'http://hotelcarepro.com' ||
+          trimmed === 'https://www.hotelcarepro.com' ||
+          trimmed === 'https://hotelcarepro.com/api'
         ) {
-          return 'https://pcms.live/api';
+          return 'https://api.hotelcarepro.com';
         }
         if (trimmed.endsWith('/api')) return trimmed;
         try {
           const u = new URL(trimmed);
-          if (u.hostname.endsWith('pcms.live') && u.pathname === '') {
+          if (u.hostname.endsWith('hotelcarepro.com') && u.pathname === '') {
             return `${trimmed}/api`;
           }
         } catch {}

@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const returnTo = searchParams.get('returnTo') || '/';
     
     // Use server-side environment variables
-    const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
+    const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
     const auth0Domain = process.env.AUTH0_DOMAIN;
     const clientId = process.env.AUTH0_CLIENT_ID;
     
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     
   } catch (error) {
     console.error('Error in logout route:', error);
-    const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
+    const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
     return NextResponse.redirect(`${baseUrl}/error?message=Logout failed`);
   }
 }

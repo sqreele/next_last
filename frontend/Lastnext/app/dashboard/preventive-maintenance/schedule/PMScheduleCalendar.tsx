@@ -541,10 +541,15 @@ export function PMScheduleCalendar() {
                       >
                         {cardBody}
                       </Link>
-                    ) : (
-                      <div className="flex items-start justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50/50 p-3">
+                    ) : item.plan_id ? (
+                      <Link
+                        href={`/dashboard/preventive-maintenance/${item.plan_id}`}
+                        className="flex items-start justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50/50 p-3 transition-colors hover:border-purple-300 hover:bg-purple-50"
+                      >
                         {cardBody}
-                      </div>
+                      </Link>
+                    ) : (
+                      <div className="flex items-start justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50/50 p-3">{cardBody}</div>
                     )}
                   </li>
                 );

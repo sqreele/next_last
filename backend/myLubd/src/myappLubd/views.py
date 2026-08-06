@@ -1927,6 +1927,9 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         """List or create PM master plans / recurring rules."""
         if request.method.lower() == 'get':
             queryset = self._get_master_plan_queryset()
+            plan_id = request.query_params.get('plan_id')
+            if plan_id:
+                queryset = queryset.filter(plan_id__iexact=plan_id)
             serializer = PMMasterPlanSerializer(queryset, many=True, context={'request': request})
             return Response(serializer.data)
 

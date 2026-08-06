@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, CalendarClock, Repeat2, Wrench } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/components/ui/button';
 import { PageLoader } from '@/app/components/ui/loading';
@@ -10,6 +10,7 @@ import { useSession } from '@/app/lib/session.client';
 import {
   preventiveMaintenanceService,
   setPreventiveMaintenanceServiceToken,
+  type PMMasterPlan,
 } from '@/app/lib/PreventiveMaintenanceService';
 import type { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import PreventiveMaintenanceClient from './PreventiveMaintenanceClient';
@@ -23,23 +24,17 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
   const isMasterPlanId = /^PMP[0-9A-F]+$/i.test(pmId);
   const { data: session, status } = useSession();
   const [maintenance, setMaintenance] = useState<PreventiveMaintenance | null>(null);
+  const [masterPlan, setMasterPlan] = useState<PMMasterPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (isMasterPlanId) {
-      router.replace(
-        `/dashboard/preventive-maintenance/schedule?plan_id=${encodeURIComponent(pmId)}`,
-      );
-      return;
-    }
     if (status === 'unauthenticated') {
       router.replace(`/auth/login?returnTo=${encodeURIComponent(`/dashboard/preventive-maintenance/${pmId}/`)}`);
     }
-  }, [isMasterPlanId, pmId, router, status]);
+  }, [pmId, router, status]);
 
   useEffect(() => {
-    if (isMasterPlanId) return;
     const accessToken = session?.user?.accessToken;
     if (status !== 'authenticated' || !accessToken) return;
 
@@ -48,14 +43,24 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     setLoading(true);
     setError(null);
 
-    preventiveMaintenanceService
-      .getPreventiveMaintenanceById(pmId)
+    const detailRequest = isMasterPlanId
+      ? preventiveMaintenanceService.getPMMasterPlans({ plan_id: pmId })
+      : preventiveMaintenanceService.getPreventiveMaintenanceById(pmId);
+
+    detailRequest
       .then((response) => {
         if (!active) return;
         if (!response.success || !response.data) {
           throw new Error(response.message || 'Preventive maintenance record could not be loaded.');
         }
-        setMaintenance(response.data);
+        if (isMasterPlanId) {
+          const plans = response.data as PMMasterPlan[];
+          const plan = plans.find((item) => item.plan_id.toLowerCase() === pmId.toLowerCase());
+          if (!plan) throw new Error(`No projected maintenance plan found with ID: ${pmId}`);
+          setMasterPlan(plan);
+        } else {
+          setMaintenance(response.data as PreventiveMaintenance);
+        }
       })
       .catch((requestError: unknown) => {
         if (!active) return;
@@ -73,8 +78,40 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     };
   }, [isMasterPlanId, pmId, session?.user?.accessToken, status]);
 
-  if (isMasterPlanId || loading || status === 'loading' || (status === 'authenticated' && !session?.user?.accessToken)) {
+  if (loading || status === 'loading' || (status === 'authenticated' && !session?.user?.accessToken)) {
     return <PageLoader />;
+  }
+
+  if (masterPlan) {
+    const assignee = masterPlan.assigned_to_details;
+    const assigneeName = [assignee?.first_name, assignee?.last_name].filter(Boolean).join(' ') || assignee?.username || 'Unassigned';
+    return (
+      <div className="mx-auto w-full max-w-5xl px-3 py-4 sm:px-6 sm:py-6">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <span className="inline-flex rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800">Projected master plan</span>
+            <h1 className="mt-2 text-2xl font-bold text-foreground">{masterPlan.title}</h1>
+            <p className="text-sm text-muted-foreground">#{masterPlan.plan_id}</p>
+          </div>
+          <Button asChild variant="outline"><Link href="/dashboard/preventive-maintenance/schedule">View schedule</Link></Button>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-border bg-card p-5"><CalendarClock className="mb-3 h-5 w-5 text-primary" /><p className="text-xs font-semibold uppercase text-muted-foreground">Next due</p><p className="mt-1 font-semibold">{new Date(masterPlan.next_due_date || masterPlan.start_date).toLocaleString()}</p></div>
+          <div className="rounded-xl border border-border bg-card p-5"><Repeat2 className="mb-3 h-5 w-5 text-primary" /><p className="text-xs font-semibold uppercase text-muted-foreground">Frequency</p><p className="mt-1 font-semibold capitalize">{masterPlan.frequency}{masterPlan.custom_days ? ` (${masterPlan.custom_days} days)` : ''}</p></div>
+          <div className="rounded-xl border border-border bg-card p-5"><Wrench className="mb-3 h-5 w-5 text-primary" /><p className="text-xs font-semibold uppercase text-muted-foreground">Equipment</p><p className="mt-1 font-semibold">{masterPlan.machines?.map((machine) => machine.name || machine.machine_id).join(', ') || 'No equipment'}</p></div>
+        </div>
+        <div className="mt-4 rounded-xl border border-border bg-card p-5">
+          <dl className="grid gap-4 sm:grid-cols-2">
+            <div><dt className="text-sm text-muted-foreground">Assigned to</dt><dd className="font-medium">{assigneeName}</dd></div>
+            <div><dt className="text-sm text-muted-foreground">Status</dt><dd className="font-medium">{masterPlan.active ? 'Active' : 'Inactive'}</dd></div>
+            <div><dt className="text-sm text-muted-foreground">Task template</dt><dd className="font-medium">{masterPlan.procedure_template_name || 'Not set'}</dd></div>
+            <div><dt className="text-sm text-muted-foreground">Lead time</dt><dd className="font-medium">{masterPlan.lead_time_days} days</dd></div>
+          </dl>
+          {masterPlan.notes && <div className="mt-5 border-t border-border pt-4"><p className="text-sm text-muted-foreground">Notes</p><p className="mt-1 whitespace-pre-wrap">{masterPlan.notes}</p></div>}
+          {masterPlan.procedure && <div className="mt-5 border-t border-border pt-4"><p className="text-sm text-muted-foreground">Procedure</p><p className="mt-1 whitespace-pre-wrap">{masterPlan.procedure}</p></div>}
+        </div>
+      </div>
+    );
   }
 
   if (error || !maintenance) {

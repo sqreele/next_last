@@ -77,6 +77,15 @@ export interface PMMasterPlan {
   notes?: string | null;
   procedure?: string | null;
   remarks?: string | null;
+  property_id?: string | null;
+  machines?: Array<{ machine_id: string; name?: string }>;
+  topics?: Array<{ id: number; title?: string }>;
+  procedure_template_name?: string | null;
+  assigned_to_details?: {
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+  } | null;
 }
 
 export type CreatePMMasterPlanData = {

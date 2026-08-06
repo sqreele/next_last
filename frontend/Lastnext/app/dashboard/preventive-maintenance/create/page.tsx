@@ -71,16 +71,7 @@ function CreatePageContent() {
         // Check if pm_id exists, with multiple safety checks
         if (data && typeof data === "object" && "pm_id" in data && data.pm_id) {
           const pmId = data.pm_id;
-          // PMP-prefixed IDs identify recurring master plans, not materialized
-          // PreventiveMaintenance records. They belong on the schedule page and
-          // cannot be fetched from the PM detail endpoint.
-          if (/^PMP[0-9A-F]+$/i.test(pmId)) {
-            router.push(
-              `/dashboard/preventive-maintenance/schedule?plan_id=${encodeURIComponent(pmId)}`,
-            );
-          } else {
-            router.push(`/dashboard/preventive-maintenance/${pmId}`);
-          }
+          router.push(`/dashboard/preventive-maintenance/${pmId}`);
         } else {
           console.warn(
             "PM ID is undefined or invalid, redirecting to dashboard instead",

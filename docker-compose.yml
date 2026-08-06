@@ -50,7 +50,10 @@ services:
       - backend
       - db
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - frontend
+          - nextjs-frontend
 
   redis:
     image: redis:7-alpine
@@ -132,7 +135,10 @@ services:
       - db
       - redis
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - backend
+          - django-backend
 
   db:
     image: postgres:17-alpine
@@ -179,10 +185,14 @@ services:
       timeout: 10s
       retries: 3
     depends_on:
-      - frontend
-      - backend
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - nginx
 
 
 networks:

@@ -50,7 +50,7 @@ export default function AiChatMobileMenu() {
                         <Package2 className="h-5 w-5" />
                       </span>
                       <span>
-                        <span className="block text-lg font-bold leading-tight text-slate-900">PCMS</span>
+                        <span className="block text-lg font-bold leading-tight text-slate-900">HotelCarePro</span>
                         <span className="block text-xs font-semibold text-slate-600">Hotel maintenance operations</span>
                       </span>
                     </Link>

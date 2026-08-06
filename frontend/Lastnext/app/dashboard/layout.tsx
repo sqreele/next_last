@@ -154,7 +154,7 @@ function DesktopNav({
           </span>
           {!collapsed && (
             <span className="text-lg font-bold text-[var(--pcms-text)] transition-colors group-hover:text-[var(--pcms-primary-strong)]">
-              PCMS
+              HotelCarePro
             </span>
           )}
         </Link>
@@ -267,7 +267,7 @@ function MobileHeader({ hidden = false }: { hidden?: boolean }) {
           <MobileNav />
           <Link href="/dashboard" className="flex items-center gap-1.5">
             <Package2 className="h-5 w-5 text-[var(--pcms-primary)]" />
-            <span className="text-sm font-bold text-[var(--pcms-text)]">PCMS</span>
+            <span className="text-sm font-bold text-[var(--pcms-text)]">HotelCarePro</span>
           </Link>
         </div>
         <div className="flex items-center gap-1">
@@ -351,7 +351,7 @@ function MobileNav() {
               </span>
               <span>
                 <span className="block text-lg font-bold leading-tight text-slate-900">
-                  PCMS
+                  HotelCarePro
                 </span>
                 <span className="block text-xs font-semibold text-slate-600">
                   Hotel maintenance operations

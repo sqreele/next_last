@@ -1,7 +1,7 @@
 {
-  "name": "HotelEngPro - Hotel Engineering & Maintenance",
-  "short_name": "HotelEngPro",
-  "description": "HotelEngPro - Professional hotel engineering and maintenance management platform",
+  "name": "HotelCarePro - Hotel Engineering & Maintenance",
+  "short_name": "HotelCarePro",
+  "description": "HotelCarePro - Professional hotel engineering and maintenance management platform",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",

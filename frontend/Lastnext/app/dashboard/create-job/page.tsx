@@ -8,28 +8,28 @@ import { getServerSession } from '@/app/lib/session.server';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'สร้างงานซ่อม - HotelEngPro',
+  title: 'สร้างงานซ่อม - HotelCarePro',
   description: 'สร้างงานซ่อมบำรุงโรงแรม มอบหมายงาน ตั้งค่าความสำคัญ และอัปโหลดรูปภาพได้ในฟอร์มเดียว',
-  keywords: ['HotelEngPro', 'สร้างงานซ่อม', 'งานซ่อมโรงแรม', 'จัดการงานซ่อม', 'บำรุงรักษาโรงแรม'],
+  keywords: ['HotelCarePro', 'สร้างงานซ่อม', 'งานซ่อมโรงแรม', 'จัดการงานซ่อม', 'บำรุงรักษาโรงแรม'],
   openGraph: {
-    title: 'สร้างงานซ่อม - HotelEngPro',
-    description: 'เพิ่มงานซ่อมบำรุงโรงแรมได้ง่ายด้วย HotelEngPro',
-    url: 'https://pcms.live/dashboard/create-job',
+    title: 'สร้างงานซ่อม - HotelCarePro',
+    description: 'เพิ่มงานซ่อมบำรุงโรงแรมได้ง่ายด้วย HotelCarePro',
+    url: 'https://hotelcarepro.com/dashboard/create-job',
     type: 'website',
     images: [
       {
-        url: 'https://pcms.live/og-create-job.jpg',
+        url: 'https://hotelcarepro.com/og-create-job.jpg',
         width: 1200,
         height: 630,
-        alt: 'HotelEngPro - หน้าสร้างงานซ่อม',
+        alt: 'HotelCarePro - หน้าสร้างงานซ่อม',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'สร้างงานซ่อม - HotelEngPro',
-    description: 'สร้างงานซ่อมบำรุงโรงแรมได้ง่ายด้วย HotelEngPro',
-    images: ['https://pcms.live/twitter-create-job.jpg'],
+    title: 'สร้างงานซ่อม - HotelCarePro',
+    description: 'สร้างงานซ่อมบำรุงโรงแรมได้ง่ายด้วย HotelCarePro',
+    images: ['https://hotelcarepro.com/twitter-create-job.jpg'],
   },
 };
 

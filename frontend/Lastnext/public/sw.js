@@ -1,5 +1,5 @@
 /**
- * PCMS service worker.
+ * HotelCarePro service worker.
  *
  * Strategy:
  *  - App shell: cache-first with network update for static Next.js assets.
@@ -11,7 +11,7 @@
  * Bump CACHE_VERSION whenever you change this file so old clients refresh.
  */
 
-const CACHE_VERSION = 'pcms-v1';
+const CACHE_VERSION = 'hotelcarepro-v2';
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const OFFLINE_URL = '/offline';
 
@@ -125,10 +125,10 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch (e) {
-    data = { title: 'PCMS', body: event.data ? event.data.text() : '' };
+    data = { title: 'HotelCarePro', body: event.data ? event.data.text() : '' };
   }
 
-  const title = data.title || 'PCMS';
+  const title = data.title || 'HotelCarePro';
   const options = {
     body: data.body || '',
     tag: data.tag || 'pcms-default',

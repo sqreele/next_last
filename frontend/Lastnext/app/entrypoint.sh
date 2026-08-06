@@ -41,40 +41,10 @@ run_migrations() {
     echo "🔄 Database migrations not needed (using direct database connection)..."
 }
 
-# Function to create health check endpoint
-create_health_check() {
-    echo "🏥 Setting up health check..."
-    
-    # Create api directory if it doesn't exist
-    mkdir -p ./pages/api 2>/dev/null || mkdir -p ./app/api/health 2>/dev/null || true
-    
-    # Create a simple health check if it doesn't exist
-    if [ ! -f "./pages/api/health.js" ] && [ ! -f "./app/api/health/route.js" ]; then
-        echo "Creating health check endpoint..."
-        if [ -d "./pages/api" ]; then
-            cat > ./pages/api/health.js << 'EOF'
-export default function handler(req, res) {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
-}
-EOF
-        elif [ -d "./app/api" ]; then
-            mkdir -p ./app/api/health
-            cat > ./app/api/health/route.js << 'EOF'
-export async function GET() {
-    return Response.json({ status: 'ok', timestamp: new Date().toISOString() });
-}
-EOF
-        fi
-    fi
-}
-
 # Main setup process
 main() {
     echo "🔧 Starting application setup..."
-    
-    # Create health check endpoint
-    create_health_check
-    
+
     # Check if we should skip database setup
     if [ "$SKIP_DB_SETUP" = "true" ]; then
         echo "⏭️  Skipping database setup (SKIP_DB_SETUP=true)"

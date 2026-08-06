@@ -274,6 +274,8 @@ export function UniversalImage({
     >
       {shouldUnoptimize ? (
         <img
+          loading="lazy"
+          decoding="async"
           ref={imgRef}
           src={src}
           alt={alt}

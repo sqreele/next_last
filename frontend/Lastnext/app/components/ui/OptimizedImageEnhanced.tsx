@@ -113,6 +113,8 @@ export function OptimizedImageEnhanced({
 
       {isExternalImage ? (
         <img
+          loading="lazy"
+          decoding="async"
           src={src}
           alt={alt}
           width={optimizedProps.width}

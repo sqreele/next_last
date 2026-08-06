@@ -586,6 +586,8 @@ export default function MaintenanceTaskDetailPage({
                                 </p>
                                 <div className="relative aspect-square rounded-lg overflow-hidden bg-muted border border-border">
                                   <img
+                                    loading="lazy"
+                                    decoding="async"
                                     src={record.before_image_url}
                                     alt="Before maintenance"
                                     className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
@@ -615,6 +617,8 @@ export default function MaintenanceTaskDetailPage({
                                 </p>
                                 <div className="relative aspect-square rounded-lg overflow-hidden bg-muted border border-border">
                                   <img
+                                    loading="lazy"
+                                    decoding="async"
                                     src={record.after_image_url}
                                     alt="After maintenance"
                                     className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"

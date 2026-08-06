@@ -957,6 +957,8 @@ export default function InventoryPage() {
                     {item.image_url ? (
                       <div className="flex-shrink-0">
                         <img
+                          loading="lazy"
+                          decoding="async"
                           src={item.image_url}
                           alt={item.name}
                           className="h-16 w-16 rounded-lg border border-border object-cover"
@@ -1090,6 +1092,8 @@ export default function InventoryPage() {
                     <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-xl border border-border bg-blue-50 text-2xl">
                       {item.image_url ? (
                         <img
+                          loading="lazy"
+                          decoding="async"
                           src={item.image_url}
                           alt={item.name}
                           className="h-full w-full object-cover"
@@ -1214,6 +1218,8 @@ export default function InventoryPage() {
                           {item.image_url ? (
                             <>
                               <img
+                                loading="lazy"
+                                decoding="async"
                                 src={item.image_url}
                                 alt={item.name}
                                 className="w-12 h-12 object-cover rounded-lg border border-border"

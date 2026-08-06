@@ -612,6 +612,8 @@ export default function MachineDetailPage({
               <div className="w-full">
                 <div className="relative aspect-video rounded-lg border-2 border-border bg-muted overflow-hidden">
                   <img
+                    loading="lazy"
+                    decoding="async"
                     src={getMachineImageUrl()!}
                     alt={`${machine.name} image`}
                     className="w-full h-full object-contain"

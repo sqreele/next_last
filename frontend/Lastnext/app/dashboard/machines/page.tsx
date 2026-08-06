@@ -391,6 +391,8 @@ export default function MachinesListPage() {
                           {machineImageUrl ? (
                             <>
                               <img
+                                loading="lazy"
+                                decoding="async"
                                 src={machineImageUrl}
                                 alt={`${machine.name} image`}
                                 className="w-full h-full object-cover"
@@ -489,6 +491,8 @@ export default function MachinesListPage() {
                       <div className="flex h-20 w-20 flex-none items-center justify-center overflow-hidden rounded-xl border border-border bg-blue-50 text-blue-600">
                         {machineImageUrl ? (
                           <img
+                            loading="lazy"
+                            decoding="async"
                             src={machineImageUrl}
                             alt={`${machine.name} image`}
                             className="h-full w-full object-cover"
@@ -585,6 +589,8 @@ export default function MachinesListPage() {
                             {machineImageUrl ? (
                               <>
                                 <img
+                                  loading="lazy"
+                                  decoding="async"
                                   src={machineImageUrl}
                                   alt={`${machine.name} image`}
                                   className="w-full h-full object-cover"

@@ -659,6 +659,8 @@ export default function PreventiveMaintenanceClient({
                     aria-label={`Open image for ${machineName || machineId || "machine"}`}
                   >
                     <img
+                      loading="lazy"
+                      decoding="async"
                       src={machineImageUrl}
                       alt={machineName ? `${machineName} machine` : "Machine"}
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -1103,6 +1105,8 @@ export default function PreventiveMaintenanceClient({
                     }
                   >
                     <img
+                      loading="lazy"
+                      decoding="async"
                       src={beforeImageUrl || ""}
                       alt="Before Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -1158,6 +1162,8 @@ export default function PreventiveMaintenanceClient({
                     }
                   >
                     <img
+                      loading="lazy"
+                      decoding="async"
                       src={afterImageUrl || ""}
                       alt="After Maintenance"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

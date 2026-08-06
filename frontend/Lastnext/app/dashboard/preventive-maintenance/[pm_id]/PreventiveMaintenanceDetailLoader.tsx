@@ -20,18 +20,26 @@ type DetailLoaderProps = {
 
 export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoaderProps) {
   const router = useRouter();
+  const isMasterPlanId = /^PMP[0-9A-F]+$/i.test(pmId);
   const { data: session, status } = useSession();
   const [maintenance, setMaintenance] = useState<PreventiveMaintenance | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (isMasterPlanId) {
+      router.replace(
+        `/dashboard/preventive-maintenance/schedule?plan_id=${encodeURIComponent(pmId)}`,
+      );
+      return;
+    }
     if (status === 'unauthenticated') {
       router.replace(`/auth/login?returnTo=${encodeURIComponent(`/dashboard/preventive-maintenance/${pmId}/`)}`);
     }
-  }, [pmId, router, status]);
+  }, [isMasterPlanId, pmId, router, status]);
 
   useEffect(() => {
+    if (isMasterPlanId) return;
     const accessToken = session?.user?.accessToken;
     if (status !== 'authenticated' || !accessToken) return;
 
@@ -63,9 +71,9 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     return () => {
       active = false;
     };
-  }, [pmId, session?.user?.accessToken, status]);
+  }, [isMasterPlanId, pmId, session?.user?.accessToken, status]);
 
-  if (loading || status === 'loading' || (status === 'authenticated' && !session?.user?.accessToken)) {
+  if (isMasterPlanId || loading || status === 'loading' || (status === 'authenticated' && !session?.user?.accessToken)) {
     return <PageLoader />;
   }
 

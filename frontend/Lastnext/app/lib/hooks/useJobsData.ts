@@ -45,6 +45,8 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   const loaderShownAtRef = useRef<number | null>(null);
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   const clearLoadingAfterMinTime = useCallback(() => {
     const shownAt = loaderShownAtRef.current;
@@ -116,7 +118,7 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       if (activePropertyId) {
         // Build query parameters for additional filtering
         const queryParams = new URLSearchParams();
-        const filters = options?.filters;
+        const filters = optionsRef.current?.filters;
         if (filters) {
           if (filters.room_id) queryParams.append('room_id', filters.room_id);
           if (filters.room_name) queryParams.append('room_name', filters.room_name);
@@ -131,7 +133,7 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
       } else {
         // Build query parameters for room filtering
         const queryParams = new URLSearchParams();
-        const filters = options?.filters;
+        const filters = optionsRef.current?.filters;
         if (filters) {
           if (filters.room_id) queryParams.append('room_id', filters.room_id);
           if (filters.room_name) queryParams.append('room_name', filters.room_name);

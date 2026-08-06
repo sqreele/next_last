@@ -1,7 +1,7 @@
 // UpdateStatusButton.tsx
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import { Button } from "@/app/components/ui/button";
 import { ClipboardEdit } from "lucide-react";
 import {
@@ -33,16 +33,22 @@ const JOB_STATUS = {
   IN_PROGRESS: "in_progress",
   WAITING_SPAREPART: "waiting_sparepart",
   COMPLETED: "completed",
-  CANCELLED: "cancelled"
+  CANCELLED: "cancelled",
 };
 
 const STATUS_BUTTON_CLASSES: Record<string, string> = {
-  pending: "border-blue-300 bg-blue-50 text-blue-800 hover:border-blue-400 hover:bg-blue-100 hover:text-blue-900",
-  in_progress: "border-indigo-300 bg-indigo-50 text-indigo-800 hover:border-indigo-400 hover:bg-indigo-100 hover:text-indigo-900",
-  waiting_sparepart: "border-orange-300 bg-orange-50 text-orange-800 hover:border-orange-400 hover:bg-orange-100 hover:text-orange-900",
-  completed: "border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100 hover:text-emerald-900",
-  cancelled: "border-red-300 bg-red-50 text-red-800 hover:border-red-400 hover:bg-red-100 hover:text-red-900",
-  overdue: "border-red-400 bg-red-100 text-red-900 hover:border-red-500 hover:bg-red-200",
+  pending:
+    "border-blue-300 bg-blue-50 text-blue-800 hover:border-blue-400 hover:bg-blue-100 hover:text-blue-900",
+  in_progress:
+    "border-indigo-300 bg-indigo-50 text-indigo-800 hover:border-indigo-400 hover:bg-indigo-100 hover:text-indigo-900",
+  waiting_sparepart:
+    "border-orange-300 bg-orange-50 text-orange-800 hover:border-orange-400 hover:bg-orange-100 hover:text-orange-900",
+  completed:
+    "border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100 hover:text-emerald-900",
+  cancelled:
+    "border-red-300 bg-red-50 text-red-800 hover:border-red-400 hover:bg-red-100 hover:text-red-900",
+  overdue:
+    "border-red-400 bg-red-100 text-red-900 hover:border-red-500 hover:bg-red-200",
 };
 
 const STATUS_SUBMIT_CLASSES: Record<string, string> = {
@@ -57,7 +63,15 @@ const STATUS_SUBMIT_CLASSES: Record<string, string> = {
 interface UpdateStatusButtonProps {
   job: Job;
   onStatusUpdated: (updatedJob: Job) => void;
-  variant?: "default" | "outline" | "destructive" | "secondary" | "success" | "warning" | "ghost" | "link";
+  variant?:
+    | "default"
+    | "outline"
+    | "destructive"
+    | "secondary"
+    | "success"
+    | "warning"
+    | "ghost"
+    | "link";
   size?: "default" | "sm" | "lg" | "icon";
   className?: string;
   buttonText?: string;
@@ -71,11 +85,13 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
   size = "sm",
   className = "",
   buttonText = "Update Status",
-  onClick
+  onClick,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<JobStatus>(job.status as JobStatus);
+  const [selectedStatus, setSelectedStatus] = useState<JobStatus>(
+    job.status as JobStatus,
+  );
   const { toast } = useToast();
   const { data: session, status } = useSession();
   const currentStatusTone = normalizeStatus(job.status);
@@ -92,11 +108,11 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Debug logging
-    
+
     // Check session status first
-    if (status === 'loading') {
+    if (status === "loading") {
       toast({
         title: "Loading",
         description: "Please wait while we load your session...",
@@ -104,8 +120,8 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
       });
       return;
     }
-    
-    if (status === 'unauthenticated') {
+
+    if (status === "unauthenticated") {
       toast({
         title: "Authentication Required",
         description: "Please log in to update job status",
@@ -113,7 +129,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
       });
       return;
     }
-    
+
     if (selectedStatus === job.status) {
       setIsOpen(false);
       return; // No change needed
@@ -127,10 +143,12 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
         // Include other fields from the original job that the API requires
         // NOTE: This is the key fix - including required fields
         room_id: job.rooms?.[0]?.room_id,
-        topic_data: job.topics?.[0] ? JSON.stringify({
-          title: job.topics[0]?.title || "Unknown",
-          description: job.topics[0]?.description || ""
-        }) : JSON.stringify({ title: "Unknown", description: "" }),
+        topic_data: job.topics?.[0]
+          ? JSON.stringify({
+              title: job.topics[0]?.title || "Unknown",
+              description: job.topics[0]?.description || "",
+            })
+          : JSON.stringify({ title: "Unknown", description: "" }),
         // Include other fields for completeness
         description: job.description,
         priority: job.priority,
@@ -142,27 +160,34 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
       // Call API with access token
       const accessToken = session?.user?.accessToken;
       if (!accessToken) {
-        throw new Error('No access token available. Please log in again.');
+        throw new Error("No access token available. Please log in again.");
       }
-      
-      const updatedJob = await apiUpdateJob(String(job.job_id), updateData, accessToken);
-      
+
+      const updatedJob = await apiUpdateJob(
+        String(job.job_id),
+        updateData,
+        accessToken,
+      );
+
       // Update local state
       onStatusUpdated(updatedJob);
-      
+
       // Show success message
       toast({
         title: "Status Updated",
-        description: `Job #${job.job_id} status changed to ${selectedStatus.replace('_', ' ')}`,
+        description: `Job #${job.job_id} status changed to ${selectedStatus.replace("_", " ")}`,
       });
-      
+
       // Close dialog
       setIsOpen(false);
     } catch (error) {
       console.error("Failed to update status:", error);
       toast({
         title: "Update Failed",
-        description: error instanceof Error ? error.message : "Failed to update job status",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to update job status",
         variant: "destructive",
       });
     } finally {
@@ -172,7 +197,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
 
   return (
     <>
-      <Button 
+      <Button
         onClick={(e) => {
           // If onClick handler is provided, call it
           if (onClick) {
@@ -188,14 +213,21 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
         variant={variant}
         size={size}
         className={cn(
-          'h-11 border-2 font-bold shadow-sm',
+          "h-11 border-2 font-bold shadow-soft",
           className,
-          STATUS_BUTTON_CLASSES[currentStatusTone] || "border-slate-300 bg-slate-50 text-slate-800 hover:bg-slate-100"
+          STATUS_BUTTON_CLASSES[currentStatusTone] ||
+            "border-border bg-muted text-foreground hover:bg-muted",
         )}
-        disabled={status === 'loading' || status === 'unauthenticated' || isCompleted}
-        isLoading={status === 'loading'}
+        disabled={
+          status === "loading" || status === "unauthenticated" || isCompleted
+        }
+        isLoading={status === "loading"}
         loadingText="Loading..."
-        title={isCompleted ? "Completed jobs cannot have their status changed" : buttonText}
+        title={
+          isCompleted
+            ? "Completed jobs cannot have their status changed"
+            : buttonText
+        }
       >
         <ClipboardEdit className="h-4 w-4 mr-2" />
         {isCompleted ? "Status Locked" : buttonText}
@@ -209,7 +241,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
               Change the status for job #{job.job_id}
             </DialogDescription>
           </DialogHeader>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="status" className="text-sm font-medium">
@@ -224,17 +256,34 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
                   id="status"
                   className={cn(
                     "border-2 text-sm font-bold",
-                    STATUS_BUTTON_CLASSES[selectedStatusTone] || "border-slate-300 bg-white text-slate-900"
+                    STATUS_BUTTON_CLASSES[selectedStatusTone] ||
+                      "border-border bg-card text-foreground",
                   )}
                 >
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={JOB_STATUS.PENDING} className="text-sm">Pending</SelectItem>
-                  <SelectItem value={JOB_STATUS.IN_PROGRESS} className="text-sm">In Progress</SelectItem>
-                  <SelectItem value={JOB_STATUS.WAITING_SPAREPART} className="text-sm">Waiting Sparepart</SelectItem>
-                  <SelectItem value={JOB_STATUS.COMPLETED} className="text-sm">Completed</SelectItem>
-                  <SelectItem value={JOB_STATUS.CANCELLED} className="text-sm">Cancelled</SelectItem>
+                  <SelectItem value={JOB_STATUS.PENDING} className="text-sm">
+                    Pending
+                  </SelectItem>
+                  <SelectItem
+                    value={JOB_STATUS.IN_PROGRESS}
+                    className="text-sm"
+                  >
+                    In Progress
+                  </SelectItem>
+                  <SelectItem
+                    value={JOB_STATUS.WAITING_SPAREPART}
+                    className="text-sm"
+                  >
+                    Waiting Sparepart
+                  </SelectItem>
+                  <SelectItem value={JOB_STATUS.COMPLETED} className="text-sm">
+                    Completed
+                  </SelectItem>
+                  <SelectItem value={JOB_STATUS.CANCELLED} className="text-sm">
+                    Cancelled
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -255,7 +304,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
                 loadingText="Saving..."
                 className={cn(
                   "font-bold",
-                  STATUS_SUBMIT_CLASSES[selectedStatusTone]
+                  STATUS_SUBMIT_CLASSES[selectedStatusTone],
                 )}
               >
                 Update

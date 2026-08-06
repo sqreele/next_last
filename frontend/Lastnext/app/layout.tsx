@@ -26,15 +26,15 @@ const lineSeed = localFont({
   display: 'swap',
 });
 
-// SEO-Optimized Metadata for HotelCarePro - Hotel Engineering & Maintenance Management
+// SEO-Optimized Metadata for HotelCare Pro - Hotel Engineering & Maintenance Management
 export const metadata: Metadata = {
   title: {
-    default: 'HotelCarePro - Hotel Engineering & Maintenance Dashboard',
-    template: '%s | HotelCarePro',
+    default: 'HotelCare Pro - Smart Hotel Maintenance and Engineering Management Software',
+    template: '%s | HotelCare Pro',
   },
-  description: 'HotelCarePro - Professional hotel engineering and maintenance management platform. Streamline property maintenance, track jobs, and manage tasks efficiently for hotels and hospitality.',
+  description: 'Manage work orders, preventive maintenance, assets, rooms, technicians and engineering reports in one HotelCare Pro platform.',
   keywords: [
-    'HotelCarePro',
+    'HotelCare Pro',
     'hotel engineering',
     'hotel maintenance',
     'property maintenance',
@@ -47,31 +47,31 @@ export const metadata: Metadata = {
   ],
   authors: [
     {
-      name: 'HotelCarePro',
+      name: 'HotelCare Pro',
       url: 'https://hotelcarepro.com',
     },
   ],
-  creator: 'HotelCarePro',
+  creator: 'HotelCare Pro',
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: 'https://hotelcarepro.com',
-    title: 'HotelCarePro - Hotel Engineering & Maintenance Dashboard',
-    description: 'HotelCarePro - Professional hotel engineering and maintenance management. Efficiently manage maintenance tasks and jobs with our modern dashboard. Perfect for hotel engineers and facility teams.',
-    siteName: 'HotelCarePro',
+    title: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',
+    description: 'HotelCare Pro - Professional hotel engineering and maintenance management. Efficiently manage maintenance tasks and jobs with our modern dashboard. Perfect for hotel engineers and facility teams.',
+    siteName: 'HotelCare Pro',
     images: [
       {
         url: 'https://hotelcarepro.com/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'HotelCarePro - Hotel Engineering & Maintenance Dashboard',
+        alt: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'HotelCarePro - Hotel Engineering & Maintenance Dashboard',
-    description: 'HotelCarePro - Professional hotel engineering and maintenance management. Track and manage hotel maintenance tasks seamlessly.',
+    title: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',
+    description: 'HotelCare Pro - Professional hotel engineering and maintenance management. Track and manage hotel maintenance tasks seamlessly.',
     creator: '@HotelCarePro',
     images: ['https://hotelcarepro.com/twitter-image.jpg'],
   },
@@ -112,7 +112,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="HotelCarePro" />
+        <meta name="apple-mobile-web-app-title" content="HotelCare Pro" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="color-scheme" content="light dark" />
@@ -143,11 +143,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 <RouteTransitionLoader />
               </Suspense>
               <NetworkStatusBanner />
-              <main id="main-content" className="flex min-h-screen w-full flex-col">
+              <div id="main-content" className="flex min-h-screen w-full flex-col">
                 <Suspense fallback={null}>
                   <PropertyAccessGuard>{children}</PropertyAccessGuard>
                 </Suspense>
-              </main>
+              </div>
               <Toaster />
               <ServiceWorkerRegistrar />
               <InstallPrompt />

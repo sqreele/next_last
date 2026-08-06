@@ -1,15 +1,21 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback, use } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from '@/app/lib/session.client';
-import { useAuthStore } from '@/app/lib/stores/useAuthStore';
-import apiClient from '@/app/lib/api-client';
-import { useMinLoaderTime } from '@/app/lib/hooks/useMinLoaderTime';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
-import { Badge } from '@/app/components/ui/badge';
-import { StatusBadge } from '@/app/components/StatusBadge';
+import React, { useState, useEffect, useCallback, use } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/app/lib/session.client";
+import { useAuthStore } from "@/app/lib/stores/useAuthStore";
+import apiClient from "@/app/lib/api-client";
+import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/app/components/ui/card";
+import { Button } from "@/app/components/ui/button";
+import { Badge } from "@/app/components/ui/badge";
+import { StatusBadge } from "@/app/components/StatusBadge";
 import {
   ArrowLeft,
   Wrench,
@@ -23,10 +29,10 @@ import {
   History,
   Image as ImageIcon,
   Calendar,
-  User
-} from 'lucide-react';
-import Link from 'next/link';
-import { getDisplayName } from '@/app/lib/utils/display-name';
+  User,
+} from "lucide-react";
+import Link from "next/link";
+import { getDisplayName } from "@/app/lib/utils/display-name";
 
 interface MaintenanceTask {
   id: number;
@@ -62,14 +68,16 @@ interface MaintenanceHistory {
     id: number;
     username: string;
   };
-  assigned_to?: number | {
-    id: number;
-    username: string;
-    email?: string;
-    first_name?: string;
-    last_name?: string;
-    full_name?: string;
-  };
+  assigned_to?:
+    | number
+    | {
+        id: number;
+        username: string;
+        email?: string;
+        first_name?: string;
+        last_name?: string;
+        full_name?: string;
+      };
   assigned_to_details?: {
     id: number;
     username: string;
@@ -86,7 +94,11 @@ interface MaintenanceHistory {
   created_at?: string;
 }
 
-export default function MaintenanceTaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function MaintenanceTaskDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   // Unwrap params using React.use() for Next.js 15 compatibility
   const unwrappedParams = use(params);
   const { data: session, status } = useSession();
@@ -95,68 +107,84 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
   const [task, setTask] = useState<MaintenanceTask | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [maintenanceHistory, setMaintenanceHistory] = useState<MaintenanceHistory[]>([]);
+  const [maintenanceHistory, setMaintenanceHistory] = useState<
+    MaintenanceHistory[]
+  >([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setLoading);
+  const { recordLoaderShown, clearLoadingAfterMinTime } =
+    useMinLoaderTime(setLoading);
 
   // Debug logging for property changes
-  useEffect(() => {
-  }, [selectedProperty, unwrappedParams.id, task?.id, task?.name]);
+  useEffect(() => {}, [
+    selectedProperty,
+    unwrappedParams.id,
+    task?.id,
+    task?.name,
+  ]);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login');
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
     }
   }, [status, router]);
 
   // Memoize fetchMaintenanceHistory to prevent infinite loops
-  const fetchMaintenanceHistory = useCallback(async (taskTemplateId: number) => {
-    setLoadingHistory(true);
-    try {
-      
-      // Build API params
-      const apiParams: any = { page_size: 100 };
-      if (selectedProperty) {
-        apiParams.property_id = selectedProperty;
+  const fetchMaintenanceHistory = useCallback(
+    async (taskTemplateId: number) => {
+      setLoadingHistory(true);
+      try {
+        // Build API params
+        const apiParams: any = { page_size: 100 };
+        if (selectedProperty) {
+          apiParams.property_id = selectedProperty;
+        }
+
+        // Fetch preventive maintenance records (filtered by property if selected)
+        const response = await apiClient.get(
+          "/api/v1/preventive-maintenance/",
+          {
+            params: apiParams,
+          },
+        );
+
+        // Handle both array and paginated response
+        let historyData: MaintenanceHistory[] = [];
+        if (Array.isArray(response.data)) {
+          historyData = response.data;
+        } else if (response.data && "results" in response.data) {
+          historyData = response.data.results || [];
+        }
+
+        if (historyData.length > 0) {
+        }
+
+        // Filter to show records that use this task template
+        const filtered = historyData.filter((record: any) => {
+          // Match by procedure_template or procedure_template_id
+          const matchesTemplate =
+            record.procedure_template === taskTemplateId ||
+            record.procedure_template_id === taskTemplateId;
+          return matchesTemplate;
+        });
+        if (filtered.length > 0) {
+        }
+
+        setMaintenanceHistory(filtered);
+      } catch (err: any) {
+        console.error("[Maintenance History] Error:", err);
+        console.error(
+          "[Maintenance History] Error details:",
+          err.response?.data,
+        );
+        // Don't set error, just leave history empty
+        setMaintenanceHistory([]);
+      } finally {
+        setLoadingHistory(false);
       }
-      
-      // Fetch preventive maintenance records (filtered by property if selected)
-      const response = await apiClient.get('/api/v1/preventive-maintenance/', {
-        params: apiParams
-      });
-      
-      // Handle both array and paginated response
-      let historyData: MaintenanceHistory[] = [];
-      if (Array.isArray(response.data)) {
-        historyData = response.data;
-      } else if (response.data && 'results' in response.data) {
-        historyData = response.data.results || [];
-      }
-      
-      if (historyData.length > 0) {
-      }
-      
-      // Filter to show records that use this task template
-      const filtered = historyData.filter((record: any) => {
-        
-        // Match by procedure_template or procedure_template_id
-        const matchesTemplate = record.procedure_template === taskTemplateId || record.procedure_template_id === taskTemplateId;
-        return matchesTemplate;
-      });
-      if (filtered.length > 0) {
-      }
-      
-      setMaintenanceHistory(filtered);
-    } catch (err: any) {
-      console.error('[Maintenance History] Error:', err);
-      console.error('[Maintenance History] Error details:', err.response?.data);
-      // Don't set error, just leave history empty
-      setMaintenanceHistory([]);
-    } finally {
-      setLoadingHistory(false);
-    }
-  }, [selectedProperty]); // Add selectedProperty to dependencies
+    },
+    [selectedProperty],
+  ); // Add selectedProperty to dependencies
 
   // Memoize fetchTask to prevent infinite loops
   const fetchTask = useCallback(async () => {
@@ -164,27 +192,34 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<MaintenanceTask>(`/api/v1/maintenance-procedures/${unwrappedParams.id}/`);
+      const response = await apiClient.get<MaintenanceTask>(
+        `/api/v1/maintenance-procedures/${unwrappedParams.id}/`,
+      );
       setTask(response.data);
-      
+
       // Fetch maintenance history for this task template
       fetchMaintenanceHistory(response.data.id);
     } catch (err: any) {
-      console.error('Error fetching task:', err);
-      setError(err.message || 'Failed to load task details');
+      console.error("Error fetching task:", err);
+      setError(err.message || "Failed to load task details");
     } finally {
       clearLoadingAfterMinTime();
     }
-  }, [unwrappedParams.id, selectedProperty, fetchMaintenanceHistory, recordLoaderShown, clearLoadingAfterMinTime]); // Add selectedProperty
+  }, [
+    unwrappedParams.id,
+    selectedProperty,
+    fetchMaintenanceHistory,
+    recordLoaderShown,
+    clearLoadingAfterMinTime,
+  ]); // Add selectedProperty
 
   useEffect(() => {
-    
-    if (status === 'authenticated' && unwrappedParams.id) {
+    if (status === "authenticated" && unwrappedParams.id) {
       fetchTask();
     }
   }, [status, unwrappedParams.id, selectedProperty, fetchTask]); // Add selectedProperty to trigger refetch
 
-  if (status === 'loading' || loading) {
+  if (status === "loading" || loading) {
     return (
       <div
         className="flex min-h-[60vh] flex-col items-center justify-center gap-5"
@@ -195,7 +230,7 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
         </div>
-        <p className="text-center text-lg font-medium text-gray-700 sm:text-xl">
+        <p className="text-center text-lg font-medium text-muted-foreground sm:text-xl">
           Loading task details…
         </p>
       </div>
@@ -207,7 +242,7 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
       <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
-            <p className="text-red-800">{error || 'Task not found'}</p>
+            <p className="text-red-800">{error || "Task not found"}</p>
             <Button asChild className="mt-4">
               <Link href="/dashboard/maintenance-tasks">
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -221,20 +256,20 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
   }
 
   const frequencyColors: Record<string, string> = {
-    daily: 'bg-red-100 text-red-800',
-    weekly: 'bg-orange-100 text-orange-800',
-    monthly: 'bg-blue-100 text-blue-800',
-    quarterly: 'bg-green-100 text-green-800',
-    semi_annual: 'bg-purple-100 text-purple-800',
-    annual: 'bg-indigo-100 text-indigo-800',
-    custom: 'bg-gray-100 text-gray-800',
+    daily: "bg-red-100 text-red-800",
+    weekly: "bg-orange-100 text-orange-800",
+    monthly: "bg-blue-100 text-blue-800",
+    quarterly: "bg-green-100 text-green-800",
+    semi_annual: "bg-purple-100 text-purple-800",
+    annual: "bg-indigo-100 text-indigo-800",
+    custom: "bg-muted text-foreground",
   };
 
   const difficultyColors: Record<string, string> = {
-    beginner: 'bg-green-100 text-green-800',
-    intermediate: 'bg-yellow-100 text-yellow-800',
-    advanced: 'bg-orange-100 text-orange-800',
-    expert: 'bg-red-100 text-red-800',
+    beginner: "bg-green-100 text-green-800",
+    intermediate: "bg-yellow-100 text-yellow-800",
+    advanced: "bg-orange-100 text-orange-800",
+    expert: "bg-red-100 text-red-800",
   };
 
   return (
@@ -248,8 +283,8 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
           </Link>
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">{task.name}</h1>
-          <p className="text-gray-600">Task ID: {task.id}</p>
+          <h1 className="text-2xl font-bold text-foreground">{task.name}</h1>
+          <p className="text-muted-foreground">Task ID: {task.id}</p>
         </div>
       </div>
 
@@ -266,34 +301,34 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <p className="text-sm text-gray-600 mb-2">Description</p>
-            <p className="text-gray-900">{task.description}</p>
+            <p className="text-sm text-muted-foreground mb-2">Description</p>
+            <p className="text-foreground">{task.description}</p>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t">
             <div>
-              <p className="text-sm text-gray-600 mb-1">Frequency</p>
+              <p className="text-sm text-muted-foreground mb-1">Frequency</p>
               <Badge className={frequencyColors[task.frequency]}>
-                {task.frequency.replace('_', ' ').toUpperCase()}
+                {task.frequency.replace("_", " ").toUpperCase()}
               </Badge>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Difficulty</p>
+              <p className="text-sm text-muted-foreground mb-1">Difficulty</p>
               <Badge className={difficultyColors[task.difficulty_level]}>
                 {task.difficulty_level.toUpperCase()}
               </Badge>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">Duration</p>
-              <p className="font-semibold text-gray-900 flex items-center gap-1">
+              <p className="text-sm text-muted-foreground mb-1">Duration</p>
+              <p className="font-semibold text-foreground flex items-center gap-1">
                 <Clock className="h-4 w-4" />
                 {task.estimated_duration}
               </p>
             </div>
             {task.responsible_department && (
               <div>
-                <p className="text-sm text-gray-600 mb-1">Department</p>
-                <p className="font-semibold text-gray-900 flex items-center gap-1">
+                <p className="text-sm text-muted-foreground mb-1">Department</p>
+                <p className="font-semibold text-foreground flex items-center gap-1">
                   <Users className="h-4 w-4" />
                   {task.responsible_department}
                 </p>
@@ -311,24 +346,33 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
               <CheckCircle2 className="h-5 w-5" />
               Procedure Steps ({(task as any).steps.length})
             </CardTitle>
-            <CardDescription>Follow these steps to complete the maintenance task</CardDescription>
+            <CardDescription>
+              Follow these steps to complete the maintenance task
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {((task as any)?.steps || [])
                 .sort((a: any, b: any) => a.step_number - b.step_number)
                 .map((step: any, index: number) => (
-                  <div key={index} className="flex gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div
+                    key={index}
+                    className="flex gap-4 p-4 bg-muted rounded-lg"
+                  >
                     <div className="flex-shrink-0">
                       <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">
                         {step.step_number}
                       </div>
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900">{step.title}</h4>
-                      <p className="text-sm text-gray-600 mt-1">{step.description}</p>
+                      <h4 className="font-semibold text-foreground">
+                        {step.title}
+                      </h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {step.description}
+                      </p>
                       {step.estimated_time && (
-                        <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           Estimated time: {step.estimated_time}
                         </p>
@@ -351,7 +395,9 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-gray-900 whitespace-pre-wrap">{task.required_tools}</p>
+            <p className="text-foreground whitespace-pre-wrap">
+              {task.required_tools}
+            </p>
           </CardContent>
         </Card>
       )}
@@ -368,7 +414,9 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
           <CardContent>
             <div className="flex gap-3">
               <AlertTriangle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-1" />
-              <p className="text-yellow-900 whitespace-pre-wrap">{task.safety_notes}</p>
+              <p className="text-yellow-900 whitespace-pre-wrap">
+                {task.safety_notes}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -389,81 +437,126 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
           {loadingHistory ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="ml-3 text-gray-600">Loading maintenance history...</p>
+              <p className="ml-3 text-muted-foreground">
+                Loading maintenance history...
+              </p>
             </div>
           ) : maintenanceHistory.length === 0 ? (
             <div className="text-center py-8">
-              <History className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600 font-medium">No maintenance history found for this task template yet.</p>
-              <p className="text-sm text-gray-500 mt-2">Create a preventive maintenance record and link it to this task template to see history here.</p>
+              <History className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground font-medium">
+                No maintenance history found for this task template yet.
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Create a preventive maintenance record and link it to this task
+                template to see history here.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
               {maintenanceHistory
-                .sort((a, b) => new Date(b.scheduled_date).getTime() - new Date(a.scheduled_date).getTime())
+                .sort(
+                  (a, b) =>
+                    new Date(b.scheduled_date).getTime() -
+                    new Date(a.scheduled_date).getTime(),
+                )
                 .map((record, index) => (
-                  <div key={record.pm_id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div
+                    key={record.pm_id}
+                    className="border border-border rounded-lg p-4 hover:bg-muted transition-colors"
+                  >
                     <div className="flex flex-col lg:flex-row gap-4">
                       {/* Left: Info */}
                       <div className="flex-1 space-y-2">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 space-y-2">
-                            <Link 
+                            <Link
                               href={`/dashboard/preventive-maintenance/${record.pm_id}`}
-                              className="text-base font-semibold text-gray-900 hover:text-blue-600 transition-colors block"
+                              className="text-base font-semibold text-foreground hover:text-blue-600 transition-colors block"
                             >
-                              {record.pmtitle || 'Untitled Maintenance'}
+                              {record.pmtitle || "Untitled Maintenance"}
                             </Link>
                             {record.pm_id && (
-                              <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-blue-100 text-blue-800 border border-blue-300 font-mono text-sm font-bold shadow-sm">
+                              <div className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-blue-100 text-blue-800 border border-blue-300 font-mono text-sm font-bold shadow-soft">
                                 <span className="text-blue-600">PM ID:</span>
                                 <span>{record.pm_id}</span>
                               </div>
                             )}
                           </div>
-                          <StatusBadge status={record.status || 'scheduled'} />
+                          <StatusBadge status={record.status || "scheduled"} />
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                          <div className="flex items-center gap-1 text-gray-600">
+                          <div className="flex items-center gap-1 text-muted-foreground">
                             <Calendar className="h-4 w-4 text-blue-500" />
                             <div>
-                              <span className="text-xs text-gray-500">Scheduled:</span>
-                              <p className="font-medium text-gray-900">{new Date(record.scheduled_date).toLocaleDateString()}</p>
+                              <span className="text-xs text-muted-foreground">
+                                Scheduled:
+                              </span>
+                              <p className="font-medium text-foreground">
+                                {new Date(
+                                  record.scheduled_date,
+                                ).toLocaleDateString()}
+                              </p>
                             </div>
                           </div>
                           {record.completed_date && (
-                            <div className="flex items-center gap-1 text-gray-600">
+                            <div className="flex items-center gap-1 text-muted-foreground">
                               <CheckCircle2 className="h-4 w-4 text-green-500" />
                               <div>
-                                <span className="text-xs text-gray-500">Completed:</span>
-                                <p className="font-medium text-green-700">{new Date(record.completed_date).toLocaleDateString()}</p>
+                                <span className="text-xs text-muted-foreground">
+                                  Completed:
+                                </span>
+                                <p className="font-medium text-green-700">
+                                  {new Date(
+                                    record.completed_date,
+                                  ).toLocaleDateString()}
+                                </p>
                               </div>
                             </div>
                           )}
-                          {(record.assigned_to_details || record.assigned_to) && (() => {
-                            const assignedUser = record.assigned_to_details || 
-                              (typeof record.assigned_to === 'object' ? record.assigned_to : null);
-                            const displayName = assignedUser
-                              ? getDisplayName(assignedUser, 'Unknown Technician')
-                              : getDisplayName(record.assigned_to as any, 'Unknown Technician');
-                            return (
-                              <div className="flex items-center gap-1 text-gray-600">
-                                <User className="h-4 w-4 text-sky-500" />
-                                <div>
-                                  <span className="text-xs text-gray-500">Assigned To:</span>
-                                  <p className="font-medium text-gray-900">{displayName}</p>
+                          {(record.assigned_to_details || record.assigned_to) &&
+                            (() => {
+                              const assignedUser =
+                                record.assigned_to_details ||
+                                (typeof record.assigned_to === "object"
+                                  ? record.assigned_to
+                                  : null);
+                              const displayName = assignedUser
+                                ? getDisplayName(
+                                    assignedUser,
+                                    "Unknown Technician",
+                                  )
+                                : getDisplayName(
+                                    record.assigned_to as any,
+                                    "Unknown Technician",
+                                  );
+                              return (
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <User className="h-4 w-4 text-sky-500" />
+                                  <div>
+                                    <span className="text-xs text-muted-foreground">
+                                      Assigned To:
+                                    </span>
+                                    <p className="font-medium text-foreground">
+                                      {displayName}
+                                    </p>
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })()}
+                              );
+                            })()}
                           {record.created_by && (
-                            <div className="flex items-center gap-1 text-gray-600">
+                            <div className="flex items-center gap-1 text-muted-foreground">
                               <Users className="h-4 w-4 text-purple-500" />
                               <div>
-                                <span className="text-xs text-gray-500">Created By:</span>
-                                <p className="font-medium text-gray-900">
-                                  {getDisplayName(record.created_by as any, 'Unknown Technician')}
+                                <span className="text-xs text-muted-foreground">
+                                  Created By:
+                                </span>
+                                <p className="font-medium text-foreground">
+                                  {getDisplayName(
+                                    record.created_by as any,
+                                    "Unknown Technician",
+                                  )}
                                 </p>
                               </div>
                             </div>
@@ -471,56 +564,81 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
                         </div>
 
                         {record.notes && (
-                          <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-200">
-                            <p className="text-xs text-gray-500 mb-1">Notes:</p>
-                            <p className="text-sm text-gray-700">{record.notes}</p>
+                          <div className="mt-2 p-2 bg-muted rounded border border-border">
+                            <p className="text-xs text-muted-foreground mb-1">
+                              Notes:
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {record.notes}
+                            </p>
                           </div>
                         )}
                       </div>
 
                       {/* Images section removed - focusing on dates and user info */}
-                      {false && (record.before_image_url || record.after_image_url) && (
-                        <div className="flex gap-3 lg:w-1/3">
-                          {record.before_image_url && (
-                            <div className="flex-1">
-                              <p className="text-xs text-gray-600 mb-1 font-medium">Before</p>
-                              <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
-                                <img
-                                  src={record.before_image_url}
-                                  alt="Before maintenance"
-                                  className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                                  onClick={() => window.open(record.before_image_url, '_blank')}
-                                />
-                                <div className="absolute top-1 right-1">
-                                  <Badge variant="secondary" className="text-xs bg-white/80">
-                                    <ImageIcon className="h-3 w-3 mr-1" />
-                                    Before
-                                  </Badge>
+                      {false &&
+                        (record.before_image_url || record.after_image_url) && (
+                          <div className="flex gap-3 lg:w-1/3">
+                            {record.before_image_url && (
+                              <div className="flex-1">
+                                <p className="text-xs text-muted-foreground mb-1 font-medium">
+                                  Before
+                                </p>
+                                <div className="relative aspect-square rounded-lg overflow-hidden bg-muted border border-border">
+                                  <img
+                                    src={record.before_image_url}
+                                    alt="Before maintenance"
+                                    className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                                    onClick={() =>
+                                      window.open(
+                                        record.before_image_url,
+                                        "_blank",
+                                      )
+                                    }
+                                  />
+                                  <div className="absolute top-1 right-1">
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs bg-card/80"
+                                    >
+                                      <ImageIcon className="h-3 w-3 mr-1" />
+                                      Before
+                                    </Badge>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                          {record.after_image_url && (
-                            <div className="flex-1">
-                              <p className="text-xs text-gray-600 mb-1 font-medium">After</p>
-                              <div className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
-                                <img
-                                  src={record.after_image_url}
-                                  alt="After maintenance"
-                                  className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                                  onClick={() => window.open(record.after_image_url, '_blank')}
-                                />
-                                <div className="absolute top-1 right-1">
-                                  <Badge variant="secondary" className="text-xs bg-white/80">
-                                    <ImageIcon className="h-3 w-3 mr-1" />
-                                    After
-                                  </Badge>
+                            )}
+                            {record.after_image_url && (
+                              <div className="flex-1">
+                                <p className="text-xs text-muted-foreground mb-1 font-medium">
+                                  After
+                                </p>
+                                <div className="relative aspect-square rounded-lg overflow-hidden bg-muted border border-border">
+                                  <img
+                                    src={record.after_image_url}
+                                    alt="After maintenance"
+                                    className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
+                                    onClick={() =>
+                                      window.open(
+                                        record.after_image_url,
+                                        "_blank",
+                                      )
+                                    }
+                                  />
+                                  <div className="absolute top-1 right-1">
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs bg-card/80"
+                                    >
+                                      <ImageIcon className="h-3 w-3 mr-1" />
+                                      After
+                                    </Badge>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                            )}
+                          </div>
+                        )}
                     </div>
                   </div>
                 ))}
@@ -532,7 +650,7 @@ export default function MaintenanceTaskDetailPage({ params }: { params: Promise<
       {/* Timestamps */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-muted-foreground">
             <div>
               <p>Created: {new Date(task.created_at).toLocaleString()}</p>
             </div>

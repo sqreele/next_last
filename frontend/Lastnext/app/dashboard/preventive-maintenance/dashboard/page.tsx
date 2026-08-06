@@ -1,14 +1,12 @@
-'use client';
+"use client";
 
-import React from 'react';
-import PreventiveMaintenanceDashboard from '@/app/components/preventive/PreventiveMaintenanceDashboard';
+import React from "react";
+import PreventiveMaintenanceDashboard from "@/app/components/preventive/PreventiveMaintenanceDashboard";
 
 export default function PreventiveMaintenanceDashboardPage() {
   return (
-    <div className="bg-gray-50 min-h-screen">
-      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
-        <PreventiveMaintenanceDashboard />
-      </div>
+    <div className="min-h-screen bg-muted">
+      <PreventiveMaintenanceDashboard />
     </div>
   );
 }

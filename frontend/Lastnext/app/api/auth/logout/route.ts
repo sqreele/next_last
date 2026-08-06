@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     
     if (!auth0Domain || !clientId) {
       console.error('Missing Auth0 configuration');
-      return NextResponse.redirect(`${baseUrl}/error?message=Auth0 not configured`);
+      return NextResponse.redirect(`${baseUrl}/error?message=Authentication service not configured`);
     }
     
     // Build Auth0 logout URL

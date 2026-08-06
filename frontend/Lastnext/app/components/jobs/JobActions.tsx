@@ -2,7 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, FileDown, Filter, SortAsc, SortDesc, Calendar, DoorOpen, Settings } from "lucide-react";
+import {
+  Plus,
+  FileDown,
+  Filter,
+  SortAsc,
+  SortDesc,
+  Calendar,
+  DoorOpen,
+  Settings,
+} from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import { useUser } from "@/app/lib/stores/mainStore";
@@ -17,10 +26,17 @@ import {
 } from "@/app/components/ui/dropdown-menu";
 import { SortOrder, Job, Property, TabValue, Room } from "@/app/lib/types";
 import { format } from "date-fns";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/app/components/ui/dialog";
 import { Calendar as CalendarComponent } from "@/app/components/ui/calendar";
 
-type DateFilter = "all" | "today" | "yesterday" | "thisWeek" | "thisMonth" | "custom";
+type DateFilter =
+  "all" | "today" | "yesterday" | "thisWeek" | "thisMonth" | "custom";
 
 interface JobActionsProps {
   onSort?: (order: SortOrder) => void;
@@ -54,17 +70,25 @@ export default function JobActions({
   const { selectedPropertyId: selectedProperty } = useUser();
   const { data: session } = useSession();
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false);
-  const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>({});
+  const [customRange, setCustomRange] = useState<{ from?: Date; to?: Date }>(
+    {},
+  );
   const [isRoomFilterOpen, setIsRoomFilterOpen] = useState(false);
 
   const getDateFilterLabel = (filter: DateFilter) => {
     switch (filter) {
-      case "today": return "Today";
-      case "yesterday": return "Yesterday";
-      case "thisWeek": return "This Week";
-      case "thisMonth": return "This Month";
-      case "custom": return "Custom Range";
-      default: return "All Time";
+      case "today":
+        return "Today";
+      case "yesterday":
+        return "Yesterday";
+      case "thisWeek":
+        return "This Week";
+      case "thisMonth":
+        return "This Month";
+      case "custom":
+        return "Custom Range";
+      default:
+        return "All Time";
     }
   };
 
@@ -87,24 +111,23 @@ export default function JobActions({
 
   const getRoomDisplayInfo = (room: Room) => {
     const roomName = room.name || `Room ${room.room_id}`;
-    const roomType = room.room_type || 'Unknown Type';
-    
+    const roomType = room.room_type || "Unknown Type";
+
     return {
       name: roomName,
       type: roomType,
       fullName: `${roomName} (${roomType})`,
-      isActive: room.is_active
+      isActive: room.is_active,
     };
   };
 
   // The board has no property filter button; it follows the selected property from the app header.
   useEffect(() => {
     const fetchRooms = async () => {
-      
       setIsLoadingRooms(true);
       try {
         let roomsData: any[] = [];
-        const baseUrl = '/api/rooms';
+        const baseUrl = "/api/rooms";
         const url = selectedProperty
           ? `${baseUrl}?property=${encodeURIComponent(String(selectedProperty))}`
           : baseUrl;
@@ -120,15 +143,19 @@ export default function JobActions({
           setRooms(roomsData);
           setRoomSearch("");
         } else {
-          console.error('❌ Invalid rooms data format:', roomsData);
-          
+          console.error("❌ Invalid rooms data format:", roomsData);
+
           // Try to fetch all rooms as a fallback
           try {
             const fallbackResponse = await fetch(baseUrl);
-            
+
             if (fallbackResponse.ok) {
               const fallbackRooms = await fallbackResponse.json();
-              if (fallbackRooms && Array.isArray(fallbackRooms) && fallbackRooms.length > 0) {
+              if (
+                fallbackRooms &&
+                Array.isArray(fallbackRooms) &&
+                fallbackRooms.length > 0
+              ) {
                 setRooms(fallbackRooms);
                 setRoomSearch("");
               }
@@ -138,7 +165,7 @@ export default function JobActions({
           }
         }
       } catch (error) {
-        console.error('❌ Error fetching rooms:', error);
+        console.error("❌ Error fetching rooms:", error);
         setRooms([]);
       } finally {
         setIsLoadingRooms(false);
@@ -177,13 +204,16 @@ export default function JobActions({
     setIsCustomDateOpen(false);
   };
 
-
   const exportCount = jobs.length;
 
-  const menuItemClass = "flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 cursor-pointer transition-colors";
-  const menuLabelClass = "text-xs font-semibold text-gray-500 px-3 py-1.5 uppercase tracking-wide";
-  const dropdownContentClass = "w-[220px] bg-white border border-gray-200 rounded-lg shadow-lg";
-  const buttonClass = "flex items-center gap-2 text-sm h-9 px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors shadow-sm";
+  const menuItemClass =
+    "flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer transition-colors";
+  const menuLabelClass =
+    "text-xs font-semibold text-muted-foreground px-3 py-1.5 uppercase tracking-wide";
+  const dropdownContentClass =
+    "w-[220px] bg-card border border-border rounded-lg shadow-card";
+  const buttonClass =
+    "flex items-center gap-2 text-sm h-9 px-3 py-2 border border-border rounded-md bg-card hover:bg-muted transition-colors shadow-soft";
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -191,34 +221,58 @@ export default function JobActions({
       <div className="hidden md:flex items-center gap-2 flex-wrap">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button 
-              variant={currentDateFilter !== "all" ? "default" : "outline"} 
-              size="sm" 
-              className={`${buttonClass} ${currentDateFilter !== "all" ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100' : ''}`}
+            <Button
+              variant={currentDateFilter !== "all" ? "default" : "outline"}
+              size="sm"
+              className={`${buttonClass} ${currentDateFilter !== "all" ? "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100" : ""}`}
             >
               <Calendar className="h-4 w-4" />
               <span>{getDateFilterLabel(currentDateFilter)}</span>
-              {currentDateFilter !== "all" && <span className="ml-1 text-xs bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full">Active</span>}
+              {currentDateFilter !== "all" && (
+                <span className="ml-1 text-xs bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full">
+                  Active
+                </span>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className={dropdownContentClass}>
-            <DropdownMenuLabel className={menuLabelClass}>Date Range</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("all")} className={menuItemClass}>
+            <DropdownMenuLabel className={menuLabelClass}>
+              Date Range
+            </DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("all")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4 opacity-70" /> All Time
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("today")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("today")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4 opacity-70" /> Today
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("yesterday")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("yesterday")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4 opacity-70" /> Yesterday
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("thisWeek")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("thisWeek")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4 opacity-70" /> This Week
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("thisMonth")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("thisMonth")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4 opacity-70" /> This Month
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("custom")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("custom")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4 opacity-70" /> Custom Range
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -226,32 +280,38 @@ export default function JobActions({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button 
-              variant={currentRoomFilter ? "default" : "outline"} 
-              size="sm" 
-              className={`${buttonClass} ${currentRoomFilter ? 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100' : ''}`}
+            <Button
+              variant={currentRoomFilter ? "default" : "outline"}
+              size="sm"
+              className={`${buttonClass} ${currentRoomFilter ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100" : ""}`}
               disabled={isLoadingRooms}
             >
               <DoorOpen className="h-4 w-4" />
               <span className="truncate max-w-[120px]">
                 {isLoadingRooms ? "Loading..." : getRoomName(currentRoomFilter)}
               </span>
-              {currentRoomFilter && <span className="ml-1 text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full">Active</span>}
+              {currentRoomFilter && (
+                <span className="ml-1 text-xs bg-green-100 text-green-600 px-1.5 py-0.5 rounded-full">
+                  Active
+                </span>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className={dropdownContentClass}>
-            <DropdownMenuLabel className={menuLabelClass}>Rooms</DropdownMenuLabel>
+            <DropdownMenuLabel className={menuLabelClass}>
+              Rooms
+            </DropdownMenuLabel>
             <div className="px-2 pb-1">
               <input
                 type="text"
                 value={roomSearch}
                 onChange={(e) => setRoomSearch(e.target.value)}
                 placeholder="Search room number, name, or type..."
-                className="w-full h-8 px-3 text-xs rounded-md bg-gray-50 border border-gray-200 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                className="w-full h-8 px-3 text-xs rounded-md bg-muted border border-border text-muted-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               />
             </div>
-            <DropdownMenuItem 
-              onClick={() => onRoomFilter?.(null)} 
+            <DropdownMenuItem
+              onClick={() => onRoomFilter?.(null)}
               className={menuItemClass}
             >
               <DoorOpen className="h-4 w-4" />
@@ -262,7 +322,9 @@ export default function JobActions({
                 if (!roomSearch) return true;
                 const q = roomSearch.toLowerCase();
                 const roomInfo = getRoomDisplayInfo(room);
-                const byId = String(room.room_id ?? '').toLowerCase().includes(q);
+                const byId = String(room.room_id ?? "")
+                  .toLowerCase()
+                  .includes(q);
                 const byName = roomInfo.name.toLowerCase().includes(q);
                 const byType = roomInfo.type.toLowerCase().includes(q);
                 return byId || byName || byType;
@@ -283,23 +345,25 @@ export default function JobActions({
                 );
               })}
             {getFilteredRooms().length === 0 && !isLoadingRooms && (
-              <DropdownMenuItem disabled className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 cursor-not-allowed">
+              <DropdownMenuItem
+                disabled
+                className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
+              >
                 <span>No rooms loaded</span>
               </DropdownMenuItem>
             )}
-            
+
             {/* DEBUG BUTTON - Only show in development */}
-            {process.env.NODE_ENV === 'development' && (
-              <DropdownMenuItem 
+            {process.env.NODE_ENV === "development" && (
+              <DropdownMenuItem
                 onClick={async () => {
                   try {
-                    const response = await fetch('/api/rooms');
+                    const response = await fetch("/api/rooms");
                     if (response.ok) {
                       const rooms = await response.json();
                     } else {
                     }
-                  } catch (error) {
-                  }
+                  } catch (error) {}
                 }}
                 className={menuItemClass}
               >
@@ -317,41 +381,61 @@ export default function JobActions({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className={dropdownContentClass}>
-            <DropdownMenuLabel className={menuLabelClass}>Sort Order</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => onSort?.("Newest first")} className={menuItemClass}>
+            <DropdownMenuLabel className={menuLabelClass}>
+              Sort Order
+            </DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => onSort?.("Newest first")}
+              className={menuItemClass}
+            >
               <SortDesc className="h-4 w-4" /> Newest first
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSort?.("Oldest first")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => onSort?.("Oldest first")}
+              className={menuItemClass}
+            >
               <SortAsc className="h-4 w-4" /> Oldest first
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <CreateJobButton onJobCreated={handleRefresh} propertyId={selectedProperty ?? ""} />
-
+        <CreateJobButton
+          onJobCreated={handleRefresh}
+          propertyId={selectedProperty ?? ""}
+        />
       </div>
 
       {/* Mobile Actions */}
       <div className="md:hidden">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="w-9 h-9 p-0 flex items-center justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-9 h-9 p-0 flex items-center justify-center"
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className={`${dropdownContentClass} max-h-[80vh] overflow-y-auto w-[280px]`} sideOffset={5}>
-            <DropdownMenuLabel className={menuLabelClass}>Rooms</DropdownMenuLabel>
+          <DropdownMenuContent
+            align="end"
+            className={`${dropdownContentClass} max-h-[80vh] overflow-y-auto w-[280px]`}
+            sideOffset={5}
+          >
+            <DropdownMenuLabel className={menuLabelClass}>
+              Rooms
+            </DropdownMenuLabel>
             <div className="px-2 pb-1">
               <input
                 type="text"
                 value={roomSearch}
                 onChange={(e) => setRoomSearch(e.target.value)}
                 placeholder="Search room number, name, or type..."
-                className="w-full h-8 px-3 text-xs rounded-md bg-gray-50 border border-gray-200 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:bg-gray-100 disabled:text-gray-400"
+                className="w-full h-8 px-3 text-xs rounded-md bg-muted border border-border text-muted-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:bg-muted disabled:text-muted-foreground"
               />
             </div>
-            <DropdownMenuItem 
-              onClick={() => onRoomFilter?.(null)} 
+            <DropdownMenuItem
+              onClick={() => onRoomFilter?.(null)}
               className={menuItemClass}
             >
               <DoorOpen className="h-4 w-4" /> All Rooms
@@ -361,7 +445,9 @@ export default function JobActions({
                 if (!roomSearch) return true;
                 const q = roomSearch.toLowerCase();
                 const roomInfo = getRoomDisplayInfo(room);
-                const byId = String(room.room_id ?? '').toLowerCase().includes(q);
+                const byId = String(room.room_id ?? "")
+                  .toLowerCase()
+                  .includes(q);
                 const byName = roomInfo.name.toLowerCase().includes(q);
                 const byType = roomInfo.type.toLowerCase().includes(q);
                 return byId || byName || byType;
@@ -382,42 +468,72 @@ export default function JobActions({
                 );
               })}
             {getFilteredRooms().length === 0 && !isLoadingRooms && (
-              <DropdownMenuItem disabled className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 cursor-not-allowed">
+              <DropdownMenuItem
+                disabled
+                className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
+              >
                 <span>No rooms available</span>
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator className="bg-gray-200 my-1" />
 
-            <DropdownMenuLabel className={menuLabelClass}>Date Range</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("all")} className={menuItemClass}>
+            <DropdownMenuLabel className={menuLabelClass}>
+              Date Range
+            </DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("all")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4" /> All Time
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("today")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("today")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4" /> Today
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("yesterday")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("yesterday")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4" /> Yesterday
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("thisWeek")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("thisWeek")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4" /> This Week
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("thisMonth")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("thisMonth")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4" /> This Month
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDateFilterChange("custom")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => handleDateFilterChange("custom")}
+              className={menuItemClass}
+            >
               <Calendar className="h-4 w-4" /> Custom Range
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-gray-200 my-1" />
 
-            <DropdownMenuLabel className={menuLabelClass}>Sort By</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => onSort?.("Newest first")} className={menuItemClass}>
+            <DropdownMenuLabel className={menuLabelClass}>
+              Sort By
+            </DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => onSort?.("Newest first")}
+              className={menuItemClass}
+            >
               <SortDesc className="h-4 w-4" /> Newest first
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSort?.("Oldest first")} className={menuItemClass}>
+            <DropdownMenuItem
+              onClick={() => onSort?.("Oldest first")}
+              className={menuItemClass}
+            >
               <SortAsc className="h-4 w-4" /> Oldest first
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-gray-200 my-1" />
-
 
             <DropdownMenuItem onClick={handleRefresh} className={menuItemClass}>
               <Plus className="h-4 w-4" /> Create Job
@@ -450,14 +566,22 @@ export default function JobActions({
           </div>
           <DialogFooter>
             <div className="flex items-center justify-end gap-2 w-full">
-              <Button variant="ghost" onClick={handleClearCustomRange}>Clear</Button>
-              <Button variant="outline" onClick={handleCloseCustomRange}>Cancel</Button>
-              <Button onClick={handleApplyCustomRange} disabled={!customRange.from || !customRange.to}>Apply</Button>
+              <Button variant="ghost" onClick={handleClearCustomRange}>
+                Clear
+              </Button>
+              <Button variant="outline" onClick={handleCloseCustomRange}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleApplyCustomRange}
+                disabled={!customRange.from || !customRange.to}
+              >
+                Apply
+              </Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

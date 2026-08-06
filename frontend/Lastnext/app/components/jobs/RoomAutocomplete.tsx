@@ -2,8 +2,19 @@
 "use client";
 
 import React, { useState, useCallback, useEffect, useMemo } from "react";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/app/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/app/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/app/components/ui/popover";
 import { Button } from "@/app/components/ui/button";
 import { Check, ChevronsUpDown, Building, Loader } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
@@ -38,10 +49,13 @@ const RoomAutocomplete = ({
   // Removed fallback mode to enforce strict property-based filtering
 
   // Safer debug logging
-  const debugLog = useCallback((message: string, data?: any) => {
-    if (debug) {
-    }
-  }, [debug]);
+  const debugLog = useCallback(
+    (message: string, data?: any) => {
+      if (debug) {
+      }
+    },
+    [debug],
+  );
 
   // Safer room array handling
   const safeRooms = useMemo(() => (Array.isArray(rooms) ? rooms : []), [rooms]);
@@ -53,7 +67,9 @@ const RoomAutocomplete = ({
     if (!Number.isNaN(numericFromSelected)) return numericFromSelected;
 
     if (Array.isArray(userProperties)) {
-      const match = userProperties.find((p: any) => p && p.property_id === selectedProperty);
+      const match = userProperties.find(
+        (p: any) => p && p.property_id === selectedProperty,
+      );
       const idCandidate = match?.id;
       const numericFromUserProps = Number(idCandidate);
       if (!Number.isNaN(numericFromUserProps)) return numericFromUserProps;
@@ -63,7 +79,12 @@ const RoomAutocomplete = ({
 
   // Determine if rooms have any property association data at all
   const anyRoomHasPropertyAssociation = useMemo(() => {
-    return safeRooms.some(r => r && (r.property_id !== undefined && r.property_id !== null || (Array.isArray(r.properties) && r.properties.length > 0)));
+    return safeRooms.some(
+      (r) =>
+        r &&
+        ((r.property_id !== undefined && r.property_id !== null) ||
+          (Array.isArray(r.properties) && r.properties.length > 0)),
+    );
   }, [safeRooms]);
 
   // Log data for debugging on component mount and when key props change
@@ -73,89 +94,133 @@ const RoomAutocomplete = ({
         selectedProperty,
         userProperties,
         totalRooms: safeRooms.length,
-        selectedRoom
+        selectedRoom,
       });
     }
-  }, [selectedProperty, safeRooms.length, debug, debugLog, selectedRoom, userProperties]);
+  }, [
+    selectedProperty,
+    safeRooms.length,
+    debug,
+    debugLog,
+    selectedRoom,
+    userProperties,
+  ]);
 
   // Enhanced roomBelongsToProperty to handle Django model relationships
-  const roomBelongsToProperty = useCallback((room: Room, propertyId: string | null): boolean => {
-    // Early returns
-    if (!propertyId) return true; // Show all if no property selected
-    if (!room) return false;
+  const roomBelongsToProperty = useCallback(
+    (room: Room, propertyId: string | null): boolean => {
+      // Early returns
+      if (!propertyId) return true; // Show all if no property selected
+      if (!room) return false;
 
-    // Handle numeric property ID (fallback to mapped numeric id from user properties)
-    let numericPropId = !isNaN(Number(propertyId)) ? Number(propertyId) : null;
-    if (numericPropId === null && selectedPropertyNumericId !== null) {
-      numericPropId = selectedPropertyNumericId;
-    }
-    const propIdStr = String(propertyId);
-
-    debugLog(`Checking if room ${room.name} (ID: ${room.room_id}) belongs to property ${propertyId}`);
-
-    // Check direct property_id on room if present
-    if (room.property_id !== undefined && room.property_id !== null) {
-      if (String(room.property_id) === propIdStr) {
-        debugLog(`✓ MATCH: room.property_id matches selected property`);
-        return true;
+      // Handle numeric property ID (fallback to mapped numeric id from user properties)
+      let numericPropId = !isNaN(Number(propertyId))
+        ? Number(propertyId)
+        : null;
+      if (numericPropId === null && selectedPropertyNumericId !== null) {
+        numericPropId = selectedPropertyNumericId;
       }
-      if (numericPropId !== null && Number(room.property_id) === numericPropId) {
-        debugLog(`✓ MATCH: numeric room.property_id matches selected property`);
-        return true;
+      const propIdStr = String(propertyId);
+
+      debugLog(
+        `Checking if room ${room.name} (ID: ${room.room_id}) belongs to property ${propertyId}`,
+      );
+
+      // Check direct property_id on room if present
+      if (room.property_id !== undefined && room.property_id !== null) {
+        if (String(room.property_id) === propIdStr) {
+          debugLog(`✓ MATCH: room.property_id matches selected property`);
+          return true;
+        }
+        if (
+          numericPropId !== null &&
+          Number(room.property_id) === numericPropId
+        ) {
+          debugLog(
+            `✓ MATCH: numeric room.property_id matches selected property`,
+          );
+          return true;
+        }
       }
-    }
 
-    // Check the room.properties array (if it exists)
-    if (room.properties && Array.isArray(room.properties)) {
-      for (const prop of room.properties) {
-        if (prop === null || prop === undefined) continue;
+      // Check the room.properties array (if it exists)
+      if (room.properties && Array.isArray(room.properties)) {
+        for (const prop of room.properties) {
+          if (prop === null || prop === undefined) continue;
 
-        if (typeof prop === 'object') {
-          if ('property_id' in prop && (prop.property_id === propertyId || String(prop.property_id) === propIdStr)) {
-            debugLog(`✓ MATCH: Found property_id match in room.properties`);
-            return true;
-          }
-          if ('id' in prop && (prop.id === propertyId || String(prop.id) === propIdStr)) {
-            debugLog(`✓ MATCH: Found id match in room.properties`);
-            return true;
-          }
-          if (numericPropId !== null) {
-            if ('id' in prop && Number(prop.id) === numericPropId) {
-              debugLog(`✓ MATCH: Found numeric id match in room.properties`);
+          if (typeof prop === "object") {
+            if (
+              "property_id" in prop &&
+              (prop.property_id === propertyId ||
+                String(prop.property_id) === propIdStr)
+            ) {
+              debugLog(`✓ MATCH: Found property_id match in room.properties`);
               return true;
             }
-            if ('property_id' in prop && Number(prop.property_id) === numericPropId) {
-              debugLog(`✓ MATCH: Found numeric property_id match in room.properties`);
+            if (
+              "id" in prop &&
+              (prop.id === propertyId || String(prop.id) === propIdStr)
+            ) {
+              debugLog(`✓ MATCH: Found id match in room.properties`);
+              return true;
+            }
+            if (numericPropId !== null) {
+              if ("id" in prop && Number(prop.id) === numericPropId) {
+                debugLog(`✓ MATCH: Found numeric id match in room.properties`);
+                return true;
+              }
+              if (
+                "property_id" in prop &&
+                Number(prop.property_id) === numericPropId
+              ) {
+                debugLog(
+                  `✓ MATCH: Found numeric property_id match in room.properties`,
+                );
+                return true;
+              }
+            }
+          }
+
+          if (typeof prop === "string" || typeof prop === "number") {
+            if (String(prop) === propIdStr) {
+              debugLog(`✓ MATCH: Found direct ID match in room.properties`);
+              return true;
+            }
+            if (numericPropId !== null && Number(prop) === numericPropId) {
+              debugLog(
+                `✓ MATCH: Found numeric direct ID match in room.properties`,
+              );
               return true;
             }
           }
         }
-
-        if (typeof prop === 'string' || typeof prop === 'number') {
-          if (String(prop) === propIdStr) {
-            debugLog(`✓ MATCH: Found direct ID match in room.properties`);
-            return true;
-          }
-          if (numericPropId !== null && Number(prop) === numericPropId) {
-            debugLog(`✓ MATCH: Found numeric direct ID match in room.properties`);
-            return true;
-          }
-        }
       }
-    }
 
-    // No match found
-    return false;
-  }, [debugLog, selectedPropertyNumericId]);
+      // No match found
+      return false;
+    },
+    [debugLog, selectedPropertyNumericId],
+  );
 
   // Reset selected room when property changes if it doesn't belong
   useEffect(() => {
-    if (selectedRoom && selectedProperty &&
-        !roomBelongsToProperty(selectedRoom, selectedProperty)) {
-      debugLog(`Selected room ${selectedRoom.name} doesn't belong to property ${selectedProperty}, resetting selection`);
+    if (
+      selectedRoom &&
+      selectedProperty &&
+      !roomBelongsToProperty(selectedRoom, selectedProperty)
+    ) {
+      debugLog(
+        `Selected room ${selectedRoom.name} doesn't belong to property ${selectedProperty}, resetting selection`,
+      );
       onSelect(null);
     }
-  }, [selectedProperty, selectedRoom, onSelect, roomBelongsToProperty, debugLog]);
+  }, [
+    selectedProperty,
+    selectedRoom,
+    onSelect,
+    roomBelongsToProperty,
+    debugLog,
+  ]);
 
   // Filter rooms based on property and search query
   const filteredRooms = useMemo(() => {
@@ -164,23 +229,32 @@ const RoomAutocomplete = ({
       return [];
     }
 
-    debugLog(`Filtering ${safeRooms.length} rooms for property: ${selectedProperty || 'any'}, query: "${searchQuery}"`);
+    debugLog(
+      `Filtering ${safeRooms.length} rooms for property: ${selectedProperty || "any"}, query: "${searchQuery}"`,
+    );
 
     const results = safeRooms.filter((room) => {
-      if (!room || typeof room.name !== 'string') {
+      if (!room || typeof room.name !== "string") {
         return false;
       }
 
       // Filter by selected property
-      const passesPropertyFilter = !selectedProperty || !anyRoomHasPropertyAssociation || roomBelongsToProperty(room, selectedProperty);
+      const passesPropertyFilter =
+        !selectedProperty ||
+        !anyRoomHasPropertyAssociation ||
+        roomBelongsToProperty(room, selectedProperty);
       if (!passesPropertyFilter) return false;
 
       // Then filter by search query
       if (searchQuery) {
         const search = searchQuery.toLowerCase();
         const nameMatch = room.name.toLowerCase().includes(search);
-        const typeMatch = typeof room.room_type === 'string' && room.room_type.toLowerCase().includes(search);
-        const idMatch = String(room.room_id ?? '').toLowerCase().includes(search);
+        const typeMatch =
+          typeof room.room_type === "string" &&
+          room.room_type.toLowerCase().includes(search);
+        const idMatch = String(room.room_id ?? "")
+          .toLowerCase()
+          .includes(search);
         return nameMatch || typeMatch || idMatch;
       }
 
@@ -191,25 +265,39 @@ const RoomAutocomplete = ({
 
     // Sort rooms by name for better usability
     return results.sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+      a.name.localeCompare(b.name, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
     );
-  }, [safeRooms, searchQuery, selectedProperty, roomBelongsToProperty, anyRoomHasPropertyAssociation, debugLog]);
+  }, [
+    safeRooms,
+    searchQuery,
+    selectedProperty,
+    roomBelongsToProperty,
+    anyRoomHasPropertyAssociation,
+    debugLog,
+  ]);
 
   // Get property name with better error handling
   const getPropertyName = useCallback((): string => {
     if (!selectedProperty) return "All Properties";
-    
+
     // Check userProperties array for matching property
     if (Array.isArray(userProperties) && userProperties.length > 0) {
       // Try to find by property_id first
-      const propertyById = userProperties.find(p => p.property_id === selectedProperty);
+      const propertyById = userProperties.find(
+        (p) => p.property_id === selectedProperty,
+      );
       if (propertyById?.name) return propertyById.name;
-      
+
       // Try to find by id if property_id didn't match
-      const propertyByAltId = userProperties.find(p => p.id === selectedProperty);
+      const propertyByAltId = userProperties.find(
+        (p) => p.id === selectedProperty,
+      );
       if (propertyByAltId?.name) return propertyByAltId.name;
     }
-    
+
     // Fallback to showing the ID
     return `Property ID ${selectedProperty}`;
   }, [selectedProperty, userProperties]);
@@ -217,18 +305,27 @@ const RoomAutocomplete = ({
   return (
     <div className="space-y-2">
       {/* Info text showing current property */}
-      <div className="mb-1 flex flex-wrap items-start gap-1.5 text-xs text-gray-500">
+      <div className="mb-1 flex flex-wrap items-start gap-1.5 text-xs text-muted-foreground">
         <Building className="mt-0.5 h-3 w-3 shrink-0" />
         <span className="min-w-0 break-words">
-          Showing rooms for: <span className="font-medium text-gray-700">{getPropertyName()}</span>
-          {loading ? <span className="ml-1">(loading...)</span> : (selectedProperty || searchQuery) && (<span className="ml-1">({filteredRooms.length} found)</span>)}
+          Showing rooms for:{" "}
+          <span className="font-medium text-muted-foreground">
+            {getPropertyName()}
+          </span>
+          {loading ? (
+            <span className="ml-1">(loading...)</span>
+          ) : (
+            (selectedProperty || searchQuery) && (
+              <span className="ml-1">({filteredRooms.length} found)</span>
+            )
+          )}
         </span>
       </div>
 
       {/* Debug Info */}
       {debug && (
-        <div className="text-xs text-gray-500 bg-gray-100 p-1 rounded mb-1">
-          Debug: Prop: {selectedProperty || "any"} | Rooms: {safeRooms.length} | 
+        <div className="text-xs text-muted-foreground bg-muted p-1 rounded mb-1">
+          Debug: Prop: {selectedProperty || "any"} | Rooms: {safeRooms.length} |
           Filtered: {filteredRooms.length}
         </div>
       )}
@@ -242,8 +339,8 @@ const RoomAutocomplete = ({
             aria-expanded={open}
             disabled={disabled || loading}
             className={cn(
-              "h-11 w-full justify-between border-gray-300 bg-white px-3 text-left text-sm font-normal sm:text-base",
-              !selectedRoom?.name && "text-muted-foreground"
+              "h-11 w-full justify-between border-border bg-card px-3 text-left text-sm font-normal sm:text-base",
+              !selectedRoom?.name && "text-muted-foreground",
             )}
             data-testid="room-select-button"
           >
@@ -251,7 +348,7 @@ const RoomAutocomplete = ({
               {loading
                 ? "Loading rooms..."
                 : selectedRoom?.name
-                  ? `${selectedRoom.name}${selectedRoom.room_type ? ` (${selectedRoom.room_type})` : ''}`
+                  ? `${selectedRoom.name}${selectedRoom.room_type ? ` (${selectedRoom.room_type})` : ""}`
                   : placeholder}
             </span>
             {loading ? (
@@ -263,7 +360,7 @@ const RoomAutocomplete = ({
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="w-[var(--radix-popover-trigger-width)] min-w-[260px] max-w-[calc(100vw-1rem)] border border-input bg-white p-0 shadow-md"
+          className="w-[var(--radix-popover-trigger-width)] min-w-[260px] max-w-[calc(100vw-1rem)] border border-input bg-card p-0 shadow-soft"
         >
           <Command shouldFilter={false} className="border-0">
             <CommandInput
@@ -275,9 +372,12 @@ const RoomAutocomplete = ({
             />
             <CommandList>
               <CommandEmpty className="py-4 px-4 text-sm text-center text-muted-foreground">
-                {safeRooms.length === 0 ? emptyText :
-                 filteredRooms.length === 0 && (selectedProperty || searchQuery) ? `No rooms match criteria.` :
-                 "No rooms found."}
+                {safeRooms.length === 0
+                  ? emptyText
+                  : filteredRooms.length === 0 &&
+                      (selectedProperty || searchQuery)
+                    ? `No rooms match criteria.`
+                    : "No rooms found."}
               </CommandEmpty>
               <CommandGroup className="max-h-60 overflow-y-auto">
                 {filteredRooms.map((room) => (
@@ -285,22 +385,30 @@ const RoomAutocomplete = ({
                     key={`room-${room.room_id}`}
                     value={String(room.room_id)}
                     onSelect={(currentValue) => {
-                        const roomToSelect = filteredRooms.find(r => String(r.room_id) === currentValue);
-                        onSelect(roomToSelect || null);
-                        setSearchQuery("");
-                        setOpen(false);
+                      const roomToSelect = filteredRooms.find(
+                        (r) => String(r.room_id) === currentValue,
+                      );
+                      onSelect(roomToSelect || null);
+                      setSearchQuery("");
+                      setOpen(false);
                     }}
                     className="text-sm"
                     data-testid={`room-option-${room.room_id}`}
                   >
-                    <Check 
+                    <Check
                       className={cn(
-                        "mr-2 h-4 w-4", 
-                        selectedRoom?.room_id === room.room_id ? "opacity-100" : "opacity-0"
-                      )} 
+                        "mr-2 h-4 w-4",
+                        selectedRoom?.room_id === room.room_id
+                          ? "opacity-100"
+                          : "opacity-0",
+                      )}
                     />
                     <span className="min-w-0 truncate">{room.name}</span>
-                    {room.room_type && <span className="ml-2 hidden text-xs text-muted-foreground sm:inline">({room.room_type})</span>}
+                    {room.room_type && (
+                      <span className="ml-2 hidden text-xs text-muted-foreground sm:inline">
+                        ({room.room_type})
+                      </span>
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>

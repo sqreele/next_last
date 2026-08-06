@@ -1,89 +1,54 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
-  ArrowUpRight,
-  Building2,
+  AirVent,
+  Armchair,
+  ArrowRight,
+  Bath,
   CalendarDays,
-  Copy,
-  ExternalLink,
+  CircleEllipsis,
+  ClipboardCheck,
+  DoorOpen,
+  Droplets,
+  Fan,
+  Flame,
   ImageIcon,
+  Layers3,
+  Lightbulb,
+  LockKeyhole,
   MapPin,
-  MoreHorizontal,
+  PaintRoller,
+  Snowflake,
+  Sparkles,
+  Thermometer,
+  UserRound,
+  Wifi,
+  Wrench,
+  type LucideIcon,
 } from "lucide-react";
-import type { Job, JobPriority, Topic } from "@/app/lib/types";
+import type { Job } from "@/app/lib/types";
 import { cn } from "@/app/lib/utils/cn";
-import { createImageUrl } from "@/app/lib/utils/image-utils";
 import { getDisplayName } from "@/app/lib/utils/display-name";
+import { createImageUrl } from "@/app/lib/utils/image-utils";
 import { StatusBadge } from "@/app/components/StatusBadge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/app/components/ui/dropdown-menu";
 
 type ViewMode = "grid" | "list";
-type PriorityKey = JobPriority | "urgent" | string | null | undefined;
 
 interface MaintenanceJobCardProps {
   job: Job;
   viewMode?: ViewMode;
 }
 
-interface ToneStyle {
-  label: string;
-  header: string;
-  icon: string;
-  badge: string;
-}
-
-const PRIORITY_STYLES: Record<string, ToneStyle> = {
-  urgent: {
-    label: "Urgent",
-    header: "bg-rose-50 text-rose-950",
-    icon: "bg-white text-rose-600 ring-rose-100",
-    badge: "border-rose-200 bg-rose-50 text-rose-700",
-  },
-  high: {
-    label: "High",
-    header: "bg-orange-50 text-orange-950",
-    icon: "bg-white text-orange-600 ring-orange-100",
-    badge: "border-orange-200 bg-orange-50 text-orange-700",
-  },
-  medium: {
-    label: "Medium",
-    header: "bg-sky-50 text-sky-950",
-    icon: "bg-white text-sky-600 ring-sky-100",
-    badge: "border-sky-200 bg-sky-50 text-sky-700",
-  },
-  low: {
-    label: "Low",
-    header: "bg-emerald-50 text-emerald-950",
-    icon: "bg-white text-emerald-600 ring-emerald-100",
-    badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  },
-};
-
-const TYPE_BADGE = "border-slate-200 bg-white text-slate-700";
-
-const isExternalImageUrl = (url: string) => /^https?:\/\//i.test(url) || url.startsWith("/media/");
-
-function getPriorityStyle(priority: PriorityKey): ToneStyle {
-  return PRIORITY_STYLES[String(priority || "medium").toLowerCase()] || PRIORITY_STYLES.medium;
-}
-
 function formatDate(dateString: string | null | undefined): string {
   if (!dateString) return "Not set";
-
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return "Not set";
 
   const now = new Date();
   const diffInDays = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
-
   if (diffInDays === 0) return "Today";
   if (diffInDays === 1) return "Yesterday";
   if (diffInDays > 1 && diffInDays < 7) return `${diffInDays} days ago`;
@@ -95,216 +60,215 @@ function formatDate(dateString: string | null | undefined): string {
   });
 }
 
-function getImageUrl(job: Job): string | null {
-  const firstImage = Array.isArray(job.images) ? job.images.find((image) => image?.jpeg_url || image?.image_url) : null;
-  const raw = firstImage?.jpeg_url || firstImage?.image_url || (Array.isArray(job.image_urls) ? job.image_urls[0] : null);
-  return raw ? createImageUrl(raw) : null;
-}
-
-function getTopicTitle(topic: Topic | undefined): string | null {
-  const title = topic?.title?.trim();
-  return title ? title : null;
-}
-
-function getPrimaryPlace(job: Job): string {
-  return job.area?.name || job.area_name || job.rooms?.[0]?.name || job.room_name || "Unassigned location";
+function getLocation(job: Job): string {
+  return (
+    job.area?.name ||
+    job.area_name ||
+    job.rooms?.[0]?.name ||
+    job.room_name ||
+    "Unassigned location"
+  );
 }
 
 function getAssignee(job: Job): string {
   return getDisplayName(
     job.user,
-    job.technician_name || job.user_name || job.created_by_name || "Unassigned technician",
+    job.technician_name ||
+      job.user_name ||
+      job.created_by_name ||
+      "Unassigned technician",
   );
 }
 
-function getTypeBadges(job: Job): string[] {
-  const badges = ["Work Order"];
-  if (job.is_defective) badges.push("Defect");
-  if (job.is_preventivemaintenance) badges.push("PM");
-  return badges;
+function getProblemSummary(job: Job): string {
+  return job.description?.trim() || job.title?.trim() || "Maintenance job";
 }
 
-function InfoRow({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
-  return (
-    <div className="flex min-w-0 items-center gap-2 text-xs font-semibold text-slate-600">
-      <Icon className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
-      <span className="min-w-0 truncate">{label}</span>
-    </div>
+function getJobImageUrl(job: Job): string | null {
+  const imageRecord = Array.isArray(job.images)
+    ? job.images.find((image) => image?.jpeg_url || image?.image_url)
+    : null;
+  const rawUrl =
+    imageRecord?.jpeg_url ||
+    imageRecord?.image_url ||
+    (Array.isArray(job.image_urls) ? job.image_urls[0] : null);
+
+  return rawUrl ? createImageUrl(rawUrl) : null;
+}
+
+const TOPIC_ICONS: Record<number, { icon: LucideIcon; label: string }> = {
+  1: { icon: Snowflake, label: "Air conditioning" },
+  2: { icon: Bath, label: "Bathroom" },
+  3: { icon: PaintRoller, label: "Wall and repaint" },
+  4: { icon: DoorOpen, label: "Door" },
+  5: { icon: Lightbulb, label: "Lighting" },
+  6: { icon: Wifi, label: "Internet and TV" },
+  7: { icon: Flame, label: "Water and hot water" },
+  8: { icon: Droplets, label: "Water leaks" },
+  9: { icon: CircleEllipsis, label: "Other maintenance" },
+  10: { icon: Armchair, label: "Furniture" },
+  11: { icon: Sparkles, label: "Cleaning PM" },
+  12: { icon: LockKeyhole, label: "Window lock" },
+  13: { icon: ClipboardCheck, label: "PM rooms" },
+  14: { icon: Thermometer, label: "Temperature check" },
+  15: { icon: AirVent, label: "Air filter cleaning" },
+  16: { icon: Fan, label: "FCU cleaning" },
+  17: { icon: Layers3, label: "Stainless floor trim" },
+};
+
+function getTopicIcon(job: Job): { icon: LucideIcon; label: string } {
+  const topic = job.topics?.[0];
+  if (topic && TOPIC_ICONS[Number(topic.id)]) {
+    return TOPIC_ICONS[Number(topic.id)];
+  }
+
+  const value = [
+    topic?.title,
+    job.category,
+    job.title,
+    job.description,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const nameFallbacks: Array<{
+    terms: string[];
+    icon: LucideIcon;
+    label: string;
+  }> = [
+    { terms: ["air-condition", "air condition", "แอร์", "fcu"], icon: Snowflake, label: "Air conditioning" },
+    { terms: ["barth", "bath", "toilet", "ห้องน้ำ", "ชักโครก"], icon: Bath, label: "Bathroom" },
+    { terms: ["temperature", "อุณหภูมิ"], icon: Thermometer, label: "Temperature check" },
+    { terms: ["door", "ประตู"], icon: DoorOpen, label: "Door" },
+    { terms: ["furniture", "เฟอร์นิเจอร์"], icon: Armchair, label: "Furniture" },
+    { terms: ["internet", "wifi", "tv", "อินเตอร์เน็ต"], icon: Wifi, label: "Internet and TV" },
+    { terms: ["light", "lighting", "ไฟ", "แสงสว่าง"], icon: Lightbulb, label: "Lighting" },
+    { terms: ["repaint", "paint", "wall", "ceiling", "ผนัง", "งานสี", "ฝ้า"], icon: PaintRoller, label: "Wall and repaint" },
+    { terms: ["leak", "น้ำรั่ว"], icon: Droplets, label: "Water leaks" },
+    { terms: ["hot water", "น้ำร้อน"], icon: Flame, label: "Water and hot water" },
+    { terms: ["window", "หน้าต่าง"], icon: LockKeyhole, label: "Window lock" },
+    { terms: ["clean", "ทำความสะอาด", "ล้าง"], icon: Sparkles, label: "Cleaning PM" },
+  ];
+
+  const fallback = nameFallbacks.find(({ terms }) =>
+    terms.some((term) => value.includes(term)),
   );
+  return fallback || { icon: Wrench, label: "General maintenance" };
 }
 
-function Pill({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <span className={cn("inline-flex min-h-[28px] items-center rounded-full border px-2.5 py-1 text-xs font-bold leading-none", className)}>
-      {children}
-    </span>
-  );
-}
-
-export default function MaintenanceJobCard({ job, viewMode = "grid" }: MaintenanceJobCardProps) {
-  const router = useRouter();
-  const [imageFailed, setImageFailed] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
-  const priorityStyle = getPriorityStyle(job.priority || job.urgency);
-  const imageUrl = useMemo(() => getImageUrl(job), [job]);
-  const topics = Array.isArray(job.topics) ? job.topics.filter((topic) => getTopicTitle(topic)) : [];
-  const visibleTopics = topics.slice(0, 3);
-  const extraTopicCount = Math.max(0, topics.length - visibleTopics.length);
-  const assignee = getAssignee(job);
+export default function MaintenanceJobCard({
+  job,
+  viewMode = "grid",
+}: MaintenanceJobCardProps) {
   const detailHref = `/dashboard/jobs/${job.job_id}`;
-
-  const goToDetail = useCallback(() => {
-    router.push(detailHref);
-  }, [router, detailHref]);
-
-  const onMenuAction = useCallback((event: Event) => {
-    event.preventDefault();
-    event.stopPropagation();
-  }, []);
+  const imageUrl = useMemo(() => getJobImageUrl(job), [job]);
+  const [imageFailed, setImageFailed] = useState(false);
+  const { icon: JobTypeIcon, label: jobTypeLabel } = getTopicIcon(job);
 
   return (
     <article
       className={cn(
-        "group flex h-full min-h-[430px] w-full cursor-pointer flex-col overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-[0_12px_34px_rgba(15,23,42,0.07)] transition duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12)] focus-within:ring-2 focus-within:ring-slate-900 focus-within:ring-offset-2",
-        viewMode === "list" && "min-h-0 sm:grid sm:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]",
+        "group overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-card motion-reduce:transform-none motion-reduce:transition-none",
+        viewMode === "list" && "sm:min-h-0",
       )}
-      onClick={goToDetail}
-      tabIndex={0}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          goToDetail();
-        }
-      }}
-      aria-label={`Open maintenance job ${job.job_id}`}
     >
-      <header className={cn("relative overflow-hidden p-4", priorityStyle.header, viewMode === "list" && "sm:h-full")}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-2xl ring-1", priorityStyle.icon)}>
-              {job.rooms?.length ? <Building2 className="h-5 w-5" aria-hidden="true" /> : <MapPin className="h-5 w-5" aria-hidden="true" />}
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-extrabold text-current">{getPrimaryPlace(job)}</p>
-              <p className="mt-0.5 text-xs font-bold text-slate-500">Job #{job.job_id || "New"}</p>
-            </div>
-          </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/85 text-slate-700 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
-                aria-label={`Open actions for job ${job.job_id}`}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44 rounded-xl bg-white p-1 shadow-xl">
-              <DropdownMenuItem
-                className="min-h-10 rounded-lg font-semibold"
-                onSelect={(event) => {
-                  onMenuAction(event);
-                  goToDetail();
-                }}
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                View Job
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="min-h-10 rounded-lg font-semibold"
-                onSelect={(event) => {
-                  onMenuAction(event);
-                  void navigator.clipboard?.writeText(String(job.job_id));
-                }}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Copy ID
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        <div className="mt-4 overflow-hidden rounded-2xl border border-white/80 bg-white/60">
+      <Link
+        href={detailHref}
+        className="flex h-full min-h-0 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        aria-label={`Open maintenance job ${job.job_id}`}
+      >
+        <div className="job-card-image relative h-28 w-full overflow-hidden border-b border-border bg-muted sm:h-44">
           {imageUrl && !imageFailed ? (
-            <div className={cn("relative w-full", viewMode === "list" ? "h-40 sm:h-full" : "h-32")}>
-              <div className={cn("absolute inset-0 bg-white/60 transition-opacity", imageLoaded ? "opacity-0" : "opacity-100")} aria-hidden="true" />
-              <Image
-                src={imageUrl}
-                alt={`Maintenance job ${job.job_id} photo`}
-                fill
-                sizes={viewMode === "list" ? "(max-width: 768px) 100vw, 420px" : "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 360px"}
-                className={cn("object-cover transition-opacity duration-300", imageLoaded ? "opacity-100" : "opacity-0")}
-                onLoad={() => setImageLoaded(true)}
-                onError={() => setImageFailed(true)}
-                unoptimized={isExternalImageUrl(imageUrl)}
-              />
-            </div>
+            <Image
+              src={imageUrl}
+              alt={`Maintenance job at ${getLocation(job)}`}
+              fill
+              sizes="(max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw"
+              className="object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
+              onError={() => setImageFailed(true)}
+              unoptimized={imageUrl.startsWith("http")}
+            />
           ) : (
-            <div className="grid h-24 place-items-center text-slate-500">
-              <div className="flex items-center gap-2 text-xs font-bold">
-                <ImageIcon className="h-4 w-4" aria-hidden="true" />
-                No job photo
-              </div>
+            <div className="grid h-full place-items-center bg-gradient-to-br from-muted to-background text-muted-foreground">
+              <span className="job-card-photo-label flex flex-col items-center gap-2 text-center text-sm">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-card shadow-sm">
+                  <ImageIcon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <span>No job photo</span>
+              </span>
             </div>
           )}
-        </div>
-      </header>
 
-      <div className="flex min-h-0 flex-1 flex-col p-4">
-        <div className="flex flex-wrap gap-1.5">
-          {getTypeBadges(job).map((badge) => (
-            <Pill key={badge} className={TYPE_BADGE}>{badge}</Pill>
-          ))}
-          <Pill className={priorityStyle.badge}>{priorityStyle.label}</Pill>
-        </div>
-
-        <div className="mt-3 min-w-0">
-          <h2 className="line-clamp-2 text-base font-extrabold leading-snug text-slate-950">
-            {job.description || job.title || "Maintenance job"}
-          </h2>
-          {job.remarks?.trim() && (
-            <p className="mt-2 line-clamp-2 text-sm font-medium leading-5 text-slate-500">
-              {job.remarks}
-            </p>
-          )}
-        </div>
-
-        <div className="mt-4 grid gap-2">
-          <InfoRow icon={CalendarDays} label={`Created ${formatDate(job.created_at)}`} />
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-1.5">
-          <StatusBadge status={job.status} size="sm" />
-          {visibleTopics.map((topic) => (
-            <Pill key={topic.id} className="border-slate-200 bg-slate-50 text-slate-600">
-              {getTopicTitle(topic)}
-            </Pill>
-          ))}
-          {extraTopicCount > 0 && (
-            <Pill className="border-slate-200 bg-slate-100 text-slate-600">+{extraTopicCount}</Pill>
-          )}
-        </div>
-
-        <footer className="mt-auto flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 text-xs font-bold text-slate-500">
-            <p className="truncate">{assignee}</p>
-            <p className="mt-0.5 truncate text-slate-400">Updated {formatDate(job.updated_at)}</p>
+          <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-1 p-1.5 sm:gap-2 sm:p-3">
+            <span className="inline-flex min-w-0 items-center gap-1 rounded-md bg-white/90 px-1.5 py-1 text-[10px] font-bold text-slate-800 shadow-sm backdrop-blur sm:px-2.5 sm:text-xs">
+              <MapPin className="h-3 w-3 flex-none text-slate-500" />
+              <span className="truncate">{getLocation(job)}</span>
+            </span>
+            <span className="max-w-[52%] flex-none truncate rounded-md bg-white/90 px-1.5 py-1 text-[9px] font-semibold text-slate-800 shadow-sm backdrop-blur sm:max-w-none sm:px-2.5 sm:text-xs">
+              Job #{job.job_id || "New"}
+            </span>
           </div>
-          <button
-            type="button"
-            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-extrabold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 max-sm:w-full"
-            onClick={(event) => {
-              event.stopPropagation();
-              goToDetail();
-            }}
-          >
-            View Job
-            <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </footer>
-      </div>
+        </div>
+
+        <div className="job-card-content flex flex-1 flex-col p-3 sm:p-5">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="job-card-location flex min-w-0 items-center gap-1 text-sm font-bold text-foreground sm:gap-1.5 sm:text-base">
+                <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                <span className="truncate">{getLocation(job)}</span>
+              </div>
+              <p className="job-card-id mt-0.5 truncate text-[10px] text-muted-foreground sm:text-xs">
+                Job #{job.job_id || "New"}
+              </p>
+            </div>
+            <span
+              className="mt-0.5 grid h-7 w-7 flex-none place-items-center rounded-md bg-muted text-muted-foreground"
+              role="img"
+              aria-label={jobTypeLabel}
+              title={jobTypeLabel}
+            >
+              <JobTypeIcon className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </div>
+
+          <h2 className="job-card-title mt-2 line-clamp-2 text-sm font-black leading-5 text-card-foreground sm:text-lg sm:leading-7">
+            {getProblemSummary(job)}
+          </h2>
+
+          <div className="job-card-status mt-3">
+            <StatusBadge status={job.status} size="sm" />
+          </div>
+
+          <dl className="job-card-meta mt-3 grid grid-cols-1 gap-1.5 text-[11px] text-foreground sm:mt-4 sm:gap-2 sm:text-sm">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <UserRound className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <dt className="sr-only">Assigned technician</dt>
+              <dd className="truncate">{getAssignee(job)}</dd>
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <CalendarDays className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <dt className="sr-only">Created time</dt>
+              <dd className="truncate">
+                {formatDate(job.created_at)}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="job-card-footer mt-auto pt-3 sm:pt-4">
+            <span className="hidden truncate text-xs text-muted-foreground sm:block">
+              Updated {formatDate(job.updated_at)}
+            </span>
+            <span className="job-card-action mt-1 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-2 text-[11px] font-bold uppercase text-blue-900 shadow-sm transition-colors group-hover:bg-blue-100 sm:min-h-11 sm:text-sm">
+              View details
+              <ArrowRight
+                className="h-4 w-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transform-none"
+                aria-hidden="true"
+              />
+            </span>
+          </div>
+        </div>
+      </Link>
     </article>
   );
 }

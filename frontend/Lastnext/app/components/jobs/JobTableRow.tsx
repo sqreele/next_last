@@ -1,11 +1,10 @@
 // ./app/components/JobTableRow.tsx
-import React from 'react';
-import { Badge } from '@/app/components/ui/badge';
-import { PriorityBadge, StatusBadge } from '@/app/components/pcms-ui';
-import { Button } from '@/app/components/ui/button';
-import { Pencil, Trash2, Home } from 'lucide-react';
-import { Job } from '@/app/lib/types';
-
+import React from "react";
+import { Badge } from "@/app/components/ui/badge";
+import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
+import { Button } from "@/app/components/ui/button";
+import { Pencil, Trash2, Home } from "lucide-react";
+import { Job } from "@/app/lib/types";
 
 interface JobTableRowProps {
   job: Job;
@@ -14,7 +13,7 @@ interface JobTableRowProps {
 }
 
 const JobTableRow: React.FC<JobTableRowProps> = ({ job, onEdit, onDelete }) => (
-  <tr key={job.job_id} className="hover:bg-gray-50">
+  <tr key={job.job_id} className="hover:bg-muted">
     <td>
       <div className="space-y-1">
         <div className="text-xs">#{job.job_id}</div>

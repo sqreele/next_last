@@ -47,7 +47,7 @@ const apiClient: AxiosInstance = axios.create({
     }
     // Client-side: use public URL
     return process.env.NEXT_PUBLIC_API_URL || 
-      (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "https://pcms.live");
+      (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "https://hotelcarepro.com");
   })(),
   timeout: 30000, // Increased to 30 seconds
   headers: {

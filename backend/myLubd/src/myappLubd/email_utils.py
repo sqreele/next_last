@@ -57,9 +57,9 @@ def send_email(to_email: str, subject: str, body: str, from_email: Optional[str]
     """
     # Try Gmail API first
     service = _build_gmail_service()
-    from_addr = from_email or getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@pcms.live')
+    from_addr = from_email or getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@hotelcarepro.com')
     # If a placeholder default is in use but SMTP user is configured, prefer that as from address
-    if from_addr == 'no-reply@pcms.live':
+    if from_addr == 'no-reply@hotelcarepro.com':
         _smtp_user = getattr(settings, 'EMAIL_HOST_USER', '')
         if _smtp_user:
             from_addr = _smtp_user
@@ -136,7 +136,7 @@ def send_welcome_email(
     
     # Determine base URL
     if not base_url:
-        base_url = os.getenv('APP_BASE_URL', 'https://pcms.live')
+        base_url = os.getenv('APP_BASE_URL', 'https://hotelcarepro.com')
     
     dashboard_url = f"{base_url}/dashboard"
     

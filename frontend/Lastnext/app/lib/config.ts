@@ -7,7 +7,7 @@ export const API_CONFIG = {
       // Check if we're in a build context where backend might not be available
       if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PRIVATE_API_URL) {
         // Production build without explicit backend URL - use external URL
-        return "https://pcms.live";
+        return "https://hotelcarepro.com";
       }
       
       // Use NEXT_PRIVATE_API_URL for server-side requests (Docker networking)
@@ -16,7 +16,7 @@ export const API_CONFIG = {
     }
     // Client-side: use public URL
     return process.env.NEXT_PUBLIC_API_URL || 
-      (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "https://pcms.live");
+      (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "https://hotelcarepro.com");
   })(),
   
   // ✅ Add all missing endpoints - use Django API routes
@@ -44,12 +44,12 @@ export const MEDIA_CONFIG = {
     // Client-side: use production domain in production, localhost in development
     if (typeof window !== 'undefined') {
       if (process.env.NODE_ENV === 'production') {
-        return "https://pcms.live";
+        return "https://hotelcarepro.com";
       }
       return "http://localhost:8000";
     }
-    // Server-side: use NEXT_PUBLIC_MEDIA_URL or fallback to pcms.live
-    return process.env.NEXT_PUBLIC_MEDIA_URL || "https://pcms.live";
+    // Server-side: use NEXT_PUBLIC_MEDIA_URL or fallback to hotelcarepro.com
+    return process.env.NEXT_PUBLIC_MEDIA_URL || "https://hotelcarepro.com";
   })(),
 };
 

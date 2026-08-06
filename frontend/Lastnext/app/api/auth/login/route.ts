@@ -4,6 +4,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const redirect = searchParams.get('redirect');
+    const screenHint = searchParams.get('screen_hint');
 
     // Prefer delegating to unified /api/auth?action=login handler
     const baseUrl =
@@ -15,6 +16,9 @@ export async function GET(request: NextRequest) {
     const base = new URL('/api/auth', baseUrl);
     base.searchParams.set('action', 'login');
     if (redirect) base.searchParams.set('redirect', redirect);
+    if (screenHint === 'signup') {
+      base.searchParams.set('screen_hint', 'signup');
+    }
 
     return NextResponse.redirect(base);
   } catch (error) {

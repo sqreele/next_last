@@ -1,14 +1,11 @@
-'use client';
+"use client";
 
-import React from 'react';
+import { SkeletonList } from "@/app/components/ui/loading";
 
-const LoadingState: React.FC = () => {
+export default function LoadingState() {
   return (
-    <div className="flex items-center justify-center py-12">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      <span className="ml-3 text-gray-600">Loading maintenance tasks...</span>
+    <div aria-busy="true" aria-label="Loading preventive maintenance tasks">
+      <SkeletonList rows={6} />
     </div>
   );
-};
-
-export default LoadingState;
+}

@@ -17,7 +17,7 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
 const en = {
   // App chrome
-  'app.title': 'HotelCarePro',
+  'app.title': 'HotelCare Pro',
   'app.tagline': 'Hotel maintenance management',
 
   // Navigation
@@ -93,7 +93,7 @@ const en = {
   'empty.offlineHome': 'Back to dashboard',
 
   // PWA
-  'pwa.installTitle': 'Install HotelCarePro',
+  'pwa.installTitle': 'Install HotelCare Pro',
   'pwa.installBody': 'Add to your home screen for one-tap access to work orders.',
   'pwa.installButton': 'Install',
   'pwa.updateTitle': 'A new version is ready',
@@ -182,6 +182,11 @@ const en = {
   'createJob.chooseCategory': 'Choose one maintenance category',
   'createJob.loadingTopics': 'Loading topics...',
   'createJob.noCategoryMatch': 'No categories match "{search}".',
+  'createJob.suggestedCategories': 'Suggested categories',
+  'createJob.noCategoryResults': 'No matching categories found. Try another keyword.',
+  'createJob.topicPickerHint': 'Search by category name or description.',
+  'createJob.clearCategory': 'Clear selected category',
+  'createJob.clearCategorySearch': 'Clear category search',
   'createJob.section.additional': 'Additional Details',
   'createJob.section.additionalDesc': 'Set status, add remarks, and mark special job flags.',
   'createJob.remarks': 'Remarks',
@@ -322,7 +327,7 @@ const en = {
 type DictKey = keyof typeof en;
 
 const th: Record<DictKey, string> = {
-  'app.title': 'HotelCarePro',
+  'app.title': 'HotelCare Pro',
   'app.tagline': 'ระบบจัดการงานซ่อมบำรุงโรงแรม',
 
   'nav.dashboard': 'แดชบอร์ด',
@@ -390,7 +395,7 @@ const th: Record<DictKey, string> = {
   'empty.offlineRetry': 'ลองใหม่',
   'empty.offlineHome': 'กลับหน้าหลัก',
 
-  'pwa.installTitle': 'ติดตั้ง HotelCarePro',
+  'pwa.installTitle': 'ติดตั้ง HotelCare Pro',
   'pwa.installBody': 'เพิ่มไว้หน้าจอหลักเพื่อเข้าถึงงานซ่อมได้รวดเร็ว',
   'pwa.installButton': 'ติดตั้ง',
   'pwa.updateTitle': 'มีเวอร์ชันใหม่พร้อมแล้ว',
@@ -476,6 +481,11 @@ const th: Record<DictKey, string> = {
   'createJob.chooseCategory': 'เลือกหมวดหมู่งานซ่อมหนึ่งรายการ',
   'createJob.loadingTopics': 'กำลังโหลดหมวดหมู่...',
   'createJob.noCategoryMatch': 'ไม่พบหมวดหมู่ที่ตรงกับ "{search}"',
+  'createJob.suggestedCategories': 'หมวดหมู่แนะนำ',
+  'createJob.noCategoryResults': 'ไม่พบหมวดหมู่ที่ตรงกัน ลองค้นหาด้วยคำอื่น',
+  'createJob.topicPickerHint': 'ค้นหาได้จากชื่อหมวดหมู่หรือรายละเอียด',
+  'createJob.clearCategory': 'ล้างหมวดหมู่ที่เลือก',
+  'createJob.clearCategorySearch': 'ล้างคำค้นหาหมวดหมู่',
   'createJob.section.additional': 'ข้อมูลเพิ่มเติม',
   'createJob.section.additionalDesc': 'เพิ่มหมายเหตุและกำหนดสถานะพิเศษของงาน',
   'createJob.remarks': 'หมายเหตุ',

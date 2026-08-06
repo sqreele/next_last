@@ -676,7 +676,7 @@ export async function updateUserProfile(auth0Profile: any, accessToken?: string)
     if (!token) {
       try {
         // For server-side calls, we need to use the full URL
-        const baseUrl = process.env.AUTH0_BASE_URL || 'https://pcms.live';
+        const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
         const sessionResponse = await fetch(`${baseUrl}/api/auth/session-compat`, {
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },

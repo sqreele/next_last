@@ -2,20 +2,32 @@
 
 import React from "react";
 import { Button } from "./button";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, Grid2X2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { primaryNavigationItems } from "@/app/lib/navigation";
+import {
+  mobilePrimaryNavigation,
+  mobileSecondaryNavigation,
+} from "@/app/design-system/navigation-config";
 import { cn } from "@/app/lib/utils/cn";
 import { triggerHaptic } from "@/app/lib/hooks/useHaptic";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import type { DictKey } from "@/app/lib/i18n/dictionary";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "./sheet";
 
 // Map nav item canonical names -> dictionary keys. Anything not in this map
 // keeps the existing English literal via the fallback in useT().
 const NAV_I18N: Record<string, DictKey> = {
   Dashboard: "nav.dashboard",
+  Overview: "nav.dashboard",
   "Maintenance Jobs": "nav.jobs",
+  "Work Orders": "nav.jobs",
   "My Jobs": "nav.myJobs",
   "Create Job": "nav.createJob",
   Inventory: "nav.inventory",
@@ -30,30 +42,24 @@ interface MobileNavProps {
   hidden?: boolean;
 }
 
-const navigationItems = primaryNavigationItems.filter((item) =>
-  ["Dashboard", "Maintenance Jobs", "Create Job", "Machines", "Inventory", "Reports"].includes(
-    item.name,
-  ),
-);
-
 export function MobileNav({ className, hidden = false }: MobileNavProps) {
   const pathname = usePathname();
   const t = useT();
+  const [moreOpen, setMoreOpen] = React.useState(false);
 
   return (
     <nav
       className={cn(
-        "fixed left-2 right-2 z-50 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(15,23,42,0.10)] sm:left-3 sm:right-3 md:hidden",
+        "fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background md:hidden",
         "transition-transform duration-200 ease-out will-change-transform",
-        hidden ? "translate-y-[calc(100%+1rem)]" : "translate-y-0",
+        hidden ? "translate-y-full" : "translate-y-0",
         className,
       )}
-      style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}
       role="navigation"
       aria-label="Mobile navigation"
     >
-      <div className="flex items-center justify-around gap-1 px-1.5 py-1.5 sm:px-2">
-        {navigationItems.map((item) => {
+      <div className="flex items-center justify-around gap-1 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
+        {mobilePrimaryNavigation.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
@@ -63,29 +69,38 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
               key={item.name}
               href={item.href}
               onClick={() => triggerHaptic("selection")}
-              className="flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className={cn(
+                "flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                item.name === "Create Job" && "order-none",
+              )}
               aria-current={isActive ? "page" : undefined}
               aria-label={`Navigate to ${item.name}`}
             >
               <div
                 className={cn(
-                  "flex flex-col items-center gap-1 px-1.5 py-2 rounded-xl transition-all duration-150 ease-out active:scale-95 touch-manipulation min-h-[56px] justify-center sm:px-2",
+                  "flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 transition-colors touch-manipulation sm:px-2",
                   isActive
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
-                    : "text-slate-700 hover:bg-slate-100 active:bg-slate-100",
+                    ? "bg-primary text-primary-foreground shadow-soft"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted",
+                  item.name === "Create Job" &&
+                    "bg-primary text-primary-foreground",
                 )}
               >
                 <Icon
                   className={cn(
                     "h-6 w-6 transition-colors",
-                    isActive ? "text-white" : "text-slate-700",
+                    isActive || item.name === "Create Job"
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground",
                   )}
                   aria-hidden={true}
                 />
                 <span
                   className={cn(
-                    "text-[11px] font-bold leading-tight",
-                    isActive ? "text-white" : "text-slate-700",
+                    "text-xs font-semibold leading-none",
+                    isActive || item.name === "Create Job"
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
                   {NAV_I18N[item.name] ? t(NAV_I18N[item.name]) : item.shortName}
@@ -94,6 +109,54 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
             </Link>
           );
         })}
+        <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-muted-foreground transition-colors",
+                "hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              )}
+              aria-label="Open more navigation"
+            >
+              <Grid2X2 className="h-6 w-6" aria-hidden="true" />
+              <span className="text-xs font-semibold leading-none">More</span>
+            </button>
+          </SheetTrigger>
+          <SheetContent
+            side="bottom"
+            className="max-h-[80dvh] rounded-t-2xl border-border bg-background px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+          >
+            <SheetHeader className="text-left">
+              <SheetTitle>More tools</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4 grid grid-cols-2 gap-2 overflow-y-auto">
+              {mobileSecondaryNavigation.map((item) => {
+                const Icon = item.icon;
+                const isActive =
+                  pathname === item.href || pathname.startsWith(`${item.href}/`);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMoreOpen(false)}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "flex min-h-14 items-center gap-3 rounded-xl border border-border px-3 py-2 text-sm font-medium",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card text-foreground hover:bg-muted",
+                    )}
+                  >
+                    <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     </nav>
   );
@@ -120,7 +183,7 @@ export function MobileTopBar({ className }: MobileNavProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm tablet:hidden safe-area-inset",
+        "sticky top-0 z-40 border-b border-border bg-background tablet:hidden safe-area-inset",
         className,
       )}
       role="banner"
@@ -130,14 +193,14 @@ export function MobileTopBar({ className }: MobileNavProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="p-2 min-h-touch-target min-w-touch-target touch-manipulation hover:bg-slate-100 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+            className="min-h-touch-target min-w-touch-target p-2 touch-manipulation"
             aria-label="Search"
           >
-            <Search className="w-5 h-5 text-slate-700" aria-hidden={true} />
+            <Search className="h-5 w-5 text-muted-foreground" aria-hidden={true} />
           </Button>
         </div>
 
-        <h1 className="text-lg font-bold text-slate-900 text-balance truncate max-w-48">
+        <h1 className="max-w-48 truncate text-balance text-lg font-semibold text-foreground">
           {getPageTitle()}
         </h1>
 
@@ -145,10 +208,10 @@ export function MobileTopBar({ className }: MobileNavProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="p-2 relative min-h-touch-target min-w-touch-target touch-manipulation hover:bg-slate-100 focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+            className="relative min-h-touch-target min-w-touch-target p-2 touch-manipulation"
             aria-label="Notifications"
           >
-            <Bell className="w-5 h-5 text-slate-700" aria-hidden={true} />
+            <Bell className="h-5 w-5 text-muted-foreground" aria-hidden={true} />
             <span
               className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full animate-pulse"
               aria-label="You have new notifications"

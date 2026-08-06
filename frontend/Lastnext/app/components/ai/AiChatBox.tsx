@@ -1,89 +1,121 @@
-'use client';
+"use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, ClipboardList, LogIn, Send, Wrench } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
-import { Textarea } from '@/app/components/ui/textarea';
-import { cn } from '@/app/lib/utils/cn';
-import { sendAiChatMessage, type AiChatResponse } from '@/app/lib/aiChatService';
-import { signIn, useSession } from '@/app/lib/session.client';
-import { useProperties, useUser } from '@/app/lib/stores/mainStore';
-import type { Property } from '@/app/lib/types';
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { CalendarDays, ClipboardList, LogIn, Send, Wrench } from "lucide-react";
+import { Button } from "@/app/components/ui/button";
+import { Textarea } from "@/app/components/ui/textarea";
+import { cn } from "@/app/lib/utils/cn";
+import {
+  sendAiChatMessage,
+  type AiChatResponse,
+} from "@/app/lib/aiChatService";
+import { signIn, useSession } from "@/app/lib/session.client";
+import { useProperties, useUser } from "@/app/lib/stores/mainStore";
+import type { Property } from "@/app/lib/types";
 
 type ChatMessage = {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   toolCalls?: string[];
 };
 
 const QUICK_ACTIONS = [
   {
-    label: 'งานแจ้งซ่อมวันนี้',
-    message: 'งานแจ้งซ่อมวันนี้มีอะไรบ้าง',
+    label: "งานแจ้งซ่อมวันนี้",
+    message: "งานแจ้งซ่อมวันนี้มีอะไรบ้าง",
     icon: CalendarDays,
   },
   {
-    label: 'งานประจำเดือนนี้',
-    message: 'งานประจำเดือนนี้มีอะไรบ้าง ขอรายละเอียดงาน',
+    label: "งานประจำเดือนนี้",
+    message: "งานประจำเดือนนี้มีอะไรบ้าง ขอรายละเอียดงาน",
     icon: ClipboardList,
   },
   {
-    label: 'รายละเอียดงานประจำเดือน',
-    message: 'ขอรายละเอียดงานประจำเดือนนี้ แยกตามวันที่ ห้อง/พื้นที่ ผู้รับผิดชอบ และสถานะ',
+    label: "รายละเอียดงานประจำเดือน",
+    message:
+      "ขอรายละเอียดงานประจำเดือนนี้ แยกตามวันที่ ห้อง/พื้นที่ ผู้รับผิดชอบ และสถานะ",
     icon: CalendarDays,
   },
 ];
 
-
 function getPropertyKey(property: Property): string {
-  return String(property.property_id || property.id || '');
+  return String(property.property_id || property.id || "");
 }
 
-function getPropertyNames(properties: Property[], selectedPropertyId: string | null): string {
+function getPropertyNames(
+  properties: Property[],
+  selectedPropertyId: string | null,
+): string {
   const scopedProperties = selectedPropertyId
-    ? properties.filter((property) => getPropertyKey(property) === String(selectedPropertyId))
+    ? properties.filter(
+        (property) => getPropertyKey(property) === String(selectedPropertyId),
+      )
     : properties;
 
   return scopedProperties
-    .map((property) => property.name || property.property_id || String(property.id || ''))
+    .map(
+      (property) =>
+        property.name || property.property_id || String(property.id || ""),
+    )
     .filter(Boolean)
-    .join(', ');
+    .join(", ");
 }
-
 
 function normalizeSearchText(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9ก-๙]/gi, '');
+  return value.toLowerCase().replace(/[^a-z0-9ก-๙]/gi, "");
 }
 
-function findMentionedPropertyName(messages: ChatMessage[], properties: Property[]): string {
+function findMentionedPropertyName(
+  messages: ChatMessage[],
+  properties: Property[],
+): string {
   for (const chatMessage of [...messages].reverse()) {
-    if (chatMessage.role !== 'user') continue;
+    if (chatMessage.role !== "user") continue;
     const normalizedMessage = normalizeSearchText(chatMessage.content);
     const matchedProperty = properties.find((property) => {
-      const candidates = [property.property_id, property.name, String(property.id || '')]
+      const candidates = [
+        property.property_id,
+        property.name,
+        String(property.id || ""),
+      ]
         .filter(Boolean)
         .map((candidate) => normalizeSearchText(String(candidate)));
-      return candidates.some((candidate) => candidate.length > 0 && normalizedMessage.includes(candidate));
+      return candidates.some(
+        (candidate) =>
+          candidate.length > 0 && normalizedMessage.includes(candidate),
+      );
     });
 
     if (matchedProperty) {
-      return matchedProperty.property_id || matchedProperty.name || String(matchedProperty.id || '');
+      return (
+        matchedProperty.property_id ||
+        matchedProperty.name ||
+        String(matchedProperty.id || "")
+      );
     }
   }
 
-  return '';
+  return "";
 }
 
-function getDisplayUserName(sessionUser: Record<string, unknown> | undefined, username?: string): string {
+function getDisplayUserName(
+  sessionUser: Record<string, unknown> | undefined,
+  username?: string,
+): string {
   const parts = [sessionUser?.first_name, sessionUser?.last_name]
-    .map((part) => (typeof part === 'string' ? part.trim() : ''))
+    .map((part) => (typeof part === "string" ? part.trim() : ""))
     .filter(Boolean);
-  return parts.join(' ') || username || (typeof sessionUser?.username === 'string' ? sessionUser.username : '') || 'user';
+  return (
+    parts.join(" ") ||
+    username ||
+    (typeof sessionUser?.username === "string" ? sessionUser.username : "") ||
+    "user"
+  );
 }
 
 function createMessageId() {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -93,21 +125,25 @@ function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
   }
-  return 'ไม่สามารถส่งข้อความได้ กรุณาลองใหม่อีกครั้ง';
+  return "ไม่สามารถส่งข้อความได้ กรุณาลองใหม่อีกครั้ง";
 }
 
 export default function AiChatBox() {
   const { data: session, status } = useSession();
   const { userProfile, selectedPropertyId } = useUser();
   const { properties } = useProperties();
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isAuthenticated = status === 'authenticated' && Boolean(session?.user);
+  const isAuthenticated = status === "authenticated" && Boolean(session?.user);
   const userName = useMemo(
-    () => getDisplayUserName(session?.user as Record<string, unknown> | undefined, userProfile?.username),
+    () =>
+      getDisplayUserName(
+        session?.user as Record<string, unknown> | undefined,
+        userProfile?.username,
+      ),
     [session?.user, userProfile?.username],
   );
   const availableProperties = useMemo(
@@ -120,19 +156,22 @@ export default function AiChatBox() {
   );
   const activePropertyName = useMemo(() => {
     const scopedProperties = selectedPropertyId
-      ? availableProperties.filter((property) => getPropertyKey(property) === String(selectedPropertyId))
+      ? availableProperties.filter(
+          (property) => getPropertyKey(property) === String(selectedPropertyId),
+        )
       : availableProperties;
 
     if (scopedProperties.length !== 1) {
-      return '';
+      return "";
     }
 
     const property = scopedProperties[0];
-    return property.property_id || property.name || String(property.id || '');
+    return property.property_id || property.name || String(property.id || "");
   }, [availableProperties, selectedPropertyId]);
   const hasProperty = propertyNames.length > 0;
   const greeting = useMemo(
-    () => `สวัสดีครับ ${userName} ${propertyNames} มี อยากทราบข้อมูลด้านไหนครับ`,
+    () =>
+      `สวัสดีครับ ${userName} ${propertyNames} มี อยากทราบข้อมูลด้านไหนครับ`,
     [propertyNames, userName],
   );
 
@@ -144,7 +183,7 @@ export default function AiChatBox() {
       return [
         {
           id: createMessageId(),
-          role: 'assistant',
+          role: "assistant",
           content: greeting,
         },
       ];
@@ -152,14 +191,15 @@ export default function AiChatBox() {
   }, [greeting, hasProperty, isAuthenticated]);
 
   const trimmedMessage = useMemo(() => message.trim(), [message]);
-  const canSubmit = trimmedMessage.length > 0 && !isLoading && isAuthenticated && hasProperty;
+  const canSubmit =
+    trimmedMessage.length > 0 && !isLoading && isAuthenticated && hasProperty;
 
   const appendAssistantReply = (response: AiChatResponse) => {
     setHistory((current) => [
       ...current,
       {
         id: createMessageId(),
-        role: 'assistant',
+        role: "assistant",
         content: response.reply,
         toolCalls: response.tool_calls,
       },
@@ -173,13 +213,13 @@ export default function AiChatBox() {
     }
 
     const userMessage = nextMessage;
-    setMessage('');
+    setMessage("");
     setError(null);
     setHistory((current) => [
       ...current,
       {
         id: createMessageId(),
-        role: 'user',
+        role: "user",
         content: userMessage,
       },
     ]);
@@ -187,7 +227,9 @@ export default function AiChatBox() {
     try {
       setIsLoading(true);
       const response = await sendAiChatMessage(userMessage, {
-        property_name: activePropertyName || findMentionedPropertyName(history, availableProperties),
+        property_name:
+          activePropertyName ||
+          findMentionedPropertyName(history, availableProperties),
       });
       appendAssistantReply(response);
     } catch (submitError) {
@@ -203,18 +245,22 @@ export default function AiChatBox() {
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       void handleSubmit();
     }
   };
 
-  if (status === 'loading') {
+  if (status === "loading") {
     return (
-      <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-4xl items-center justify-center border border-slate-200 bg-white p-5 text-center shadow-sm sm:min-h-[70vh] sm:rounded-lg sm:p-8">
+      <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-4xl items-center justify-center border border-border bg-card p-5 text-center shadow-soft sm:min-h-[70vh] sm:rounded-lg sm:p-8">
         <div>
-          <p className="text-sm font-semibold text-slate-700">กำลังตรวจสอบสถานะการเข้าสู่ระบบ...</p>
-          <p className="mt-2 text-xs text-slate-500">กรุณารอสักครู่ก่อนเริ่มแชท</p>
+          <p className="text-sm font-semibold text-muted-foreground">
+            กำลังตรวจสอบสถานะการเข้าสู่ระบบ...
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            กรุณารอสักครู่ก่อนเริ่มแชท
+          </p>
         </div>
       </section>
     );
@@ -222,11 +268,17 @@ export default function AiChatBox() {
 
   if (!isAuthenticated) {
     return (
-      <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-4xl items-center justify-center border border-slate-200 bg-white p-5 text-center shadow-sm sm:min-h-[70vh] sm:rounded-lg sm:p-8">
+      <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-4xl items-center justify-center border border-border bg-card p-5 text-center shadow-soft sm:min-h-[70vh] sm:rounded-lg sm:p-8">
         <div className="max-w-md">
-          <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">AI Chatbot</p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-950">กรุณาเข้าสู่ระบบก่อนเริ่มแชท</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">ระบบจะตรวจสอบผู้ใช้งานและ property ก่อนเปิดใช้งาน AI chat</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">
+            AI Chatbot
+          </p>
+          <h1 className="mt-2 text-2xl font-bold text-slate-950">
+            กรุณาเข้าสู่ระบบก่อนเริ่มแชท
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            ระบบจะตรวจสอบผู้ใช้งานและ property ก่อนเปิดใช้งาน AI chat
+          </p>
           <Button type="button" onClick={() => void signIn()} className="mt-5">
             <LogIn className="mr-2 h-4 w-4" />
             เข้าสู่ระบบ
@@ -237,10 +289,14 @@ export default function AiChatBox() {
   }
 
   return (
-    <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-4xl flex-col border border-slate-200 bg-white shadow-sm sm:min-h-[70vh] sm:rounded-lg">
-      <div className="border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">AI Chatbot</p>
-        <h1 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">ผู้ช่วยงานซ่อมบำรุง</h1>
+    <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] w-full max-w-4xl flex-col border border-border bg-card shadow-soft sm:min-h-[70vh] sm:rounded-lg">
+      <div className="border-b border-border px-4 py-3 sm:px-5 sm:py-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">
+          AI Chatbot
+        </p>
+        <h1 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">
+          ผู้ช่วยงานซ่อมบำรุง
+        </h1>
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-3 py-4 sm:space-y-4 sm:px-5 sm:py-5">
@@ -249,7 +305,7 @@ export default function AiChatBox() {
             ไม่พบ property สำหรับผู้ใช้นี้ กรุณาติดต่อผู้ดูแลระบบก่อนเริ่มแชท
           </div>
         ) : history.length === 0 ? (
-          <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+          <div className="rounded-md border border-dashed border-border bg-muted px-4 py-5 text-sm text-muted-foreground">
             {greeting}
           </div>
         ) : (
@@ -257,23 +313,29 @@ export default function AiChatBox() {
             <article
               key={chatMessage.id}
               className={cn(
-                'flex',
-                chatMessage.role === 'user' ? 'justify-end' : 'justify-start',
+                "flex",
+                chatMessage.role === "user" ? "justify-end" : "justify-start",
               )}
             >
               <div
                 className={cn(
-                  'max-w-[92%] rounded-lg px-3 py-2.5 text-sm leading-6 sm:max-w-[82%] sm:px-4 sm:py-3',
-                  chatMessage.role === 'user'
-                    ? 'bg-cyan-700 text-white'
-                    : 'border border-slate-200 bg-slate-50 text-slate-900',
+                  "max-w-[92%] rounded-lg px-3 py-2.5 text-sm leading-6 sm:max-w-[82%] sm:px-4 sm:py-3",
+                  chatMessage.role === "user"
+                    ? "bg-cyan-700 text-white"
+                    : "border border-border bg-muted text-foreground",
                 )}
               >
-                <p className="whitespace-pre-wrap break-words">{chatMessage.content}</p>
-                {chatMessage.role === 'assistant' && chatMessage.toolCalls?.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200 pt-2 text-xs text-slate-500">
+                <p className="whitespace-pre-wrap break-words">
+                  {chatMessage.content}
+                </p>
+                {chatMessage.role === "assistant" &&
+                chatMessage.toolCalls?.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
                     {chatMessage.toolCalls.map((toolCall) => (
-                      <span key={toolCall} className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1">
+                      <span
+                        key={toolCall}
+                        className="inline-flex items-center gap-1 rounded-full bg-card px-2 py-1"
+                      >
                         <Wrench className="h-3 w-3" />
                         {toolCall}
                       </span>
@@ -287,7 +349,7 @@ export default function AiChatBox() {
 
         {isLoading ? (
           <div className="flex justify-start">
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <div className="rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
               กำลังรอคำตอบ...
             </div>
           </div>
@@ -300,7 +362,10 @@ export default function AiChatBox() {
         </div>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="border-t border-slate-200 p-3 sm:p-4">
+      <form
+        onSubmit={handleSubmit}
+        className="border-t border-border p-3 sm:p-4"
+      >
         <div className="mb-3 flex flex-wrap gap-2">
           {QUICK_ACTIONS.map((action) => {
             const Icon = action.icon;
@@ -329,7 +394,12 @@ export default function AiChatBox() {
             disabled={isLoading || !hasProperty}
             className="min-h-[52px] flex-1 resize-none text-base sm:text-sm"
           />
-          <Button type="submit" disabled={!canSubmit} isLoading={isLoading} loadingText="กำลังส่ง">
+          <Button
+            type="submit"
+            disabled={!canSubmit}
+            isLoading={isLoading}
+            loadingText="กำลังส่ง"
+          >
             <Send className="mr-2 h-4 w-4" />
             ส่ง
           </Button>

@@ -1,8 +1,8 @@
 // ./app/dashboard/error.tsx
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Error({
   error,
@@ -12,28 +12,28 @@ export default function Error({
   reset: () => void;
 }) {
   const router = useRouter();
-  
+
   useEffect(() => {
     // Log the error to an error reporting service
-    console.error('Dashboard error:', error);
-    
+    console.error("Dashboard error:", error);
+
     // Automatically redirect to login for auth errors
-    const isAuthError = 
-      error.message.includes('unauthorized') || 
-      error.message.includes('401') || 
-      error.message.includes('token') || 
-      error.message.includes('session');
-      
+    const isAuthError =
+      error.message.includes("unauthorized") ||
+      error.message.includes("401") ||
+      error.message.includes("token") ||
+      error.message.includes("session");
+
     if (isAuthError) {
-      router.push('/auth/login');
+      router.push("/auth/login");
     }
   }, [error, router]);
 
   return (
     <div className="flex flex-col items-center justify-center p-8 space-y-4">
       <h1 className="text-xl font-bold text-red-600">Something went wrong</h1>
-      <p className="text-gray-600">
-        {error.message || 'There was a problem loading your dashboard'}
+      <p className="text-muted-foreground">
+        {error.message || "There was a problem loading your dashboard"}
       </p>
       <div className="flex space-x-4">
         <button
@@ -43,8 +43,8 @@ export default function Error({
           Try Again
         </button>
         <button
-          onClick={() => router.push('/dashboard')}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+          onClick={() => router.push("/dashboard")}
+          className="px-4 py-2 bg-gray-200 text-muted-foreground rounded hover:bg-gray-300 transition-colors"
         >
           Go Home
         </button>

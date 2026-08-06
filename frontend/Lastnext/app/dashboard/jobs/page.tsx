@@ -43,7 +43,7 @@ export default async function JobsIndexPage({ searchParams }: PageProps) {
   return (
     <div className="w-full max-w-none space-y-5 px-3 py-3 sm:px-4 md:px-5 lg:mx-auto lg:max-w-7xl">
       <header className="pcms-page-header">
-        <div>
+        <div className="min-w-0">
           <p className="pcms-eyebrow">Jobs workspace</p>
           <h1>
             Maintenance jobs

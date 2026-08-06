@@ -648,7 +648,6 @@ function PreventiveMaintenanceListPageContent() {
               formatDate={formatDate}
               getMachineNames={getMachineNames}
               getStatusInfo={getStatusInfo}
-              currentFilters={currentFilters}
               verifyPMProperty={verifyPMProperty}
               selectedProperty={selectedProperty}
             />

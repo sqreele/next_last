@@ -1,10 +1,10 @@
-Cloudflare Origin Certificate setup for pcms.live
+Cloudflare Origin Certificate setup for hotelcarepro.com
 
 Place the following files in this directory, owned by root, mode 600 for keys and 644 for certs:
 
 - origin.crt
   The Cloudflare Origin Certificate (PEM) downloaded from Cloudflare Dashboard → SSL/TLS → Origin Server → Create certificate.
-  Select RSA 2048, hostnames: pcms.live, www.pcms.live. Validity any.
+  Select RSA 2048, hostnames: hotelcarepro.com, www.hotelcarepro.com. Validity any.
 
 - origin.key
   The private key (PEM) provided when creating the Origin Certificate. Keep this secret (chmod 600).
@@ -22,8 +22,8 @@ After placing these files, restart Nginx via docker-compose:
   docker compose restart nginx
 
 Verify:
-  - openssl s_client -connect pcms.live:443 -servername pcms.live -showcerts | tail -n 20
-  - curl -Ik https://pcms.live
+  - openssl s_client -connect hotelcarepro.com:443 -servername hotelcarepro.com -showcerts | tail -n 20
+  - curl -Ik https://hotelcarepro.com
 
 Cloudflare settings:
   - SSL/TLS mode: Full (strict)

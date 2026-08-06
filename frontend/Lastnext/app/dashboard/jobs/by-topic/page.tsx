@@ -1,12 +1,15 @@
 // @ts-nocheck
 // app/dashboard/jobs/by-topic/page.tsx
-import React, { Suspense } from 'react';
-import { getServerSession } from '@/app/lib/session.server';
-import { fetchAllJobsForDashboard, fetchAllTopics } from '@/app/lib/data.server';
-import { jobsApi } from '@/app/lib/api/jobsApi';
-import JobsByTopicClient from './topic-client';
+import React, { Suspense } from "react";
+import { getServerSession } from "@/app/lib/session.server";
+import {
+  fetchAllJobsForDashboard,
+  fetchAllTopics,
+} from "@/app/lib/data.server";
+import { jobsApi } from "@/app/lib/api/jobsApi";
+import JobsByTopicClient from "./topic-client";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function JobsByTopicPage() {
   const session = await getServerSession();
@@ -20,10 +23,17 @@ export default async function JobsByTopicPage() {
 
   return (
     <div className="w-full">
-      <Suspense fallback={<div className="text-sm text-gray-500">Loading...</div>}>
-        <JobsByTopicClient initialJobs={jobs || []} topics={topics || []} properties={properties || []} />
+      <Suspense
+        fallback={
+          <div className="text-sm text-muted-foreground">Loading...</div>
+        }
+      >
+        <JobsByTopicClient
+          initialJobs={jobs || []}
+          topics={topics || []}
+          properties={properties || []}
+        />
       </Suspense>
     </div>
   );
 }
-

@@ -1,6 +1,10 @@
-# PCMS
+# HotelCare Pro
 
-PCMS is a Property Care Maintenance System for hotel maintenance teams.
+HotelCare Pro is smart hotel maintenance and engineering management software
+for work orders, preventive maintenance, assets, rooms, technicians and
+engineering reports.
+
+Production domain: `https://hotelcarepro.com`
 
 ## Scope
 

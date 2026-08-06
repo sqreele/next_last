@@ -2,10 +2,14 @@
 
 "use client";
 
-import { Button } from '@/app/components/ui/button';
-import { PaginationProps } from '@/app/lib/types';
+import { Button } from "@/app/components/ui/button";
+import { PaginationProps } from "@/app/lib/types";
 
-function generatePageNumbers(currentPage: number, totalPages: number, maxVisible: number): number[] {
+function generatePageNumbers(
+  currentPage: number,
+  totalPages: number,
+  maxVisible: number,
+): number[] {
   const pages: number[] = [];
   const half = Math.floor(maxVisible / 2);
   let start = Math.max(1, currentPage - half);
@@ -25,7 +29,11 @@ function generatePageNumbers(currentPage: number, totalPages: number, maxVisible
   return pages;
 }
 
-export default function Pagination({ totalPages, currentPage, onPageChange }: PaginationProps) {
+export default function Pagination({
+  totalPages,
+  currentPage,
+  onPageChange,
+}: PaginationProps) {
   const mobilePages = generatePageNumbers(currentPage, totalPages, 3);
   const desktopPages = generatePageNumbers(currentPage, totalPages, 7);
 
@@ -47,8 +55,12 @@ export default function Pagination({ totalPages, currentPage, onPageChange }: Pa
             <Button
               key={page}
               onClick={() => onPageChange(page)}
-              variant={currentPage === page ? 'default' : 'outline'}
-              className={currentPage === page ? 'pcms-pagination-button--active h-11 min-w-[2.75rem] px-3' : 'pcms-pagination-button h-11 min-w-[2.75rem] px-3'}
+              variant={currentPage === page ? "default" : "outline"}
+              className={
+                currentPage === page
+                  ? "pcms-pagination-button--active h-11 min-w-[2.75rem] px-3"
+                  : "pcms-pagination-button h-11 min-w-[2.75rem] px-3"
+              }
             >
               {page}
             </Button>
@@ -79,10 +91,20 @@ export default function Pagination({ totalPages, currentPage, onPageChange }: Pa
         <div className="flex items-center gap-1">
           {desktopPages[0] > 1 && (
             <>
-              <Button onClick={() => onPageChange(1)} variant={currentPage === 1 ? 'default' : 'outline'} className={currentPage === 1 ? 'pcms-pagination-button--active min-w-[2.75rem]' : 'pcms-pagination-button min-w-[2.75rem]'}>
+              <Button
+                onClick={() => onPageChange(1)}
+                variant={currentPage === 1 ? "default" : "outline"}
+                className={
+                  currentPage === 1
+                    ? "pcms-pagination-button--active min-w-[2.75rem]"
+                    : "pcms-pagination-button min-w-[2.75rem]"
+                }
+              >
                 1
               </Button>
-              {desktopPages[0] > 2 && <span className="px-1 text-gray-400">…</span>}
+              {desktopPages[0] > 2 && (
+                <span className="px-1 text-muted-foreground">…</span>
+              )}
             </>
           )}
 
@@ -90,8 +112,12 @@ export default function Pagination({ totalPages, currentPage, onPageChange }: Pa
             <Button
               key={page}
               onClick={() => onPageChange(page)}
-              variant={currentPage === page ? 'default' : 'outline'}
-              className={currentPage === page ? 'pcms-pagination-button--active flex items-center justify-center min-w-[2.75rem]' : 'pcms-pagination-button flex items-center justify-center min-w-[2.75rem]'}
+              variant={currentPage === page ? "default" : "outline"}
+              className={
+                currentPage === page
+                  ? "pcms-pagination-button--active flex items-center justify-center min-w-[2.75rem]"
+                  : "pcms-pagination-button flex items-center justify-center min-w-[2.75rem]"
+              }
             >
               {page}
             </Button>
@@ -100,9 +126,17 @@ export default function Pagination({ totalPages, currentPage, onPageChange }: Pa
           {desktopPages[desktopPages.length - 1] < totalPages && (
             <>
               {desktopPages[desktopPages.length - 1] < totalPages - 1 && (
-                <span className="px-1 text-gray-400">…</span>
+                <span className="px-1 text-muted-foreground">…</span>
               )}
-              <Button onClick={() => onPageChange(totalPages)} variant={currentPage === totalPages ? 'default' : 'outline'} className={currentPage === totalPages ? 'pcms-pagination-button--active min-w-[2.75rem]' : 'pcms-pagination-button min-w-[2.75rem]'}>
+              <Button
+                onClick={() => onPageChange(totalPages)}
+                variant={currentPage === totalPages ? "default" : "outline"}
+                className={
+                  currentPage === totalPages
+                    ? "pcms-pagination-button--active min-w-[2.75rem]"
+                    : "pcms-pagination-button min-w-[2.75rem]"
+                }
+              >
                 {totalPages}
               </Button>
             </>

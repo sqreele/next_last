@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from "react";
 import {
   Camera,
   CheckCircle2,
@@ -10,11 +10,11 @@ import {
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
-} from 'lucide-react';
-import Image from 'next/image';
-import { JobImage } from '@/app/lib/types';
-import { fixImageUrl } from '@/app/lib/utils/image-utils';
-import { cn } from '@/app/lib/utils/cn';
+} from "lucide-react";
+import Image from "next/image";
+import { JobImage } from "@/app/lib/types";
+import { fixImageUrl } from "@/app/lib/utils/image-utils";
+import { cn } from "@/app/lib/utils/cn";
 
 interface BeforeAfterCompareProps {
   images?: JobImage[];
@@ -25,14 +25,14 @@ interface BeforeAfterCompareProps {
   /** Completion timestamp — anything uploaded within 1h of (or after) this is "after". */
   completedAt?: string | null;
   /** Force one mode regardless of viewport */
-  defaultMode?: 'side-by-side' | 'slider';
+  defaultMode?: "side-by-side" | "slider";
   className?: string;
 }
 
 interface ClassifiedImage {
   url: string;
   uploadedAt: string | null;
-  kind: 'before' | 'after';
+  kind: "before" | "after";
 }
 
 function classifyImages(
@@ -55,22 +55,25 @@ function classifyImages(
       const uploadedAt = img.uploaded_at || null;
       const uploadedMs = uploadedAt ? new Date(uploadedAt).getTime() : null;
 
-      let kind: 'before' | 'after' = 'before';
+      let kind: "before" | "after" = "before";
       if (uploadedMs !== null) {
         if (completed !== null && uploadedMs >= completed - HOUR) {
-          kind = 'after';
+          kind = "after";
         } else if (created !== null && uploadedMs <= created + HOUR) {
-          kind = 'before';
+          kind = "before";
         } else if (completed !== null && uploadedMs >= completed) {
-          kind = 'after';
+          kind = "after";
         } else {
-          kind = completed !== null && uploadedMs > (created ?? 0) + HOUR ? 'after' : 'before';
+          kind =
+            completed !== null && uploadedMs > (created ?? 0) + HOUR
+              ? "after"
+              : "before";
         }
       } else {
         // No timestamp: first image is before, others stay before too.
-        kind = 'before';
+        kind = "before";
       }
-      (kind === 'before' ? before : after).push({ url, uploadedAt, kind });
+      (kind === "before" ? before : after).push({ url, uploadedAt, kind });
     });
   }
 
@@ -80,8 +83,12 @@ function classifyImages(
     imageUrls.forEach((raw, index) => {
       const url = fixImageUrl(raw) || raw;
       if (!url) return;
-      const kind: 'before' | 'after' = index < mid ? 'before' : 'after';
-      (kind === 'before' ? before : after).push({ url, uploadedAt: null, kind });
+      const kind: "before" | "after" = index < mid ? "before" : "after";
+      (kind === "before" ? before : after).push({
+        url,
+        uploadedAt: null,
+        kind,
+      });
     });
     // If only one image total, treat as "before"
     if (imageUrls.length === 1) {
@@ -121,7 +128,7 @@ function Lightbox({
       <button
         type="button"
         onClick={onClose}
-        className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white hover:bg-white/30"
+        className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-card/15 text-white hover:bg-card/30"
         aria-label="Close"
       >
         <X className="h-5 w-5" />
@@ -133,7 +140,7 @@ function Lightbox({
           fill
           className="object-contain"
           quality={90}
-          unoptimized={url.startsWith('http')}
+          unoptimized={url.startsWith("http")}
           sizes="100vw"
         />
       </div>
@@ -162,7 +169,7 @@ function SliderCompare({
   return (
     <div
       ref={containerRef}
-      className="relative aspect-video w-full overflow-hidden rounded-2xl bg-slate-900 select-none touch-none"
+      className="relative aspect-video w-full overflow-hidden rounded-xl bg-slate-900 select-none touch-none"
       onMouseDown={(event) => {
         dragging.current = true;
         updateFromClientX(event.clientX);
@@ -194,30 +201,33 @@ function SliderCompare({
         alt="After"
         fill
         className="object-cover"
-        unoptimized={after.url.startsWith('http')}
+        unoptimized={after.url.startsWith("http")}
         sizes="(max-width: 768px) 100vw, 800px"
       />
       <div
         className="absolute inset-y-0 left-0 overflow-hidden"
         style={{ width: `${percent}%` }}
       >
-        <div className="relative h-full w-screen max-w-none" style={{ width: containerRef.current?.clientWidth || '100%' }}>
+        <div
+          className="relative h-full w-screen max-w-none"
+          style={{ width: containerRef.current?.clientWidth || "100%" }}
+        >
           <Image
             src={before.url}
             alt="Before"
             fill
             className="object-cover"
-            unoptimized={before.url.startsWith('http')}
+            unoptimized={before.url.startsWith("http")}
             sizes="(max-width: 768px) 100vw, 800px"
           />
         </div>
       </div>
       <div
-        className="absolute inset-y-0 flex w-1 -translate-x-1/2 cursor-ew-resize items-center justify-center bg-white shadow-lg"
+        className="absolute inset-y-0 flex w-1 -translate-x-1/2 cursor-ew-resize items-center justify-center bg-card shadow-card"
         style={{ left: `${percent}%` }}
       >
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-white shadow-md ring-2 ring-slate-900">
-          <SlidersHorizontal className="h-4 w-4 text-slate-900" />
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-card shadow-soft ring-2 ring-slate-900">
+          <SlidersHorizontal className="h-4 w-4 text-foreground" />
         </span>
       </div>
       <span className="absolute left-3 top-3 rounded-full bg-rose-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow">
@@ -242,30 +252,27 @@ function SideCard({
 }: {
   image: ClassifiedImage;
   label: string;
-  color: 'rose' | 'emerald';
+  color: "rose" | "emerald";
   onZoom: () => void;
   count: number;
   total: number;
   onPrev?: () => void;
   onNext?: () => void;
 }) {
-  const colorClass =
-    color === 'rose'
-      ? 'bg-rose-600'
-      : 'bg-emerald-600';
+  const colorClass = color === "rose" ? "bg-rose-600" : "bg-emerald-600";
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
+    <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted shadow-soft">
       <Image
         src={image.url}
         alt={`${label} photo ${count} of ${total}`}
         fill
         className="object-cover"
-        unoptimized={image.url.startsWith('http')}
+        unoptimized={image.url.startsWith("http")}
         sizes="(max-width: 768px) 100vw, 50vw"
       />
       <span
         className={cn(
-          'absolute left-3 top-3 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow',
+          "absolute left-3 top-3 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow",
           colorClass,
         )}
       >
@@ -280,7 +287,7 @@ function SideCard({
         type="button"
         onClick={onZoom}
         aria-label="Open fullscreen"
-        className="absolute right-3 bottom-3 grid h-9 w-9 place-items-center rounded-full bg-white/90 text-slate-900 shadow hover:bg-white"
+        className="absolute right-3 bottom-3 grid h-9 w-9 place-items-center rounded-full bg-card/90 text-foreground shadow hover:bg-card"
       >
         <Maximize2 className="h-4 w-4" />
       </button>
@@ -290,7 +297,7 @@ function SideCard({
             type="button"
             onClick={onPrev}
             aria-label="Previous"
-            className="absolute left-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-slate-900 shadow hover:bg-white"
+            className="absolute left-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-card/85 text-foreground shadow hover:bg-card"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -298,7 +305,7 @@ function SideCard({
             type="button"
             onClick={onNext}
             aria-label="Next"
-            className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-white/85 text-slate-900 shadow hover:bg-white"
+            className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-card/85 text-foreground shadow hover:bg-card"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -313,17 +320,19 @@ export function BeforeAfterCompare({
   imageUrls,
   createdAt,
   completedAt,
-  defaultMode = 'side-by-side',
+  defaultMode = "side-by-side",
   className,
 }: BeforeAfterCompareProps) {
   const { before, after } = useMemo(
     () => classifyImages(images, imageUrls, createdAt, completedAt),
     [images, imageUrls, createdAt, completedAt],
   );
-  const [mode, setMode] = useState<'side-by-side' | 'slider'>(defaultMode);
+  const [mode, setMode] = useState<"side-by-side" | "slider">(defaultMode);
   const [beforeIdx, setBeforeIdx] = useState(0);
   const [afterIdx, setAfterIdx] = useState(0);
-  const [lightbox, setLightbox] = useState<{ url: string; alt: string } | null>(null);
+  const [lightbox, setLightbox] = useState<{ url: string; alt: string } | null>(
+    null,
+  );
 
   if (!before.length && !after.length) {
     return null;
@@ -336,30 +345,39 @@ export function BeforeAfterCompare({
   const hasSingleImageGroup = before.length === 0 || after.length === 0;
 
   return (
-    <section className={cn('space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5', className)}>
+    <section
+      className={cn(
+        "space-y-3 rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5",
+        className,
+      )}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-900 text-white">
             <Camera className="h-4 w-4" />
           </span>
           <div>
-            <h3 className="text-base font-bold text-slate-900 sm:text-lg">Before / After</h3>
-            <p className="text-xs font-medium text-slate-500">
+            <h3 className="text-base font-bold text-foreground sm:text-lg">
+              Before / After
+            </h3>
+            <p className="text-xs font-medium text-muted-foreground">
               {before.length} before · {after.length} after
-              {!after.length && ' (waiting on completion photo)'}
+              {!after.length && " (waiting on completion photo)"}
             </p>
           </div>
         </div>
 
         {canSlider && (
-          <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-0.5 text-xs font-bold">
+          <div className="inline-flex rounded-full border border-border bg-muted p-0.5 text-xs font-bold">
             <button
               type="button"
-              onClick={() => setMode('side-by-side')}
-              aria-pressed={mode === 'side-by-side'}
+              onClick={() => setMode("side-by-side")}
+              aria-pressed={mode === "side-by-side"}
               className={cn(
-                'inline-flex items-center gap-1 rounded-full px-3 py-1 transition-colors',
-                mode === 'side-by-side' ? 'bg-white text-slate-900 shadow' : 'text-slate-600',
+                "inline-flex items-center gap-1 rounded-full px-3 py-1 transition-colors",
+                mode === "side-by-side"
+                  ? "bg-card text-foreground shadow"
+                  : "text-muted-foreground",
               )}
             >
               <Columns2 className="h-3.5 w-3.5" />
@@ -367,11 +385,13 @@ export function BeforeAfterCompare({
             </button>
             <button
               type="button"
-              onClick={() => setMode('slider')}
-              aria-pressed={mode === 'slider'}
+              onClick={() => setMode("slider")}
+              aria-pressed={mode === "slider"}
               className={cn(
-                'inline-flex items-center gap-1 rounded-full px-3 py-1 transition-colors',
-                mode === 'slider' ? 'bg-white text-slate-900 shadow' : 'text-slate-600',
+                "inline-flex items-center gap-1 rounded-full px-3 py-1 transition-colors",
+                mode === "slider"
+                  ? "bg-card text-foreground shadow"
+                  : "text-muted-foreground",
               )}
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -381,13 +401,13 @@ export function BeforeAfterCompare({
         )}
       </div>
 
-      {canSlider && mode === 'slider' ? (
+      {canSlider && mode === "slider" ? (
         <SliderCompare before={currentBefore} after={currentAfter} />
       ) : (
         <div
           className={cn(
-            'grid gap-3',
-            hasSingleImageGroup ? 'grid-cols-1' : 'sm:grid-cols-2',
+            "grid gap-3",
+            hasSingleImageGroup ? "grid-cols-1" : "sm:grid-cols-2",
           )}
         >
           {before.length > 0 && (
@@ -397,8 +417,12 @@ export function BeforeAfterCompare({
               color="rose"
               count={beforeIdx + 1}
               total={before.length}
-              onZoom={() => setLightbox({ url: currentBefore.url, alt: 'Before photo' })}
-              onPrev={() => setBeforeIdx((i) => (i - 1 + before.length) % before.length)}
+              onZoom={() =>
+                setLightbox({ url: currentBefore.url, alt: "Before photo" })
+              }
+              onPrev={() =>
+                setBeforeIdx((i) => (i - 1 + before.length) % before.length)
+              }
               onNext={() => setBeforeIdx((i) => (i + 1) % before.length)}
             />
           )}
@@ -409,12 +433,16 @@ export function BeforeAfterCompare({
               color="emerald"
               count={afterIdx + 1}
               total={after.length}
-              onZoom={() => setLightbox({ url: currentAfter.url, alt: 'After photo' })}
-              onPrev={() => setAfterIdx((i) => (i - 1 + after.length) % after.length)}
+              onZoom={() =>
+                setLightbox({ url: currentAfter.url, alt: "After photo" })
+              }
+              onPrev={() =>
+                setAfterIdx((i) => (i - 1 + after.length) % after.length)
+              }
               onNext={() => setAfterIdx((i) => (i + 1) % after.length)}
             />
           ) : (
-            <div className="grid aspect-video place-items-center rounded-2xl border-2 border-dashed border-emerald-300 bg-emerald-50 p-4 text-center text-sm font-semibold text-emerald-700">
+            <div className="grid aspect-video place-items-center rounded-xl border-2 border-dashed border-emerald-300 bg-emerald-50 p-4 text-center text-sm font-semibold text-emerald-700">
               <div>
                 <CheckCircle2 className="mx-auto mb-1 h-6 w-6" />
                 <p>Upload an after photo when the job is completed.</p>
@@ -424,8 +452,8 @@ export function BeforeAfterCompare({
         </div>
       )}
 
-      {(before.length > 1 || after.length > 1) && mode === 'side-by-side' && (
-        <div className="grid gap-2 text-[11px] text-slate-500 sm:grid-cols-2">
+      {(before.length > 1 || after.length > 1) && mode === "side-by-side" && (
+        <div className="grid gap-2 text-[11px] text-muted-foreground sm:grid-cols-2">
           {before.length > 1 && (
             <div className="flex flex-wrap gap-1.5">
               {before.map((_, i) => (
@@ -435,8 +463,10 @@ export function BeforeAfterCompare({
                   onClick={() => setBeforeIdx(i)}
                   aria-label={`Show before photo ${i + 1}`}
                   className={cn(
-                    'h-2.5 w-6 rounded-full transition-colors',
-                    i === beforeIdx ? 'bg-rose-600' : 'bg-slate-300 hover:bg-slate-400',
+                    "h-2.5 w-6 rounded-full transition-colors",
+                    i === beforeIdx
+                      ? "bg-rose-600"
+                      : "bg-slate-300 hover:bg-slate-400",
                   )}
                 />
               ))}
@@ -451,8 +481,10 @@ export function BeforeAfterCompare({
                   onClick={() => setAfterIdx(i)}
                   aria-label={`Show after photo ${i + 1}`}
                   className={cn(
-                    'h-2.5 w-6 rounded-full transition-colors',
-                    i === afterIdx ? 'bg-emerald-600' : 'bg-slate-300 hover:bg-slate-400',
+                    "h-2.5 w-6 rounded-full transition-colors",
+                    i === afterIdx
+                      ? "bg-emerald-600"
+                      : "bg-slate-300 hover:bg-slate-400",
                   )}
                 />
               ))}
@@ -462,7 +494,11 @@ export function BeforeAfterCompare({
       )}
 
       {lightbox && (
-        <Lightbox url={lightbox.url} alt={lightbox.alt} onClose={() => setLightbox(null)} />
+        <Lightbox
+          url={lightbox.url}
+          alt={lightbox.alt}
+          onClose={() => setLightbox(null)}
+        />
       )}
     </section>
   );

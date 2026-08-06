@@ -8,7 +8,7 @@ import { cn } from '@/app/lib/utils/cn';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://pcms.live');
+  (process.env.NODE_ENV === 'development' ? 'http://localhost:8000' : 'https://hotelcarepro.com');
 
 interface PropertyExportButtonProps {
   className?: string;

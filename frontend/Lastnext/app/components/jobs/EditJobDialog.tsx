@@ -42,7 +42,13 @@ interface EditDialogProps {
   isSubmitting: boolean;
 }
 
-const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, isSubmitting }) => {
+const EditJobDialog: FC<EditDialogProps> = ({
+  isOpen,
+  onClose,
+  job,
+  onSubmit,
+  isSubmitting,
+}) => {
   const t = useT();
   const [priority, setPriority] = useState<string>(job?.priority || "medium");
   const [status, setStatus] = useState<string>(job?.status || "pending");
@@ -56,7 +62,9 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
     }
   }, [job?.job_id, job?.priority, job?.status]);
 
-  const formatTimestampForInput = (timestamp: string | null | undefined): string => {
+  const formatTimestampForInput = (
+    timestamp: string | null | undefined,
+  ): string => {
     if (!timestamp) return "";
     try {
       const date = new Date(timestamp);
@@ -72,46 +80,51 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
 
   const priorityColors: Record<string, { active: string; inactive: string }> = {
     low: {
-      active: "bg-green-500 text-white border-green-500 shadow-md",
+      active: "bg-green-500 text-white border-green-500 shadow-soft",
       inactive: "border-green-200 text-green-700 hover:bg-green-50",
     },
     medium: {
-      active: "bg-yellow-500 text-white border-yellow-500 shadow-md",
+      active: "bg-yellow-500 text-white border-yellow-500 shadow-soft",
       inactive: "border-yellow-200 text-yellow-700 hover:bg-yellow-50",
     },
     high: {
-      active: "bg-orange-500 text-white border-orange-500 shadow-md",
+      active: "bg-orange-500 text-white border-orange-500 shadow-soft",
       inactive: "border-orange-200 text-orange-700 hover:bg-orange-50",
     },
     critical: {
-      active: "bg-red-600 text-white border-red-600 shadow-md",
+      active: "bg-red-600 text-white border-red-600 shadow-soft",
       inactive: "border-red-200 text-red-700 hover:bg-red-50",
     },
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="relative max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-2xl p-0 sm:max-w-lg">
+      <DialogContent className="relative max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-0 sm:max-w-lg">
         {isSubmitting && (
           <div
-            className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-white/95 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-card/95 backdrop-blur-sm"
             aria-live="polite"
             aria-busy="true"
             role="status"
           >
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 shadow-inner">
-              <Loader className="h-8 w-8 animate-spin text-blue-600" aria-hidden />
+              <Loader
+                className="h-8 w-8 animate-spin text-blue-600"
+                aria-hidden
+              />
             </div>
-            <p className="text-center text-lg font-medium text-slate-700">{t('editJob.savingOverlay')}</p>
+            <p className="text-center text-lg font-medium text-muted-foreground">
+              {t("editJob.savingOverlay")}
+            </p>
           </div>
         )}
 
-        <DialogHeader className="border-b border-slate-200 px-5 py-4 text-left">
-          <DialogTitle className="text-lg font-bold text-slate-900">
-            {t('editJob.title')} #{job.job_id}
+        <DialogHeader className="border-b border-border px-5 py-4 text-left">
+          <DialogTitle className="text-lg font-bold text-foreground">
+            {t("editJob.title")} #{job.job_id}
           </DialogTitle>
-          <DialogDescription className="text-xs font-medium text-slate-600">
-            {t('editJob.subtitle')}
+          <DialogDescription className="text-xs font-medium text-muted-foreground">
+            {t("editJob.subtitle")}
           </DialogDescription>
         </DialogHeader>
 
@@ -121,14 +134,17 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
           <input type="hidden" name="priority" value={priority} />
 
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-bold text-slate-900">
-              {t('editJob.description')}
+            <Label
+              htmlFor="description"
+              className="text-sm font-bold text-foreground"
+            >
+              {t("editJob.description")}
             </Label>
             <Textarea
               id="description"
               name="description"
               defaultValue={job.description}
-              className="min-h-[96px] border-2 border-slate-300 text-sm"
+              className="min-h-[96px] border-2 border-border text-sm"
               required
               aria-required="true"
               disabled={isSubmitting}
@@ -136,7 +152,9 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-bold text-slate-900">{t('editJob.status')}</Label>
+            <Label className="text-sm font-bold text-foreground">
+              {t("editJob.status")}
+            </Label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {JOB_STATUS_OPTIONS.map((option) => {
                 const active = status === option.value;
@@ -150,8 +168,8 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
                     className={cn(
                       "flex min-h-[56px] flex-col items-start justify-center rounded-xl border-2 px-3 py-2 text-left transition-all touch-manipulation active:scale-[0.98]",
                       active
-                        ? "border-blue-600 bg-blue-50 shadow-sm"
-                        : "border-slate-200 bg-white hover:border-slate-300",
+                        ? "border-blue-600 bg-blue-50 shadow-soft"
+                        : "border-border bg-card hover:border-border",
                     )}
                   >
                     <StatusBadge status={option.value} size="sm" />
@@ -162,11 +180,14 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm font-bold text-slate-900">{t('editJob.priority')}</Label>
+            <Label className="text-sm font-bold text-foreground">
+              {t("editJob.priority")}
+            </Label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {JOB_PRIORITY_OPTIONS.map((option) => {
                 const active = priority === option.value;
-                const colors = priorityColors[option.value] || priorityColors.medium;
+                const colors =
+                  priorityColors[option.value] || priorityColors.medium;
                 return (
                   <button
                     key={option.value}
@@ -187,14 +208,20 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="remarks" className="text-sm font-bold text-slate-900">
-              {t('editJob.remarks')} <span className="text-xs font-medium text-slate-500">({t('form.optional').toLowerCase()})</span>
+            <Label
+              htmlFor="remarks"
+              className="text-sm font-bold text-foreground"
+            >
+              {t("editJob.remarks")}{" "}
+              <span className="text-xs font-medium text-muted-foreground">
+                ({t("form.optional").toLowerCase()})
+              </span>
             </Label>
             <Textarea
               id="remarks"
               name="remarks"
               defaultValue={job.remarks || ""}
-              className="min-h-[72px] border-2 border-slate-300 text-sm"
+              className="min-h-[72px] border-2 border-border text-sm"
               disabled={isSubmitting}
             />
           </div>
@@ -202,7 +229,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <label
               htmlFor="is_defective"
-              className="flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-3 cursor-pointer touch-manipulation"
+              className="flex items-center gap-3 rounded-xl border-2 border-border bg-card p-3 cursor-pointer touch-manipulation"
             >
               <Checkbox
                 id="is_defective"
@@ -211,11 +238,13 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
                 disabled={isSubmitting}
                 className="h-5 w-5"
               />
-              <span className="text-sm font-semibold text-slate-900">{t('editJob.markDefective')}</span>
+              <span className="text-sm font-semibold text-foreground">
+                {t("editJob.markDefective")}
+              </span>
             </label>
             <label
               htmlFor="is_preventivemaintenance"
-              className="flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-white p-3 cursor-pointer touch-manipulation"
+              className="flex items-center gap-3 rounded-xl border-2 border-border bg-card p-3 cursor-pointer touch-manipulation"
             >
               <Checkbox
                 id="is_preventivemaintenance"
@@ -224,18 +253,20 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
                 disabled={isSubmitting}
                 className="h-5 w-5"
               />
-              <span className="text-sm font-semibold text-slate-900">{t('editJob.preventive')}</span>
+              <span className="text-sm font-semibold text-foreground">
+                {t("editJob.preventive")}
+              </span>
             </label>
           </div>
 
-          <div className="rounded-xl border-2 border-slate-200 bg-white">
+          <div className="rounded-xl border-2 border-border bg-card">
             <button
               type="button"
               onClick={() => setShowTimestamps((value) => !value)}
-              className="flex w-full items-center justify-between p-3 text-sm font-bold text-slate-900 touch-manipulation"
+              className="flex w-full items-center justify-between p-3 text-sm font-bold text-foreground touch-manipulation"
               aria-expanded={showTimestamps}
             >
-              <span>{t('editJob.editTimestamps')}</span>
+              <span>{t("editJob.editTimestamps")}</span>
               {showTimestamps ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
@@ -243,10 +274,13 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
               )}
             </button>
             {showTimestamps && (
-              <div className="space-y-3 border-t border-slate-200 p-3">
+              <div className="space-y-3 border-t border-border p-3">
                 <div className="space-y-1">
-                  <Label htmlFor="created_at" className="text-xs font-bold text-slate-700">
-                    {t('editJob.createdAt')}
+                  <Label
+                    htmlFor="created_at"
+                    className="text-xs font-bold text-muted-foreground"
+                  >
+                    {t("editJob.createdAt")}
                   </Label>
                   <Input
                     id="created_at"
@@ -258,8 +292,11 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="updated_at" className="text-xs font-bold text-slate-700">
-                    {t('editJob.updatedAt')}
+                  <Label
+                    htmlFor="updated_at"
+                    className="text-xs font-bold text-muted-foreground"
+                  >
+                    {t("editJob.updatedAt")}
                   </Label>
                   <Input
                     id="updated_at"
@@ -271,8 +308,11 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="completed_at" className="text-xs font-bold text-slate-700">
-                    {t('editJob.completedAt')}
+                  <Label
+                    htmlFor="completed_at"
+                    className="text-xs font-bold text-muted-foreground"
+                  >
+                    {t("editJob.completedAt")}
                   </Label>
                   <Input
                     id="completed_at"
@@ -282,15 +322,15 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
                     className="text-sm"
                     disabled={isSubmitting}
                   />
-                  <p className="text-xs font-medium text-slate-500">
-                    {t('editJob.completedHint')}
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {t("editJob.completedHint")}
                   </p>
                 </div>
               </div>
             )}
           </div>
 
-          <DialogFooter className="sticky bottom-0 -mx-5 flex-col gap-2 border-t border-slate-200 bg-white px-5 pb-2 pt-3 sm:flex-row sm:justify-end">
+          <DialogFooter className="sticky bottom-0 -mx-5 flex-col gap-2 border-t border-border bg-card px-5 pb-2 pt-3 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
@@ -298,7 +338,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
               disabled={isSubmitting}
               className="h-11 w-full sm:w-auto"
             >
-              {t('form.cancel')}
+              {t("form.cancel")}
             </Button>
             <Button
               type="submit"
@@ -306,7 +346,7 @@ const EditJobDialog: FC<EditDialogProps> = ({ isOpen, onClose, job, onSubmit, is
               className="h-11 w-full bg-blue-600 font-bold text-white hover:bg-blue-700 sm:w-auto"
             >
               {isSubmitting && <Loader className="mr-2 h-4 w-4 animate-spin" />}
-              {t('editJob.saveChanges')}
+              {t("editJob.saveChanges")}
             </Button>
           </DialogFooter>
         </form>

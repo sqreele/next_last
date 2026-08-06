@@ -1,26 +1,48 @@
 interface FormFieldProps {
-    id: string;
-    label: string;
-    type?: string;
-    error?: string;
-  }
-  
-  export default function FormField({ id, label, type = "text", error }: FormFieldProps) {
-    return (
-      <div>
-        <label htmlFor={id} className="block text-sm font-medium text-gray-700">
-          {label}
-        </label>
-        <input
-          id={id}
-          name={id}
-          type={type}
-          required
-          className={`mt-1 appearance-none rounded-lg relative block w-full px-3 py-2 border ${
-            error ? 'border-red-500' : 'border-gray-300'
-          } placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm`}
-          placeholder={label}
-        />
-      </div>
-    );
-  }
+  id: string;
+  label: string;
+  type?: string;
+  error?: string;
+  autoComplete?: string;
+  placeholder?: string;
+}
+
+export default function FormField({
+  id,
+  label,
+  type = "text",
+  error,
+  autoComplete,
+  placeholder,
+}: FormFieldProps) {
+  return (
+    <div className="space-y-1.5">
+      <label
+        htmlFor={id}
+        className="block text-sm font-semibold text-slate-700"
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        name={id}
+        type={type}
+        required
+        autoComplete={autoComplete}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${id}-error` : undefined}
+        className={`relative block h-11 w-full appearance-none rounded-xl border bg-white px-3.5 text-sm text-slate-950 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-4 ${
+          error
+            ? "border-red-400 focus:border-red-500 focus:ring-red-100"
+            : "border-slate-300 focus:border-blue-600 focus:ring-blue-100"
+        }`}
+        placeholder={placeholder || label}
+      />
+      {error && (
+        <p id={`${id}-error`} className="text-xs font-medium text-red-600">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}

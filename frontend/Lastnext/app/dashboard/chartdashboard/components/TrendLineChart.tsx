@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   CartesianGrid,
@@ -10,15 +10,15 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from 'recharts';
+} from "recharts";
 
 interface TrendLineChartProps {
   data: Array<{ label: string; jobs: number }>;
 }
 
 function formatJobsLabel(v: number | string) {
-  const n = typeof v === 'number' ? v : Number(v);
-  if (Number.isNaN(n) || n === 0) return '';
+  const n = typeof v === "number" ? v : Number(v);
+  if (Number.isNaN(n) || n === 0) return "";
   return String(n);
 }
 
@@ -26,18 +26,29 @@ export default function TrendLineChart({ data }: TrendLineChartProps) {
   const hasData = data.length > 0;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-slate-900">Jobs trend by month</h3>
-        <p className="text-sm text-slate-500">Track overall workload volume.</p>
+        <h3 className="text-lg font-semibold text-foreground">
+          Jobs trend by month
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Track overall workload volume.
+        </p>
       </div>
       {hasData ? (
         <div className="h-[18rem] w-full min-h-[18rem] sm:h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ left: 8, right: 12, top: 28, bottom: 8 }}>
+            <LineChart
+              data={data}
+              margin={{ left: 8, right: 12, top: 28, bottom: 8 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="label" stroke="#64748b" tick={{ fontSize: 11 }} />
-              <YAxis stroke="#64748b" tick={{ fontSize: 11 }} allowDecimals={false} />
+              <YAxis
+                stroke="#64748b"
+                tick={{ fontSize: 11 }}
+                allowDecimals={false}
+              />
               <Tooltip />
               <Legend />
               <Line
@@ -60,7 +71,7 @@ export default function TrendLineChart({ data }: TrendLineChartProps) {
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="flex h-[18rem] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-500">
+        <div className="flex h-[18rem] items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
           No trend data for selected filters.
         </div>
       )}

@@ -1,16 +1,16 @@
-import { Suspense } from 'react';
-import type { Metadata } from 'next';
-import { getServerSession } from '@/app/lib/session.server';
-import { fetchAllRooms } from '@/app/lib/data.server';
-import { Skeleton } from '@/app/components/ui/loading';
-import { RoomsToolbar } from './RoomsToolbar';
-import { RoomsListClient } from './RoomsListClient';
+import { Suspense } from "react";
+import type { Metadata } from "next";
+import { getServerSession } from "@/app/lib/session.server";
+import { fetchAllRooms } from "@/app/lib/data.server";
+import { Skeleton } from "@/app/components/ui/loading";
+import { RoomsToolbar } from "./RoomsToolbar";
+import { RoomsListClient } from "./RoomsListClient";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: 'Rooms',
-  description: 'Browse and onboard rooms for the active property.',
+  title: "Rooms",
+  description: "Browse and onboard rooms for the active property.",
 };
 
 export default async function RoomsIndexPage() {
@@ -23,11 +23,9 @@ export default async function RoomsIndexPage() {
       <header className="pcms-page-header">
         <div>
           <p className="pcms-eyebrow">Rooms workspace</p>
-          <h1>
-            Rooms
-          </h1>
+          <h1>Rooms</h1>
           <p className="pcms-page-description">
-            {rooms.length} room{rooms.length === 1 ? '' : 's'} in scope
+            {rooms.length} room{rooms.length === 1 ? "" : "s"} in scope
           </p>
         </div>
         <RoomsToolbar />
@@ -37,7 +35,7 @@ export default async function RoomsIndexPage() {
         fallback={
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-24 rounded-2xl" />
+              <Skeleton key={index} className="h-24 rounded-xl" />
             ))}
           </div>
         }

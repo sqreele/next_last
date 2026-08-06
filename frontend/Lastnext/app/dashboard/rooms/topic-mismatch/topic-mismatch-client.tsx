@@ -1,18 +1,40 @@
 "use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { Room, Topic, Job } from '@/app/lib/types';
-import { Card, CardContent } from '@/app/components/ui/card';
-import { Badge } from '@/app/components/ui/badge';
-import { Button } from '@/app/components/ui/button';
-import { downloadCSV } from '@/app/lib/utils/csv-export';
-import { getDisplayName } from '@/app/lib/utils/display-name';
-import { useUser, useProperties } from '@/app/lib/stores/mainStore';
-import { filterRoomsByProperty, filterJobsByProperty } from '@/app/lib/utils/property-filter';
-import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/app/components/ui/command';
-import { ChevronDown, Filter, X, AlertTriangle, Download, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import React from "react";
+import Link from "next/link";
+import { Room, Topic, Job } from "@/app/lib/types";
+import { Card, CardContent } from "@/app/components/ui/card";
+import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { downloadCSV } from "@/app/lib/utils/csv-export";
+import { getDisplayName } from "@/app/lib/utils/display-name";
+import { useUser, useProperties } from "@/app/lib/stores/mainStore";
+import {
+  filterRoomsByProperty,
+  filterJobsByProperty,
+} from "@/app/lib/utils/property-filter";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/app/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/app/components/ui/command";
+import {
+  ChevronDown,
+  Filter,
+  X,
+  AlertTriangle,
+  Download,
+  ArrowUpRight,
+  CheckCircle2,
+} from "lucide-react";
 
 type Props = {
   rooms: Room[];
@@ -23,8 +45,8 @@ type Props = {
 /** API may return room_id as string; Sets use numeric keys for consistent matching. */
 function normalizeRoomId(id: unknown): number | null {
   if (id === null || id === undefined) return null;
-  if (typeof id === 'number' && !Number.isNaN(id)) return id;
-  if (typeof id === 'string') {
+  if (typeof id === "number" && !Number.isNaN(id)) return id;
+  if (typeof id === "string") {
     const t = id.trim();
     if (!t) return null;
     const n = parseInt(t, 10);
@@ -36,42 +58,61 @@ function normalizeRoomId(id: unknown): number | null {
 export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
   const { selectedPropertyId: selectedProperty } = useUser();
   const { properties: userProperties } = useProperties();
-  const [selectedTopicId, setSelectedTopicId] = React.useState<number | null>(null);
-  const [pmFilter, setPmFilter] = React.useState<'all' | 'pm' | 'non_pm'>('non_pm');
-  const [userFilter, setUserFilter] = React.useState<'all' | 'none' | string>('all');
-  const [createdFrom, setCreatedFrom] = React.useState('');
-  const [createdTo, setCreatedTo] = React.useState('');
+  const [selectedTopicId, setSelectedTopicId] = React.useState<number | null>(
+    null,
+  );
+  const [pmFilter, setPmFilter] = React.useState<"all" | "pm" | "non_pm">(
+    "non_pm",
+  );
+  const [userFilter, setUserFilter] = React.useState<"all" | "none" | string>(
+    "all",
+  );
+  const [createdFrom, setCreatedFrom] = React.useState("");
+  const [createdTo, setCreatedTo] = React.useState("");
 
   const currentProperty = React.useMemo(() => {
     if (!selectedProperty) return null;
-    return userProperties.find((p) => String(p.property_id) === String(selectedProperty)) || null;
+    return (
+      userProperties.find(
+        (p) => String(p.property_id) === String(selectedProperty),
+      ) || null
+    );
   }, [selectedProperty, userProperties]);
 
   const propertyScopedRooms = React.useMemo(
     () => filterRoomsByProperty(rooms, selectedProperty, userProperties),
-    [rooms, selectedProperty, userProperties]
+    [rooms, selectedProperty, userProperties],
   );
 
   const propertyScopedJobs = React.useMemo(
     () => filterJobsByProperty(jobs, selectedProperty, userProperties),
-    [jobs, selectedProperty, userProperties]
+    [jobs, selectedProperty, userProperties],
   );
 
-  const getUserKey = React.useCallback((user: Job['user'] | undefined | null) => {
-    if (user === null || user === undefined) return null;
-    if (typeof user === 'string') return user.trim() || null;
-    if (typeof user === 'number') return Number.isNaN(user) ? null : String(user);
-    if (typeof user === 'object') {
-      const u = user as { id?: string | number; username?: string };
-      if (u.id != null && String(u.id).trim() !== '') return String(u.id).trim();
-      if (u.username != null && String(u.username).trim() !== '') return `username:${String(u.username).trim()}`;
-    }
-    return null;
-  }, []);
+  const getUserKey = React.useCallback(
+    (user: Job["user"] | undefined | null) => {
+      if (user === null || user === undefined) return null;
+      if (typeof user === "string") return user.trim() || null;
+      if (typeof user === "number")
+        return Number.isNaN(user) ? null : String(user);
+      if (typeof user === "object") {
+        const u = user as { id?: string | number; username?: string };
+        if (u.id != null && String(u.id).trim() !== "")
+          return String(u.id).trim();
+        if (u.username != null && String(u.username).trim() !== "")
+          return `username:${String(u.username).trim()}`;
+      }
+      return null;
+    },
+    [],
+  );
 
-  const getUserLabel = React.useCallback((user: Job['user'] | undefined | null) => {
-    return getDisplayName(user as any, 'Unknown Technician');
-  }, []);
+  const getUserLabel = React.useCallback(
+    (user: Job["user"] | undefined | null) => {
+      return getDisplayName(user as any, "Unknown Technician");
+    },
+    [],
+  );
 
   const userOptions = React.useMemo(() => {
     const byKey = new Map<string, string>();
@@ -82,19 +123,23 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
     }
     return Array.from(byKey.entries())
       .map(([key, label]) => ({ key, label }))
-      .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
+      .sort((a, b) =>
+        a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
+      );
   }, [propertyScopedJobs, getUserKey, getUserLabel]);
 
   const unassignedCount = React.useMemo(
-    () => (propertyScopedJobs || []).filter((job) => getUserKey(job.user) === null).length,
-    [propertyScopedJobs, getUserKey]
+    () =>
+      (propertyScopedJobs || []).filter((job) => getUserKey(job.user) === null)
+        .length,
+    [propertyScopedJobs, getUserKey],
   );
 
   const filteredJobs = React.useMemo(() => {
     if (!Array.isArray(propertyScopedJobs)) return [];
 
     const parseYmd = (value: string) => {
-      const parts = value.trim().split('-').map(Number);
+      const parts = value.trim().split("-").map(Number);
       if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
       const [y, m, d] = parts;
       if (!y || m < 1 || m > 12 || d < 1 || d > 31) return null;
@@ -103,11 +148,16 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
 
     return propertyScopedJobs.filter((job) => {
       const isPm = job.is_preventivemaintenance === true;
-      if (pmFilter === 'pm' && !isPm) return false;
-      if (pmFilter === 'non_pm' && isPm) return false;
+      if (pmFilter === "pm" && !isPm) return false;
+      if (pmFilter === "non_pm" && isPm) return false;
       const userKey = getUserKey(job.user);
-      if (userFilter === 'none' && userKey !== null) return false;
-      if (userFilter !== 'all' && userFilter !== 'none' && userKey !== userFilter) return false;
+      if (userFilter === "none" && userKey !== null) return false;
+      if (
+        userFilter !== "all" &&
+        userFilter !== "none" &&
+        userKey !== userFilter
+      )
+        return false;
 
       const createdMs = new Date(job.created_at).getTime();
       if (createdFrom.trim()) {
@@ -126,7 +176,14 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
       }
       return true;
     });
-  }, [propertyScopedJobs, pmFilter, userFilter, createdFrom, createdTo, getUserKey]);
+  }, [
+    propertyScopedJobs,
+    pmFilter,
+    userFilter,
+    createdFrom,
+    createdTo,
+    getUserKey,
+  ]);
 
   // topicId -> room IDs where at least one job has this topic
   const topicToRoomIds = React.useMemo(() => {
@@ -139,7 +196,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
       if (jobTopics.length === 0 || jobRooms.length === 0) continue;
 
       for (const topic of jobTopics) {
-        if (!topic || typeof topic.id !== 'number') continue;
+        if (!topic || typeof topic.id !== "number") continue;
         let set = mapping.get(topic.id);
         if (!set) {
           set = new Set<number>();
@@ -160,7 +217,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
     for (const job of filteredJobs) {
       const jobTopics = Array.isArray(job.topics) ? job.topics : [];
       for (const topic of jobTopics) {
-        if (!topic || typeof topic.id !== 'number') continue;
+        if (!topic || typeof topic.id !== "number") continue;
         map.set(topic.id, (map.get(topic.id) ?? 0) + 1);
       }
     }
@@ -183,11 +240,14 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
 
   const selectedTopic = React.useMemo(
     () => topics.find((t) => t.id === selectedTopicId) || null,
-    [topics, selectedTopicId]
+    [topics, selectedTopicId],
   );
   const visibleTopics = React.useMemo(
-    () => topics.filter((topic) => typeof topic.id === 'number' && topicToRoomIds.has(topic.id)),
-    [topics, topicToRoomIds]
+    () =>
+      topics.filter(
+        (topic) => typeof topic.id === "number" && topicToRoomIds.has(topic.id),
+      ),
+    [topics, topicToRoomIds],
   );
 
   React.useEffect(() => {
@@ -199,7 +259,8 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
 
   const mismatchRooms = React.useMemo(() => {
     if (!selectedTopicId) return [];
-    const matchedRoomIds = topicToRoomIds.get(selectedTopicId) ?? new Set<number>();
+    const matchedRoomIds =
+      topicToRoomIds.get(selectedTopicId) ?? new Set<number>();
     return propertyScopedRooms.filter((r) => {
       const rid = normalizeRoomId(r.room_id);
       return rid != null && !matchedRoomIds.has(rid);
@@ -208,7 +269,8 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
 
   const matchedRooms = React.useMemo(() => {
     if (!selectedTopicId) return [];
-    const matchedRoomIds = topicToRoomIds.get(selectedTopicId) ?? new Set<number>();
+    const matchedRoomIds =
+      topicToRoomIds.get(selectedTopicId) ?? new Set<number>();
     return propertyScopedRooms.filter((r) => {
       const rid = normalizeRoomId(r.room_id);
       return rid != null && matchedRoomIds.has(rid);
@@ -239,7 +301,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
   const matchedRoomNames = React.useMemo(() => {
     return matchedRooms.map((room) => {
       const rid = normalizeRoomId(room.room_id);
-      if (rid == null) return room.name?.trim() || 'Unknown room';
+      if (rid == null) return room.name?.trim() || "Unknown room";
       return roomNameById.get(rid) || `Room ${rid}`;
     });
   }, [matchedRooms, roomNameById]);
@@ -247,7 +309,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
   const mismatchRoomNames = React.useMemo(() => {
     return mismatchRooms.map((room) => {
       const rid = normalizeRoomId(room.room_id);
-      if (rid == null) return room.name?.trim() || 'Unknown room';
+      if (rid == null) return room.name?.trim() || "Unknown room";
       return roomNameById.get(rid) || `Room ${rid}`;
     });
   }, [mismatchRooms, roomNameById]);
@@ -255,7 +317,10 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
   const matchedRoomLabels = React.useMemo(() => {
     const fromRooms = matchedRooms.map((room, idx) => {
       const rid = normalizeRoomId(room.room_id);
-      const name = matchedRoomNames[idx] ?? room.name?.trim() ?? (rid != null ? `Room ${rid}` : 'Unknown room');
+      const name =
+        matchedRoomNames[idx] ??
+        room.name?.trim() ??
+        (rid != null ? `Room ${rid}` : "Unknown room");
       const count = rid != null ? (roomJobCountMap.get(rid) ?? 0) : 0;
       return `${name} (${count})`;
     });
@@ -285,7 +350,7 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
       const name =
         mismatchRoomNames[idx] ??
         room.name?.trim() ??
-        (rid != null ? `Room ${rid}` : 'Unknown room');
+        (rid != null ? `Room ${rid}` : "Unknown room");
       const count = rid != null ? (roomJobCountMap.get(rid) ?? 0) : 0;
       return `${name} (${count})`;
     });
@@ -296,12 +361,15 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
       .map((room, idx) => {
         const rid = normalizeRoomId(room.room_id);
         const roomId = rid ?? room.room_id;
-        const name = mismatchRoomNames[idx] ?? room.name?.trim() ?? (rid != null ? `Room ${rid}` : 'Unknown room');
+        const name =
+          mismatchRoomNames[idx] ??
+          room.name?.trim() ??
+          (rid != null ? `Room ${rid}` : "Unknown room");
         const jobCount = rid != null ? (roomJobCountMap.get(rid) ?? 0) : 0;
         return {
           roomId,
           name,
-          roomType: room.room_type || 'Unknown type',
+          roomType: room.room_type || "Unknown type",
           jobCount,
           href: `/dashboard/rooms/${roomId}`,
         };
@@ -317,7 +385,10 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
         .map((room, idx) => {
           const rid = normalizeRoomId(room.room_id);
           const roomId = rid ?? room.room_id;
-          const name = matchedRoomNames[idx] ?? room.name?.trim() ?? (rid != null ? `Room ${rid}` : 'Unknown room');
+          const name =
+            matchedRoomNames[idx] ??
+            room.name?.trim() ??
+            (rid != null ? `Room ${rid}` : "Unknown room");
           const jobCount = rid != null ? (roomJobCountMap.get(rid) ?? 0) : 0;
           return {
             roomId,
@@ -326,7 +397,9 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
             jobCount,
           };
         })
-        .sort((a, b) => b.jobCount - a.jobCount || a.name.localeCompare(b.name));
+        .sort(
+          (a, b) => b.jobCount - a.jobCount || a.name.localeCompare(b.name),
+        );
     }
 
     const matchedIds = topicToRoomIds.get(selectedTopicId);
@@ -339,73 +412,100 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
         jobCount: roomJobCountMap.get(rid) ?? 0,
       }))
       .sort((a, b) => b.jobCount - a.jobCount || a.name.localeCompare(b.name));
-  }, [selectedTopicId, matchedRooms, matchedRoomNames, roomJobCountMap, topicToRoomIds, roomNameById]);
+  }, [
+    selectedTopicId,
+    matchedRooms,
+    matchedRoomNames,
+    roomJobCountMap,
+    topicToRoomIds,
+    roomNameById,
+  ]);
 
   const matchCount = React.useMemo(() => {
     if (!selectedTopicId) return 0;
     return topicToRoomIds.get(selectedTopicId)?.size ?? 0;
   }, [selectedTopicId, topicToRoomIds]);
 
-  const totalRooms = Array.isArray(propertyScopedRooms) ? propertyScopedRooms.length : 0;
+  const totalRooms = Array.isArray(propertyScopedRooms)
+    ? propertyScopedRooms.length
+    : 0;
   const mismatchCount = mismatchRooms.length;
-  const selectedTopicJobCount = selectedTopicId ? (topicJobCountMap.get(selectedTopicId) ?? 0) : 0;
+  const selectedTopicJobCount = selectedTopicId
+    ? (topicJobCountMap.get(selectedTopicId) ?? 0)
+    : 0;
 
   const handleExportCsv = React.useCallback(() => {
     if (!selectedTopic) return;
 
     const escapeCsv = (value: string | number) => {
-      const text = String(value ?? '');
-      if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+      const text = String(value ?? "");
+      if (text.includes(",") || text.includes('"') || text.includes("\n")) {
         return `"${text.replace(/"/g, '""')}"`;
       }
       return text;
     };
 
     const headers = [
-      'Topic ID',
-      'Topic',
-      'PM Filter',
-      'User Filter',
-      'Created From',
-      'Created To',
-      'Room ID',
-      'Room Name',
-      'Room Type',
-      'Filtered Jobs In Room',
-      'Has Selected Topic Job',
+      "Topic ID",
+      "Topic",
+      "PM Filter",
+      "User Filter",
+      "Created From",
+      "Created To",
+      "Room ID",
+      "Room Name",
+      "Room Type",
+      "Filtered Jobs In Room",
+      "Has Selected Topic Job",
     ];
 
     const rows = mismatchRooms.map((room, idx) => {
       const rid = normalizeRoomId(room.room_id);
       return [
-      selectedTopic.id,
-      selectedTopic.title,
-      pmFilter,
-      userFilter,
-      createdFrom || '',
-      createdTo || '',
-      rid ?? room.room_id ?? '',
-      mismatchRoomNames[idx] ?? room.name?.trim() ?? (rid != null ? `Room ${rid}` : ''),
-      room.room_type || '',
-      rid != null ? (roomJobCountMap.get(rid) ?? 0) : 0,
-      'No',
-    ];
+        selectedTopic.id,
+        selectedTopic.title,
+        pmFilter,
+        userFilter,
+        createdFrom || "",
+        createdTo || "",
+        rid ?? room.room_id ?? "",
+        mismatchRoomNames[idx] ??
+          room.name?.trim() ??
+          (rid != null ? `Room ${rid}` : ""),
+        room.room_type || "",
+        rid != null ? (roomJobCountMap.get(rid) ?? 0) : 0,
+        "No",
+      ];
     });
 
     const csvContent = [
-      headers.map(escapeCsv).join(','),
-      ...rows.map((row) => row.map(escapeCsv).join(',')),
-    ].join('\n');
+      headers.map(escapeCsv).join(","),
+      ...rows.map((row) => row.map(escapeCsv).join(",")),
+    ].join("\n");
 
-    const date = new Date().toISOString().split('T')[0];
+    const date = new Date().toISOString().split("T")[0];
     const topicSlug = selectedTopic.title
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
-    const userSlug = userFilter === 'all' ? 'all-users' : userFilter === 'none' ? 'no-user' : `user-${userFilter}`;
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const userSlug =
+      userFilter === "all"
+        ? "all-users"
+        : userFilter === "none"
+          ? "no-user"
+          : `user-${userFilter}`;
     const filename = `room-topic-mismatch-${topicSlug || selectedTopic.id}-${pmFilter}-${userSlug}-${date}.csv`;
     downloadCSV(csvContent, filename);
-  }, [selectedTopic, mismatchRooms, mismatchRoomNames, pmFilter, userFilter, createdFrom, createdTo, roomJobCountMap]);
+  }, [
+    selectedTopic,
+    mismatchRooms,
+    mismatchRoomNames,
+    pmFilter,
+    userFilter,
+    createdFrom,
+    createdTo,
+    roomJobCountMap,
+  ]);
 
   return (
     <div className="space-y-4">
@@ -413,27 +513,39 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
         <CardContent className="p-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="space-y-0.5">
-              <p className="text-sm text-gray-600">Find rooms not matched with topic</p>
-              <h2 className="text-lg font-semibold text-gray-900">Room-Topic Mismatch</h2>
-              <p className="text-xs text-gray-500">
-                Property: {currentProperty?.name || selectedProperty || 'All properties'}
+              <p className="text-sm text-muted-foreground">
+                Find rooms not matched with topic
               </p>
-              <p className="text-xs text-gray-500">
+              <h2 className="text-lg font-semibold text-foreground">
+                Room-Topic Mismatch
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Property:{" "}
+                {currentProperty?.name || selectedProperty || "All properties"}
+              </p>
+              <p className="text-xs text-muted-foreground">
                 {selectedTopic
                   ? `${selectedTopic.title} • ${mismatchCount} not matched (${matchCount} matched rooms, ${selectedTopicJobCount} jobs with this topic)`
                   : `Select a topic to show unmatched rooms (${totalRooms} total rooms)`}
               </p>
-              <p className="text-xs text-gray-500">
-                Filtered jobs: {filteredJobs.length.toLocaleString()} ({pmFilter === 'non_pm' ? 'Non-PM' : pmFilter === 'pm' ? 'PM' : 'PM + Non-PM'})
+              <p className="text-xs text-muted-foreground">
+                Filtered jobs: {filteredJobs.length.toLocaleString()} (
+                {pmFilter === "non_pm"
+                  ? "Non-PM"
+                  : pmFilter === "pm"
+                    ? "PM"
+                    : "PM + Non-PM"}
+                )
               </p>
               {selectedTopic && matchedRooms.length > 0 ? (
-                <p className="text-xs text-gray-600">
-                  Matched rooms: {matchedRoomLabels.join(', ')}
+                <p className="text-xs text-muted-foreground">
+                  Matched rooms: {matchedRoomLabels.join(", ")}
                 </p>
               ) : null}
               {selectedTopic && mismatchCount > 0 ? (
                 <p className="text-xs text-amber-900">
-                  Rooms not matching <strong>{selectedTopic.title}</strong>: {mismatchRoomLabels.join(', ')}
+                  Rooms not matching <strong>{selectedTopic.title}</strong>:{" "}
+                  {mismatchRoomLabels.join(", ")}
                 </p>
               ) : null}
             </div>
@@ -475,7 +587,9 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm" className="h-9 pr-2 pl-2">
                     <Filter className="w-4 h-4 mr-2" />
-                    <span className="hidden xs:inline">{selectedTopic ? selectedTopic.title : 'Select Topic'}</span>
+                    <span className="hidden xs:inline">
+                      {selectedTopic ? selectedTopic.title : "Select Topic"}
+                    </span>
                     <span className="xs:hidden">Topic</span>
                     <ChevronDown className="w-4 h-4 ml-2 opacity-60" />
                   </Button>
@@ -494,8 +608,11 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
                             className="flex items-center justify-between"
                           >
                             <span className="truncate">{topic.title}</span>
-                            <span className="text-xs text-gray-500 ml-3">
-                              {(totalRooms - (topicToRoomIds.get(topic.id)?.size ?? 0)).toLocaleString()}
+                            <span className="text-xs text-muted-foreground ml-3">
+                              {(
+                                totalRooms -
+                                (topicToRoomIds.get(topic.id)?.size ?? 0)
+                              ).toLocaleString()}
                             </span>
                           </CommandItem>
                         ))}
@@ -509,31 +626,49 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
 
           <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <div className="space-y-1">
-              <label htmlFor="topic-mismatch-topic" className="text-xs font-medium text-gray-700">Topic List</label>
+              <label
+                htmlFor="topic-mismatch-topic"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Topic List
+              </label>
               <select
                 id="topic-mismatch-topic"
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                value={selectedTopicId == null ? 'none' : String(selectedTopicId)}
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={
+                  selectedTopicId == null ? "none" : String(selectedTopicId)
+                }
                 onChange={(e) => {
                   const v = e.target.value;
-                  setSelectedTopicId(v === 'none' ? null : Number(v));
+                  setSelectedTopicId(v === "none" ? null : Number(v));
                 }}
               >
                 <option value="none">Select topic...</option>
                 {visibleTopics.map((topic) => (
                   <option key={topic.id} value={String(topic.id)}>
-                    {topic.title} ({(totalRooms - (topicToRoomIds.get(topic.id)?.size ?? 0)).toLocaleString()} rooms)
+                    {topic.title} (
+                    {(
+                      totalRooms - (topicToRoomIds.get(topic.id)?.size ?? 0)
+                    ).toLocaleString()}{" "}
+                    rooms)
                   </option>
                 ))}
               </select>
             </div>
             <div className="space-y-1">
-              <label htmlFor="topic-mismatch-pm" className="text-xs font-medium text-gray-700">PM Filter</label>
+              <label
+                htmlFor="topic-mismatch-pm"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                PM Filter
+              </label>
               <select
                 id="topic-mismatch-pm"
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={pmFilter}
-                onChange={(e) => setPmFilter(e.target.value as 'all' | 'pm' | 'non_pm')}
+                onChange={(e) =>
+                  setPmFilter(e.target.value as "all" | "pm" | "non_pm")
+                }
               >
                 <option value="non_pm">Non-PM only</option>
                 <option value="pm">PM only</option>
@@ -541,15 +676,22 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
               </select>
             </div>
             <div className="space-y-1">
-              <label htmlFor="topic-mismatch-user" className="text-xs font-medium text-gray-700">User</label>
+              <label
+                htmlFor="topic-mismatch-user"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                User
+              </label>
               <select
                 id="topic-mismatch-user"
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={userFilter}
                 onChange={(e) => setUserFilter(e.target.value)}
               >
                 <option value="all">All users</option>
-                {unassignedCount > 0 ? <option value="none">Unassigned ({unassignedCount})</option> : null}
+                {unassignedCount > 0 ? (
+                  <option value="none">Unassigned ({unassignedCount})</option>
+                ) : null}
                 {userOptions.map((u) => (
                   <option key={u.key} value={u.key}>
                     {u.label}
@@ -558,21 +700,31 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
               </select>
             </div>
             <div className="space-y-1">
-              <label htmlFor="topic-mismatch-from" className="text-xs font-medium text-gray-700">Created from</label>
+              <label
+                htmlFor="topic-mismatch-from"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Created from
+              </label>
               <input
                 id="topic-mismatch-from"
                 type="date"
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={createdFrom}
                 onChange={(e) => setCreatedFrom(e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="topic-mismatch-to" className="text-xs font-medium text-gray-700">Created to</label>
+              <label
+                htmlFor="topic-mismatch-to"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Created to
+              </label>
               <input
                 id="topic-mismatch-to"
                 type="date"
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={createdTo}
                 onChange={(e) => setCreatedTo(e.target.value)}
               />
@@ -582,13 +734,13 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="text-gray-600"
+                className="text-muted-foreground"
                 onClick={() => {
                   setSelectedTopicId(null);
-                  setPmFilter('non_pm');
-                  setUserFilter('all');
-                  setCreatedFrom('');
-                  setCreatedTo('');
+                  setPmFilter("non_pm");
+                  setUserFilter("all");
+                  setCreatedFrom("");
+                  setCreatedTo("");
                 }}
               >
                 Reset Filters
@@ -599,16 +751,20 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
           <div className="mt-4 -mx-1 overflow-x-auto scrollbar-none">
             <div className="flex items-center gap-2 px-1 min-w-max">
               {visibleTopics.map((topic) => {
-                const topicMismatch = totalRooms - (topicToRoomIds.get(topic.id)?.size ?? 0);
+                const topicMismatch =
+                  totalRooms - (topicToRoomIds.get(topic.id)?.size ?? 0);
                 const isActive = selectedTopicId === topic.id;
                 return (
                   <Badge
                     key={topic.id}
-                    variant={isActive ? 'default' : 'outline'}
+                    variant={isActive ? "default" : "outline"}
                     className="cursor-pointer whitespace-nowrap"
                     onClick={() => setSelectedTopicId(topic.id)}
                   >
-                    {topic.title} <span className="ml-1 text-[10px] opacity-80">{topicMismatch}</span>
+                    {topic.title}{" "}
+                    <span className="ml-1 text-[10px] opacity-80">
+                      {topicMismatch}
+                    </span>
                   </Badge>
                 );
               })}
@@ -620,55 +776,77 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
       <Card>
         <CardContent className="p-4">
           {!selectedTopic ? (
-            <div className="text-sm text-gray-500 flex items-center gap-2">
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
               Select a topic first to show unmatched rooms.
             </div>
           ) : (
             <div className="space-y-3">
               <div>
-                <h3 className="text-sm font-semibold text-gray-900">
+                <h3 className="text-sm font-semibold text-foreground">
                   Rooms not matching topic: {selectedTopic.title}
                 </h3>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Click any room row to open full room details.
                 </p>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="rounded-md border bg-red-50 p-3">
-                  <p className="text-xs font-medium text-red-700">Unmatched rooms</p>
-                  <p className="text-2xl font-semibold text-red-900">{mismatchCount.toLocaleString()}</p>
+                  <p className="text-xs font-medium text-red-700">
+                    Unmatched rooms
+                  </p>
+                  <p className="text-2xl font-semibold text-red-900">
+                    {mismatchCount.toLocaleString()}
+                  </p>
                 </div>
                 <div className="rounded-md border bg-emerald-50 p-3">
-                  <p className="text-xs font-medium text-emerald-700">Matched rooms</p>
-                  <p className="text-2xl font-semibold text-emerald-900">{matchCount.toLocaleString()}</p>
+                  <p className="text-xs font-medium text-emerald-700">
+                    Matched rooms
+                  </p>
+                  <p className="text-2xl font-semibold text-emerald-900">
+                    {matchCount.toLocaleString()}
+                  </p>
                 </div>
                 <div className="rounded-md border bg-blue-50 p-3">
-                  <p className="text-xs font-medium text-blue-700">Jobs with this topic</p>
-                  <p className="text-2xl font-semibold text-blue-900">{selectedTopicJobCount.toLocaleString()}</p>
+                  <p className="text-xs font-medium text-blue-700">
+                    Jobs with this topic
+                  </p>
+                  <p className="text-2xl font-semibold text-blue-900">
+                    {selectedTopicJobCount.toLocaleString()}
+                  </p>
                 </div>
               </div>
 
               {mismatchRoomDetails.length > 0 ? (
                 <div className="overflow-hidden rounded-md border">
-                  <div className="grid grid-cols-12 gap-2 border-b bg-gray-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+                  <div className="grid grid-cols-12 gap-2 border-b bg-muted px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     <div className="col-span-6 sm:col-span-5">Room</div>
                     <div className="col-span-3 sm:col-span-3">Type</div>
-                    <div className="col-span-2 sm:col-span-2 text-right">Jobs</div>
-                    <div className="col-span-1 sm:col-span-2 text-right">Action</div>
+                    <div className="col-span-2 sm:col-span-2 text-right">
+                      Jobs
+                    </div>
+                    <div className="col-span-1 sm:col-span-2 text-right">
+                      Action
+                    </div>
                   </div>
                   {mismatchRoomDetails.map((room) => (
                     <Link
                       key={String(room.roomId)}
                       href={room.href}
-                      className="grid grid-cols-12 items-center gap-2 border-b px-3 py-2 last:border-b-0 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="grid grid-cols-12 items-center gap-2 border-b px-3 py-2 last:border-b-0 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
                       aria-label={`Open room ${room.name}`}
                     >
                       <div className="col-span-6 sm:col-span-5 min-w-0">
-                        <p className="truncate text-sm font-medium text-gray-900">{room.name}</p>
-                        <p className="text-[11px] text-gray-500">Room ID: {String(room.roomId)}</p>
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {room.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Room ID: {String(room.roomId)}
+                        </p>
                       </div>
-                      <div className="col-span-3 sm:col-span-3 text-xs text-gray-600">{room.roomType}</div>
+                      <div className="col-span-3 sm:col-span-3 text-xs text-muted-foreground">
+                        {room.roomType}
+                      </div>
                       <div className="col-span-2 sm:col-span-2 text-right text-sm font-semibold text-blue-700">
                         {room.jobCount.toLocaleString()}
                       </div>
@@ -684,7 +862,8 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
                 <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
                   <div className="mb-2 flex items-center gap-2 font-medium">
                     <CheckCircle2 className="h-4 w-4" />
-                    All rooms already match topic <strong>{selectedTopic.title}</strong>.
+                    All rooms already match topic{" "}
+                    <strong>{selectedTopic.title}</strong>.
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {matchedRoomDetails.length > 0 ? (
@@ -692,14 +871,18 @@ export default function TopicMismatchClient({ rooms, topics, jobs }: Props) {
                         <Link
                           key={String(room.roomId)}
                           href={room.href}
-                          className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-white px-2.5 py-1 text-xs text-emerald-900 hover:bg-emerald-100"
+                          className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-card px-2.5 py-1 text-xs text-emerald-900 hover:bg-emerald-100"
                         >
                           {room.name}
-                          <span className="text-emerald-700">({room.jobCount})</span>
+                          <span className="text-emerald-700">
+                            ({room.jobCount})
+                          </span>
                         </Link>
                       ))
                     ) : (
-                      <span className="text-xs text-emerald-800">No room names available.</span>
+                      <span className="text-xs text-emerald-800">
+                        No room names available.
+                      </span>
                     )}
                   </div>
                 </div>

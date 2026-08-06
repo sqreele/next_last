@@ -211,7 +211,7 @@ export function getImageUrl(image: MaintenanceImage | any | null | undefined): s
           return image.url;
       }
       if ('path' in image && image.path) {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://pcms.live';
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://hotelcarepro.com';
           return `${apiUrl}${image.path}`;
       }
       

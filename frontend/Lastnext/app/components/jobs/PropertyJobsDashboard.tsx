@@ -25,7 +25,10 @@ import { Job, JobStatus, STATUS_COLORS } from "@/app/lib/types";
 import { useUser, useProperties, useJobs } from "@/app/lib/stores/mainStore";
 import { useSession } from "@/app/lib/session.client";
 import { appSignOut } from "@/app/lib/logout";
-import { useDetailedUsers, DetailedUser } from "@/app/lib/hooks/useDetailedUsers";
+import {
+  useDetailedUsers,
+  DetailedUser,
+} from "@/app/lib/hooks/useDetailedUsers";
 import { User, Property } from "@/app/lib/types";
 import { logger } from "@/app/lib/utils/logger";
 import { getDisplayName } from "@/app/lib/utils/display-name";
@@ -57,17 +60,17 @@ import html2canvas from "html2canvas";
 import { jobsApi } from "@/app/lib/api/jobsApi";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 
-
 type WorkflowStatusKey = JobStatus | "defect";
 
-const DASHBOARD_STATUS_FLOW: Array<{ key: WorkflowStatusKey; label: string }> = [
-  { key: "pending", label: "Pending" },
-  { key: "in_progress", label: "In Progress" },
-  { key: "waiting_sparepart", label: "Waiting Spare Part" },
-  { key: "completed", label: "Completed" },
-  { key: "cancelled", label: "Cancelled" },
-  { key: "defect", label: "Defect" },
-];
+const DASHBOARD_STATUS_FLOW: Array<{ key: WorkflowStatusKey; label: string }> =
+  [
+    { key: "pending", label: "Pending" },
+    { key: "in_progress", label: "In Progress" },
+    { key: "waiting_sparepart", label: "Waiting Spare Part" },
+    { key: "completed", label: "Completed" },
+    { key: "cancelled", label: "Cancelled" },
+    { key: "defect", label: "Defect" },
+  ];
 
 const getDashboardStatusClass = (status: WorkflowStatusKey) =>
   `pcms-status-card--${status === "waiting_sparepart" ? "waiting_spare_part" : status}`;
@@ -84,7 +87,7 @@ const getJobStatusCount = (
     defect: number;
     preventiveMaintenance: number;
   } | null,
-  filteredJobs: Job[]
+  filteredJobs: Job[],
 ) => {
   if (backendStats) {
     switch (status) {
@@ -116,7 +119,9 @@ interface PropertyJobsDashboardProps {
   initialJobs?: Job[];
 }
 
-const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps) => {
+const PropertyJobsDashboard = ({
+  initialJobs = [],
+}: PropertyJobsDashboardProps) => {
   // ✅ PERFORMANCE OPTIMIZATION: Memoize component props to prevent unnecessary re-renders
   const { selectedPropertyId: selectedProperty } = useUser();
   const { properties: userProperties } = useProperties();
@@ -127,10 +132,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // Basic mobile breakpoint detection for responsive chart tuning
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
-    const updateIsMobile = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
+    const updateIsMobile = () =>
+      setIsMobile(typeof window !== "undefined" && window.innerWidth < 640);
     updateIsMobile();
-    window.addEventListener('resize', updateIsMobile);
-    return () => window.removeEventListener('resize', updateIsMobile);
+    window.addEventListener("resize", updateIsMobile);
+    return () => window.removeEventListener("resize", updateIsMobile);
   }, []);
 
   // Since we don't have jobCreationCount in the new store, we'll use jobs length as a proxy
@@ -143,16 +149,27 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     pieChart?: string;
     barChart?: string;
   }>({});
-  const { recordLoaderShown, clearLoadingAfterMinTime } = useMinLoaderTime(setIsLoading);
-  
+  const { recordLoaderShown, clearLoadingAfterMinTime } =
+    useMinLoaderTime(setIsLoading);
+
   // Job comparison states
-  const [comparisonJobYear1, setComparisonJobYear1] = useState<number>(new Date().getFullYear() - 1);
-  const [comparisonJobYear2, setComparisonJobYear2] = useState<number>(new Date().getFullYear());
-  const [comparisonJobMonth, setComparisonJobMonth] = useState<number>(new Date().getMonth() + 1);
+  const [comparisonJobYear1, setComparisonJobYear1] = useState<number>(
+    new Date().getFullYear() - 1,
+  );
+  const [comparisonJobYear2, setComparisonJobYear2] = useState<number>(
+    new Date().getFullYear(),
+  );
+  const [comparisonJobMonth, setComparisonJobMonth] = useState<number>(
+    new Date().getMonth() + 1,
+  );
 
   // Best Topics Month selection states
-  const [selectedTopicMonth, setSelectedTopicMonth] = useState<number>(new Date().getMonth() + 1);
-  const [selectedTopicYear, setSelectedTopicYear] = useState<number>(new Date().getFullYear());
+  const [selectedTopicMonth, setSelectedTopicMonth] = useState<number>(
+    new Date().getMonth() + 1,
+  );
+  const [selectedTopicYear, setSelectedTopicYear] = useState<number>(
+    new Date().getFullYear(),
+  );
 
   // Backend stats (server authoritative counts)
   const [backendStats, setBackendStats] = useState<{
@@ -169,7 +186,12 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
 
   // ✅ PERFORMANCE OPTIMIZATION: Memoize the current property ID to reduce unnecessary re-renders
   const effectiveProperty = useMemo(() => {
-    return selectedProperty || (userProperties.length > 0 ? String(userProperties[0].property_id || userProperties[0].id) : null);
+    return (
+      selectedProperty ||
+      (userProperties.length > 0
+        ? String(userProperties[0].property_id || userProperties[0].id)
+        : null)
+    );
   }, [selectedProperty, userProperties]);
 
   // Simplified session refresh
@@ -214,8 +236,9 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         setAllJobs([]);
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to load jobs";
-      console.error('loadJobs error:', err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load jobs";
+      console.error("loadJobs error:", err);
       setError(errorMessage);
       setAllJobs([]);
     } finally {
@@ -245,7 +268,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         setIsStatsLoading(true);
         const stats = await jobsApi.getJobStats(
           token,
-          effectiveProperty ? { property_id: effectiveProperty } : undefined
+          effectiveProperty ? { property_id: effectiveProperty } : undefined,
         );
         setBackendStats(stats);
       } catch (e) {
@@ -260,18 +283,20 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   }, [session?.user?.accessToken, effectiveProperty, jobCreationCount]);
 
   // Function to capture chart as image
-  const captureChartAsImage = async (chartId: string): Promise<string | null> => {
+  const captureChartAsImage = async (
+    chartId: string,
+  ): Promise<string | null> => {
     try {
       const chartElement = document.getElementById(chartId);
       if (!chartElement) {
         return null;
       }
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const canvas = await html2canvas(chartElement, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#ffffff',
+        backgroundColor: "#ffffff",
         logging: false,
         width: chartElement.offsetWidth,
         height: chartElement.offsetHeight,
@@ -283,12 +308,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         removeContainer: true,
         imageTimeout: 10000,
       });
-      return canvas.toDataURL('image/png', 0.9);
+      return canvas.toDataURL("image/png", 0.9);
     } catch (error) {
       return null;
     }
   };
-
 
   // Load jobs when necessary
   useEffect(() => {
@@ -315,43 +339,60 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       if (job.property_id && String(job.property_id) === effectiveProperty) {
         return true;
       }
-      
+
       // Room property match with special case handling
       if (job.rooms && job.rooms.length > 0) {
         for (const room of job.rooms) {
           if (!room?.properties?.length) continue;
-          
+
           for (const prop of room.properties) {
             // Special case for property ID "1"
             if (prop === 1 || String(prop) === "1") return true;
-            
+
             // Object property representation
-            if (typeof prop === "object" && prop !== null && "property_id" in prop) {
-              if (String((prop as { property_id: string | number }).property_id) === effectiveProperty) return true;
+            if (
+              typeof prop === "object" &&
+              prop !== null &&
+              "property_id" in prop
+            ) {
+              if (
+                String(
+                  (prop as { property_id: string | number }).property_id,
+                ) === effectiveProperty
+              )
+                return true;
             }
-            
+
             // Direct property representation
             if (String(prop) === effectiveProperty) return true;
           }
         }
       }
-      
+
       // Job properties array match
       if (job.properties && job.properties.length) {
         for (const prop of job.properties) {
           // Special case for property ID "1"
           if (prop === 1 || String(prop) === "1") return true;
-          
+
           // Object property representation
-          if (typeof prop === "object" && prop !== null && "property_id" in prop) {
-            if (String((prop as { property_id: string | number }).property_id) === effectiveProperty) return true;
+          if (
+            typeof prop === "object" &&
+            prop !== null &&
+            "property_id" in prop
+          ) {
+            if (
+              String((prop as { property_id: string | number }).property_id) ===
+              effectiveProperty
+            )
+              return true;
           }
-          
+
           // Direct property representation
           if (String(prop) === effectiveProperty) return true;
         }
       }
-      
+
       return false;
     });
 
@@ -364,7 +405,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     if (total === 0) {
       return [];
     }
-    
+
     const result = DASHBOARD_STATUS_FLOW.map(({ key, label }) => {
       const value = getJobStatusCount(key, backendStats, filteredJobs);
       return {
@@ -375,10 +416,10 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         percentage: total > 0 ? ((value / total) * 100).toFixed(1) : "0",
       };
     });
-    
+
     // Filter out zero values for chart display
-    const validStats = result.filter(stat => stat.value > 0);
-    
+    const validStats = result.filter((stat) => stat.value > 0);
+
     return validStats;
   }, [filteredJobs, backendStats]);
 
@@ -396,7 +437,9 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     const result = Object.entries(grouped).map(([month, monthJobs]) => {
       const [year, monthNum] = month.split("-");
       const date = new Date(parseInt(year), parseInt(monthNum) - 1);
-      const formattedMonth = date.toLocaleDateString("en-US", { month: "short" });
+      const formattedMonth = date.toLocaleDateString("en-US", {
+        month: "short",
+      });
 
       // Count statuses in a single pass
       const counts = {
@@ -404,9 +447,9 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         pending: 0,
         waiting_sparepart: 0,
         in_progress: 0,
-        cancelled: 0
+        cancelled: 0,
       };
-      
+
       for (const job of monthJobs) {
         if (counts.hasOwnProperty(job.status)) {
           counts[job.status as keyof typeof counts]++;
@@ -416,12 +459,25 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       return {
         month: `${formattedMonth} ${year}`,
         total: monthJobs.length,
-        ...counts
+        ...counts,
       };
     });
 
     // Sort chronologically
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
     return result.sort((a, b) => {
       const [aMonth, aYear] = a.month.split(" ");
       const [bMonth, bYear] = b.month.split(" ");
@@ -431,19 +487,40 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     });
   }, [filteredJobs]);
 
-  const getUserDisplayName = (user: User | number | string | { username?: string; id?: string | number; [key: string]: unknown } | null | undefined): string => {
-    const userStr = user === null || user === undefined ? '' : String(typeof user === 'object' ? user.id || user.username || '' : user);
-    const detailedUser = detailedUsers.find(u =>
-      u.id.toString() === userStr ||
-      u.username === userStr ||
-      u.email === userStr ||
-      (typeof user === 'object' && user && 'username' in user && u.username === user.username)
+  const getUserDisplayName = (
+    user:
+      | User
+      | number
+      | string
+      | { username?: string; id?: string | number; [key: string]: unknown }
+      | null
+      | undefined,
+  ): string => {
+    const userStr =
+      user === null || user === undefined
+        ? ""
+        : String(
+            typeof user === "object" ? user.id || user.username || "" : user,
+          );
+    const detailedUser = detailedUsers.find(
+      (u) =>
+        u.id.toString() === userStr ||
+        u.username === userStr ||
+        u.email === userStr ||
+        (typeof user === "object" &&
+          user &&
+          "username" in user &&
+          u.username === user.username),
     );
-    if (detailedUser) return getDisplayName(detailedUser, 'Unknown Technician');
-    if (session?.user && userStr && String(session.user.id || '').trim() === userStr) {
-      return getDisplayName(session.user, 'Unknown Technician');
+    if (detailedUser) return getDisplayName(detailedUser, "Unknown Technician");
+    if (
+      session?.user &&
+      userStr &&
+      String(session.user.id || "").trim() === userStr
+    ) {
+      return getDisplayName(session.user, "Unknown Technician");
     }
-    return getDisplayName(user as any, 'Unknown Technician');
+    return getDisplayName(user as any, "Unknown Technician");
   };
 
   // ✅ PERFORMANCE OPTIMIZATION: Memoized jobs by user data to prevent expensive recalculations
@@ -453,10 +530,13 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     // Group jobs by user using efficient lodash grouping
     const grouped = _.groupBy(filteredJobs, (job) => {
       const displayName = getUserDisplayName(job.user);
-      
+
       // Additional check for "[object Object]" string
-      if (displayName === '[object Object]' || displayName === 'User [object Object]') {
-        return 'Unknown User';
+      if (
+        displayName === "[object Object]" ||
+        displayName === "User [object Object]"
+      ) {
+        return "Unknown User";
       }
       return displayName;
     });
@@ -469,9 +549,9 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         pending: 0,
         waiting_sparepart: 0,
         in_progress: 0,
-        cancelled: 0
+        cancelled: 0,
       };
-      
+
       for (const job of userJobs) {
         if (counts.hasOwnProperty(job.status)) {
           counts[job.status as keyof typeof counts]++;
@@ -479,19 +559,20 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       }
 
       const total = userJobs.length;
-      const completionRate = total > 0 ? ((counts.completed / total) * 100).toFixed(1) : '0.0';
+      const completionRate =
+        total > 0 ? ((counts.completed / total) * 100).toFixed(1) : "0.0";
 
       return {
         username,
         total,
         ...counts,
-        completionRate
+        completionRate,
       };
     });
 
     // Sort by total jobs (descending)
     const sortedResult = result.sort((a, b) => b.total - a.total);
-    
+
     return sortedResult;
   }, [filteredJobs, detailedUsers, session?.user]);
 
@@ -501,13 +582,15 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
     if (filteredJobs.length === 0) return [];
 
     // Filter out Preventive Maintenance jobs
-    const nonPMJobs = filteredJobs.filter(job => !job.is_preventivemaintenance);
-    
+    const nonPMJobs = filteredJobs.filter(
+      (job) => !job.is_preventivemaintenance,
+    );
+
     if (nonPMJobs.length === 0) return [];
 
     // Count jobs per topic
     const topicCounts = new Map<string, number>();
-    
+
     for (const job of nonPMJobs) {
       if (Array.isArray(job.topics) && job.topics.length > 0) {
         for (const topic of job.topics) {
@@ -527,7 +610,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         title,
         topic: title,
         count,
-        percentage: total > 0 ? ((count / total) * 100).toFixed(1) : '0.0',
+        percentage: total > 0 ? ((count / total) * 100).toFixed(1) : "0.0",
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10
@@ -538,25 +621,32 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // ✅ PERFORMANCE OPTIMIZATION: Memoized jobs by topic data for selected month (top 10)
   // Excludes Preventive Maintenance jobs and filters by selected month
   const jobsByTopicSelectedMonth = useMemo(() => {
-    if (filteredJobs.length === 0) return { data: [], monthName: '' };
+    if (filteredJobs.length === 0) return { data: [], monthName: "" };
 
     const targetMonth = selectedTopicMonth - 1; // Convert to 0-indexed
     const targetYear = selectedTopicYear;
-    const monthName = new Date(targetYear, targetMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const monthName = new Date(targetYear, targetMonth).toLocaleDateString(
+      "en-US",
+      { month: "long", year: "numeric" },
+    );
 
     // Filter out Preventive Maintenance jobs and filter by selected month
-    const selectedMonthJobs = filteredJobs.filter(job => {
+    const selectedMonthJobs = filteredJobs.filter((job) => {
       if (job.is_preventivemaintenance) return false;
       if (!job.created_at) return false;
       const jobDate = new Date(job.created_at);
-      return jobDate.getMonth() === targetMonth && jobDate.getFullYear() === targetYear;
+      return (
+        jobDate.getMonth() === targetMonth &&
+        jobDate.getFullYear() === targetYear
+      );
     });
-    
-    if (selectedMonthJobs.length === 0) return { data: [], monthName, totalJobs: 0 };
+
+    if (selectedMonthJobs.length === 0)
+      return { data: [], monthName, totalJobs: 0 };
 
     // Count jobs per topic
     const topicCounts = new Map<string, number>();
-    
+
     for (const job of selectedMonthJobs) {
       if (Array.isArray(job.topics) && job.topics.length > 0) {
         for (const topic of job.topics) {
@@ -576,7 +666,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         title,
         topic: title,
         count,
-        percentage: total > 0 ? ((count / total) * 100).toFixed(1) : '0.0',
+        percentage: total > 0 ? ((count / total) * 100).toFixed(1) : "0.0",
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10
@@ -590,7 +680,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
 
     // Count jobs per room
     const roomCounts = new Map<string, number>();
-    
+
     for (const job of filteredJobs) {
       if (Array.isArray(job.rooms) && job.rooms.length > 0) {
         for (const room of job.rooms) {
@@ -614,7 +704,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         name,
         room: name,
         count,
-        percentage: total > 0 ? ((count / total) * 100).toFixed(1) : '0.0',
+        percentage: total > 0 ? ((count / total) * 100).toFixed(1) : "0.0",
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10
@@ -625,7 +715,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // Get available years from jobs data (must be before early returns)
   const availableJobYears = useMemo(() => {
     const years = new Set<number>();
-    filteredJobs.forEach(job => {
+    filteredJobs.forEach((job) => {
       if (job.created_at) {
         const year = new Date(job.created_at).getFullYear();
         years.add(year);
@@ -637,17 +727,23 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
   // Prepare job comparison data: Same month across selected years (must be before early returns)
   const jobComparisonData = useMemo(() => {
     // Filter jobs for year 1 and selected month
-    const year1Jobs = filteredJobs.filter(job => {
+    const year1Jobs = filteredJobs.filter((job) => {
       if (!job.created_at) return false;
       const jobDate = new Date(job.created_at);
-      return jobDate.getFullYear() === comparisonJobYear1 && jobDate.getMonth() + 1 === comparisonJobMonth;
+      return (
+        jobDate.getFullYear() === comparisonJobYear1 &&
+        jobDate.getMonth() + 1 === comparisonJobMonth
+      );
     });
 
     // Filter jobs for year 2 and selected month
-    const year2Jobs = filteredJobs.filter(job => {
+    const year2Jobs = filteredJobs.filter((job) => {
       if (!job.created_at) return false;
       const jobDate = new Date(job.created_at);
-      return jobDate.getFullYear() === comparisonJobYear2 && jobDate.getMonth() + 1 === comparisonJobMonth;
+      return (
+        jobDate.getFullYear() === comparisonJobYear2 &&
+        jobDate.getMonth() + 1 === comparisonJobMonth
+      );
     });
 
     // Count jobs by status for each year
@@ -660,20 +756,23 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         waiting_sparepart: 0,
         cancelled: 0,
       };
-      
-      jobs.forEach(job => {
+
+      jobs.forEach((job) => {
         if (counts.hasOwnProperty(job.status)) {
           counts[job.status as keyof typeof counts]++;
         }
       });
-      
+
       return counts;
     };
 
     const year1Counts = countByStatus(year1Jobs);
     const year2Counts = countByStatus(year2Jobs);
 
-    const monthName = new Date(2000, comparisonJobMonth - 1).toLocaleString('default', { month: 'long' });
+    const monthName = new Date(2000, comparisonJobMonth - 1).toLocaleString(
+      "default",
+      { month: "long" },
+    );
 
     return [
       {
@@ -695,7 +794,12 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         cancelled: year2Counts.cancelled,
       },
     ];
-  }, [filteredJobs, comparisonJobYear1, comparisonJobYear2, comparisonJobMonth]);
+  }, [
+    filteredJobs,
+    comparisonJobYear1,
+    comparisonJobYear2,
+    comparisonJobMonth,
+  ]);
 
   // Loading state
   if (status === "loading" || isLoading) {
@@ -704,7 +808,9 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         <Card className="w-full">
           <CardContent className="text-center p-6 sm:p-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 text-sm sm:text-base">Loading charts...</p>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Loading charts...
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -717,8 +823,14 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="w-full bg-yellow-50 border border-yellow-200">
           <CardContent className="text-center space-y-4 p-6 sm:p-8">
-            <p className="text-yellow-600 text-sm sm:text-base">Please log in to view job statistics.</p>
-            <Button asChild variant="outline" className="w-full h-10 sm:h-12 text-sm sm:text-base">
+            <p className="text-yellow-600 text-sm sm:text-base">
+              Please log in to view job statistics.
+            </p>
+            <Button
+              asChild
+              variant="outline"
+              className="w-full h-10 sm:h-12 text-sm sm:text-base"
+            >
               <Link href="/auth/login">Log In</Link>
             </Button>
           </CardContent>
@@ -734,7 +846,11 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         <Card className="w-full bg-red-50 border border-red-200">
           <CardContent className="text-center space-y-4 p-6 sm:p-8">
             <p className="text-red-600 text-sm sm:text-base">{error}</p>
-            <Button asChild variant="outline" className="w-full h-10 sm:h-12 text-sm sm:text-base">
+            <Button
+              asChild
+              variant="outline"
+              className="w-full h-10 sm:h-12 text-sm sm:text-base"
+            >
               <Link href="/dashboard/my-jobs">Go to My Jobs</Link>
             </Button>
           </CardContent>
@@ -750,10 +866,22 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         <Card className="w-full bg-yellow-50 border border-yellow-200">
           <CardContent className="text-center space-y-4 p-6 sm:p-8">
             <p className="text-yellow-600 text-sm sm:text-base">
-              {allJobs.length ? "No jobs found for the selected property." : "No jobs available yet."}
+              {allJobs.length
+                ? "No jobs found for the selected property."
+                : "No jobs available yet."}
             </p>
-            <Button asChild variant="outline" className="w-full h-10 sm:h-12 text-sm sm:text-base">
-              <Link href={allJobs.length ? "/dashboard/my-jobs" : "/dashboard/create-job"}>
+            <Button
+              asChild
+              variant="outline"
+              className="w-full h-10 sm:h-12 text-sm sm:text-base"
+            >
+              <Link
+                href={
+                  allJobs.length
+                    ? "/dashboard/my-jobs"
+                    : "/dashboard/create-job"
+                }
+              >
                 {allJobs.length ? "View All Jobs" : "Create a Job"}
               </Link>
             </Button>
@@ -769,13 +897,17 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
       {/* Header Section - Mobile Responsive */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Chart Dashboard</h2>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">
-            {effectiveProperty ? `Viewing data for ${userProperties.find(p => p.property_id === effectiveProperty)?.name || `Property ${effectiveProperty}`}` : 'Select a property to view data'}
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+            Chart Dashboard
+          </h2>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            {effectiveProperty
+              ? `Viewing data for ${userProperties.find((p) => p.property_id === effectiveProperty)?.name || `Property ${effectiveProperty}`}`
+              : "Select a property to view data"}
           </p>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             {backendStats
-              ? `Showing ${filteredJobs.length} of ${backendStats.total}${isStatsLoading ? ' (updating...)' : ''}`
+              ? `Showing ${filteredJobs.length} of ${backendStats.total}${isStatsLoading ? " (updating...)" : ""}`
               : `Showing ${filteredJobs.length}`}
           </p>
         </div>
@@ -790,7 +922,10 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           <CardContent className="pt-0">
             {jobStats.length > 0 ? (
               <div className="space-y-5">
-                <div className="pcms-status-summary-grid" aria-label="Jobs by workflow status">
+                <div
+                  className="pcms-status-summary-grid"
+                  aria-label="Jobs by workflow status"
+                >
                   {jobStats.map((status) => (
                     <div
                       key={status.key}
@@ -798,15 +933,25 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                     >
                       <div className="pcms-status-card__header">
                         <p className="pcms-status-card__label">{status.name}</p>
-                        <span className="pcms-status-card__indicator" aria-hidden="true" />
+                        <span
+                          className="pcms-status-card__indicator"
+                          aria-hidden="true"
+                        />
                       </div>
-                      <strong className="pcms-status-card__count">{status.value}</strong>
-                      <p className="pcms-status-card__detail">{status.percentage}% of visible jobs</p>
+                      <strong className="pcms-status-card__count">
+                        {status.value}
+                      </strong>
+                      <p className="pcms-status-card__detail">
+                        {status.percentage}% of visible jobs
+                      </p>
                     </div>
                   ))}
                 </div>
 
-                <div id="pie-chart-container" className="w-full h-[220px] sm:h-[260px] lg:h-[300px] flex items-center justify-center">
+                <div
+                  id="pie-chart-container"
+                  className="w-full h-[220px] sm:h-[260px] lg:h-[300px] flex items-center justify-center"
+                >
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -823,8 +968,12 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                         ))}
                       </Pie>
                       <Tooltip
-                        formatter={(value: number, name: string, props: { payload?: { percentage?: string } }) => [
-                          `${value} (${props.payload?.percentage || '0'}%)`,
+                        formatter={(
+                          value: number,
+                          name: string,
+                          props: { payload?: { percentage?: string } },
+                        ) => [
+                          `${value} (${props.payload?.percentage || "0"}%)`,
                           name,
                         ]}
                       />
@@ -836,7 +985,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                         wrapperStyle={{
                           fontSize: isMobile ? 10 : 12,
                           paddingTop: isMobile ? 4 : 8,
-                          lineHeight: isMobile ? '12px' : '16px'
+                          lineHeight: isMobile ? "12px" : "16px",
                         }}
                       />
                     </PieChart>
@@ -844,7 +993,7 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                 </div>
               </div>
             ) : (
-              <div className="flex h-36 items-center justify-center text-gray-500">
+              <div className="flex h-36 items-center justify-center text-muted-foreground">
                 <p className="text-sm sm:text-base">No status data available</p>
               </div>
             )}
@@ -857,36 +1006,65 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
             <CardTitle className="text-lg sm:text-xl">Jobs by Month</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div id="bar-chart-container" className="h-[240px] sm:h-[280px] lg:h-[320px]">
+            <div
+              id="bar-chart-container"
+              className="h-[240px] sm:h-[280px] lg:h-[320px]"
+            >
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={jobsByMonth.slice(-12)}> {/* Limit to last 12 months */}
+                <BarChart data={jobsByMonth.slice(-12)}>
+                  {" "}
+                  {/* Limit to last 12 months */}
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="month" 
-                    tick={{ fontSize: isMobile ? 8 : 10 }} 
-                    interval={isMobile ? 'preserveStartEnd' : 0} 
-                    angle={isMobile ? -60 : -45} 
-                    textAnchor="end" 
-                    height={isMobile ? 90 : 70} 
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: isMobile ? 8 : 10 }}
+                    interval={isMobile ? "preserveStartEnd" : 0}
+                    angle={isMobile ? -60 : -45}
+                    textAnchor="end"
+                    height={isMobile ? 90 : 70}
                   />
-                  <YAxis tick={{ fontSize: isMobile ? 8 : 10 }} width={isMobile ? 28 : 32} />
+                  <YAxis
+                    tick={{ fontSize: isMobile ? 8 : 10 }}
+                    width={isMobile ? 28 : 32}
+                  />
                   <Tooltip />
-                  <Legend 
-                    layout="horizontal" 
-                    align="center" 
-                    verticalAlign="bottom" 
-                    iconSize={isMobile ? 8 : 10} 
-                    wrapperStyle={{ 
+                  <Legend
+                    layout="horizontal"
+                    align="center"
+                    verticalAlign="bottom"
+                    iconSize={isMobile ? 8 : 10}
+                    wrapperStyle={{
                       fontSize: isMobile ? 8 : 10,
-                      paddingTop: isMobile ? 4 : 8
-                    }} 
+                      paddingTop: isMobile ? 4 : 8,
+                    }}
                   />
                   <Bar dataKey="total" fill="#8884d8" name="Total Jobs" />
-                  <Bar dataKey="completed" stackId="a" fill={STATUS_COLORS.completed} />
-                  <Bar dataKey="pending" stackId="a" fill={STATUS_COLORS.pending} />
-                  <Bar dataKey="waiting_sparepart" stackId="a" fill={STATUS_COLORS.waiting_sparepart} name="Waiting" />
-                  <Bar dataKey="in_progress" stackId="a" fill={STATUS_COLORS.in_progress} />
-                  <Bar dataKey="cancelled" stackId="a" fill={STATUS_COLORS.cancelled} />
+                  <Bar
+                    dataKey="completed"
+                    stackId="a"
+                    fill={STATUS_COLORS.completed}
+                  />
+                  <Bar
+                    dataKey="pending"
+                    stackId="a"
+                    fill={STATUS_COLORS.pending}
+                  />
+                  <Bar
+                    dataKey="waiting_sparepart"
+                    stackId="a"
+                    fill={STATUS_COLORS.waiting_sparepart}
+                    name="Waiting"
+                  />
+                  <Bar
+                    dataKey="in_progress"
+                    stackId="a"
+                    fill={STATUS_COLORS.in_progress}
+                  />
+                  <Bar
+                    dataKey="cancelled"
+                    stackId="a"
+                    fill={STATUS_COLORS.cancelled}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -898,80 +1076,115 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <span className="text-2xl">🏆</span>
-              <CardTitle className="text-lg sm:text-xl text-blue-800">Best Topics by Month</CardTitle>
+              <CardTitle className="text-lg sm:text-xl text-blue-800">
+                Best Topics by Month
+              </CardTitle>
             </div>
             <p className="text-xs sm:text-sm text-blue-600 mt-1">
-              Top maintenance topics for {jobsByTopicSelectedMonth.monthName} ({jobsByTopicSelectedMonth.totalJobs || 0} jobs)
+              Top maintenance topics for {jobsByTopicSelectedMonth.monthName} (
+              {jobsByTopicSelectedMonth.totalJobs || 0} jobs)
             </p>
           </CardHeader>
           <CardContent className="pt-0">
             {/* Month and Year Selection */}
             <div className="mb-4 flex flex-col sm:flex-row gap-3 sm:gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
                   Month
                 </label>
                 <select
                   value={selectedTopicMonth}
-                  onChange={(e) => setSelectedTopicMonth(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) =>
+                    setSelectedTopicMonth(parseInt(e.target.value))
+                  }
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(month => (
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
                     <option key={month} value={month}>
-                      {new Date(2000, month - 1).toLocaleString('default', { month: 'long' })}
+                      {new Date(2000, month - 1).toLocaleString("default", {
+                        month: "long",
+                      })}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
                   Year
                 </label>
                 <select
                   value={selectedTopicYear}
-                  onChange={(e) => setSelectedTopicYear(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) =>
+                    setSelectedTopicYear(parseInt(e.target.value))
+                  }
+                  className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {availableJobYears.length > 0 ? (
-                    availableJobYears.map(year => (
-                      <option key={year} value={year}>{year}</option>
+                    availableJobYears.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
                     ))
                   ) : (
-                    <option value={selectedTopicYear}>{selectedTopicYear}</option>
+                    <option value={selectedTopicYear}>
+                      {selectedTopicYear}
+                    </option>
                   )}
                 </select>
               </div>
             </div>
 
-            {jobsByTopicSelectedMonth.data && jobsByTopicSelectedMonth.data.length > 0 ? (
+            {jobsByTopicSelectedMonth.data &&
+            jobsByTopicSelectedMonth.data.length > 0 ? (
               <>
-                <div id="topic-selected-month-chart-container" className="h-[280px] sm:h-[320px] lg:h-[360px]">
+                <div
+                  id="topic-selected-month-chart-container"
+                  className="h-[280px] sm:h-[320px] lg:h-[360px]"
+                >
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={jobsByTopicSelectedMonth.data} layout="vertical">
+                    <BarChart
+                      data={jobsByTopicSelectedMonth.data}
+                      layout="vertical"
+                    >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" tick={{ fontSize: isMobile ? 8 : 10 }} />
-                      <YAxis 
-                        type="category" 
-                        dataKey="title" 
-                        tick={{ fontSize: isMobile ? 8 : 9 }} 
+                      <XAxis
+                        type="number"
+                        tick={{ fontSize: isMobile ? 8 : 10 }}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="title"
+                        tick={{ fontSize: isMobile ? 8 : 9 }}
                         width={isMobile ? 120 : 150}
                       />
-                      <Tooltip 
-                        formatter={(value: number, name: string, props: { payload?: { percentage?: string } }) => [
-                          `${value} jobs (${props.payload?.percentage || '0'}%)`,
-                          'Job Count'
+                      <Tooltip
+                        formatter={(
+                          value: number,
+                          name: string,
+                          props: { payload?: { percentage?: string } },
+                        ) => [
+                          `${value} jobs (${props.payload?.percentage || "0"}%)`,
+                          "Job Count",
                         ]}
                       />
-                      <Bar 
-                        dataKey="count" 
-                        fill="#3b82f6" 
+                      <Bar
+                        dataKey="count"
+                        fill="#3b82f6"
                         name="Jobs"
                         radius={[0, 4, 4, 0]}
                       >
                         {jobsByTopicSelectedMonth.data.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={index === 0 ? '#f59e0b' : index === 1 ? '#94a3b8' : index === 2 ? '#cd7f32' : '#3b82f6'} 
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={
+                              index === 0
+                                ? "#f59e0b"
+                                : index === 1
+                                  ? "#94a3b8"
+                                  : index === 2
+                                    ? "#cd7f32"
+                                    : "#3b82f6"
+                            }
                           />
                         ))}
                       </Bar>
@@ -981,35 +1194,46 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                 {/* Top 3 Highlight */}
                 {jobsByTopicSelectedMonth.data.length >= 1 && (
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {jobsByTopicSelectedMonth.data.slice(0, 3).map((topic, index) => (
-                      <div 
-                        key={topic.title}
-                        className={`p-3 rounded-lg text-center ${
-                          index === 0 ? 'bg-amber-100 border border-amber-300' :
-                          index === 1 ? 'bg-gray-100 border border-gray-300' :
-                          'bg-orange-50 border border-orange-200'
-                        }`}
-                      >
-                        <span className="text-lg sm:text-xl">
-                          {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
-                        </span>
-                        <p className="font-semibold text-sm sm:text-base truncate mt-1" title={topic.title}>
-                          {topic.title}
-                        </p>
-                        <p className="text-xs sm:text-sm text-gray-600">
-                          {topic.count} jobs ({topic.percentage}%)
-                        </p>
-                      </div>
-                    ))}
+                    {jobsByTopicSelectedMonth.data
+                      .slice(0, 3)
+                      .map((topic, index) => (
+                        <div
+                          key={topic.title}
+                          className={`p-3 rounded-lg text-center ${
+                            index === 0
+                              ? "bg-amber-100 border border-amber-300"
+                              : index === 1
+                                ? "bg-muted border border-border"
+                                : "bg-orange-50 border border-orange-200"
+                          }`}
+                        >
+                          <span className="text-lg sm:text-xl">
+                            {index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉"}
+                          </span>
+                          <p
+                            className="font-semibold text-sm sm:text-base truncate mt-1"
+                            title={topic.title}
+                          >
+                            {topic.title}
+                          </p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
+                            {topic.count} jobs ({topic.percentage}%)
+                          </p>
+                        </div>
+                      ))}
                   </div>
                 )}
               </>
             ) : (
-              <div className="flex items-center justify-center h-[200px] text-gray-500">
+              <div className="flex items-center justify-center h-[200px] text-muted-foreground">
                 <div className="text-center">
                   <p className="text-lg mb-2">📭</p>
-                  <p className="text-sm sm:text-base">No jobs found for {jobsByTopicSelectedMonth.monthName}</p>
-                  <p className="text-xs text-gray-400 mt-1">Try selecting a different month or year</p>
+                  <p className="text-sm sm:text-base">
+                    No jobs found for {jobsByTopicSelectedMonth.monthName}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Try selecting a different month or year
+                  </p>
                 </div>
               </div>
             )}
@@ -1020,49 +1244,84 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {jobsByUser && jobsByUser.length > 0 && (
           <Card className="w-full">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg sm:text-xl">Jobs per User</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">
+                Jobs per User
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="h-[220px] sm:h-[260px] lg:h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={jobsByUser.slice(0, 8)}> {/* Limit to top 8 users for mobile */}
+                  <BarChart data={jobsByUser.slice(0, 8)}>
+                    {" "}
+                    {/* Limit to top 8 users for mobile */}
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="username" 
-                      tick={{ fontSize: isMobile ? 7 : 9 }} 
+                    <XAxis
+                      dataKey="username"
+                      tick={{ fontSize: isMobile ? 7 : 9 }}
                       angle={isMobile ? -75 : -60}
                       textAnchor="end"
                       height={isMobile ? 110 : 100}
-                      interval={isMobile ? 'preserveStartEnd' : 0}
+                      interval={isMobile ? "preserveStartEnd" : 0}
                     />
-                    <YAxis tick={{ fontSize: isMobile ? 8 : 9 }} width={isMobile ? 28 : 32} />
-                    <Tooltip 
+                    <YAxis
+                      tick={{ fontSize: isMobile ? 8 : 9 }}
+                      width={isMobile ? 28 : 32}
+                    />
+                    <Tooltip
                       formatter={(value: number, name: string) => [
                         value,
-                        name === 'total' ? 'Total Jobs' : 
-                        name === 'completed' ? 'Completed' :
-                        name === 'pending' ? 'Pending' :
-                        name === 'in_progress' ? 'In Progress' :
-                        name === 'waiting_sparepart' ? 'Waiting Parts' :
-                        name === 'cancelled' ? 'Cancelled' : name
+                        name === "total"
+                          ? "Total Jobs"
+                          : name === "completed"
+                            ? "Completed"
+                            : name === "pending"
+                              ? "Pending"
+                              : name === "in_progress"
+                                ? "In Progress"
+                                : name === "waiting_sparepart"
+                                  ? "Waiting Parts"
+                                  : name === "cancelled"
+                                    ? "Cancelled"
+                                    : name,
                       ]}
                     />
-                    <Legend 
-                      layout="horizontal" 
-                      align="center" 
-                      verticalAlign="bottom" 
-                      iconSize={isMobile ? 8 : 10} 
-                      wrapperStyle={{ 
+                    <Legend
+                      layout="horizontal"
+                      align="center"
+                      verticalAlign="bottom"
+                      iconSize={isMobile ? 8 : 10}
+                      wrapperStyle={{
                         fontSize: isMobile ? 8 : 10,
-                        paddingTop: isMobile ? 4 : 8
-                      }} 
+                        paddingTop: isMobile ? 4 : 8,
+                      }}
                     />
                     <Bar dataKey="total" fill="#8884d8" name="Total Jobs" />
-                    <Bar dataKey="completed" stackId="a" fill={STATUS_COLORS.completed} />
-                    <Bar dataKey="pending" stackId="a" fill={STATUS_COLORS.pending} />
-                    <Bar dataKey="waiting_sparepart" stackId="a" fill={STATUS_COLORS.waiting_sparepart} name="Waiting" />
-                    <Bar dataKey="in_progress" stackId="a" fill={STATUS_COLORS.in_progress} />
-                    <Bar dataKey="cancelled" stackId="a" fill={STATUS_COLORS.cancelled} />
+                    <Bar
+                      dataKey="completed"
+                      stackId="a"
+                      fill={STATUS_COLORS.completed}
+                    />
+                    <Bar
+                      dataKey="pending"
+                      stackId="a"
+                      fill={STATUS_COLORS.pending}
+                    />
+                    <Bar
+                      dataKey="waiting_sparepart"
+                      stackId="a"
+                      fill={STATUS_COLORS.waiting_sparepart}
+                      name="Waiting"
+                    />
+                    <Bar
+                      dataKey="in_progress"
+                      stackId="a"
+                      fill={STATUS_COLORS.in_progress}
+                    />
+                    <Bar
+                      dataKey="cancelled"
+                      stackId="a"
+                      fill={STATUS_COLORS.cancelled}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1074,41 +1333,78 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {jobsByUser && jobsByUser.length > 0 && (
           <Card className="w-full">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg sm:text-xl">Jobs per User - Detailed View</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">
+                Jobs per User - Detailed View
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs sm:text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 px-2 sm:px-3 font-medium text-gray-700">User</th>
-                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Total</th>
-                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Done</th>
-                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Pending</th>
-                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Progress</th>
-                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Waiting</th>
-                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Cancel</th>
-                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-gray-700">Rate</th>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
+                        User
+                      </th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-muted-foreground">
+                        Total
+                      </th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-muted-foreground">
+                        Done
+                      </th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-muted-foreground">
+                        Pending
+                      </th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-muted-foreground">
+                        Progress
+                      </th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-muted-foreground">
+                        Waiting
+                      </th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-muted-foreground">
+                        Cancel
+                      </th>
+                      <th className="text-center py-2 px-1 sm:px-2 font-medium text-muted-foreground">
+                        Rate
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {jobsByUser.map((userData, index) => (
-                      <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-2 px-2 sm:px-3 font-medium text-gray-900 truncate max-w-[100px] sm:max-w-none">
+                      <tr
+                        key={index}
+                        className="border-b border-border hover:bg-muted"
+                      >
+                        <td className="py-2 px-2 sm:px-3 font-medium text-foreground truncate max-w-[100px] sm:max-w-none">
                           {userData.username}
                         </td>
-                        <td className="py-2 px-1 sm:px-2 text-center text-gray-700 font-medium">{userData.total}</td>
-                        <td className="py-2 px-1 sm:px-2 text-center text-green-600">{userData.completed}</td>
-                        <td className="py-2 px-1 sm:px-2 text-center text-yellow-600">{userData.pending}</td>
-                        <td className="py-2 px-1 sm:px-2 text-center text-blue-600">{userData.in_progress}</td>
-                        <td className="py-2 px-1 sm:px-2 text-center text-purple-600">{userData.waiting_sparepart}</td>
-                        <td className="py-2 px-1 sm:px-2 text-center text-red-600">{userData.cancelled}</td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-muted-foreground font-medium">
+                          {userData.total}
+                        </td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-green-600">
+                          {userData.completed}
+                        </td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-yellow-600">
+                          {userData.pending}
+                        </td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-blue-600">
+                          {userData.in_progress}
+                        </td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-purple-600">
+                          {userData.waiting_sparepart}
+                        </td>
+                        <td className="py-2 px-1 sm:px-2 text-center text-red-600">
+                          {userData.cancelled}
+                        </td>
                         <td className="py-2 px-1 sm:px-2 text-center">
-                          <span className={`px-1 sm:px-2 py-1 rounded-full text-xs font-medium ${
-                            parseFloat(userData.completionRate) >= 80 ? 'bg-green-100 text-green-800' :
-                            parseFloat(userData.completionRate) >= 60 ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
+                          <span
+                            className={`px-1 sm:px-2 py-1 rounded-full text-xs font-medium ${
+                              parseFloat(userData.completionRate) >= 80
+                                ? "bg-green-100 text-green-800"
+                                : parseFloat(userData.completionRate) >= 60
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
+                            }`}
+                          >
                             {userData.completionRate}%
                           </span>
                         </td>
@@ -1125,23 +1421,33 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {jobsByTopic && jobsByTopic.length > 0 && (
           <Card className="w-full">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg sm:text-xl">Best Topics - Top 10</CardTitle>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">Excludes Preventive Maintenance Jobs</p>
+              <CardTitle className="text-lg sm:text-xl">
+                Best Topics - Top 10
+              </CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                Excludes Preventive Maintenance Jobs
+              </p>
             </CardHeader>
             <CardContent className="pt-0">
-              <div id="topic-chart-container" className="h-[240px] sm:h-[280px] lg:h-[320px]">
+              <div
+                id="topic-chart-container"
+                className="h-[240px] sm:h-[280px] lg:h-[320px]"
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={jobsByTopic} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tick={{ fontSize: isMobile ? 8 : 10 }} />
-                    <YAxis 
-                      type="category" 
-                      dataKey="title" 
-                      tick={{ fontSize: isMobile ? 8 : 9 }} 
+                    <XAxis
+                      type="number"
+                      tick={{ fontSize: isMobile ? 8 : 10 }}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="title"
+                      tick={{ fontSize: isMobile ? 8 : 9 }}
                       width={isMobile ? 120 : 150}
                     />
-                    <Tooltip 
-                      formatter={(value: number) => [value, 'Job Count']}
+                    <Tooltip
+                      formatter={(value: number) => [value, "Job Count"]}
                     />
                     <Bar dataKey="count" fill="#10b981" name="Jobs" />
                   </BarChart>
@@ -1155,22 +1461,30 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {jobsByRoom && jobsByRoom.length > 0 && (
           <Card className="w-full">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg sm:text-xl">Best Rooms for Jobs - Top 10</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">
+                Best Rooms for Jobs - Top 10
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div id="room-chart-container" className="h-[240px] sm:h-[280px] lg:h-[320px]">
+              <div
+                id="room-chart-container"
+                className="h-[240px] sm:h-[280px] lg:h-[320px]"
+              >
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={jobsByRoom} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tick={{ fontSize: isMobile ? 8 : 10 }} />
-                    <YAxis 
-                      type="category" 
-                      dataKey="name" 
-                      tick={{ fontSize: isMobile ? 8 : 9 }} 
+                    <XAxis
+                      type="number"
+                      tick={{ fontSize: isMobile ? 8 : 10 }}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      tick={{ fontSize: isMobile ? 8 : 9 }}
                       width={isMobile ? 120 : 150}
                     />
-                    <Tooltip 
-                      formatter={(value: number) => [value, 'Job Count']}
+                    <Tooltip
+                      formatter={(value: number) => [value, "Job Count"]}
                     />
                     <Bar dataKey="count" fill="#3b82f6" name="Jobs" />
                   </BarChart>
@@ -1183,7 +1497,9 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
         {/* Summary Statistics - Memoized and optimized */}
         <Card className="w-full">
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg sm:text-xl">Summary Statistics</CardTitle>
+            <CardTitle className="text-lg sm:text-xl">
+              Summary Statistics
+            </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
@@ -1197,10 +1513,20 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                 const statValue = item.status
                   ? getJobStatusCount(item.status, backendStats, filteredJobs)
                   : (backendStats?.total ?? filteredJobs.length);
-                const color = item.status ? (item.status === "defect" ? "#7C3AED" : STATUS_COLORS[item.status]) : "#8884d8";
+                const color = item.status
+                  ? item.status === "defect"
+                    ? "#7C3AED"
+                    : STATUS_COLORS[item.status]
+                  : "#8884d8";
                 const percentage = item.status
-                  ? ((statValue / (backendStats?.total ?? filteredJobs.length)) * 100).toFixed(1)
-                  : (backendStats ? ((backendStats.total > 0 ? 100 : 0).toFixed(1)) : "100.0");
+                  ? (
+                      (statValue /
+                        (backendStats?.total ?? filteredJobs.length)) *
+                      100
+                    ).toFixed(1)
+                  : backendStats
+                    ? (backendStats.total > 0 ? 100 : 0).toFixed(1)
+                    : "100.0";
 
                 return item.status ? (
                   <div
@@ -1209,15 +1535,30 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                   >
                     <div className="pcms-status-card__header">
                       <p className="pcms-status-card__label">{item.name}</p>
-                      <span className="pcms-status-card__indicator" aria-hidden="true" />
+                      <span
+                        className="pcms-status-card__indicator"
+                        aria-hidden="true"
+                      />
                     </div>
-                    <strong className="pcms-status-card__count">{statValue}</strong>
-                    <p className="pcms-status-card__detail">{percentage}% of jobs</p>
+                    <strong className="pcms-status-card__count">
+                      {statValue}
+                    </strong>
+                    <p className="pcms-status-card__detail">
+                      {percentage}% of jobs
+                    </p>
                   </div>
                 ) : (
-                  <div key={`stat-${index}`} className="p-3 sm:p-4 rounded-lg bg-gray-50 w-full flex flex-col border border-gray-200">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1 truncate">{item.name}</p>
-                    <p className="text-lg sm:text-xl lg:text-2xl font-semibold" style={{ color }}>
+                  <div
+                    key={`stat-${index}`}
+                    className="p-3 sm:p-4 rounded-lg bg-muted w-full flex flex-col border border-border"
+                  >
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">
+                      {item.name}
+                    </p>
+                    <p
+                      className="text-lg sm:text-xl lg:text-2xl font-semibold"
+                      style={{ color }}
+                    >
                       {statValue}
                     </p>
                   </div>
@@ -1232,60 +1573,77 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
           <Card className="w-full">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg sm:text-xl">
-                Job Comparison: Same Month Across Years ({comparisonJobYear1} vs {comparisonJobYear2})
+                Job Comparison: Same Month Across Years ({comparisonJobYear1} vs{" "}
+                {comparisonJobYear2})
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               {/* Year and Month Selection */}
               <div className="mb-4 flex flex-col sm:flex-row gap-3 sm:gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
                     Compare Year 1
                   </label>
                   <select
                     value={comparisonJobYear1}
-                    onChange={(e) => setComparisonJobYear1(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) =>
+                      setComparisonJobYear1(parseInt(e.target.value))
+                    }
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     {availableJobYears.length > 0 ? (
-                      availableJobYears.map(year => (
-                        <option key={year} value={year}>{year}</option>
+                      availableJobYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
                       ))
                     ) : (
-                      <option value={comparisonJobYear1}>{comparisonJobYear1}</option>
+                      <option value={comparisonJobYear1}>
+                        {comparisonJobYear1}
+                      </option>
                     )}
                   </select>
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
                     Compare Year 2
                   </label>
                   <select
                     value={comparisonJobYear2}
-                    onChange={(e) => setComparisonJobYear2(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) =>
+                      setComparisonJobYear2(parseInt(e.target.value))
+                    }
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     {availableJobYears.length > 0 ? (
-                      availableJobYears.map(year => (
-                        <option key={year} value={year}>{year}</option>
+                      availableJobYears.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
                       ))
                     ) : (
-                      <option value={comparisonJobYear2}>{comparisonJobYear2}</option>
+                      <option value={comparisonJobYear2}>
+                        {comparisonJobYear2}
+                      </option>
                     )}
                   </select>
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
                     Month
                   </label>
                   <select
                     value={comparisonJobMonth}
-                    onChange={(e) => setComparisonJobMonth(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) =>
+                      setComparisonJobMonth(parseInt(e.target.value))
+                    }
+                    className="w-full px-3 py-2 border border-border rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(month => (
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
                       <option key={month} value={month}>
-                        {new Date(2000, month - 1).toLocaleString('default', { month: 'long' })}
+                        {new Date(2000, month - 1).toLocaleString("default", {
+                          month: "long",
+                        })}
                       </option>
                     ))}
                   </select>
@@ -1296,8 +1654,8 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={jobComparisonData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="month" 
+                    <XAxis
+                      dataKey="month"
                       tick={{ fontSize: isMobile ? 10 : 12 }}
                       angle={isMobile ? -45 : -30}
                       textAnchor="end"
@@ -1305,42 +1663,40 @@ const PropertyJobsDashboard = ({ initialJobs = [] }: PropertyJobsDashboardProps)
                     />
                     <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} />
                     <Tooltip />
-                    <Legend 
-                      wrapperStyle={{ fontSize: isMobile ? 10 : 12 }}
-                    />
-                    <Bar 
-                      dataKey="total" 
-                      fill="#8884d8" 
+                    <Legend wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} />
+                    <Bar
+                      dataKey="total"
+                      fill="#8884d8"
                       name="Total Jobs"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar 
-                      dataKey="completed" 
-                      fill={STATUS_COLORS.completed} 
+                    <Bar
+                      dataKey="completed"
+                      fill={STATUS_COLORS.completed}
                       name="Completed"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar 
-                      dataKey="pending" 
-                      fill={STATUS_COLORS.pending} 
+                    <Bar
+                      dataKey="pending"
+                      fill={STATUS_COLORS.pending}
                       name="Pending"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar 
-                      dataKey="in_progress" 
-                      fill={STATUS_COLORS.in_progress} 
+                    <Bar
+                      dataKey="in_progress"
+                      fill={STATUS_COLORS.in_progress}
                       name="In Progress"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar 
-                      dataKey="waiting_sparepart" 
-                      fill={STATUS_COLORS.waiting_sparepart} 
+                    <Bar
+                      dataKey="waiting_sparepart"
+                      fill={STATUS_COLORS.waiting_sparepart}
                       name="Waiting Parts"
                       radius={[4, 4, 0, 0]}
                     />
-                    <Bar 
-                      dataKey="cancelled" 
-                      fill={STATUS_COLORS.cancelled} 
+                    <Bar
+                      dataKey="cancelled"
+                      fill={STATUS_COLORS.cancelled}
                       name="Cancelled"
                       radius={[4, 4, 0, 0]}
                     />

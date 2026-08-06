@@ -6,25 +6,25 @@ import { cn } from "@/app/lib/utils/cn";
 import { Spinner } from "@/app/components/ui/loading/Spinner";
 
 const buttonVariants = cva(
-  "pcms-btn whitespace-nowrap focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/45 focus-visible:ring-offset-2 disabled:pointer-events-none touch-manipulation",
+  "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg border text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 touch-manipulation motion-reduce:transition-none",
   {
     variants: {
       variant: {
-        default: "pcms-btn-primary",
-        destructive: "pcms-btn-danger",
-        outline: "pcms-btn-secondary",
-        secondary: "pcms-btn-secondary",
-        success: "pcms-btn-success",
-        warning: "pcms-btn-warning",
-        ghost: "pcms-btn-ghost",
-        link: "h-auto min-h-0 rounded-none border-0 bg-transparent p-0 text-primary underline-offset-4 shadow-none hover:underline active:scale-100",
+        default: "border-primary bg-primary text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))]",
+        destructive: "border-destructive bg-destructive text-destructive-foreground shadow-soft hover:border-[hsl(var(--destructive-hover))] hover:bg-[hsl(var(--destructive-hover))]",
+        outline: "border-border bg-background text-foreground shadow-soft hover:border-primary/30 hover:bg-primary/10 hover:text-primary",
+        secondary: "border-secondary bg-secondary text-secondary-foreground hover:border-[hsl(var(--secondary-hover))] hover:bg-[hsl(var(--secondary-hover))]",
+        success: "border-success bg-success text-success-foreground shadow-soft hover:border-[hsl(var(--success-hover))] hover:bg-[hsl(var(--success-hover))]",
+        warning: "border-warning bg-warning text-warning-foreground shadow-soft hover:border-[hsl(var(--warning-hover))] hover:bg-[hsl(var(--warning-hover))]",
+        ghost: "border-transparent bg-transparent text-foreground shadow-none hover:bg-primary/10 hover:text-primary",
+        link: "h-auto min-h-0 rounded-none border-0 bg-transparent p-0 text-primary underline-offset-4 shadow-none hover:text-[hsl(var(--primary-hover))] hover:underline active:scale-100",
       },
       size: {
-        default: "h-11 px-4 py-2 mobile:h-11 mobile:px-5",
-        sm: "h-10 rounded-[12px] px-3 mobile:h-11 mobile:px-4",
-        lg: "h-12 rounded-[14px] px-8 mobile:h-12 mobile:px-10",
-        icon: "h-11 w-11 px-0 mobile:h-11 mobile:w-11",
-        touch: "min-h-touch-target min-w-touch-target h-11 px-6",
+        default: "h-11 px-4 py-2",
+        sm: "h-10 min-h-10 px-3",
+        lg: "h-12 px-6",
+        icon: "h-11 w-11 px-0",
+        touch: "h-11 min-w-touch-target px-5",
       },
     },
     defaultVariants: {
@@ -39,7 +39,7 @@ export interface ButtonProps
     React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
-  formAction?: any;
+  formAction?: React.ButtonHTMLAttributes<HTMLButtonElement>["formAction"];
   isLoading?: boolean;
   loadingText?: string;
 }

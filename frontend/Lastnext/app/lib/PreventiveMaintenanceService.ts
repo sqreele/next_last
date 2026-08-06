@@ -86,6 +86,8 @@ export interface PMMasterPlan {
     first_name?: string;
     last_name?: string;
   } | null;
+  generated_pm_id?: string | null;
+  generated_pm_status?: string | null;
 }
 
 export type CreatePMMasterPlanData = {

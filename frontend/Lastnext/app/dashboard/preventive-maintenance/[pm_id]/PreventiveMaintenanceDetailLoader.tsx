@@ -110,6 +110,29 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
           {masterPlan.notes && <div className="mt-5 border-t border-border pt-4"><p className="text-sm text-muted-foreground">Notes</p><p className="mt-1 whitespace-pre-wrap">{masterPlan.notes}</p></div>}
           {masterPlan.procedure && <div className="mt-5 border-t border-border pt-4"><p className="text-sm text-muted-foreground">Procedure</p><p className="mt-1 whitespace-pre-wrap">{masterPlan.procedure}</p></div>}
         </div>
+        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900 dark:bg-blue-950/30">
+          <h2 className="font-bold text-blue-950 dark:text-blue-100">Record maintenance work and photos</h2>
+          <p className="mt-2 text-sm text-blue-900 dark:text-blue-200">
+            Before and After photos belong to each generated PM work form, not to this recurring master plan.
+            The system generates that form when the occurrence enters its {masterPlan.lead_time_days}-day lead window.
+          </p>
+          {masterPlan.generated_pm_id ? (
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Button asChild>
+                <Link href={`/dashboard/preventive-maintenance/edit/${masterPlan.generated_pm_id}?complete=true`}>
+                  Open work form · #{masterPlan.generated_pm_id}
+                </Link>
+              </Button>
+              <span className="text-sm font-medium capitalize text-blue-800 dark:text-blue-200">
+                Status: {masterPlan.generated_pm_status || 'pending'}
+              </span>
+            </div>
+          ) : (
+            <p className="mt-4 rounded-lg bg-white/70 px-4 py-3 text-sm font-medium text-blue-900 dark:bg-black/20 dark:text-blue-100">
+              No work form has been generated yet. It will become available before the next due date according to the lead time above.
+            </p>
+          )}
+        </div>
       </div>
     );
   }

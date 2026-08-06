@@ -1606,7 +1606,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     def _get_master_plan_queryset(self):
         queryset = PMMasterPlan.objects.select_related(
             'created_by', 'assigned_to', 'procedure_template'
-        ).prefetch_related('topics', 'machines', 'machines__property')
+        ).prefetch_related('topics', 'machines', 'machines__property', 'generated_maintenances')
         property_filter = self.request.query_params.get('property_id')
         user = self.request.user
         if not (user.is_staff or user.is_superuser):

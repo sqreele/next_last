@@ -1224,6 +1224,8 @@ class PMMasterPlanSerializer(serializers.ModelSerializer):
     assigned_to_details = UserSummarySerializer(source='assigned_to', read_only=True)
     created_by_details = UserSummarySerializer(source='created_by', read_only=True)
     property_id = serializers.SerializerMethodField()
+    generated_pm_id = serializers.SerializerMethodField()
+    generated_pm_status = serializers.SerializerMethodField()
 
     class Meta:
         model = PMMasterPlan
@@ -1233,6 +1235,7 @@ class PMMasterPlanSerializer(serializers.ModelSerializer):
             'custom_days', 'start_date', 'lead_time_days', 'assigned_to',
             'assigned_to_details', 'created_by_details', 'active', 'last_completed_date',
             'next_due_date', 'notes', 'procedure', 'remarks', 'created_at', 'updated_at',
+            'generated_pm_id', 'generated_pm_status',
         ]
         read_only_fields = ['plan_id', 'created_by_details', 'last_completed_date', 'next_due_date', 'created_at', 'updated_at']
         extra_kwargs = {
@@ -1247,6 +1250,29 @@ class PMMasterPlanSerializer(serializers.ModelSerializer):
     def get_property_id(self, obj):
         machine = obj.machines.first()
         return machine.property.property_id if machine and machine.property else None
+
+    def _get_current_generated_pm(self, obj):
+        cache_key = '_serializer_current_generated_pm'
+        if not hasattr(obj, cache_key):
+            pending = [
+                pm for pm in obj.generated_maintenances.all()
+                if pm.completed_date is None
+            ]
+            current = min(
+                pending,
+                key=lambda pm: pm.occurrence_due_date or pm.scheduled_date,
+                default=None,
+            )
+            setattr(obj, cache_key, current)
+        return getattr(obj, cache_key)
+
+    def get_generated_pm_id(self, obj):
+        current = self._get_current_generated_pm(obj)
+        return current.pm_id if current else None
+
+    def get_generated_pm_status(self, obj):
+        current = self._get_current_generated_pm(obj)
+        return current.status if current else None
 
     def validate(self, data):
         frequency = data.get('frequency', getattr(self.instance, 'frequency', None))

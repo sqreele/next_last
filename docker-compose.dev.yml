@@ -95,6 +95,10 @@ volumes:
     driver: local
   media_volume_dev:
     driver: local
+    # Reuse the application media volume so development serves the same files
+    # referenced by the database instead of creating an empty project-scoped
+    # volume (for example next_last_media_volume_dev).
+    name: pcms_media_volume
   frontend_node_modules:
     driver: local
   frontend_next_cache:

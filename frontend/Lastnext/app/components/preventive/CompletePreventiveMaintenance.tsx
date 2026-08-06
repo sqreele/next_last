@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePreventiveMaintenanceActions } from "@/app/lib/hooks/usePreventiveMaintenanceActions";
 import { CompletePreventiveMaintenanceData } from "@/app/lib/PreventiveMaintenanceService";
-import { MaintenanceImage } from "@/app/lib/preventiveMaintenanceModels";
 import React from "react";
 import { MaintenanceImage as OptimizedMaintenanceImage } from "@/app/components/ui/UniversalImage";
+import { fixImageUrl } from "@/app/lib/utils/image-utils";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import {
   ArrowLeft,
@@ -296,27 +296,6 @@ export default function CompletePreventiveMaintenance({
     });
   };
 
-  // Helper function to get image URL
-  const getImageUrl = (
-    image: MaintenanceImage | string | null | undefined,
-  ): string | null => {
-    if (!image) return null;
-
-    if (typeof image === "object" && "image_url" in image && image.image_url) {
-      return image.image_url;
-    }
-
-    if (typeof image === "object" && "id" in image && image.id) {
-      return `/api/images/${image.id}`;
-    }
-
-    if (typeof image === "string") {
-      return image;
-    }
-
-    return null;
-  };
-
   // Debug component state
   useEffect(() => {}, [isLoading, error, selectedMaintenance, pmId]);
 
@@ -486,6 +465,9 @@ export default function CompletePreventiveMaintenance({
       </div>
     );
   }
+
+  const beforeImageUrl = fixImageUrl(selectedMaintenance.before_image_url);
+  const afterImageUrl = fixImageUrl(selectedMaintenance.after_image_url);
 
   return (
     <div className="min-h-screen bg-muted">
@@ -678,9 +660,9 @@ export default function CompletePreventiveMaintenance({
                       Before Image
                     </label>
                     <div className="aspect-square md:aspect-[4/3] border border-border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                      {selectedMaintenance.before_image_url ? (
+                      {beforeImageUrl ? (
                         <OptimizedMaintenanceImage
-                          src={selectedMaintenance.before_image_url}
+                          src={beforeImageUrl}
                           alt="Before maintenance"
                           className="h-full w-full object-cover"
                           fill
@@ -703,7 +685,7 @@ export default function CompletePreventiveMaintenance({
                     </label>
 
                     {/* Upload area */}
-                    {!imagePreview && !selectedMaintenance.after_image_url && (
+                    {!imagePreview && !afterImageUrl && (
                       <div className="aspect-square md:aspect-[4/3] border-2 border-dashed border-border rounded-lg flex items-center justify-center bg-muted">
                         <div className="text-center">
                           <input
@@ -730,12 +712,12 @@ export default function CompletePreventiveMaintenance({
                     )}
 
                     {/* Image preview */}
-                    {(imagePreview || selectedMaintenance.after_image_url) && (
+                    {(imagePreview || afterImageUrl) && (
                       <div className="relative aspect-square md:aspect-[4/3] border border-border rounded-lg overflow-hidden bg-muted">
                         <OptimizedMaintenanceImage
                           src={
                             imagePreview ||
-                            selectedMaintenance.after_image_url ||
+                            afterImageUrl ||
                             ""
                           }
                           alt="After maintenance preview"
@@ -753,7 +735,7 @@ export default function CompletePreventiveMaintenance({
                     )}
 
                     {/* Upload button when image exists */}
-                    {(imagePreview || selectedMaintenance.after_image_url) && (
+                    {(imagePreview || afterImageUrl) && (
                       <div className="mt-2">
                         <input
                           type="file"

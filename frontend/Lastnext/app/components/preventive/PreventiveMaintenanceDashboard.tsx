@@ -7,6 +7,7 @@ import { PreventiveMaintenance } from "@/app/lib/preventiveMaintenanceModels";
 import { preventiveMaintenanceService } from "@/app/lib/PreventiveMaintenanceService";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import Image from "next/image";
+import { fixImageUrl } from "@/app/lib/utils/image-utils";
 
 // Updated interface to match Django API response
 interface FrequencyDistributionItem {
@@ -721,8 +722,8 @@ export default function PreventiveMaintenanceDashboard() {
                       const title = getMaintenanceTitle(item);
 
                       // Get image URLs - only use URL properties since before_image/after_image don't exist on type
-                      const beforeImageUrl = item.before_image_url || null;
-                      const afterImageUrl = item.after_image_url || null;
+                      const beforeImageUrl = fixImageUrl(item.before_image_url);
+                      const afterImageUrl = fixImageUrl(item.after_image_url);
 
                       return (
                         <tr key={item.pm_id} className="hover:bg-muted">

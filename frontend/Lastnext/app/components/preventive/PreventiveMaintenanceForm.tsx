@@ -165,6 +165,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const [loadingMachines, setLoadingMachines] = useState<boolean>(true);
   const [loadingMaintenanceTasks, setLoadingMaintenanceTasks] =
     useState<boolean>(true);
+  const machineRequestIdRef = useRef(0);
 
   // Set access token on service when available
   React.useEffect(() => {
@@ -632,11 +633,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   const fetchAvailableMachines = useCallback(
     async (propertyId: string | null | undefined) => {
+      const requestId = ++machineRequestIdRef.current;
       if (!propertyId) {
         setAvailableMachines([]);
         setLoadingMachines(false);
         return;
       }
+
+      // Remove equipment from the previous property immediately. Without this,
+      // the old list remains visible while the next request is in flight.
+      setAvailableMachines([]);
       setLoadingMachines(true);
       try {
         const machineService = new MachineService();
@@ -647,12 +653,31 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           propertyIdForApi,
           accessTokenForApi,
         );
+        if (requestId !== machineRequestIdRef.current) return;
+
         if (response.success && response.data) {
-          setAvailableMachines(response.data);
+          const normalizedMachines = response.data
+            .map((machine) => ({
+              ...machine,
+              machine_id: String(machine.machine_id),
+            }))
+            .sort((left, right) => {
+              const nameComparison = (left.name || "").localeCompare(
+                right.name || "",
+                undefined,
+                { sensitivity: "base" },
+              );
+              return (
+                nameComparison ||
+                left.machine_id.localeCompare(right.machine_id)
+              );
+            });
+          setAvailableMachines(normalizedMachines);
         } else {
           throw new Error(response.message || "Failed to fetch machines");
         }
       } catch (err: any) {
+        if (requestId !== machineRequestIdRef.current) return;
         console.error("❌ Error fetching available machines:", err);
 
         // Provide more specific error messages
@@ -672,7 +697,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         setError(errorMessage);
         setAvailableMachines([]);
       } finally {
-        setLoadingMachines(false);
+        if (requestId === machineRequestIdRef.current) {
+          setLoadingMachines(false);
+        }
       }
     },
     [accessToken],

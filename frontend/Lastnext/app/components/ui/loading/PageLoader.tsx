@@ -33,7 +33,7 @@ export function PageLoader({
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="pcms-eyebrow">PCMS</p>
+              <p className="pcms-eyebrow">HotelCarePro</p>
               <h1 className="text-xl font-bold text-[var(--pcms-text)] sm:text-2xl">{label}</h1>
               <p className="mt-1 text-sm font-semibold text-[var(--pcms-text-muted)]">{description}</p>
             </div>

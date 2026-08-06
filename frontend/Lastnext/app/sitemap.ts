@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next';
 
-// Dynamic sitemap generation for HotelEngPro
+// Dynamic sitemap generation for HotelCarePro
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://pcms.live';
   

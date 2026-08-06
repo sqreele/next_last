@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next';
 
-// Robots.txt configuration for HotelEngPro
+// Robots.txt configuration for HotelCarePro
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://pcms.live';
   

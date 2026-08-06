@@ -97,7 +97,7 @@ export default function LandingPage() {
               <Building className="h-5 w-5" />
             </span>
             <span className="text-lg font-bold text-[var(--pcms-text)] sm:text-xl">
-              HotelEngPro
+              HotelCarePro
             </span>
           </Link>
 
@@ -202,7 +202,7 @@ export default function LandingPage() {
               Everything you need for hotel engineering management
             </h2>
             <p className="mx-auto max-w-2xl text-balance text-base text-[var(--pcms-text-muted)] sm:text-lg">
-              From preventive maintenance to team coordination, HotelEngPro
+              From preventive maintenance to team coordination, HotelCarePro
               has the tools your engineering team needs every day.
             </p>
           </div>
@@ -250,7 +250,7 @@ export default function LandingPage() {
               </h2>
               <p className="mb-8 text-balance text-base text-[var(--pcms-text-muted)] sm:text-lg">
                 Join thousands of hotel engineers who have revolutionized
-                their maintenance processes with HotelEngPro.
+                their maintenance processes with HotelCarePro.
               </p>
 
               <ul className="space-y-3">
@@ -276,7 +276,7 @@ export default function LandingPage() {
                   Trusted by hotel industry leaders
                 </h3>
                 <p className="mb-8 text-center text-sm text-blue-100 sm:text-base">
-                  Join hotels that trust HotelEngPro with their engineering
+                  Join hotels that trust HotelCarePro with their engineering
                   management
                 </p>
                 <div className="grid grid-cols-2 gap-6 text-center">
@@ -307,7 +307,7 @@ export default function LandingPage() {
           </h2>
           <p className="mb-8 text-balance text-base text-slate-300 sm:text-lg">
             Join thousands of hotel engineers who have already transformed
-            their maintenance operations with HotelEngPro.
+            their maintenance operations with HotelCarePro.
           </p>
 
           <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
@@ -348,7 +348,7 @@ export default function LandingPage() {
               <div className="mb-4 flex items-center gap-2">
                 <Building className="h-6 w-6 text-blue-500" />
                 <span className="text-lg font-bold text-white">
-                  HotelEngPro
+                  HotelCarePro
                 </span>
               </div>
               <p className="text-sm leading-relaxed">
@@ -428,7 +428,7 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-10 border-t border-slate-800 pt-6 text-center text-xs sm:text-sm">
-            <p>&copy; {new Date().getFullYear()} HotelEngPro. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} HotelCarePro. All rights reserved.</p>
           </div>
         </div>
       </footer>

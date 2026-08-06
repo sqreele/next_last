@@ -34,7 +34,7 @@ export default function LoginPage() {
             Hotel maintenance sign in
           </CardTitle>
           <CardDescription className="text-sm">
-            Property Care Maintenance System
+            Hotel Care & Maintenance Platform
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4 pb-8">

@@ -100,7 +100,6 @@ function CreatePageContent() {
           <PreventiveMaintenanceForm
             onSuccessAction={handleSuccess}
             machineId={queryMachineId}
-            key={`${queryMachineId}-${selectedPropertyId}`}
           />
         )}
     </div>

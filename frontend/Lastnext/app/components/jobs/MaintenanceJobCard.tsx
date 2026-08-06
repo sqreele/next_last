@@ -184,10 +184,13 @@ export default function MaintenanceJobCard({
               src={imageUrl}
               alt={`Maintenance job at ${getLocation(job)}`}
               fill
+              loading="lazy"
               sizes="(max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw"
               className="object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
               onError={() => setImageFailed(true)}
-              unoptimized={imageUrl.startsWith("http")}
+              unoptimized={
+                imageUrl.startsWith("http") || imageUrl.includes("/media/")
+              }
             />
           ) : (
             <div className="grid h-full place-items-center bg-gradient-to-br from-muted to-background text-muted-foreground">

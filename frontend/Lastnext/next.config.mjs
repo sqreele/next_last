@@ -28,11 +28,7 @@ const nextConfig = {
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox; img-src 'self' data: blob: https: http://localhost:8000 http://127.0.0.1:8000;",
     loader: 'default',
-    // Application uploads are served by Nginx from the shared media volume.
-    // The production Next.js container cannot resolve a relative /media URL
-    // through its own image optimizer, which turns valid images into 400s.
-    // Browser-native lazy loading and Nginx caching still apply.
-    unoptimized: true,
+    unoptimized: false,
     remotePatterns: [
       // Development - local machine
       { protocol: 'http', hostname: '127.0.0.1', port: '8000', pathname: '/media/**' },

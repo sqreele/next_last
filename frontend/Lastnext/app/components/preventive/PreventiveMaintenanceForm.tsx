@@ -1590,8 +1590,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       )
                       .map((machine) => machine.machine_id),
                   );
-            const nextMachineIds = values.selected_machine_ids.filter(
-              (id) => allowedMachineIds.has(id),
+            const nextMachineIds = values.selected_machine_ids.filter((id) =>
+              allowedMachineIds.has(id),
             );
             if (nextMachineIds.length !== values.selected_machine_ids.length) {
               setFieldValue("selected_machine_ids", nextMachineIds, false);
@@ -2158,9 +2158,17 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                               : availableMachines;
                         const machinesToShow = machineId
                           ? machinesMatchingTemplate.filter(
-                              (m) => m.machine_id === machineId,
+                              (m) => String(m.machine_id) === String(machineId),
                             )
                           : machinesMatchingTemplate;
+
+                        const preselectedMachineAtProperty = machineId
+                          ? availableMachines.find(
+                              (machine) =>
+                                String(machine.machine_id) ===
+                                String(machineId),
+                            )
+                          : undefined;
 
                         return machinesToShow.length > 0 ? (
                           <div className="space-y-2 sm:space-y-3">
@@ -2246,7 +2254,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                           <div className="text-center py-6">
                             {machineId ? (
                               <p className="text-sm text-gray-500 mb-3">
-                                Machine {machineId} not found for this property.
+                                {preselectedMachineAtProperty
+                                  ? `Machine ${machineId} is at this property, but it is not linked to the selected maintenance task template.`
+                                  : `Machine ${machineId} was not found among the machines available for this property.`}
                               </p>
                             ) : (
                               <>

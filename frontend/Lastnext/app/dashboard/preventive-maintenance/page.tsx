@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { logger } from '@/app/lib/utils/logger';
 import { useRouter } from 'next/navigation';
 import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMaintenanceActions';
@@ -196,42 +196,10 @@ function PreventiveMaintenanceListPageContent() {
   // Get setFilterParams from PM store
   const { setFilterParams } = usePreventiveMaintenanceStore();
 
-  // Track if we're syncing to prevent loops
-  const isSyncingRef = useRef(false);
-
-  // Sync PM store filterParams back to useFilterStore when updated from backend response
-  // This ensures both stores stay in sync after backend responses
+  // The filter store is the source of truth for pagination. The PM store keeps
+  // the parameters used for the latest request, but must never write an older
+  // page back into the UI while a new page request is being prepared.
   useEffect(() => {
-    if (pmFilterParams.page !== undefined && pmFilterParams.page_size !== undefined) {
-      const pmPage = Number(pmFilterParams.page) || 1;
-      const pmPageSize = Number(pmFilterParams.page_size) || 10;
-      const currentPage = Number(page) || 1;
-      const currentPageSize = Number(page_size) || 10;
-      
-      // Only sync if different and we're not already syncing to avoid infinite loops
-      if (!isSyncingRef.current && (currentPage !== pmPage || currentPageSize !== pmPageSize)) {
-        isSyncingRef.current = true;
-        const syncTimer = setTimeout(() => {
-          setPage(pmPage);
-          setPageSize(pmPageSize);
-          // Reset sync flag after a delay to allow the main sync effect to run
-          setTimeout(() => {
-            isSyncingRef.current = false;
-          }, 500);
-        }, 100);
-        
-        return () => clearTimeout(syncTimer);
-      }
-    }
-  }, [pmFilterParams.page, pmFilterParams.page_size, page, page_size, setPage, setPageSize]);
-
-  // Sync filter store with PM store and fetch data when filters change
-  useEffect(() => {
-    // Skip if we're in the middle of syncing to prevent loops
-    if (isSyncingRef.current) {
-      return;
-    }
-
     const debounceTimer = setTimeout(() => {
       // Ensure page and page_size are always numbers
       const currentPage = Number(page) || 1;

@@ -39,7 +39,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL}
     healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3000/api/health/"]
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000/api/health/', response => process.exit(response.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
       start_period: 30s

@@ -1459,7 +1459,11 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
           // Auto-select machine when machineId prop is provided
           React.useEffect(() => {
-            if (!machineId || pmId) return; // Only for new records with machineId prop
+            // Once a template is chosen, its machine relationship is authoritative.
+            // Do not re-add a machine that the template-matching effect removed.
+            if (!machineId || pmId || values.procedure_template !== "") {
+              return;
+            }
 
             const machineIdStr = String(machineId);
             const isAlreadySelected =
@@ -1534,6 +1538,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             loadingMachines,
             values.selected_machine_ids,
             values.property_id,
+            values.procedure_template,
             setFieldValue,
           ]);
 
@@ -1586,7 +1591,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       .map((machine) => machine.machine_id),
                   );
             const nextMachineIds = values.selected_machine_ids.filter(
-              (id) => allowedMachineIds.has(id) || id === machineId,
+              (id) => allowedMachineIds.has(id),
             );
             if (nextMachineIds.length !== values.selected_machine_ids.length) {
               setFieldValue("selected_machine_ids", nextMachineIds, false);
@@ -1594,7 +1599,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           }, [
             availableMachines,
             availableMaintenanceTasks,
-            machineId,
             values.procedure_template,
             values.selected_machine_ids,
             setFieldValue,

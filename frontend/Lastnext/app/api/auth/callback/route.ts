@@ -3,6 +3,15 @@ import { setSessionCookie } from '@/app/lib/auth0/session-cookie';
 
 const RAW_AUTH_ID_PATTERN = /^(google-oauth2_|auth0_)/i;
 const RAW_AUTH_PIPE_PATTERN = /^(google-oauth2|auth0)\|/i;
+const DEFAULT_AUTH0_CLAIM_NAMESPACE = 'https://hotelcarepro.com';
+
+function getAuth0Claim(claims: Record<string, unknown>, claim: string): unknown {
+  const namespace = (
+    process.env.AUTH0_CLAIM_NAMESPACE || DEFAULT_AUTH0_CLAIM_NAMESPACE
+  ).replace(/\/$/, '');
+
+  return claims[`${namespace}/${claim}`] ?? claims[claim];
+}
 
 function isRawAuthIdentifier(value?: string | null): boolean {
   if (!value) return true;
@@ -169,13 +178,13 @@ export async function GET(request: NextRequest) {
             // Use ID token data as fallback
             userInfo = {
               sub: decoded.sub,
-              email: decoded.email,
+              email: getAuth0Claim(decoded, 'email'),
               name: decoded.name,
               given_name: decoded.given_name,
               family_name: decoded.family_name,
               nickname: decoded.nickname,
               picture: decoded.picture,
-              email_verified: decoded.email_verified
+              email_verified: getAuth0Claim(decoded, 'email_verified')
             };
           }
         } catch (decodeError) {

@@ -8,6 +8,10 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+admin.site.site_header = 'HotelCare Pro Administration'
+admin.site.site_title = 'HotelCare Pro Admin'
+admin.site.index_title = 'Operations overview'
+
 # Custom User Admin
 class CustomUserAdmin(BaseUserAdmin):
     list_per_page = 25

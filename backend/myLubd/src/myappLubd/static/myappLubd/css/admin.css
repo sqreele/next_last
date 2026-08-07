@@ -1,0 +1,418 @@
+:root {
+  --primary: #0f766e;
+  --secondary: #115e59;
+  --accent: #f59e0b;
+  --header-color: #ffffff;
+  --header-branding-color: #ffffff;
+  --header-bg: #0f172a;
+  --header-link-color: #dbeafe;
+  --breadcrumbs-fg: #cbd5e1;
+  --breadcrumbs-link-fg: #ffffff;
+  --breadcrumbs-bg: #1e293b;
+  --link-fg: #0f766e;
+  --link-hover-color: #115e59;
+  --link-selected-fg: #134e4a;
+  --button-fg: #ffffff;
+  --button-bg: #0f766e;
+  --button-hover-bg: #115e59;
+  --default-button-bg: #0f766e;
+  --default-button-hover-bg: #115e59;
+  --close-button-bg: #475569;
+  --close-button-hover-bg: #334155;
+  --delete-button-bg: #dc2626;
+  --delete-button-hover-bg: #b91c1c;
+  --body-fg: #1e293b;
+  --body-bg: #f1f5f9;
+  --body-quiet-color: #64748b;
+  --body-loud-color: #0f172a;
+  --darkened-bg: #f8fafc;
+  --selected-bg: #ecfdf5;
+  --selected-row: #f0fdfa;
+  --border-color: #dbe3ec;
+  --hairline-color: #e8edf3;
+  --font-family-primary: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html[data-theme="dark"] {
+  --primary: #2dd4bf;
+  --secondary: #5eead4;
+  --body-bg: #0f172a;
+  --body-fg: #e2e8f0;
+  --body-quiet-color: #94a3b8;
+  --body-loud-color: #f8fafc;
+  --darkened-bg: #172033;
+  --selected-bg: #153b3a;
+  --selected-row: #153b3a;
+  --border-color: #334155;
+  --hairline-color: #293548;
+  --link-fg: #5eead4;
+  --link-hover-color: #99f6e4;
+}
+
+body {
+  font-family: var(--font-family-primary);
+  letter-spacing: -0.005em;
+}
+
+#header {
+  min-height: 68px;
+  padding: 0 28px;
+  background: linear-gradient(120deg, #0f172a 0%, #172554 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .08), 0 6px 24px rgba(15, 23, 42, .18);
+}
+
+#branding {
+  display: flex;
+  align-items: center;
+}
+
+.brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  color: #fff !important;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 11px;
+  background: linear-gradient(145deg, #14b8a6, #0f766e);
+  box-shadow: 0 5px 15px rgba(13, 148, 136, .3);
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.brand-copy {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.brand-copy strong {
+  font-size: 17px;
+  letter-spacing: -.02em;
+}
+
+.brand-copy small {
+  margin-top: 4px;
+  color: #a5b4fc;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+#user-tools {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+#user-tools a {
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(255, 255, 255, .28);
+}
+
+div.breadcrumbs {
+  padding: 13px 28px;
+  background: #1e293b;
+  font-size: 12px;
+}
+
+#content {
+  padding: 28px;
+}
+
+#content h1 {
+  margin: 0 0 22px;
+  color: var(--body-loud-color);
+  font-size: 25px;
+  font-weight: 750;
+  letter-spacing: -.035em;
+}
+
+#content h2 {
+  font-weight: 700;
+}
+
+.module,
+.inline-group,
+#changelist-filter,
+.dashboard #content-related .module {
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--body-bg);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, .04);
+}
+
+.module h2,
+.module caption,
+.inline-group h2 {
+  padding: 12px 16px;
+  background: #1e293b;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.module caption a {
+  color: #fff;
+}
+
+.dashboard .module table th,
+.dashboard .module table td {
+  padding: 11px 14px;
+}
+
+.dashboard .module table tr:hover {
+  background: var(--selected-row);
+}
+
+.object-tools {
+  margin-top: -48px;
+}
+
+.object-tools a,
+.object-tools a:link,
+.object-tools a:visited {
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: var(--primary);
+  box-shadow: 0 2px 5px rgba(15, 118, 110, .18);
+  font-weight: 700;
+}
+
+.object-tools a:hover {
+  background: var(--secondary);
+}
+
+#changelist .actions {
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px 10px 0 0;
+  background: var(--darkened-bg);
+}
+
+#changelist .actions select {
+  min-height: 36px;
+}
+
+#changelist table {
+  border: 1px solid var(--border-color);
+}
+
+#changelist table thead th {
+  padding: 12px 10px;
+  background: #e8eef5;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+
+html[data-theme="dark"] #changelist table thead th {
+  background: #1e293b;
+  color: #cbd5e1;
+}
+
+#changelist table tbody tr:hover {
+  background: var(--selected-row);
+}
+
+#changelist table tbody td,
+#changelist table tbody th {
+  padding: 11px 10px;
+  border-color: var(--hairline-color);
+}
+
+#changelist-filter {
+  border-radius: 12px;
+}
+
+#changelist-filter h2 {
+  padding: 14px 16px;
+}
+
+#changelist-filter h3 {
+  margin: 15px 16px 7px;
+  color: var(--body-quiet-color);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+#changelist-filter li {
+  margin: 0 10px 2px;
+}
+
+#changelist-filter a {
+  display: block;
+  padding: 7px 8px;
+  border-radius: 6px;
+}
+
+#changelist-filter li.selected a {
+  background: var(--selected-bg);
+  color: var(--link-selected-fg);
+  font-weight: 700;
+}
+
+#changelist-search input[type="text"] {
+  min-height: 38px;
+  border-radius: 8px;
+}
+
+input[type="text"], input[type="password"], input[type="email"], input[type="url"],
+input[type="number"], input[type="tel"], textarea, select, .vTextField {
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: var(--body-bg);
+  color: var(--body-fg);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+input:focus, textarea:focus, select:focus, .vTextField:focus {
+  border-color: #14b8a6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, .14);
+}
+
+.form-row {
+  padding: 16px;
+  border-color: var(--hairline-color);
+}
+
+.aligned label {
+  color: var(--body-loud-color);
+  font-weight: 650;
+}
+
+.help, p.help, form p.help, div.help, form div.help, div.help li {
+  color: var(--body-quiet-color);
+  font-size: 12px;
+}
+
+.submit-row {
+  padding: 13px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--darkened-bg);
+}
+
+.button, input[type="submit"], input[type="button"], .submit-row input, a.button {
+  min-height: 38px;
+  padding: 9px 15px;
+  border-radius: 7px;
+  font-weight: 700;
+}
+
+.messagelist {
+  margin: 0 28px 8px;
+  padding-top: 18px;
+}
+
+.messagelist li {
+  border-radius: 9px;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, .06);
+}
+
+.paginator {
+  border-radius: 0 0 10px 10px;
+}
+
+body.login {
+  background: radial-gradient(circle at 15% 20%, #ccfbf1 0, transparent 28%),
+              radial-gradient(circle at 85% 80%, #dbeafe 0, transparent 30%), #f8fafc;
+}
+
+.login #container {
+  width: min(420px, calc(100% - 32px));
+  margin-top: 9vh;
+  border: 1px solid #dbe3ec;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, .14);
+}
+
+.login #header {
+  min-height: 88px;
+  padding: 0 24px;
+  border-radius: 15px 15px 0 0;
+}
+
+.login #content {
+  padding: 30px;
+}
+
+.login .form-row {
+  padding: 0 0 18px;
+}
+
+.login .form-row input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+}
+
+.login .submit-row {
+  padding: 8px 0 0;
+  border: 0;
+  background: transparent;
+}
+
+.login .submit-row input {
+  width: 100%;
+  min-height: 44px;
+}
+
+@media (max-width: 767px) {
+  #header {
+    min-height: 60px;
+    padding: 8px 16px;
+  }
+
+  .brand-copy small {
+    display: none;
+  }
+
+  #user-tools {
+    margin-top: 8px;
+  }
+
+  div.breadcrumbs,
+  #content {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .messagelist {
+    margin-right: 16px;
+    margin-left: 16px;
+  }
+
+  .object-tools {
+    margin-top: 0;
+  }
+
+  .aligned .form-row > div {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

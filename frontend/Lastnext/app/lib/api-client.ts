@@ -8,18 +8,15 @@ import { appSignOut } from "@/app/lib/logout";
 import { jwtDecode } from "jwt-decode";
 import { useState,useCallback} from 'react'
 import { getCsrfHeaders } from './csrf';
+import type { ApiErrorDetails } from './api-contracts';
+
+export type { ApiErrorDetails } from './api-contracts';
 
 // Define token structure
 interface JwtToken {
   exp?: number;
   user_id?: string;
   [key: string]: any;
-}
-
-// Define error interfaces for DRF style errors
-export interface ApiErrorDetails {
-  detail?: string; // General error message
-  [key: string]: any; // Field-specific errors (e.g., "email": ["Enter a valid email."])
 }
 
 // Custom Error class

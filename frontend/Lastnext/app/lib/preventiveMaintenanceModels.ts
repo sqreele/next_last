@@ -160,13 +160,8 @@ export interface FrequencyDistribution {
   count: number;
 }
 
-// Paginated API response
-export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
-}
+// Paginated API response (re-exported for existing PM consumers)
+export type { PaginatedResponse } from "./api-contracts";
 
 // Helper to determine PM status
 export function determinePMStatus(item: PreventiveMaintenance): string {

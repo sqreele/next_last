@@ -1,4 +1,11 @@
 import { DateRange } from "react-day-picker";
+import type { PaginatedResponse as SharedPaginatedResponse } from "./api-contracts";
+
+export type {
+  ApiErrorDetails,
+  DRFErrorResponse,
+  DRFValidationError,
+} from "./api-contracts";
 // NextAuth module augmentation removed; using Auth0 compat session shape
 
 export interface User {
@@ -208,12 +215,7 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
-export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
-}
+export type PaginatedResponse<T> = SharedPaginatedResponse<T>;
 
 export interface JobsPDFProps {
   jobs: Job[];
@@ -292,15 +294,6 @@ export interface SearchResponse {
   properties: Property[];
   totalCount: number;
   error?: string;
-}
-
-export interface DRFValidationError {
-  [key: string]: string[];
-}
-
-export interface DRFErrorResponse {
-  detail?: string;
-  [key: string]: string | string[] | undefined;
 }
 
 export type PageProps<TParams = { jobId: string }, TSearchParams = { [key: string]: string | string[] | undefined }> = {

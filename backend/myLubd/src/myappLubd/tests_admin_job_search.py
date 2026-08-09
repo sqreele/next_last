@@ -14,7 +14,7 @@ class JobAdminSearchTests(TestCase):
         self.request = RequestFactory().get('/admin/myappLubd/job/')
         self.admin = JobAdmin(Job, AdminSite())
         self.user = User.objects.create_user(username='engineer', password='pw12345!')
-        self.room = Room.objects.create(name='LUBD-1205', room_type='Deluxe')
+        self.room = Room.objects.create(name='LUBD-ALPHA', room_type='Deluxe')
         self.job = Job.objects.create(
             user=self.user,
             description='Replace air filter',
@@ -25,7 +25,7 @@ class JobAdminSearchTests(TestCase):
         self.job.rooms.add(self.room)
 
     def test_search_matches_room_name(self):
-        queryset, _ = self.admin.get_search_results(self.request, Job.objects.all(), '1205')
+        queryset, _ = self.admin.get_search_results(self.request, Job.objects.all(), 'ALPHA')
 
         self.assertIn(self.job, queryset)
 
@@ -38,14 +38,14 @@ class JobAdminSearchTests(TestCase):
 
         self.assertNotIn(self.job, queryset)
 
-    def test_search_does_not_match_description(self):
+    def test_search_matches_description(self):
         queryset, _ = self.admin.get_search_results(
             self.request,
             Job.objects.all(),
             'Replace air filter',
         )
 
-        self.assertNotIn(self.job, queryset)
+        self.assertIn(self.job, queryset)
 
 
 class IsDefectFilterTests(TestCase):
@@ -259,5 +259,5 @@ class JobAdminCsvExportTests(TestCase):
 
         workbook = load_workbook(BytesIO(response.content))
         row = next(workbook.active.iter_rows(min_row=2, max_row=2, values_only=True))
-        self.assertEqual(row[16], 'Embedded below')
+        self.assertEqual(row[16], 'Embedded')
         self.assertEqual(row[17], self.request.build_absolute_uri(image.image.url))

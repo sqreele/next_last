@@ -132,9 +132,20 @@ def _excel_image_for_export(image_path, drawing_image_cls):
 
     supported_formats = {'gif', 'jpeg', 'png'}
     supported_extensions = {'.gif', '.jpeg', '.jpg', '.png'}
+    convertible_extensions = {'.bmp', '.jfif', '.webp'}
 
     image_extension = os.path.splitext(image_path)[1].lower()
+    max_file_size = 5 * 1024 * 1024
     max_convert_pixels = 50_000_000
+
+    # Reject formats that Pillow/openpyxl cannot package predictably before
+    # decoding them, and avoid spending memory on oversized upload previews.
+    if image_extension not in supported_extensions | convertible_extensions:
+        raise UnsupportedExcelImagePreview(
+            f'Unsupported Excel preview extension: {image_extension or "<none>"}'
+        )
+    if os.path.getsize(image_path) > max_file_size:
+        raise UnsupportedExcelImagePreview('Image is too large for an Excel preview.')
 
     with PILImage.open(image_path) as pil_image:
         image_format = (pil_image.format or '').lower()

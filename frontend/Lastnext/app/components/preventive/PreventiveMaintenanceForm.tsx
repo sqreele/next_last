@@ -103,6 +103,147 @@ type MaintenanceTaskOption = {
   }>;
 };
 
+interface PreventiveMaintenanceFormEffectsProps {
+  pmId?: string | null;
+  machineId?: string;
+  selectedProperty: string | null;
+  availableMachines: MachineDetails[];
+  availableMaintenanceTasks: MaintenanceTaskOption[];
+  loadingMachines: boolean;
+  fetchAvailableMaintenanceTasks: (machineIds?: string[]) => Promise<void>;
+}
+
+/** Synchronizes API-loaded options and route defaults with Formik state. */
+function PreventiveMaintenanceFormEffects({
+  pmId,
+  machineId,
+  selectedProperty,
+  availableMachines,
+  availableMaintenanceTasks,
+  loadingMachines,
+  fetchAvailableMaintenanceTasks,
+}: PreventiveMaintenanceFormEffectsProps) {
+  const { values, setFieldValue } = useFormikContext<FormValues>();
+
+  useEffect(() => {
+    if (pmId) return;
+    const nextPropertyId = selectedProperty || "";
+    const currentValue = values.property_id || "";
+    if (nextPropertyId !== currentValue) {
+      void setFieldValue("property_id", nextPropertyId, false);
+    }
+  }, [pmId, selectedProperty, values.property_id, setFieldValue]);
+
+  useEffect(() => {
+    if (!machineId || pmId || values.procedure_template !== "") return;
+
+    const machineIdString = String(machineId);
+    const isAlreadySelected =
+      values.selected_machine_ids.includes(machineIdString);
+    if (loadingMachines) return;
+
+    const machineExists = availableMachines.some(
+      (machine) => machine.machine_id === machineIdString,
+    );
+    if (!machineExists && availableMachines.length > 0) {
+      console.warn(
+        "[PreventiveMaintenanceForm] Machine not found in available machines:",
+        {
+          machineId,
+          availableMachineIds: availableMachines.map(
+            (machine) => machine.machine_id,
+          ),
+          selectedProperty: values.property_id,
+        },
+      );
+    }
+
+    if (
+      !isAlreadySelected &&
+      (availableMachines.length > 0 || Boolean(values.property_id))
+    ) {
+      void setFieldValue(
+        "selected_machine_ids",
+        [
+          machineIdString,
+          ...values.selected_machine_ids.filter(
+            (id) => id !== machineIdString,
+          ),
+        ],
+        false,
+      );
+    }
+  }, [
+    machineId,
+    pmId,
+    availableMachines,
+    loadingMachines,
+    values.selected_machine_ids,
+    values.property_id,
+    values.procedure_template,
+    setFieldValue,
+  ]);
+
+  useEffect(() => {
+    if (pmId || values.procedure_template !== "") return;
+    void fetchAvailableMaintenanceTasks(
+      values.selected_machine_ids.length > 0
+        ? values.selected_machine_ids
+        : undefined,
+    );
+  }, [
+    values.selected_machine_ids,
+    values.procedure_template,
+    pmId,
+    fetchAvailableMaintenanceTasks,
+  ]);
+
+  useEffect(() => {
+    if (values.procedure_template === "") {
+      if (values.selected_machine_ids.length > 0 && !machineId) {
+        void setFieldValue("selected_machine_ids", [], false);
+      }
+      return;
+    }
+
+    const selectedTask = availableMaintenanceTasks.find(
+      (task) => task.id === Number(values.procedure_template),
+    );
+    const selectedTaskGroupId = normalizeGroupId(selectedTask?.group_id);
+    const selectedTaskMachineIds = new Set(
+      (selectedTask?.machine_ids ?? []).map(String),
+    );
+    if (selectedTaskMachineIds.size === 0 && !selectedTaskGroupId) return;
+
+    const allowedMachineIds =
+      selectedTaskMachineIds.size > 0
+        ? selectedTaskMachineIds
+        : new Set(
+            availableMachines
+              .filter(
+                (machine) =>
+                  normalizeGroupId(machine.group_id) === selectedTaskGroupId,
+              )
+              .map((machine) => machine.machine_id),
+          );
+    const nextMachineIds = values.selected_machine_ids.filter((id) =>
+      allowedMachineIds.has(id),
+    );
+    if (nextMachineIds.length !== values.selected_machine_ids.length) {
+      void setFieldValue("selected_machine_ids", nextMachineIds, false);
+    }
+  }, [
+    machineId,
+    availableMachines,
+    availableMaintenanceTasks,
+    values.procedure_template,
+    values.selected_machine_ids,
+    setFieldValue,
+  ]);
+
+  return null;
+}
+
 const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   pmId,
   onSuccessAction,
@@ -590,9 +731,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     actualInitialData,
     selectedProperty,
     machineId,
-    formatDateForInput,
     defaultScheduledDate,
-    getPropertyDetails,
+    ensureDateTimeLocalFormat,
+    pmId,
     userProfile?.id,
     user,
   ]);
@@ -938,7 +1079,12 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     return () => {
       mounted = false;
     };
-  }, [pmId, initialDataProp]);
+  }, [
+    pmId,
+    initialDataProp,
+    clearError,
+    clearLoadingAfterMinTime,
+  ]);
 
   // Now check for early return conditions after all hooks are defined
   if (!hasProperties) {
@@ -1439,172 +1585,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         }}
       >
         {({ values, errors, touched, isSubmitting, setFieldValue }) => {
-          // Debug form values changes
-          React.useEffect(() => {}, [
-            values.scheduled_date,
-            values.completed_date,
-            values.selected_machine_ids,
-            machineId,
-            pmId,
-          ]);
-
-          React.useEffect(() => {
-            if (pmId) return;
-            const nextPropertyId = selectedProperty || "";
-            const currentValue = values.property_id || "";
-            if (nextPropertyId !== currentValue) {
-              setFieldValue("property_id", nextPropertyId, false);
-            }
-          }, [pmId, selectedProperty, values.property_id, setFieldValue]);
-
-          // Auto-select machine when machineId prop is provided
-          React.useEffect(() => {
-            // Once a template is chosen, its machine relationship is authoritative.
-            // Do not re-add a machine that the template-matching effect removed.
-            if (!machineId || pmId || values.procedure_template !== "") {
-              return;
-            }
-
-            const machineIdStr = String(machineId);
-            const isAlreadySelected =
-              values.selected_machine_ids.includes(machineIdStr);
-
-            // Wait for machines to finish loading before auto-selecting
-            if (loadingMachines) {
-              return;
-            }
-
-            // If machines are loaded, validate and select the machine
-            if (availableMachines.length > 0) {
-              const machineExists = availableMachines.some(
-                (m) => m.machine_id === machineIdStr,
-              );
-
-              if (machineExists) {
-                // Machine exists - select it if not already selected
-                if (!isAlreadySelected) {
-                  const newMachineIds = [
-                    machineIdStr,
-                    ...values.selected_machine_ids.filter(
-                      (id) => id !== machineIdStr,
-                    ),
-                  ];
-                  setFieldValue("selected_machine_ids", newMachineIds, false);
-                } else {
-                }
-              } else {
-                // Machine doesn't exist in available machines - show warning
-                console.warn(
-                  "[PreventiveMaintenanceForm] ⚠️ Machine not found in available machines:",
-                  {
-                    machineId,
-                    machineIdStr,
-                    availableMachineIds: availableMachines.map(
-                      (m) => m.machine_id,
-                    ),
-                    selectedProperty: values.property_id,
-                    availableMachinesCount: availableMachines.length,
-                  },
-                );
-
-                // Still try to select it (might be valid but not loaded yet, or might be from different property)
-                if (!isAlreadySelected) {
-                  const newMachineIds = [
-                    machineIdStr,
-                    ...values.selected_machine_ids.filter(
-                      (id) => id !== machineIdStr,
-                    ),
-                  ];
-                  setFieldValue("selected_machine_ids", newMachineIds, false);
-                }
-              }
-            } else if (values.property_id) {
-              // Property is set but no machines loaded - might be loading or empty
-              // Still try to select the machine ID (will be validated on submit)
-              if (!isAlreadySelected) {
-                const newMachineIds = [
-                  machineIdStr,
-                  ...values.selected_machine_ids.filter(
-                    (id) => id !== machineIdStr,
-                  ),
-                ];
-                setFieldValue("selected_machine_ids", newMachineIds, false);
-              }
-            }
-          }, [
-            machineId,
-            pmId,
-            availableMachines,
-            loadingMachines,
-            values.selected_machine_ids,
-            values.property_id,
-            values.procedure_template,
-            setFieldValue,
-          ]);
-
-          // Refetch maintenance tasks from preselected machines only until a template is chosen.
-          React.useEffect(() => {
-            if (pmId || values.procedure_template !== "") return;
-
-            if (values.selected_machine_ids.length > 0) {
-              fetchAvailableMaintenanceTasks(values.selected_machine_ids);
-            } else {
-              fetchAvailableMaintenanceTasks();
-            }
-          }, [
-            values.selected_machine_ids,
-            values.procedure_template,
-            pmId,
-            fetchAvailableMaintenanceTasks,
-          ]);
-
-          React.useEffect(() => {
-            if (values.procedure_template === "") {
-              if (values.selected_machine_ids.length > 0 && !machineId) {
-                setFieldValue("selected_machine_ids", [], false);
-              }
-              return;
-            }
-
-            const selectedTask = availableMaintenanceTasks.find(
-              (t) => t.id === Number(values.procedure_template),
-            );
-            const selectedTaskGroupId = normalizeGroupId(
-              selectedTask?.group_id,
-            );
-            const selectedTaskMachineIds = new Set(
-              (selectedTask?.machine_ids ?? []).map((id) => String(id)),
-            );
-            if (selectedTaskMachineIds.size === 0 && !selectedTaskGroupId)
-              return;
-
-            const allowedMachineIds =
-              selectedTaskMachineIds.size > 0
-                ? selectedTaskMachineIds
-                : new Set(
-                    availableMachines
-                      .filter(
-                        (machine) =>
-                          normalizeGroupId(machine.group_id) ===
-                          selectedTaskGroupId,
-                      )
-                      .map((machine) => machine.machine_id),
-                  );
-            const nextMachineIds = values.selected_machine_ids.filter((id) =>
-              allowedMachineIds.has(id),
-            );
-            if (nextMachineIds.length !== values.selected_machine_ids.length) {
-              setFieldValue("selected_machine_ids", nextMachineIds, false);
-            }
-          }, [
-            availableMachines,
-            availableMaintenanceTasks,
-            values.procedure_template,
-            values.selected_machine_ids,
-            setFieldValue,
-          ]);
-
-          const nextDueDate = React.useMemo(() => {
+          const nextDueDate = (() => {
             if (!values.frequency) {
               return null;
             }
@@ -1622,12 +1603,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 : undefined,
               safeBaseDate,
             );
-          }, [
-            values.frequency,
-            values.custom_days,
-            values.scheduled_date,
-            calculateNextScheduledDate,
-          ]);
+          })();
 
           const nextDueLabel = nextDueDate
             ? nextDueDate.toLocaleString()
@@ -1638,6 +1614,15 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               aria-label="Preventive Maintenance Form"
               className="relative space-y-4 sm:space-y-6"
             >
+              <PreventiveMaintenanceFormEffects
+                pmId={pmId}
+                machineId={machineId}
+                selectedProperty={selectedProperty}
+                availableMachines={availableMachines}
+                availableMaintenanceTasks={availableMaintenanceTasks}
+                loadingMachines={loadingMachines}
+                fetchAvailableMaintenanceTasks={fetchAvailableMaintenanceTasks}
+              />
               {/* Full-screen saving/uploading overlay */}
               {(isSubmitting || isLoading) && (
                 <div

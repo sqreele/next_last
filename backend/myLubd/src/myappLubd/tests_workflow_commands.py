@@ -31,6 +31,7 @@ class MaterializeDuePmJobsTests(TestCase):
             status=status,
             priority='medium',
             assigned_to=self.user,
+            created_by=self.user,
         )
         pm.topics.add(self.topic)
         return pm

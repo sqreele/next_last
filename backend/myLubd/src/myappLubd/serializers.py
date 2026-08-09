@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 from .models import (
     Room, Topic, JobImage, Job, Property, UserProfile, Session,
     PreventiveMaintenance, PMMasterPlan, Machine, MaintenanceProcedure, MaintenanceTaskImage,
@@ -26,6 +27,7 @@ from pathlib import Path
 import math
 
 from .timezones import is_valid_timezone
+from .tenancy import accessible_property_ids
 
 
 RAW_AUTH_PREFIXES = ('google-oauth2_', 'auth0_', 'auth0|')
@@ -556,6 +558,58 @@ class JobSerializer(serializers.ModelSerializer):
     )
     area_name = serializers.CharField(source='area.name', read_only=True)
     comments_count = serializers.SerializerMethodField()
+
+    def _validate_requested_property_scope(self, data):
+        """Reject forged relationship IDs before read-only fields are discarded."""
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return
+
+        accessible = accessible_property_ids(user)
+        if accessible is None:
+            return  # Staff and superusers retain their established bypass.
+
+        raw_room_ids = []
+        submitted_rooms = data.get('rooms')
+        if isinstance(submitted_rooms, (list, tuple)):
+            raw_room_ids.extend(submitted_rooms)
+        elif submitted_rooms not in (None, ''):
+            raw_room_ids.append(submitted_rooms)
+
+        submitted_room_id = data.get('room_id')
+        if submitted_room_id not in (None, ''):
+            raw_room_ids.append(submitted_room_id)
+
+        for raw_room_id in raw_room_ids:
+            try:
+                room_id = int(raw_room_id)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError({'rooms': 'Invalid room ID.'})
+
+            room = Room.objects.prefetch_related('properties').filter(room_id=room_id).first()
+            if room is None:
+                raise serializers.ValidationError({'rooms': 'Invalid room ID.'})
+            room_property_ids = set(room.properties.values_list('id', flat=True))
+            if not room_property_ids & accessible:
+                raise PermissionDenied(
+                    f"You don't have access to a property containing room '{room.name}'."
+                )
+
+        raw_property_id = str(data.get('property_id') or '').strip()
+        if raw_property_id:
+            property_query = Q(property_id=raw_property_id)
+            if raw_property_id.isdigit():
+                property_query |= Q(id=int(raw_property_id))
+            property_instance = Property.objects.filter(property_query).first()
+            if property_instance is None:
+                raise serializers.ValidationError({'property_id': 'Invalid property ID.'})
+            if property_instance.id not in accessible:
+                raise PermissionDenied("You don't have access to that property.")
+
+    def to_internal_value(self, data):
+        self._validate_requested_property_scope(data)
+        return super().to_internal_value(data)
 
     class Meta:
         model = Job

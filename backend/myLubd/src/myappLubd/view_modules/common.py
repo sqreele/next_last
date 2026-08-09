@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 
 logger = logging.getLogger(__name__)
+RAW_AUTH_PREFIXES = ('google-oauth2_', 'auth0_', 'auth0|')
 
 
 class MaintenancePagination(PageNumberPagination):
@@ -29,3 +30,41 @@ class MaintenancePagination(PageNumberPagination):
             'results': data,
         })
 
+
+def is_raw_auth_identifier(value):
+    if value is None:
+        return False
+    text = str(value).strip()
+    return (
+        text.startswith(RAW_AUTH_PREFIXES)
+        or text.lower() in {'null', 'undefined', '[object object]'}
+    )
+
+
+def display_name_from_user_values(first_name='', last_name='', email='', username='', fallback='Unknown Technician'):
+    full_name = f"{first_name or ''} {last_name or ''}".strip()
+    for candidate in (full_name, email, username):
+        value = str(candidate or '').strip()
+        if value and not is_raw_auth_identifier(value):
+            return value
+    return fallback
+
+
+def display_name_from_user(user, fallback='Unknown Technician'):
+    if not user:
+        return fallback
+
+    profile = getattr(user, 'userprofile', None)
+    profile_full_name = getattr(profile, 'full_name', None)
+    full_name = user.get_full_name().strip() if hasattr(user, 'get_full_name') else ''
+    for candidate in (
+        profile_full_name,
+        full_name,
+        getattr(user, 'email', None),
+        getattr(user, 'username', None),
+    ):
+        value = str(candidate or '').strip()
+        if value and not is_raw_auth_identifier(value):
+            return value
+
+    return fallback

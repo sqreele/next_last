@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from rest_framework.exceptions import AuthenticationFailed
 
 from .auth import Auth0JWTAuthentication
 from .models import Property
@@ -38,14 +39,14 @@ class Auth0IdentityMatchingTests(TestCase):
             email='existing@example.com',
         )
 
-        authenticated_user = self.authentication._get_or_create_user_from_claims(
-            {
-                'sub': 'auth0|different-identity',
-                'https://hotelcarepro.com/email': 'existing@example.com',
-                'https://hotelcarepro.com/email_verified': False,
-            }
-        )
+        with self.assertRaisesMessage(AuthenticationFailed, 'Email address is not verified.'):
+            self.authentication._get_or_create_user_from_claims(
+                {
+                    'sub': 'auth0|different-identity',
+                    'https://hotelcarepro.com/email': 'existing@example.com',
+                    'https://hotelcarepro.com/email_verified': False,
+                }
+            )
 
-        self.assertNotEqual(authenticated_user.pk, existing_user.pk)
-        self.assertEqual(authenticated_user.email, '')
-        self.assertEqual(User.objects.count(), 2)
+        self.assertEqual(User.objects.count(), 1)
+        self.assertTrue(User.objects.filter(pk=existing_user.pk).exists())

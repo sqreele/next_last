@@ -5,6 +5,15 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/app/lib/session.client";
 import { useUser } from "@/app/lib/stores/mainStore";
 import apiClient from "@/app/lib/api-client";
+import { inventoryApi } from "@/app/lib/api/inventory-api";
+import type {
+  InventoryCategory,
+  InventoryListItem,
+  InventoryQuery,
+  InventoryStatus,
+  InventoryUsePayload,
+} from "@/app/lib/api/inventory-contracts";
+import { isInventoryCategory, isInventoryStatus } from "@/app/lib/api/inventory-contracts";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import {
   Card,
@@ -60,50 +69,7 @@ import { InventoryMobileStats } from "@/app/components/inventory/InventoryMobile
 import { InventoryCsvImport } from "@/app/components/inventory/InventoryCsvImport";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 
-interface InventoryItem {
-  id: number;
-  item_id: string;
-  name: string;
-  description?: string;
-  category: string;
-  category_display?: string;
-  quantity: number;
-  min_quantity: number;
-  max_quantity?: number;
-  unit: string;
-  unit_price?: number;
-  location?: string;
-  supplier?: string;
-  supplier_contact?: string;
-  status: string;
-  status_display?: string;
-  property_id?: string;
-  property_name?: string;
-  room_id?: string;
-  room_name?: string;
-  job_id?: string;
-  job_description?: string;
-  pm_id?: string;
-  pm_title?: string;
-  last_job_by_user?: {
-    job_id: string;
-    description: string;
-    full_description: string;
-  } | null;
-  last_pm_by_user?: {
-    pm_id: string;
-    title: string;
-    full_title: string;
-  } | null;
-  image_url?: string;
-  last_restocked?: string;
-  expiry_date?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-const STATUS_COLORS: Record<string, string> = {
+const STATUS_COLORS: Record<InventoryStatus, string> = {
   available: "bg-green-100 text-green-800 border-green-200",
   low_stock: "bg-yellow-100 text-yellow-800 border-yellow-200",
   out_of_stock: "bg-red-100 text-red-800 border-red-200",
@@ -126,7 +92,7 @@ export default function InventoryPage() {
   const router = useRouter();
   const t = useT();
   const { selectedPropertyId: selectedProperty } = useUser();
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [inventory, setInventory] = useState<InventoryListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -135,8 +101,8 @@ export default function InventoryPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<InventoryCategory | "all">("all");
+  const [selectedStatus, setSelectedStatus] = useState<InventoryStatus | "all">("all");
   const [selectedRoom, setSelectedRoom] = useState<string>("all");
   const [lowStockOnly, setLowStockOnly] = useState<boolean>(false);
   const [selectedJobFilter, setSelectedJobFilter] = useState<string>("all");
@@ -160,7 +126,7 @@ export default function InventoryPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showRestockDialog, setShowRestockDialog] = useState(false);
   const [showUseDialog, setShowUseDialog] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<InventoryListItem | null>(null);
   const [restockQuantity, setRestockQuantity] = useState("");
   const [useQuantity, setUseQuantity] = useState("");
   const [selectedJobId, setSelectedJobId] = useState<string>("");
@@ -206,13 +172,9 @@ export default function InventoryPage() {
       if (status !== "authenticated") return;
 
       try {
-        const response = await apiClient.get(
-          "/api/v1/inventory/filter_options/",
-        );
-        if (response.data) {
-          setCategoryOptions(response.data.categories || []);
-          setStatusOptions(response.data.statuses || []);
-        }
+        const response = await inventoryApi.filterOptions();
+        setCategoryOptions(response.categories);
+        setStatusOptions(response.statuses);
       } catch (err: any) {
         console.error("Error fetching inventory filter options:", err);
         // Fallback to default options if API fails
@@ -372,9 +334,10 @@ export default function InventoryPage() {
         if (selectedItem) {
           if (selectedItem.last_job_by_user) {
             setSelectedJobId(selectedItem.last_job_by_user.job_id);
-          }
-          if (selectedItem.last_pm_by_user) {
+            setSelectedPmId("");
+          } else if (selectedItem.last_pm_by_user) {
             setSelectedPmId(selectedItem.last_pm_by_user.pm_id);
+            setSelectedJobId("");
           }
         }
       } catch (err: any) {
@@ -392,7 +355,7 @@ export default function InventoryPage() {
     setLoading(true);
     setError(null);
     try {
-      const params: any = {
+      const params: InventoryQuery = {
         page: page,
         page_size: pageSize,
       };
@@ -409,7 +372,7 @@ export default function InventoryPage() {
         params.room_id = selectedRoom;
       }
       if (lowStockOnly) {
-        params.low_stock = "true";
+        params.low_stock = true;
       }
       if (selectedJobFilter !== "all") {
         params.job_id = selectedJobFilter;
@@ -422,27 +385,10 @@ export default function InventoryPage() {
         params.search = searchTerm;
       }
 
-      const response = await apiClient.get("/api/v1/inventory/", { params });
-
-      let inventoryData: InventoryItem[] = [];
-      let total = 0;
-      let pages = 1;
-
-      if (Array.isArray(response.data)) {
-        inventoryData = response.data;
-        total = response.data.length;
-        pages = Math.ceil(total / pageSize);
-      } else if (response.data && "results" in response.data) {
-        inventoryData = response.data.results || [];
-        total = response.data.count || 0;
-        pages =
-          response.data.total_pages ||
-          Math.ceil(total / (response.data.page_size || pageSize));
-      }
-
-      setTotalCount(total);
-      setTotalPages(pages);
-      setInventory(inventoryData);
+      const response = await inventoryApi.list(params);
+      setTotalCount(response.count);
+      setTotalPages(response.total_pages);
+      setInventory(response.results);
     } catch (err: any) {
       console.error("Error fetching inventory:", err);
       setError(err.message || "Failed to load inventory");
@@ -462,12 +408,9 @@ export default function InventoryPage() {
     if (!selectedItem || !restockQuantity) return;
 
     try {
-      await apiClient.post(
-        `/api/v1/inventory/${selectedItem.item_id}/restock/`,
-        {
-          quantity: parseInt(restockQuantity),
-        },
-      );
+      await inventoryApi.restock(selectedItem.item_id, {
+        quantity: Number.parseInt(restockQuantity, 10),
+      });
       setShowRestockDialog(false);
       setRestockQuantity("");
       setSelectedItem(null);
@@ -482,22 +425,14 @@ export default function InventoryPage() {
     if (!selectedItem || !useQuantity) return;
 
     try {
-      const payload: any = {
-        quantity: parseInt(useQuantity),
-      };
+      const quantity = Number.parseInt(useQuantity, 10);
+      const payload: InventoryUsePayload = selectedJobId
+        ? { quantity, job_id: selectedJobId }
+        : selectedPmId
+          ? { quantity, pm_id: selectedPmId }
+          : { quantity };
 
-      // Add job_id or pm_id if selected
-      if (selectedJobId) {
-        payload.job_id = selectedJobId;
-      }
-      if (selectedPmId) {
-        payload.pm_id = selectedPmId;
-      }
-
-      await apiClient.post(
-        `/api/v1/inventory/${selectedItem.item_id}/use/`,
-        payload,
-      );
+      await inventoryApi.use(selectedItem.item_id, payload);
       setShowUseDialog(false);
       setUseQuantity("");
       setSelectedJobId("");
@@ -510,7 +445,7 @@ export default function InventoryPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: InventoryStatus) => {
     const colorClass =
       STATUS_COLORS[status] || "bg-muted text-foreground border-border";
     const statusText = status
@@ -771,7 +706,7 @@ export default function InventoryPage() {
               <Select
                 value={selectedCategory}
                 onValueChange={(value) => {
-                  setSelectedCategory(value);
+                  if (value === "all" || isInventoryCategory(value)) setSelectedCategory(value);
                   setPage(1);
                 }}
               >
@@ -792,7 +727,7 @@ export default function InventoryPage() {
               <Select
                 value={selectedStatus}
                 onValueChange={(value) => {
-                  setSelectedStatus(value);
+                  if (value === "all" || isInventoryStatus(value)) setSelectedStatus(value);
                   setPage(1);
                 }}
               >
@@ -1527,7 +1462,10 @@ export default function InventoryPage() {
               ) : (
                 <Select
                   value={selectedJobId || undefined}
-                  onValueChange={(value) => setSelectedJobId(value || "")}
+                  onValueChange={(value) => {
+                    setSelectedJobId(value || "");
+                    if (value) setSelectedPmId("");
+                  }}
                 >
                   <SelectTrigger id="use-job" className="h-12 rounded-xl">
                     <SelectValue placeholder="Select a job (optional)" />
@@ -1568,7 +1506,10 @@ export default function InventoryPage() {
               ) : (
                 <Select
                   value={selectedPmId || undefined}
-                  onValueChange={(value) => setSelectedPmId(value || "")}
+                  onValueChange={(value) => {
+                    setSelectedPmId(value || "");
+                    if (value) setSelectedJobId("");
+                  }}
                 >
                   <SelectTrigger id="use-pm" className="h-12 rounded-xl">
                     <SelectValue placeholder="Select a PM (optional)" />

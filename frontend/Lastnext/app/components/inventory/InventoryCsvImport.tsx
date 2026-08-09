@@ -21,6 +21,11 @@ import {
 import { Button } from "@/app/components/ui/button";
 import { useSession } from "@/app/lib/session.client";
 import { cn } from "@/app/lib/utils/cn";
+import {
+  isInventoryBulkImportResult,
+  isInventoryBulkImportError,
+  type InventoryBulkImportResult,
+} from "@/app/lib/api/inventory-contracts";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -34,13 +39,6 @@ interface InventoryCsvImportProps {
   className?: string;
 }
 
-interface ImportResult {
-  created_count: number;
-  error_count: number;
-  created: Array<{ row: number; item_id: string; name: string }>;
-  errors: Array<{ row: number; error: string }>;
-}
-
 export function InventoryCsvImport({
   currentPropertyId,
   onImported,
@@ -51,7 +49,7 @@ export function InventoryCsvImport({
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const [result, setResult] = useState<InventoryBulkImportResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
@@ -85,8 +83,8 @@ export function InventoryCsvImport({
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setError(err?.message || "Could not download the template.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not download the template.");
     }
   };
 
@@ -120,19 +118,18 @@ export function InventoryCsvImport({
           body: formData,
         },
       );
-      const data = (await res.json().catch(() => null)) as
-        ImportResult | { error?: string } | null;
+      const data: unknown = await res.json().catch(() => null);
       if (res.status >= 500) throw new Error("Server error — try again.");
       if (!data) throw new Error("Empty response from server.");
-      if ("error" in data && !("created_count" in data) && data.error) {
-        throw new Error(data.error);
+      if (!isInventoryBulkImportResult(data)) {
+        throw new Error(isInventoryBulkImportError(data) ? data.error : "Invalid import response from server.");
       }
-      setResult(data as ImportResult);
-      if ((data as ImportResult).created_count > 0) {
+      setResult(data);
+      if (data.created_count > 0) {
         onImported?.();
       }
-    } catch (err: any) {
-      setError(err?.message || "Could not import the file.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not import the file.");
     } finally {
       setSubmitting(false);
     }

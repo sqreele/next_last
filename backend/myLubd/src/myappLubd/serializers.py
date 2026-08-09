@@ -2683,7 +2683,7 @@ class InventorySerializer(serializers.ModelSerializer):
             'created_by_username',
             'created_by_name'
         ]
-        read_only_fields = ['id', 'item_id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'item_id', 'created_at', 'updated_at', 'created_by']
 
     def get_created_by_username(self, obj):
         return get_user_public_username(obj.created_by)
@@ -2741,6 +2741,16 @@ class InventorySerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Validate inventory data"""
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        property_obj = data.get('property', self.instance.property if self.instance else None)
+        room = data.get('room', self.instance.room if self.instance else None)
+        if user and not (user.is_staff or user.is_superuser):
+            if property_obj is None or property_obj.pk not in accessible_property_ids(user):
+                raise serializers.ValidationError({'property': 'Property is outside your accessible properties.'})
+        if room is not None and (property_obj is None or not room.properties.filter(pk=property_obj.pk).exists()):
+            raise serializers.ValidationError({'room': 'Room does not belong to the selected property.'})
+
         quantity = data.get('quantity', self.instance.quantity if self.instance else 0)
         min_quantity = data.get('min_quantity', self.instance.min_quantity if self.instance else 0)
         

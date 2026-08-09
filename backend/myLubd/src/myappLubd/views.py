@@ -6047,61 +6047,27 @@ class InventoryViewSet(viewsets.ModelViewSet):
         Job/PM identifiers will be added to the item's relationship history.
         """
         inventory = self.get_object()
-        quantity_to_use = request.data.get('quantity', 0)
         job_id = request.data.get('job_id')
         pm_id = request.data.get('pm_id')
-        
+        if job_id and pm_id:
+            return Response({'detail': 'Send either job_id or pm_id, not both.'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            quantity_to_use = int(quantity_to_use)
-            if quantity_to_use <= 0:
-                return Response(
-                    {'error': 'Quantity must be greater than 0'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            if inventory.quantity < quantity_to_use:
-                return Response(
-                    {'error': f'Insufficient stock. Available: {inventory.quantity}'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Link to job or PM if provided
-            if job_id:
-                from .models import Job
-                try:
-                    job = Job.objects.get(job_id=job_id, user=request.user)
-                    inventory.jobs.add(job)
-                except Job.DoesNotExist:
-                    return Response(
-                        {'error': f'Job with ID {job_id} not found or not accessible'},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
-            
-            if pm_id:
-                from .models import PreventiveMaintenance
-                pm = PreventiveMaintenance.objects.filter(
-                    pm_id=pm_id
-                ).filter(
-                    Q(assigned_to=request.user) | Q(created_by=request.user)
-                ).first()
-                if pm:
-                    inventory.preventive_maintenances.add(pm)
-                else:
-                    return Response(
-                        {'error': f'PM with ID {pm_id} not found or not accessible'},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
-            
-            inventory.quantity -= quantity_to_use
-            inventory.save()
-            
+            job = get_object_or_404(Job, job_id=job_id) if job_id else None
+            pm = get_object_or_404(PreventiveMaintenance, pm_id=pm_id) if pm_id else None
+            consume_inventory_items(
+                user=request.user,
+                items=[{'item_id': inventory.item_id, 'quantity': request.data.get('quantity')}],
+                job=job,
+                preventive_maintenance=pm,
+                source='job' if job else ('preventive_maintenance' if pm else 'manual'),
+            )
+            inventory.refresh_from_db()
             serializer = self.get_serializer(inventory)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except ValueError:
-            return Response(
-                {'error': 'Invalid quantity value'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        except (ValueError, ValidationError) as exc:
+            detail = exc.detail if hasattr(exc, 'detail') else {'detail': str(exc)}
+            return Response(detail, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['get'])
     def low_stock(self, request):

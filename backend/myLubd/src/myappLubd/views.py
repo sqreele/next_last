@@ -1,77 +1,12 @@
-from django.contrib.auth import get_user_model
-from django.conf import settings
-from rest_framework import status, viewsets, filters
-from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.exceptions import PermissionDenied, ValidationError
-from django.db.models import Prefetch
-from rest_framework_simplejwt.tokens import RefreshToken
-from google.oauth2 import id_token
-from google.auth.transport import requests
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from django.utils import timezone
-import math
-from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg
-from django.db.models.functions import ExtractMonth, ExtractYear
-from django.db import models, transaction
-from .models import (
-    UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, PMMasterPlan,
-    JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory,
-    Area, JobComment, PushSubscription, Tenant,
-    TenantMembership, SubscriptionPlan, TenantSubscription, UsageMetric,
-    InventoryUsage, MaintenanceChecklist, MaintenanceHistory,
-)
-from django.urls import reverse
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from .serializers import (
-    UserProfileSerializer, PropertySerializer, RoomSerializer, TopicSerializer, JobSerializer,
-    UserSerializer, PreventiveMaintenanceSerializer, PreventiveMaintenanceCreateUpdateSerializer,
-    PreventiveMaintenanceCompleteSerializer, PreventiveMaintenanceListSerializer,
-    PreventiveMaintenanceDetailSerializer, PropertyPMStatusSerializer, PMMasterPlanSerializer,
-    MachineSerializer, MachineListSerializer, MachineDetailSerializer,
-    MachineCreateSerializer, MachineUpdateSerializer, MachinePreventiveMaintenanceSerializer,
-    MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer,
-    UtilityConsumptionSerializer, UtilityConsumptionListSerializer,
-    InventorySerializer, InventoryListSerializer, InventoryUsageSerializer,
-    AreaSerializer, JobCommentSerializer, TenantSerializer,
-    TenantMembershipSerializer, SubscriptionPlanSerializer,
-    TenantSubscriptionSerializer, UsageMetricSerializer,
-)
-from PIL import Image
-from io import BytesIO
-from django.core.files.base import ContentFile
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.pagination import PageNumberPagination
-from .pagination import StandardResultsSetPagination, LargeResultsSetPagination, SmallResultsSetPagination
-from django.shortcuts import get_object_or_404
-import logging
-import json
-import uuid
-import re
-from difflib import SequenceMatcher
-from datetime import timedelta
-from calendar import monthrange
-from django.http import JsonResponse, HttpResponseRedirect
 import os
-from django.http import HttpResponse, Http404
+
 from django.conf import settings
+from django.http import Http404, HttpResponse
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_http_methods
-from .cache import cache_result, CacheManager
-from .services import NotificationService, PreventiveMaintenanceService
-from .tenancy import (
-    accessible_property_ids,
-    enforce_subscription_limit,
-    ensure_tenant_for_property,
-    ensure_tenant_for_user,
-    get_accessible_properties,
-    get_user_tenants,
-    tenant_usage_counts,
-    user_can_manage_tenant,
-)
-from .timezones import timezone_options
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 from .view_modules.common import MaintenancePagination, display_name_from_user, display_name_from_user_values, is_raw_auth_identifier
 from .view_modules.utilities import UtilityConsumptionViewSet
 from .view_modules.machines import MachineViewSet
@@ -114,28 +49,6 @@ from .view_modules.preventive_maintenance_legacy import (
 )
 from .view_modules.public_jobs import _client_ip, public_job_request
 
-
-
-logger = logging.getLogger(__name__)
-User = get_user_model()
-
-
-
-# Maintenance Procedure ViewSet
-
-
-# Other ViewSets and Views (unchanged)
-
-
-
-
-
-
-
-
-
-
-# Authentication Views
 
 
 # Health Check

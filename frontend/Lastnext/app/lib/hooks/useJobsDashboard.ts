@@ -29,6 +29,8 @@ interface JobsDashboardState {
     dateFrom?: string;
     dateTo?: string;
     search?: string;
+    property_id?: string | null;
+    is_preventivemaintenance?: boolean;
   };
   viewMode: 'grid' | 'list';
   selectedTab: string;
@@ -174,8 +176,8 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
       // Include selected property in filters (use correct backend key: property_id)
       const filtersWithProperty = {
         ...currentFilters,
-        property_id: selectedPropertyId || (currentFilters as any).property_id
-      } as typeof currentFilters & { property_id?: string | null };
+        property_id: selectedPropertyId || currentFilters.property_id,
+      };
 
       const [jobsResponse, properties, stats] = await Promise.all([
         jobsApi.getJobs(accessToken, filtersWithProperty, pageToLoad, currentPagination.pageSize),
@@ -529,28 +531,28 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     const nextFilters: Partial<JobsDashboardState['filters']> = { ...currentFilters };
 
     // Reset tab-related filters
-    delete (nextFilters as any).status;
-    delete (nextFilters as any).is_preventivemaintenance;
+    delete nextFilters.status;
+    delete nextFilters.is_preventivemaintenance;
 
     switch (state.selectedTab) {
       case 'pending':
-        nextFilters.status = 'pending' as any;
+        nextFilters.status = 'pending';
         break;
       case 'in_progress':
-        nextFilters.status = 'in_progress' as any;
+        nextFilters.status = 'in_progress';
         break;
       case 'completed':
-        nextFilters.status = 'completed' as any;
+        nextFilters.status = 'completed';
         break;
       case 'cancelled':
-        nextFilters.status = 'cancelled' as any;
+        nextFilters.status = 'cancelled';
         break;
       case 'waiting_sparepart':
-        nextFilters.status = 'waiting_sparepart' as any;
+        nextFilters.status = 'waiting_sparepart';
         break;
       case 'preventive_maintenance':
         // Server supports this via is_preventivemaintenance flag
-        (nextFilters as any).is_preventivemaintenance = true as any;
+        nextFilters.is_preventivemaintenance = true;
         break;
       case 'defect':
         // No server-side filter available for defect; keep client-side filtering

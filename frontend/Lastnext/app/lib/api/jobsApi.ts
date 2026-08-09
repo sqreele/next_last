@@ -1,12 +1,50 @@
 import { API_CONFIG } from '../config';
+import type { Job, JobStatus, PaginatedResponse, Property } from '../types';
+
+export interface JobsApiFilters {
+  property?: string;
+  property_id?: string | null;
+  status?: JobStatus;
+  room?: string;
+  user?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  is_preventivemaintenance?: boolean;
+  [key: string]: string | number | boolean | null | undefined;
+}
+
+export interface JobStats {
+  total: number;
+  pending: number;
+  inProgress: number;
+  completed: number;
+  cancelled: number;
+  defect: number;
+  preventiveMaintenance: number;
+  waitingSparepart: number;
+}
+
+type JobMutationData = Record<string, unknown>;
+
+interface JobsApiErrorPayload {
+  message?: string;
+  code?: string;
+  [key: string]: unknown;
+}
+
+type JobRealtimeEvent =
+  | { type: 'job_updated'; job: Job }
+  | { type: 'job_created'; job: Job }
+  | { type: 'job_deleted'; jobId: number };
 
 // Custom error class for Jobs API
 export class JobsApiError extends Error {
   status: number;
   code: string;
-  details: any;
+  details: unknown;
 
-  constructor(message: string, status: number, code: string = 'UNKNOWN_ERROR', details?: any) {
+  constructor(message: string, status: number, code: string = 'UNKNOWN_ERROR', details?: unknown) {
     super(message);
     this.name = 'JobsApiError';
     this.status = status;
@@ -17,10 +55,10 @@ export class JobsApiError extends Error {
 
 // Simple cache implementation
 class JobsCache {
-  private cache = new Map<string, { data: any; timestamp: number }>();
+  private cache = new Map<string, { data: unknown; timestamp: number }>();
   private config = { ttl: 5 * 60 * 1000, maxSize: 100 }; // 5 minutes, 100 items
 
-  set(key: string, data: any): void {
+  set<T>(key: string, data: T): void {
     // Clean up expired entries
     this.cleanup();
     
@@ -38,7 +76,7 @@ class JobsCache {
     });
   }
 
-  get(key: string): any | null {
+  get<T>(key: string): T | null {
     const item = this.cache.get(key);
     if (!item) return null;
 
@@ -48,7 +86,7 @@ class JobsCache {
       return null;
     }
 
-    return item.data;
+    return item.data as T;
   }
 
   invalidate(pattern?: string): void {
@@ -82,7 +120,7 @@ class JobsCache {
 // Real-time updates using EventSource (temporarily disabled)
 class JobsRealTimeUpdates {
   private eventSource: EventSource | null = null;
-  private listeners: Set<(data: any) => void> = new Set();
+  private listeners: Set<(data: JobRealtimeEvent) => void> = new Set();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
@@ -137,12 +175,12 @@ class JobsRealTimeUpdates {
     }
   }
 
-  subscribe(listener: (data: any) => void): () => void {
+  subscribe(listener: (data: JobRealtimeEvent) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
-  private notifyListeners(data: any): void {
+  private notifyListeners(data: JobRealtimeEvent): void {
     this.listeners.forEach(listener => {
       try {
         listener(data);
@@ -223,16 +261,20 @@ export class JobsApiService {
     }
   }
 
-  private async parseErrorResponse(response: Response): Promise<any> {
+  private async parseErrorResponse(response: Response): Promise<JobsApiErrorPayload> {
     try {
-      return await response.json();
+      const payload: unknown = await response.json();
+      if (typeof payload === 'object' && payload !== null) {
+        return payload as JobsApiErrorPayload;
+      }
+      return { message: `HTTP ${response.status}`, code: 'HTTP_ERROR' };
     } catch {
       return { message: `HTTP ${response.status}`, code: 'HTTP_ERROR' };
     }
   }
 
   // Jobs CRUD operations with pagination support
-  async getJobs(token: string, filters?: any, page: number = 1, pageSize: number = 24): Promise<any> {
+  async getJobs(token: string, filters?: JobsApiFilters, page: number = 1, pageSize: number = 24): Promise<PaginatedResponse<Job>> {
     const params = new URLSearchParams();
     
     // Add pagination params
@@ -251,18 +293,18 @@ export class JobsApiService {
     }
     
     const cacheKey = `jobs:${params.toString()}`;
-    const cached = this.cache.get(cacheKey);
+    const cached = this.cache.get<PaginatedResponse<Job>>(cacheKey);
     if (cached) return cached;
 
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/?${params.toString()}`;
-    const response = await this.fetchWithRetry<any>(url, token);
+    const response = await this.fetchWithRetry<PaginatedResponse<Job>>(url, token);
     
     this.cache.set(cacheKey, response);
     return response;
   }
 
   // Get job statistics without loading all jobs
-  async getJobStats(token: string, filters?: any): Promise<any> {
+  async getJobStats(token: string, filters?: JobsApiFilters): Promise<JobStats> {
     const params = new URLSearchParams();
     
     if (filters) {
@@ -274,38 +316,38 @@ export class JobsApiService {
     }
     
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/stats/?${params.toString()}`;
-    const stats = await this.fetchWithRetry<any>(url, token);
+    const stats = await this.fetchWithRetry<JobStats>(url, token);
     return stats;
   }
 
-  async getJob(token: string, jobId: string): Promise<any> {
+  async getJob(token: string, jobId: string): Promise<Job> {
     const cacheKey = `job:${jobId}`;
-    const cached = this.cache.get(cacheKey);
+    const cached = this.cache.get<Job>(cacheKey);
     if (cached) return cached;
 
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`;
-    const job = await this.fetchWithRetry<any>(url, token);
+    const job = await this.fetchWithRetry<Job>(url, token);
     
     this.cache.set(cacheKey, job);
     return job;
   }
 
-  async createJob(token: string, jobData: any): Promise<any> {
+  async createJob(token: string, jobData: JobMutationData): Promise<Job> {
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/`;
-    const job = await this.fetchWithRetry<any>(url, token, {
+    const job = await this.fetchWithRetry<Job>(url, token, {
       method: 'POST',
-      body: jobData,
+      body: JSON.stringify(jobData),
     });
     
     this.cache.invalidate('jobs');
     return job;
   }
 
-  async updateJob(token: string, jobId: string, jobData: any): Promise<any> {
+  async updateJob(token: string, jobId: string, jobData: JobMutationData): Promise<Job> {
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`;
-    const job = await this.fetchWithRetry<any>(url, token, {
+    const job = await this.fetchWithRetry<Job>(url, token, {
       method: 'PATCH',
-      body: jobData,
+      body: JSON.stringify(jobData),
     });
     
     this.cache.invalidate(`job:${jobId}`);
@@ -322,13 +364,13 @@ export class JobsApiService {
   }
 
   // Properties
-  async getProperties(token: string): Promise<any[]> {
+  async getProperties(token: string): Promise<Property[]> {
     const cacheKey = 'properties';
-    const cached = this.cache.get(cacheKey);
+    const cached = this.cache.get<Property[]>(cacheKey);
     if (cached) return cached;
 
     const url = `${API_CONFIG.baseUrl}/api/v1/properties/`;
-    const properties = await this.fetchWithRetry<any[]>(url, token);
+    const properties = await this.fetchWithRetry<Property[]>(url, token);
     
     this.cache.set(cacheKey, properties);
     return properties;
@@ -343,7 +385,7 @@ export class JobsApiService {
     this.realTimeUpdates.disconnect();
   }
 
-  subscribeToUpdates(listener: (data: any) => void): () => void {
+  subscribeToUpdates(listener: (data: JobRealtimeEvent) => void): () => void {
     return this.realTimeUpdates.subscribe(listener);
   }
 

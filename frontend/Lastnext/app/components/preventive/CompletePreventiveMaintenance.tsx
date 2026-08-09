@@ -512,8 +512,8 @@ export default function CompletePreventiveMaintenance({
         <div className="md:max-w-3xl md:mx-auto md:px-4 sm:md:px-6 lg:md:px-8 mb-4">
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mx-4 md:mx-0">
             <p className="text-xs text-yellow-800">
-              <strong>Debug Info:</strong> Loading ID {pmId} | Record ID:{" "}
-              {selectedMaintenance?.id} | PM_ID: {selectedMaintenance?.pm_id}
+              <strong>Debug Info:</strong> Loading ID {pmId} | PM_ID:{" "}
+              {selectedMaintenance?.pm_id}
             </p>
           </div>
         </div>
@@ -550,8 +550,7 @@ export default function CompletePreventiveMaintenance({
                   {selectedMaintenance.pmtitle || "Untitled Task"}
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Task ID: {selectedMaintenance.pm_id} (DB ID:{" "}
-                  {selectedMaintenance.id})
+                  Task ID: {selectedMaintenance.pm_id}
                 </p>
               </div>
 

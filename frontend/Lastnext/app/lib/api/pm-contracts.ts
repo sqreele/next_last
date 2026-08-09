@@ -24,6 +24,12 @@ export interface PMUserSummary {
   is_staff: boolean;
 }
 
+export interface PMCreatedBy {
+  username: string;
+  email: string;
+  display_name: string;
+}
+
 export interface PMListItem {
   pm_id: string;
   pmtitle: string;
@@ -79,6 +85,7 @@ export interface PMDetail {
   procedure_template: number | null;
   procedure_template_id: number | null;
   procedure_template_name: string | null;
+  created_by: PMCreatedBy | null;
   updated_at: string;
   is_overdue: boolean;
   days_remaining: number | null;
@@ -98,8 +105,8 @@ export interface PMDetail {
 export interface PMCreatePayload {
   scheduled_date: string;
   frequency: PMFrequency;
+  machine_ids: string[];
   pmtitle?: string;
-  machine_ids?: string[];
   topic_ids?: number[];
   completed_date?: string | null;
   custom_days?: number | null;
@@ -127,6 +134,32 @@ export interface PMUpdatePayload {
   procedure_template?: number | null;
   assigned_to?: number | null;
   remarks?: string;
+}
+
+export interface PMWriteResponse {
+  pm_id: string;
+  pmtitle: string;
+  topics: PMTopic[];
+  scheduled_date: string;
+  completed_date: string | null;
+  frequency: PMFrequency;
+  custom_days: number | null;
+  next_due_date: string | null;
+  before_image: string | null;
+  after_image: string | null;
+  before_image_url: string | null;
+  after_image_url: string | null;
+  notes: string | null;
+  procedure: string | null;
+  procedure_template: number | null;
+  procedure_template_id: number | null;
+  procedure_template_name: string | null;
+  machines: MachineEmbedded[];
+  property_id: string | null;
+  assigned_to: number | null;
+  assigned_to_name: string | null;
+  technician_name: string | null;
+  remarks: string | null;
 }
 
 export interface PMQuery {
@@ -192,8 +225,31 @@ export interface PMCompletionPayload {
   after_image?: File;
 }
 
+export interface PMInventoryUsage {
+  id: number;
+  inventory: number;
+  inventory_item_id: string;
+  inventory_name: string;
+  job: number | null;
+  job_id: string | null;
+  preventive_maintenance: number | null;
+  pm_id: string | null;
+  property: number;
+  property_id: string;
+  property_name: string;
+  quantity: number;
+  unit_cost: string | null;
+  total_cost: string | null;
+  source: string;
+  notes: string | null;
+  consumed_by: number | null;
+  consumed_by_name: string;
+  consumed_at: string;
+  created_at: string;
+}
+
 export interface PMCompletionResponse extends PMDetail {
-  inventory_usage: unknown[];
+  inventory_usage: PMInventoryUsage[];
   next_schedule_pm_id?: string;
   next_schedule_scheduled_date?: string;
 }

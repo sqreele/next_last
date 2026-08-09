@@ -4,14 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import PreventiveMaintenanceForm from "@/app/components/preventive/PreventiveMaintenanceForm";
-import { PreventiveMaintenance } from "@/app/lib/preventiveMaintenanceModels";
 import { useProperties, useUser } from "@/app/lib/stores/mainStore";
 
 // Create page content component that doesn't require context
 function CreatePageContent() {
   const router = useRouter();
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
-  const [submittedData, setSubmittedData] = useState<any>(null);
+  const [submittedData, setSubmittedData] = useState<{ pm_id: string } | null>(null);
   const searchParams = useSearchParams();
   const { selectedPropertyId, setSelectedPropertyId } = useUser();
   const { properties } = useProperties();
@@ -58,7 +57,7 @@ function CreatePageContent() {
   }, [properties, queryPropertyId, selectedPropertyId, setSelectedPropertyId]);
 
   // Handle successful form submission
-  const handleSuccess = (data: PreventiveMaintenance) => {
+  const handleSuccess = (data: { pm_id: string }) => {
     // Log the full data structure for debugging
 
     // Store the data in state for possible use in the UI

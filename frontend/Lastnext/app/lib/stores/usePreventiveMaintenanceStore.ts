@@ -2,9 +2,9 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { PreventiveMaintenance, FrequencyType, Topic } from "@/app/lib/preventiveMaintenanceModels";
+import type { FrequencyType, Topic } from "@/app/lib/preventiveMaintenanceModels";
 import type { Machine } from "@/app/lib/MachineService";
-import type { PMListItem } from "@/app/lib/api/pm-contracts";
+import type { PMDetail, PMListItem } from "@/app/lib/api/pm-contracts";
 
 export interface SearchParams {
   status?: string;
@@ -36,7 +36,7 @@ interface PreventiveMaintenanceState {
   topics: Topic[];
   machines: Machine[];
   statistics: DashboardStats | null;
-  selectedMaintenance: PreventiveMaintenance | null;
+  selectedMaintenance: PMDetail | null;
   totalCount: number;
   isLoading: boolean;
   error: string | null;
@@ -47,7 +47,7 @@ interface PreventiveMaintenanceState {
   setTopics: (topics: Topic[]) => void;
   setMachines: (machines: Machine[]) => void;
   setStatistics: (stats: DashboardStats | null) => void;
-  setSelectedMaintenance: (item: PreventiveMaintenance | null) => void;
+  setSelectedMaintenance: (item: PMDetail | null) => void;
   setTotalCount: (count: number) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;

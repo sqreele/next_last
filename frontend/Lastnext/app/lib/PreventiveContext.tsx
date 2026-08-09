@@ -14,8 +14,7 @@ import {
   UpdatePreventiveMaintenanceData,
   CompletePreventiveMaintenanceData
 } from '@/app/lib/PreventiveMaintenanceService';
-import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
-import type { PMListItem } from '@/app/lib/api/pm-contracts';
+import type { PMCompletionResponse, PMDetail, PMListItem, PMWriteResponse } from '@/app/lib/api/pm-contracts';
 import TopicService from '@/app/lib/TopicService';
 import MachineService, { Machine } from '@/app/lib/MachineService';
 import { Topic } from '@/app/lib/TopicService';
@@ -26,7 +25,7 @@ export interface PreventiveMaintenanceContextType {
   topics: Topic[];
   machines: Machine[];
   statistics: DashboardStats | null;
-  selectedMaintenance: any | null;
+  selectedMaintenance: PMDetail | null;
   totalCount: number;
   isLoading: boolean;
   error: string | null;
@@ -35,12 +34,12 @@ export interface PreventiveMaintenanceContextType {
   // Actions
   fetchMaintenanceItems: (params?: SearchParams) => Promise<void>;
   fetchStatistics: () => Promise<void>;
-  fetchMaintenanceById: (pmId: string) => Promise<any | null>;
+  fetchMaintenanceById: (pmId: string) => Promise<PMDetail | null>;
   fetchMaintenanceByMachine: (machineId: string) => Promise<void>;
-  createMaintenance: (data: CreatePreventiveMaintenanceData) => Promise<any | null>;
-  updateMaintenance: (pmId: string, data: UpdatePreventiveMaintenanceData) => Promise<any | null>;
+  createMaintenance: (data: CreatePreventiveMaintenanceData) => Promise<PMWriteResponse | null>;
+  updateMaintenance: (pmId: string, data: UpdatePreventiveMaintenanceData) => Promise<PMWriteResponse | null>;
   deleteMaintenance: (pmId: string) => Promise<boolean>;
-  completeMaintenance: (pmId: string, data: CompletePreventiveMaintenanceData) => Promise<any | null>;
+  completeMaintenance: (pmId: string, data: CompletePreventiveMaintenanceData) => Promise<PMCompletionResponse | null>;
   fetchTopics: () => Promise<void>;
   fetchMachines: (propertyId?: string) => Promise<void>;
   setFilterParams: (params: SearchParams) => void;

@@ -8,6 +8,7 @@ import { useSession } from '@/app/lib/session.client';
 import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import { useAuthStore } from '@/app/lib/stores/useAuthStore';
 import { createPreventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
+import type { PMCompletionPayload, PMCompletionResponse, PMDetail, PMUpdatePayload, PMWriteResponse } from '@/app/lib/api/pm-contracts';
 import { fetchTopics } from '@/app/lib/data.server';
 import MachineService from '@/app/lib/MachineService';
 import type { SearchParams, DashboardStats } from '@/app/lib/stores/usePreventiveMaintenanceStore';
@@ -265,7 +266,7 @@ export function usePreventiveMaintenanceActions() {
   }, [accessToken, maintenanceItems, totalCount, setLoading, setMaintenanceItems, setTotalCount, setError]);
 
   // Fetch maintenance by ID
-  const fetchMaintenanceById = useCallback(async (pmId: string): Promise<any | null> => {
+  const fetchMaintenanceById = useCallback(async (pmId: string): Promise<PMDetail | null> => {
     if (!accessToken) {
       logger.warn('No access token available for fetching maintenance by ID');
       return null;
@@ -308,7 +309,7 @@ export function usePreventiveMaintenanceActions() {
   }, [accessToken, setLoading, setSelectedMaintenance, setError]);
 
   // Update maintenance
-  const updateMaintenance = useCallback(async (pmId: string, data: any): Promise<any | null> => {
+  const updateMaintenance = useCallback(async (pmId: string, data: PMUpdatePayload): Promise<PMWriteResponse | null> => {
     if (!accessToken) {
       logger.warn('No access token available for updating maintenance');
       return null;
@@ -346,7 +347,7 @@ export function usePreventiveMaintenanceActions() {
   }, [accessToken, filterParams, setLoading, setMaintenanceItems, setTotalCount, setError]);
 
   // Complete maintenance
-  const completeMaintenance = useCallback(async (pmId: string, data: any): Promise<any | null> => {
+  const completeMaintenance = useCallback(async (pmId: string, data: PMCompletionPayload): Promise<PMCompletionResponse | null> => {
     if (!accessToken) {
       logger.warn('No access token available for completing maintenance');
       return null;

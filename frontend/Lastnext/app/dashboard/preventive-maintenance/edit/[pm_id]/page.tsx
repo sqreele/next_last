@@ -7,9 +7,9 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { usePreventiveMaintenanceActions } from "@/app/lib/hooks/usePreventiveMaintenanceActions";
 import {
-  PreventiveMaintenance,
   FrequencyType,
 } from "@/app/lib/preventiveMaintenanceModels";
+import type { PMDetail } from "@/app/lib/api/pm-contracts";
 import { UpdatePreventiveMaintenanceData } from "@/app/lib/PreventiveMaintenanceService";
 import { PreviewImage } from "@/app/components/ui/UniversalImage";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
@@ -80,7 +80,7 @@ export default function EditPreventiveMaintenancePage() {
   } = usePreventiveMaintenanceActions();
 
   // State
-  const [maintenance, setMaintenance] = useState<PreventiveMaintenance | null>(
+  const [maintenance, setMaintenance] = useState<PMDetail | null>(
     null,
   );
   const resolvedPmId =
@@ -200,66 +200,8 @@ export default function EditPreventiveMaintenancePage() {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
-  const calculateNextScheduledDate = (
-    frequency: FrequencyType,
-    customDays: number | null,
-    baseDate: Date,
-  ): Date => {
-    const nextDate = new Date(baseDate);
-
-    switch (frequency) {
-      case "daily":
-        nextDate.setDate(nextDate.getDate() + 1);
-        break;
-      case "weekly":
-        nextDate.setDate(nextDate.getDate() + 7);
-        break;
-      case "monthly":
-        nextDate.setMonth(nextDate.getMonth() + 1);
-        if (nextDate.getDate() !== baseDate.getDate()) {
-          nextDate.setDate(0);
-        }
-        break;
-      case "quarterly":
-        nextDate.setMonth(nextDate.getMonth() + 3);
-        if (nextDate.getDate() !== baseDate.getDate()) {
-          nextDate.setDate(0);
-        }
-        break;
-      case "semi_annual":
-        nextDate.setMonth(nextDate.getMonth() + 6);
-        if (nextDate.getDate() !== baseDate.getDate()) {
-          nextDate.setDate(0);
-        }
-        break;
-      case "annual":
-        nextDate.setFullYear(nextDate.getFullYear() + 1);
-        if (nextDate.getDate() !== baseDate.getDate()) {
-          nextDate.setDate(0);
-        }
-        break;
-      case "custom":
-        if (customDays && customDays > 0) {
-          nextDate.setDate(nextDate.getDate() + customDays);
-        } else {
-          nextDate.setMonth(nextDate.getMonth() + 1);
-          if (nextDate.getDate() !== baseDate.getDate()) {
-            nextDate.setDate(0);
-          }
-        }
-        break;
-      default:
-        nextDate.setMonth(nextDate.getMonth() + 1);
-        if (nextDate.getDate() !== baseDate.getDate()) {
-          nextDate.setDate(0);
-        }
-    }
-
-    return nextDate;
-  };
-
   // Populate form with existing data
-  const populateForm = (data: PreventiveMaintenance) => {
+  const populateForm = (data: PMDetail) => {
     // Helper function to convert ISO datetime to datetime-local format
     const convertToDateTimeLocal = (
       isoString: string | null | undefined,
@@ -512,24 +454,6 @@ export default function EditPreventiveMaintenancePage() {
       const completedDate = completionValue
         ? convertDateTimeForBackend(completionValue)
         : undefined;
-      const parsedCompletionDate = completionValue
-        ? new Date(completionValue)
-        : new Date();
-      const baseCompletionDate = isNaN(parsedCompletionDate.getTime())
-        ? new Date()
-        : parsedCompletionDate;
-      const nextDueDate = completedDate
-        ? convertDateTimeForBackend(
-            formatDateTimeLocal(
-              calculateNextScheduledDate(
-                formState.frequency,
-                formState.custom_days,
-                baseCompletionDate,
-              ),
-            ),
-          )
-        : undefined;
-
       const updateData: UpdatePreventiveMaintenanceData = {
         pmtitle: formState.pmtitle.trim(),
         scheduled_date: scheduledDate,
@@ -542,7 +466,6 @@ export default function EditPreventiveMaintenancePage() {
             : undefined,
         notes: formState.notes.trim(),
         completed_date: completedDate,
-        next_due_date: nextDueDate,
         topic_ids: formState.topic_ids,
         machine_ids: formState.machine_ids,
         procedure_template:

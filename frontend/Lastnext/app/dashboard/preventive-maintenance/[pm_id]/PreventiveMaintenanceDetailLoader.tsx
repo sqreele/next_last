@@ -12,7 +12,7 @@ import {
   setPreventiveMaintenanceServiceToken,
   type PMMasterPlan,
 } from '@/app/lib/PreventiveMaintenanceService';
-import type { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
+import type { PMDetail } from '@/app/lib/api/pm-contracts';
 import PreventiveMaintenanceClient from './PreventiveMaintenanceClient';
 
 type DetailLoaderProps = {
@@ -23,7 +23,7 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
   const router = useRouter();
   const isMasterPlanId = /^PMP[0-9A-F]+$/i.test(pmId);
   const { data: session, status } = useSession();
-  const [maintenance, setMaintenance] = useState<PreventiveMaintenance | null>(null);
+  const [maintenance, setMaintenance] = useState<PMDetail | null>(null);
   const [masterPlan, setMasterPlan] = useState<PMMasterPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,8 +58,8 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
           const plan = plans.find((item) => item.plan_id.toLowerCase() === pmId.toLowerCase());
           if (!plan) throw new Error(`No projected maintenance plan found with ID: ${pmId}`);
           setMasterPlan(plan);
-        } else {
-          setMaintenance(response.data as PreventiveMaintenance);
+        } else if (!Array.isArray(response.data)) {
+          setMaintenance(response.data);
         }
       })
       .catch((requestError: unknown) => {

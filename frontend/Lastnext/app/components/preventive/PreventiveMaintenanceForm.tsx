@@ -18,10 +18,9 @@ import {
   FrequencyType,
   Topic,
   ServiceResponse,
-  getPropertyDetails,
-  type MachineDetails,
 } from "@/app/lib/preventiveMaintenanceModels";
 import type { MachineListItem } from "@/app/lib/api/machine-contracts";
+import type { PMDetail, PMWriteResponse } from "@/app/lib/api/pm-contracts";
 
 type MachineSelectionItem = MachineListItem & { group_id?: never };
 import FileUpload from "@/app/components/jobs/FileUpload";
@@ -32,7 +31,6 @@ import { PreviewImage } from "@/app/components/ui/UniversalImage";
 import {
   preventiveMaintenanceService,
   type CreatePreventiveMaintenanceData,
-  type UpdatePreventiveMaintenanceData,
   setPreventiveMaintenanceServiceToken,
 } from "@/app/lib/PreventiveMaintenanceService";
 import TopicService from "@/app/lib/TopicService";
@@ -54,8 +52,8 @@ const STATUS_OPTIONS = [
 
 interface PreventiveMaintenanceFormProps {
   pmId?: string | null;
-  onSuccessAction: (data: PreventiveMaintenance) => void;
-  initialData?: PreventiveMaintenance | null;
+  onSuccessAction: (data: { pm_id: string }) => void;
+  initialData?: PMDetail | null;
   onCancel?: () => void;
   machineId?: string; // Pre-select a machine if provided
 }
@@ -264,8 +262,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const { selectedPropertyId: selectedProperty, userProfile } = useUser();
   const hasProperties = userProperties && userProperties.length > 0;
 
-  const [fetchedInitialData, setFetchedInitialData] =
-    useState<PreventiveMaintenance | null>(null);
+  const [fetchedInitialData, setFetchedInitialData] = useState<PMDetail | null>(null);
   const actualInitialData = initialDataProp || fetchedInitialData;
 
   const createdMaintenanceIdRef = useRef<string | null>(null);
@@ -623,38 +620,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     const currentData = actualInitialData;
 
     if (currentData) {
-      const topicIds: number[] =
-        currentData.topics
-          ?.map((topic: Topic | number) =>
-            typeof topic === "object" && "id" in topic
-              ? topic.id
-              : typeof topic === "number"
-                ? topic
-                : null,
-          )
-          .filter((id): id is number => id !== null) || [];
+      const topicIds = currentData.topics.map((topic) => topic.id);
 
       let machineIdsFromData: string[] = [];
-      if (currentData.machines) {
-        machineIdsFromData = currentData.machines
-          .map((machine: MachineDetails | string) =>
-            typeof machine === "object" && "machine_id" in machine
-              ? machine.machine_id
-              : typeof machine === "string"
-                ? machine
-                : null,
-          )
-          .filter((id): id is string => id !== null);
-      } else if (currentData.machine_id) {
-        machineIdsFromData = [currentData.machine_id];
-      }
+      machineIdsFromData = currentData.machines.map((machine) => machine.machine_id);
 
       const finalMachineIds = machineId
         ? Array.from(new Set([machineId, ...machineIdsFromData]))
         : machineIdsFromData;
 
-      const propertyDetails = getPropertyDetails(currentData.property_id);
-      const propertyId = propertyDetails.id || selectedProperty || "";
+      const propertyId = currentData.property_id || selectedProperty || "";
 
       const customDays =
         currentData.custom_days === null ||
@@ -674,13 +649,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       let assignedToId = "";
       if (currentData.assigned_to_details?.id) {
         assignedToId = String(currentData.assigned_to_details.id);
-      } else if (
-        currentData.assigned_to &&
-        typeof currentData.assigned_to === "object" &&
-        currentData.assigned_to !== null &&
-        "id" in currentData.assigned_to
-      ) {
-        assignedToId = String((currentData.assigned_to as any).id);
       } else if (typeof currentData.assigned_to === "number") {
         assignedToId = String(currentData.assigned_to);
       }
@@ -691,7 +659,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         completed_date: completedDate,
         frequency: validateFrequency(currentData.frequency || "monthly"),
         custom_days: customDays,
-        status: currentData.status || (completedDate ? "completed" : "pending"),
+        status: completedDate ? "completed" : "pending",
         notes: currentData.notes || "",
         before_image_file: null,
         after_image_file: null,
@@ -699,7 +667,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         selected_machine_ids: selectedMachineIds,
         property_id: propertyId,
         procedure: currentData.procedure || "",
-        procedure_template: (currentData as any).procedure_template || "",
+        procedure_template: currentData.procedure_template || "",
         assigned_to: assignedToId,
         create_master_plan: false,
         lead_time_days: 7,
@@ -1038,7 +1006,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 "Warning: No property associated with this maintenance record. Please select one.",
               );
             }
-            if (!response.data.machine_id && !response.data.machines?.length) {
+            if (!response.data.machines.length) {
               console.warn(
                 "[PreventiveMaintenanceForm] Missing machine_id/machines in maintenance data",
               );
@@ -1072,9 +1040,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           "Warning: No property associated with this maintenance record. Please select one.",
         );
       }
-      if (!initialDataProp.machine_id && !initialDataProp.machines?.length) {
+      if (!initialDataProp.machines.length) {
         console.warn(
-          "[PreventiveMaintenanceForm] Missing machine_id/machines in initialDataProp",
+          "[PreventiveMaintenanceForm] Missing machines in initialDataProp",
         );
       }
     }
@@ -1285,23 +1253,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         }
       }
 
-      const nextDueDate = (() => {
-        const baseDate = values.scheduled_date
-          ? new Date(values.scheduled_date)
-          : new Date();
-        const safeBaseDate = isNaN(baseDate.getTime()) ? new Date() : baseDate;
-        return calculateNextScheduledDate(
-          values.frequency,
-          values.frequency === "custom" && values.custom_days
-            ? Number(values.custom_days)
-            : undefined,
-          safeBaseDate,
-        );
-      })();
-
-      const nextDueDateFormatted = formatDateForInput(nextDueDate);
-      const nextDueDateISO = convertToISO8601(nextDueDateFormatted);
-
       const dataForService: CreatePreventiveMaintenanceData = {
         pmtitle: values.pmtitle.trim() || "Untitled Maintenance",
         scheduled_date: scheduledDateISO,
@@ -1341,9 +1292,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         // Only send assigned_to if it's a valid numeric ID
         // If not provided, backend will automatically use created_by (from request.user)
         assigned_to: assignedToNumber,
-        status: values.status,
-        next_due_date:
-          values.status === "completed" ? nextDueDateISO : undefined,
       };
       // Additional validation before sending to backend
 
@@ -1362,14 +1310,14 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         throw new Error("Custom days is required when frequency is custom");
       }
       const maintenanceIdToUpdate = pmId || (actualInitialData?.pm_id ?? null);
-      let response: ServiceResponse<PreventiveMaintenance>;
+      let response: ServiceResponse<PMWriteResponse | PreventiveMaintenance>;
 
       try {
         if (maintenanceIdToUpdate) {
           response =
             await preventiveMaintenanceService.updatePreventiveMaintenance(
               maintenanceIdToUpdate,
-              dataForService as UpdatePreventiveMaintenanceData,
+              dataForService,
             );
         } else {
           // FINAL CHECK: Ensure machineId is included if prop was provided
@@ -1390,15 +1338,15 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           if (values.create_master_plan) {
             const masterPlanResponse =
               await preventiveMaintenanceService.createPMMasterPlan({
-                title: dataForService.pmtitle,
+                title: dataForService.pmtitle || "Untitled Maintenance",
                 machine_ids: dataForService.machine_ids,
                 topic_ids: dataForService.topic_ids,
                 start_date: dataForService.scheduled_date,
                 frequency: dataForService.frequency,
-                custom_days: dataForService.custom_days,
+                custom_days: dataForService.custom_days ?? undefined,
                 lead_time_days: values.lead_time_days || 7,
-                procedure_template: dataForService.procedure_template,
-                assigned_to: dataForService.assigned_to,
+                procedure_template: dataForService.procedure_template ?? undefined,
+                assigned_to: dataForService.assigned_to ?? undefined,
                 notes: dataForService.notes,
                 procedure: dataForService.procedure,
                 remarks: dataForService.remarks,

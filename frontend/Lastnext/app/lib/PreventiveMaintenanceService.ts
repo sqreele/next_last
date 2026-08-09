@@ -11,36 +11,20 @@ import {
 // Removed next-auth usage; apiClient handles auth headers
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
-import type { PMListItem, PMListResponse } from "./api/pm-contracts";
+import type {
+  PMCompletionPayload,
+  PMCompletionResponse,
+  PMCreatePayload,
+  PMDetail,
+  PMListItem,
+  PMListResponse,
+  PMUpdatePayload,
+  PMWriteResponse,
+} from "./api/pm-contracts";
 
-export type CreatePreventiveMaintenanceData = {
-  pmtitle: string;
-  // property_id is not sent to backend - it's determined by the machines assigned
-  machine_ids: string[];
-  scheduled_date: string;
-  frequency: string;
-  custom_days?: number;
-  notes?: string;
-  topic_ids: number[];
-  before_image?: File;
-  after_image?: File;
-  procedure?: string;
-  completed_date?: string;
-  procedure_template?: number; // FK to MaintenanceProcedure task template
-  assigned_to?: number; // User ID (pk value)
-  remarks?: string;
-  status?: string;
-  next_due_date?: string;
-};
-
-export type UpdatePreventiveMaintenanceData =
-  Partial<CreatePreventiveMaintenanceData>;
-
-export interface CompletePreventiveMaintenanceData {
-  completed_date?: string;
-  completion_notes?: string;
-  after_image?: File;
-}
+export type CreatePreventiveMaintenanceData = PMCreatePayload;
+export type UpdatePreventiveMaintenanceData = PMUpdatePayload;
+export type CompletePreventiveMaintenanceData = PMCompletionPayload;
 
 export interface DashboardStats {
   avg_completion_times: Record<string, number>;
@@ -446,7 +430,7 @@ class PreventiveMaintenanceService {
 
   async createPreventiveMaintenance(
     data: CreatePreventiveMaintenanceData,
-  ): Promise<ServiceResponse<PreventiveMaintenance>> {
+  ): Promise<ServiceResponse<PMWriteResponse>> {
     // Validate machine_ids is an array (but allow empty array - machines are optional)
     if (!Array.isArray(data.machine_ids)) {
       console.error("ERROR: machine_ids must be an array:", {
@@ -595,7 +579,7 @@ class PreventiveMaintenanceService {
       // CRITICAL: Don't set Content-Type header - let axios/browser set it automatically with boundary
       // The apiClient interceptor will detect FormData and remove Content-Type header
       // apiClient interceptor will add Authorization header automatically
-      const createResponse = await apiClient.post<any>(
+      const createResponse = await apiClient.post<PMWriteResponse>(
         `${this.baseUrl}/`,
         formData,
         {
@@ -604,39 +588,9 @@ class PreventiveMaintenanceService {
         },
       );
 
-      const responseData = createResponse.data;
-
-      let actualRecord: PreventiveMaintenance;
-
-      if (
-        "data" in responseData &&
-        responseData.data &&
-        "pm_id" in responseData.data
-      ) {
-        actualRecord = responseData.data;
-      } else if ("pm_id" in responseData) {
-        actualRecord = responseData;
-      } else if (
-        responseData &&
-        typeof responseData === "object" &&
-        "results" in responseData &&
-        Array.isArray((responseData as any).results) &&
-        (responseData as any).results.length > 0 &&
-        "pm_id" in (responseData as any).results[0]
-      ) {
-        actualRecord = (responseData as any).results[0];
-        console.warn(
-          "Response was paginated; using first result:",
-          actualRecord.pm_id,
-        );
-      } else {
-        console.error("Unexpected response format:", responseData);
-        throw new Error("Invalid response format: Missing pm_id");
-      }
-
       return {
         success: true,
-        data: actualRecord,
+        data: createResponse.data,
         message: "Maintenance created successfully",
       };
     } catch (error: any) {
@@ -696,7 +650,7 @@ class PreventiveMaintenanceService {
   async updatePreventiveMaintenance(
     id: string,
     data: UpdatePreventiveMaintenanceData,
-  ): Promise<ServiceResponse<PreventiveMaintenance>> {
+  ): Promise<ServiceResponse<PMWriteResponse>> {
     if (!id) {
       console.error("Cannot update: PM ID is undefined or empty");
       return { success: false, message: "PM ID is required for updates" };
@@ -777,7 +731,7 @@ class PreventiveMaintenanceService {
       for (const [key, value] of formData.entries()) {
       }
 
-      const response = await apiClient.put<PreventiveMaintenance>(
+      const response = await apiClient.put<PMWriteResponse>(
         `${this.baseUrl}/${id}/`,
         formData,
         {
@@ -802,7 +756,7 @@ class PreventiveMaintenanceService {
   async completePreventiveMaintenance(
     id: string,
     data: CompletePreventiveMaintenanceData,
-  ): Promise<ServiceResponse<PreventiveMaintenance>> {
+  ): Promise<ServiceResponse<PMCompletionResponse>> {
     if (!id) {
       console.error("Cannot complete: PM ID is undefined or empty");
       return {
@@ -829,7 +783,7 @@ class PreventiveMaintenanceService {
       for (const [key, value] of formData.entries()) {
       }
 
-      const response = await apiClient.post<PreventiveMaintenance>(
+      const response = await apiClient.post<PMCompletionResponse>(
         `${this.baseUrl}/${id}/complete/`,
         formData,
         {
@@ -853,14 +807,14 @@ class PreventiveMaintenanceService {
 
   async getPreventiveMaintenanceById(
     id: string,
-  ): Promise<ServiceResponse<PreventiveMaintenance>> {
+  ): Promise<ServiceResponse<PMDetail>> {
     if (!id) {
       console.error("Cannot fetch: PM ID is undefined or empty");
       return { success: false, message: "PM ID is required to fetch details" };
     }
 
     try {
-      const response = await apiClient.get<PreventiveMaintenance>(
+      const response = await apiClient.get<PMDetail>(
         `${this.baseUrl}/${id}/`,
         {
           headers: this.getAuthHeaders(),

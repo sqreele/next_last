@@ -10,10 +10,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/app/lib/session.client";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
-import {
-  PreventiveMaintenance,
-  determinePMStatus,
-} from "@/app/lib/preventiveMaintenanceModels";
+import type { PMDetail } from "@/app/lib/api/pm-contracts";
 import {
   AlertCircle,
   Calendar,
@@ -38,7 +35,7 @@ import { getDisplayName, getUserEmail } from "@/app/lib/utils/display-name";
 import { StatusBadge } from "@/app/components/StatusBadge";
 
 interface PreventiveMaintenanceClientProps {
-  maintenanceData: PreventiveMaintenance;
+  maintenanceData: PMDetail;
 }
 
 export default function PreventiveMaintenanceClient({
@@ -585,12 +582,7 @@ export default function PreventiveMaintenanceClient({
     const now = new Date();
     const overdue = scheduledDate < now;
 
-    if (determinePMStatus) {
-      const status = determinePMStatus(maintenanceData);
-      setTaskStatus(status as "completed" | "pending" | "overdue");
-    } else {
-      setTaskStatus(overdue ? "overdue" : "pending");
-    }
+    setTaskStatus(overdue ? "overdue" : "pending");
   }, [
     maintenanceData.completed_date,
     maintenanceData.scheduled_date,
@@ -723,7 +715,7 @@ export default function PreventiveMaintenanceClient({
   };
 
   const getMachineImageUrl = (
-    machine: NonNullable<PreventiveMaintenance["machines"]>[number],
+    machine: PMDetail["machines"][number],
   ): string | null => {
     const rawImageUrl = machine.image_url || machine.image;
     return rawImageUrl ? fixImageUrl(rawImageUrl) : null;

@@ -19,8 +19,11 @@ import {
   Topic,
   ServiceResponse,
   getPropertyDetails,
-  MachineDetails, // Import MachineDetails
+  type MachineDetails,
 } from "@/app/lib/preventiveMaintenanceModels";
+import type { MachineListItem } from "@/app/lib/api/machine-contracts";
+
+type MachineSelectionItem = MachineListItem & { group_id?: never };
 import FileUpload from "@/app/components/jobs/FileUpload";
 import { useToast } from "@/app/lib/hooks/use-toast";
 import { useUser, useProperties } from "@/app/lib/stores/mainStore";
@@ -107,7 +110,7 @@ interface PreventiveMaintenanceFormEffectsProps {
   pmId?: string | null;
   machineId?: string;
   selectedProperty: string | null;
-  availableMachines: MachineDetails[];
+  availableMachines: MachineSelectionItem[];
   availableMaintenanceTasks: MaintenanceTaskOption[];
   loadingMachines: boolean;
   fetchAvailableMaintenanceTasks: (machineIds?: string[]) => Promise<void>;
@@ -286,7 +289,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   }, []);
 
   const [availableTopics, setAvailableTopics] = useState<Topic[]>([]);
-  const [availableMachines, setAvailableMachines] = useState<MachineDetails[]>(
+  const [availableMachines, setAvailableMachines] = useState<MachineSelectionItem[]>(
     [],
   );
   const [availableMaintenanceTasks, setAvailableMaintenanceTasks] = useState<

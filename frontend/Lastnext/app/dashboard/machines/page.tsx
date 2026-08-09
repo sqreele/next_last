@@ -6,6 +6,7 @@ import { useSession } from "@/app/lib/session.client";
 import { useUser } from "@/app/lib/stores/mainStore";
 import apiClient from "@/app/lib/api-client";
 import MachineService from "@/app/lib/MachineService";
+import type { MachineListItem } from "@/app/lib/api/machine-contracts";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import {
   Card,
@@ -44,15 +45,9 @@ import {
   SelectValue,
 } from "@/app/components/ui/select";
 
-interface Machine {
-  machine_id: string;
-  name: string;
+type Machine = MachineListItem & {
   model?: string;
   manufacturer?: string;
-  serial_number?: string;
-  location?: string;
-  category?: string;
-  image_url?: string | null;
   image?: {
     image_url?: string | null;
     url?: string | null;
@@ -61,11 +56,10 @@ interface Machine {
     property_id: string;
     name: string;
   };
-  property_name?: string; // API returns this as a string
   installation_date?: string;
   pm_count?: number; // Count of PM records
   last_maintenance?: string; // Last PM date
-}
+};
 
 function normalizeCategory(value?: string | null): string {
   return (value ?? "").trim().toLowerCase();
@@ -124,7 +118,7 @@ export default function MachinesListPage() {
         throw new Error(machineResponse.message || "Failed to load machines");
       }
 
-      const allMachines = machineResponse.data as Machine[];
+      const allMachines: Machine[] = machineResponse.data;
       setTotalCount(allMachines.length);
 
       // Fetch PM rows once, then aggregate by machine_id to avoid N+1 requests.

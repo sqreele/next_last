@@ -1,4 +1,5 @@
 // Type definitions for Preventive Maintenance module
+import type { MachineEmbedded } from "./api/machine-contracts";
 
 // Topic definition
 export interface Topic {
@@ -54,21 +55,7 @@ export interface PropertyDetails {
 }
 
 // ✅ Fixed Machine details interface with consistent optional properties
-export interface MachineDetails {
-  machine_id: string;
-  name: string;
-  status: string;
-  location?: string;
-  procedure?: string; // Changed to lowercase and made optional
-  id?: number;
-  property_name?: string;
-  maintenance_count?: number;
-  next_maintenance_date?: string | null;
-  last_maintenance_date?: string | null;
-  group_id?: string | null; // Task group ID for this machine
-  image?: string | null;
-  image_url?: string | null;
-}
+export type MachineDetails = MachineEmbedded;
 
 // ✅ Fixed Preventive Maintenance main interface
 export interface PreventiveMaintenance {
@@ -77,7 +64,7 @@ export interface PreventiveMaintenance {
   pmtitle?: string;
   job_description?: string | null;
   machine_id?: string; // Legacy field (optional)
-  machines?: MachineDetails[] | null; // Current field - can be null or array
+  machines?: MachineDetails[]; // PM read serializers return an array; empty means unassigned.
   topics?: Topic[] | null;
   scheduled_date: string;
   completed_date?: string | null;

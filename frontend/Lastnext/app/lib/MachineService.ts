@@ -3,27 +3,14 @@
 import apiClient from './api-client';
 import { handleApiError } from './api-client';
 import type { ServiceResponse } from './preventiveMaintenanceModels';
+import type { MachineListItem, MachineListResponse } from './api/machine-contracts';
 
-export interface Machine {
-  machine_id: string;
-  name: string;
-  status: string;
-  property_name?: string;
-  maintenance_count?: number;
-  next_maintenance_date?: string | null;
-  last_maintenance_date?: string | null;
-  description?: string;
-  property_id?: string;
-  is_active?: boolean;
-  procedure?: string;
-  image?: string | null;
-  image_url?: string | null;
-}
+export type Machine = MachineListItem;
 
-type MachineApiPayload = Machine[] | {
-  results?: Machine[];
-  data?: Machine[];
-  items?: Machine[];
+type MachineApiPayload = MachineListItem[] | (Partial<MachineListResponse> & {
+  results?: MachineListItem[];
+  data?: MachineListItem[];
+  items?: MachineListItem[];
   count?: number;
   total?: number;
   total_count?: number;
@@ -32,8 +19,7 @@ type MachineApiPayload = Machine[] | {
   links?: {
     next?: string | null;
   };
-  [key: string]: any;
-};
+});
 
 const DEFAULT_MACHINE_PAGE_SIZE = 200;
 
@@ -108,7 +94,7 @@ export default class MachineService {
 
   // Remove constructor and accessToken storage - use parameter-based approach
 
-  async getMachines(propertyId?: string | undefined, accessToken?: string): Promise<ServiceResponse<Machine[]>> {
+  async getMachines(propertyId?: string | undefined, accessToken?: string): Promise<ServiceResponse<MachineListItem[]>> {
     try {
       const initialParams: Record<string, string> = {
         ...(propertyId ? { property_id: propertyId } : {}),
@@ -123,7 +109,7 @@ export default class MachineService {
       if (!useProxy && !accessToken) {
         throw new Error('Access token required for direct machine request is missing.');
       }
-      const accumulatedMachines: Machine[] = [];
+      const accumulatedMachines: MachineListItem[] = [];
 
       const fetchPage = async (
         params?: Record<string, string>,
@@ -188,7 +174,7 @@ export default class MachineService {
       }
 
       return { success: true, data: accumulatedMachines };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Service error fetching machines:', error);
         throw handleApiError(error);
     }

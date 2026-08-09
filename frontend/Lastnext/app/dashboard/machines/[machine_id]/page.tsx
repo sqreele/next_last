@@ -41,6 +41,7 @@ import { useUser } from "@/app/lib/stores/mainStore";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import dynamic from "next/dynamic";
+import type { MachineDetail } from "@/app/lib/api/machine-contracts";
 
 // Dynamically import QRCode to avoid SSR issues
 const QRCode = dynamic(
@@ -61,33 +62,6 @@ const QRCode = dynamic(
   bgColor?: string;
 }>;
 
-interface Machine {
-  id: number;
-  machine_id: string;
-  name: string;
-  brand?: string;
-  model?: string;
-  manufacturer?: string;
-  serial_number?: string;
-  description?: string;
-  location?: string;
-  category?: string;
-  status?: string;
-  property: {
-    property_id: string;
-    name: string;
-  };
-  installation_date?: string;
-  last_maintenance_date?: string;
-  warranty_expiry?: string;
-  notes?: string;
-  preventive_maintenances?: PMHistory[];
-  created_at?: string;
-  updated_at?: string;
-  image?: string | null;
-  image_url?: string | null;
-}
-
 interface PMHistory {
   pm_id: string;
   pmtitle: string;
@@ -106,6 +80,8 @@ interface PMHistory {
     full_name?: string;
   };
 }
+
+type Machine = MachineDetail<PMHistory>;
 
 const getUserDisplayName = (userDetails?: {
   id: number;
@@ -180,7 +156,7 @@ export default function MachineDetailPage({
     setLoadingHistory(true);
     setError(null);
     try {
-      const response = await apiClient.get(
+      const response = await apiClient.get<Machine>(
         `/api/v1/machines/${unwrappedParams.machine_id}/`,
         {
           params: selectedProperty
@@ -206,9 +182,11 @@ export default function MachineDetailPage({
         return;
       }
       setLoadingHistory(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching machine details:", err);
-      setError(err.message || "Failed to load machine details");
+      setError(
+        err instanceof Error ? err.message : "Failed to load machine details",
+      );
       setLoadingHistory(false);
     } finally {
       clearLoadingAfterMinTime();
@@ -241,7 +219,7 @@ export default function MachineDetailPage({
       );
 
       setPMHistory(historyData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching PM history:", err);
       // Don't set error, just leave history empty
       setPMHistory([]);

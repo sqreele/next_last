@@ -129,3 +129,30 @@ class PreventiveMaintenanceTenantIsolationTests(APITestCase):
             self.client.delete(f'/api/v1/preventive-maintenance/{self.alice_pm.pm_id}/').status_code,
             status.HTTP_204_NO_CONTENT,
         )
+
+    def test_master_plan_rejects_foreign_machine_and_assignee(self):
+        before = self.alice.created_pm_master_plans.count()
+        base = {
+            'title': 'Forged plan', 'start_date': timezone.now().isoformat(),
+            'frequency': 'monthly', 'assigned_to': self.alice_peer.pk,
+        }
+        for payload in (
+            {**base, 'machine_ids': [self.bob_machine.machine_id]},
+            {**base, 'machine_ids': [self.alice_machine.machine_id], 'assigned_to': self.bob.pk},
+        ):
+            response = self.client.post('/api/v1/preventive-maintenance/plans/', payload, format='json')
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
+        self.assertEqual(self.alice.created_pm_master_plans.count(), before)
+
+    def test_master_plan_same_property_assignment_and_user_list_scope(self):
+        response = self.client.post('/api/v1/preventive-maintenance/plans/', {
+            'title': 'Valid plan', 'start_date': timezone.now().isoformat(),
+            'frequency': 'monthly', 'machine_ids': [self.alice_machine.machine_id],
+            'assigned_to': self.alice_peer.pk,
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
+        users = self.client.get('/api/v1/users/')
+        self.assertEqual(users.status_code, status.HTTP_200_OK)
+        rows = users.data['results'] if isinstance(users.data, dict) else users.data
+        returned_users = {row['username'] for row in rows}
+        self.assertEqual(returned_users, {self.alice.username})

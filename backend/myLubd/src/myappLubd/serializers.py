@@ -1386,6 +1386,21 @@ class PMMasterPlanSerializer(serializers.ModelSerializer):
             property_ids = set(m.property_id for m in machines)
             if len(property_ids) > 1:
                 raise serializers.ValidationError({'machine_ids': 'All machines must belong to the same property.'})
+        elif self.instance is not None:
+            machines = self.instance.machines.all()
+            property_ids = set(machines.values_list('property_id', flat=True))
+        else:
+            machines = Machine.objects.none()
+            property_ids = set()
+
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and not (user.is_staff or user.is_superuser):
+            if not property_ids.issubset(accessible_property_ids(user)):
+                raise serializers.ValidationError({'machine_ids': 'One or more machines are outside your accessible properties.'})
+            assigned_to = data.get('assigned_to', self.instance.assigned_to if self.instance else None)
+            if assigned_to and not property_ids.issubset(accessible_property_ids(assigned_to)):
+                raise serializers.ValidationError({'assigned_to': 'Assigned user does not have access to the selected property.'})
         return data
 
     def create(self, validated_data):

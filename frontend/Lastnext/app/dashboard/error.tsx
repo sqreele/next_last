@@ -1,54 +1,34 @@
-// ./app/dashboard/error.tsx
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/app/components/ui/button";
+import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 
-export default function Error({
+export default function DashboardError({
   error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const router = useRouter();
-
   useEffect(() => {
-    // Log the error to an error reporting service
-    console.error("Dashboard error:", error);
-
-    // Automatically redirect to login for auth errors
-    const isAuthError =
-      error.message.includes("unauthorized") ||
-      error.message.includes("401") ||
-      error.message.includes("token") ||
-      error.message.includes("session");
-
-    if (isAuthError) {
-      router.push("/auth/login");
-    }
-  }, [error, router]);
+    console.error("Dashboard route error", error);
+  }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 space-y-4">
-      <h1 className="text-xl font-bold text-red-600">Something went wrong</h1>
-      <p className="text-muted-foreground">
-        {error.message || "There was a problem loading your dashboard"}
-      </p>
-      <div className="flex space-x-4">
-        <button
-          onClick={reset}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-        >
-          Try Again
-        </button>
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="px-4 py-2 bg-gray-200 text-muted-foreground rounded hover:bg-gray-300 transition-colors"
-        >
-          Go Home
-        </button>
-      </div>
+    <div className="mx-auto flex min-h-[60vh] max-w-3xl items-center px-4">
+      <FeedbackState
+        variant="error"
+        title="Unable to load this dashboard page"
+        description="The request could not be completed. Try again, or return to the dashboard."
+        action={
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button type="button" onClick={reset}>Try again</Button>
+            <Button asChild variant="outline"><Link href="/dashboard">Dashboard</Link></Button>
+          </div>
+        }
+      />
     </div>
   );
 }

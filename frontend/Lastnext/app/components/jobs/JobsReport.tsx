@@ -52,67 +52,28 @@ import {
 } from "@/app/lib/types";
 import { fetchAllJobsForProperty } from "@/app/lib/data.server";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
-import { endOfDay, format, startOfDay } from "date-fns";
+import { format } from "date-fns";
 import { jobsToCSV, downloadCSV } from "@/app/lib/utils/csv-export";
 import { exportJobsToExcel } from "@/app/lib/utils/excel-export";
 import { exportJobsReportToPdf } from "@/app/lib/utils/pdf-export";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import type { UtilityConsumptionRow } from "@/app/dashboard/utility-consumption/types";
-
-const STATUS_FILTER_OPTIONS: Array<{
-  value: JobStatus | "all";
-  label: string;
-}> = [
-  { value: "all", label: "All statuses" },
-  { value: "pending", label: "Pending" },
-  { value: "in_progress", label: "In progress" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-  { value: "waiting_sparepart", label: "Waiting spare part" },
-];
-
-const PRIORITY_FILTER_OPTIONS: Array<{
-  value: JobPriority | "all";
-  label: string;
-}> = [
-  { value: "all", label: "All priorities" },
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
-];
-
-type PmFilterType = "all" | "pm" | "non_pm";
-
-const PM_FILTER_OPTIONS: Array<{ value: PmFilterType; label: string }> = [
-  { value: "all", label: "PM + Non-PM" },
-  { value: "pm", label: "PM only" },
-  { value: "non_pm", label: "Non-PM only" },
-];
+import {
+  buildComparisonMetrics,
+  buildComparisonSnapshot,
+  buildUtilitySnapshot,
+  filterJobsForReport,
+  getJobUserKey,
+  jobIsPm,
+  PM_FILTER_OPTIONS,
+  PRIORITY_FILTER_OPTIONS,
+  STATUS_FILTER_OPTIONS,
+  type PmFilterType,
+  type TopicFilterValue,
+  type UserFilterValue,
+} from "./jobs-report-domain";
 
 const UNASSIGNED_ROOM_KEY = "__unassigned__";
-
-/** Stable key for report user filter; `null` = no assignee. */
-function getJobUserKey(user: Job["user"] | undefined | null): string | null {
-  if (user === undefined || user === null) return null;
-  if (typeof user === "string") {
-    const s = user.trim();
-    return s.length ? s : null;
-  }
-  if (typeof user === "number") {
-    if (Number.isNaN(user)) return null;
-    return String(user);
-  }
-  if (typeof user === "object") {
-    const o = user as { id?: string | number; username?: string };
-    if (o.id != null && String(o.id).trim() !== "") {
-      return String(o.id).trim();
-    }
-    if (o.username != null && String(o.username).trim() !== "") {
-      return `username:${String(o.username).trim()}`;
-    }
-  }
-  return null;
-}
 
 function getReportUserLabel(
   user: Job["user"] | undefined | null,
@@ -179,10 +140,6 @@ function getReportUserLabel(
   return "Unknown Technician";
 }
 
-function jobIsPm(job: Job): boolean {
-  return job.is_preventivemaintenance === true;
-}
-
 /** Rooms linked to a job (each job can count toward multiple rooms). */
 function getJobRoomEntries(
   job: Job,
@@ -207,91 +164,6 @@ function getJobRoomEntries(
     return [{ key: `name:${name}`, displayName: name, roomId: "—" }];
   }
   return [];
-}
-
-function parseLocalDateYmd(ymd: string): Date | null {
-  const parts = ymd.trim().split("-").map(Number);
-  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
-  const [y, m, d] = parts;
-  if (!y || m < 1 || m > 12 || d < 1 || d > 31) return null;
-  return new Date(y, m - 1, d);
-}
-
-/** `all` = any topic; `none` = jobs with no topics; otherwise numeric topic id as string. */
-type TopicFilterValue = "all" | "none" | string;
-
-/** `all` = any user; `none` = no assignee; otherwise key from {@link getJobUserKey}. */
-type UserFilterValue = "all" | "none" | string;
-
-function filterJobsForReport(
-  jobs: Job[],
-  statusFilter: JobStatus | "all",
-  priorityFilter: JobPriority | "all",
-  pmFilter: PmFilterType,
-  topicFilter: TopicFilterValue,
-  userFilter: UserFilterValue,
-  monthFilter: "all" | string,
-  yearFilter: "all" | string,
-  createdFrom: string,
-  createdTo: string,
-): Job[] {
-  return jobs.filter((job) => {
-    if (statusFilter !== "all" && job.status !== statusFilter) return false;
-    if (priorityFilter !== "all" && job.priority !== priorityFilter)
-      return false;
-    const isPm = jobIsPm(job);
-    if (pmFilter === "pm" && !isPm) return false;
-    if (pmFilter === "non_pm" && isPm) return false;
-
-    const userKey = getJobUserKey(job.user);
-    if (userFilter === "none") {
-      if (userKey !== null) return false;
-    } else if (userFilter !== "all") {
-      if (userKey !== userFilter) return false;
-    }
-
-    const createdDate = new Date(job.created_at);
-    if (monthFilter !== "all") {
-      const wantedMonth = Number(monthFilter);
-      if (
-        Number.isNaN(wantedMonth) ||
-        createdDate.getMonth() + 1 !== wantedMonth
-      )
-        return false;
-    }
-    if (yearFilter !== "all") {
-      const wantedYear = Number(yearFilter);
-      if (Number.isNaN(wantedYear) || createdDate.getFullYear() !== wantedYear)
-        return false;
-    }
-
-    const topics = job.topics;
-    const hasTopics = Array.isArray(topics) && topics.length > 0;
-    if (topicFilter === "none") {
-      if (hasTopics) return false;
-    } else if (topicFilter !== "all") {
-      const wantId = Number(topicFilter);
-      if (Number.isNaN(wantId)) return false;
-      if (!topics?.some((t) => Number(t.id) === wantId)) return false;
-    }
-
-    const created = createdDate.getTime();
-    if (createdFrom.trim()) {
-      const day = parseLocalDateYmd(createdFrom);
-      if (day) {
-        const from = startOfDay(day).getTime();
-        if (created < from) return false;
-      }
-    }
-    if (createdTo.trim()) {
-      const day = parseLocalDateYmd(createdTo);
-      if (day) {
-        const to = endOfDay(day).getTime();
-        if (created > to) return false;
-      }
-    }
-    return true;
-  });
 }
 
 interface JobsReportProps {
@@ -326,26 +198,6 @@ interface RoomJobsSummaryRow {
   pmJobCount: number;
 }
 
-interface ComparisonSnapshot {
-  total: number;
-  pm: number;
-  nonPm: number;
-}
-
-interface ComparisonMetric {
-  label: string;
-  current: number;
-  previous: number;
-  delta: number;
-  deltaPct: number | null;
-}
-
-interface UtilityMonthSnapshot {
-  nightsale: number;
-  water: number;
-  totalkwh: number;
-}
-
 const PRIORITY_COLORS: Record<JobPriority, string> = {
   high: "#F97316",
   medium: "#2563EB",
@@ -366,43 +218,6 @@ function formatChartCountWithZero(v: number | string) {
 }
 
 const LABEL_TEXT_STYLE = { fontSize: 11, fontWeight: 600 as const };
-
-function buildComparisonSnapshot(jobs: Job[]): ComparisonSnapshot {
-  const total = jobs.length;
-  const pm = jobs.filter((job) => jobIsPm(job)).length;
-  const nonPm = total - pm;
-  return { total, pm, nonPm };
-}
-
-function buildComparisonMetrics(
-  current: ComparisonSnapshot,
-  previous: ComparisonSnapshot,
-): ComparisonMetric[] {
-  return [
-    { label: "Job orders", current: current.total, previous: previous.total },
-    { label: "PM jobs", current: current.pm, previous: previous.pm },
-    { label: "Non-PM jobs", current: current.nonPm, previous: previous.nonPm },
-  ].map((row) => {
-    const delta = row.current - row.previous;
-    const deltaPct =
-      row.previous === 0 ? null : Math.round((delta / row.previous) * 100);
-    return { ...row, delta, deltaPct };
-  });
-}
-
-function buildUtilitySnapshot(
-  rows: UtilityConsumptionRow[],
-): UtilityMonthSnapshot {
-  return rows.reduce(
-    (acc, row) => {
-      acc.nightsale += Number(row.nightsale) || 0;
-      acc.water += Number(row.water) || 0;
-      acc.totalkwh += Number(row.totalkwh) || 0;
-      return acc;
-    },
-    { nightsale: 0, water: 0, totalkwh: 0 },
-  );
-}
 
 /** Inner label on stacked room bar when both PM and non-PM exist (avoids duplicating the total). */
 function RoomsInnerSegmentLabel(

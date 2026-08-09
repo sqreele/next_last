@@ -1,6 +1,7 @@
 'use client';
 
 import React, { ReactNode } from 'react';
+import Link from 'next/link';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
 import { Shield, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -78,7 +79,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error, onRetry }) => (
             </Button>
           )}
           <Button asChild className="w-full">
-            <a href="/auth/login">Go to Login</a>
+            <Link href="/auth/login">Go to Login</Link>
           </Button>
         </div>
       </CardContent>

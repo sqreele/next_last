@@ -158,6 +158,7 @@ function DesktopNav({
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Collapse sidebar"
             onClick={toggleCollapse}
             className="h-8 w-8 hover:bg-[var(--pcms-surface-soft)]"
           >
@@ -238,7 +239,7 @@ function DesktopNav({
             size="icon"
             className="h-10 w-full border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
             onClick={() => appSignOut({ callbackUrl: "/auth/login" })}
-            title="Logout"
+            aria-label="Log out"
           >
             <LogOut className="h-4 w-4" />
           </Button>
@@ -249,7 +250,7 @@ function DesktopNav({
             size="icon"
             onClick={toggleCollapse}
             className="mt-4 h-10 w-full hover:bg-[var(--pcms-surface-soft)]"
-            title="Expand Sidebar"
+            aria-label="Expand sidebar"
           >
             <ChevronDown className="h-4 w-4 rotate-90" />
           </Button>
@@ -517,6 +518,7 @@ function MobileSearch() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Close search"
               className="h-9 w-9"
               onClick={() => setIsOpen(false)}
             >

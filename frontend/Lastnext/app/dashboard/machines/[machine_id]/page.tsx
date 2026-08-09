@@ -42,6 +42,7 @@ import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import dynamic from "next/dynamic";
 import type { MachineDetail } from "@/app/lib/api/machine-contracts";
+import type { PaginatedResponse } from "@/app/lib/api-contracts";
 
 // Dynamically import QRCode to avoid SSR issues
 const QRCode = dynamic(
@@ -196,7 +197,7 @@ export default function MachineDetailPage({
   const fetchPMHistory = async () => {
     setLoadingHistory(true);
     try {
-      const response = await apiClient.get("/api/v1/preventive-maintenance/", {
+      const response = await apiClient.get<PaginatedResponse<PMHistory>>("/api/v1/preventive-maintenance/", {
         params: {
           machine_id: unwrappedParams.machine_id,
           page_size: 100,
@@ -204,12 +205,7 @@ export default function MachineDetailPage({
         },
       });
 
-      let historyData: PMHistory[] = [];
-      if (Array.isArray(response.data)) {
-        historyData = response.data;
-      } else if (response.data && "results" in response.data) {
-        historyData = response.data.results || [];
-      }
+      const historyData = response.data.results;
 
       // Sort by scheduled date (most recent first)
       historyData.sort(

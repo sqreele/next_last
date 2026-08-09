@@ -135,21 +135,8 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
       const response = await preventiveMaintenanceService.getAllPreventiveMaintenance(fetchParams);
       
       if (response.success && response.data) {
-        // Handle both array and paginated responses
-        let items: PreventiveMaintenance[];
-        let total: number;
-        
-        if (Array.isArray(response.data)) {
-          items = response.data;
-          total = response.data.length;
-        } else {
-          // Paginated response
-          items = response.data.results;
-          total = response.data.count;
-        }
-        
-        setMaintenanceItems(items);
-        setTotalCount(total);
+        setMaintenanceItems(response.data.results);
+        setTotalCount(response.data.count);
       } else {
         setError(response.message || 'Failed to fetch maintenance items');
         setMaintenanceItems([]);
@@ -202,21 +189,8 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
     try {
       const response = await preventiveMaintenanceService.getPreventiveMaintenanceByMachine(machineId);
       if (response.success && response.data) {
-        // Handle both array and paginated responses
-        let items: PreventiveMaintenance[];
-        let total: number;
-        
-        if (Array.isArray(response.data)) {
-          items = response.data;
-          total = response.data.length;
-        } else {
-          // Paginated response
-          items = response.data.results;
-          total = response.data.count;
-        }
-        
-        setMaintenanceItems(items);
-        setTotalCount(total);
+        setMaintenanceItems(response.data.results);
+        setTotalCount(response.data.count);
       }
     } catch (error: any) {
       console.error('Error fetching maintenance by machine:', error);

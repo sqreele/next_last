@@ -11,7 +11,6 @@ import { createPreventiveMaintenanceService } from '@/app/lib/PreventiveMaintena
 import { fetchTopics } from '@/app/lib/data.server';
 import MachineService from '@/app/lib/MachineService';
 import type { SearchParams, DashboardStats } from '@/app/lib/stores/usePreventiveMaintenanceStore';
-import type { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { logger } from '@/app/lib/utils/logger';
 
 const MIN_LOADER_MS = 400;
@@ -149,34 +148,10 @@ export function usePreventiveMaintenanceActions() {
       if (requestId !== maintenanceRequestRef.current) return;
       
       if (response.success && response.data) {
-        let items: any[];
-        let total: number;
-        let totalPages: number | undefined;
-        let currentPage: number | undefined;
-        
-        if (Array.isArray(response.data)) {
-          items = response.data;
-          total = response.data.length;
-          totalPages = 1;
-          currentPage = 1;
-        } else {
-          // Paginated response - TypeScript now knows this is PaginatedMaintenanceResponse
-          // Import the type from PreventiveMaintenanceService or define it locally
-          type PaginatedResponse = {
-            results?: PreventiveMaintenance[];
-            count?: number;
-            total_pages?: number;
-            current_page?: number;
-            page_size?: number;
-          };
-          
-          const paginatedResponse = response.data as PaginatedResponse;
-          
-          items = paginatedResponse.results || [];
-          total = paginatedResponse.count || 0;
-          totalPages = paginatedResponse.total_pages;
-          currentPage = paginatedResponse.current_page;
-        }
+        const items = response.data.results;
+        const total = response.data.count;
+        const totalPages = response.data.total_pages;
+        const currentPage = response.data.current_page;
         
         setMaintenanceItems(items);
         setTotalCount(total);
@@ -184,12 +159,8 @@ export function usePreventiveMaintenanceActions() {
         // Update filter params with current page if paginated (but don't trigger another fetch)
         // This ensures the UI state matches the backend response
         // Check if response is paginated (not an array) and has page_size property
-        if (totalPages !== undefined && currentPage !== undefined && !Array.isArray(response.data)) {
-          // Type guard: check if it's a paginated response
-          const paginatedData = response.data as { page_size?: number };
-          
-          // Only proceed if page_size exists
-          if (paginatedData.page_size !== undefined) {
+        if (totalPages !== undefined && currentPage !== undefined) {
+          const paginatedData = response.data;
             // Validate that currentPage doesn't exceed totalPages
             const validCurrentPage = Math.max(1, Math.min(currentPage, totalPages));
             
@@ -211,7 +182,6 @@ export function usePreventiveMaintenanceActions() {
               // Note: The page component's useEffect will sync this back to useFilterStore
               // when it detects the change, but we don't want to trigger another fetch here
             }
-          }
         }
       } else {
         setError(response.message || 'Failed to fetch maintenance items');

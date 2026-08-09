@@ -112,20 +112,30 @@ export interface UploadImagesData {
 }
 
 // Add interface for paginated response - matches backend MaintenancePagination response
-interface PaginatedMaintenanceResponse {
+export interface PaginatedMaintenanceResponse {
   results: PreventiveMaintenance[];
   count: number;
   total_pages: number;
   current_page: number;
   page_size: number;
-  next?: string | null;
-  previous?: string | null;
+  next: string | null;
+  previous: string | null;
 }
 
-// Union type for API responses
-type MaintenanceApiResponse =
-  | PreventiveMaintenance[]
-  | PaginatedMaintenanceResponse;
+type MaintenanceApiResponse = PaginatedMaintenanceResponse;
+
+function isPaginatedMaintenanceResponse(
+  value: unknown,
+): value is PaginatedMaintenanceResponse {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "results" in value &&
+    Array.isArray(value.results) &&
+    "count" in value &&
+    typeof value.count === "number"
+  );
+}
 
 class PreventiveMaintenanceService {
   private baseUrl: string = "/api/v1/preventive-maintenance";
@@ -205,11 +215,7 @@ class PreventiveMaintenanceService {
     items: PreventiveMaintenance[];
     count: number;
   } {
-    if (Array.isArray(data)) {
-      return { items: data, count: data.length };
-    } else {
-      return { items: data.results || [], count: data.count || 0 };
-    }
+    return { items: data.results, count: data.count };
   }
 
   // ENHANCED: getAllPreventiveMaintenance with better typing
@@ -246,17 +252,18 @@ class PreventiveMaintenanceService {
       if (cleanParams.machine_id) {
       }
 
-      let response: any;
+      let data: MaintenanceApiResponse;
 
       if (this.accessToken) {
         // Use direct backend call with stored token
-        response = await apiClient.get<MaintenanceApiResponse>(
+        const response = await apiClient.get<MaintenanceApiResponse>(
           `${this.baseUrl}/`,
           {
             params: cleanParams,
             headers: this.getAuthHeaders(),
           },
         );
+        data = response.data;
       } else {
         // Use Next.js API proxy to include auth automatically
 
@@ -269,18 +276,15 @@ class PreventiveMaintenanceService {
             `Failed to fetch preventive maintenance: ${res.status}`,
           );
         }
-        const data = await res.json();
+        data = await res.json();
+      }
 
-        // Return in the same format as apiClient
-        response = { data };
+      if (!isPaginatedMaintenanceResponse(data)) {
+        throw new Error("Invalid preventive maintenance paginated response");
       }
 
       // Extract items for logging
-      const { items, count } = this.extractItemsFromResponse(response.data);
-
-      if (Array.isArray(response.data)) {
-      } else {
-      }
+      const { items } = this.extractItemsFromResponse(data);
 
       // Log machine filtering results
       if (cleanParams.machine_id && items.length > 0) {
@@ -289,7 +293,7 @@ class PreventiveMaintenanceService {
 
       return {
         success: true,
-        data: response.data,
+        data,
         message: `Fetched ${items.length} maintenance items successfully`,
       };
     } catch (error: any) {
@@ -317,83 +321,22 @@ class PreventiveMaintenanceService {
     }
 
     try {
-      // Strategy 1: Try the standard endpoint with machine_id parameter
       const params = { machine_id: machineId, ...additionalParams };
       const response = await this.getAllPreventiveMaintenance(params);
 
       if (response.success && response.data) {
-        // Extract items for validation
         const { items } = this.extractItemsFromResponse(response.data);
-
-        // Verify that the items actually match the machine
         const matchingItems = items.filter((item) =>
           this.itemMatchesMachine(item, machineId),
         );
-
-        if (matchingItems.length === items.length || items.length === 0) {
-          return response;
-        } else {
-          // Continue to fallback strategies
+        if (matchingItems.length !== items.length) {
+          console.warn("Backend machine filter returned non-matching PM records", {
+            machineId,
+            returned: items.length,
+            matching: matchingItems.length,
+          });
         }
-      }
-
-      // Strategy 2: Try alternative parameter names
-      const alternativeParams = [
-        { machine: machineId, ...additionalParams },
-        { machine_ids: machineId, ...additionalParams },
-        { machineId: machineId, ...additionalParams },
-      ];
-
-      for (const altParams of alternativeParams) {
-        try {
-          const altResponse = await this.getAllPreventiveMaintenance(altParams);
-
-          if (altResponse.success && altResponse.data) {
-            const { items: altItems } = this.extractItemsFromResponse(
-              altResponse.data,
-            );
-            const matchingAltItems = altItems.filter((item) =>
-              this.itemMatchesMachine(item, machineId),
-            );
-
-            if (matchingAltItems.length > 0) {
-              return altResponse;
-            }
-          }
-        } catch (error) {}
-      }
-
-      // Strategy 3: Get all items and filter client-side
-      const allResponse =
-        await this.getAllPreventiveMaintenance(additionalParams);
-
-      if (allResponse.success && allResponse.data) {
-        const { items: allItems } = this.extractItemsFromResponse(
-          allResponse.data,
-        );
-        const filteredItems = allItems.filter((item) =>
-          this.itemMatchesMachine(item, machineId),
-        );
-
-        // Return in the same format as the original response
-        if (Array.isArray(allResponse.data)) {
-          return {
-            success: true,
-            data: filteredItems,
-            message: `Found ${filteredItems.length} maintenance items for machine ${machineId}`,
-          };
-        } else {
-          const paginatedResponse: PaginatedMaintenanceResponse = {
-            ...allResponse.data,
-            results: filteredItems,
-            count: filteredItems.length,
-          };
-          return {
-            success: true,
-            data: paginatedResponse,
-            message: `Found ${filteredItems.length} maintenance items for machine ${machineId}`,
-          };
-        }
+        return response;
       }
 
       // If all strategies fail
@@ -947,10 +890,10 @@ class PreventiveMaintenanceService {
   }
 
   async getPreventiveMaintenances(): Promise<
-    ServiceResponse<PreventiveMaintenance[]>
+    ServiceResponse<PaginatedMaintenanceResponse>
   > {
     try {
-      const response = await apiClient.get<PreventiveMaintenance[]>(
+      const response = await apiClient.get<PaginatedMaintenanceResponse>(
         `${this.baseUrl}/`,
         {
           headers: this.getAuthHeaders(),
@@ -1016,9 +959,9 @@ class PreventiveMaintenanceService {
 
   async getUpcomingMaintenance(
     days: number = 30,
-  ): Promise<ServiceResponse<PreventiveMaintenance[]>> {
+  ): Promise<ServiceResponse<PaginatedMaintenanceResponse>> {
     try {
-      const response = await apiClient.get<PreventiveMaintenance[]>(
+      const response = await apiClient.get<PaginatedMaintenanceResponse>(
         `${this.baseUrl}/upcoming/`,
         {
           params: { days },
@@ -1051,7 +994,7 @@ class PreventiveMaintenanceService {
       if (upcomingResponse.success && upcomingResponse.data) {
         const enhancedStats: DashboardStats = {
           ...statsResponse.data,
-          upcoming: upcomingResponse.data,
+          upcoming: upcomingResponse.data.results,
         };
         return {
           success: true,

@@ -121,17 +121,7 @@ export default function PreventiveMaintenanceDashboard() {
           );
 
         if (response.success && response.data) {
-          let items: PreventiveMaintenance[];
-          let total: number;
-
-          if (Array.isArray(response.data)) {
-            items = response.data;
-            total = response.data.length;
-          } else {
-            // Paginated response
-            items = response.data.results || [];
-            total = response.data.count || 0;
-          }
+          const items = response.data.results;
 
           // Filter out aggregate/placeholder entries (e.g., title "All PM")
           const filtered = items.filter((it) => !isAllPMItem(it));

@@ -145,7 +145,7 @@ class TenantSubscriptionSerializer(serializers.ModelSerializer):
             'external_subscription_id', 'cancel_at_period_end', 'created_at',
             'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
 
 
 class TenantMembershipSerializer(serializers.ModelSerializer):
@@ -2565,10 +2565,16 @@ class UtilityConsumptionSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Validate that property is provided"""
-        if not data.get('property'):
+        property_obj = data.get('property', self.instance.property if self.instance else None)
+        if not property_obj:
             raise serializers.ValidationError({
                 'property': 'Property must be provided.'
             })
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and not (user.is_staff or user.is_superuser):
+            if property_obj.pk not in accessible_property_ids(user):
+                raise serializers.ValidationError({'property': 'Property is outside your accessible properties.'})
         
         # Validate month range
         month = data.get('month')

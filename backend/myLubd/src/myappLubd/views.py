@@ -4681,9 +4681,15 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 if existing is not None:
                     if existing.tenant_id is None:
                         ensure_tenant_for_property(existing, request.user)
-                    elif not user_can_manage_tenant(request.user, existing.tenant):
-                        errors.append({'row': row_index, 'error': 'You cannot attach this property.'})
-                        continue
+                    elif not request.user.is_superuser:
+                        membership = TenantMembership.objects.filter(
+                            tenant=existing.tenant,
+                            user=request.user,
+                            is_active=True,
+                        ).first()
+                        if membership is None or not membership.can_manage_tenant:
+                            errors.append({'row': row_index, 'error': 'You cannot attach this property.'})
+                            continue
                     existing.users.add(request.user)
                     attached.append({
                         'row': row_index,

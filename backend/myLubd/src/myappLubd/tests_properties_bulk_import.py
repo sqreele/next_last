@@ -7,7 +7,8 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from .models import Property
+from .models import Property, SubscriptionPlan, TenantMembership
+from .tenancy import ensure_tenant_for_user
 
 
 User = get_user_model()
@@ -31,6 +32,15 @@ class PropertyBulkImportTests(TestCase):
         self.client = APIClient()
         self.staff = User.objects.create_user(username='owner', password='pw12345!', is_staff=True)
         self.regular = User.objects.create_user(username='alice', password='pw12345!')
+        self.tenant = ensure_tenant_for_user(self.staff)
+        plan = SubscriptionPlan.objects.create(
+            code='bulk-import-test',
+            name='Bulk Import Test',
+            max_properties=10,
+        )
+        self.tenant.subscription.plan = plan
+        self.tenant.subscription.status = 'active'
+        self.tenant.subscription.save(update_fields=['plan', 'status'])
 
     def _post(self, payload, **extra):
         return self.client.post('/api/v1/properties/bulk-import/', payload, **extra)
@@ -68,6 +78,11 @@ class PropertyBulkImportTests(TestCase):
         # duplicates.
         self._post({'file': _csv_file(GOOD_CSV)}, format='multipart')
         other_staff = User.objects.create_user(username='owner2', password='pw12345!', is_staff=True)
+        TenantMembership.objects.create(
+            tenant=self.tenant,
+            user=other_staff,
+            role='admin',
+        )
         self.client.force_authenticate(user=other_staff)
         resp = self._post({'file': _csv_file(GOOD_CSV)}, format='multipart')
         self.assertEqual(Property.objects.count(), 2)
@@ -84,6 +99,30 @@ class PropertyBulkImportTests(TestCase):
         self.assertEqual(resp.data['created_count'], 1)
         self.assertEqual(resp.data['error_count'], 1)
         self.assertEqual(resp.data['errors'][0]['row'], 2)
+
+    def test_foreign_property_attach_is_rejected_with_deterministic_partial_success(self):
+        foreign_tenant = ensure_tenant_for_user(self.regular)
+        foreign = Property.objects.create(
+            name='Foreign Existing',
+            property_id='FOREIGN-PROP',
+            tenant=foreign_tenant,
+        )
+        foreign.users.add(self.regular)
+        self.client.force_authenticate(user=self.staff)
+        csv_text = (
+            'name,property_id,description\n'
+            'Foreign Existing,FOREIGN-PROP,Must not attach\n'
+            'Allowed New,,Valid row\n'
+        )
+
+        resp = self._post({'file': _csv_file(csv_text)}, format='multipart')
+
+        self.assertEqual(resp.status_code, status.HTTP_207_MULTI_STATUS, resp.content)
+        self.assertEqual(resp.data['created_count'], 1)
+        self.assertEqual(resp.data['attached_count'], 0)
+        self.assertEqual(resp.data['error_count'], 1)
+        self.assertFalse(foreign.users.filter(pk=self.staff.pk).exists())
+        self.assertTrue(Property.objects.filter(name='Allowed New', tenant=self.tenant).exists())
 
 
 class PropertyExportTests(TestCase):

@@ -187,7 +187,7 @@ class JobCommentTests(APITestCase):
         _login(self.client, self.owner)
         resp = self.client.post('/api/v1/jobs/', {
             'description': 'Lights flickering',
-            'remarks': '',
+            'remarks': 'Initial report',
             'priority': 'low',
             'status': 'pending',
             'room_id': self.room.room_id,

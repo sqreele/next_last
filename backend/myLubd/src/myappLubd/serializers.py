@@ -1067,7 +1067,7 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
     def get_property_id(self, obj):
         # Prefer properties via job -> rooms
         if obj.job and obj.job.rooms.exists():
-            properties = Property.objects.filter(rooms__job=obj.job).distinct()
+            properties = Property.objects.filter(rooms__jobs=obj.job).distinct()
             return [prop.property_id for prop in properties]
 
         # Fallback: infer from machines' property
@@ -2001,10 +2001,6 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             instance.machines.set(Machine.objects.filter(machine_id__in=machine_ids))
         return instance
 
-    def validate_assigned_to(self, value):
-        """Custom validation for assigned_to field"""
-        return value
-
     def validate(self, data):
         frequency = data.get('frequency')
         custom_days = data.get('custom_days')
@@ -2040,9 +2036,14 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                     'completed_date': 'Completion date cannot be earlier than scheduled date'
                 })
 
-        machine_ids = data.get('machine_ids', [])
-        # Require at least one machine
-        if not machine_ids or len(machine_ids) == 0:
+        machine_ids_supplied = 'machine_ids' in data
+        machine_ids = data.get('machine_ids')
+        if not machine_ids_supplied and self.instance is not None:
+            machine_ids = list(self.instance.machines.values_list('machine_id', flat=True))
+
+        # Creation requires a property anchor. Partial updates may retain the
+        # instance's existing machines without resending the relationship.
+        if not machine_ids:
             raise serializers.ValidationError({
                 'machine_ids': 'At least one machine is required.'
             })
@@ -2053,11 +2054,31 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'machine_ids': 'One or more machine_ids are invalid.'
             })
-        property_ids = set(machine.property.property_id for machine in machines)
+        property_ids = set(machines.values_list('property_id', flat=True))
         if len(property_ids) > 1:
             raise serializers.ValidationError({
                 'machine_ids': 'All machines must belong to the same property.'
             })
+
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user and not (user.is_staff or user.is_superuser):
+            allowed_property_ids = accessible_property_ids(user)
+            if not property_ids.issubset(allowed_property_ids):
+                raise serializers.ValidationError({
+                    'machine_ids': 'One or more machines are outside your accessible properties.'
+                })
+
+            assigned_to = data.get(
+                'assigned_to',
+                self.instance.assigned_to if self.instance is not None else None,
+            )
+            if assigned_to is not None:
+                assignee_property_ids = accessible_property_ids(assigned_to)
+                if not property_ids.issubset(assignee_property_ids):
+                    raise serializers.ValidationError({
+                        'assigned_to': 'Assigned user does not have access to the selected property.'
+                    })
         
         return data
 

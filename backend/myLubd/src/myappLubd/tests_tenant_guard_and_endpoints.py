@@ -228,6 +228,7 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
             scheduled_date=now.replace(hour=9, minute=0, second=0, microsecond=0),
             frequency='weekly',
             status='pending',
+            created_by=self.user,
         )
         # Anchor a job for the today PM so it shows up in the tenant-scoped
         # queryset (PMs filter through jobs.rooms.properties OR machines).
@@ -247,6 +248,7 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
             scheduled_date=now - timedelta(days=2),
             frequency='quarterly',
             status='pending',
+            created_by=self.user,
         )
         self.pm_overdue.job = Job.objects.create(
             user=self.user,
@@ -287,6 +289,7 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
             next_due_date=next_due,
             frequency='monthly',
             status='completed',
+            created_by=self.user,
         )
         completed_pm.job = Job.objects.create(
             user=self.user,
@@ -320,6 +323,7 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
             next_due_date=next_due,
             frequency='monthly',
             status='completed',
+            created_by=self.user,
         )
         completed_pm.job = Job.objects.create(
             user=self.user,

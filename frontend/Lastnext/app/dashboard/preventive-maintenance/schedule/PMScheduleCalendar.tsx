@@ -18,6 +18,12 @@ import { fetchWithToken } from "@/app/lib/data.server";
 import { Button } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils/cn";
 import { useUser } from "@/app/lib/stores/mainStore";
+import type {
+  PMScheduleDay,
+  PMScheduleFilterStatus,
+  PMScheduleItem,
+  PMScheduleResponse,
+} from "@/app/lib/api/pm-contracts";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -25,41 +31,13 @@ const API_BASE_URL =
     ? "http://localhost:8000"
     : "https://pcms.live");
 
-type StatusFilter = "open" | "completed" | "all";
+type StatusFilter = PMScheduleFilterStatus;
 
-interface PMItem {
-  pm_id?: string | null;
-  plan_id?: string;
-  pmtitle?: string;
-  scheduled_date?: string;
-  completed_date?: string | null;
-  next_due_date?: string | null;
-  status?: string;
-  frequency?: string;
-  priority?: string;
-  calendar_date?: string;
-  occurrence_type?: "scheduled" | "next_due" | "projected" | "generated";
-  calendar_status?: "open" | "completed" | "projected" | "generated";
-  generated_pm_id?: string | null;
-  lead_time_days?: number;
-}
+const getPlanId = (item: PMScheduleItem): string | null =>
+  "plan_id" in item ? item.plan_id : null;
 
-interface DayBucket {
-  date: string;
-  weekday: string;
-  items: PMItem[];
-  overdue_count: number;
-  open_count: number;
-  completed_count: number;
-}
-
-interface ScheduleResponse {
-  from: string;
-  to: string;
-  days: DayBucket[];
-  total: number;
-  status: StatusFilter;
-}
+const getGeneratedPmId = (item: PMScheduleItem): string | null =>
+  "generated_pm_id" in item ? item.generated_pm_id : null;
 
 function toISODate(date: Date): string {
   const y = date.getFullYear();
@@ -94,7 +72,7 @@ export function PMScheduleCalendar() {
   });
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
   const [days, setDays] = useState(30);
-  const [data, setData] = useState<ScheduleResponse | null>(null);
+  const [data, setData] = useState<PMScheduleResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -135,7 +113,7 @@ export function PMScheduleCalendar() {
       property_id: selectedPropertyId,
     });
     const url = `${API_BASE_URL}/api/v1/preventive-maintenance/schedule/?${params.toString()}`;
-    fetchWithToken<ScheduleResponse>(url, token)
+    fetchWithToken<PMScheduleResponse>(url, token)
       .then((res) => {
         if (cancelled) return;
         setData(res);
@@ -159,7 +137,7 @@ export function PMScheduleCalendar() {
   ]);
 
   const dayIndex = useMemo(() => {
-    const map = new Map<string, DayBucket>();
+    const map = new Map<string, PMScheduleDay>();
     data?.days.forEach((b) => map.set(b.date, b));
     return map;
   }, [data]);
@@ -412,7 +390,7 @@ export function PMScheduleCalendar() {
                     <div className="mt-1 space-y-0.5 overflow-hidden">
                       {previewItems.map((item) => (
                         <div
-                          key={`${item.pm_id || item.plan_id}-${item.calendar_date || item.scheduled_date}-${item.occurrence_type || "scheduled"}`}
+                          key={`${item.pm_id || getPlanId(item)}-${item.calendar_date}-${item.occurrence_type}`}
                           className={cn(
                             "truncate rounded-md px-1.5 py-0.5 text-[10px] font-extrabold leading-4",
                             item.occurrence_type === "projected"
@@ -423,14 +401,14 @@ export function PMScheduleCalendar() {
                                   ? "bg-emerald-100 text-emerald-900"
                                   : "bg-blue-100 text-blue-900",
                           )}
-                          title={`${item.occurrence_type === "projected" ? "Projected" : item.occurrence_type === "next_due" ? "Next due" : "Scheduled"}: ${item.pmtitle || item.pm_id || item.plan_id}`}
+                          title={`${item.occurrence_type === "projected" ? "Projected" : item.occurrence_type === "next_due" ? "Next due" : "Scheduled"}: ${item.pmtitle || item.pm_id || getPlanId(item)}`}
                         >
                           {item.occurrence_type === "projected"
                             ? "Plan: "
                             : item.occurrence_type === "next_due"
                               ? "Next due: "
                               : ""}
-                          {item.pmtitle || `#${item.pm_id || item.plan_id}`}
+                          {item.pmtitle || `#${item.pm_id || getPlanId(item)}`}
                         </div>
                       ))}
                       {hiddenItems > 0 && (
@@ -494,8 +472,9 @@ export function PMScheduleCalendar() {
           ) : (
             <ul className="space-y-2">
               {selectedBucket.items.map((item) => {
-                const targetPmId = item.generated_pm_id || item.pm_id;
-                const itemKey = `${targetPmId || item.plan_id}-${item.calendar_date || item.scheduled_date}`;
+                const planId = getPlanId(item);
+                const targetPmId = getGeneratedPmId(item) || item.pm_id;
+                const itemKey = `${targetPmId || planId}-${item.calendar_date}`;
                 const cardBody = (
                   <>
                     <div className="min-w-0">
@@ -505,7 +484,7 @@ export function PMScheduleCalendar() {
                       <p className="text-xs font-semibold text-slate-500">
                         {targetPmId
                           ? `#${targetPmId}`
-                          : `Plan #${item.plan_id}`}{" "}
+                          : `Plan #${planId}`}{" "}
                         · {item.frequency || "one-off"}
                       </p>
                       {item.calendar_date && (
@@ -541,9 +520,9 @@ export function PMScheduleCalendar() {
                       >
                         {cardBody}
                       </Link>
-                    ) : item.plan_id ? (
+                    ) : planId ? (
                       <Link
-                        href={`/dashboard/preventive-maintenance/${item.plan_id}`}
+                        href={`/dashboard/preventive-maintenance/${planId}`}
                         className="flex items-start justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50/50 p-3 transition-colors hover:border-purple-300 hover:bg-purple-50"
                       >
                         {cardBody}

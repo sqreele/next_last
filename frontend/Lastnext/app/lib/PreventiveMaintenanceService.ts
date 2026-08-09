@@ -11,6 +11,7 @@ import {
 // Removed next-auth usage; apiClient handles auth headers
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
+import type { PMListItem, PMListResponse } from "./api/pm-contracts";
 
 export type CreatePreventiveMaintenanceData = {
   pmtitle: string;
@@ -59,7 +60,7 @@ export interface DashboardStats {
     name: string;
     count: number;
   }[];
-  upcoming: PreventiveMaintenance[];
+  upcoming: PMListItem[];
 }
 
 export interface PMMasterPlan {
@@ -112,15 +113,7 @@ export interface UploadImagesData {
 }
 
 // Add interface for paginated response - matches backend MaintenancePagination response
-export interface PaginatedMaintenanceResponse {
-  results: PreventiveMaintenance[];
-  count: number;
-  total_pages: number;
-  current_page: number;
-  page_size: number;
-  next: string | null;
-  previous: string | null;
-}
+export type PaginatedMaintenanceResponse = PMListResponse;
 
 type MaintenanceApiResponse = PaginatedMaintenanceResponse;
 
@@ -165,15 +158,10 @@ class PreventiveMaintenanceService {
 
   // Helper method to check if an item matches a machine
   private itemMatchesMachine(
-    item: PreventiveMaintenance,
+    item: PMListItem,
     machineId: string,
   ): boolean {
     if (!machineId) return true;
-
-    // Check direct machine_id property
-    if (item.machine_id === machineId) {
-      return true;
-    }
 
     // Check machines array/object
     if (item.machines) {
@@ -212,7 +200,7 @@ class PreventiveMaintenanceService {
 
   // Helper method to extract items from API response
   private extractItemsFromResponse(data: MaintenanceApiResponse): {
-    items: PreventiveMaintenance[];
+    items: PMListResponse["results"];
     count: number;
   } {
     return { items: data.results, count: data.count };

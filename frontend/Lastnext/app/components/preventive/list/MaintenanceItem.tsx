@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { PreventiveMaintenance } from "@/app/lib/preventiveMaintenanceModels";
+import type { PMListItem } from "@/app/lib/api/pm-contracts";
 import {
   Eye,
   Edit,
@@ -18,19 +18,19 @@ import { Badge } from "@/app/components/ui/badge";
 import { StatusBadge } from "@/app/components/StatusBadge";
 
 interface MaintenanceItemProps {
-  item: PreventiveMaintenance;
+  item: PMListItem;
   isSelected: boolean;
   onSelect: (checked: boolean) => void;
   onDelete: (id: string) => void;
   formatDate: (date: string) => string;
-  getMachineNames: (machines: PreventiveMaintenance["machines"]) => string;
-  getStatusInfo: (item: PreventiveMaintenance) => {
+  getMachineNames: (machines: PMListItem["machines"]) => string;
+  getStatusInfo: (item: PMListItem) => {
     text: string;
     color: string;
     icon: string;
   };
   // getFrequencyText removed - frequency no longer displayed
-  verifyPMProperty?: (item: PreventiveMaintenance) => {
+  verifyPMProperty?: (item: PMListItem) => {
     matches: boolean;
     message: string;
     machinesAtProperty: number;

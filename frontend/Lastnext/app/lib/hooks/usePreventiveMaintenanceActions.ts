@@ -320,11 +320,12 @@ export function usePreventiveMaintenanceActions() {
       const response = await service.updatePreventiveMaintenance(pmId, data);
       
       if (response.success && response.data) {
-        // Update in store
         const updatedData = response.data;
-        setMaintenanceItems(maintenanceItems.map(item => 
-          item.pm_id === pmId ? updatedData : item
-        ));
+        const refreshed = await service.getAllPreventiveMaintenance(filterParams);
+        if (refreshed.success && refreshed.data) {
+          setMaintenanceItems(refreshed.data.results);
+          setTotalCount(refreshed.data.count);
+        }
         return updatedData;
       } else {
         setError(response.message || 'Failed to update maintenance item');
@@ -342,7 +343,7 @@ export function usePreventiveMaintenanceActions() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, maintenanceItems, setLoading, setMaintenanceItems, setError]);
+  }, [accessToken, filterParams, setLoading, setMaintenanceItems, setTotalCount, setError]);
 
   // Complete maintenance
   const completeMaintenance = useCallback(async (pmId: string, data: any): Promise<any | null> => {
@@ -357,11 +358,12 @@ export function usePreventiveMaintenanceActions() {
       const response = await service.completePreventiveMaintenance(pmId, data);
       
       if (response.success && response.data) {
-        // Update in store
         const completedData = response.data;
-        setMaintenanceItems(maintenanceItems.map(item => 
-          item.pm_id === pmId ? completedData : item
-        ));
+        const refreshed = await service.getAllPreventiveMaintenance(filterParams);
+        if (refreshed.success && refreshed.data) {
+          setMaintenanceItems(refreshed.data.results);
+          setTotalCount(refreshed.data.count);
+        }
         return completedData;
       } else {
         setError(response.message || 'Failed to complete maintenance item');
@@ -374,7 +376,7 @@ export function usePreventiveMaintenanceActions() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, maintenanceItems, setLoading, setMaintenanceItems, setError]);
+  }, [accessToken, filterParams, setLoading, setMaintenanceItems, setTotalCount, setError]);
 
   return {
     // State

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { usePreventiveMaintenanceActions } from "@/app/lib/hooks/usePreventiveMaintenanceActions";
-import { PreventiveMaintenance } from "@/app/lib/preventiveMaintenanceModels";
+import type { PMListItem } from "@/app/lib/api/pm-contracts";
 import { preventiveMaintenanceService } from "@/app/lib/PreventiveMaintenanceService";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import Image from "next/image";
@@ -38,7 +38,7 @@ const getImageUrl = (image: any): string | null => {
 };
 
 // Helper function to determine PM status
-const determinePMStatus = (item: PreventiveMaintenance): string => {
+const determinePMStatus = (item: PMListItem): string => {
   // If status is already set, return it
   if (item.status) {
     const normalizedStatus = item.status.toLowerCase();
@@ -75,7 +75,7 @@ const formatFrequencyName = (frequency: string | undefined | null): string => {
 };
 
 // Exclude placeholder/aggregate PM records like "All PM" from counts/lists
-const isAllPMItem = (item: PreventiveMaintenance): boolean => {
+const isAllPMItem = (item: PMListItem): boolean => {
   const title = (item?.pmtitle || "").trim().toLowerCase();
   if (!title) return false;
   return (
@@ -95,7 +95,7 @@ export default function PreventiveMaintenanceDashboard() {
   // Pagination state for upcoming maintenance
   const [upcomingPage, setUpcomingPage] = useState(1);
   const [upcomingPageSize, setUpcomingPageSize] = useState(10);
-  const [upcomingItems, setUpcomingItems] = useState<PreventiveMaintenance[]>(
+  const [upcomingItems, setUpcomingItems] = useState<PMListItem[]>(
     [],
   );
   const [upcomingTotal, setUpcomingTotal] = useState(0);
@@ -159,7 +159,7 @@ export default function PreventiveMaintenanceDashboard() {
 
     // Filter out aggregate/placeholder entries (e.g., title "All PM")
     const filtered = maintenanceItems.filter(
-      (item: PreventiveMaintenance) => !isAllPMItem(item),
+      (item: PMListItem) => !isAllPMItem(item),
     );
 
     return {
@@ -255,7 +255,7 @@ export default function PreventiveMaintenanceDashboard() {
   };
 
   // Get maintenance title with fallback
-  const getMaintenanceTitle = (item: PreventiveMaintenance): string => {
+  const getMaintenanceTitle = (item: PMListItem): string => {
     return item.pmtitle || `Maintenance #${item.pm_id}`;
   };
 
@@ -701,10 +701,10 @@ export default function PreventiveMaintenanceDashboard() {
                 <tbody className="bg-card divide-y divide-gray-200">
                   {upcomingItems
                     .filter(
-                      (item: PreventiveMaintenance) =>
+                      (item: PMListItem) =>
                         item && typeof item === "object",
                     )
-                    .map((item: PreventiveMaintenance) => {
+                    .map((item: PMListItem) => {
                       // Determine PM status
                       const status = item.status || determinePMStatus(item);
 

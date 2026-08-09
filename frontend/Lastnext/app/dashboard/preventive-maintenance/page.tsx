@@ -7,7 +7,7 @@ import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMa
 import { useFilterStore } from '@/app/lib/stores';
 import { useAuthStore } from '@/app/lib/stores/useAuthStore';
 import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
-import { PreventiveMaintenance, determinePMStatus } from '@/app/lib/preventiveMaintenanceModels';
+import type { PMListItem } from '@/app/lib/api/pm-contracts';
 
 // Import types
 import { FilterState, MachineOption, Stats } from '@/app/lib/hooks/filterTypes';
@@ -137,7 +137,7 @@ function PreventiveMaintenanceListPageContent() {
   }, [machines, maintenanceItems]);
 
   // Verify preventive maintenance item's machines against selected property
-  const verifyPMProperty = useCallback((item: PreventiveMaintenance): { matches: boolean; message: string; machinesAtProperty: number; totalMachines: number } => {
+  const verifyPMProperty = useCallback((item: PMListItem): { matches: boolean; message: string; machinesAtProperty: number; totalMachines: number } => {
     if (!selectedProperty) {
       return { matches: true, message: 'No property selected', machinesAtProperty: 0, totalMachines: 0 };
     }
@@ -146,12 +146,8 @@ function PreventiveMaintenanceListPageContent() {
       return { matches: true, message: 'No machines assigned', machinesAtProperty: 0, totalMachines: 0 };
     }
     
-    // Check each machine's property
-    const machinesAtProperty = item.machines.filter((machine: any) => {
-      // Machine can have property_id directly or through property object
-      const machinePropertyId = machine.property_id || machine.property?.property_id;
-      return machinePropertyId === selectedProperty;
-    }).length;
+    const matchesSelectedProperty = item.property_id.includes(selectedProperty);
+    const machinesAtProperty = matchesSelectedProperty ? item.machines.length : 0;
     
     const totalMachines = item.machines.length;
     const matches = machinesAtProperty === totalMachines && totalMachines > 0;
@@ -270,8 +266,8 @@ function PreventiveMaintenanceListPageContent() {
           comparison = new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime();
           break;
         case 'status':
-          const statusA = determinePMStatus(a).toLowerCase();
-          const statusB = determinePMStatus(b).toLowerCase();
+          const statusA = a.status;
+          const statusB = b.status;
           comparison = statusA.localeCompare(statusB);
           break;
         // case 'frequency': removed - frequency column no longer displayed

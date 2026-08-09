@@ -1,4 +1,4 @@
-import { PreventiveMaintenance, determinePMStatus } from '@/app/lib/preventiveMaintenanceModels';
+import type { PMListItem } from '@/app/lib/api/pm-contracts';
 
 export function formatDate(dateString: string): string {
   if (!dateString) return 'N/A';
@@ -22,8 +22,8 @@ export function getFrequencyText(frequency: string): string {
   return frequencyMap[frequency] || frequency;
 }
 
-export function getStatusInfo(item: PreventiveMaintenance) {
-  const status = determinePMStatus(item);
+export function getStatusInfo(item: PMListItem) {
+  const status = item.status;
   const normalizedStatus = status?.toLowerCase();
 
   if (normalizedStatus === 'completed' || normalizedStatus === 'complete') {
@@ -49,7 +49,7 @@ export function getStatusInfo(item: PreventiveMaintenance) {
   };
 }
 
-export function getMachineNames(machines: PreventiveMaintenance['machines']): string {
+export function getMachineNames(machines: PMListItem['machines']): string {
   if (!machines?.length) return 'None';
 
   const names = machines

@@ -15,13 +15,14 @@ import {
   CompletePreventiveMaintenanceData
 } from '@/app/lib/PreventiveMaintenanceService';
 import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
+import type { PMListItem } from '@/app/lib/api/pm-contracts';
 import TopicService from '@/app/lib/TopicService';
 import MachineService, { Machine } from '@/app/lib/MachineService';
 import { Topic } from '@/app/lib/TopicService';
 import type { SearchParams, DashboardStats } from '@/app/lib/stores';
 
 export interface PreventiveMaintenanceContextType {
-  maintenanceItems: any[];
+  maintenanceItems: PMListItem[];
   topics: Topic[];
   machines: Machine[];
   statistics: DashboardStats | null;

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
+import type { PMListItem } from '@/app/lib/api/pm-contracts';
 import MaintenanceItem from './MaintenanceItem';
 
 // Define the sort field type
@@ -9,7 +9,7 @@ type SortField = 'date' | 'status' | 'machine';
 type StatusInfo = { text: string; color: string; icon: string };
 
 interface MaintenanceListProps {
-  items: PreventiveMaintenance[];
+  items: PMListItem[];
   selectedItems: string[];
   onSelectAll: (checked: boolean) => void;
   onSelectItem: (id: string, checked: boolean) => void;
@@ -18,10 +18,10 @@ interface MaintenanceListProps {
   sortBy: SortField;
   sortOrder: 'asc' | 'desc';
   formatDate: (date: string) => string;
-  getMachineNames: (machines: PreventiveMaintenance['machines']) => string;
-  getStatusInfo: (item: PreventiveMaintenance) => StatusInfo;
+  getMachineNames: (machines: PMListItem['machines']) => string;
+  getStatusInfo: (item: PMListItem) => StatusInfo;
   // getFrequencyText removed - frequency no longer displayed
-  verifyPMProperty?: (item: PreventiveMaintenance) => { matches: boolean; message: string; machinesAtProperty: number; totalMachines: number };
+  verifyPMProperty?: (item: PMListItem) => { matches: boolean; message: string; machinesAtProperty: number; totalMachines: number };
   selectedProperty?: string | null;
 }
 

@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { PreventiveMaintenance, FrequencyType, Topic } from "@/app/lib/preventiveMaintenanceModels";
 import type { Machine } from "@/app/lib/MachineService";
+import type { PMListItem } from "@/app/lib/api/pm-contracts";
 
 export interface SearchParams {
   status?: string;
@@ -26,12 +27,12 @@ export interface DashboardStats {
     overdue: number;
   };
   frequency_distribution: Record<FrequencyType, number>;
-  upcoming: PreventiveMaintenance[];
+  upcoming: PMListItem[];
   avg_completion_times: Record<string, number>;
 }
 
 interface PreventiveMaintenanceState {
-  maintenanceItems: PreventiveMaintenance[];
+  maintenanceItems: PMListItem[];
   topics: Topic[];
   machines: Machine[];
   statistics: DashboardStats | null;
@@ -42,7 +43,7 @@ interface PreventiveMaintenanceState {
   filterParams: SearchParams;
   
   // Actions
-  setMaintenanceItems: (items: PreventiveMaintenance[]) => void;
+  setMaintenanceItems: (items: PMListItem[]) => void;
   setTopics: (topics: Topic[]) => void;
   setMachines: (machines: Machine[]) => void;
   setStatistics: (stats: DashboardStats | null) => void;
@@ -55,9 +56,9 @@ interface PreventiveMaintenanceState {
   clear: () => void;
   
   // Computed
-  getFilteredItems: () => PreventiveMaintenance[];
-  getItemsByStatus: (status: string) => PreventiveMaintenance[];
-  getItemsByFrequency: (frequency: FrequencyType) => PreventiveMaintenance[];
+  getFilteredItems: () => PMListItem[];
+  getItemsByStatus: (status: string) => PMListItem[];
+  getItemsByFrequency: (frequency: FrequencyType) => PMListItem[];
 }
 
 export const usePreventiveMaintenanceStore = create<PreventiveMaintenanceState>()(
@@ -133,7 +134,7 @@ export const usePreventiveMaintenanceStore = create<PreventiveMaintenanceState>(
         }
 
         if (filterParams.property_id) {
-          filtered = filtered.filter(item => item.property_id === filterParams.property_id);
+          filtered = filtered.filter(item => item.property_id.includes(filterParams.property_id!));
         }
 
         if (filterParams.topic_id) {

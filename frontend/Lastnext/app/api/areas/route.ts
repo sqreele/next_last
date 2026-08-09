@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching areas:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

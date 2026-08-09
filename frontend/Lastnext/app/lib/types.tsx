@@ -8,6 +8,10 @@ import type {
   JobPriority as ApiJobPriority,
   JobStatus as ApiJobStatus,
 } from "./api/job-contracts";
+import type {
+  AreaRef as ApiAreaRef,
+  RoomRef as ApiRoomRef,
+} from "./api/location-contracts";
 
 export type {
   ApiErrorDetails,
@@ -22,6 +26,23 @@ export type {
   JobPutPayload,
   JobsApiFilters,
 } from "./api/job-contracts";
+export type {
+  AreaApiResponse,
+  AreaPatchPayload,
+  AreaQuery,
+  AreaRef,
+  AreaWritePayload,
+  PropertyApiResponse,
+  PropertyPatchPayload,
+  PropertyRef,
+  PropertyWritePayload,
+  RoomApiResponse,
+  RoomFloorsResponse,
+  RoomPatchPayload,
+  RoomQuery,
+  RoomRef,
+  RoomWritePayload,
+} from "./api/location-contracts";
 // NextAuth module augmentation removed; using Auth0 compat session shape
 
 export interface User {
@@ -91,6 +112,7 @@ export interface TopicFromAPI {
   description: string | null;
 }
 
+/** Legacy UI compatibility model; API boundaries should use RoomApiResponse. */
 export interface Room {
   room_id: number;
   name: string;
@@ -136,15 +158,17 @@ export interface Job {
   comments_count?: number;
 }
 
+/** Legacy UI compatibility model; API boundaries should use PropertyApiResponse. */
 export interface Property {
   id: string | number;
   property_id: string;
   name: string;
   description?: string | null | undefined;
   created_at?: string;
-  rooms?: Room[];
+  rooms?: Array<Room | ApiRoomRef>;
 }
 
+/** Legacy UI compatibility model; API boundaries should use AreaApiResponse. */
 export interface Area {
   id: number;
   name: string;
@@ -158,13 +182,7 @@ export interface Area {
   updated_at?: string;
 }
 
-export interface AreaSummary {
-  id: number;
-  name: string;
-  is_active: boolean;
-  property_id?: string;
-  property_name?: string;
-}
+export type AreaSummary = ApiAreaRef;
 
 export interface JobComment {
   id: number;

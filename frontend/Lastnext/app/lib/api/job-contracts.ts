@@ -1,4 +1,5 @@
 import type { PaginatedResponse } from "../api-contracts";
+import type { AreaRef, RoomRef } from "./location-contracts";
 
 export type JobStatus =
   | "pending"
@@ -19,12 +20,7 @@ export interface JobUserSummary {
   display_name: string;
 }
 
-export interface JobRoomSummary {
-  room_id: number;
-  name: string;
-  room_type: string;
-  properties: string[];
-}
+export type JobRoomSummary = RoomRef;
 
 export interface JobTopic {
   id: number;
@@ -33,13 +29,7 @@ export interface JobTopic {
   is_visible_in_create_job: boolean;
 }
 
-export interface JobAreaSummary {
-  id: number;
-  name: string;
-  is_active: boolean;
-  property_id: string;
-  property_name: string;
-}
+export type JobAreaSummary = AreaRef;
 
 export interface JobProfileImage {
   profile_image: string | null;

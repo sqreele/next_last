@@ -34,7 +34,13 @@ import {
 } from "@/app/components/ui/dialog";
 import { useToast } from "@/app/components/ui/use-toast";
 import { useUser } from "@/app/lib/stores/mainStore";
-import type { Area, Property } from "@/app/lib/types";
+import type {
+  ApiErrorDetails,
+  AreaApiResponse as Area,
+  AreaWritePayload,
+  PropertyApiResponse as Property,
+  PropertyRef,
+} from "@/app/lib/types";
 
 type AreaFormState = {
   id?: number;
@@ -42,6 +48,12 @@ type AreaFormState = {
   description: string;
   property_id: string;
   is_active: boolean;
+};
+
+type LegacyProfileProperty = {
+  id: string | number;
+  property_id: string;
+  name: string;
 };
 
 const emptyForm: AreaFormState = {
@@ -53,11 +65,12 @@ const emptyForm: AreaFormState = {
 
 function getErrorMessage(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
-    const data = err.response?.data as any;
+    const data: unknown = err.response?.data;
     if (!data) return err.message || fallback;
     if (typeof data === "string") return data;
-    if (data.detail) return String(data.detail);
-    const fieldMsgs = Object.entries(data)
+    if (typeof data !== "object" || data === null) return err.message || fallback;
+    if ("detail" in data && typeof data.detail === "string") return data.detail;
+    const fieldMsgs = Object.entries(data as ApiErrorDetails)
       .filter(([k]) => k !== "detail")
       .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`);
     return fieldMsgs.length ? fieldMsgs.join(" | ") : err.message || fallback;
@@ -84,10 +97,9 @@ const AreasClient: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Area | null>(null);
 
-  const propertyOptions = useMemo<Property[]>(() => {
+  const propertyOptions = useMemo<Array<PropertyRef | LegacyProfileProperty>>(() => {
     if (properties.length) return properties;
-    const profProps = (userProfile?.properties as any[]) || [];
-    return profProps as Property[];
+    return userProfile?.properties || [];
   }, [properties, userProfile]);
 
   // Map the globally selected property_id (string like "P1A2B3C4") to the
@@ -95,22 +107,22 @@ const AreasClient: React.FC = () => {
   const selectedPropertyPk = useMemo<string | null>(() => {
     if (!selectedPropertyId) return null;
     const match = propertyOptions.find(
-      (p: any) =>
-        String(p?.property_id ?? "") === String(selectedPropertyId) ||
-        String(p?.id ?? "") === String(selectedPropertyId),
+      (p) =>
+        String(p.property_id) === String(selectedPropertyId) ||
+        String(p.id) === String(selectedPropertyId),
     );
     if (!match) return null;
-    return (match as any).id != null ? String((match as any).id) : null;
+    return String(match.id);
   }, [selectedPropertyId, propertyOptions]);
 
   const selectedPropertyName = useMemo(() => {
     if (!selectedPropertyId) return null;
     const match = propertyOptions.find(
-      (p: any) =>
-        String(p?.property_id ?? "") === String(selectedPropertyId) ||
-        String(p?.id ?? "") === String(selectedPropertyId),
+      (p) =>
+        String(p.property_id) === String(selectedPropertyId) ||
+        String(p.id) === String(selectedPropertyId),
     );
-    return (match as any)?.name || null;
+    return match?.name || null;
   }, [selectedPropertyId, propertyOptions]);
 
   const fetchAreas = useCallback(async () => {
@@ -123,7 +135,7 @@ const AreasClient: React.FC = () => {
         params.is_active = String(activeFilter === "active");
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
 
-      const res = await axios.get("/api/areas/", {
+      const res = await axios.get<Area[] | { results: Area[] }>("/api/areas/", {
         params,
         withCredentials: true,
       });
@@ -139,7 +151,7 @@ const AreasClient: React.FC = () => {
 
   const fetchProperties = useCallback(async () => {
     try {
-      const res = await axios.get("/api/properties/", {
+      const res = await axios.get<Property[] | { results: Property[] }>("/api/properties/", {
         withCredentials: true,
       });
       const data = res.data;
@@ -203,7 +215,7 @@ const AreasClient: React.FC = () => {
     }
     setSaving(true);
     try {
-      const payload: any = {
+      const payload: AreaWritePayload = {
         name: form.name.trim(),
         description: form.description.trim() || null,
         is_active: form.is_active,
@@ -279,7 +291,7 @@ const AreasClient: React.FC = () => {
           <Label className="text-xs text-muted-foreground">Status</Label>
           <Select
             value={activeFilter}
-            onValueChange={(v) => setActiveFilter(v as any)}
+            onValueChange={(v: "all" | "active" | "inactive") => setActiveFilter(v)}
           >
             <SelectTrigger>
               <SelectValue />

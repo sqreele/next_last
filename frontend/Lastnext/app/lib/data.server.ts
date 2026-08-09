@@ -1,4 +1,5 @@
 import { Job, Property, JobStatus, Room, User, Topic } from "./types";
+import type { PropertyApiResponse } from "./api/location-contracts";
 import { API_CONFIG } from "./config";
 import { getCsrfHeaders } from "./csrf";
 import { fixJobsImageUrls, fixJobImageUrls, sanitizeJobsData, sanitizeJobData } from "./utils/image-utils";
@@ -205,8 +206,8 @@ export async function fetchWithToken<T>(
   }
 }
 
-export async function fetchProperties(accessToken?: string): Promise<Property[]> {
-  return fetchWithToken<Property[]>('/api/v1/properties/', accessToken);
+export async function fetchProperties(accessToken?: string): Promise<PropertyApiResponse[]> {
+  return fetchWithToken<PropertyApiResponse[]>('/api/v1/properties/', accessToken);
 }
 
 export async function fetchJobsForProperty(

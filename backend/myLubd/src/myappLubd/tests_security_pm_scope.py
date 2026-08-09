@@ -156,3 +156,10 @@ class PreventiveMaintenanceTenantIsolationTests(APITestCase):
         rows = users.data['results'] if isinstance(users.data, dict) else users.data
         returned_users = {row['username'] for row in rows}
         self.assertEqual(returned_users, {self.alice.username})
+
+    def test_schedule_lists_local_pm_without_disclosing_foreign_pm(self):
+        response = self.client.get('/api/v1/preventive-maintenance/schedule/?days=2')
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        ids = {item['pm_id'] for day in response.data['days'] for item in day['items'] if item.get('pm_id')}
+        self.assertIn(self.alice_pm.pm_id, ids)
+        self.assertNotIn(self.bob_pm.pm_id, ids)

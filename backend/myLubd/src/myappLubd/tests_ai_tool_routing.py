@@ -2,6 +2,11 @@ from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 from datetime import datetime
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+from rest_framework import status
+from rest_framework.test import APIClient
 
 from .models import Job, Machine, PreventiveMaintenance, Property, Room, Topic
 from .views import (
@@ -31,6 +36,49 @@ class AIToolRoutingTests(SimpleTestCase):
         message = 'งานประจำเดือนแต่ละเดือนมีกี่งาน'
 
         self.assertTrue(_should_force_recurring_tool(message))
+
+
+class AIChatEndpointRegressionTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username='ai-user', password='pass')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    @patch('myappLubd.view_modules.ai_provider._build_gemini_client')
+    def test_blank_message_is_rejected_before_provider_call(self, build_client):
+        response = self.client.post('/api/v1/ai/chat/', {'message': '   '}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
+        self.assertEqual(response.data, {'detail': 'กรุณาระบุ message ใน request body'})
+        build_client.assert_not_called()
+
+    @patch('myappLubd.view_modules.ai_provider._build_gemini_client')
+    def test_provider_configuration_failure_preserves_service_unavailable_contract(self, build_client):
+        build_client.side_effect = ValueError('GEMINI_API_KEY environment variable is not configured.')
+
+        response = self.client.post('/api/v1/ai/chat/', {'message': 'hello'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE, response.content)
+        self.assertEqual(
+            response.data,
+            {'detail': 'GEMINI_API_KEY environment variable is not configured.'},
+        )
+
+    @patch('myappLubd.view_modules.ai_provider._gemini_config', return_value=object())
+    @patch('myappLubd.view_modules.ai_provider._genai_modules', return_value=(None, object()))
+    @patch('myappLubd.view_modules.ai_provider._build_gemini_client')
+    def test_successful_provider_response_preserves_reply_shape(
+        self, build_client, _genai_modules, _gemini_config
+    ):
+        response_obj = SimpleNamespace(function_calls=[], text='provider reply')
+        build_client.return_value = SimpleNamespace(
+            models=SimpleNamespace(generate_content=Mock(return_value=response_obj))
+        )
+
+        response = self.client.post('/api/v1/ai/chat/', {'message': 'hello'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(response.data, {'reply': 'provider reply'})
 
 
 class AISummaryCategoryDetailsTests(TestCase):

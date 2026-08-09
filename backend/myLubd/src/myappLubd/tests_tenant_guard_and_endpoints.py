@@ -59,8 +59,8 @@ class JobTenantGuardTests(APITestCase):
             'status': 'pending',
             'priority': 'medium',
             'remarks': '',
-            'rooms': [room_id],
-            'topics': [self.topic.id],
+            'room_id': room_id,
+            'topic_data': {'title': self.topic.title},
         }
 
     def test_create_with_own_room_succeeds(self):

@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from datetime import timedelta
 from typing import Optional
+from django.core.exceptions import ImproperlyConfigured
 
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,8 +26,15 @@ except Exception:
     pass
 
 # Security
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-default-secret-key')
 DEBUG = os.getenv('DEBUG', 'False') in ('True', '1', 'true', 'yes')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if DEBUG:
+        # A deterministic key is acceptable only for an explicitly selected
+        # local development environment.
+        SECRET_KEY = 'django-insecure-local-development-key-do-not-use-in-production'
+    else:
+        raise ImproperlyConfigured('DJANGO_SECRET_KEY must be set when DEBUG is disabled.')
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Production Security Settings

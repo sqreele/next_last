@@ -1256,8 +1256,26 @@ def _gemini_config(include_tools=True):
     return types.GenerateContentConfig(**config_kwargs)
 
 
+def _authorized_ai_property(user, requested_property):
+    """Resolve an AI property context without disclosing another tenant's data."""
+    search = str(requested_property or '').strip()
+    if not search:
+        return None
+
+    normalized_search = _normalize_search_text(search)
+    for property_obj in get_accessible_properties(user):
+        if search.lower() in {property_obj.name.lower(), property_obj.property_id.lower()}:
+            return property_obj
+        if normalized_search and normalized_search in {
+            _normalize_search_text(property_obj.name),
+            _normalize_search_text(property_obj.property_id),
+        }:
+            return property_obj
+    return None
+
+
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def chat_with_gemini(request):
     """REST API สำหรับคุยกับ Gemini พร้อม Function Calling เพื่อดึงข้อมูลแจ้งซ่อมจากระบบ"""
     message = str(request.data.get('message') or '').strip()
@@ -1279,6 +1297,15 @@ def chat_with_gemini(request):
             or ''
         ).strip()
         inferred_property_name = _extract_property_name_from_message(message) or request_property_name
+        if inferred_property_name:
+            authorized_property = _authorized_ai_property(request.user, inferred_property_name)
+            if authorized_property is None:
+                return Response(
+                    {'detail': 'ไม่พบ property ที่คุณมีสิทธิ์เข้าถึง'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            # Always pass the canonical, authorized property name to tools.
+            inferred_property_name = authorized_property.name
         model_message = message
         if request_property_name and not _extract_property_name_from_message(message):
             model_message = f"Property context: {request_property_name}\nUser message: {message}"
@@ -1380,22 +1407,38 @@ def chat_with_gemini(request):
         tool_parts = []
         for function_call in function_calls:
             function_args = getattr(function_call, 'args', None) or {}
+            requested_tool_property = (
+                function_args.get('property_name')
+                or function_args.get('branch_name')
+                or inferred_property_name
+            )
+            authorized_tool_property = _authorized_ai_property(request.user, requested_tool_property)
+            if authorized_tool_property is None:
+                tool_result = {'error': 'ไม่พบ property ที่คุณมีสิทธิ์เข้าถึง'}
+                tool_parts.append(
+                    types.Part.from_function_response(
+                        name=function_call.name,
+                        response={'result': tool_result},
+                    )
+                )
+                continue
+            tool_property_name = authorized_tool_property.name
             if function_call.name == 'get_maintenance_summary':
                 tool_result = get_maintenance_summary(
-                    property_name=function_args.get('property_name') or function_args.get('branch_name') or inferred_property_name,
+                    property_name=tool_property_name,
                     room_name=function_args.get('room_name') or function_args.get('room') or '',
                     category_name=function_args.get('category_name') or function_args.get('category') or function_args.get('topic') or '',
                 )
             elif function_call.name == 'get_recurring_maintenance_tasks':
                 tool_result = get_recurring_maintenance_tasks(
-                    property_name=function_args.get('property_name') or function_args.get('branch_name') or inferred_property_name,
+                    property_name=tool_property_name,
                     frequency=function_args.get('frequency') or '',
                     year=function_args.get('year'),
                     month=function_args.get('month'),
                 )
             elif function_call.name == 'get_today_maintenance_jobs':
                 tool_result = get_today_maintenance_jobs(
-                    property_name=function_args.get('property_name') or function_args.get('branch_name') or inferred_property_name,
+                    property_name=tool_property_name,
                 )
             else:
                 tool_result = {'error': f'ไม่รองรับ Tool: {function_call.name}'}
@@ -4717,7 +4760,15 @@ class PreventiveMaintenanceImageUploadView(APIView):
 
     def post(self, request, pm_id):
         try:
-            pm = PreventiveMaintenance.objects.get(pm_id=pm_id)
+            queryset = PreventiveMaintenance.objects.all()
+            if not (request.user.is_staff or request.user.is_superuser):
+                property_ids = accessible_property_ids(request.user) or set()
+                queryset = queryset.filter(
+                    Q(job__rooms__properties__id__in=property_ids)
+                    | Q(job__area__property_id__in=property_ids)
+                    | Q(machines__property_id__in=property_ids)
+                ).distinct()
+            pm = queryset.get(pm_id=pm_id)
 
             before_image = request.FILES.get('before_image')
             after_image = request.FILES.get('after_image')

@@ -91,7 +91,9 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: myLubd.settings
       PYTHONPATH: /app
-      DEBUG: 1
+      # Production must never inherit Django's permissive DEBUG behaviour.
+      DEBUG: 0
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required in production}
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1 [::1] ${DOMAIN} www.${DOMAIN} django-backend backend
       DJANGO_CORS_ORIGINS: https://${DOMAIN}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN}

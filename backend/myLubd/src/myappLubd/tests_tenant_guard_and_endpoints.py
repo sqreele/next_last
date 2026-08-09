@@ -118,6 +118,51 @@ class JobTenantGuardTests(APITestCase):
         self.assertIn(resp.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED), resp.content)
 
 
+class SecurityBoundaryRegressionTests(APITestCase):
+    def setUp(self):
+        self.alice = User.objects.create_user(username='security-alice', password='pw12345!')
+        self.bob = User.objects.create_user(username='security-bob', password='pw12345!')
+        self.prop_a = Property.objects.create(name='Security Hotel A')
+        self.prop_a.users.add(self.alice)
+        self.prop_b = Property.objects.create(name='Security Hotel B')
+        self.prop_b.users.add(self.bob)
+        self.machine_b = Machine.objects.create(
+            machine_id='SEC-B-1',
+            name='Tenant B pump',
+            category='Pump',
+            property=self.prop_b,
+        )
+        self.pm_b = PreventiveMaintenance.objects.create(
+            pmtitle='Tenant B inspection',
+            scheduled_date=timezone.now(),
+            frequency='monthly',
+            created_by=self.bob,
+        )
+        self.pm_b.machines.add(self.machine_b)
+
+    def test_ai_chat_requires_authentication(self):
+        response = self.client.post('/api/v1/ai/chat/', {'message': 'สรุปงาน'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_ai_property_context_rejects_other_tenant_before_external_call(self):
+        _login(self.client, self.alice)
+        response = self.client.post(
+            '/api/v1/ai/chat/',
+            {'message': 'สรุปงาน', 'property_name': self.prop_b.name},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_pm_image_upload_hides_other_tenant_record(self):
+        _login(self.client, self.alice)
+        response = self.client.post(
+            f'/api/v1/preventive-maintenance/{self.pm_b.pm_id}/upload-images/',
+            {},
+            format='multipart',
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
 class JobAuditLogTests(APITestCase):
     def setUp(self):
         self.client = APIClient()

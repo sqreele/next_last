@@ -1025,7 +1025,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     formikHelpers: FormikHelpers<FormValues>,
   ) => {
     const { setSubmitting, resetForm } = formikHelpers;
-    let isMounted = true;
+    const isMounted = true;
 
     clearError();
     setSubmitError(null);

@@ -196,15 +196,15 @@ export default function ProfileDisplay() {
   // Check if user has properties
   const hasProperties = userProperties && userProperties.length > 0;
 
-  if (loading) {
-    return <LoadingSkeleton />;
-  }
-
   useEffect(() => {
     if (!loading && !userProfile) {
       router.replace("/auth/login");
     }
   }, [loading, userProfile, router]);
+
+  if (loading) {
+    return <LoadingSkeleton />;
+  }
 
   if (!userProfile) {
     return null;

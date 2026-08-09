@@ -1,91 +1,78 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
+import { getAccessToken, useUser } from "@auth0/nextjs-auth0/client";
 
-// Try to import Auth0 hooks, but fall back gracefully if they fail
-let useUser: any = null;
-let getAccessToken: any = null;
-
-try {
-  const auth0 = require('@auth0/nextjs-auth0');
-  useUser = auth0.useUser;
-  getAccessToken = auth0.getAccessToken;
-} catch (error) {
-}
+type ClientAuthUser = {
+  id: string;
+  username: string;
+  email?: string;
+  profile_image?: string;
+  positions: string;
+  properties: unknown[];
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpires?: number;
+  created_at: string;
+};
 
 export function useClientAuth0() {
+  const auth0 = useUser();
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
-
-  // Call useUser at the top level if available
-  const auth0User = useUser ? useUser() : null;
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [tokenError, setTokenError] = useState<Error | null>(null);
+  const [user, setUser] = useState<ClientAuthUser | null>(null);
 
   useEffect(() => {
-    // If Auth0 hooks are available, try to use them
-    if (useUser && getAccessToken && auth0User) {
-      try {
-        if (auth0User.user && !auth0User.isLoading) {
-          // Get the access token from Auth0
-          const getToken = async () => {
-            try {
-              const token = await getAccessToken();
-              setAccessToken(token);
-              setUser({
-                id: auth0User.user.sub || auth0User.user.email || 'user',
-                username: auth0User.user.nickname || auth0User.user.name || auth0User.user.email || 'user',
-                email: auth0User.user.email,
-                profile_image: auth0User.user.picture,
-                positions: 'User',
-                properties: [],
-                accessToken: token || '',
-                refreshToken: '',
-                accessTokenExpires: undefined,
-                created_at: new Date().toISOString(),
-              });
-              setIsLoading(false);
-            } catch (err) {
-              console.error('Failed to get Auth0 access token:', err);
-              setError(err);
-              setIsLoading(false);
-            }
-          };
-          
-          setIsLoading(true);
-          getToken();
-        } else if (auth0User.isLoading) {
-          setIsLoading(true);
-        } else {
-          setIsLoading(false);
-          setUser(null);
-        }
-        
-        if (auth0User.error) {
-          setError(auth0User.error);
-        }
-      } catch (err) {
-        console.error('Error using Auth0 hooks:', err);
-        // Fall back to mock system
-        useMockSystem();
-      }
-    } else {
-      // Auth0 hooks not available, use mock system
-      useMockSystem();
+    if (auth0.isLoading) return;
+    if (auth0.error) {
+      setTokenError(auth0.error);
+      return;
     }
-  }, [auth0User]);
+    if (!auth0.user) {
+      setUser(null);
+      setAccessToken(null);
+      return;
+    }
 
-  // No fallback system - Auth0 only
-  const useMockSystem = () => {
-    setError(new Error('Auth0 authentication required'));
-    setIsLoading(false);
-  };
+    let cancelled = false;
+    setTokenLoading(true);
+    getAccessToken()
+      .then((token) => {
+        if (cancelled) return;
+        const identity = auth0.user!;
+        setAccessToken(token);
+        setUser({
+          id: identity.sub || identity.email || "user",
+          username: identity.nickname || identity.name || identity.email || "user",
+          email: identity.email,
+          profile_image: identity.picture,
+          positions: "User",
+          properties: [],
+          accessToken: token,
+          refreshToken: "",
+          created_at: new Date().toISOString(),
+        });
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setTokenError(error instanceof Error ? error : new Error("Unable to obtain an access token"));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setTokenLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth0.error, auth0.isLoading, auth0.user]);
 
   return {
     accessToken,
-    isLoading,
-    error,
+    isLoading: auth0.isLoading || tokenLoading,
+    error: auth0.error || tokenError,
     user,
-    isAuthenticated: !!user
+    isAuthenticated: Boolean(user),
   };
 }

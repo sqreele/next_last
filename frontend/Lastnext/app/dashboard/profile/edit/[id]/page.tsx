@@ -66,6 +66,12 @@ export default function EditProfilePage() {
     }
   }, [userProfile]);
 
+  useEffect(() => {
+    if (!loading && !userProfile) {
+      router.replace("/auth/login");
+    }
+  }, [loading, userProfile, router]);
+
   if (loading) {
     return (
       <div className="w-full max-w-none px-3 py-4 sm:px-6 lg:mx-auto lg:max-w-2xl">
@@ -80,12 +86,6 @@ export default function EditProfilePage() {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (!loading && !userProfile) {
-      router.replace("/auth/login");
-    }
-  }, [loading, userProfile, router]);
 
   if (!userProfile) {
     return null;

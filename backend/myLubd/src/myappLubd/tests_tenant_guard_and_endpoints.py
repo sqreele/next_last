@@ -140,9 +140,11 @@ class SecurityBoundaryRegressionTests(APITestCase):
         )
         self.pm_b.machines.add(self.machine_b)
 
-    def test_ai_chat_requires_authentication(self):
+    def test_ai_chat_rejects_unauthenticated_request(self):
         response = self.client.post('/api/v1/ai/chat/', {'message': 'สรุปงาน'}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        # SessionAuthentication is the first configured DRF authenticator, so
+        # anonymous permission denial consistently uses 403 across protected APIs.
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_ai_property_context_rejects_other_tenant_before_external_call(self):
         _login(self.client, self.alice)

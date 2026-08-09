@@ -143,8 +143,10 @@ class MaintenanceDepthTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
         self.assertEqual(response.data['pm_id'], pm.pm_id)
-        self.assertTrue(InventoryUsage.objects.filter(preventive_maintenance=pm, quantity=1).exists())
-        self.assertIsNotNone(self.machine.last_maintenance_date)
+        # A detail read must not consume stock or mutate maintenance state.
+        self.assertFalse(InventoryUsage.objects.filter(preventive_maintenance=pm).exists())
+        self.machine.refresh_from_db()
+        self.assertIsNone(self.machine.last_maintenance_date)
 
     def test_inventory_consume_rejects_insufficient_stock(self):
         self._login()

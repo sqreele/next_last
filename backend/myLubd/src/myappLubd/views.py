@@ -72,6 +72,8 @@ from .tenancy import (
     user_can_manage_tenant,
 )
 from .timezones import timezone_options
+from .view_modules.common import MaintenancePagination
+from .view_modules.utilities import UtilityConsumptionViewSet
 
 
 GEMINI_CHAT_MODEL = 'gemini-2.5-flash'
@@ -1600,26 +1602,6 @@ def consume_inventory_items(*, user, items, job=None, preventive_maintenance=Non
             ))
     return usage_records
 
-
-# Pagination class
-class MaintenancePagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = 'page_size'
-    page_query_param = 'page'  # Explicitly set page query param name
-    max_page_size = 100
-
-    def get_paginated_response(self, data):
-        page_size = self.get_page_size(self.request) or self.page.paginator.per_page
-        logger.info(f"[Pagination] Page: {self.page.number}, Page Size: {page_size}, Total: {self.page.paginator.count}, Total Pages: {self.page.paginator.num_pages}")
-        return Response({
-            'count': self.page.paginator.count,
-            'total_pages': self.page.paginator.num_pages,
-            'current_page': self.page.number,
-            'page_size': page_size,
-            'next': self.get_next_link(),
-            'previous': self.get_previous_link(),
-            'results': data,
-        })
 
 # Preventive Maintenance ViewSet
 class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
@@ -5779,74 +5761,6 @@ def update_user_profile(request):
             {'error': 'Failed to update user profile'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
-
-# Utility Consumption ViewSet
-class UtilityConsumptionViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint for managing utility consumption records.
-    Tracks electricity (total, on-peak, off-peak), water, and night sale data.
-    """
-    queryset = UtilityConsumption.objects.all()
-    permission_classes = [IsAuthenticated]
-    pagination_class = MaintenancePagination
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['property', 'month', 'year']
-    search_fields = ['property__name']
-    ordering_fields = ['year', 'month', 'created_at', 'updated_at']
-    ordering = ['-year', '-month']
-    
-    def get_queryset(self):
-        """
-        Return utility consumption records filtered by user's accessible properties.
-        """
-        user = self.request.user
-        queryset = UtilityConsumption.objects.select_related('property', 'created_by').all()
-        
-        # Filter by property if user is not staff
-        if not (user.is_staff or user.is_superuser):
-            # Get properties the user has access to
-            user_properties = Property.objects.filter(users=user)
-            queryset = queryset.filter(property__in=user_properties)
-        
-        # Filter by property_id if provided
-        property_id = self.request.query_params.get('property_id')
-        if property_id:
-            queryset = queryset.filter(property__property_id=property_id)
-        
-        # Filter by year if provided
-        year = self.request.query_params.get('year')
-        if year:
-            try:
-                queryset = queryset.filter(year=int(year))
-            except ValueError:
-                pass
-        
-        # Filter by month if provided
-        month = self.request.query_params.get('month')
-        if month:
-            try:
-                queryset = queryset.filter(month=int(month))
-            except ValueError:
-                pass
-        
-        return queryset.distinct()
-    
-    def get_serializer_class(self):
-        """
-        Return appropriate serializer class based on action
-        """
-        if self.action == 'list':
-            return UtilityConsumptionListSerializer
-        return UtilityConsumptionSerializer
-    
-    def perform_create(self, serializer):
-        """Add the current user as the creator when creating a record"""
-        serializer.save(created_by=self.request.user)
-    
-    def perform_update(self, serializer):
-        """Update the updated_at timestamp when updating a record"""
-        serializer.save()
 
 
 class InventoryViewSet(viewsets.ModelViewSet):

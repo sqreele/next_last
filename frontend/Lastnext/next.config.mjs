@@ -53,8 +53,7 @@ const nextConfig = {
   },
   
   eslint: {
-    // Build must validate TypeScript but skip legacy lint debt during production bundling.
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   
   trailingSlash: true, // Optional, depending on your backend
@@ -223,48 +222,9 @@ const nextConfig = {
       }
     }
     
-    // ✅ PERFORMANCE: Add optimization settings (client-only)
-    if (!dev && !isServer) {
-      config.optimization = {
-        ...config.optimization,
-        moduleIds: 'deterministic',
-        runtimeChunk: 'single',
-        splitChunks: {
-          chunks: 'all',
-          cacheGroups: {
-            default: false,
-            vendors: false,
-            // Vendor chunk for node_modules
-            vendor: {
-              name: 'vendor',
-              chunks: 'all',
-              test: /node_modules/,
-              priority: 20
-            },
-            // Common chunks used across multiple pages
-            common: {
-              name: 'common',
-              minChunks: 2,
-              chunks: 'all',
-              priority: 10,
-              reuseExistingChunk: true,
-              enforce: true
-            },
-            // Large libraries get their own chunks
-            recharts: {
-              test: /[\\/]node_modules[\\/](recharts|d3-.*)[\\/]/,
-              name: 'recharts',
-              priority: 30,
-            },
-            radix: {
-              test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
-              name: 'radix-ui',
-              priority: 25,
-            }
-          }
-        }
-      };
-    }
+    // Keep Next.js' route-aware chunking defaults. A single forced vendor
+    // cache group made every route download charting and form dependencies,
+    // even when the page never used them.
     
     // Handle client-side rendering fallbacks
     if (!isServer) {

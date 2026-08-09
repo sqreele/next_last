@@ -51,7 +51,7 @@ const getJobPropertyIds = (job: Job): Set<string> => {
   add(job.property_id);
   job.properties?.forEach(add);
   job.rooms?.forEach((room) => {
-    add(room.property_id);
+    if ("property_id" in room) add(room.property_id);
     room.properties?.forEach(add);
   });
   if (job.area?.property_id) add(job.area.property_id);

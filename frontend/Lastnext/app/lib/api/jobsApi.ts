@@ -1,18 +1,14 @@
 import { API_CONFIG } from '../config';
-import type { Job, JobStatus, PaginatedResponse, Property } from '../types';
+import type { Property } from '../types';
+import type {
+  JobApiResponse,
+  JobCreatePayload,
+  JobListResponse,
+  JobPatchPayload,
+  JobsApiFilters,
+} from './job-contracts';
 
-export interface JobsApiFilters {
-  property?: string;
-  property_id?: string | null;
-  status?: JobStatus;
-  room?: string;
-  user?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  search?: string;
-  is_preventivemaintenance?: boolean;
-  [key: string]: string | number | boolean | null | undefined;
-}
+export type { JobsApiFilters } from './job-contracts';
 
 export interface JobStats {
   total: number;
@@ -25,8 +21,6 @@ export interface JobStats {
   waitingSparepart: number;
 }
 
-type JobMutationData = Record<string, unknown>;
-
 interface JobsApiErrorPayload {
   message?: string;
   code?: string;
@@ -34,8 +28,8 @@ interface JobsApiErrorPayload {
 }
 
 type JobRealtimeEvent =
-  | { type: 'job_updated'; job: Job }
-  | { type: 'job_created'; job: Job }
+  | { type: 'job_updated'; job: JobApiResponse }
+  | { type: 'job_created'; job: JobApiResponse }
   | { type: 'job_deleted'; jobId: number };
 
 // Custom error class for Jobs API
@@ -274,7 +268,7 @@ export class JobsApiService {
   }
 
   // Jobs CRUD operations with pagination support
-  async getJobs(token: string, filters?: JobsApiFilters, page: number = 1, pageSize: number = 24): Promise<PaginatedResponse<Job>> {
+  async getJobs(token: string, filters?: JobsApiFilters, page: number = 1, pageSize: number = 24): Promise<JobListResponse> {
     const params = new URLSearchParams();
     
     // Add pagination params
@@ -283,21 +277,22 @@ export class JobsApiService {
     
     // Add filters
     if (filters) {
-      Object.keys(filters).forEach(key => {
-        if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
+      (Object.keys(filters) as Array<keyof JobsApiFilters>).forEach(key => {
+        const value = filters[key];
+        if (value !== undefined && value !== null && value !== '') {
           // Map legacy client key "property" to backend expected key "property_id"
           const mappedKey = key === 'property' ? 'property_id' : key;
-          params.append(mappedKey, filters[key].toString());
+          params.append(mappedKey, value.toString());
         }
       });
     }
     
     const cacheKey = `jobs:${params.toString()}`;
-    const cached = this.cache.get<PaginatedResponse<Job>>(cacheKey);
+    const cached = this.cache.get<JobListResponse>(cacheKey);
     if (cached) return cached;
 
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/?${params.toString()}`;
-    const response = await this.fetchWithRetry<PaginatedResponse<Job>>(url, token);
+    const response = await this.fetchWithRetry<JobListResponse>(url, token);
     
     this.cache.set(cacheKey, response);
     return response;
@@ -308,9 +303,10 @@ export class JobsApiService {
     const params = new URLSearchParams();
     
     if (filters) {
-      Object.keys(filters).forEach(key => {
-        if (filters[key] !== undefined && filters[key] !== null && filters[key] !== '') {
-          params.append(key, filters[key].toString());
+      (Object.keys(filters) as Array<keyof JobsApiFilters>).forEach(key => {
+        const value = filters[key];
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, value.toString());
         }
       });
     }
@@ -320,21 +316,21 @@ export class JobsApiService {
     return stats;
   }
 
-  async getJob(token: string, jobId: string): Promise<Job> {
+  async getJob(token: string, jobId: string): Promise<JobApiResponse> {
     const cacheKey = `job:${jobId}`;
-    const cached = this.cache.get<Job>(cacheKey);
+    const cached = this.cache.get<JobApiResponse>(cacheKey);
     if (cached) return cached;
 
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`;
-    const job = await this.fetchWithRetry<Job>(url, token);
+    const job = await this.fetchWithRetry<JobApiResponse>(url, token);
     
     this.cache.set(cacheKey, job);
     return job;
   }
 
-  async createJob(token: string, jobData: JobMutationData): Promise<Job> {
+  async createJob(token: string, jobData: JobCreatePayload): Promise<JobApiResponse> {
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/`;
-    const job = await this.fetchWithRetry<Job>(url, token, {
+    const job = await this.fetchWithRetry<JobApiResponse>(url, token, {
       method: 'POST',
       body: JSON.stringify(jobData),
     });
@@ -343,9 +339,9 @@ export class JobsApiService {
     return job;
   }
 
-  async updateJob(token: string, jobId: string, jobData: JobMutationData): Promise<Job> {
+  async updateJob(token: string, jobId: string, jobData: JobPatchPayload): Promise<JobApiResponse> {
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`;
-    const job = await this.fetchWithRetry<Job>(url, token, {
+    const job = await this.fetchWithRetry<JobApiResponse>(url, token, {
       method: 'PATCH',
       body: JSON.stringify(jobData),
     });

@@ -63,18 +63,18 @@ export async function PUT(
     const contentType = request.headers.get('content-type') || '';
     const fetchOptions: RequestInit = {
       method: 'PUT',
-      headers: { 'Authorization': `Bearer ${session.user.accessToken}` } as any,
+      headers: { 'Authorization': `Bearer ${session.user.accessToken}` },
     };
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
-      fetchOptions.body = formData as any;
+      fetchOptions.body = formData;
     } else {
       const body = await request.json();
       fetchOptions.headers = {
-        ...(fetchOptions.headers as any),
+        ...fetchOptions.headers,
         'Content-Type': 'application/json',
-      } as any;
+      };
       fetchOptions.body = JSON.stringify(body);
     }
 
@@ -120,18 +120,18 @@ export async function PATCH(
     const contentType = request.headers.get('content-type') || '';
     const fetchOptions: RequestInit = {
       method: 'PATCH',
-      headers: { 'Authorization': `Bearer ${session.user.accessToken}` } as any,
+      headers: { 'Authorization': `Bearer ${session.user.accessToken}` },
     };
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
-      fetchOptions.body = formData as any;
+      fetchOptions.body = formData;
     } else {
       const body = await request.json();
       fetchOptions.headers = {
-        ...(fetchOptions.headers as any),
+        ...fetchOptions.headers,
         'Content-Type': 'application/json',
-      } as any;
+      };
       fetchOptions.body = JSON.stringify(body);
     }
 
@@ -204,4 +204,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

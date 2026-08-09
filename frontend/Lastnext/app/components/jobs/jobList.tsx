@@ -206,7 +206,7 @@ export default function JobList({
 
     if (Array.isArray(job.rooms)) {
       for (const room of job.rooms) {
-        if (matches(room.property_id)) return true;
+        if ("property_id" in room && matches(room.property_id)) return true;
         if (Array.isArray(room.properties)) {
           for (const prop of room.properties) {
             if (typeof prop === "string" || typeof prop === "number") {

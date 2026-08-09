@@ -1,11 +1,27 @@
 import { DateRange } from "react-day-picker";
 import type { PaginatedResponse as SharedPaginatedResponse } from "./api-contracts";
+import type {
+  JobProfileImage,
+  JobRoomSummary,
+  JobUserSummary,
+  JobImage as ApiJobImage,
+  JobPriority as ApiJobPriority,
+  JobStatus as ApiJobStatus,
+} from "./api/job-contracts";
 
 export type {
   ApiErrorDetails,
   DRFErrorResponse,
   DRFValidationError,
 } from "./api-contracts";
+export type {
+  JobApiResponse,
+  JobCreatePayload,
+  JobListResponse,
+  JobPatchPayload,
+  JobPutPayload,
+  JobsApiFilters,
+} from "./api/job-contracts";
 // NextAuth module augmentation removed; using Auth0 compat session shape
 
 export interface User {
@@ -58,16 +74,10 @@ export interface UserContextType {
   refetch: () => Promise<UserProfile | null>;
 }
 
-export type JobStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'waiting_sparepart';
-export type JobPriority = 'low' | 'medium' | 'high';
+export type JobStatus = ApiJobStatus;
+export type JobPriority = ApiJobPriority;
 
-export interface JobImage {
-  id: number;
-  image_url: string;
-  jpeg_url?: string;
-  uploaded_by?: number | string | User | null;
-  uploaded_at: string;
-}
+export type JobImage = ApiJobImage;
 
 export interface Topic {
   id: number;
@@ -101,16 +111,16 @@ export interface Job {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
-  user: number | string | User;
+  user: number | string | User | JobUserSummary | null;
   user_name?: string;
   technician_name?: string;
   created_by_name?: string;
   updated_by_name?: string;
   updated_by?: number | string | User | null;
-  profile_image?: ProfileImage | null;
+  profile_image?: ProfileImage | JobProfileImage | null;
   images?: JobImage[];
   topics?: Topic[];
-  rooms?: Room[];
+  rooms?: Array<Room | JobRoomSummary>;
   room_name?: string;
   property_id?: string | number;
   properties?: Array<string | number | { property_id?: string | number; id?: string | number }>; // Added

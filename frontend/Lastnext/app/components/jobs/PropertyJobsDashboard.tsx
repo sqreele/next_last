@@ -29,7 +29,7 @@ import {
   useDetailedUsers,
   DetailedUser,
 } from "@/app/lib/hooks/useDetailedUsers";
-import { User, Property } from "@/app/lib/types";
+import { Property } from "@/app/lib/types";
 import { logger } from "@/app/lib/utils/logger";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 
@@ -488,13 +488,7 @@ const PropertyJobsDashboard = ({
   }, [filteredJobs]);
 
   const getUserDisplayName = (
-    user:
-      | User
-      | number
-      | string
-      | { username?: string; id?: string | number; [key: string]: unknown }
-      | null
-      | undefined,
+    user: Job["user"] | undefined,
   ): string => {
     const userStr =
       user === null || user === undefined
@@ -520,7 +514,7 @@ const PropertyJobsDashboard = ({
     ) {
       return getDisplayName(session.user, "Unknown Technician");
     }
-    return getDisplayName(user as any, "Unknown Technician");
+    return getDisplayName(user, "Unknown Technician");
   };
 
   // ✅ PERFORMANCE OPTIMIZATION: Memoized jobs by user data to prevent expensive recalculations

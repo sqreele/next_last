@@ -228,7 +228,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   }, [refreshJobs]);
 
   // Update job status
-  const updateJobStatus = useCallback(async (jobId: string, status: string) => {
+  const updateJobStatus = useCallback(async (jobId: string, status: JobStatus) => {
     if (!isAuthenticated || !accessToken) return;
 
     try {

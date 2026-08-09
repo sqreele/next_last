@@ -67,14 +67,14 @@ export async function POST(request: NextRequest) {
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
-      fetchOptions.body = formData as any;
+      fetchOptions.body = formData;
       // Do not set Content-Type so boundary is preserved
     } else {
       const body = await request.json();
       fetchOptions.headers = {
         ...fetchOptions.headers,
         'Content-Type': 'application/json',
-      } as any;
+      };
       fetchOptions.body = JSON.stringify(body);
     }
 
@@ -105,4 +105,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

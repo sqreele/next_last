@@ -1,17 +1,44 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Job } from "../types";
+import type { JobApiResponse } from "./job-contracts";
 import { JobsApiService } from "./jobsApi";
 
-const job: Job = {
+const job: JobApiResponse = {
   id: 12,
   job_id: "JOB-12",
+  user: {
+    id: 7,
+    username: "technician",
+    first_name: "Test",
+    last_name: "Technician",
+    email: "technician@example.com",
+    full_name: "Test Technician",
+    display_name: "Test Technician",
+  },
+  user_username: "technician",
+  user_first_name: "Test",
+  user_last_name: "Technician",
+  user_email: "technician@example.com",
+  user_name: "Test Technician",
+  technician_name: "Test Technician",
+  created_by_name: "Test Technician",
+  updated_by_name: "Test Technician",
+  updated_by: "technician",
   description: "Inspect pump",
   status: "pending",
   priority: "medium",
+  remarks: "",
   created_at: "2026-08-09T10:00:00Z",
   updated_at: "2026-08-09T10:00:00Z",
   completed_at: null,
-  user: 7,
+  is_defective: false,
+  rooms: [],
+  topics: [],
+  images: [],
+  profile_image: null,
+  image_urls: [],
+  is_preventivemaintenance: false,
+  area: null,
+  comments_count: 0,
 };
 
 function jsonResponse(payload: unknown): Response {
@@ -28,7 +55,15 @@ afterEach(() => {
 describe("JobsApiService contracts", () => {
   it("returns the backend paginated jobs response", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      jsonResponse({ count: 1, next: null, previous: null, results: [job] }),
+      jsonResponse({
+        count: 1,
+        next: null,
+        previous: null,
+        page_size: 24,
+        current_page: 1,
+        total_pages: 1,
+        results: [job],
+      }),
     );
     vi.stubGlobal("fetch", fetchMock);
 

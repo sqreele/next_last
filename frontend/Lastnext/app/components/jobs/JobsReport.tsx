@@ -828,7 +828,9 @@ export default function JobsReport({
           }
           if (typeof prop === "object" && prop !== null) {
             return (
-              String(prop.property_id || prop.id) === String(selectedProperty)
+              String(
+                prop.property_id || ("id" in prop ? prop.id : ""),
+              ) === String(selectedProperty)
             );
           }
           return false;
@@ -846,7 +848,9 @@ export default function JobsReport({
           }
           if (typeof prop === "object" && prop !== null) {
             return (
-              String(prop.property_id || prop.id) === String(selectedProperty)
+              String(
+                prop.property_id || ("id" in prop ? prop.id : ""),
+              ) === String(selectedProperty)
             );
           }
           return false;

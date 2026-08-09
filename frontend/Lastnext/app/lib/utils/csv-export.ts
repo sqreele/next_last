@@ -23,7 +23,7 @@ export function getJobImageUrls(job: Job): string[] {
   const urls: string[] = [];
 
   if (job.images && job.images.length > 0) {
-    urls.push(...job.images.map(img => img.image_url).filter(Boolean));
+    urls.push(...job.images.map(img => img.image_url).filter((url): url is string => Boolean(url)));
   }
 
   if (job.image_urls && job.image_urls.length > 0) {

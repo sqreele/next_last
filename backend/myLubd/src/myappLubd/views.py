@@ -2671,7 +2671,7 @@ class MachineViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
-    def set_maintenance(self, request, pk=None):
+    def set_maintenance(self, request, machine_id=None):
         """Set the last maintenance date to current time"""
         machine = self.get_object()
         machine.last_maintenance_date = timezone.now()
@@ -2683,7 +2683,7 @@ class MachineViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=True, methods=['post'])
-    def change_status(self, request, pk=None):
+    def change_status(self, request, machine_id=None):
         """Change the status of a machine"""
         machine = self.get_object()
         status_value = request.data.get('status')
@@ -2707,7 +2707,7 @@ class MachineViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=True, methods=['post'])
-    def set_preventive_maintenances(self, request, pk=None):
+    def set_preventive_maintenances(self, request, machine_id=None):
         """Associate preventive maintenance schedules with the machine"""
         machine = self.get_object()
         serializer = self.get_serializer(machine, data=request.data)
@@ -2721,7 +2721,7 @@ class MachineViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['get'])
-    def maintenance_history(self, request, pk=None):
+    def maintenance_history(self, request, machine_id=None):
         """Get history of completed maintenance for this machine"""
         machine = self.get_object()
         maintenances = machine.preventive_maintenances.filter(

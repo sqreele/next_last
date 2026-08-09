@@ -1221,6 +1221,12 @@ class MachineCreateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Custom validation for machine creation"""
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        property_obj = data.get('property')
+        if user and property_obj and not (user.is_staff or user.is_superuser):
+            if property_obj.pk not in accessible_property_ids(user):
+                raise serializers.ValidationError({'property': 'Property is outside your accessible properties.'})
         installation_date = data.get('installation_date')
         last_maintenance_date = data.get('last_maintenance_date')
         
@@ -1246,6 +1252,12 @@ class MachineUpdateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Custom validation for machine updates"""
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        property_obj = data.get('property', self.instance.property if self.instance else None)
+        if user and property_obj and not (user.is_staff or user.is_superuser):
+            if property_obj.pk not in accessible_property_ids(user):
+                raise serializers.ValidationError({'property': 'Property is outside your accessible properties.'})
         installation_date = data.get('installation_date')
         last_maintenance_date = data.get('last_maintenance_date')
         
@@ -1267,6 +1279,14 @@ class MachinePreventiveMaintenanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Machine
         fields = ['preventive_maintenance_ids']
+
+    def validate_preventive_maintenance_ids(self, value):
+        pm_instances = PreventiveMaintenance.objects.filter(pm_id__in=value)
+        if pm_instances.count() != len(set(value)):
+            raise serializers.ValidationError('One or more maintenance IDs are invalid.')
+        if self.instance and pm_instances.exclude(machines__property_id=self.instance.property_id).exists():
+            raise serializers.ValidationError('Maintenance must belong to the machine property.')
+        return value
     
     def update(self, instance, validated_data):
         pm_ids = validated_data.pop('preventive_maintenance_ids', [])

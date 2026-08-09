@@ -525,6 +525,10 @@ class JobCommentSerializer(serializers.ModelSerializer):
 
 # Job serializer
 class JobSerializer(serializers.ModelSerializer):
+    # Canonical create contract: notes are optional; both the current form
+    # (omits blank notes) and the legacy form (sends "") remain supported.
+    # Explicit null is still rejected.
+    remarks = serializers.CharField(required=False, allow_blank=True)
     updated_by = serializers.SlugRelatedField(
         slug_field='username',
         queryset=User.objects.all(),

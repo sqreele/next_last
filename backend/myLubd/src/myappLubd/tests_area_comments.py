@@ -128,6 +128,25 @@ class JobWithAreaTests(APITestCase):
         self.assertEqual(created['area_name'], 'Lobby')
         self.assertEqual(created['area_id'], self.area.id)
 
+    def test_create_job_may_omit_remarks_but_rejects_null(self):
+        _login(self.client, self.user)
+        payload = {
+            'description': 'No notes yet',
+            'priority': 'medium',
+            'status': 'pending',
+            'room_id': self.room.room_id,
+            'topic_data': {'title': self.topic.title},
+        }
+        response = self.client.post('/api/v1/jobs/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
+        self.assertEqual(Job.objects.get(job_id=response.data['job_id']).remarks, '')
+
+        payload['description'] = 'Null notes'
+        payload['remarks'] = None
+        response = self.client.post('/api/v1/jobs/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
+        self.assertFalse(Job.objects.filter(description='Null notes').exists())
+
     def test_area_and_room_must_belong_to_same_property(self):
         other_prop = Property.objects.create(name='Hotel Other')
         other_prop.users.add(self.user)

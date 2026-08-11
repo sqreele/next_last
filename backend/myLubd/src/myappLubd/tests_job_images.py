@@ -115,6 +115,10 @@ class OptimizeJobImagesCommandTests(JobImageTestMixin, TestCase):
         call_command('optimize_job_images', '--apply', stdout=StringIO())
         row.refresh_from_db()
         self.assertEqual(row.jpeg_path, row.image.name)
+        self.assertLessEqual(
+            len(row.image.name),
+            JobImage._meta.get_field('image').max_length,
+        )
         with Image.open(row.image.path) as image:
             self.assertEqual(image.format, 'JPEG')
 

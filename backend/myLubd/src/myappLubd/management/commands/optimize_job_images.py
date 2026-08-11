@@ -107,7 +107,11 @@ class Command(BaseCommand):
                 continue
 
             parent = PurePosixPath(old_image).parent
-            target = str(parent / f'{PurePosixPath(old_image).stem}-optimized-{uuid4().hex}.jpg')
+            # ImageField defaults to max_length=100. Reusing the existing stem
+            # can exceed that database limit because uploaded images already
+            # carry a UUID suffix. A fixed unique basename preserves the media
+            # directory while keeping the stored reference safely bounded.
+            target = str(parent / f'optimized-{uuid4().hex}.jpg')
             new_name = storage.save(target, ContentFile(encoded.getvalue()))
             try:
                 with storage.open(new_name, 'rb') as check_file:

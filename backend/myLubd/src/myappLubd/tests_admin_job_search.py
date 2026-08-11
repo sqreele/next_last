@@ -1,9 +1,13 @@
 from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import RequestFactory, TestCase
+from io import BytesIO
+from PIL import Image
 
 from .admin import IsDefectFilter, JobAdmin, _excel_image_for_export
-from .models import Job, Room
+from .models import Job, JobImage, Room
 
 
 User = get_user_model()
@@ -96,18 +100,18 @@ class JobAdminCsvExportTests(TestCase):
             priority='medium',
         )
 
+    @staticmethod
+    def valid_image_upload(name):
+        content = BytesIO()
+        Image.new('RGB', (2, 2), (10, 20, 30)).save(content, 'JPEG')
+        return SimpleUploadedFile(name, content.getvalue(), content_type='image/jpeg')
+
     def test_export_jobs_csv_includes_image_urls_and_display_formulas(self):
         from csv import DictReader
         from io import StringIO
-        from django.core.files.uploadedfile import SimpleUploadedFile
-
         image = self.job.job_images.create(
             uploaded_by=self.user,
-            image=SimpleUploadedFile(
-                'before.jpg',
-                b'not-real-image-bytes',
-                content_type='image/jpeg',
-            ),
+            image=self.valid_image_upload('before.jpg'),
         )
 
         response = self.admin.export_jobs_csv(self.request, Job.objects.filter(pk=self.job.pk))
@@ -124,15 +128,9 @@ class JobAdminCsvExportTests(TestCase):
     def test_export_jobs_google_sheets_csv_uses_image_formulas(self):
         from csv import DictReader
         from io import StringIO
-        from django.core.files.uploadedfile import SimpleUploadedFile
-
         image = self.job.job_images.create(
             uploaded_by=self.user,
-            image=SimpleUploadedFile(
-                'before-for-sheets.jpg',
-                b'not-real-image-bytes',
-                content_type='image/jpeg',
-            ),
+            image=self.valid_image_upload('before-for-sheets.jpg'),
         )
 
         response = self.admin.export_jobs_google_sheets_csv(self.request, Job.objects.filter(pk=self.job.pk))
@@ -147,17 +145,17 @@ class JobAdminCsvExportTests(TestCase):
         )
 
     def test_export_jobs_excel_leaves_mpo_images_as_urls(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile
         from unittest.mock import patch
 
         image = self.job.job_images.create(
             uploaded_by=self.user,
-            image=SimpleUploadedFile(
-                'stereo.mpo',
-                b'not-real-mpo-image-bytes',
-                content_type='image/mpo',
-            ),
         )
+        legacy_name = f'maintenance_job_images/legacy/{image.pk}/stereo.mpo'
+        storage = JobImage._meta.get_field('image').storage
+        stored_name = storage.save(legacy_name, ContentFile(b'legacy-mpo-reference'))
+        self.addCleanup(lambda: storage.delete(stored_name) if storage.exists(stored_name) else None)
+        JobImage.objects.filter(pk=image.pk).update(image=stored_name)
+        image.refresh_from_db()
 
         with patch('openpyxl.drawing.image.Image', side_effect=KeyError('.mpo')):
             response = self.admin.export_jobs_excel(self.request, Job.objects.filter(pk=self.job.pk))

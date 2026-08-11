@@ -10,7 +10,6 @@ import {
   Search,
   CalendarClock,
   Home,
-  MapPin,
   AlertCircle,
 } from "lucide-react";
 import {
@@ -29,130 +28,58 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/app/components/ui/tabs";
-import { Job, Property, Room } from "@/app/lib/types";
-import { useRouter } from "next/navigation";
-import { useUser, useProperties } from "@/app/lib/stores/mainStore";
-import { useSession } from "@/app/lib/session.client";
+import { useUser } from "@/app/lib/stores/mainStore";
 import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
 import {
-  getJobPropertyName,
-  getRoomPropertyName,
-} from "@/app/lib/utils/property-filter";
+  groupSearchResults,
+  type JobSearchResult,
+  type PropertySearchResult,
+  type RoomSearchResult,
+} from "@/app/lib/api/global-search-contracts";
+import { fetchGlobalSearch } from "@/app/lib/api/global-search-client";
 
 export default function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || "";
   const [activeTab, setActiveTab] = useState("all");
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [jobs, setJobs] = useState<JobSearchResult[]>([]);
+  const [properties, setProperties] = useState<PropertySearchResult[]>([]);
+  const [rooms, setRooms] = useState<RoomSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setIsLoading);
 
-  // Get auth token from session
-  const { data: session } = useSession();
-  const accessToken = session?.user?.accessToken;
-  // Get currently selected property (fallback to first user property if available)
   const { selectedPropertyId: selectedProperty } = useUser();
-  const { properties: userProperties } = useProperties();
 
   useEffect(() => {
+    const controller = new AbortController();
+    const debounceTimer = window.setTimeout(() => {
     const fetchSearchResults = async () => {
-      if (!query) return;
+      const normalizedQuery = query.trim();
+      if (!normalizedQuery || !selectedProperty) {
+        setJobs([]);
+        setProperties([]);
+        setRooms([]);
+        setIsLoading(false);
+        return;
+      }
 
       recordLoaderShown();
       setIsLoading(true);
       setError(null);
 
       try {
-        // Add auth headers to requests
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: accessToken ? `Bearer ${accessToken}` : "",
-        };
-
-        // Fetch jobs with proper error handling
-        let jobsData: Job[] = [];
-        try {
-          const effectivePropertyId =
-            selectedProperty || userProperties?.[0]?.property_id;
-          const jobsParams = new URLSearchParams();
-          if (effectivePropertyId)
-            jobsParams.set("property_id", String(effectivePropertyId));
-          if (query) jobsParams.set("search", query);
-          const jobsRes = await fetch(
-            `/api/jobs/${jobsParams.toString() ? `?${jobsParams.toString()}` : ""}`,
-            { headers },
-          );
-          if (jobsRes.ok) {
-            const jobsPayload = await jobsRes.json();
-            jobsData = Array.isArray(jobsPayload)
-              ? jobsPayload
-              : jobsPayload?.results || [];
-            // Ensure we have an array
-            if (!Array.isArray(jobsData)) {
-              console.warn("Jobs data is not an array:", jobsData);
-              jobsData = [];
-            }
-          } else {
-            console.warn("Failed to fetch jobs:", jobsRes.status);
-          }
-        } catch (jobError) {
-          console.error("Error fetching jobs:", jobError);
-        }
-
-        // Fetch properties with proper error handling
-        let propertiesData: Property[] = [];
-        try {
-          const propertiesRes = await fetch("/api/properties", { headers });
-          if (propertiesRes.ok) {
-            propertiesData = await propertiesRes.json();
-            // Ensure we have an array
-            if (!Array.isArray(propertiesData)) {
-              console.warn("Properties data is not an array:", propertiesData);
-              propertiesData = [];
-            }
-          } else {
-            console.warn("Failed to fetch properties:", propertiesRes.status);
-          }
-        } catch (propError) {
-          console.error("Error fetching properties:", propError);
-        }
-
-        // Fetch rooms with proper error handling
-        let roomsData: Room[] = [];
-        try {
-          const effectivePropertyId =
-            selectedProperty || userProperties?.[0]?.property_id;
-          if (!effectivePropertyId) {
-            console.warn("Skipping rooms fetch: no property selected");
-          } else {
-            const roomsRes = await fetch(
-              `/api/rooms/?property=${encodeURIComponent(effectivePropertyId)}`,
-              { headers },
-            );
-            if (roomsRes.ok) {
-              roomsData = await roomsRes.json();
-              // Ensure we have an array
-              if (!Array.isArray(roomsData)) {
-                console.warn("Rooms data is not an array:", roomsData);
-                roomsData = [];
-              }
-            } else {
-              console.warn("Failed to fetch rooms:", roomsRes.status);
-            }
-          }
-        } catch (roomError) {
-          console.error("Error fetching rooms:", roomError);
-        }
-
-        // Set state with our safely fetched data
-        setJobs(jobsData);
-        setProperties(propertiesData);
-        setRooms(roomsData);
+        const payload = await fetchGlobalSearch(
+          { q: normalizedQuery, property_id: selectedProperty },
+          controller.signal,
+        );
+        const grouped = groupSearchResults(payload.results);
+        setJobs(grouped.jobs);
+        setProperties(grouped.properties);
+        setRooms(grouped.rooms);
       } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
         console.error("Error fetching search results:", error);
         setError(
           "An error occurred while fetching search results. Please try again.",
@@ -163,72 +90,16 @@ export default function SearchContent() {
     };
 
     fetchSearchResults();
-  }, [
-    query,
-    accessToken,
-    selectedProperty,
-    userProperties,
-    recordLoaderShown,
-    clearLoadingAfterMinTime,
-  ]);
+    }, 300);
+    return () => {
+      window.clearTimeout(debounceTimer);
+      controller.abort();
+    };
+  }, [query, selectedProperty, recordLoaderShown, clearLoadingAfterMinTime]);
 
-  // Create filtered lists with proper null checks
-  const filteredJobs = Array.isArray(jobs)
-    ? jobs.filter((job) => {
-        if (!job) return false;
-        const q = query.toLowerCase();
-        return [
-          job.description,
-          job.title,
-          job.job_id,
-          job.status,
-          job.priority,
-          job.remarks,
-          job.room_name,
-          job.topics?.map((topic) => topic?.title).join(" "),
-          job.rooms?.map((room) => room?.name).join(" "),
-        ].some((value) =>
-          String(value ?? "")
-            .toLowerCase()
-            .includes(q),
-        );
-      })
-    : [];
-
-  const filteredProperties = Array.isArray(properties)
-    ? properties.filter(
-        (property) =>
-          property &&
-          ((property.name?.toLowerCase() || "").includes(query.toLowerCase()) ||
-            (property.description?.toLowerCase() || "").includes(
-              query.toLowerCase(),
-            ) ||
-            String(property.property_id || "")
-              .toLowerCase()
-              .includes(query.toLowerCase())),
-      )
-    : [];
-
-  const filteredRooms = Array.isArray(rooms)
-    ? rooms.filter(
-        (room) =>
-          room &&
-          ((room.name?.toLowerCase() || "").includes(query.toLowerCase()) ||
-            (room.room_type?.toLowerCase() || "").includes(
-              query.toLowerCase(),
-            ) ||
-            (room.room_id != null
-              ? String(room.room_id).toLowerCase()
-              : ""
-            ).includes(query.toLowerCase()) ||
-            (Array.isArray(room.properties) &&
-              room.properties.some((prop) =>
-                String(prop || "")
-                  .toLowerCase()
-                  .includes(query.toLowerCase()),
-              ))),
-      )
-    : [];
+  const filteredJobs = jobs;
+  const filteredProperties = properties;
+  const filteredRooms = rooms;
 
   const totalResults =
     filteredJobs.length + filteredProperties.length + filteredRooms.length;
@@ -247,7 +118,7 @@ export default function SearchContent() {
           part
         ),
       );
-    } catch (e) {
+    } catch {
       // In case of regex errors
       return text;
     }
@@ -283,7 +154,7 @@ export default function SearchContent() {
     );
   }
 
-  if (!query) {
+  if (!query.trim()) {
     return (
       <div className="flex flex-col items-center justify-center space-y-4 py-12">
         <div className="rounded-full bg-muted p-4">
@@ -309,7 +180,7 @@ export default function SearchContent() {
           No results found
         </h2>
         <p className="text-center text-muted-foreground max-w-md">
-          We couldn't find anything matching "{query}". Try using different
+          We couldn&apos;t find anything matching &quot;{query}&quot;. Try using different
           keywords or filters.
         </p>
         <Button
@@ -330,7 +201,7 @@ export default function SearchContent() {
           <h1 className="text-2xl font-bold text-foreground">Search Results</h1>
           <p className="text-muted-foreground">
             Found {totalResults} {totalResults === 1 ? "result" : "results"} for
-            "{query}"
+            &quot;{query}&quot;
           </p>
         </div>
       </div>
@@ -356,11 +227,10 @@ export default function SearchContent() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
                 {filteredJobs.slice(0, 3).map((job) => (
                   <JobCard
-                    key={job.job_id}
+                    key={job.id}
                     job={job}
                     query={query}
                     highlightMatch={highlightMatch}
-                    properties={properties}
                   />
                 ))}
               </div>
@@ -379,7 +249,7 @@ export default function SearchContent() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
                 {filteredProperties.slice(0, 3).map((property) => (
                   <PropertyCard
-                    key={property.property_id}
+                    key={property.id}
                     property={property}
                     query={query}
                     highlightMatch={highlightMatch}
@@ -402,30 +272,14 @@ export default function SearchContent() {
                 Rooms
               </h2>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
-                {filteredRooms.slice(0, 3).map((room) => {
-                  const relatedJob = jobs.find((job) =>
-                    job?.rooms?.some(
-                      (r) =>
-                        String(r?.room_id || "") ===
-                        String(room?.room_id || ""),
-                    ),
-                  );
-                  return relatedJob ? (
-                    <RoomOnlyJobCard
-                      key={String(room.room_id)}
-                      job={relatedJob}
-                      properties={properties}
-                    />
-                  ) : (
+                {filteredRooms.slice(0, 3).map((room) => (
                     <RoomCard
-                      key={String(room.room_id)}
+                      key={String(room.id)}
                       room={room}
                       query={query}
                       highlightMatch={highlightMatch}
-                      properties={properties}
                     />
-                  );
-                })}
+                ))}
               </div>
               {filteredRooms.length > 3 && (
                 <Button variant="outline" onClick={() => setActiveTab("rooms")}>
@@ -440,11 +294,10 @@ export default function SearchContent() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
             {filteredJobs.map((job) => (
               <JobCard
-                key={job.job_id}
+                key={job.id}
                 job={job}
                 query={query}
                 highlightMatch={highlightMatch}
-                properties={properties}
               />
             ))}
           </div>
@@ -454,7 +307,7 @@ export default function SearchContent() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
             {filteredProperties.map((property) => (
               <PropertyCard
-                key={property.property_id}
+                key={property.id}
                 property={property}
                 query={query}
                 highlightMatch={highlightMatch}
@@ -465,29 +318,14 @@ export default function SearchContent() {
 
         <TabsContent value="rooms" className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:gap-4 lg:grid-cols-3">
-            {filteredRooms.map((room) => {
-              const relatedJob = jobs.find((job) =>
-                job?.rooms?.some(
-                  (r) =>
-                    String(r?.room_id || "") === String(room?.room_id || ""),
-                ),
-              );
-              return relatedJob ? (
-                <RoomOnlyJobCard
-                  key={String(room.room_id)}
-                  job={relatedJob}
-                  properties={properties}
-                />
-              ) : (
+            {filteredRooms.map((room) => (
                 <RoomCard
-                  key={String(room.room_id)}
+                  key={String(room.id)}
                   room={room}
                   query={query}
                   highlightMatch={highlightMatch}
-                  properties={properties}
                 />
-              );
-            })}
+            ))}
           </div>
         </TabsContent>
       </Tabs>
@@ -497,8 +335,7 @@ export default function SearchContent() {
 
 // Updated JobCard with safer property access
 function JobCard({ job, query, highlightMatch }: JobCardProps) {
-  const displayId =
-    typeof job?.job_id === "number" ? `#${job.job_id}` : job?.job_id;
+  const displayId = job.id;
 
   return (
     <Card className="overflow-hidden hover:shadow-soft transition-shadow">
@@ -507,75 +344,33 @@ function JobCard({ job, query, highlightMatch }: JobCardProps) {
           <CardTitle className="text-lg font-semibold line-clamp-1">
             Job {highlightMatch(displayId, query)}
           </CardTitle>
-          <StatusBadge status={job?.status} />
+          <StatusBadge status={job.status} />
         </div>
         <CardDescription className="flex flex-wrap items-center gap-2">
           <span>Priority:</span>
-          <PriorityBadge priority={job?.priority} />
+          <PriorityBadge priority={job.priority} />
         </CardDescription>
       </CardHeader>
       <CardContent className="pb-4">
         <p className="text-sm text-muted-foreground line-clamp-2">
-          {highlightMatch(job?.description, query)}
+          {highlightMatch(job.description, query)}
         </p>
         <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
           <CalendarClock className="h-3.5 w-3.5" />
           <span>
-            {job?.created_at
+            {job.created_at
               ? new Date(job.created_at).toLocaleDateString()
               : "N/A"}
           </span>
         </div>
       </CardContent>
       <CardFooter className="pt-0 border-t bg-muted p-3">
-        <Link href={`/dashboard/jobs/${job?.job_id}`} className="w-full">
+        <Link href={job.url} className="w-full">
           <Button variant="ghost" className="w-full text-sm">
             View Details
           </Button>
         </Link>
       </CardFooter>
-    </Card>
-  );
-}
-
-// Room-Only JobCard with safer property access
-function RoomOnlyJobCard({ job, properties }: RoomOnlyJobCardProps) {
-  const router = useRouter();
-  const { selectedPropertyId: selectedProperty } = useUser();
-  const room = job?.rooms?.[0] as Room | undefined;
-
-  if (!room) return null;
-
-  return (
-    <Card className="flex flex-col h-full transition-all duration-200 bg-card shadow-soft hover:shadow-soft">
-      <CardHeader className="flex-shrink-0 pb-2 pt-3 px-3">
-        <CardTitle className="text-sm font-semibold text-foreground line-clamp-1">
-          Room {room?.name || "N/A"}
-          {room?.room_type ? ` (${room.room_type})` : ""}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 pb-3 px-3">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MapPin className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
-          <span className="font-medium line-clamp-1">
-            {`${getJobPropertyName(job, selectedProperty, properties)} - Room ${room?.name || "N/A"}${room?.room_type ? ` (${room.room_type})` : ""}`}
-          </span>
-        </div>
-        <div className="pt-2 border-t">
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full text-xs h-8 bg-card"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (room) router.push(`/dashboard/rooms/${room.room_id}`);
-            }}
-            disabled={!room?.room_id}
-          >
-            View Room Details
-          </Button>
-        </div>
-      </CardContent>
     </Card>
   );
 }
@@ -591,7 +386,7 @@ function PropertyCard({ property, query, highlightMatch }: PropertyCardProps) {
           {highlightMatch(property.name, query)}
         </CardTitle>
         <CardDescription className="line-clamp-1">
-          ID: {property.property_id}
+          ID: {property.id}
         </CardDescription>
       </CardHeader>
       <CardContent className="pb-4">
@@ -600,12 +395,12 @@ function PropertyCard({ property, query, highlightMatch }: PropertyCardProps) {
         </p>
         <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
           <Package className="h-4 w-4" />
-          <span>{property.rooms?.length || 0} Rooms</span>
+          <span>Property</span>
         </div>
       </CardContent>
       <CardFooter className="pt-0 border-t bg-muted p-3">
         <Link
-          href={`/dashboard/properties/${property.property_id}`}
+          href={property.url}
           className="w-full"
         >
           <Button variant="ghost" className="w-full text-sm">
@@ -618,13 +413,10 @@ function PropertyCard({ property, query, highlightMatch }: PropertyCardProps) {
 }
 
 // RoomCard with safer property access
-function RoomCard({ room, query, highlightMatch, properties }: RoomCardProps) {
+function RoomCard({ room, query, highlightMatch }: RoomCardProps) {
   if (!room) return null;
 
-  const displayId =
-    typeof room.room_id === "number" ? `#${room.room_id}` : room.room_id;
-
-  const getPropertyName = () => getRoomPropertyName(room, properties);
+  const displayId = `#${room.id}`;
 
   return (
     <Card className="overflow-hidden hover:shadow-soft transition-shadow">
@@ -644,7 +436,7 @@ function RoomCard({ room, query, highlightMatch, properties }: RoomCardProps) {
       <CardContent className="pb-4">
         <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
           <Home className="h-4 w-4" />
-          <span>Property: {getPropertyName()}</span>
+          <span>Property: {room.property?.name ?? "N/A"}</span>
         </div>
         <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
           <CalendarClock className="h-3.5 w-3.5" />
@@ -656,7 +448,7 @@ function RoomCard({ room, query, highlightMatch, properties }: RoomCardProps) {
         </div>
       </CardContent>
       <CardFooter className="pt-0 border-t bg-muted p-3">
-        <Link href={`/dashboard/rooms/${room.room_id}`} className="w-full">
+        <Link href={room.url} className="w-full">
           <Button variant="ghost" className="w-full text-sm">
             View Details
           </Button>
@@ -668,22 +460,16 @@ function RoomCard({ room, query, highlightMatch, properties }: RoomCardProps) {
 
 // Types for props
 interface JobCardProps {
-  job: Job;
+  job: JobSearchResult;
   query: string;
   highlightMatch: (
     text: string | undefined | null,
     query: string,
   ) => React.ReactNode;
-  properties?: Property[];
-}
-
-interface RoomOnlyJobCardProps {
-  job: Job;
-  properties?: Property[];
 }
 
 interface PropertyCardProps {
-  property: Property;
+  property: PropertySearchResult;
   query: string;
   highlightMatch: (
     text: string | undefined | null,
@@ -692,11 +478,10 @@ interface PropertyCardProps {
 }
 
 interface RoomCardProps {
-  room: Room;
+  room: RoomSearchResult;
   query: string;
   highlightMatch: (
     text: string | undefined | null,
     query: string,
   ) => React.ReactNode;
-  properties?: Property[];
 }

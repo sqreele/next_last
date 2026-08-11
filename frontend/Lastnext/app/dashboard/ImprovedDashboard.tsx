@@ -10,7 +10,6 @@ import {
   ArrowRight,
   ArrowUpRight,
   BarChart3,
-  CalendarDays,
   CheckCircle2,
   ClipboardList,
   Clock,
@@ -24,14 +23,13 @@ import {
   Sparkles,
   Timer,
   TrendingUp,
-  UserRound,
   Users,
   Wrench,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent } from '@/app/components/ui/card';
 import JobList from '@/app/components/jobs/jobList';
-import { Job, JobStatus } from '@/app/lib/types';
+import { Job, TabValue } from '@/app/lib/types';
 import { getDisplayName } from '@/app/lib/utils/display-name';
 import {
   PriorityBadge,
@@ -48,19 +46,24 @@ import { TechnicianKpiBoard } from '@/app/components/dashboard/TechnicianKpiBoar
 
 type StatTone = 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'secondary';
 
+interface DashboardCssProperties extends React.CSSProperties {
+  '--p'?: number;
+}
+
+function donutProgressStyle(value: number): DashboardCssProperties {
+  return { '--p': value };
+}
+
 const STATUS_SUMMARY: Array<{ value: string; label: string; tone: StatTone }> = [
   { value: 'pending', label: 'Pending', tone: 'primary' },
-  { value: 'assigned', label: 'Assigned', tone: 'info' },
   { value: 'in_progress', label: 'In Progress', tone: 'warning' },
   { value: 'waiting_sparepart', label: 'Waiting Spare Part', tone: 'warning' },
-  { value: 'waiting_vendor', label: 'Waiting Vendor', tone: 'warning' },
   { value: 'completed', label: 'Completed', tone: 'success' },
-  { value: 'verified', label: 'Verified', tone: 'success' },
   { value: 'cancelled', label: 'Cancelled', tone: 'danger' },
   { value: 'defect', label: 'Defect', tone: 'danger' },
 ];
 
-const TAB_CONFIG = [
+const TAB_CONFIG: Array<{ value: TabValue; label: string }> = [
   { value: 'all', label: 'All Jobs' },
   { value: 'pending', label: 'Pending' },
   { value: 'in_progress', label: 'In Progress' },
@@ -197,16 +200,16 @@ export default function ImprovedDashboard() {
       if (job.is_defective) countByStatus.defect = (countByStatus.defect || 0) + 1;
     });
 
-    countByStatus.pending = stats.pending || countByStatus.pending || 0;
-    countByStatus.in_progress = stats.inProgress || countByStatus.in_progress || 0;
-    countByStatus.waiting_spare_part = stats.waitingSparepart || countByStatus.waiting_spare_part || 0;
-    countByStatus.completed = stats.completed || countByStatus.completed || 0;
-    countByStatus.cancelled = stats.cancelled || countByStatus.cancelled || 0;
-    countByStatus.defect = stats.defect || countByStatus.defect || 0;
+    countByStatus.pending = stats.pending;
+    countByStatus.in_progress = stats.inProgress;
+    countByStatus.waiting_spare_part = stats.waitingSparepart;
+    countByStatus.completed = stats.completed;
+    countByStatus.cancelled = stats.cancelled;
+    countByStatus.defect = stats.defect;
 
-    const total = stats.total || jobs.length;
-    const completed = countByStatus.completed || 0;
-    const verified = countByStatus.verified || 0;
+    const total = stats.total;
+    const completed = countByStatus.completed;
+    const verified = 0;
     const overdue = jobs.filter(isOverdue).length;
     const completionRate = total > 0 ? Math.round(((completed + verified) / total) * 100) : 0;
 
@@ -578,9 +581,7 @@ export default function ImprovedDashboard() {
               <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0' }}>
                 <div
                   className="sneat-donut"
-                  style={{
-                    ['--p' as any]: metrics.total > 0 ? Math.round(((metrics.priorityCounts.critical || 0) / metrics.total) * 100) : 0,
-                  }}
+                  style={donutProgressStyle(metrics.total > 0 ? Math.round(((metrics.priorityCounts.critical || 0) / metrics.total) * 100) : 0)}
                   aria-hidden="true"
                 >
                   <div className="sneat-donut__inner">
@@ -806,7 +807,7 @@ export default function ImprovedDashboard() {
                     {selectedTab === value && (
                       <JobList
                         jobs={jobs}
-                        filter={value as JobStatus}
+                        filter={value}
                         properties={properties}
                         viewMode={viewMode}
                         selectedRoom={selectedRoom}

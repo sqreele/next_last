@@ -10,6 +10,7 @@ import TopUsersChart from "./components/TopUsersChart";
 import TrendLineChart from "./components/TrendLineChart";
 import TopicJobsLineChart from "./components/TopicJobsLineChart";
 import { useUser } from "@/app/lib/stores/mainStore";
+import { isDashboardMonthLabel, isDashboardSummaryResponse } from "@/app/lib/api/dashboard-analytics-contracts";
 import {
   aggregateTopics,
   aggregateTopUsers,
@@ -21,8 +22,6 @@ import type {
   DashboardSummaryResponse,
   MonthLabel,
   PMNonPMPoint,
-  StatusPoint,
-  TopUserPoint,
   TrendPoint,
 } from "./types";
 
@@ -90,7 +89,10 @@ export default function ChartDashboardView() {
         if (!response.ok) {
           throw new Error("Unable to load dashboard summary.");
         }
-        const payload: DashboardSummaryResponse = await response.json();
+        const payload: unknown = await response.json();
+        if (!isDashboardSummaryResponse(payload)) {
+          throw new Error("Invalid dashboard summary response contract.");
+        }
         setData(payload);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
@@ -123,12 +125,12 @@ export default function ChartDashboardView() {
   }, [availableYears, selectedYear]);
 
   const filteredTrend = useMemo(() => {
-    if (!data) return [] as TrendPoint[];
+    if (!data) return [];
     return applyMonthYearFilter(data.trendByMonth, selectedMonth, selectedYear);
   }, [data, selectedMonth, selectedYear]);
 
   const filteredPMNonPM = useMemo(() => {
-    if (!data) return [] as PMNonPMPoint[];
+    if (!data) return [];
     return applyMonthYearFilter(
       data.pmNonPmByMonth,
       selectedMonth,
@@ -137,7 +139,7 @@ export default function ChartDashboardView() {
   }, [data, selectedMonth, selectedYear]);
 
   const filteredStatus = useMemo(() => {
-    if (!data) return [] as StatusPoint[];
+    if (!data) return [];
     return applyMonthYearFilter(
       data.statusByMonth,
       selectedMonth,
@@ -146,7 +148,7 @@ export default function ChartDashboardView() {
   }, [data, selectedMonth, selectedYear]);
 
   const filteredTopUsers = useMemo(() => {
-    if (!data) return [] as TopUserPoint[];
+    if (!data) return [];
     return applyMonthYearFilter(
       data.topUsersByMonth,
       selectedMonth,
@@ -243,9 +245,10 @@ export default function ChartDashboardView() {
             <select
               className="mt-1 min-w-[8.5rem] rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-soft"
               value={selectedMonth}
-              onChange={(event) =>
-                setSelectedMonth(event.target.value as MonthOption)
-              }
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value === "All" || isDashboardMonthLabel(value)) setSelectedMonth(value);
+              }}
             >
               {monthOptions.map((option) => (
                 <option key={option} value={option}>

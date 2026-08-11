@@ -7,19 +7,11 @@ import type {
   JobPatchPayload,
   JobsApiFilters,
 } from './job-contracts';
+import { isJobDashboardStats, type JobDashboardStats } from './dashboard-analytics-contracts';
 
 export type { JobsApiFilters } from './job-contracts';
 
-export interface JobStats {
-  total: number;
-  pending: number;
-  inProgress: number;
-  completed: number;
-  cancelled: number;
-  defect: number;
-  preventiveMaintenance: number;
-  waitingSparepart: number;
-}
+export type JobStats = JobDashboardStats;
 
 interface JobsApiErrorPayload {
   message?: string;
@@ -302,17 +294,15 @@ export class JobsApiService {
   async getJobStats(token: string, filters?: JobsApiFilters): Promise<JobStats> {
     const params = new URLSearchParams();
     
-    if (filters) {
-      (Object.keys(filters) as Array<keyof JobsApiFilters>).forEach(key => {
-        const value = filters[key];
-        if (value !== undefined && value !== null && value !== '') {
-          params.append(key, value.toString());
-        }
-      });
+    if (filters?.property_id) {
+      params.set('property_id', filters.property_id);
     }
     
     const url = `${API_CONFIG.baseUrl}/api/v1/jobs/stats/?${params.toString()}`;
-    const stats = await this.fetchWithRetry<JobStats>(url, token);
+    const stats = await this.fetchWithRetry<unknown>(url, token);
+    if (!isJobDashboardStats(stats)) {
+      throw new JobsApiError('Invalid job dashboard statistics response', 502, 'INVALID_RESPONSE');
+    }
     return stats;
   }
 

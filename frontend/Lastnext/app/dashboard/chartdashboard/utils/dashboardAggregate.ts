@@ -1,13 +1,14 @@
 import type { MonthLabel, PMNonPMPoint, StatusPoint, TopUserPoint, TopicPoint } from '../types';
 
 export function aggregateStatus(data: StatusPoint[]) {
-  const totals = data.reduce(
-    (acc, item) => {
-      acc[item.status] = (acc[item.status] ?? 0) + item.count;
-      return acc;
-    },
-    {} as Record<StatusPoint['status'], number>
-  );
+  const totals: Record<StatusPoint['status'], number> = {
+    Completed: 0,
+    'Waiting Sparepart': 0,
+    'Waiting Fix Defect': 0,
+  };
+  data.forEach((item) => {
+    totals[item.status] += item.count;
+  });
 
   return [
     { name: 'Completed', value: totals.Completed ?? 0 },
@@ -95,7 +96,7 @@ export function resolveComparisonPeriod(
   }
 
   if (selectedMonth === 'All') {
-    const y = selectedYear as number;
+    const y = selectedYear;
     return {
       mode: 'year_over_year',
       label: String(y - 1),
@@ -104,7 +105,7 @@ export function resolveComparisonPeriod(
     };
   }
 
-  const { month, year } = previousCalendarMonth(selectedMonth, selectedYear as number);
+  const { month, year } = previousCalendarMonth(selectedMonth, selectedYear);
   return {
     mode: 'month_over_month',
     label: `${month} ${year}`,
@@ -126,44 +127,29 @@ export function applyMonthYearFilter<T extends { month: MonthLabel; year: number
 }
 
 export function aggregateTopUsers(data: TopUserPoint[]) {
-  const totals = data.reduce(
-    (acc, item) => {
-      const existing = acc[item.user] ?? { pm: 0, nonPm: 0 };
-      acc[item.user] = {
-        pm: existing.pm + item.pm,
-        nonPm: existing.nonPm + item.nonPm,
-      };
-      return acc;
-    },
-    {} as Record<string, { pm: number; nonPm: number }>
-  );
+  const totals = new Map<string, { pm: number; nonPm: number }>();
+  data.forEach((item) => {
+    const existing = totals.get(item.user) ?? { pm: 0, nonPm: 0 };
+    totals.set(item.user, { pm: existing.pm + item.pm, nonPm: existing.nonPm + item.nonPm });
+  });
 
-  return Object.entries(totals)
-    .map(([name, values]) => ({ name, ...values }))
+  return Array.from(totals, ([name, values]) => ({ name, ...values }))
     .sort((a, b) => b.pm + b.nonPm - (a.pm + a.nonPm))
     .slice(0, 6);
 }
 
 export function aggregateTopics(data: TopicPoint[]) {
-  const totals = data.reduce(
-    (acc, item) => {
-      const existing = acc[item.topic] ?? {
-        count: 0,
-        pm: 0,
-        nonPm: 0,
-      };
-      acc[item.topic] = {
-        count: existing.count + item.count,
-        pm: existing.pm + (item.pm ?? 0),
-        nonPm: existing.nonPm + (item.nonPm ?? 0),
-      };
-      return acc;
-    },
-    {} as Record<string, { count: number; pm: number; nonPm: number }>
-  );
+  const totals = new Map<string, { count: number; pm: number; nonPm: number }>();
+  data.forEach((item) => {
+    const existing = totals.get(item.topic) ?? { count: 0, pm: 0, nonPm: 0 };
+    totals.set(item.topic, {
+      count: existing.count + item.count,
+      pm: existing.pm + item.pm,
+      nonPm: existing.nonPm + item.nonPm,
+    });
+  });
 
-  return Object.entries(totals)
-    .map(([topic, values]) => ({
+  return Array.from(totals, ([topic, values]) => ({
       topic,
       count: values.count,
       pm: values.pm,

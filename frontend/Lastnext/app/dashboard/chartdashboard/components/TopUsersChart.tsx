@@ -35,8 +35,9 @@ function StackedTotalLabel(props: {
   ) {
     return null;
   }
-  const row = payload as { pm?: number; nonPm?: number };
-  const total = (row.pm ?? 0) + (row.nonPm ?? 0);
+  const pm = "pm" in payload && typeof payload.pm === "number" ? payload.pm : 0;
+  const nonPm = "nonPm" in payload && typeof payload.nonPm === "number" ? payload.nonPm : 0;
+  const total = pm + nonPm;
   if (total === 0) return null;
 
   const nx = typeof x === "number" ? x : Number(x);

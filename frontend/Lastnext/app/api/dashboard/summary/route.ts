@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG } from '@/app/lib/config';
-import type { DashboardSummaryResponse } from '@/app/dashboard/chartdashboard/types';
+import { dashboardSummaryQueryString, isDashboardSummaryResponse } from '@/app/lib/api/dashboard-analytics-contracts';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +12,11 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const queryString = searchParams.toString();
+    const propertyId = searchParams.get('property_id');
+    if (!propertyId) {
+      return NextResponse.json({ error: 'property_id is required' }, { status: 400 });
+    }
+    const queryString = dashboardSummaryQueryString({ property_id: propertyId });
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/dashboard/summary/${queryString ? `?${queryString}` : ''}`;
 
     const response = await fetch(apiUrl, {
@@ -30,7 +34,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const payload: DashboardSummaryResponse = await response.json();
+    const payload: unknown = await response.json();
+    if (!isDashboardSummaryResponse(payload)) {
+      console.error('Invalid dashboard summary response contract');
+      return NextResponse.json({ error: 'Invalid dashboard summary response' }, { status: 502 });
+    }
     return NextResponse.json(payload);
   } catch (error) {
     console.error('Error fetching dashboard summary:', error);

@@ -14,10 +14,12 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Textarea } from "@/app/components/ui/textarea";
 import { useSession } from "@/app/lib/session.client";
+import { useAssigneeOptions } from "@/app/lib/hooks/useAssigneeOptions";
 import {
-  useDetailedUsers,
-  type DetailedUser,
-} from "@/app/lib/hooks/useDetailedUsers";
+  buildJobReassignPayload,
+  toAssigneeOption,
+  type AssigneeOption,
+} from "@/app/lib/api/assignee-contracts";
 import { fetchWithToken } from "@/app/lib/data.server";
 import { Job } from "@/app/lib/types";
 import { getDisplayName } from "@/app/lib/utils/display-name";
@@ -41,10 +43,10 @@ export function ReassignJobButton({
   className,
 }: ReassignJobButtonProps) {
   const { data: session } = useSession();
-  const { users, loading: usersLoading } = useDetailedUsers();
+  const { assignees, loading: usersLoading } = useAssigneeOptions();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<DetailedUser | null>(null);
+  const [selected, setSelected] = useState<AssigneeOption | null>(null);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,24 +82,25 @@ export function ReassignJobButton({
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     const scope = jobPropertyIds.size
-      ? users.filter((user) =>
-          (user.properties || []).some(
+      ? assignees.filter((assignee) =>
+          assignee.properties.some(
             (p) =>
               jobPropertyIds.has(String(p.property_id)) ||
-              jobPropertyIds.has(String((p as { id?: string }).id)),
+              jobPropertyIds.has(String(p.id)),
           ),
         )
-      : users;
-    const list = scope.length ? scope : users;
-    if (!term) return list.slice(0, 25);
-    return list
-      .filter((user) => {
+      : assignees;
+    const list = scope.length ? scope : assignees;
+    const options = list.map(toAssigneeOption);
+    if (!term) return options.slice(0, 25);
+    return options
+      .filter(({ assignee }) => {
         const haystack = [
-          user.username,
-          user.email,
-          user.first_name,
-          user.last_name,
-          user.full_name,
+          assignee.username,
+          assignee.email,
+          assignee.first_name,
+          assignee.last_name,
+          assignee.display_name,
         ]
           .filter(Boolean)
           .join(" ")
@@ -105,7 +108,7 @@ export function ReassignJobButton({
         return haystack.includes(term);
       })
       .slice(0, 25);
-  }, [search, users, jobPropertyIds]);
+  }, [search, assignees, jobPropertyIds]);
 
   const currentAssignee =
     typeof job.user === "object" && job.user
@@ -129,17 +132,18 @@ export function ReassignJobButton({
         `${API_BASE_URL}/api/v1/jobs/${job.job_id}/reassign/`,
         token,
         "POST",
-        {
-          user_id: selected.id,
-          note: note.trim() || undefined,
-        },
+        buildJobReassignPayload(selected.assignee, note),
       );
       setOpen(false);
       setSelected(null);
       setNote("");
       onComplete?.();
-    } catch (err: any) {
-      setError(err?.message || "Could not reassign the job.");
+    } catch (caught: unknown) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not reassign the job.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -197,7 +201,7 @@ export function ReassignJobButton({
           </div>
 
           <div className="max-h-[40vh] space-y-1.5 overflow-y-auto rounded-xl border-2 border-border bg-card p-1">
-            {usersLoading && !users.length ? (
+            {usersLoading && !assignees.length ? (
               <div className="flex items-center gap-2 px-3 py-6 text-sm font-medium text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading
                 teammates...
@@ -207,17 +211,15 @@ export function ReassignJobButton({
                 No teammates match. Try a different search.
               </p>
             ) : (
-              filtered.map((user) => {
-                const active = selected?.id === user.id;
-                const displayName = getDisplayName(
-                  user,
-                  user.username || user.email,
-                );
+              filtered.map((option) => {
+                const { assignee } = option;
+                const active = selected?.value === option.value;
+                const displayName = getDisplayName(assignee, option.label);
                 return (
                   <button
-                    key={user.id}
+                    key={option.value}
                     type="button"
-                    onClick={() => setSelected(user)}
+                    onClick={() => setSelected(option)}
                     aria-pressed={active}
                     className={cn(
                       "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors touch-manipulation",
@@ -234,7 +236,9 @@ export function ReassignJobButton({
                         {displayName}
                       </p>
                       <p className="text-xs font-medium text-muted-foreground line-clamp-1">
-                        {user.positions || user.email || `User #${user.id}`}
+                        {assignee.positions ||
+                          assignee.email ||
+                          `User #${assignee.user_id}`}
                       </p>
                     </div>
                     {active && (

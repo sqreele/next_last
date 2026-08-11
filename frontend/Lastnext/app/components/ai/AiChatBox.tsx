@@ -1,12 +1,20 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { CalendarDays, ClipboardList, LogIn, Send, Wrench } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Textarea } from "@/app/components/ui/textarea";
 import { cn } from "@/app/lib/utils/cn";
 import {
   sendAiChatMessage,
+  AIChatError,
   type AiChatResponse,
 } from "@/app/lib/aiChatService";
 import { signIn, useSession } from "@/app/lib/session.client";
@@ -136,6 +144,10 @@ export default function AiChatBox() {
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const activeRequest = useRef<
+    { controller: AbortController; id: number } | undefined
+  >(undefined);
+  const requestSequence = useRef(0);
 
   const isAuthenticated = status === "authenticated" && Boolean(session?.user);
   const userName = useMemo(
@@ -190,6 +202,14 @@ export default function AiChatBox() {
     });
   }, [greeting, hasProperty, isAuthenticated]);
 
+  useEffect(
+    () => () => {
+      requestSequence.current += 1;
+      activeRequest.current?.controller.abort();
+    },
+    [],
+  );
+
   const trimmedMessage = useMemo(() => message.trim(), [message]);
   const canSubmit =
     trimmedMessage.length > 0 && !isLoading && isAuthenticated && hasProperty;
@@ -213,6 +233,10 @@ export default function AiChatBox() {
     }
 
     const userMessage = nextMessage;
+    activeRequest.current?.controller.abort();
+    const controller = new AbortController();
+    const requestId = ++requestSequence.current;
+    activeRequest.current = { controller, id: requestId };
     setMessage("");
     setError(null);
     setHistory((current) => [
@@ -230,12 +254,23 @@ export default function AiChatBox() {
         property_name:
           activePropertyName ||
           findMentionedPropertyName(history, availableProperties),
-      });
+      }, { signal: controller.signal });
+      if (requestSequence.current !== requestId) return;
       appendAssistantReply(response);
     } catch (submitError) {
+      if (
+        requestSequence.current !== requestId ||
+        (submitError instanceof AIChatError &&
+          submitError.category === "cancelled")
+      ) {
+        return;
+      }
       setError(getErrorMessage(submitError));
     } finally {
-      setIsLoading(false);
+      if (requestSequence.current === requestId) {
+        activeRequest.current = undefined;
+        setIsLoading(false);
+      }
     }
   };
 

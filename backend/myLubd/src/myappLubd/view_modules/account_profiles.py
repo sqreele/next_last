@@ -1,6 +1,8 @@
 import logging
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -8,8 +10,9 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from ..models import Property, UserProfile
+from ..models import Property, TenantMembership, UserProfile
 from ..serializers import UserProfileSerializer, UserSerializer
+from ..tenancy import TENANT_ADMIN_ROLES, get_accessible_properties, get_user_tenants
 from .common import display_name_from_user
 
 
@@ -22,17 +25,57 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = UserProfile.objects.all()
     serializer_class = UserProfileSerializer
 
+    def _visible_profiles(self):
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return UserProfile.objects.all()
+
+        tenant_ids = get_user_tenants(user).values_list('id', flat=True)
+        property_ids = get_accessible_properties(user).values_list('id', flat=True)
+        return UserProfile.objects.filter(
+            Q(user=user)
+            | Q(user__tenant_memberships__tenant_id__in=tenant_ids,
+                user__tenant_memberships__is_active=True)
+            | Q(properties__id__in=property_ids)
+            | Q(user__accessible_properties__id__in=property_ids)
+        ).distinct()
+
+    def _manageable_tenant_ids(self):
+        user = self.request.user
+        if user.is_superuser or user.is_staff:
+            return None
+        return TenantMembership.objects.filter(
+            user=user,
+            is_active=True,
+            role__in=TENANT_ADMIN_ROLES,
+        ).values_list('tenant_id', flat=True)
+
+    def _manageable_profiles(self):
+        tenant_ids = self._manageable_tenant_ids()
+        if tenant_ids is None:
+            return UserProfile.objects.all()
+        return UserProfile.objects.filter(
+            user__tenant_memberships__tenant_id__in=tenant_ids,
+            user__tenant_memberships__is_active=True,
+        ).distinct()
+
+    def _manageable_properties(self):
+        tenant_ids = self._manageable_tenant_ids()
+        if tenant_ids is None:
+            return Property.objects.all()
+        return Property.objects.filter(tenant_id__in=tenant_ids)
+
     def get_queryset(self):
-        # For the 'detailed' action, only admins can see all user profiles
-        if self.action == 'detailed':
+        if self.action in {'add_property', 'remove_property'}:
+            queryset = self._manageable_profiles()
+        elif self.action in {'update', 'partial_update', 'destroy'}:
             if self.request.user.is_superuser or self.request.user.is_staff:
-                return UserProfile.objects.all().prefetch_related('properties')
+                queryset = UserProfile.objects.all()
             else:
-                # Non-admin users can only see their own profile
-                return UserProfile.objects.filter(user=self.request.user).prefetch_related('properties')
+                queryset = UserProfile.objects.filter(user=self.request.user)
         else:
-            # For other actions, return only the current user's profile
-            return UserProfile.objects.filter(user=self.request.user).prefetch_related('properties')
+            queryset = self._visible_profiles()
+        return queryset.select_related('user').prefetch_related('properties')
 
     @action(detail=False, methods=['get'])
     def me(self, request):
@@ -42,11 +85,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def detailed(self, request):
-        """Get all user profiles with properties for admin users"""
-        # Verify admin access
-        if not (request.user.is_superuser or request.user.is_staff):
-            raise PermissionDenied("Only admin users can access all user profiles")
-        
+        """Get user profiles within the caller's server-derived access scope."""
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
@@ -82,23 +121,43 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def add_property(self, request, pk=None):
-        profile = self.get_object()
         property_id = request.data.get('property_id')
         if not property_id:
             return Response({'error': 'property_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-        property = get_object_or_404(Property, property_id=property_id)
-        profile.properties.add(property)
+
+        with transaction.atomic():
+            profile = self.get_object()
+            property = get_object_or_404(self._manageable_properties(), property_id=property_id)
+            membership = get_object_or_404(
+                TenantMembership.objects.select_for_update(),
+                tenant_id=property.tenant_id,
+                user=profile.user,
+                is_active=True,
+            )
+            membership.properties.add(property)
+            property.users.add(profile.user)
+            profile.properties.add(property)
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def remove_property(self, request, pk=None):
-        profile = self.get_object()
         property_id = request.data.get('property_id')
         if not property_id:
             return Response({'error': 'property_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-        property = get_object_or_404(Property, property_id=property_id)
-        profile.properties.remove(property)
+
+        with transaction.atomic():
+            profile = self.get_object()
+            property = get_object_or_404(self._manageable_properties(), property_id=property_id)
+            membership = get_object_or_404(
+                TenantMembership.objects.select_for_update(),
+                tenant_id=property.tenant_id,
+                user=profile.user,
+                is_active=True,
+            )
+            membership.properties.remove(property)
+            property.users.remove(profile.user)
+            profile.properties.remove(property)
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
 
@@ -221,4 +280,3 @@ def update_user_profile(request):
             {'error': 'Failed to update user profile'}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-

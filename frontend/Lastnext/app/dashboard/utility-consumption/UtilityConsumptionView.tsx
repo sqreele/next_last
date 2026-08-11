@@ -9,6 +9,7 @@ import SummaryCards from "./components/SummaryCards";
 import YoYLineChart from "./components/YoYLineChart";
 import type { MetricKey, MonthName, UtilityConsumptionRow } from "./types";
 import { useUser } from "@/app/lib/stores/mainStore";
+import { fetchAllUtilityConsumption } from "@/app/lib/api/utility-consumption-client";
 import {
   buildBudgetStatusPieData,
   buildPrimaryYearSeries,
@@ -18,6 +19,7 @@ import {
   filterRowsByMonth,
   metricOptions,
   sortRows,
+  toUtilityConsumptionRow,
 } from "./utils/data";
 
 const metricLabelMap = metricOptions.reduce<Record<MetricKey, string>>(
@@ -54,17 +56,11 @@ export default function UtilityConsumptionView() {
         recordLoaderShown();
         setLoading(true);
         setError(null);
-        const params = new URLSearchParams();
-        params.set("property_id", selectedProperty);
-        const response = await fetch(
-          `/api/utility/consumption?${params.toString()}`,
-          { signal: controller.signal },
+        const payload = await fetchAllUtilityConsumption(
+          { property_id: selectedProperty },
+          controller.signal,
         );
-        if (!response.ok) {
-          throw new Error("Unable to load utility consumption data.");
-        }
-        const payload: UtilityConsumptionRow[] = await response.json();
-        setRows(sortRows(payload));
+        setRows(sortRows(payload.map(toUtilityConsumptionRow)));
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
           return;

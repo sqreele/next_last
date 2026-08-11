@@ -1,42 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG } from '@/app/lib/config';
-import type { MonthName, UtilityConsumptionRow } from '@/app/dashboard/utility-consumption/types';
-import { coerceUtilityConsumptionRow } from '@/app/dashboard/utility-consumption/utils/data';
-
-const months: MonthName[] = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-type UtilityConsumptionApiRow = Omit<UtilityConsumptionRow, 'month'> & {
-  month: number;
-  month_display?: MonthName;
-};
-
-function mapMonthName(value?: number | null): MonthName {
-  if (!value || value < 1 || value > 12) return 'January';
-  return months[value - 1];
-}
-
-function normalizeRows(rows: UtilityConsumptionApiRow[]): UtilityConsumptionRow[] {
-  return rows.map((row) =>
-    coerceUtilityConsumptionRow({
-      ...row,
-      month: row.month_display ?? mapMonthName(row.month),
-    })
-  );
-}
+import { isUtilityConsumptionListResponse } from '@/app/lib/api/utility-consumption-contracts';
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,9 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    if (!searchParams.has('page_size')) {
-      searchParams.set('page_size', '1000');
-    }
+    if (!searchParams.has('page_size')) searchParams.set('page_size', '100');
     const queryString = searchParams.toString();
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/utility-consumption/${queryString ? `?${queryString}` : ''}`;
 
@@ -68,11 +31,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const payload = await response.json();
-    const rawRows: UtilityConsumptionApiRow[] = Array.isArray(payload)
-      ? payload
-      : payload.results ?? [];
-    return NextResponse.json(normalizeRows(rawRows));
+    const payload: unknown = await response.json();
+    if (!isUtilityConsumptionListResponse(payload)) {
+      console.error('Invalid utility consumption response contract');
+      return NextResponse.json({ error: 'Invalid utility consumption response' }, { status: 502 });
+    }
+    return NextResponse.json(payload);
   } catch (error) {
     console.error('Error fetching utility consumption:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

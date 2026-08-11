@@ -1,33 +1,23 @@
 import type { MetricKey, MonthName, UtilityConsumptionRow } from '../types';
+import type { UtilityConsumptionListItem } from '@/app/lib/api/utility-consumption-contracts';
 
-/** API / JSON often sends numbers as strings; `0 += "56000"` becomes string concat and breaks sums. */
-export function toFiniteNumber(value: unknown): number {
+/** Convert the API's nullable JSON number only at the chart/calculation boundary. */
+export function toFiniteNumber(value: number | null | undefined): number {
   if (value === null || value === undefined) return 0;
-  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-  if (typeof value === 'string') {
-    const t = value.trim();
-    if (t === '') return 0;
-    const n = Number(t);
-    return Number.isFinite(n) ? n : 0;
-  }
-  if (typeof value === 'boolean') return value ? 1 : 0;
-  return 0;
+  return Number.isFinite(value) ? value : 0;
 }
 
-export function coerceUtilityConsumptionRow(
-  row: UtilityConsumptionRow | Record<string, unknown>
-): UtilityConsumptionRow {
-  const r = row as Record<string, unknown>;
+export function toUtilityConsumptionRow(row: UtilityConsumptionListItem): UtilityConsumptionRow {
   return {
-    month: row.month as MonthName,
-    year: Math.trunc(toFiniteNumber(r.year)) || 0,
-    totalkwh: toFiniteNumber(r.totalkwh),
-    onpeakkwh: toFiniteNumber(r.onpeakkwh),
-    offpeakkwh: toFiniteNumber(r.offpeakkwh),
-    totalelectricity: toFiniteNumber(r.totalelectricity),
-    electricity_cost_budget: toFiniteNumber(r.electricity_cost_budget),
-    water: toFiniteNumber(r.water),
-    nightsale: toFiniteNumber(r.nightsale),
+    month: row.month_display,
+    year: row.year,
+    totalkwh: toFiniteNumber(row.totalkwh),
+    onpeakkwh: toFiniteNumber(row.onpeakkwh),
+    offpeakkwh: toFiniteNumber(row.offpeakkwh),
+    totalelectricity: toFiniteNumber(row.totalelectricity),
+    electricity_cost_budget: toFiniteNumber(row.electricity_cost_budget),
+    water: toFiniteNumber(row.water),
+    nightsale: toFiniteNumber(row.nightsale),
   };
 }
 

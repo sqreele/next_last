@@ -2,6 +2,11 @@
 
 import type { MetricKey, MonthName } from "../types";
 import { metricOptions, monthNames } from "../utils/data";
+import { isUtilityMonthName } from "@/app/lib/api/utility-consumption-contracts";
+
+function isMetricKey(value: string): value is MetricKey {
+  return metricOptions.some((option) => option.value === value);
+}
 
 interface FiltersBarProps {
   selectedYears: number[];
@@ -97,9 +102,10 @@ export default function FiltersBar({
           <select
             className="mt-1 min-h-11 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-soft"
             value={selectedMonth}
-            onChange={(event) =>
-              onMonthChange(event.target.value as MonthName | "All")
-            }
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value === "All" || isUtilityMonthName(value)) onMonthChange(value);
+            }}
           >
             <option value="All">All</option>
             {monthNames.map((month) => (
@@ -116,9 +122,10 @@ export default function FiltersBar({
           <select
             className="mt-1 min-h-11 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-soft"
             value={selectedMetric}
-            onChange={(event) =>
-              onMetricChange(event.target.value as MetricKey)
-            }
+            onChange={(event) => {
+              const value = event.target.value;
+              if (isMetricKey(value)) onMetricChange(value);
+            }}
           >
             {metricOptions.map((metric) => (
               <option key={metric.value} value={metric.value}>

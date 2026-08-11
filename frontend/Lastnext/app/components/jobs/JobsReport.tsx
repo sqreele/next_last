@@ -58,6 +58,8 @@ import { exportJobsToExcel } from "@/app/lib/utils/excel-export";
 import { exportJobsReportToPdf } from "@/app/lib/utils/pdf-export";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import type { UtilityConsumptionRow } from "@/app/dashboard/utility-consumption/types";
+import { fetchAllUtilityConsumption } from "@/app/lib/api/utility-consumption-client";
+import { toUtilityConsumptionRow } from "@/app/dashboard/utility-consumption/utils/data";
 import {
   buildComparisonMetrics,
   buildComparisonSnapshot,
@@ -486,20 +488,11 @@ export default function JobsReport({
       try {
         setUtilityLoading(true);
         setUtilityError(null);
-        const params = new URLSearchParams();
-        params.set("property_id", String(selectedProperty));
-        params.set("page_size", "1000");
-        const res = await fetch(
-          `/api/utility/consumption?${params.toString()}`,
-          {
-            signal: controller.signal,
-          },
+        const payload = await fetchAllUtilityConsumption(
+          { property_id: String(selectedProperty) },
+          controller.signal,
         );
-        if (!res.ok) {
-          throw new Error("Unable to load utility consumption for comparison.");
-        }
-        const payload: UtilityConsumptionRow[] = await res.json();
-        setUtilityRows(Array.isArray(payload) ? payload : []);
+        setUtilityRows(payload.map(toUtilityConsumptionRow));
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
         setUtilityRows([]);

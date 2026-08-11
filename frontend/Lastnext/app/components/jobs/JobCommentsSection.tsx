@@ -100,7 +100,17 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
   };
 
   const queueComment = (value: string) => {
+    const ownerUserId = session?.currentUser?.user_id;
+    if (!ownerUserId) {
+      toast({
+        title: "Comment not queued",
+        description: "Current application user identity is unavailable.",
+        variant: "destructive",
+      });
+      return false;
+    }
     enqueueRequest({
+      owner_user_id: ownerUserId,
       kind: "job-comment-create",
       label: `Comment on #${jobId}`,
       endpoint: `/api/v1/jobs/${jobId}/comments/`,
@@ -114,6 +124,7 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
       description: "It will sync when this device is back online.",
       variant: "success",
     });
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -93,6 +93,8 @@ export function UpdateStatusModal({
     try {
       const accessToken = session?.user?.accessToken;
       if (!accessToken) throw new Error(t("error.noToken"));
+      const ownerUserId = session?.currentUser?.user_id;
+      if (!ownerUserId) throw new Error("Current application user identity is unavailable.");
 
       await delay(400);
 
@@ -111,6 +113,7 @@ export function UpdateStatusModal({
       // Detect offline up front and queue without burning a failed request.
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
         enqueueRequest({
+          owner_user_id: ownerUserId,
           kind: "job-status-update",
           label: `#${job.job_id} → ${selectedStatus}`,
           endpoint: `/api/v1/jobs/${job.job_id}/`,
@@ -144,6 +147,7 @@ export function UpdateStatusModal({
           /\b5\d\d\b/.test(msg);
         if (!isTransient) throw networkErr;
         enqueueRequest({
+          owner_user_id: ownerUserId,
           kind: "job-status-update",
           label: `#${job.job_id} → ${selectedStatus}`,
           endpoint: `/api/v1/jobs/${job.job_id}/`,

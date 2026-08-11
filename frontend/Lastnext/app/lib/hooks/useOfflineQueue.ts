@@ -5,6 +5,7 @@ import { useSession } from '@/app/lib/session.client';
 import {
   type QueuedRequest,
   getQueue,
+  getQueueForOwner,
   replayQueue,
   subscribe,
 } from '@/app/lib/offline-queue';
@@ -28,21 +29,23 @@ interface UseOfflineQueueResult {
  */
 export function useOfflineQueue(): UseOfflineQueueResult {
   const { data: session } = useSession();
-  const [queue, setQueue] = useState<QueuedRequest[]>(() => getQueue());
+  const [, setQueue] = useState<QueuedRequest[]>(() => getQueue());
   const [isDraining, setDraining] = useState(false);
   const accessToken = session?.user?.accessToken;
+  const currentUserId = session?.currentUser?.user_id ?? null;
+  const ownedQueue = getQueueForOwner(currentUserId);
 
   useEffect(() => {
     return subscribe(setQueue);
   }, []);
 
   const drain = useCallback(async () => {
-    if (!accessToken || typeof navigator === 'undefined' || !navigator.onLine) {
-      return { delivered: 0, remaining: queue.length };
+    if (!accessToken || !currentUserId || typeof navigator === 'undefined' || !navigator.onLine) {
+      return { delivered: 0, remaining: ownedQueue.length };
     }
     setDraining(true);
     try {
-      return await replayQueue(async (item) => {
+      return await replayQueue(currentUserId, async (item) => {
         return fetch(`${API_BASE_URL}${item.endpoint}`, {
           method: item.method,
           headers: {
@@ -55,11 +58,11 @@ export function useOfflineQueue(): UseOfflineQueueResult {
     } finally {
       setDraining(false);
     }
-  }, [accessToken, queue.length]);
+  }, [accessToken, currentUserId, ownedQueue.length]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (queue.length === 0) return;
+    if (ownedQueue.length === 0) return;
 
     let cancelled = false;
     const attempt = () => {
@@ -82,7 +85,7 @@ export function useOfflineQueue(): UseOfflineQueueResult {
       window.removeEventListener('online', onlineHandler);
       document.removeEventListener('visibilitychange', visibilityHandler);
     };
-  }, [queue.length, drain]);
+  }, [ownedQueue.length, drain]);
 
-  return { queue, count: queue.length, drain, isDraining };
+  return { queue: ownedQueue, count: ownedQueue.length, drain, isDraining };
 }

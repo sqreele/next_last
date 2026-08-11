@@ -17,6 +17,8 @@ export type QueuedKind = 'job-status-update' | 'job-comment-create';
 
 export interface QueuedRequest {
   id: string;
+  /** Canonical backend User identity that originated the mutation. */
+  owner_user_id: number;
   kind: QueuedKind;
   /** Free-form label so the UI can show "Status of #JOB-AB12 -> completed". */
   label: string;
@@ -34,6 +36,7 @@ const listeners = new Set<Listener>();
 let memoryQueue: QueuedRequest[] | null = null;
 let hydrationStarted = false;
 let writeChain: Promise<void> = Promise.resolve();
+let replayInFlight: Promise<{ delivered: number; remaining: number }> | null = null;
 
 function loadLocal(): QueuedRequest[] {
   if (typeof window === 'undefined') return [];
@@ -165,6 +168,15 @@ export function getQueue(): QueuedRequest[] {
   return memoryQueue;
 }
 
+/**
+ * Return only work owned by the authenticated backend User. This also keeps
+ * legacy/unowned and foreign-user labels out of the network status UI.
+ */
+export function getQueueForOwner(ownerUserId: number | null): QueuedRequest[] {
+  if (!Number.isInteger(ownerUserId)) return [];
+  return getQueue().filter((item) => item.owner_user_id === ownerUserId);
+}
+
 export function enqueueRequest(input: Omit<QueuedRequest, 'id' | 'createdAt' | 'retries'>): QueuedRequest {
   const queue = getQueue();
   const item: QueuedRequest = {
@@ -203,7 +215,8 @@ export function subscribe(listener: Listener): () => void {
  * 4xx other than 408/425/429) drop the item with the supplied onDrop hook
  * so the UI can show a toast.
  */
-export async function replayQueue(
+async function replayQueueForOwner(
+  currentUserId: number | null,
   perform: (item: QueuedRequest) => Promise<Response>,
   onDrop?: (item: QueuedRequest, reason: 'success' | 'gave-up') => void,
 ): Promise<{ delivered: number; remaining: number }> {
@@ -213,6 +226,12 @@ export async function replayQueue(
   let delivered = 0;
   // Work on a copy because save() will fire listeners between iterations.
   for (const item of initial) {
+    // Fail closed for legacy entries and work created by another user. The
+    // item remains persisted for its owner, but no request is sent and its
+    // details are filtered from the current user's queue UI.
+    if (!Number.isInteger(currentUserId) || item.owner_user_id !== currentUserId) {
+      continue;
+    }
     try {
       const response = await perform(item);
       if (response.ok || response.status === 204) {
@@ -220,6 +239,11 @@ export async function replayQueue(
         delivered += 1;
         onDrop?.(item, 'success');
         continue;
+      }
+      // An expired session must never turn into silent data loss. Keep the
+      // item unchanged so a refreshed session for the same owner can retry.
+      if (response.status === 401) {
+        break;
       }
       const transient =
         response.status === 408 ||
@@ -232,7 +256,7 @@ export async function replayQueue(
         continue;
       }
       bumpRetry(item.id);
-    } catch (error) {
+    } catch {
       // Network error -> assume still offline; stop replaying so we don't
       // hammer when there's no connection.
       bumpRetry(item.id);
@@ -241,6 +265,22 @@ export async function replayQueue(
   }
   const remaining = getQueue().length;
   return { delivered, remaining };
+}
+
+export function replayQueue(
+  currentUserId: number | null,
+  perform: (item: QueuedRequest) => Promise<Response>,
+  onDrop?: (item: QueuedRequest, reason: 'success' | 'gave-up') => void,
+): Promise<{ delivered: number; remaining: number }> {
+  // Mount, online, visibility and manual retry can fire together. Share one
+  // replay so the same persisted mutation cannot be submitted concurrently.
+  if (replayInFlight) return replayInFlight;
+  const operation = replayQueueForOwner(currentUserId, perform, onDrop);
+  replayInFlight = operation;
+  operation.finally(() => {
+    if (replayInFlight === operation) replayInFlight = null;
+  });
+  return operation;
 }
 
 function bumpRetry(id: string) {

@@ -28,6 +28,13 @@ LOGGING = {
         'level': 'DEBUG' if DEBUG else 'ERROR',
         'propagate': False,
     },
+    # Do not emit Pillow's per-tag EXIF/TIFF diagnostics through the DEBUG root
+    # logger. Image-processing errors are still raised and logged by callers.
+    'PIL': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+        'propagate': False,
+    },
 }
 
 # Email configuration

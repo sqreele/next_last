@@ -407,6 +407,14 @@ LOGGING = {
         'level': 'DEBUG' if DEBUG else 'WARNING',
         'propagate': False,
     },
+    # Pillow logs every EXIF/TIFF tag at DEBUG level while opening phone
+    # photos.  Keep application DEBUG logging useful without exposing noisy
+    # image metadata (including GPS-related tags) in container logs.
+    'PIL': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+        'propagate': False,
+    },
     'myappLubd.auth': {
         'handlers': ['detailed_console'],
         'level': 'DEBUG' if DEBUG else 'INFO',

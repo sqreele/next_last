@@ -5,7 +5,7 @@ from django.db.models.functions import ExtractMonth, ExtractYear
 from django.utils import timezone
 
 from ..models import Area, Job, PreventiveMaintenance, Property, Room, Topic
-from .ai_context import _resolve_property, _resolve_room, _resolve_topic
+from .ai_context import _resolve_room, _resolve_topic
 
 
 def _serialize_user(user):
@@ -142,12 +142,13 @@ def get_maintenance_summary(property_name: str = "", room_name: str = "", catego
         dict: ข้อมูลสรุปงานแจ้งซ่อม ประกอบด้วย total_jobs, completed, open, cancelled
         และ top_categories ซึ่งเป็นรายการหมวดหมู่ที่เสียบ่อยพร้อมจำนวนงาน
     """
-    property_obj, property_error = _resolve_property(property_name)
-    if property_error:
-        return {
-            'error': 'PROPERTY_NOT_FOUND',
-            **property_error,
-        }
+    return {'error': 'PROPERTY_AUTHORIZATION_REQUIRED'}
+
+
+def _get_maintenance_summary_for_property(property_obj, room_name: str = "", category_name: str = ""):
+    """Execute the summary query for an already-authorized Property object."""
+    if not isinstance(property_obj, Property):
+        return {'error': 'PROPERTY_AUTHORIZATION_REQUIRED'}
     room_obj, room_error = _resolve_room(room_name, property_obj)
     if room_error:
         return {
@@ -492,12 +493,13 @@ def get_today_maintenance_jobs(property_name: str = ""):
     ดึงรายการงานแจ้งซ่อมที่ถูกสร้างในวันนี้สำหรับให้ AI chat ตอบคำถาม
     เช่น งานแจ้งซ่อมวันนี้ งานซ่อมวันนี้ หรือ today's repair requests
     """
-    property_obj, property_error = _resolve_property(property_name)
-    if property_error:
-        return {
-            'error': 'PROPERTY_NOT_FOUND',
-            **property_error,
-        }
+    return {'error': 'PROPERTY_AUTHORIZATION_REQUIRED'}
+
+
+def _get_today_maintenance_jobs_for_property(property_obj):
+    """Execute today's job query for an already-authorized Property object."""
+    if not isinstance(property_obj, Property):
+        return {'error': 'PROPERTY_AUTHORIZATION_REQUIRED'}
 
     now = timezone.localtime(timezone.now())
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -664,12 +666,13 @@ def get_recurring_maintenance_tasks(property_name: str = '', frequency: str = ''
     ดึงรายการงานประจำ/งาน PM ที่เกิดซ้ำเป็นรายเดือนหรือรายปีสำหรับให้ AI chat ตอบคำถาม
     เช่น งานประจำเดือนนี้ งานประจำรายเดือนของสาขา งานประจำปี หรือตาราง recurring maintenance
     """
-    property_obj, property_error = _resolve_property(property_name)
-    if property_error:
-        return {
-            'error': 'PROPERTY_NOT_FOUND',
-            **property_error,
-        }
+    return {'error': 'PROPERTY_AUTHORIZATION_REQUIRED'}
+
+
+def _get_recurring_maintenance_tasks_for_property(property_obj, frequency: str = '', year: int = 0, month: int = 0):
+    """Execute recurring-task queries for an already-authorized Property object."""
+    if not isinstance(property_obj, Property):
+        return {'error': 'PROPERTY_AUTHORIZATION_REQUIRED'}
 
     normalized_frequency = str(frequency or '').strip().lower()
     frequency_aliases = {

@@ -13,9 +13,20 @@ from .views import (
     _extract_category_name_from_message,
     _should_force_recurring_tool,
     _should_force_summary_tool,
+)
+from .view_modules.ai_tools import (
+    _get_maintenance_summary_for_property,
+    _get_recurring_maintenance_tasks_for_property,
     get_maintenance_summary,
     get_recurring_maintenance_tasks,
+    get_today_maintenance_jobs,
 )
+from .view_modules.ai_context import (
+    _extract_property_name_from_message,
+    _property_required_reply,
+    _resolve_property,
+)
+from .view_modules.ai_provider import _authorized_ai_property
 
 
 class AIToolRoutingTests(SimpleTestCase):
@@ -81,6 +92,136 @@ class AIChatEndpointRegressionTests(TestCase):
         self.assertEqual(response.data, {'reply': 'provider reply'})
 
 
+class AIChatTenantIsolationTests(TestCase):
+    class FakePart:
+        def __init__(self, text=None):
+            self.text = text
+
+        @staticmethod
+        def from_function_response(name, response):
+            return {'name': name, 'response': response}
+
+    class FakeContent:
+        def __init__(self, role=None, parts=None):
+            self.role = role
+            self.parts = parts
+
+    def setUp(self):
+        self.user_a = get_user_model().objects.create_user(username='ai-tenant-a', password='pass')
+        self.user_b = get_user_model().objects.create_user(username='ai-tenant-b', password='pass')
+        self.property_a = Property.objects.create(name='Hotel Alpha')
+        # Property.name is globally unique in the current schema. These names
+        # deliberately collide after the AI resolver's normalization step.
+        self.property_b = Property.objects.create(name='Hotel-Alpha')
+        self.property_a.users.add(self.user_a)
+        self.property_b.users.add(self.user_b)
+        self.room_a = Room.objects.create(name='A-101', room_type='Guest Room')
+        self.room_b = Room.objects.create(name='B-101', room_type='Guest Room')
+        self.room_a.properties.add(self.property_a)
+        self.room_b.properties.add(self.property_b)
+        job_a = Job.objects.create(user=self.user_a, description='Tenant A repair', status='pending')
+        job_b = Job.objects.create(user=self.user_b, description='Tenant B secret', status='pending')
+        job_a.rooms.add(self.room_a)
+        job_b.rooms.add(self.room_b)
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user_a)
+
+    @property
+    def fake_types(self):
+        return SimpleNamespace(Part=self.FakePart, Content=self.FakeContent)
+
+    def test_duplicate_name_resolution_and_tool_query_use_authorized_property_only(self):
+        accessible = [self.property_a]
+
+        selected = _authorized_ai_property(self.user_a, 'HotelAlpha', accessible)
+        summary = _get_maintenance_summary_for_property(selected)
+
+        self.assertEqual(selected, self.property_a)
+        self.assertEqual(summary['property']['property_id'], self.property_a.property_id)
+        self.assertEqual(summary['total_jobs'], 1)
+        self.assertNotIn('Tenant B secret', str(summary))
+
+    def test_extraction_and_suggestions_are_limited_to_accessible_properties(self):
+        inaccessible = Property.objects.create(name='Tenant B Exclusive')
+        inaccessible.users.add(self.user_b)
+        accessible = [self.property_a]
+
+        self.assertEqual(
+            _extract_property_name_from_message('สรุป Tenant B Exclusive', accessible),
+            '',
+        )
+        # Explicit context remains untrusted input; authorization must reject it.
+        self.assertIsNone(
+            _authorized_ai_property(self.user_a, 'Tenant B Exclusive', accessible)
+        )
+        self.assertIsNone(
+            _authorized_ai_property(self.user_a, inaccessible.property_id, accessible)
+        )
+        reply = _property_required_reply(accessible)
+        self.assertIn(self.property_a.property_id, reply)
+        self.assertNotIn(inaccessible.property_id, reply)
+        self.assertNotIn(inaccessible.name, reply)
+
+    def test_no_global_property_fallback_is_available_to_tool_layer(self):
+        property_obj, error = _resolve_property('Hotel Alpha')
+
+        self.assertIsNone(property_obj)
+        self.assertEqual(error['available_properties'], [])
+        self.assertEqual(
+            get_maintenance_summary(property_name='Hotel Alpha'),
+            {'error': 'PROPERTY_AUTHORIZATION_REQUIRED'},
+        )
+        self.assertEqual(
+            get_today_maintenance_jobs(property_name='Hotel Alpha'),
+            {'error': 'PROPERTY_AUTHORIZATION_REQUIRED'},
+        )
+        self.assertEqual(
+            get_recurring_maintenance_tasks(property_name='Hotel Alpha'),
+            {'error': 'PROPERTY_AUTHORIZATION_REQUIRED'},
+        )
+
+    @patch('myappLubd.view_modules.ai_provider._gemini_config', return_value=object())
+    @patch('myappLubd.view_modules.ai_provider._genai_modules')
+    @patch('myappLubd.view_modules.ai_provider._build_gemini_client')
+    def test_actual_chat_path_passes_authorized_object_to_tool(
+        self, build_client, genai_modules, _gemini_config
+    ):
+        first_response = SimpleNamespace(function_calls=[], text='', candidates=[])
+        final_response = SimpleNamespace(function_calls=[], text='Tenant A summary', candidates=[])
+        build_client.return_value = SimpleNamespace(
+            models=SimpleNamespace(generate_content=Mock(side_effect=[first_response, final_response]))
+        )
+        genai_modules.return_value = (None, self.fake_types)
+
+        with patch(
+            'myappLubd.view_modules.ai_provider._get_maintenance_summary_for_property',
+            wraps=_get_maintenance_summary_for_property,
+        ) as secured_tool:
+            response = self.client.post(
+                '/api/v1/ai/chat/',
+                {'message': 'งานระบบแอร์มีห้องไหนบ้าง', 'property_name': 'Hotel Alpha'},
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(secured_tool.call_args.args[0], self.property_a)
+
+    @patch('myappLubd.view_modules.ai_provider._gemini_config', return_value=object())
+    @patch('myappLubd.view_modules.ai_provider._genai_modules', return_value=(None, object()))
+    @patch('myappLubd.view_modules.ai_provider._build_gemini_client')
+    def test_provider_exception_is_sanitized(self, build_client, _genai_modules, _gemini_config):
+        sensitive_text = 'provider secret diagnostic api_key=do-not-expose'
+        build_client.return_value = SimpleNamespace(
+            models=SimpleNamespace(generate_content=Mock(side_effect=RuntimeError(sensitive_text)))
+        )
+
+        response = self.client.post('/api/v1/ai/chat/', {'message': 'hello'}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY, response.content)
+        self.assertEqual(response.data, {'detail': 'ไม่สามารถเชื่อมต่อ Gemini ได้ในขณะนี้'})
+        self.assertNotIn(sensitive_text, response.content.decode())
+
+
 class AISummaryCategoryDetailsTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username='tech', password='pass')
@@ -124,8 +265,8 @@ class AISummaryCategoryDetailsTests(TestCase):
         plumbing_job.topics.add(self.plumbing_topic)
 
     def test_summary_includes_rooms_for_selected_category(self):
-        summary = get_maintenance_summary(
-            property_name='Test Hotel',
+        summary = _get_maintenance_summary_for_property(
+            self.property,
             category_name='ระบบแอร์',
         )
 
@@ -185,8 +326,8 @@ class AIRecurringMonthlyCountsTests(TestCase):
         self._create_pm('ล้างแอร์ 2', datetime(2026, 1, 20, 9, 0))
         self._create_pm('ตรวจปั๊ม', datetime(2026, 2, 10, 9, 0))
 
-        summary = get_recurring_maintenance_tasks(
-            property_name='Monthly PM Hotel',
+        summary = _get_recurring_maintenance_tasks_for_property(
+            self.property,
             frequency='monthly',
             year=2026,
         )
@@ -217,8 +358,8 @@ class AIRecurringMonthlyCountsTests(TestCase):
         )
         pm.machines.add(machine)
 
-        summary = get_recurring_maintenance_tasks(
-            property_name='Monthly PM Hotel',
+        summary = _get_recurring_maintenance_tasks_for_property(
+            self.property,
             frequency='monthly',
             year=2026,
             month=7,

@@ -21,6 +21,9 @@ from .ai_context import (
     _should_force_today_tool,
 )
 from .ai_tools import (
+    _get_maintenance_summary_for_property,
+    _get_recurring_maintenance_tasks_for_property,
+    _get_today_maintenance_jobs_for_property,
     get_maintenance_summary,
     get_recurring_maintenance_tasks,
     get_today_maintenance_jobs,
@@ -76,14 +79,17 @@ def _gemini_config(include_tools=True):
     return types.GenerateContentConfig(**config_kwargs)
 
 
-def _authorized_ai_property(user, requested_property):
+def _authorized_ai_property(user, requested_property, accessible_properties=None):
     """Resolve an AI property context without disclosing another tenant's data."""
     search = str(requested_property or '').strip()
     if not search:
         return None
 
     normalized_search = _normalize_search_text(search)
-    for property_obj in get_accessible_properties(user):
+    properties = accessible_properties
+    if properties is None:
+        properties = get_accessible_properties(user)
+    for property_obj in properties:
         if search.lower() in {property_obj.name.lower(), property_obj.property_id.lower()}:
             return property_obj
         if normalized_search and normalized_search in {
@@ -116,18 +122,29 @@ def chat_with_gemini(request):
             or request.data.get('branch_name')
             or ''
         ).strip()
-        inferred_property_name = _extract_property_name_from_message(message) or request_property_name
+        accessible_properties = list(get_accessible_properties(request.user))
+        extracted_property_name = _extract_property_name_from_message(
+            message,
+            accessible_properties,
+        )
+        inferred_property_name = extracted_property_name or request_property_name
+        authorized_property = None
         if inferred_property_name:
-            authorized_property = _authorized_ai_property(request.user, inferred_property_name)
+            authorized_property = _authorized_ai_property(
+                request.user,
+                inferred_property_name,
+                accessible_properties,
+            )
             if authorized_property is None:
                 return Response(
                     {'detail': 'ไม่พบ property ที่คุณมีสิทธิ์เข้าถึง'},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            # Always pass the canonical, authorized property name to tools.
+            # Preserve the canonical name for provider context; tools receive
+            # the authorized object itself and never resolve this name again.
             inferred_property_name = authorized_property.name
         model_message = message
-        if request_property_name and not _extract_property_name_from_message(message):
+        if request_property_name and not extracted_property_name:
             model_message = f"Property context: {request_property_name}\nUser message: {message}"
 
         first_response = client.models.generate_content(
@@ -146,20 +163,18 @@ def chat_with_gemini(request):
             )
             if not has_tool_property and not inferred_property_name:
                 return Response({
-                    'reply': _property_required_reply(),
+                    'reply': _property_required_reply(accessible_properties),
                     'tool_calls': [],
                 })
         elif _requires_property_before_tool(message) and not inferred_property_name:
             return Response({
-                'reply': _property_required_reply(),
+                'reply': _property_required_reply(accessible_properties),
                 'tool_calls': [],
             })
 
         if not function_calls:
             if _should_force_today_tool(message):
-                tool_result = get_today_maintenance_jobs(
-                    property_name=inferred_property_name,
-                )
+                tool_result = _get_today_maintenance_jobs_for_property(authorized_property)
                 tool_part = types.Part.from_function_response(
                     name='get_today_maintenance_jobs',
                     response={'result': tool_result},
@@ -178,8 +193,8 @@ def chat_with_gemini(request):
                 })
             if _should_force_recurring_tool(message):
                 extracted_year, extracted_month = _extract_year_month_from_message(message)
-                tool_result = get_recurring_maintenance_tasks(
-                    property_name=inferred_property_name,
+                tool_result = _get_recurring_maintenance_tasks_for_property(
+                    authorized_property,
                     frequency=_extract_frequency_from_message(message),
                     year=extracted_year,
                     month=extracted_month,
@@ -201,8 +216,8 @@ def chat_with_gemini(request):
                     'tool_calls': ['get_recurring_maintenance_tasks'],
                 })
             if _should_force_summary_tool(message):
-                tool_result = get_maintenance_summary(
-                    property_name=inferred_property_name,
+                tool_result = _get_maintenance_summary_for_property(
+                    authorized_property,
                     room_name=_extract_room_name_from_message(message),
                     category_name=_extract_category_name_from_message(message),
                 )
@@ -232,7 +247,11 @@ def chat_with_gemini(request):
                 or function_args.get('branch_name')
                 or inferred_property_name
             )
-            authorized_tool_property = _authorized_ai_property(request.user, requested_tool_property)
+            authorized_tool_property = _authorized_ai_property(
+                request.user,
+                requested_tool_property,
+                accessible_properties,
+            )
             if authorized_tool_property is None:
                 tool_result = {'error': 'ไม่พบ property ที่คุณมีสิทธิ์เข้าถึง'}
                 tool_parts.append(
@@ -242,24 +261,21 @@ def chat_with_gemini(request):
                     )
                 )
                 continue
-            tool_property_name = authorized_tool_property.name
             if function_call.name == 'get_maintenance_summary':
-                tool_result = get_maintenance_summary(
-                    property_name=tool_property_name,
+                tool_result = _get_maintenance_summary_for_property(
+                    authorized_tool_property,
                     room_name=function_args.get('room_name') or function_args.get('room') or '',
                     category_name=function_args.get('category_name') or function_args.get('category') or function_args.get('topic') or '',
                 )
             elif function_call.name == 'get_recurring_maintenance_tasks':
-                tool_result = get_recurring_maintenance_tasks(
-                    property_name=tool_property_name,
+                tool_result = _get_recurring_maintenance_tasks_for_property(
+                    authorized_tool_property,
                     frequency=function_args.get('frequency') or '',
                     year=function_args.get('year'),
                     month=function_args.get('month'),
                 )
             elif function_call.name == 'get_today_maintenance_jobs':
-                tool_result = get_today_maintenance_jobs(
-                    property_name=tool_property_name,
-                )
+                tool_result = _get_today_maintenance_jobs_for_property(authorized_tool_property)
             else:
                 tool_result = {'error': f'ไม่รองรับ Tool: {function_call.name}'}
 
@@ -290,7 +306,6 @@ def chat_with_gemini(request):
     except Exception as exc:
         logger.exception('Gemini chatbot request failed')
         return Response(
-            {'detail': 'ไม่สามารถเชื่อมต่อ Gemini ได้ในขณะนี้', 'error': str(exc)},
+            {'detail': 'ไม่สามารถเชื่อมต่อ Gemini ได้ในขณะนี้'},
             status=status.HTTP_502_BAD_GATEWAY,
         )
-

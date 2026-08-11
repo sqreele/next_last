@@ -12,12 +12,13 @@ def _normalize_search_text(value):
     return ''.join(char.lower() for char in str(value or '') if char.isalnum())
 
 
-def _resolve_property(property_name=None):
+def _resolve_property(property_name=None, properties=None):
+    """Resolve only from a caller-supplied, already-authorized property set."""
     search = str(property_name or '').strip()
     if not search:
         return None, None
 
-    properties = list(Property.objects.all())
+    properties = list(properties or [])
     normalized_search = _normalize_search_text(search)
 
     for prop in properties:
@@ -311,13 +312,13 @@ def _extract_frequency_from_message(message):
     return ''
 
 
-def _extract_property_name_from_message(message):
+def _extract_property_name_from_message(message, properties=None):
     text = str(message or '')
     normalized_text = _normalize_search_text(text)
     if not normalized_text:
         return ''
 
-    properties = list(Property.objects.all())
+    properties = list(properties or [])
     for prop in properties:
         candidates = [prop.name, prop.property_id]
         for candidate in candidates:
@@ -332,11 +333,14 @@ def _extract_property_name_from_message(message):
     return ''
 
 
-def _property_required_reply():
-    properties = list(Property.objects.order_by('name').values('property_id', 'name')[:20])
+def _property_required_reply(properties=None):
+    properties = sorted(
+        list(properties or []),
+        key=lambda property_obj: property_obj.name.lower(),
+    )[:20]
     if properties:
         property_list = ', '.join(
-            f"{prop['name']} ({prop['property_id']})" if prop.get('property_id') else prop['name']
+            f"{prop.name} ({prop.property_id})" if prop.property_id else prop.name
             for prop in properties
         )
         return f'ต้องการข้อมูลของ property อะไรครับ/คะ? กรุณาระบุชื่อสาขาหรือ property id ก่อน เช่น {property_list}'
@@ -376,4 +380,3 @@ def _extract_category_name_from_message(message):
             return category
 
     return ''
-

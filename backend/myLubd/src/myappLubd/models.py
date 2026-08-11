@@ -874,7 +874,8 @@ class Area(models.Model):
 
 class JobImage(models.Model):
     # Image size configuration
-    MAX_SIZE = (800, 800)  # Maximum image dimensions
+    MAX_SIZE = (1600, 1600)
+    JPEG_QUALITY = 82
 
     job = models.ForeignKey(
         'Job',  # Add ForeignKey to Job
@@ -925,81 +926,51 @@ class JobImage(models.Model):
     def __str__(self):
         return f"Image for Job {self.job.job_id} uploaded at {self.uploaded_at.date()}"
 
-    def process_image(self, image_file, quality=85):
-        """
-        Process and resize the image, creating JPEG version for PDF generation compatibility.
-        """
-        try:
-            img = Image.open(image_file)
+    def process_image(self, image_file, quality=None):
+        """Compatibility wrapper around the authoritative image pipeline."""
+        from .job_image_processing import optimize_job_image
 
-            # Resize if image is larger than MAX_SIZE
-            if img.width > self.MAX_SIZE[0] or img.height > self.MAX_SIZE[1]:
-                img.thumbnail(self.MAX_SIZE, Image.Resampling.LANCZOS)
-
-            # Convert RGBA to RGB if necessary
-            if img.mode in ('RGBA', 'LA'):
-                background = Image.new('RGB', img.size, (255, 255, 255))
-                background.paste(img, mask=img.getchannel('A'))
-                img = background
-
-            # Convert to RGB if not already
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
-
-            # Create JPEG version
-            jpeg_output = BytesIO()
-
-            # Save as JPEG (for PDF generation)
-            img.save(jpeg_output, 'JPEG', quality=quality, optimize=True)
-            jpeg_output.seek(0)
-
-            return {
-                'jpeg': jpeg_output
-            }
-        except Exception as e:
-            raise Exception(f"Error processing image: {e}")
+        return {'jpeg': optimize_job_image(
+            image_file,
+            max_size=self.MAX_SIZE,
+            quality=quality or self.JPEG_QUALITY,
+        )}
 
     def save(self, *args, **kwargs):
-        is_new = self.pk is None
-        should_process_image = is_new and bool(self.image)
+        # Uploaded/replacement FieldFiles are uncommitted.  Existing committed
+        # files therefore pass through metadata saves without recompression.
+        should_process = bool(self.image) and not getattr(self.image, '_committed', True)
+        if should_process:
+            from uuid import uuid4
+            from django.utils.text import slugify
 
-        # Save the original upload first so ImageField applies upload_to and
-        # self.image.name includes the final dated media directory.
+            try:
+                processed = self.process_image(self.image)['jpeg']
+            except Exception as exc:
+                raise ValidationError({'image': str(exc)}) from exc
+
+            stem = slugify(Path(getattr(self.image, 'name', '')).stem)[:60] or 'job-image'
+            filename = f'{stem}-{uuid4().hex}.jpg'
+            # Assignment keeps the file uncommitted; ImageField saves this one
+            # optimized payload through its configured storage during super().save().
+            self.image = ContentFile(processed.getvalue(), name=filename)
+            self.jpeg_path = None  # Filled with the final upload_to/storage name below.
+            if kwargs.get('update_fields') is not None:
+                kwargs['update_fields'] = set(kwargs['update_fields']) | {'image', 'jpeg_path'}
+
         super().save(*args, **kwargs)
 
-        if not should_process_image:
-            return
-
-        try:
-            self.image.open('rb')
-            processed_images = self.process_image(self.image)
-
-            image_path = Path(self.image.name)
-            jpeg_path = str(image_path.with_suffix('.jpg'))
-            jpeg_full_path = os.path.join(settings.MEDIA_ROOT, jpeg_path)
-
-            os.makedirs(os.path.dirname(jpeg_full_path), exist_ok=True)
-
-            with open(jpeg_full_path, 'wb') as f:
-                f.write(processed_images['jpeg'].getvalue())
-
-            processed_images['jpeg'].close()
-
-            if self.jpeg_path != jpeg_path:
-                self.jpeg_path = jpeg_path
-                super().save(update_fields=['jpeg_path'])
-
-        except Exception as e:
-            logger.error(f"Error processing image: {e}")
-            # Don't fail the save if JPEG generation fails.
+        if should_process and self.jpeg_path != self.image.name:
+            self.jpeg_path = self.image.name
+            type(self).objects.filter(pk=self.pk).update(jpeg_path=self.image.name)
 
     def delete(self, *args, **kwargs):
         """Remove image file when model instance is deleted"""
-        if self.image:
-            if os.path.isfile(self.image.path):
-                os.remove(self.image.path)
-
+        image_name = self.image.name if self.image else None
+        storage = self.image.storage if self.image else None
         super().delete(*args, **kwargs)
+        if image_name and storage and not type(self).objects.filter(image=image_name).exists():
+            storage.delete(image_name)
 
 
 class Job(models.Model):

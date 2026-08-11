@@ -1,6 +1,7 @@
 import logging
 import os
 
+from django.db import IntegrityError, transaction
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -12,6 +13,9 @@ from ..services import NotificationService
 
 
 logger = logging.getLogger(__name__)
+
+
+PUSH_ENDPOINT_CONFLICT = {'error': 'Push subscription endpoint is already registered.'}
 
 
 # Notification API Endpoints
@@ -175,16 +179,36 @@ def push_subscribe(request):
         )
 
     user_agent = (request.META.get('HTTP_USER_AGENT') or '')[:255]
-    sub, created = PushSubscription.objects.update_or_create(
-        endpoint=endpoint,
-        defaults={
-            'user': request.user,
-            'p256dh': p256dh,
-            'auth': auth,
-            'user_agent': user_agent,
-            'is_active': True,
-        },
-    )
+    with transaction.atomic():
+        sub = PushSubscription.objects.select_for_update().filter(endpoint=endpoint).first()
+        created = False
+
+        if sub is None:
+            try:
+                # The nested savepoint keeps the outer transaction usable if
+                # another request wins the globally-unique endpoint race.
+                with transaction.atomic():
+                    sub = PushSubscription.objects.create(
+                        endpoint=endpoint,
+                        user=request.user,
+                        p256dh=p256dh,
+                        auth=auth,
+                        user_agent=user_agent,
+                        is_active=True,
+                    )
+                    created = True
+            except IntegrityError:
+                sub = PushSubscription.objects.select_for_update().get(endpoint=endpoint)
+
+        if not created:
+            if sub.user_id != request.user.id:
+                return Response(PUSH_ENDPOINT_CONFLICT, status=status.HTTP_409_CONFLICT)
+            sub.p256dh = p256dh
+            sub.auth = auth
+            sub.user_agent = user_agent
+            sub.is_active = True
+            sub.save(update_fields=['p256dh', 'auth', 'user_agent', 'is_active'])
+
     return Response(
         {
             'id': sub.id,
@@ -202,9 +226,14 @@ def push_unsubscribe(request):
     endpoint = (request.data or {}).get('endpoint', '').strip()
     if not endpoint:
         return Response({'error': 'endpoint required'}, status=status.HTTP_400_BAD_REQUEST)
-    updated = PushSubscription.objects.filter(
-        user=request.user, endpoint=endpoint
-    ).update(is_active=False)
+    with transaction.atomic():
+        sub = PushSubscription.objects.select_for_update().filter(endpoint=endpoint).first()
+        if sub is not None and sub.user_id != request.user.id:
+            return Response(PUSH_ENDPOINT_CONFLICT, status=status.HTTP_409_CONFLICT)
+        if sub is None:
+            updated = 0
+        else:
+            updated = PushSubscription.objects.filter(pk=sub.pk).update(is_active=False)
     return Response({'deactivated': updated})
 
 
@@ -232,4 +261,3 @@ def push_test(request):
         },
     )
     return Response({'delivered': delivered})
-

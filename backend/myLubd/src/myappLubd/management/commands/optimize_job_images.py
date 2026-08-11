@@ -22,10 +22,28 @@ class Command(BaseCommand):
             help='After applying and updating a row, delete superseded unreferenced files',
         )
         parser.add_argument('--find-orphans', action='store_true', help='Report unreferenced files; never deletes them')
+        parser.add_argument(
+            '--delete-orphans',
+            action='store_true',
+            help=(
+                'Explicitly delete unreferenced files under '
+                'maintenance_job_images only'
+            ),
+        )
 
     def handle(self, *args, **options):
+        orphan_mode = options['find_orphans'] or options['delete_orphans']
+        if orphan_mode and (options['apply'] or options['delete_originals']):
+            option = '--find-orphans' if options['find_orphans'] else '--delete-orphans'
+            incompatible = '--apply' if options['apply'] else '--delete-originals'
+            raise CommandError(f'{option} cannot be combined with {incompatible}')
+        if options['find_orphans'] and options['delete_orphans']:
+            raise CommandError('--find-orphans and --delete-orphans are separate modes')
         if options['delete_originals'] and not options['apply']:
             raise CommandError('--delete-originals requires --apply')
+        if orphan_mode:
+            self._find_orphans(delete=options['delete_orphans'])
+            return
         if options['apply']:
             self.stdout.write(self.style.WARNING(
                 'Apply mode: confirm an external media/database backup exists. '
@@ -116,26 +134,57 @@ class Command(BaseCommand):
                         stats['deleted'] += 1
 
         self._summary(stats, apply=options['apply'])
-        if options['find_orphans']:
-            self._find_orphans()
 
     @staticmethod
     def _is_referenced(name):
         return JobImage.objects.filter(image=name).exists() or JobImage.objects.filter(jpeg_path=name).exists()
 
-    def _find_orphans(self):
+    def _find_orphans(self, *, delete=False):
         storage = JobImage._meta.get_field('image').storage
         prefix = 'maintenance_job_images'
+        if delete:
+            self.stdout.write(self.style.ERROR(
+                'DESTRUCTIVE MODE: orphan files will be permanently deleted. '
+                'Confirm an external media/database backup and pause JobImage uploads '
+                'while this command runs.'
+            ))
         referenced = set(JobImage.objects.exclude(image='').values_list('image', flat=True))
         referenced.update(JobImage.objects.exclude(jpeg_path__isnull=True).exclude(jpeg_path='').values_list('jpeg_path', flat=True))
         try:
             files = list(self._walk(storage, prefix))
-        except (NotImplementedError, OSError) as exc:
+            orphans = [name for name in files if name not in referenced]
+            sizes = {name: storage.size(name) for name in orphans}
+        except Exception as exc:
             raise CommandError(f'storage does not support orphan enumeration: {exc}') from exc
-        orphans = [name for name in files if name not in referenced]
-        total = sum(storage.size(name) for name in orphans)
+        total = sum(sizes.values())
         self.stdout.write(f'Orphan files: {len(orphans)}')
         self.stdout.write(f'Orphan size: {self._size(total)}')
+        if not delete:
+            self.stdout.write('Dry run: no orphan files were deleted.')
+            return
+        deleted = reclaimed = skipped = errors = 0
+        for name in orphans:
+            # Re-query both columns immediately before touching this candidate.
+            if self._is_referenced(name):
+                skipped += 1
+                continue
+            try:
+                if not storage.exists(name):
+                    raise OSError('file no longer exists')
+                storage.delete(name)
+                if storage.exists(name):
+                    raise OSError('file still exists after storage.delete()')
+            except Exception as exc:
+                errors += 1
+                self.stderr.write(f'Could not delete orphan {name}: {exc}')
+                continue
+            deleted += 1
+            reclaimed += sizes[name]
+
+        self.stdout.write(f'Orphan files deleted: {deleted}')
+        self.stdout.write(f'Orphan bytes reclaimed: {reclaimed}')
+        self.stdout.write(f'Orphans skipped after reference recheck: {skipped}')
+        self.stdout.write(f'Orphan deletion errors: {errors}')
 
     def _walk(self, storage, directory):
         directories, files = storage.listdir(directory)

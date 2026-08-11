@@ -350,6 +350,43 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def get_username(self, obj):
         return get_user_public_username(obj.user)
 
+
+class AssigneeOptionSerializer(serializers.ModelSerializer):
+    """Narrow assignment-picker DTO with explicit User/Profile identities."""
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    profile_id = serializers.IntegerField(source='id', read_only=True)
+    username = serializers.SerializerMethodField()
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    display_name = serializers.SerializerMethodField()
+    properties = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserProfile
+        fields = [
+            'user_id',
+            'profile_id',
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'display_name',
+            'positions',
+            'properties',
+        ]
+        read_only_fields = fields
+
+    def get_username(self, obj):
+        return get_user_public_username(obj.user)
+
+    def get_display_name(self, obj):
+        return get_user_display_name(obj.user)
+
+    def get_properties(self, obj):
+        return list(obj.properties.values('id', 'property_id', 'name'))
+
+
 def _build_media_absolute_uri(request, media_path):
     """Build a stable media URL from paths stored by FileField or helper fields.
 

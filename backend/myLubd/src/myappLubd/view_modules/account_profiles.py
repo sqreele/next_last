@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import Property, TenantMembership, UserProfile
-from ..serializers import UserProfileSerializer, UserSerializer
+from ..serializers import AssigneeOptionSerializer, UserProfileSerializer, UserSerializer
 from ..tenancy import TENANT_ADMIN_ROLES, get_accessible_properties, get_user_tenants
 from .common import display_name_from_user
 
@@ -88,6 +88,13 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         """Get user profiles within the caller's server-derived access scope."""
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='assignee-options')
+    def assignee_options(self, request):
+        """Return active, scoped assignment options with explicit User IDs."""
+        queryset = self.get_queryset().filter(user__is_active=True)
+        serializer = AssigneeOptionSerializer(queryset, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['patch', 'put'])

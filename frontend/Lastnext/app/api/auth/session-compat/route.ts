@@ -5,16 +5,7 @@ import { Property } from '@/app/lib/types';
 import { DEBUG_CONFIG } from '@/app/lib/config';
 import { API_CONFIG } from '@/app/lib/config';
 import { sanitizeSessionForClient } from '@/app/lib/auth0/session-cookie';
-
-interface UserProfileResponse {
-  profile_image?: string | null;
-  positions?: string | null;
-  properties?: Property[];
-  user_property_name?: string | null;
-  user_property_id?: string | null;
-  profile_property_name?: string | null;
-  profile_property_id?: string | null;
-}
+import { isCurrentUserResponse, type CurrentUserResponse } from '@/app/lib/api/current-user-contracts';
 
 export async function GET() {
   try {
@@ -32,7 +23,7 @@ export async function GET() {
     // Backend property access can come from either Property.users or UserProfile.properties,
     // so we merge both sources to keep frontend session data complete.
     let properties: Property[] = [];
-    let profileData: UserProfileResponse | null = null;
+    let profileData: CurrentUserResponse | null = null;
     if (session.user.accessToken) {
       try {
         if (DEBUG_CONFIG.logApiCalls) {
@@ -55,7 +46,12 @@ export async function GET() {
         });
 
         if (profileResponse.ok) {
-          profileData = (await profileResponse.json()) as UserProfileResponse;
+          const payload: unknown = await profileResponse.json();
+          if (isCurrentUserResponse(payload)) {
+            profileData = payload;
+          } else {
+            console.error('Invalid current-user response contract');
+          }
         } else if (DEBUG_CONFIG.logApiCalls) {
           console.warn('⚠️ Failed to fetch /user-profiles/me for session-compat:', profileResponse.status);
         }
@@ -88,6 +84,7 @@ export async function GET() {
     // Update the session with properties data
     const updatedSession = {
       ...session,
+      currentUser: profileData ?? undefined,
       user: {
         ...session.user,
         profile_image: profileData?.profile_image ?? session.user.profile_image ?? null,

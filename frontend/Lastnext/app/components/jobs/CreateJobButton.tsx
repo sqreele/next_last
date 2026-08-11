@@ -31,6 +31,7 @@ import RoomAutocomplete from "./RoomAutocomplete";
 import TopicPicker from "./TopicPicker";
 import FileUpload from "./FileUpload";
 import { Room, TopicFromAPI } from "@/app/lib/types"; // Ensure types path is correct
+import { useUser } from "@/app/lib/stores/mainStore";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -134,6 +135,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({
   const [isLoadingFormData, setIsLoadingFormData] = useState(false);
   const [showRemarks, setShowRemarks] = useState(false);
   const { data: session, status } = useSession();
+  const { userProfile } = useUser();
 
   // Effect to close dialog if user logs out
   useEffect(() => {
@@ -233,7 +235,7 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({
         }),
         remarks: values.remarks?.trim() || "", // Send empty string if no remarks
         username: session.user.username, // Send relevant user info
-        user_id: session.user.id,
+        user_id: userProfile?.user_id,
         is_defective: values.is_defective,
         property_id: propertyId, // *** USE THE PROP HERE ***
       };
@@ -244,6 +246,9 @@ const CreateJobButton: React.FC<CreateJobButtonProps> = ({
       }
       if (!payload.property_id) {
         throw new Error("Invalid Property ID.");
+      }
+      if (!payload.user_id) {
+        throw new Error("Current application user identity is unavailable.");
       }
 
       // Append payload fields to FormData

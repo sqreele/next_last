@@ -1,13 +1,17 @@
 // This file is for client-side session compatibility
 // Server-side session handling is done in the API route
 
+import type { CurrentUserResponse } from "@/app/lib/api/current-user-contracts";
+import type { Property } from "@/app/lib/types";
+
 export interface CompatUser {
+  /** Sanitized Auth0 subject; never a Django User/Profile primary key. */
   id: string;
   username: string;
   email: string | null;
   profile_image: string | null;
   positions: string;
-  properties: any[];
+  properties: Property[];
   accessToken: string;
   refreshToken?: string;
   accessTokenExpires?: number;
@@ -30,6 +34,7 @@ export interface CompatUser {
 
 export interface CompatSession {
   user?: CompatUser;
+  currentUser?: CurrentUserResponse;
   error?: string;
   expires?: string | number;
 }

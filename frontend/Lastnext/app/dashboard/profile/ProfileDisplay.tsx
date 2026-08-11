@@ -16,7 +16,7 @@ import {
 import { Badge } from "@/app/components/ui/badge";
 import { ProfileImage } from "@/app/components/profile/ProfileImage";
 import { useUser, useProperties } from "@/app/lib/stores/mainStore";
-import { UserProfile, Property } from "@/app/lib/types";
+import { Property } from "@/app/lib/types";
 import { cn } from "@/app/lib/utils/cn";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import { PushNotificationsToggle } from "@/app/components/pwa/PushNotificationsToggle";
@@ -33,7 +33,7 @@ interface ProfileFieldProps {
   value: string | null | undefined;
 }
 
-type ProfileFieldKey = 'username' | 'email' | 'positions' | 'created_at' | 'id' | 'profile_image';
+type ProfileFieldKey = 'username' | 'email' | 'positions' | 'created_at' | 'profile_image';
 
 type ProfileFieldDefinition = {
   icon: React.ElementType;
@@ -223,7 +223,7 @@ export default function ProfileDisplay() {
               <PushNotificationsToggle />
             </div>
           </div>
-          <Link href={`/dashboard/profile/edit/${userProfile.id}`} className="mt-2 sm:mt-0">
+          <Link href={`/dashboard/profile/edit/${userProfile.profile_id}`} className="mt-2 sm:mt-0">
             <Button variant="outline" size="sm" className="w-full sm:w-auto h-10 flex items-center gap-2">
               <Pencil className="w-4 h-4" />
               Edit Profile
@@ -266,7 +266,7 @@ export default function ProfileDisplay() {
             <ProfileField
               icon={User}
               label="Account ID"
-              value={String(userProfile.id)}
+              value={String(userProfile.user_id)}
             />
           </div>
         </CardContent>

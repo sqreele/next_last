@@ -1,30 +1,12 @@
 'use client'
 
 import useSWR from 'swr';
-
-type SessionCompat = {
-  user?: {
-    id: string;
-    username: string;
-    email: string | null;
-    profile_image: string | null;
-    positions: string;
-    properties: any[];
-    accessToken: string;
-    refreshToken?: string;
-    accessTokenExpires?: number;
-    first_name?: string | null;
-    last_name?: string | null;
-    created_at: string;
-  };
-  error?: string;
-  expires?: string | number;
-} | null;
+import type { CompatSession } from '@/app/lib/auth0/session-compat';
 
 const fetcher = (url: string) => fetch(url, { credentials: 'include' }).then(res => res.json());
 
 export function useCompatSession() {
-  const { data, error, isLoading, mutate } = useSWR<SessionCompat>('/api/auth/session-compat', fetcher, {
+  const { data, error, isLoading, mutate } = useSWR<CompatSession | null>('/api/auth/session-compat', fetcher, {
     // ✅ PERFORMANCE: Optimized session caching
     revalidateOnFocus: false, // Don't revalidate on every focus
     revalidateOnReconnect: true,

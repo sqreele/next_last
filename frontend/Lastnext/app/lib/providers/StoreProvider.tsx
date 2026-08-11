@@ -5,10 +5,6 @@ import { useMainStore } from '../stores/mainStore';
 import { getPropertyId } from '../security/propertyAccess';
 import { useSession } from '../session.client';
 
-interface StoreProviderProps {
-  children: ReactNode;
-}
-
 export function StoreProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
   const setUserProfile = useMainStore(state => state.setUserProfile);
@@ -25,28 +21,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setAuthTokens(session.user.accessToken, '');
       }
 
-      // Create user profile from session data
-      if (session.user) {
-        const userProfile = {
-          id: session.user.id,
-          username: session.user.username || '',
-          profile_image: session.user.profile_image || null,
-          positions: session.user.positions || 'User',
-          properties: session.user.properties || [],
-          email: session.user.email || null,
-          first_name: session.user.first_name || null,
-          last_name: session.user.last_name || null,
-          created_at: session.user.created_at || new Date().toISOString(),
-        };
+      // CurrentUser comes only from the authenticated backend /me contract.
+      if (session.currentUser) {
+        const userProfile = session.currentUser;
 
-        const sessionProperties = Array.isArray(session.user.properties) ? session.user.properties : [];
+        const sessionProperties = userProfile.properties;
         const currentProfile = useMainStore.getState().userProfile;
         const currentProfileProperties = Array.isArray(currentProfile?.properties) ? currentProfile.properties : [];
         const profilePropertiesChanged =
           currentProfileProperties.length !== sessionProperties.length ||
           !currentProfileProperties.every((prop, index) => getPropertyId(prop) === getPropertyId(sessionProperties[index]));
         const profileChanged = !currentProfile || 
-          currentProfile.id !== userProfile.id ||
+          currentProfile.user_id !== userProfile.user_id ||
+          currentProfile.profile_id !== userProfile.profile_id ||
           currentProfile.username !== userProfile.username ||
           currentProfile.email !== userProfile.email ||
           profilePropertiesChanged;
@@ -75,6 +62,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             setSelectedPropertyId(propertyId);
           }
         }
+      } else {
+        setUserProfile(null);
+        setProperties([]);
+        setSelectedPropertyId(null);
       }
     } else if (status === 'unauthenticated') {
       // Clear store data when unauthenticated

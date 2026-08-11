@@ -1,6 +1,7 @@
 import { create, type StateCreator } from 'zustand';
 import { devtools, persist, type PersistOptions } from 'zustand/middleware';
-import { UserProfile, Property, Job, JobStatus, JobPriority } from '../types';
+import { Property, Job, JobStatus, JobPriority } from '../types';
+import type { CurrentUserResponse } from '../api/current-user-contracts';
 import { logger } from '../utils/logger';
 import { useAuthStore } from './useAuthStore';
 import { filterPropertiesForUser, getDefaultAuthorizedPropertyId, getPropertyId, isPropertyAllowedForUser } from '../security/propertyAccess';
@@ -10,7 +11,7 @@ const isDevtoolsEnabled = typeof window !== 'undefined' && process.env.NODE_ENV 
 
 // User & Auth State
 interface UserState {
-  userProfile: UserProfile | null;
+  userProfile: CurrentUserResponse | null;
   selectedPropertyId: string | null;
   isAuthenticated: boolean;
   accessToken: string | null;
@@ -59,7 +60,7 @@ interface MainStore extends
   PreventiveMaintenanceState {
   
   // User Actions
-  setUserProfile: (profile: UserProfile | null) => void;
+  setUserProfile: (profile: CurrentUserResponse | null) => void;
   setSelectedPropertyId: (propertyId: string | null) => void;
   setAuthTokens: (access: string, refresh: string) => void;
   logout: () => void;
@@ -157,7 +158,7 @@ const storeImplementation: StateCreator<MainStore, [], []> = (set, get) => ({
   ...initialState,
   
   // User Actions
-  setUserProfile: (profile: UserProfile | null) => {
+  setUserProfile: (profile: CurrentUserResponse | null) => {
     const state = get();
     const filteredProperties = filterPropertiesForUser(state.properties, profile);
     const selectedIsAllowed = isPropertyAllowedForUser(profile, state.selectedPropertyId);

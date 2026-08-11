@@ -253,10 +253,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   machineId,
 }) => {
   const { toast } = useToast();
-  const { accessToken: auth0AccessToken, user: auth0User } = useClientAuth0();
+  const { accessToken: auth0AccessToken } = useClientAuth0();
   const { data: session } = useSession();
   const accessToken = auth0AccessToken || session?.user?.accessToken || null;
-  const user = session?.user || auth0User || null;
 
   const { properties: userProperties } = useProperties();
   const { selectedPropertyId: selectedProperty, userProfile } = useUser();
@@ -674,10 +673,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       };
     }
 
-    // For new records, assign to the current application user. Prefer the
-    // persisted backend profile id because Auth0 session ids may be non-numeric
-    // provider identifiers that the preventive-maintenance API cannot accept.
-    const currentUserId = userProfile?.id || user?.id;
+    // PM assigned_to expects the backend User primary key.
+    const currentUserId = userProfile?.user_id;
 
     return {
       pmtitle: "",
@@ -705,8 +702,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     defaultScheduledDate,
     ensureDateTimeLocalFormat,
     pmId,
-    userProfile?.id,
-    user,
+    userProfile?.user_id,
   ]);
 
   const clearError = useCallback(() => {

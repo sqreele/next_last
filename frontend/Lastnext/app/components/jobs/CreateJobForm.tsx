@@ -753,7 +753,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       if (values.remarks?.trim()) {
         formData.append("remarks", values.remarks.trim());
       }
-      formData.append("user_id", session.user.id);
+      if (!userProfile?.user_id) {
+        throw new Error("Current application user identity is unavailable.");
+      }
+      formData.append("user_id", String(userProfile.user_id));
       formData.append("property_id", selectedProperty);
       formData.append("is_defective", values.is_defective ? "true" : "false");
       formData.append(

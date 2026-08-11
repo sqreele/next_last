@@ -12,6 +12,7 @@ import type {
   AreaRef as ApiAreaRef,
   RoomRef as ApiRoomRef,
 } from "./api/location-contracts";
+import type { CurrentUserResponse } from "./api/current-user-contracts";
 
 export type {
   ApiErrorDetails,
@@ -71,20 +72,19 @@ export interface ProfileImage {
 }
 
 export interface UserProfile {
-  id: string;
-  user?: string;
+  id: number;
   username: string;
-  email: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
-  full_name?: string | null;
-  display_name?: string | null;
+  email: string;
+  first_name: string;
+  last_name: string;
+  display_name: string;
   profile_image: string | null;
-  positions: string;
+  positions: string | null;
   properties: Property[];
   created_at: string;
-
 }
+
+export type CurrentUser = CurrentUserResponse;
 
 export interface UserContextType {
   userProfile: UserProfile | null;

@@ -92,7 +92,7 @@ export default function EditProfilePage() {
   }
 
   // Verify that the user is editing their own profile
-  if (String(userProfile.id) !== profileId) {
+  if (String(userProfile.profile_id) !== profileId) {
     return (
       <div className="w-full max-w-none px-3 py-4 sm:px-6 lg:mx-auto lg:max-w-2xl">
         <Card>

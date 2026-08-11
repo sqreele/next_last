@@ -205,7 +205,7 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader className="h-4 w-4 animate-spin" /> Loading comments…
         </div>
-      ) : comments.length === 0 ? (
+      ) : comments.length === 0 && pendingComments.length === 0 ? (
         <div className="rounded-lg border border-dashed bg-muted p-4 text-center text-sm text-muted-foreground">
           No comments yet
         </div>

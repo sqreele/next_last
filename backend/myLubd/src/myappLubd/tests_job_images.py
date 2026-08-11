@@ -1,10 +1,12 @@
 import os
 import tempfile
 from io import BytesIO, StringIO
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 from PIL import Image
 
@@ -92,6 +94,12 @@ class JobImageUploadTests(JobImageTestMixin, TestCase):
 
 
 class OptimizeJobImagesCommandTests(JobImageTestMixin, TestCase):
+    def save_media(self, name, content=b'orphan'):
+        storage = JobImage._meta.get_field('image').storage
+        saved_name = storage.save(name, ContentFile(content))
+        self.addCleanup(lambda: storage.delete(saved_name) if storage.exists(saved_name) else None)
+        return storage, saved_name
+
     def test_dry_run_does_not_modify_row_or_file(self):
         row = self.create_image(self.upload((100, 50)))
         JobImage.objects.filter(pk=row.pk).update(jpeg_path='legacy-copy.jpg')
@@ -127,3 +135,78 @@ class OptimizeJobImagesCommandTests(JobImageTestMixin, TestCase):
         call_command('optimize_job_images', '--apply', stdout=StringIO())
         row.refresh_from_db()
         self.assertEqual(row.image.name, original)
+
+    def test_find_orphans_reports_without_deleting(self):
+        storage, orphan = self.save_media('maintenance_job_images/orphan.bin')
+        stdout = StringIO()
+        call_command('optimize_job_images', '--find-orphans', stdout=stdout)
+        self.assertTrue(storage.exists(orphan))
+        self.assertIn('Orphan files: 1', stdout.getvalue())
+        self.assertIn('Dry run: no orphan files were deleted.', stdout.getvalue())
+
+    def test_delete_orphans_deletes_an_orphan(self):
+        storage, orphan = self.save_media('maintenance_job_images/orphan.bin')
+        stdout = StringIO()
+        call_command('optimize_job_images', '--delete-orphans', stdout=stdout)
+        self.assertFalse(storage.exists(orphan))
+        self.assertIn('Orphan files deleted: 1', stdout.getvalue())
+
+    def test_delete_orphans_preserves_referenced_file(self):
+        row = self.create_image(self.upload((20, 20)))
+        storage = row.image.storage
+        call_command('optimize_job_images', '--delete-orphans', stdout=StringIO())
+        self.assertTrue(storage.exists(row.image.name))
+
+    def test_orphan_deletion_requires_explicit_option(self):
+        storage, orphan = self.save_media('maintenance_job_images/orphan.bin')
+        call_command('optimize_job_images', stdout=StringIO())
+        self.assertTrue(storage.exists(orphan))
+        call_command('optimize_job_images', '--find-orphans', stdout=StringIO())
+        self.assertTrue(storage.exists(orphan))
+
+    def test_orphan_modes_reject_optimization_options(self):
+        for orphan_option in ('--find-orphans', '--delete-orphans'):
+            for optimization_option in ('--apply', '--delete-originals'):
+                with self.subTest(orphan=orphan_option, optimization=optimization_option):
+                    with self.assertRaises(CommandError):
+                        call_command('optimize_job_images', orphan_option, optimization_option)
+
+    def test_new_reference_before_deletion_skips_candidate(self):
+        from myappLubd.management.commands.optimize_job_images import Command
+
+        storage, orphan = self.save_media('maintenance_job_images/orphan.bin')
+        original_is_referenced = Command._is_referenced
+        checks = 0
+
+        def become_referenced(name):
+            nonlocal checks
+            checks += 1
+            if checks == 1:
+                row = self.create_image(self.upload((20, 20), name='concurrent.png'))
+                JobImage.objects.filter(pk=row.pk).update(image=name, jpeg_path=name)
+            return original_is_referenced(name)
+
+        stdout = StringIO()
+        with patch.object(Command, '_is_referenced', side_effect=become_referenced):
+            call_command('optimize_job_images', '--delete-orphans', stdout=stdout)
+        self.assertTrue(storage.exists(orphan))
+        self.assertIn('Orphans skipped after reference recheck: 1', stdout.getvalue())
+
+    def test_deletion_error_does_not_stop_later_candidates(self):
+        storage, first = self.save_media('maintenance_job_images/a.bin')
+        _, second = self.save_media('maintenance_job_images/b.bin')
+        real_delete = storage.delete
+
+        def delete(name):
+            if name == first:
+                raise OSError('simulated deletion failure')
+            return real_delete(name)
+
+        stdout, stderr = StringIO(), StringIO()
+        with patch.object(storage, 'delete', side_effect=delete):
+            call_command('optimize_job_images', '--delete-orphans', stdout=stdout, stderr=stderr)
+        self.assertTrue(storage.exists(first))
+        self.assertFalse(storage.exists(second))
+        self.assertIn('Orphan files deleted: 1', stdout.getvalue())
+        self.assertIn('Orphan deletion errors: 1', stdout.getvalue())
+        self.assertIn('simulated deletion failure', stderr.getvalue())

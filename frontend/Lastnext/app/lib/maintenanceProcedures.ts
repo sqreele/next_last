@@ -1,57 +1,27 @@
 import apiClient from './api-client';
+import type {
+  MaintenanceProcedureDetail,
+  MaintenanceProcedureListItem,
+  MaintenanceProcedureListQuery,
+  MaintenanceProcedureListResponse,
+} from './api/maintenance-procedure-contracts';
 
-export interface MaintenanceProcedureTemplate {
-  id: number;
-  name: string;
-  group_id?: string | null;
-  description?: string;
-  category?: string | null;
-  frequency?: string | null;
-  custom_days?: number | null;
-  difficulty_level?: string | null;
-  responsible_department?: string | null;
-  estimated_duration?: string | null;
-  safety_notes?: string | null;
-  required_tools?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  machine_ids?: string[];
-  machines?: Array<{
-    machine_id: string;
-    name?: string | null;
-    group_id?: string | null;
-    property_id?: string | number | null;
-  }>;
-}
-
-interface PaginatedMaintenanceProceduresResponse {
-  results?: MaintenanceProcedureTemplate[];
-  count?: number;
-  next?: string | null;
-  previous?: string | null;
-  total_pages?: number;
-  current_page?: number;
-  page_size?: number;
-}
-
-type MaintenanceProceduresApiResponse =
-  | MaintenanceProcedureTemplate[]
-  | PaginatedMaintenanceProceduresResponse;
+export type { MaintenanceProcedureListItem as MaintenanceProcedureTemplate } from './api/maintenance-procedure-contracts';
 
 const MAX_PAGES_TO_FETCH = 50;
 
 export async function fetchAllMaintenanceProcedures(options: {
   pageSize?: number;
-} = {}): Promise<MaintenanceProcedureTemplate[]> {
+} = {}): Promise<MaintenanceProcedureListItem[]> {
   const pageSize = options.pageSize ?? 100;
-  const aggregated: MaintenanceProcedureTemplate[] = [];
+  const aggregated: MaintenanceProcedureListItem[] = [];
   let page = 1;
   let hasMore = true;
   let pagesFetched = 0;
 
   while (hasMore && pagesFetched < MAX_PAGES_TO_FETCH) {
     pagesFetched += 1;
-    const response = await apiClient.get<MaintenanceProceduresApiResponse>(
+    const response = await apiClient.get<MaintenanceProcedureListResponse>(
       '/api/v1/maintenance-procedures/',
       {
         params: {
@@ -62,29 +32,13 @@ export async function fetchAllMaintenanceProcedures(options: {
     );
 
     const data = response.data;
-    let pageResults: MaintenanceProcedureTemplate[] = [];
-    let nextAvailable = false;
-
-    if (Array.isArray(data)) {
-      pageResults = data;
-    } else if (data && typeof data === 'object') {
-      if (Array.isArray(data.results)) {
-        pageResults = data.results;
-      }
-
-      if (typeof data.next === 'string' && data.next.length > 0) {
-        nextAvailable = true;
-      } else if (
-        typeof data.current_page === 'number' &&
-        typeof data.total_pages === 'number'
-      ) {
-        nextAvailable = data.current_page < data.total_pages;
-      } else if (typeof data.count === 'number') {
-        nextAvailable = aggregated.length + pageResults.length < data.count;
-      }
+    if (!data || !Array.isArray(data.results)) {
+      throw new Error('Invalid maintenance procedure paginated response');
     }
 
+    const pageResults = data.results;
     aggregated.push(...pageResults);
+    const nextAvailable = data.current_page < data.total_pages;
 
     if (!nextAvailable || pageResults.length === 0) {
       hasMore = false;
@@ -99,7 +53,7 @@ export async function fetchAllMaintenanceProcedures(options: {
     );
   }
 
-  const uniqueById = new Map<number, MaintenanceProcedureTemplate>();
+  const uniqueById = new Map<number, MaintenanceProcedureListItem>();
   for (const task of aggregated) {
     if (!uniqueById.has(task.id)) {
       uniqueById.set(task.id, task);
@@ -107,4 +61,26 @@ export async function fetchAllMaintenanceProcedures(options: {
   }
 
   return Array.from(uniqueById.values());
+}
+
+export async function fetchMaintenanceProcedures(
+  query: MaintenanceProcedureListQuery = {},
+): Promise<MaintenanceProcedureListResponse> {
+  const response = await apiClient.get<MaintenanceProcedureListResponse>(
+    '/api/v1/maintenance-procedures/',
+    { params: query },
+  );
+  if (!response.data || !Array.isArray(response.data.results)) {
+    throw new Error('Invalid maintenance procedure paginated response');
+  }
+  return response.data;
+}
+
+export async function fetchMaintenanceProcedure(
+  id: number | string,
+): Promise<MaintenanceProcedureDetail> {
+  const response = await apiClient.get<MaintenanceProcedureDetail>(
+    `/api/v1/maintenance-procedures/${id}/`,
+  );
+  return response.data;
 }

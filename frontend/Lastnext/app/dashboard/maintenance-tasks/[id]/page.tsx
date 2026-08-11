@@ -4,6 +4,9 @@ import React, { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/app/lib/session.client";
 import { useAuthStore } from "@/app/lib/stores/useAuthStore";
+import { fetchMaintenanceProcedure } from "@/app/lib/maintenanceProcedures";
+import type { MaintenanceProcedureDetail } from "@/app/lib/api/maintenance-procedure-contracts";
+import type { PMListItem, PMListResponse } from "@/app/lib/api/pm-contracts";
 import apiClient from "@/app/lib/api-client";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import {
@@ -18,7 +21,6 @@ import { Badge } from "@/app/components/ui/badge";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import {
   ArrowLeft,
-  Wrench,
   Clock,
   AlertTriangle,
   CheckCircle2,
@@ -27,72 +29,11 @@ import {
   FileText,
   Shield,
   History,
-  Image as ImageIcon,
   Calendar,
   User,
 } from "lucide-react";
 import Link from "next/link";
 import { getDisplayName } from "@/app/lib/utils/display-name";
-
-interface MaintenanceTask {
-  id: number;
-  // equipment field removed - tasks are now generic templates
-  name: string;
-  description: string;
-  frequency: string;
-  estimated_duration: string;
-  responsible_department?: string;
-  difficulty_level: string;
-  // steps removed - not displayed
-  required_tools?: string;
-  safety_notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface MaintenanceHistory {
-  pm_id: string;
-  pmtitle: string;
-  scheduled_date: string;
-  completed_date?: string;
-  status: string;
-  before_image_url?: string;
-  after_image_url?: string;
-  notes?: string;
-  created_by?: {
-    id: number;
-    username: string;
-    email?: string;
-  };
-  completed_by?: {
-    id: number;
-    username: string;
-  };
-  assigned_to?:
-    | number
-    | {
-        id: number;
-        username: string;
-        email?: string;
-        first_name?: string;
-        last_name?: string;
-        full_name?: string;
-      };
-  assigned_to_details?: {
-    id: number;
-    username: string;
-    email?: string;
-    first_name?: string;
-    last_name?: string;
-    full_name?: string;
-  };
-  machines?: Array<{
-    machine_id: string;
-    name: string;
-  }>;
-  updated_at?: string;
-  created_at?: string;
-}
 
 export default function MaintenanceTaskDetailPage({
   params,
@@ -101,15 +42,13 @@ export default function MaintenanceTaskDetailPage({
 }) {
   // Unwrap params using React.use() for Next.js 15 compatibility
   const unwrappedParams = use(params);
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const { selectedProperty } = useAuthStore();
-  const [task, setTask] = useState<MaintenanceTask | null>(null);
+  const [task, setTask] = useState<MaintenanceProcedureDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [maintenanceHistory, setMaintenanceHistory] = useState<
-    MaintenanceHistory[]
-  >([]);
+  const [maintenanceHistory, setMaintenanceHistory] = useState<PMListItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   const { recordLoaderShown, clearLoadingAfterMinTime } =
@@ -135,32 +74,26 @@ export default function MaintenanceTaskDetailPage({
       setLoadingHistory(true);
       try {
         // Build API params
-        const apiParams: any = { page_size: 100 };
+        const apiParams: { page_size: number; property_id?: string } = { page_size: 100 };
         if (selectedProperty) {
           apiParams.property_id = selectedProperty;
         }
 
         // Fetch preventive maintenance records (filtered by property if selected)
-        const response = await apiClient.get(
+        const response = await apiClient.get<PMListResponse>(
           "/api/v1/preventive-maintenance/",
           {
             params: apiParams,
           },
         );
 
-        // Handle both array and paginated response
-        let historyData: MaintenanceHistory[] = [];
-        if (Array.isArray(response.data)) {
-          historyData = response.data;
-        } else if (response.data && "results" in response.data) {
-          historyData = response.data.results || [];
-        }
+        const historyData: PMListItem[] = response.data.results;
 
         if (historyData.length > 0) {
         }
 
         // Filter to show records that use this task template
-        const filtered = historyData.filter((record: any) => {
+        const filtered = historyData.filter((record) => {
           // Match by procedure_template or procedure_template_id
           const matchesTemplate =
             record.procedure_template === taskTemplateId ||
@@ -171,12 +104,8 @@ export default function MaintenanceTaskDetailPage({
         }
 
         setMaintenanceHistory(filtered);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("[Maintenance History] Error:", err);
-        console.error(
-          "[Maintenance History] Error details:",
-          err.response?.data,
-        );
         // Don't set error, just leave history empty
         setMaintenanceHistory([]);
       } finally {
@@ -192,22 +121,19 @@ export default function MaintenanceTaskDetailPage({
     setLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<MaintenanceTask>(
-        `/api/v1/maintenance-procedures/${unwrappedParams.id}/`,
-      );
-      setTask(response.data);
+      const procedure = await fetchMaintenanceProcedure(unwrappedParams.id);
+      setTask(procedure);
 
       // Fetch maintenance history for this task template
-      fetchMaintenanceHistory(response.data.id);
-    } catch (err: any) {
+      fetchMaintenanceHistory(procedure.id);
+    } catch (err: unknown) {
       console.error("Error fetching task:", err);
-      setError(err.message || "Failed to load task details");
+      setError(err instanceof Error ? err.message : "Failed to load task details");
     } finally {
       clearLoadingAfterMinTime();
     }
   }, [
     unwrappedParams.id,
-    selectedProperty,
     fetchMaintenanceHistory,
     recordLoaderShown,
     clearLoadingAfterMinTime,
@@ -338,53 +264,6 @@ export default function MaintenanceTaskDetailPage({
         </CardContent>
       </Card>
 
-      {/* Procedure Steps - HIDDEN */}
-      {false && (task as any)?.steps && (task as any).steps.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5" />
-              Procedure Steps ({(task as any).steps.length})
-            </CardTitle>
-            <CardDescription>
-              Follow these steps to complete the maintenance task
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {((task as any)?.steps || [])
-                .sort((a: any, b: any) => a.step_number - b.step_number)
-                .map((step: any, index: number) => (
-                  <div
-                    key={index}
-                    className="flex gap-4 p-4 bg-muted rounded-lg"
-                  >
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">
-                        {step.step_number}
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-foreground">
-                        {step.title}
-                      </h4>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {step.description}
-                      </p>
-                      {step.estimated_time && (
-                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          Estimated time: {step.estimated_time}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Required Tools */}
       {task.required_tools && (
         <Card>
@@ -460,7 +339,7 @@ export default function MaintenanceTaskDetailPage({
                     new Date(b.scheduled_date).getTime() -
                     new Date(a.scheduled_date).getTime(),
                 )
-                .map((record, index) => (
+                .map((record) => (
                   <div
                     key={record.pm_id}
                     className="border border-border rounded-lg p-4 hover:bg-muted transition-colors"
@@ -515,22 +394,12 @@ export default function MaintenanceTaskDetailPage({
                               </div>
                             </div>
                           )}
-                          {(record.assigned_to_details || record.assigned_to) &&
+                          {record.assigned_to_details &&
                             (() => {
-                              const assignedUser =
-                                record.assigned_to_details ||
-                                (typeof record.assigned_to === "object"
-                                  ? record.assigned_to
-                                  : null);
-                              const displayName = assignedUser
-                                ? getDisplayName(
-                                    assignedUser,
-                                    "Unknown Technician",
-                                  )
-                                : getDisplayName(
-                                    record.assigned_to as any,
-                                    "Unknown Technician",
-                                  );
+                              const displayName = getDisplayName(
+                                record.assigned_to_details,
+                                "Unknown Technician",
+                              );
                               return (
                                 <div className="flex items-center gap-1 text-muted-foreground">
                                   <User className="h-4 w-4 text-sky-500" />
@@ -545,7 +414,7 @@ export default function MaintenanceTaskDetailPage({
                                 </div>
                               );
                             })()}
-                          {record.created_by && (
+                          {record.created_by_details && (
                             <div className="flex items-center gap-1 text-muted-foreground">
                               <Users className="h-4 w-4 text-purple-500" />
                               <div>
@@ -553,10 +422,7 @@ export default function MaintenanceTaskDetailPage({
                                   Created By:
                                 </span>
                                 <p className="font-medium text-foreground">
-                                  {getDisplayName(
-                                    record.created_by as any,
-                                    "Unknown Technician",
-                                  )}
+                                  {getDisplayName(record.created_by_details, "Unknown Technician")}
                                 </p>
                               </div>
                             </div>
@@ -574,75 +440,6 @@ export default function MaintenanceTaskDetailPage({
                           </div>
                         )}
                       </div>
-
-                      {/* Images section removed - focusing on dates and user info */}
-                      {false &&
-                        (record.before_image_url || record.after_image_url) && (
-                          <div className="flex gap-3 lg:w-1/3">
-                            {record.before_image_url && (
-                              <div className="flex-1">
-                                <p className="text-xs text-muted-foreground mb-1 font-medium">
-                                  Before
-                                </p>
-                                <div className="relative aspect-square rounded-lg overflow-hidden bg-muted border border-border">
-                                  <img
-                                    loading="lazy"
-                                    decoding="async"
-                                    src={record.before_image_url}
-                                    alt="Before maintenance"
-                                    className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                                    onClick={() =>
-                                      window.open(
-                                        record.before_image_url,
-                                        "_blank",
-                                      )
-                                    }
-                                  />
-                                  <div className="absolute top-1 right-1">
-                                    <Badge
-                                      variant="secondary"
-                                      className="text-xs bg-card/80"
-                                    >
-                                      <ImageIcon className="h-3 w-3 mr-1" />
-                                      Before
-                                    </Badge>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                            {record.after_image_url && (
-                              <div className="flex-1">
-                                <p className="text-xs text-muted-foreground mb-1 font-medium">
-                                  After
-                                </p>
-                                <div className="relative aspect-square rounded-lg overflow-hidden bg-muted border border-border">
-                                  <img
-                                    loading="lazy"
-                                    decoding="async"
-                                    src={record.after_image_url}
-                                    alt="After maintenance"
-                                    className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer"
-                                    onClick={() =>
-                                      window.open(
-                                        record.after_image_url,
-                                        "_blank",
-                                      )
-                                    }
-                                  />
-                                  <div className="absolute top-1 right-1">
-                                    <Badge
-                                      variant="secondary"
-                                      className="text-xs bg-card/80"
-                                    >
-                                      <ImageIcon className="h-3 w-3 mr-1" />
-                                      After
-                                    </Badge>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
                     </div>
                   </div>
                 ))}

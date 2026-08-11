@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "@/app/lib/session.client";
 import { useRouter } from "next/navigation";
-import apiClient from "@/app/lib/api-client";
+import { ApiError } from "@/app/lib/api-client";
+import { fetchMaintenanceProcedures } from "@/app/lib/maintenanceProcedures";
+import type { MaintenanceProcedureListItem } from "@/app/lib/api/maintenance-procedure-contracts";
 import {
   Card,
   CardContent,
@@ -20,44 +22,14 @@ import {
   Wrench,
   Clock,
   AlertCircle,
-  CheckCircle2,
   ChevronRight,
   ChevronLeft,
   Filter,
   RefreshCw,
   Users,
-  FileText,
-  AlertTriangle,
   Loader,
 } from "lucide-react";
 import Link from "next/link";
-
-interface MaintenanceTask {
-  id: number;
-  // equipment field removed - tasks are now generic templates
-  name: string;
-  description: string;
-  frequency: string;
-  estimated_duration: string;
-  responsible_department?: string;
-  difficulty_level: string;
-  // steps removed - not displayed
-  schedule_count?: number;
-  required_tools?: string;
-  safety_notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface PaginatedMaintenanceResponse {
-  count?: number;
-  total_pages?: number;
-  current_page?: number;
-  page_size?: number;
-  next?: string | null;
-  previous?: string | null;
-  results?: MaintenanceTask[];
-}
 
 const frequencyColors: Record<string, string> = {
   daily: "bg-red-100 text-red-800 border-red-200",
@@ -79,7 +51,7 @@ const difficultyColors: Record<string, string> = {
 const MIN_LOADER_MS = 400;
 
 export default function MaintenanceTasksPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const loaderShownAtRef = useRef<number | null>(null);
 
@@ -99,8 +71,8 @@ export default function MaintenanceTasksPage() {
     }
   }, []);
 
-  const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
-  const [filteredTasks, setFilteredTasks] = useState<MaintenanceTask[]>([]);
+  const [tasks, setTasks] = useState<MaintenanceProcedureListItem[]>([]);
+  const [filteredTasks, setFilteredTasks] = useState<MaintenanceProcedureListItem[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
@@ -110,7 +82,6 @@ export default function MaintenanceTasksPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [frequencyFilter, setFrequencyFilter] = useState<string>("all");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
-  const [expandedTaskId, setExpandedTaskId] = useState<number | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -124,78 +95,30 @@ export default function MaintenanceTasksPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await apiClient.get(
-          "/api/v1/maintenance-procedures/",
-          {
-            params: {
-              page: pageToLoad,
-              page_size: pageSizeToUse,
-            },
-          },
-        );
-
-        // Handle both array and paginated response formats
-        let taskData: MaintenanceTask[] = [];
-        let total = 0;
-        let totalPagesValue = 1;
-        let responsePageSize = pageSizeToUse;
-        let currentPageFromResponse: number | undefined;
-
-        if (Array.isArray(response.data)) {
-          taskData = response.data;
-          total = taskData.length;
-          totalPagesValue = 1;
-        } else if (response.data && typeof response.data === "object") {
-          const data = response.data as PaginatedMaintenanceResponse;
-          if (Array.isArray(data.results)) {
-            taskData = data.results;
-          }
-          total = typeof data.count === "number" ? data.count : taskData.length;
-          if (typeof data.page_size === "number" && data.page_size > 0) {
-            responsePageSize = data.page_size;
-          }
-          if (typeof data.total_pages === "number" && data.total_pages > 0) {
-            totalPagesValue = data.total_pages;
-          }
-          if (typeof data.current_page === "number" && data.current_page > 0) {
-            currentPageFromResponse = data.current_page;
-          }
-        } else if (response.data) {
-          // Fallback: try to use response.data directly
-          taskData = [response.data as MaintenanceTask];
-          total = taskData.length;
-          totalPagesValue = 1;
-        }
-
-        if (
-          (!totalPagesValue || totalPagesValue < 1) &&
-          total > 0 &&
-          responsePageSize > 0
-        ) {
-          totalPagesValue = Math.max(1, Math.ceil(total / responsePageSize));
-        }
+        const data = await fetchMaintenanceProcedures({
+          page: pageToLoad,
+          page_size: pageSizeToUse,
+        });
+        const taskData = data.results;
+        const total = data.count;
         setTasks(taskData);
         setFilteredTasks(taskData);
         setTotalCount(total);
-        setTotalPages(total > 0 ? totalPagesValue : 1);
+        setTotalPages(total > 0 ? data.total_pages : 1);
 
-        if (
-          typeof currentPageFromResponse === "number" &&
-          currentPageFromResponse > 0 &&
-          currentPageFromResponse !== page
-        ) {
-          setPage(currentPageFromResponse);
+        if (data.current_page !== page) {
+          setPage(data.current_page);
         }
 
-        if (responsePageSize > 0 && responsePageSize !== pageSize) {
-          setPageSize(responsePageSize);
+        if (data.page_size !== pageSize) {
+          setPageSize(data.page_size);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Error fetching maintenance tasks:", err);
-        if (err?.status === 404 && pageToLoad > 1) {
+        if (err instanceof ApiError && err.status === 404 && pageToLoad > 1) {
           setPage(1);
         }
-        setError(err?.message || "Failed to load maintenance tasks");
+        setError(err instanceof Error ? err.message : "Failed to load maintenance tasks");
         setTasks([]);
         setFilteredTasks([]);
         setTotalCount(0);
@@ -219,7 +142,6 @@ export default function MaintenanceTasksPage() {
       if (newPage < 1) return;
       if (totalCount > 0 && newPage > totalPages) return;
       setPage(newPage);
-      setExpandedTaskId(null);
     },
     [page, totalCount, totalPages],
   );
@@ -232,7 +154,6 @@ export default function MaintenanceTasksPage() {
       }
       setPage(1);
       setPageSize(newSize);
-      setExpandedTaskId(null);
     },
     [],
   );
@@ -255,9 +176,7 @@ export default function MaintenanceTasksPage() {
     // Search filter
     if (searchQuery) {
       filtered = filtered.filter(
-        (task) =>
-          task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.description.toLowerCase().includes(searchQuery.toLowerCase()),
+        (task) => task.name.toLowerCase().includes(searchQuery.toLowerCase()),
       );
     }
 
@@ -388,26 +307,6 @@ export default function MaintenanceTasksPage() {
           </CardContent>
         </Card>
 
-        {/* Stats card for steps - HIDDEN */}
-        {false && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">With Steps</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {
-                      tasks.filter(
-                        (t) => (t as any).steps && (t as any).steps.length > 0,
-                      ).length
-                    }
-                  </p>
-                </div>
-                <CheckCircle2 className="h-8 w-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Filters & Search */}
@@ -622,11 +521,6 @@ export default function MaintenanceTasksPage() {
                       </Link>
                     </div>
 
-                    {/* Description */}
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {task.description}
-                    </p>
-
                     {/* Badges */}
                     <div className="flex flex-wrap items-center gap-2 badge-container">
                       <Badge
@@ -658,19 +552,6 @@ export default function MaintenanceTasksPage() {
                         </Badge>
                       )}
 
-                      {/* Steps badge - HIDDEN */}
-                      {false &&
-                        (task as any).steps &&
-                        (task as any).steps.length > 0 && (
-                          <Badge
-                            variant="outline"
-                            className="flex items-center gap-1"
-                          >
-                            <CheckCircle2 className="h-3 w-3" />
-                            {(task as any).steps.length} Steps
-                          </Badge>
-                        )}
-
                       {task.responsible_department && (
                         <Badge
                           variant="outline"
@@ -681,58 +562,7 @@ export default function MaintenanceTasksPage() {
                         </Badge>
                       )}
 
-                      {task.safety_notes && (
-                        <Badge
-                          variant="outline"
-                          className="flex items-center gap-1 bg-yellow-50 text-yellow-800 border-yellow-300"
-                        >
-                          <AlertTriangle className="h-3 w-3" />
-                          Safety Notes
-                        </Badge>
-                      )}
-
-                      {task.required_tools && (
-                        <Badge
-                          variant="outline"
-                          className="flex items-center gap-1"
-                        >
-                          <FileText className="h-3 w-3" />
-                          Tools Required
-                        </Badge>
-                      )}
                     </div>
-
-                    {/* Quick Preview on Expand - Steps removed */}
-                    {false &&
-                      expandedTaskId === task.id &&
-                      (task as any).steps &&
-                      (task as any).steps.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-border">
-                          <h4 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4" />
-                            Procedure Steps Preview (First 3)
-                          </h4>
-                          <div className="space-y-2">
-                            {(task as any).steps
-                              .slice(0, 3)
-                              .map((step: any, idx: number) => (
-                                <div key={idx} className="flex gap-2 text-sm">
-                                  <span className="font-semibold text-blue-600">
-                                    {step.step_number}.
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    {step.title}
-                                  </span>
-                                </div>
-                              ))}
-                            {(task as any).steps.length > 3 && (
-                              <p className="text-xs text-muted-foreground italic">
-                                +{(task as any).steps.length - 3} more steps...
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
                   </div>
                 </div>
               </CardContent>

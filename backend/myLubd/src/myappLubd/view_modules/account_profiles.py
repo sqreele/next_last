@@ -11,7 +11,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import Property, TenantMembership, UserProfile
-from ..serializers import AssigneeOptionSerializer, UserProfileSerializer, UserSerializer
+from ..serializers import (
+    AssigneeOptionSerializer,
+    CurrentUserProfileSerializer,
+    UserProfileSerializer,
+    UserSerializer,
+)
 from ..tenancy import TENANT_ADMIN_ROLES, get_accessible_properties, get_user_tenants
 from .common import display_name_from_user
 
@@ -80,7 +85,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def me(self, request):
         profile = get_object_or_404(UserProfile, user=request.user)
-        serializer = self.get_serializer(profile)
+        serializer = CurrentUserProfileSerializer(profile, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])

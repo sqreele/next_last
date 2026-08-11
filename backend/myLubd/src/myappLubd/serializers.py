@@ -351,6 +351,20 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return get_user_public_username(obj.user)
 
 
+class CurrentUserProfileSerializer(UserProfileSerializer):
+    """Current-user DTO with explicit application User/Profile identities."""
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    profile_id = serializers.IntegerField(source='id', read_only=True)
+
+    class Meta(UserProfileSerializer.Meta):
+        fields = [*UserProfileSerializer.Meta.fields, 'user_id', 'profile_id']
+        read_only_fields = [
+            *UserProfileSerializer.Meta.read_only_fields,
+            'user_id',
+            'profile_id',
+        ]
+
+
 class AssigneeOptionSerializer(serializers.ModelSerializer):
     """Narrow assignment-picker DTO with explicit User/Profile identities."""
     user_id = serializers.IntegerField(source='user.id', read_only=True)

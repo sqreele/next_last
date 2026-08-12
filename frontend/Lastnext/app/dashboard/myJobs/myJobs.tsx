@@ -62,11 +62,16 @@ import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 import { PageContainer } from "@/app/components/layout/PageContainer";
 import { PageHeader, SectionHeader } from "@/app/components/layout/PageHeader";
 import { useSession } from "@/app/lib/session.client";
-import { fetchTopics, deleteJob as deleteJobApi } from "@/app/lib/data.server";
+import {
+  fetchTopics,
+  deleteJob as deleteJobApi,
+  updateJob as updateJobApi,
+} from "@/app/lib/data.server";
 import { useJobsData } from "@/app/lib/hooks/useJobsData";
 import { useJobs, useUser } from "@/app/lib/stores/mainStore";
 import { cn } from "@/app/lib/utils/cn";
 import { getDisplayName } from "@/app/lib/utils/display-name";
+import type { JobPatchPayload } from "@/app/lib/api/job-contracts";
 import type { Job, JobPriority, JobStatus, Topic } from "@/app/lib/types";
 
 const ITEMS_PER_PAGE = 24;
@@ -812,6 +817,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [availableTopics, setAvailableTopics] = React.useState<Topic[]>([]);
   const [selectedTopics, setSelectedTopics] = React.useState<Topic[]>([]);
+  const isEditSubmittingRef = React.useRef(false);
 
   const { jobs, isLoading, error, refreshJobs, updateJob, removeJob } =
     useJobsData({
@@ -924,6 +930,13 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
     setIsEditDialogOpen(true);
   };
 
+  const handleEditClose = () => {
+    if (isEditSubmittingRef.current) return;
+    setIsEditDialogOpen(false);
+    setSelectedJob(null);
+    setSelectedTopics([]);
+  };
+
   const handleDelete = (job: Job) => {
     setSelectedJob(job);
     setIsDeleteDialogOpen(true);
@@ -931,39 +944,53 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
 
   const handleEditSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedJob) return;
+    if (!selectedJob || isEditSubmittingRef.current) return;
 
+    isEditSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
+      if (!session?.user?.accessToken) throw new Error("Not authenticated");
+
+      const jobAtSubmit = selectedJob;
       const formData = new FormData(event.currentTarget);
-      const updatedJobData: Partial<Job> = {
+      const selectedTopic = selectedTopics[0];
+      const apiRequestData: JobPatchPayload = {
         description: formData.get("description") as string,
         priority: formData.get("priority") as JobPriority,
-        remarks: (formData.get("remarks") as string) || undefined,
+        remarks: (formData.get("remarks") as string) || "",
         is_defective: formData.get("is_defective") === "on",
         is_preventivemaintenance:
           formData.get("is_preventivemaintenance") === "on",
-        created_at:
-          (formData.get("created_at") as string) || selectedJob.created_at,
-        updated_at:
-          (formData.get("updated_at") as string) || selectedJob.updated_at,
-        completed_at:
-          (formData.get("completed_at") as string) || selectedJob.completed_at,
-        topics: selectedTopics,
+        ...(selectedTopic
+          ? {
+              topic_data: {
+                title: selectedTopic.title,
+                description: selectedTopic.description || "",
+              },
+            }
+          : {}),
       };
 
-      const apiRequestData = {
-        ...updatedJobData,
-        topic_data: selectedTopics,
-        room_id: selectedJob.rooms?.[0]?.room_id,
-      };
+      const updatedJob = await updateJobApi(
+        String(jobAtSubmit.job_id),
+        apiRequestData,
+        session.user.accessToken,
+      );
 
-      storeUpdateJob(selectedJob.id, apiRequestData);
-      updateJob({ ...selectedJob, ...apiRequestData });
+      if (
+        updatedJob.id !== jobAtSubmit.id ||
+        String(updatedJob.job_id) !== String(jobAtSubmit.job_id)
+      ) {
+        throw new Error("The updated job response did not match the requested job.");
+      }
+
+      storeUpdateJob(updatedJob.id, updatedJob);
+      updateJob(updatedJob);
 
       toast({ title: "Success", description: "Job updated successfully." });
       setIsEditDialogOpen(false);
       setSelectedJob(null);
+      setSelectedTopics([]);
     } catch (editError) {
       console.error("Failed to update job:", editError);
       toast({
@@ -975,6 +1002,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
         variant: "destructive",
       });
     } finally {
+      isEditSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -1176,7 +1204,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
 
       <EditDialog
         isOpen={isEditDialogOpen}
-        onClose={() => setIsEditDialogOpen(false)}
+        onClose={handleEditClose}
         job={selectedJob}
         onSubmit={handleEditSubmit}
         isSubmitting={isSubmitting}

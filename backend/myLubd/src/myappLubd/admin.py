@@ -500,9 +500,69 @@ class CreatedAtBeforeYearFilter(admin.SimpleListFilter):
         return queryset
 
 
-# Add this new admin class for Machine
+class DatalistTextInput(forms.TextInput):
+    """Text input that suggests existing values but also accepts new ones."""
+
+    def __init__(self, *args, options=None, **kwargs):
+        self.options = options or []
+        super().__init__(*args, **kwargs)
+
+    def render(self, name, value, attrs=None, renderer=None):
+        attrs = attrs or {}
+        datalist_id = f'{attrs.get("id", f"id_{name}")}_options'
+        attrs['list'] = datalist_id
+        input_html = super().render(name, value, attrs, renderer)
+        option_html = format_html_join(
+            '',
+            '<option value="{}"></option>',
+            ((option,) for option in self.options),
+        )
+        return format_html(
+            '{}<datalist id="{}">{}</datalist>',
+            input_html,
+            datalist_id,
+            option_html,
+        )
+
+
+class MachineAdminForm(forms.ModelForm):
+    """Suggest existing equipment metadata while allowing new values."""
+
+    class Meta:
+        model = Machine
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name in ('brand', 'category'):
+            values = Machine.objects.exclude(
+                **{f'{field_name}__isnull': True}
+            ).exclude(
+                **{field_name: ''}
+            ).values_list(field_name, flat=True).distinct()
+
+            # Include the instance value even when a restricted/custom manager
+            # would otherwise omit it, so editing never loses the saved value.
+            current_value = getattr(self.instance, field_name, None)
+            options = {value.strip() for value in values if value and value.strip()}
+            if current_value and current_value.strip():
+                options.add(current_value.strip())
+
+            self.fields[field_name].widget = DatalistTextInput(
+                options=sorted(options, key=str.casefold),
+                attrs={
+                    'placeholder': f'Select or enter a new {field_name}',
+                    'autocomplete': 'off',
+                },
+            )
+            self.fields[field_name].help_text = (
+                f'Select an existing {field_name} from the suggestions, or type a new one.'
+            )
+
+
 @admin.register(Machine)
 class MachineAdmin(admin.ModelAdmin):
+    form = MachineAdminForm
     list_per_page = 25
     list_display = [
         'image_thumbnail',

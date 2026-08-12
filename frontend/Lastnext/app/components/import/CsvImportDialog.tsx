@@ -13,6 +13,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -79,6 +80,7 @@ export function CsvImportDialog({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CsvImportResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadInFlightRef = useRef(false);
 
   const reset = () => {
     setFile(null);
@@ -108,12 +110,13 @@ export function CsvImportDialog({
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setError(err?.message || "Could not download the template.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not download the template.");
     }
   };
 
   const handleUpload = async () => {
+    if (uploadInFlightRef.current) return;
     setError(null);
     setResult(null);
     if (!file) {
@@ -125,6 +128,7 @@ export function CsvImportDialog({
       setError("Sign in again to import.");
       return;
     }
+    uploadInFlightRef.current = true;
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -155,9 +159,10 @@ export function CsvImportDialog({
       if ((r.created_count || 0) + (r.attached_count || 0) > 0) {
         onImported?.(r);
       }
-    } catch (err: any) {
-      setError(err?.message || "Could not import the file.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Could not import the file.");
     } finally {
+      uploadInFlightRef.current = false;
       setSubmitting(false);
     }
   };
@@ -169,6 +174,7 @@ export function CsvImportDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
+        if (!next && uploadInFlightRef.current) return;
         setOpen(next);
         if (!next) reset();
       }}
@@ -184,9 +190,9 @@ export function CsvImportDialog({
           <DialogTitle className="text-lg font-bold text-foreground">
             Bulk-import {label}
           </DialogTitle>
-          <p className="text-xs font-medium text-muted-foreground">
+          <DialogDescription className="text-xs font-medium text-muted-foreground">
             {description}
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 px-5 py-4">
@@ -224,6 +230,7 @@ export function CsvImportDialog({
               id="csv-import-file"
               type="file"
               accept=".csv,text/csv"
+              disabled={submitting}
               className="sr-only"
               onChange={(event) => {
                 const selected = event.target.files?.[0] ?? null;
@@ -239,11 +246,12 @@ export function CsvImportDialog({
               <span className="font-bold text-foreground">{file.name}</span>
               <button
                 type="button"
+                disabled={submitting}
                 onClick={() => {
                   setFile(null);
                   if (inputRef.current) inputRef.current.value = "";
                 }}
-                className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 aria-label="Remove selected file"
               >
                 <X className="h-4 w-4" />

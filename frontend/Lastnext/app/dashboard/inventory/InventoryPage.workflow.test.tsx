@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   alert: vi.fn(),
   selectedProperty: "PROPERTY-A",
   itemsByProperty: {} as Record<string, InventoryFixture>,
+  completeCsvImport: undefined as undefined | (() => void),
 }));
 
 interface InventoryFixture {
@@ -148,7 +149,10 @@ vi.mock("@/app/lib/i18n/LocaleProvider", () => ({
 }));
 
 vi.mock("@/app/components/inventory/InventoryCsvImport", () => ({
-  InventoryCsvImport: () => <span>CSV import</span>,
+  InventoryCsvImport: ({ onImported }: { onImported?: () => void }) => {
+    mocks.completeCsvImport = onImported;
+    return <button onClick={onImported}>Complete CSV import</button>;
+  },
 }));
 
 vi.mock("@/app/components/inventory/InventoryMobileStats", () => ({
@@ -185,6 +189,7 @@ beforeEach(() => {
   mocks.alert.mockReset();
   mocks.apiGet.mockReset().mockImplementation(apiGetResponse);
   mocks.apiPost.mockReset();
+  mocks.completeCsvImport = undefined;
   vi.stubGlobal("alert", mocks.alert);
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
@@ -196,7 +201,18 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("InventoryPage use and restock workflows", () => {
+describe("InventoryPage mutation and reconciliation workflows", () => {
+  it("refetches page one after a successful CSV import", async () => {
+    await renderInventory();
+    const initialListCalls = inventoryListCalls().length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Complete CSV import" }));
+
+    await waitFor(() => {
+      expect(inventoryListCalls()).toHaveLength(initialListCalls + 1);
+    });
+  });
+
   it("uses the exact item once and reconciles balance from the authoritative list", async () => {
     await renderInventory();
     const quantity = openUseDialog();

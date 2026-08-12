@@ -13,6 +13,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -51,6 +52,7 @@ export function InventoryCsvImport({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<InventoryBulkImportResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadInFlightRef = useRef(false);
 
   const reset = () => {
     setFile(null);
@@ -89,6 +91,7 @@ export function InventoryCsvImport({
   };
 
   const handleUpload = async () => {
+    if (uploadInFlightRef.current) return;
     setError(null);
     setResult(null);
     if (!file) {
@@ -100,6 +103,7 @@ export function InventoryCsvImport({
       setError("Sign in again to import.");
       return;
     }
+    uploadInFlightRef.current = true;
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -131,6 +135,7 @@ export function InventoryCsvImport({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Could not import the file.");
     } finally {
+      uploadInFlightRef.current = false;
       setSubmitting(false);
     }
   };
@@ -139,6 +144,7 @@ export function InventoryCsvImport({
     <Dialog
       open={open}
       onOpenChange={(next) => {
+        if (!next && uploadInFlightRef.current) return;
         setOpen(next);
         if (!next) reset();
       }}
@@ -154,11 +160,11 @@ export function InventoryCsvImport({
           <DialogTitle className="text-lg font-bold text-foreground">
             Bulk-import inventory
           </DialogTitle>
-          <p className="text-xs font-medium text-muted-foreground">
+          <DialogDescription className="text-xs font-medium text-muted-foreground">
             Upload a CSV with columns: name, quantity, min_quantity, and
             optional category, unit, unit_price, location, supplier,
             description, property_id.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 px-5 py-4">
@@ -196,6 +202,7 @@ export function InventoryCsvImport({
               id="inventory-csv-file"
               type="file"
               accept=".csv,text/csv"
+              disabled={submitting}
               className="sr-only"
               onChange={(event) => {
                 const selected = event.target.files?.[0] ?? null;
@@ -211,11 +218,12 @@ export function InventoryCsvImport({
               <span className="font-bold text-foreground">{file.name}</span>
               <button
                 type="button"
+                disabled={submitting}
                 onClick={() => {
                   setFile(null);
                   if (inputRef.current) inputRef.current.value = "";
                 }}
-                className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
                 aria-label="Remove selected file"
               >
                 <X className="h-4 w-4" />

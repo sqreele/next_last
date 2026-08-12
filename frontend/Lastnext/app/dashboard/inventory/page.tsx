@@ -565,8 +565,11 @@ export default function InventoryPage() {
           <InventoryCsvImport
             currentPropertyId={selectedProperty}
             onImported={() => {
-              // Force a refetch by toggling page (the page hook depends on it).
-              setPage(1);
+              if (page === 1) {
+                void fetchInventory();
+              } else {
+                setPage(1);
+              }
             }}
           />
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>

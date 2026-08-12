@@ -27,12 +27,15 @@ import { Badge } from "@/app/components/ui/badge";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import Image from "next/image";
+import { useUser } from "@/app/lib/stores/mainStore";
+import { currentUserProfileRouteId } from "@/app/lib/api/current-user-contracts";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { isAuthenticated, user, isLoading } = useSessionGuard({
     requireAuth: true,
   });
+  const { userProfile } = useUser();
   const [userProperties, setUserProperties] = useState<any[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(true);
   const [propertiesError, setPropertiesError] = useState<string | null>(null);
@@ -184,7 +187,13 @@ export default function ProfilePage() {
                   size="sm"
                   className="min-h-11 w-full sm:w-auto"
                 >
-                  <Link href={`/dashboard/profile/edit/${user.id}`}>
+                  <Link
+                    href={
+                      userProfile
+                        ? `/dashboard/profile/edit/${currentUserProfileRouteId(userProfile)}`
+                        : "/dashboard/profile"
+                    }
+                  >
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit Profile
                   </Link>

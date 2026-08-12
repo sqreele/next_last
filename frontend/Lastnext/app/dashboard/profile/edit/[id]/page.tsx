@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   User2,
@@ -32,14 +32,11 @@ export default function EditProfilePage() {
   const {
     userProfile,
     selectedPropertyId: selectedProperty,
+    setUserProfile,
     setSelectedPropertyId: setSelectedProperty,
   } = useUser();
   const { properties: userProperties, propertyLoading: loading } =
     useProperties();
-
-  // Since we don't have refetch and forceRefresh in the new store, we'll handle it differently
-  const refetch = () => Promise.resolve(userProfile);
-  const forceRefresh = () => Promise.resolve(userProfile);
 
   // Check if user has properties
   const hasProperties = userProperties && userProperties.length > 0;
@@ -49,6 +46,9 @@ export default function EditProfilePage() {
     positions: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const activeProfileRef = useRef(userProfile);
+  activeProfileRef.current = userProfile;
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -122,17 +122,14 @@ export default function EditProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current || !userProfile) return;
+
+    const profileAtSubmit = userProfile;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setMessage(null);
 
     try {
-      // Create Auth0 profile data structure
-      const auth0Profile = {
-        email: formData.email,
-        nickname: formData.username,
-        name: formData.username,
-      };
-
       // Get the current session to extract the access token
       const sessionResponse = await fetch("/api/auth/session-compat", {
         credentials: "include",
@@ -150,30 +147,47 @@ export default function EditProfilePage() {
         throw new Error("No access token available for profile update");
       }
 
-      // Call the backend profile update endpoint with the access token
-      const success = await updateUserProfile(auth0Profile, accessToken);
+      const updatedProfile = await updateUserProfile(
+        profileAtSubmit.profile_id,
+        { positions: formData.positions.trim() || null },
+        accessToken,
+      );
 
-      if (success) {
-        setMessage({
-          type: "success",
-          text: "Profile updated successfully! Refreshing data and redirecting...",
-        });
-
-        // Force refresh of user context data
-        if (forceRefresh) {
-          await forceRefresh();
-        }
-
-        // Redirect back to profile page after a short delay
-        setTimeout(() => {
-          router.push("/dashboard/profile");
-        }, 2000);
-      } else {
-        setMessage({
-          type: "error",
-          text: "Failed to update profile. Please try again.",
-        });
+      if (updatedProfile.id !== profileAtSubmit.profile_id) {
+        throw new Error("Profile update response identity mismatch");
       }
+
+      const activeProfile = activeProfileRef.current;
+      if (
+        !activeProfile ||
+        activeProfile.user_id !== profileAtSubmit.user_id ||
+        activeProfile.profile_id !== profileAtSubmit.profile_id
+      ) {
+        return;
+      }
+
+      const reconciledProfile = {
+        ...profileAtSubmit,
+        ...updatedProfile,
+        id: profileAtSubmit.profile_id,
+        user_id: profileAtSubmit.user_id,
+        profile_id: profileAtSubmit.profile_id,
+      };
+      setUserProfile(reconciledProfile);
+      setFormData({
+        username: updatedProfile.username || "",
+        email: updatedProfile.email || "",
+        positions: updatedProfile.positions || "",
+      });
+      setMessage({
+        type: "success",
+        text: "Profile updated successfully! Refreshing data and redirecting...",
+      });
+
+      // Redirect back to profile page after a short delay
+      setTimeout(() => {
+        router.push("/dashboard/profile");
+      }, 2000);
     } catch (error) {
       console.error("❌ Error updating profile:", error);
       setMessage({
@@ -181,6 +195,7 @@ export default function EditProfilePage() {
         text: `An error occurred while updating your profile: ${error instanceof Error ? error.message : "Unknown error"}`,
       });
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -241,6 +256,7 @@ export default function EditProfilePage() {
                     handleInputChange("username", e.target.value)
                   }
                   placeholder="Enter your username"
+                  readOnly
                   disabled={isSubmitting}
                 />
               </div>
@@ -258,6 +274,7 @@ export default function EditProfilePage() {
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="Enter your email address"
+                  readOnly
                   disabled={isSubmitting}
                 />
               </div>

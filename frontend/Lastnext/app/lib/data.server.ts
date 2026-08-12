@@ -1,5 +1,6 @@
 import { Job, Property, JobStatus, Room, User, Topic } from "./types";
 import type { PropertyApiResponse } from "./api/location-contracts";
+import type { UserProfileApiResponse } from "./api/current-user-contracts";
 import { API_CONFIG } from "./config";
 import { getCsrfHeaders } from "./csrf";
 import { fixJobsImageUrls, fixJobImageUrls, sanitizeJobsData, sanitizeJobData } from "./utils/image-utils";
@@ -679,51 +680,22 @@ export async function fetchJobsForRoom(roomId: string, accessToken?: string): Pr
   return fetchAllJobs(accessToken, `room_id=${encodeURIComponent(roomId)}`);
 }
 
-export async function updateUserProfile(auth0Profile: any, accessToken?: string): Promise<boolean> {
-  try {
-    let token = accessToken;
-    
-    // If no token provided, try to get it from the session
-    if (!token) {
-      try {
-        // For server-side calls, we need to use the full URL
-        const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
-        const sessionResponse = await fetch(`${baseUrl}/api/auth/session-compat`, {
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        
-        if (!sessionResponse.ok) {
-          console.error('❌ Failed to get session for profile update');
-          return false;
-        }
-        
-        const session = await sessionResponse.json();
-        token = session?.user?.accessToken;
-      } catch (sessionError) {
-        console.error('❌ Error getting session for profile update:', sessionError);
-        return false;
-      }
-    }
-    
-    if (!token) {
-      console.error('❌ No access token available for profile update');
-      return false;
-    }
-    
-    const response = await fetchWithToken<{message: string, updated_fields: string[], user: any}>(
-      '/api/v1/auth/profile/update/',
-      token,
-      'POST',
-      {
-        auth0_profile: auth0Profile
-      }
-    );
-    return true;
-  } catch (error) {
-    console.error('❌ Error updating user profile:', error);
-    return false;
-  }
+export interface UserProfileUpdatePayload {
+  positions: string | null;
+}
+
+export async function updateUserProfile(
+  profileId: number,
+  payload: UserProfileUpdatePayload,
+  accessToken: string,
+): Promise<UserProfileApiResponse> {
+  return fetchWithToken<UserProfileApiResponse>(
+    `/api/v1/user-profiles/${profileId}/`,
+    accessToken,
+    "PATCH",
+    payload,
+    0,
+  );
 }
 
 export async function fetchUsers(accessToken?: string): Promise<User[]> {

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   apiGet: vi.fn(),
   apiPut: vi.fn(),
   apiPost: vi.fn(),
+  search: "",
   listeners: new Set<() => void>(),
   storeState: {} as Record<string, unknown>,
   resetStore: null as unknown as () => void,
@@ -134,7 +135,7 @@ const listResponse = {
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
   useParams: () => ({ pm_id: "PM-17" }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(mocks.search),
 }));
 
 vi.mock("@/app/lib/session.client", () => ({
@@ -242,6 +243,7 @@ function dateInputs() {
 
 beforeEach(() => {
   mocks.resetStore();
+  mocks.search = "";
   mocks.push.mockReset();
   mocks.apiGet.mockReset().mockImplementation(apiGetResponse);
   mocks.apiPut.mockReset().mockResolvedValue({ data: writeResponse });
@@ -327,5 +329,57 @@ describe("EditPreventiveMaintenancePage workflow", () => {
       "Unsaved compressor change",
     );
     expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it("submits completion date and after-image atomically from the generated work form", async () => {
+    mocks.search = "complete=true";
+    await renderHydratedEdit();
+    const afterImage = new File(["after"], "completed.jpg", { type: "image/jpeg" });
+    const inputs = dateInputs();
+    await waitFor(() => expect(inputs[1].value).not.toBe(""));
+    fireEvent.change(inputs[1], { target: { value: "2026-08-12T04:05" } });
+    const fileInputs = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[type="file"]'),
+    );
+    fireEvent.change(fileInputs[1], { target: { files: [afterImage] } });
+
+    await waitFor(() => {
+      expect(screen.getByRole("img", { name: "After maintenance" })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    await waitFor(() => expect(mocks.apiPut).toHaveBeenCalledTimes(1));
+    const [url, body] = mocks.apiPut.mock.calls[0] as [string, FormData];
+    expect(url).toBe("/api/v1/preventive-maintenance/PM-17/");
+    expect(body.get("completed_date")).toBe("2026-08-12T04:05");
+    expect(body.get("after_image")).toBe(afterImage);
+    expect(body.has("property_id")).toBe(false);
+    await waitFor(() => {
+      expect(mocks.push).toHaveBeenCalledWith("/dashboard/preventive-maintenance/PM-17");
+    });
+  });
+
+  it("keeps after-image evidence unsaved when the atomic work-form update fails", async () => {
+    mocks.search = "complete=true";
+    await renderHydratedEdit();
+    const afterImage = new File(["after"], "failed-completion.jpg", {
+      type: "image/jpeg",
+    });
+    const fileInputs = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[type="file"]'),
+    );
+    fireEvent.change(fileInputs[1], { target: { files: [afterImage] } });
+    await screen.findByRole("img", { name: "After maintenance" });
+    mocks.apiPut.mockRejectedValueOnce({
+      message: "Request failed",
+      response: { status: 403, data: { detail: "Completion evidence was not saved." } },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+
+    await screen.findByText("Completion evidence was not saved.");
+    expect(mocks.apiPut).toHaveBeenCalledTimes(1);
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(screen.getByRole("img", { name: "After maintenance" })).toBeInTheDocument();
   });
 });

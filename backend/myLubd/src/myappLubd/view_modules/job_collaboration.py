@@ -1,6 +1,7 @@
 import logging
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import action
@@ -8,11 +9,22 @@ from rest_framework.response import Response
 
 from ..models import JobComment, Property
 from ..serializers import JobCommentSerializer
+from ..tenancy import accessible_property_ids
 from .common import display_name_from_user
 
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
+
+def _job_property_scope_ids(job):
+    """Return every authoritative Property PK associated with a Job."""
+    property_ids = set(
+        Property.objects.filter(rooms__jobs=job).values_list('id', flat=True)
+    )
+    if job.area_id:
+        property_ids.add(job.area.property_id)
+    return property_ids
 
 
 class JobCollaborationMixin:
@@ -136,10 +148,9 @@ class JobCollaborationMixin:
     
         @action(detail=True, methods=['post'], url_path='reassign')
         def reassign(self, request, job_id=None):
-            """Reassign the job to another user that shares at least one of the
-            job's properties.
+            """Reassign a Job within its single authoritative Property scope.
     
-            Body: {"user_id": <id|username>, "note"?: str}
+            Body: {"user_id": <canonical User.id>, "note"?: str}
     
             Stamps the remarks with the same status-note format the audit log
             already parses, so the timeline picks up the reassignment as a
@@ -152,56 +163,77 @@ class JobCollaborationMixin:
                     status=status.HTTP_400_BAD_REQUEST,
                 )
     
-            target = None
             target_str = str(target_raw).strip()
-            if target_str.isdigit():
-                target = User.objects.filter(pk=int(target_str)).first()
-            if target is None:
-                target = User.objects.filter(username__iexact=target_str).first()
+            if not target_str.isdigit():
+                return Response(
+                    {'error': 'user_id must be a canonical numeric user ID.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            target = User.objects.filter(pk=int(target_str)).first()
             if target is None:
                 return Response(
                     {'error': 'Target user not found.'},
                     status=status.HTTP_404_NOT_FOUND,
                 )
     
-            # Reassignment scope: target must share at least one property with
-            # the job (either through a job-rooms property or the job's area
-            # property). Staff/superusers bypass.
-            if not (target.is_staff or target.is_superuser):
-                job_property_ids = set(
-                    Property.objects.filter(rooms__jobs=job).values_list('id', flat=True)
+            # Lock the Job while validating and mutating so two concurrent
+            # reassignments cannot both write from the same prior assignment.
+            with transaction.atomic():
+                job = (
+                    type(job).objects.select_for_update()
+                    .get(pk=job.pk)
                 )
-                target_property_ids = set(
-                    Property.objects.filter(users=target).values_list('id', flat=True)
-                )
-                if job_property_ids and not job_property_ids & target_property_ids:
+                job_property_ids = _job_property_scope_ids(job)
+                if len(job_property_ids) != 1:
+                    return Response(
+                        {'error': 'Job property scope is missing or ambiguous.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                job_property_id = next(iter(job_property_ids))
+                target_property_ids = accessible_property_ids(target)
+                if (
+                    target_property_ids is not None
+                    and job_property_id not in target_property_ids
+                ):
                     return Response(
                         {'error': "Target user has no access to this job's property."},
                         status=status.HTTP_403_FORBIDDEN,
                     )
-    
-            previous = job.user
-            if previous and previous.pk == target.pk:
-                return Response(
-                    {'error': 'Job is already assigned to that user.'},
-                    status=status.HTTP_400_BAD_REQUEST,
+
+                previous = job.user
+                if previous and previous.pk == target.pk:
+                    return Response(
+                        {'error': 'Job is already assigned to that user.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                note = ((request.data or {}).get('note') or '').strip()[:300]
+                stamp = timezone.now().strftime('%Y-%m-%d %H:%M')
+                actor = display_name_from_user(
+                    request.user,
+                    fallback=getattr(request.user, 'email', None) or 'system',
                 )
-    
-            note = ((request.data or {}).get('note') or '').strip()[:300]
-            stamp = timezone.now().strftime('%Y-%m-%d %H:%M')
-            actor = display_name_from_user(request.user, fallback=getattr(request.user, 'email', None) or 'system')
-            new_username = display_name_from_user(target, fallback=getattr(target, 'email', None) or f'user-{target.pk}')
-            prev_username = display_name_from_user(previous, fallback='unassigned') if previous else 'unassigned'
-            log_line = (
-                f"[{stamp} · {actor} → reassigned] "
-                f"{prev_username} → {new_username}"
-                + (f" — {note}" if note else '')
-            )
-    
-            job.user = target
-            job.updated_by = request.user if getattr(request.user, 'is_authenticated', False) else target
-            job.remarks = f"{job.remarks}\n{log_line}" if job.remarks else log_line
-            job.save(update_fields=['user', 'updated_by', 'remarks', 'updated_at'])
+                new_username = display_name_from_user(
+                    target,
+                    fallback=getattr(target, 'email', None) or f'user-{target.pk}',
+                )
+                prev_username = (
+                    display_name_from_user(previous, fallback='unassigned')
+                    if previous
+                    else 'unassigned'
+                )
+                log_line = (
+                    f"[{stamp} · {actor} → reassigned] "
+                    f"{prev_username} → {new_username}"
+                    + (f" — {note}" if note else '')
+                )
+
+                job.user = target
+                job.updated_by = request.user
+                job.remarks = f"{job.remarks}\n{log_line}" if job.remarks else log_line
+                job.save(update_fields=['user', 'updated_by', 'remarks', 'updated_at'])
     
             # Push to the new assignee; signal-driven push on Job.save() already
             # fires on changed status but not on assignment, so we send an
@@ -239,4 +271,3 @@ class JobCollaborationMixin:
                 },
                 status=status.HTTP_200_OK,
             )
-

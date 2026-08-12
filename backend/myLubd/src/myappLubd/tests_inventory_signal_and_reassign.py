@@ -151,13 +151,13 @@ class JobReassignTests(TestCase):
         )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_reassign_accepts_username_lookup(self):
+    def test_reassign_rejects_username_instead_of_confusing_identity_namespaces(self):
         self._login(self.alice)
         resp = self.client.post(
             f'/api/v1/jobs/{self.job.job_id}/reassign/',
             {'user_id': 'bob'},
             format='json',
         )
-        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
         self.job.refresh_from_db()
-        self.assertEqual(self.job.user, self.bob)
+        self.assertEqual(self.job.user, self.alice)

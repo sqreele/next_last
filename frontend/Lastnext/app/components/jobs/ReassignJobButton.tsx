@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { UserPlus, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -15,6 +17,7 @@ import { Input } from "@/app/components/ui/input";
 import { Textarea } from "@/app/components/ui/textarea";
 import { useSession } from "@/app/lib/session.client";
 import { useAssigneeOptions } from "@/app/lib/hooks/useAssigneeOptions";
+import { useUser } from "@/app/lib/stores/mainStore";
 import {
   buildJobReassignPayload,
   toAssigneeOption,
@@ -33,8 +36,38 @@ const API_BASE_URL =
 
 interface ReassignJobButtonProps {
   job: Job;
-  onComplete?: () => void;
+  onComplete?: () => void | Promise<void>;
   className?: string;
+}
+
+function propertyIdentifier(value: unknown): string | null {
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+  if (!value || typeof value !== "object") return null;
+  const property = value as {
+    property_id?: string | number;
+    id?: string | number;
+  };
+  if (property.property_id != null) return String(property.property_id);
+  if (property.id != null) return String(property.id);
+  return null;
+}
+
+function deriveJobPropertyId(job: Job): string | null {
+  const propertyIds = new Set<string>();
+  const add = (value: unknown) => {
+    const identifier = propertyIdentifier(value);
+    if (identifier) propertyIds.add(identifier);
+  };
+
+  (job.rooms || []).forEach((room) => {
+    add((room as { property_id?: string | number | null }).property_id);
+    (room.properties || []).forEach(add);
+  });
+  add(job.area?.property_id);
+
+  return propertyIds.size === 1 ? Array.from(propertyIds)[0] : null;
 }
 
 export function ReassignJobButton({
@@ -42,7 +75,9 @@ export function ReassignJobButton({
   onComplete,
   className,
 }: ReassignJobButtonProps) {
+  const router = useRouter();
   const { data: session } = useSession();
+  const { selectedPropertyId } = useUser();
   const { assignees, loading: usersLoading } = useAssigneeOptions();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -50,50 +85,40 @@ export function ReassignJobButton({
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
+  const currentContextRef = useRef({
+    jobId: String(job.job_id),
+    propertyId: selectedPropertyId == null ? null : String(selectedPropertyId),
+    sessionId: String(session?.user?.id || session?.user?.accessToken || ""),
+  });
+  currentContextRef.current = {
+    jobId: String(job.job_id),
+    propertyId: selectedPropertyId == null ? null : String(selectedPropertyId),
+    sessionId: String(session?.user?.id || session?.user?.accessToken || ""),
+  };
 
-  // Limit choices to users that share at least one of the job's properties
-  // when we can determine them — falls through to the full list when the
-  // job's property data is opaque so the dispatcher isn't blocked.
-  const jobPropertyIds = useMemo(() => {
-    const ids = new Set<string>();
-    const addProperty = (value: unknown) => {
-      if (value === null || value === undefined) return;
-      if (typeof value === "string" || typeof value === "number") {
-        ids.add(String(value));
-        return;
-      }
-      if (typeof value === "object") {
-        const obj = value as {
-          property_id?: string | number;
-          id?: string | number;
-        };
-        if (obj.property_id != null) ids.add(String(obj.property_id));
-        if (obj.id != null) ids.add(String(obj.id));
-      }
-    };
-    if (job.property_id != null) ids.add(String(job.property_id));
-    (job.properties || []).forEach(addProperty);
-    (job.rooms || []).forEach((room) =>
-      (room as { properties?: unknown[] }).properties?.forEach(addProperty),
-    );
-    return ids;
-  }, [job]);
+  // The Job's Room/Area location is authoritative. A missing or ambiguous
+  // scope intentionally produces no candidates instead of a tenant-wide
+  // fallback.
+  const jobPropertyId = useMemo(() => deriveJobPropertyId(job), [job]);
+
+  const scopedOptions = useMemo(() => {
+    if (!jobPropertyId) return [];
+    return assignees
+      .filter((assignee) =>
+        assignee.properties.some(
+          (property) =>
+            String(property.property_id) === jobPropertyId ||
+            String(property.id) === jobPropertyId,
+        ),
+      )
+      .map(toAssigneeOption);
+  }, [assignees, jobPropertyId]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const scope = jobPropertyIds.size
-      ? assignees.filter((assignee) =>
-          assignee.properties.some(
-            (p) =>
-              jobPropertyIds.has(String(p.property_id)) ||
-              jobPropertyIds.has(String(p.id)),
-          ),
-        )
-      : assignees;
-    const list = scope.length ? scope : assignees;
-    const options = list.map(toAssigneeOption);
-    if (!term) return options.slice(0, 25);
-    return options
+    if (!term) return scopedOptions.slice(0, 25);
+    return scopedOptions
       .filter(({ assignee }) => {
         const haystack = [
           assignee.username,
@@ -108,7 +133,24 @@ export function ReassignJobButton({
         return haystack.includes(term);
       })
       .slice(0, 25);
-  }, [search, assignees, jobPropertyIds]);
+  }, [search, scopedOptions]);
+
+  const selectedIsAuthorized = Boolean(
+    selected && scopedOptions.some((option) => option.value === selected.value),
+  );
+
+  const isCurrentRequestContext = (requestContext: {
+    jobId: string;
+    propertyId: string | null;
+    sessionId: string;
+  }) => {
+    const current = currentContextRef.current;
+    return (
+      current.jobId === requestContext.jobId &&
+      current.propertyId === requestContext.propertyId &&
+      current.sessionId === requestContext.sessionId
+    );
+  };
 
   const currentAssignee =
     typeof job.user === "object" && job.user
@@ -116,8 +158,13 @@ export function ReassignJobButton({
       : job.user_name || String(job.user || "Unassigned");
 
   const handleSubmit = async () => {
+    if (submittingRef.current) return;
     setError(null);
-    if (!selected) {
+    if (!jobPropertyId) {
+      setError("This job's property scope is unavailable or ambiguous.");
+      return;
+    }
+    if (!selected || !selectedIsAuthorized) {
       setError("Pick a teammate to assign this job to.");
       return;
     }
@@ -126,6 +173,8 @@ export function ReassignJobButton({
       setError("Session expired — please sign in again.");
       return;
     }
+    const requestContext = { ...currentContextRef.current };
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       await fetchWithToken(
@@ -133,18 +182,28 @@ export function ReassignJobButton({
         token,
         "POST",
         buildJobReassignPayload(selected.assignee, note),
+        0,
       );
+      if (!isCurrentRequestContext(requestContext)) return;
+      if (onComplete) {
+        await onComplete();
+      } else {
+        router.refresh();
+      }
+      if (!isCurrentRequestContext(requestContext)) return;
       setOpen(false);
       setSelected(null);
       setNote("");
-      onComplete?.();
     } catch (caught: unknown) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Could not reassign the job.",
-      );
+      if (isCurrentRequestContext(requestContext)) {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "Could not reassign the job.",
+        );
+      }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -153,6 +212,7 @@ export function ReassignJobButton({
     <Dialog
       open={open}
       onOpenChange={(next) => {
+        if (submittingRef.current) return;
         setOpen(next);
         if (!next) {
           setSelected(null);
@@ -177,9 +237,9 @@ export function ReassignJobButton({
           <DialogTitle className="text-lg font-bold text-foreground">
             Reassign job
           </DialogTitle>
-          <p className="text-xs font-medium text-muted-foreground">
+          <DialogDescription className="text-xs font-medium text-muted-foreground">
             #{job.job_id} · currently {currentAssignee}
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 px-5 py-4">
@@ -197,11 +257,16 @@ export function ReassignJobButton({
               placeholder="Name, username, or email"
               className="h-11 border-2 border-border text-sm"
               autoFocus
+              disabled={submitting || !jobPropertyId}
             />
           </div>
 
           <div className="max-h-[40vh] space-y-1.5 overflow-y-auto rounded-xl border-2 border-border bg-card p-1">
-            {usersLoading && !assignees.length ? (
+            {!jobPropertyId ? (
+              <p className="px-3 py-6 text-center text-sm font-semibold text-rose-700">
+                This job&apos;s property scope is unavailable or ambiguous.
+              </p>
+            ) : usersLoading && !assignees.length ? (
               <div className="flex items-center gap-2 px-3 py-6 text-sm font-medium text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading
                 teammates...
@@ -221,6 +286,7 @@ export function ReassignJobButton({
                     type="button"
                     onClick={() => setSelected(option)}
                     aria-pressed={active}
+                    disabled={submitting}
                     className={cn(
                       "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors touch-manipulation",
                       active
@@ -269,6 +335,7 @@ export function ReassignJobButton({
               onChange={(event) => setNote(event.target.value.slice(0, 300))}
               placeholder="Why are we moving this? Anything they should know?"
               className="min-h-[72px] border-2 border-border text-sm"
+              disabled={submitting || !jobPropertyId}
             />
             <p className="text-right text-[11px] font-medium text-muted-foreground">
               {note.length}/300
@@ -296,7 +363,7 @@ export function ReassignJobButton({
           <Button
             type="button"
             onClick={handleSubmit}
-            disabled={submitting || !selected}
+            disabled={submitting || !jobPropertyId || !selectedIsAuthorized}
             className="h-11 w-full bg-blue-600 font-bold text-white hover:bg-blue-700 disabled:bg-slate-300 sm:w-auto"
           >
             {submitting ? (

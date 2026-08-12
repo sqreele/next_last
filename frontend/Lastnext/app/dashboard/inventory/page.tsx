@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/app/lib/session.client";
 import { useUser } from "@/app/lib/stores/mainStore";
@@ -87,6 +87,11 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   other: "📋",
 };
 
+const parseInventoryQuantity = (value: string): number => {
+  const quantity = Number(value);
+  return Number.isInteger(quantity) && quantity > 0 ? quantity : 0;
+};
+
 export default function InventoryPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -129,6 +134,10 @@ export default function InventoryPage() {
   const [selectedItem, setSelectedItem] = useState<InventoryListItem | null>(null);
   const [restockQuantity, setRestockQuantity] = useState("");
   const [useQuantity, setUseQuantity] = useState("");
+  const [isRestocking, setIsRestocking] = useState(false);
+  const [isUsing, setIsUsing] = useState(false);
+  const restockInFlightRef = useRef(false);
+  const useInFlightRef = useRef(false);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [selectedPmId, setSelectedPmId] = useState<string>("");
   const [userJobs, setUserJobs] = useState<
@@ -405,11 +414,14 @@ export default function InventoryPage() {
   const filteredInventory = inventory;
 
   const handleRestock = async () => {
-    if (!selectedItem || !restockQuantity) return;
+    const quantity = parseInventoryQuantity(restockQuantity);
+    if (!selectedItem || !quantity || restockInFlightRef.current) return;
 
+    restockInFlightRef.current = true;
+    setIsRestocking(true);
     try {
       await inventoryApi.restock(selectedItem.item_id, {
-        quantity: Number.parseInt(restockQuantity, 10),
+        quantity,
       });
       setShowRestockDialog(false);
       setRestockQuantity("");
@@ -418,14 +430,24 @@ export default function InventoryPage() {
     } catch (err: any) {
       console.error("Error restocking:", err);
       alert(err.response?.data?.error || "Failed to restock item");
+    } finally {
+      restockInFlightRef.current = false;
+      setIsRestocking(false);
     }
   };
 
   const handleUse = async () => {
-    if (!selectedItem || !useQuantity) return;
+    const quantity = parseInventoryQuantity(useQuantity);
+    if (
+      !selectedItem ||
+      !quantity ||
+      quantity > selectedItem.quantity ||
+      useInFlightRef.current
+    ) return;
 
+    useInFlightRef.current = true;
+    setIsUsing(true);
     try {
-      const quantity = Number.parseInt(useQuantity, 10);
       const payload: InventoryUsePayload = selectedJobId
         ? { quantity, job_id: selectedJobId }
         : selectedPmId
@@ -442,6 +464,9 @@ export default function InventoryPage() {
     } catch (err: any) {
       console.error("Error using item:", err);
       alert(err.response?.data?.error || "Failed to use item");
+    } finally {
+      useInFlightRef.current = false;
+      setIsUsing(false);
     }
   };
 
@@ -498,7 +523,8 @@ export default function InventoryPage() {
     selectedJobFilter !== "all",
     selectedPmFilter !== "all",
   ].filter(Boolean).length;
-  const parsedUseQuantity = Number.parseInt(useQuantity, 10) || 0;
+  const parsedRestockQuantity = parseInventoryQuantity(restockQuantity);
+  const parsedUseQuantity = parseInventoryQuantity(useQuantity);
   const remainingQuantity = selectedItem
     ? Math.max(0, selectedItem.quantity - parsedUseQuantity)
     : 0;
@@ -1301,6 +1327,7 @@ export default function InventoryPage() {
                 id="restock-quantity"
                 type="number"
                 min="1"
+                step="1"
                 value={restockQuantity}
                 onChange={(e) => setRestockQuantity(e.target.value)}
                 placeholder="Enter quantity"
@@ -1311,7 +1338,7 @@ export default function InventoryPage() {
                 Current: {selectedItem.quantity} {selectedItem.unit}
                 {restockQuantity && (
                   <span className="ml-2 font-semibold">
-                    → {selectedItem.quantity + parseInt(restockQuantity) || 0}{" "}
+                    → {selectedItem.quantity + parsedRestockQuantity}{" "}
                     {selectedItem.unit}
                   </span>
                 )}
@@ -1331,7 +1358,7 @@ export default function InventoryPage() {
             </Button>
             <Button
               onClick={handleRestock}
-              disabled={!restockQuantity || parseInt(restockQuantity) <= 0}
+              disabled={!parsedRestockQuantity || isRestocking}
             >
               Restock
             </Button>
@@ -1407,6 +1434,7 @@ export default function InventoryPage() {
                   type="number"
                   inputMode="numeric"
                   min="1"
+                  step="1"
                   max={selectedItem?.quantity}
                   value={useQuantity}
                   onChange={(e) => setUseQuantity(e.target.value)}
@@ -1559,7 +1587,7 @@ export default function InventoryPage() {
             <Button
               onClick={handleUse}
               className="h-12 w-full rounded-xl bg-blue-600 font-bold text-white hover:bg-blue-700"
-              disabled={invalidUseQuantity}
+              disabled={invalidUseQuantity || isUsing}
             >
               Use
             </Button>

@@ -162,6 +162,10 @@ export async function fetchWithToken<T>(
       throw new ServerApiError(errorMessage, response.status, errorData);
     }
 
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     if (!responseText.trim()) {
       if (method === "GET" && absoluteUrl.includes("/api/jobs") && !absoluteUrl.includes("/my-jobs/")) {
         return [] as unknown as T;
@@ -610,7 +614,13 @@ export async function updateJob(
 }
 
 export async function deleteJob(jobId: string, accessToken?: string): Promise<void> {
-  await fetchWithToken<void>(`/api/v1/jobs/${jobId}/`, accessToken, "DELETE");
+  await fetchWithToken<void>(
+    `/api/v1/jobs/${jobId}/`,
+    accessToken,
+    "DELETE",
+    undefined,
+    0,
+  );
 }
 
 export async function updateJobStatus(

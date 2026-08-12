@@ -1,5 +1,5 @@
 import * as React from "react";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import MyJobs from "./myJobs";
 
@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     | React.Dispatch<React.SetStateAction<Array<Record<string, unknown>>>>
     | undefined,
   localUpdate: vi.fn(),
+  localRemove: vi.fn(),
   refreshJobs: vi.fn().mockResolvedValue(true),
   storeUpdate: vi.fn(),
   storeDelete: vi.fn(),
@@ -48,12 +49,18 @@ vi.mock("@/app/lib/hooks/useJobsData", async () => {
           ),
         );
       }, []);
+      const removeJob = ReactModule.useCallback((jobId: string | number) => {
+        mocks.localRemove(jobId);
+        setJobs((current) =>
+          current.filter((job) => String(job.job_id) !== String(jobId)),
+        );
+      }, []);
       return {
         jobs,
         setJobs,
         addJob: vi.fn(),
         updateJob,
-        removeJob: vi.fn(),
+        removeJob,
         isLoading: false,
         error: null,
         activePropertyId: null,
@@ -209,6 +216,15 @@ const jobB = {
   rooms: [{ room_id: 509, name: "Boiler Room", room_type: "plant" }],
 };
 
+const jobASecond = {
+  ...jobA,
+  id: 846,
+  job_id: "JOB-777",
+  title: "Generator inspection",
+  description: "Inspect backup generator",
+  rooms: [{ room_id: 412, name: "Generator Room", room_type: "plant" }],
+};
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -218,6 +234,14 @@ function jsonResponse(body: unknown, status = 200): Response {
 
 function patchCalls(fetchMock: ReturnType<typeof vi.fn>) {
   return fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH");
+}
+
+function deleteCalls(fetchMock: ReturnType<typeof vi.fn>) {
+  return fetchMock.mock.calls.filter(([, init]) => init?.method === "DELETE");
+}
+
+function emptyResponse(status = 204): Response {
+  return new Response(null, { status });
 }
 
 function prioritySelect() {
@@ -236,7 +260,9 @@ function installFetch(
     if (url.includes("/api/v1/topics/")) {
       return Promise.resolve(jsonResponse({ results: [topic] }));
     }
-    if (init?.method === "PATCH") return mutation(input, init);
+    if (init?.method === "PATCH" || init?.method === "DELETE") {
+      return mutation(input, init);
+    }
     throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -253,11 +279,23 @@ async function openEdit() {
   ));
 }
 
+async function openDelete(description = jobA.description) {
+  const jobDescription = await screen.findByText(description, { selector: "p" });
+  const card = jobDescription.closest("article");
+  if (!card) throw new Error(`Job card for ${description} was not rendered`);
+  fireEvent.click(within(card).getByRole("button", { name: "Delete" }));
+  const heading = await screen.findByRole("heading", { name: "Delete this job?" });
+  const dialog = heading.parentElement?.parentElement;
+  if (!dialog) throw new Error("Delete confirmation dialog was not rendered");
+  return within(dialog);
+}
+
 beforeEach(() => {
   mocks.jobsSeed = [{ ...jobA, topics: [{ ...topic }], rooms: [...jobA.rooms] }];
   mocks.selectedProperty = "PROPERTY-A-47";
   mocks.replaceJobs = undefined;
   mocks.localUpdate.mockReset();
+  mocks.localRemove.mockReset();
   mocks.refreshJobs.mockClear();
   mocks.storeUpdate.mockReset();
   mocks.storeDelete.mockReset();
@@ -468,5 +506,165 @@ describe("My Jobs inline edit workflow", () => {
     await waitFor(() => expect(mocks.localUpdate).toHaveBeenCalled());
     expect(screen.getByText("Property B authoritative description")).toBeInTheDocument();
     expect(screen.queryByText("Property A server result")).not.toBeInTheDocument();
+  });
+});
+
+describe("My Jobs delete workflow", () => {
+  beforeEach(() => {
+    mocks.jobsSeed = [
+      { ...jobA, topics: [{ ...topic }], rooms: [...jobA.rooms] },
+      {
+        ...jobASecond,
+        topics: [{ ...topic }],
+        rooms: [...jobASecond.rooms],
+      },
+    ];
+  });
+
+  it("sends one exact DELETE and reconciles two Jobs only after empty 204 success", async () => {
+    let resolveDelete!: (response: Response) => void;
+    const fetchMock = installFetch(
+      () => new Promise<Response>((resolve) => { resolveDelete = resolve; }),
+    );
+    render(<MyJobs />);
+    const dialog = await openDelete();
+    const confirm = dialog.getByRole("button", { name: "Delete" });
+
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+
+    await waitFor(() => expect(deleteCalls(fetchMock)).toHaveLength(1));
+    const [url, request] = deleteCalls(fetchMock)[0] as [string, RequestInit];
+    expect(new URL(String(url)).pathname).toBe("/api/v1/jobs/JOB-418/");
+    expect(request).toEqual(expect.objectContaining({
+      method: "DELETE",
+      credentials: "include",
+      headers: expect.objectContaining({
+        Authorization: "Bearer access-token-a",
+        "Content-Type": "application/json",
+      }),
+    }));
+    expect(request.body).toBeUndefined();
+
+    expect(screen.getByText("Inspect pump vibration", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Inspect backup generator", { selector: "p" })).toBeInTheDocument();
+    expect(mocks.localRemove).not.toHaveBeenCalled();
+    expect(mocks.storeDelete).not.toHaveBeenCalled();
+    expect(mocks.toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: "Success" }));
+
+    resolveDelete(emptyResponse());
+
+    await waitFor(() => {
+      expect(screen.queryByText("Inspect pump vibration", { selector: "p" })).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Inspect backup generator", { selector: "p" })).toBeInTheDocument();
+    expect(mocks.localRemove).toHaveBeenCalledTimes(1);
+    expect(mocks.localRemove).toHaveBeenCalledWith("JOB-418");
+    expect(mocks.storeDelete).toHaveBeenCalledTimes(1);
+    expect(mocks.storeDelete).toHaveBeenCalledWith(731);
+    expect(mocks.toast).toHaveBeenCalledWith({
+      title: "Success",
+      description: "Job deleted successfully.",
+    });
+    expect(mocks.toast).not.toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Deletion Failed" }),
+    );
+  });
+
+  it("cancels confirmation without sending DELETE or changing either Job", async () => {
+    const fetchMock = installFetch(async () => emptyResponse());
+    render(<MyJobs />);
+    const dialog = await openDelete();
+
+    fireEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+
+    expect(deleteCalls(fetchMock)).toHaveLength(0);
+    expect(screen.getByText("Inspect pump vibration", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Inspect backup generator", { selector: "p" })).toBeInTheDocument();
+    expect(mocks.localRemove).not.toHaveBeenCalled();
+    expect(mocks.storeDelete).not.toHaveBeenCalled();
+  });
+
+  it("keeps both Jobs after a network failure and succeeds on an explicit retry", async () => {
+    let attempt = 0;
+    const fetchMock = installFetch(async () => {
+      attempt += 1;
+      if (attempt === 1) throw new Error("Connection lost");
+      return emptyResponse();
+    });
+    render(<MyJobs />);
+    const dialog = await openDelete();
+
+    fireEvent.click(dialog.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Deletion Failed",
+        variant: "destructive",
+      }));
+    });
+    expect(deleteCalls(fetchMock)).toHaveLength(1);
+    expect(screen.getByText("Inspect pump vibration", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Inspect backup generator", { selector: "p" })).toBeInTheDocument();
+    expect(mocks.localRemove).not.toHaveBeenCalled();
+    expect(mocks.storeDelete).not.toHaveBeenCalled();
+
+    fireEvent.click(dialog.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Inspect pump vibration", { selector: "p" })).not.toBeInTheDocument();
+    });
+    expect(deleteCalls(fetchMock)).toHaveLength(2);
+    expect(screen.getByText("Inspect backup generator", { selector: "p" })).toBeInTheDocument();
+    expect(mocks.localRemove).toHaveBeenCalledTimes(1);
+    expect(mocks.storeDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [403, "You do not have access to this property."],
+    [500, "Delete service unavailable."],
+  ])("preserves both Jobs after HTTP %i", async (status, detail) => {
+    const fetchMock = installFetch(async () => jsonResponse({ detail }, status));
+    render(<MyJobs />);
+    const dialog = await openDelete();
+
+    fireEvent.click(dialog.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(mocks.toast).toHaveBeenCalledWith(expect.objectContaining({
+        title: "Deletion Failed",
+        variant: "destructive",
+      }));
+    });
+    expect(deleteCalls(fetchMock)).toHaveLength(1);
+    expect(screen.getByText("Inspect pump vibration", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Inspect backup generator", { selector: "p" })).toBeInTheDocument();
+    expect(mocks.localRemove).not.toHaveBeenCalled();
+    expect(mocks.storeDelete).not.toHaveBeenCalled();
+    expect(mocks.toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: "Success" }));
+  });
+
+  it("does not let a resolved Property A delete corrupt the Property B view", async () => {
+    let resolveDelete!: (response: Response) => void;
+    const fetchMock = installFetch(
+      () => new Promise<Response>((resolve) => { resolveDelete = resolve; }),
+    );
+    const view = render(<MyJobs />);
+    const dialog = await openDelete();
+    fireEvent.click(dialog.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(deleteCalls(fetchMock)).toHaveLength(1));
+
+    mocks.selectedProperty = "PROPERTY-B-88";
+    act(() => mocks.replaceJobs?.([{ ...jobB }]));
+    view.rerender(<MyJobs />);
+    expect(screen.getByText("Property B authoritative description", { selector: "p" })).toBeInTheDocument();
+
+    resolveDelete(emptyResponse());
+
+    await waitFor(() => expect(mocks.localRemove).toHaveBeenCalledWith("JOB-418"));
+    expect(mocks.storeDelete).toHaveBeenCalledWith(731);
+    expect(screen.getByText("Property B authoritative description", { selector: "p" })).toBeInTheDocument();
+    expect(mocks.localRemove).not.toHaveBeenCalledWith("JOB-902");
+    expect(mocks.storeDelete).not.toHaveBeenCalledWith(944);
   });
 });

@@ -818,6 +818,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
   const [availableTopics, setAvailableTopics] = React.useState<Topic[]>([]);
   const [selectedTopics, setSelectedTopics] = React.useState<Topic[]>([]);
   const isEditSubmittingRef = React.useRef(false);
+  const isDeleteSubmittingRef = React.useRef(false);
 
   const { jobs, isLoading, error, refreshJobs, updateJob, removeJob } =
     useJobsData({
@@ -1008,15 +1009,17 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
   };
 
   const handleDeleteConfirm = async () => {
-    if (!selectedJob) return;
+    if (!selectedJob || isDeleteSubmittingRef.current) return;
 
+    isDeleteSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
       if (!session?.user?.accessToken) throw new Error("Not authenticated");
 
-      await deleteJobApi(String(selectedJob.job_id), session.user.accessToken);
-      storeDeleteJob(selectedJob.id);
-      removeJob(selectedJob.job_id);
+      const jobAtSubmit = selectedJob;
+      await deleteJobApi(String(jobAtSubmit.job_id), session.user.accessToken);
+      storeDeleteJob(jobAtSubmit.id);
+      removeJob(jobAtSubmit.job_id);
 
       toast({ title: "Success", description: "Job deleted successfully." });
       setIsDeleteDialogOpen(false);
@@ -1036,6 +1039,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
         variant: "destructive",
       });
     } finally {
+      isDeleteSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };

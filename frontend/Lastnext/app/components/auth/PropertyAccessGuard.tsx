@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMainStore } from '@/app/lib/stores/mainStore';
 import {
@@ -39,6 +39,7 @@ export function PropertyAccessGuard({ children }: { children: React.ReactNode })
     () => getPropertyIdFromRoute(pathname, searchParams),
     [pathname, searchParams],
   );
+  const appliedRoutePropertyIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!userProfile || !userHasPropertyRestrictions(userProfile)) return;
@@ -48,16 +49,29 @@ export function PropertyAccessGuard({ children }: { children: React.ReactNode })
     if (selectedPropertyId && !isPropertyAllowedForUser(userProfile, selectedPropertyId)) {
       setSelectedPropertyId(fallbackPropertyId);
     }
+  }, [selectedPropertyId, setSelectedPropertyId, userProfile]);
 
-    if (requestedPropertyId && !isPropertyAllowedForUser(userProfile, requestedPropertyId)) {
+  useEffect(() => {
+    if (!userProfile || !userHasPropertyRestrictions(userProfile)) {
+      appliedRoutePropertyIdRef.current = requestedPropertyId;
+      return;
+    }
+
+    if (!requestedPropertyId) {
+      appliedRoutePropertyIdRef.current = null;
+      return;
+    }
+
+    if (!isPropertyAllowedForUser(userProfile, requestedPropertyId)) {
       router.replace(getAuthorizedDashboardPath(userProfile));
       return;
     }
 
-    if (requestedPropertyId && requestedPropertyId !== selectedPropertyId) {
+    if (appliedRoutePropertyIdRef.current !== requestedPropertyId) {
+      appliedRoutePropertyIdRef.current = requestedPropertyId;
       setSelectedPropertyId(requestedPropertyId);
     }
-  }, [requestedPropertyId, router, selectedPropertyId, setSelectedPropertyId, userProfile]);
+  }, [requestedPropertyId, router, setSelectedPropertyId, userProfile]);
 
   return <>{children}</>;
 }

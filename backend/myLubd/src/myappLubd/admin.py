@@ -501,8 +501,42 @@ class CreatedAtBeforeYearFilter(admin.SimpleListFilter):
 
 
 # Add this new admin class for Machine
+class MachineAdminForm(forms.ModelForm):
+    """Use existing equipment metadata as reusable dropdown options."""
+
+    class Meta:
+        model = Machine
+        fields = '__all__'
+        widgets = {
+            'brand': forms.Select,
+            'category': forms.Select,
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, label in (('brand', 'brand'), ('category', 'category')):
+            values = Machine.objects.exclude(
+                **{f'{field_name}__isnull': True}
+            ).exclude(
+                **{field_name: ''}
+            ).values_list(field_name, flat=True).distinct()
+
+            # Include the instance value even when a restricted/custom manager
+            # would otherwise omit it, so editing never loses the saved value.
+            current_value = getattr(self.instance, field_name, None)
+            options = {value.strip() for value in values if value and value.strip()}
+            if current_value and current_value.strip():
+                options.add(current_value.strip())
+
+            self.fields[field_name].choices = [
+                ('', f'-- Select {label} --'),
+                *((value, value) for value in sorted(options, key=str.casefold)),
+            ]
+
+
 @admin.register(Machine)
 class MachineAdmin(admin.ModelAdmin):
+    form = MachineAdminForm
     list_per_page = 25
     list_display = [
         'image_thumbnail',

@@ -501,37 +501,57 @@ class CreatedAtBeforeYearFilter(admin.SimpleListFilter):
 
 
 # Add this new admin class for Machine
+class DatalistTextInput(forms.TextInput):
+    """Text input that renders its configured values as datalist suggestions."""
+
+    def __init__(self, *args, suggestions=(), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.suggestions = suggestions
+
+    def render(self, name, value, attrs=None, renderer=None):
+        attrs = attrs.copy() if attrs else {}
+        input_id = attrs.get('id', f'id_{name}')
+        datalist_id = attrs.get('list', f'{input_id}_suggestions')
+        attrs['list'] = datalist_id
+        text_input = super().render(name, value, attrs, renderer)
+        options = format_html_join(
+            '',
+            '<option value="{}"></option>',
+            ((suggestion,) for suggestion in self.suggestions),
+        )
+        return format_html(
+            '{}<datalist id="{}">{}</datalist>',
+            text_input,
+            datalist_id,
+            options,
+        )
+
+
 class MachineAdminForm(forms.ModelForm):
-    """Use existing equipment metadata as reusable dropdown options."""
+    """Suggest existing equipment metadata while allowing new values."""
 
     class Meta:
         model = Machine
         fields = '__all__'
         widgets = {
-            'brand': forms.Select,
-            'category': forms.Select,
+            'brand': DatalistTextInput,
+            'category': DatalistTextInput,
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field_name, label in (('brand', 'brand'), ('category', 'category')):
+        for field_name in ('brand', 'category'):
             values = Machine.objects.exclude(
                 **{f'{field_name}__isnull': True}
             ).exclude(
                 **{field_name: ''}
             ).values_list(field_name, flat=True).distinct()
 
-            # Include the instance value even when a restricted/custom manager
-            # would otherwise omit it, so editing never loses the saved value.
-            current_value = getattr(self.instance, field_name, None)
             options = {value.strip() for value in values if value and value.strip()}
-            if current_value and current_value.strip():
-                options.add(current_value.strip())
-
-            self.fields[field_name].choices = [
-                ('', f'-- Select {label} --'),
-                *((value, value) for value in sorted(options, key=str.casefold)),
-            ]
+            self.fields[field_name].widget.suggestions = sorted(
+                options,
+                key=str.casefold,
+            )
 
 
 @admin.register(Machine)

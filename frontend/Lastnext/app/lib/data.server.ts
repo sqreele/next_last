@@ -629,7 +629,13 @@ export async function updateJobStatus(
   status: JobStatus,
   accessToken?: string
 ): Promise<Job> {
-  return fetchWithToken<Job>(`/api/v1/jobs/${jobId}/`, accessToken, "PATCH", { status });
+  return fetchWithToken<Job>(
+    `/api/v1/jobs/${jobId}/`,
+    accessToken,
+    "PATCH",
+    { status },
+    0,
+  );
 }
 
 export async function fetchMyJobs(accessToken?: string, queryParams?: string): Promise<Job[]> {

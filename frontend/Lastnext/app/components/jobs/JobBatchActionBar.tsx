@@ -1,28 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSession } from "@/app/lib/session.client";
-import {
-  CheckCircle2,
-  FileSpreadsheet,
-  Loader2,
-  X,
-  Wrench,
-  RefreshCw,
-} from "lucide-react";
+import { FileSpreadsheet, Loader2, X, Wrench } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Job, JobStatus, Property } from "@/app/lib/types";
-import { fetchWithToken } from "@/app/lib/data.server";
+import { updateJobStatus } from "@/app/lib/data.server";
 import { jobsToCSV, downloadCSV } from "@/app/lib/utils/csv-export";
 import { exportJobsToExcel } from "@/app/lib/utils/excel-export";
 import { StatusBadge } from "@/app/components/pcms-ui";
 import { cn } from "@/app/lib/utils/cn";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "development"
-    ? "http://localhost:8000"
-    : "https://hotelcarepro.com");
 
 interface JobBatchActionBarProps {
   selected: Job[];
@@ -30,7 +17,10 @@ interface JobBatchActionBarProps {
   properties?: Property[];
   onClear: () => void;
   onSelectAll: () => void;
-  onComplete?: () => void;
+  onComplete?: () => Promise<void> | void;
+  onRetainFailed?: (failedJobIds: string[]) => void;
+  contextKey?: string;
+  isContextCurrent?: (contextKey: string) => boolean;
   className?: string;
 }
 
@@ -47,6 +37,9 @@ export function JobBatchActionBar({
   onClear,
   onSelectAll,
   onComplete,
+  onRetainFailed,
+  contextKey = "",
+  isContextCurrent,
   className,
 }: JobBatchActionBarProps) {
   const { data: session } = useSession();
@@ -55,47 +48,97 @@ export function JobBatchActionBar({
   );
   const [statusPickerOpen, setStatusPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const workingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const currentTokenRef = useRef(session?.user?.accessToken);
+  const currentSessionUserRef = useRef(session?.user?.id);
+  currentTokenRef.current = session?.user?.accessToken;
+  currentSessionUserRef.current = session?.user?.id;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   if (!selected.length) return null;
 
   const applyStatus = async (newStatus: JobStatus) => {
+    if (workingRef.current) return;
+
     setError(null);
     setStatusPickerOpen(false);
     if (!session?.user?.accessToken) {
       setError("Please sign in again before bulk-updating.");
       return;
     }
+
+    workingRef.current = true;
     setWorking("status");
+    const accessToken = session.user.accessToken;
+    const sessionUserId = session.user.id;
+    const submittedContextKey = contextKey;
+    const submittedJobs = Array.from(
+      new Map(selected.map((job) => [String(job.job_id), job])).values(),
+    );
+    const contextIsCurrent = () =>
+      currentTokenRef.current === accessToken &&
+      currentSessionUserRef.current === sessionUserId &&
+      (isContextCurrent?.(submittedContextKey) ?? true);
+    const submissionIsActive = () =>
+      mountedRef.current && contextIsCurrent();
+
     try {
-      const accessToken = session.user.accessToken;
-      let failed = 0;
-      for (const job of selected) {
+      const failedJobIds: string[] = [];
+      let updated = 0;
+
+      for (const job of submittedJobs) {
+        if (!submissionIsActive()) return;
+
         try {
-          const payload: Record<string, unknown> = { status: newStatus };
-          if (newStatus === "completed") {
-            payload.completed_at = new Date().toISOString();
-          }
-          await fetchWithToken(
-            `${API_BASE_URL}/api/v1/jobs/${job.job_id}/`,
-            accessToken,
-            "PATCH",
-            payload,
-          );
+          await updateJobStatus(String(job.job_id), newStatus, accessToken);
+          updated += 1;
         } catch (err) {
           console.warn("Bulk status update failed for", job.job_id, err);
-          failed += 1;
+          failedJobIds.push(String(job.job_id));
         }
       }
-      if (failed) {
-        setError(
-          `Updated ${selected.length - failed} of ${selected.length} jobs. ${failed} failed.`,
-        );
+
+      if (!submissionIsActive()) return;
+
+      if (updated > 0) {
+        try {
+          await onComplete?.();
+        } catch (refreshError) {
+          console.warn("Bulk status reconciliation failed", refreshError);
+          if (mountedRef.current && contextIsCurrent()) {
+            if (failedJobIds.length > 0) {
+              onRetainFailed?.(failedJobIds);
+            }
+            setError(
+              "Status updates were saved, but the job list could not be refreshed.",
+            );
+          }
+          return;
+        }
+      }
+
+      if (!contextIsCurrent()) return;
+
+      if (failedJobIds.length > 0) {
+        onRetainFailed?.(failedJobIds);
+        if (mountedRef.current) {
+          setError(
+            `Updated ${updated} of ${submittedJobs.length} jobs. ${failedJobIds.length} failed.`,
+          );
+        }
       } else {
         onClear();
-        onComplete?.();
       }
     } finally {
-      setWorking(null);
+      workingRef.current = false;
+      if (mountedRef.current) setWorking(null);
     }
   };
 

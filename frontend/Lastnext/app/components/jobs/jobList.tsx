@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { useUser, useProperties } from "@/app/lib/stores/mainStore";
 import MaintenanceJobCard from "@/app/components/jobs/MaintenanceJobCard";
@@ -47,6 +48,7 @@ export default function JobList({
   viewMode = "grid",
   onRefresh,
 }: JobListProps) {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>("Newest first");
@@ -98,6 +100,7 @@ export default function JobList({
   // Batch selection state
   const [selectionEnabled, setSelectionEnabled] = useState(false);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
+  const previousPropertyRef = useRef(selectedProperty);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -106,6 +109,17 @@ export default function JobList({
   useEffect(() => {
     if (!selectionEnabled) setSelectedJobIds(new Set());
   }, [selectionEnabled]);
+
+  useEffect(() => {
+    if (
+      String(previousPropertyRef.current ?? "") !==
+      String(selectedProperty ?? "")
+    ) {
+      setSelectedJobIds(new Set());
+      setSelectionEnabled(false);
+    }
+    previousPropertyRef.current = selectedProperty;
+  }, [selectedProperty]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -396,6 +410,8 @@ export default function JobList({
     try {
       if (onRefresh) {
         await onRefresh();
+      } else {
+        router.refresh();
       }
     } finally {
       setTimeout(() => setIsLoading(false), 300);
@@ -420,6 +436,11 @@ export default function JobList({
     setSelectionEnabled(false);
   };
 
+  const retainFailedSelection = (failedJobIds: string[]) => {
+    setSelectedJobIds(new Set(failedJobIds));
+    setSelectionEnabled(failedJobIds.length > 0);
+  };
+
   const mobileToolbar = (
     <div className="md:hidden">
       <JobListMobileToolbar
@@ -438,6 +459,23 @@ export default function JobList({
     () => sortedJobs.filter((j) => selectedJobIds.has(String(j.job_id))),
     [sortedJobs, selectedJobIds],
   );
+
+  const batchContextKey = JSON.stringify({
+    property: selectedProperty == null ? null : String(selectedProperty),
+    filter,
+    page: currentPage,
+    sortOrder,
+    dateFilter,
+    customStart: customDateRange.start?.toISOString() ?? null,
+    customEnd: customDateRange.end?.toISOString() ?? null,
+    room: selectedRoom ?? null,
+    search: mobileFilters.search,
+    priorities: [...mobileFilters.priorities].sort(),
+    mobileDateFilter: mobileFilters.dateFilter,
+    selectedJobIds: [...selectedJobIds].sort(),
+  });
+  const latestBatchContextKeyRef = useRef(batchContextKey);
+  latestBatchContextKeyRef.current = batchContextKey;
 
   if (sortedJobs.length === 0 && !isLoading) {
     return (
@@ -579,6 +617,11 @@ export default function JobList({
             onClear={clearSelection}
             onSelectAll={selectAllVisible}
             onComplete={handleRefresh}
+            onRetainFailed={retainFailedSelection}
+            contextKey={batchContextKey}
+            isContextCurrent={(submittedContextKey) =>
+              latestBatchContextKeyRef.current === submittedContextKey
+            }
           />
         </div>
       )}

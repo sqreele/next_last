@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Loader2, AlertCircle, Wrench } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -18,6 +18,79 @@ interface GuestReportFormProps {
 
 type FormState = 'idle' | 'submitting' | 'success' | 'error';
 
+type GuestReportPayload = {
+  description: string;
+  guest_name: string;
+  guest_contact: string;
+};
+
+type PendingGuestReport = {
+  requestId: string;
+  payload: GuestReportPayload;
+};
+
+function pendingStorageKey(propertyId: string, roomId: string): string {
+  return `guest-report:pending:${encodeURIComponent(propertyId)}:${encodeURIComponent(roomId)}`;
+}
+
+function createRequestId(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0'));
+  return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10).join('')}`;
+}
+
+function samePayload(left: GuestReportPayload, right: GuestReportPayload): boolean {
+  return (
+    left.description === right.description &&
+    left.guest_name === right.guest_name &&
+    left.guest_contact === right.guest_contact
+  );
+}
+
+function readPendingSubmission(storageKey: string): PendingGuestReport | null {
+  try {
+    const raw = window.sessionStorage.getItem(storageKey);
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== 'object') return null;
+    const candidate = value as Partial<PendingGuestReport>;
+    if (
+      typeof candidate.requestId !== 'string' ||
+      !candidate.payload ||
+      typeof candidate.payload.description !== 'string' ||
+      typeof candidate.payload.guest_name !== 'string' ||
+      typeof candidate.payload.guest_contact !== 'string'
+    ) {
+      return null;
+    }
+    return candidate as PendingGuestReport;
+  } catch {
+    return null;
+  }
+}
+
+function persistPendingSubmission(storageKey: string, pending: PendingGuestReport): void {
+  try {
+    window.sessionStorage.setItem(storageKey, JSON.stringify(pending));
+  } catch {
+    // The backend identity still protects this mounted request if storage is unavailable.
+  }
+}
+
+function clearPendingSubmission(storageKey: string, requestId: string): void {
+  try {
+    const current = readPendingSubmission(storageKey);
+    if (!current || current.requestId === requestId) {
+      window.sessionStorage.removeItem(storageKey);
+    }
+  } catch {
+    // Storage availability must not turn an authoritative success into an error.
+  }
+}
+
 export function GuestReportForm({ propertyId, roomId }: GuestReportFormProps) {
   const [description, setDescription] = useState('');
   const [guestName, setGuestName] = useState('');
@@ -29,13 +102,60 @@ export function GuestReportForm({ propertyId, roomId }: GuestReportFormProps) {
     property: string;
     room: string;
   } | null>(null);
+  const inFlightRef = useRef(false);
+  const mountedRef = useRef(false);
+  const pendingRef = useRef<PendingGuestReport | null>(null);
+  const activeRequestIdRef = useRef<string | null>(null);
+  const activeStorageKeyRef = useRef<string | null>(null);
+  const storageKey = pendingStorageKey(propertyId, roomId);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    activeRequestIdRef.current = null;
+    activeStorageKeyRef.current = null;
+    inFlightRef.current = false;
+    const pending = readPendingSubmission(storageKey);
+    pendingRef.current = pending;
+    if (pending) {
+      setDescription(pending.payload.description);
+      setGuestName(pending.payload.guest_name);
+      setGuestContact(pending.payload.guest_contact);
+    } else {
+      setDescription('');
+      setGuestName('');
+      setGuestContact('');
+    }
+    setConfirmation(null);
+    setError(null);
+    setState('idle');
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [storageKey]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (inFlightRef.current) return;
     if (!description.trim()) {
       setError('Please describe the issue.');
       return;
     }
+
+    const payload: GuestReportPayload = {
+      description: description.trim(),
+      guest_name: guestName.trim(),
+      guest_contact: guestContact.trim(),
+    };
+    const previous = pendingRef.current;
+    const requestId = previous && samePayload(previous.payload, payload)
+      ? previous.requestId
+      : createRequestId();
+    const pending = { requestId, payload };
+    pendingRef.current = pending;
+    activeRequestIdRef.current = requestId;
+    activeStorageKeyRef.current = storageKey;
+    persistPendingSubmission(storageKey, pending);
+    inFlightRef.current = true;
     setState('submitting');
     setError(null);
     try {
@@ -46,15 +166,23 @@ export function GuestReportForm({ propertyId, roomId }: GuestReportFormProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          description: description.trim(),
-          guest_name: guestName.trim() || undefined,
-          guest_contact: guestContact.trim() || undefined,
+          client_request_id: requestId,
+          description: payload.description,
+          guest_name: payload.guest_name || undefined,
+          guest_contact: payload.guest_contact || undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data?.error || `Request failed (${res.status})`);
       }
+      if (
+        !mountedRef.current ||
+        activeRequestIdRef.current !== requestId ||
+        activeStorageKeyRef.current !== storageKey
+      ) return;
+      clearPendingSubmission(storageKey, requestId);
+      pendingRef.current = null;
       setConfirmation({
         job_id: data.job_id,
         property: data.property,
@@ -62,8 +190,20 @@ export function GuestReportForm({ propertyId, roomId }: GuestReportFormProps) {
       });
       setState('success');
     } catch (err: any) {
+      if (
+        !mountedRef.current ||
+        activeRequestIdRef.current !== requestId ||
+        activeStorageKeyRef.current !== storageKey
+      ) return;
       setError(err?.message || 'Could not submit your request. Please try again.');
       setState('error');
+    } finally {
+      if (
+        activeRequestIdRef.current === requestId &&
+        activeStorageKeyRef.current === storageKey
+      ) {
+        inFlightRef.current = false;
+      }
     }
   };
 
@@ -98,6 +238,9 @@ export function GuestReportForm({ propertyId, roomId }: GuestReportFormProps) {
             setGuestName('');
             setGuestContact('');
             setConfirmation(null);
+            pendingRef.current = null;
+            activeRequestIdRef.current = null;
+            activeStorageKeyRef.current = null;
             setState('idle');
           }}
           className="mt-5 w-full"

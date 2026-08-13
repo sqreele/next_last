@@ -1115,6 +1115,36 @@ class Job(models.Model):
         )
 
 
+class GuestReportSubmission(models.Model):
+    """Immutable identity for one logical public Guest Report submission."""
+
+    request_id = models.UUIDField(unique=True, editable=False)
+    property_id_snapshot = models.PositiveBigIntegerField(editable=False)
+    room_id_snapshot = models.PositiveBigIntegerField(editable=False)
+    tenant_id_snapshot = models.PositiveBigIntegerField(null=True, blank=True, editable=False)
+    payload_fingerprint = models.CharField(max_length=64, editable=False)
+    job = models.OneToOneField(
+        Job,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='guest_report_submission',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class GuestReportRateLimit(models.Model):
+    """Database-backed fixed-window counter for the public Guest Report endpoint."""
+
+    bucket_key = models.CharField(max_length=64, unique=True, editable=False)
+    window_started_at = models.DateTimeField()
+    count = models.PositiveIntegerField(default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class JobComment(models.Model):
     """A user comment posted on a Job."""
     id = models.AutoField(primary_key=True)

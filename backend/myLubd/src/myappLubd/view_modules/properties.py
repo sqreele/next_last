@@ -2,17 +2,19 @@ import logging
 from io import StringIO
 
 from django.conf import settings
+from django.db import transaction
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import Job, Property, TenantMembership, UserProfile
 from ..serializers import PropertySerializer
 from ..tenancy import (
+    TENANT_ADMIN_ROLES,
     enforce_subscription_limit,
     ensure_tenant_for_property,
     ensure_tenant_for_user,
@@ -106,6 +108,72 @@ class PropertyViewSet(viewsets.ModelViewSet):
             logger.error(f"Property with ID {property_id} not found in database")
             raise
 
+    def _membership_management_properties(self):
+        """Properties whose membership the current actor may explicitly manage."""
+        user = self.request.user
+        if user.is_staff or user.is_superuser:
+            return Property.objects.all()
+
+        # Both callers execute inside transaction.atomic(). Lock the actor's
+        # management grants so their authorization scope cannot be revoked
+        # between validation and the membership mutation.
+        manageable_tenant_ids = list(
+            TenantMembership.objects.select_for_update()
+            .filter(
+                user=user,
+                is_active=True,
+                role__in=TENANT_ADMIN_ROLES,
+            )
+            .values_list('tenant_id', flat=True)
+        )
+        return Property.objects.filter(tenant_id__in=manageable_tenant_ids)
+
+    def _resolve_manageable_property(self, identifier, manageable_properties):
+        """Resolve either a database PK or public ID without leaving actor scope."""
+        if isinstance(identifier, bool):
+            raise ValidationError({'property_ids': 'Property identifiers must be strings or integers.'})
+        if isinstance(identifier, int):
+            lookup = {'pk': identifier}
+        elif isinstance(identifier, str) and identifier.strip():
+            lookup = {'property_id': identifier.strip()}
+        else:
+            raise ValidationError({'property_ids': 'Property identifiers must be strings or integers.'})
+
+        property_obj = (
+            manageable_properties
+            .select_for_update()
+            .filter(**lookup)
+            .first()
+        )
+        if property_obj is None:
+            # Use the same response for nonexistent and unauthorized targets so
+            # callers cannot use these membership actions to enumerate Property data.
+            raise NotFound('Property is unavailable.')
+        return property_obj
+
+    def _assign_current_user_to_properties(self, properties):
+        """Synchronize every access relation for the current user atomically."""
+        user = self.request.user
+        for property_obj in properties:
+            property_obj.users.add(user)
+
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        profile.properties.add(*properties)
+
+        tenant_ids = {property_obj.tenant_id for property_obj in properties if property_obj.tenant_id}
+        memberships = {
+            membership.tenant_id: membership
+            for membership in TenantMembership.objects.select_for_update().filter(
+                user=user,
+                is_active=True,
+                tenant_id__in=tenant_ids,
+            )
+        }
+        for property_obj in properties:
+            membership = memberships.get(property_obj.tenant_id)
+            if membership is not None:
+                membership.properties.add(property_obj)
+
     @action(detail=True, methods=['get'])
     def is_preventivemaintenance(self, request, property_id=None):
         logger.info(f"is_preventivemaintenance called for property_id: {property_id}")
@@ -149,103 +217,66 @@ class PropertyViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def add_user(self, request, property_id=None):
         """
-        Add the current authenticated user to this property.
-        Used during onboarding for new users.
+        Add the current actor to a Property they are explicitly authorized to manage.
+
+        This legacy onboarding action always assigns ``request.user``. Possession
+        of a Property identifier is not sufficient authorization.
         """
         logger.info(f"add_user called for property_id: {property_id} by user: {request.user.username}")
-        try:
-            property_obj = Property.objects.get(property_id=property_id)
-            
-            # Add the current user to the property
-            if not property_obj.users.filter(id=request.user.id).exists():
-                property_obj.users.add(request.user)
-                logger.info(f"Added user {request.user.username} to property {property_id}")
-                
-                # Also update the UserProfile if it exists
-                try:
-                    from .models import UserProfile
-                    profile, created = UserProfile.objects.get_or_create(user=request.user)
-                    if not profile.properties.filter(id=property_obj.id).exists():
-                        profile.properties.add(property_obj)
-                        logger.info(f"Added property {property_id} to user profile")
-                except Exception as profile_error:
-                    logger.warning(f"Could not update user profile: {profile_error}")
-                
-                return Response({
-                    'success': True,
-                    'message': f'User {request.user.username} added to property {property_obj.name}',
-                    'property_id': property_obj.property_id,
-                    'property_name': property_obj.name
-                })
-            else:
-                logger.info(f"User {request.user.username} already has access to property {property_id}")
-                return Response({
-                    'success': True,
-                    'message': f'User already has access to property {property_obj.name}',
-                    'property_id': property_obj.property_id,
-                    'property_name': property_obj.name
-                })
-                
-        except Property.DoesNotExist:
-            logger.error(f"Property {property_id} not found")
-            return Response(
-                {"detail": f"Property with ID {property_id} not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+        with transaction.atomic():
+            manageable_properties = self._membership_management_properties()
+            property_obj = self._resolve_manageable_property(property_id, manageable_properties)
+            already_assigned = property_obj.users.filter(pk=request.user.pk).exists()
+            self._assign_current_user_to_properties([property_obj])
+
+        logger.info(f"Authorized Property membership sync for user {request.user.username}")
+        message = (
+            'User already has access to this property'
+            if already_assigned
+            else 'User added to property'
+        )
+        return Response({
+            'success': True,
+            'message': message,
+            'property_id': property_obj.property_id,
+            'property_name': property_obj.name,
+        })
 
     @action(detail=False, methods=['post'])
     def assign_properties(self, request):
         """
-        Assign multiple properties to the current user.
-        Used during onboarding for new users.
-        
+        Atomically assign the current actor to Properties they may manage.
+
         Expected payload: { "property_ids": [1, 2, 3] }
         """
         logger.info(f"assign_properties called by user: {request.user.username}")
         property_ids = request.data.get('property_ids', [])
-        
-        if not property_ids:
-            return Response(
-                {"error": "property_ids is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        assigned = []
-        errors = []
-        
-        for prop_id in property_ids:
-            try:
-                # Try to find property by id (integer) or property_id (string)
-                if isinstance(prop_id, int):
-                    property_obj = Property.objects.get(id=prop_id)
-                else:
-                    property_obj = Property.objects.get(property_id=prop_id)
-                
-                # Add user to property
-                if not property_obj.users.filter(id=request.user.id).exists():
-                    property_obj.users.add(request.user)
-                    logger.info(f"Added user {request.user.username} to property {property_obj.property_id}")
-                    
-                    # Also update UserProfile
-                    try:
-                        from .models import UserProfile
-                        profile, created = UserProfile.objects.get_or_create(user=request.user)
-                        if not profile.properties.filter(id=property_obj.id).exists():
-                            profile.properties.add(property_obj)
-                    except Exception as e:
-                        logger.warning(f"Could not update user profile: {e}")
-                
-                assigned.append({
-                    'id': property_obj.id,
-                    'property_id': property_obj.property_id,
-                    'name': property_obj.name
-                })
-            except Property.DoesNotExist:
-                errors.append({'id': prop_id, 'error': 'Property not found'})
-            except Exception as e:
-                errors.append({'id': prop_id, 'error': str(e)})
-        
-        logger.info(f"assign_properties result: {len(assigned)} assigned, {len(errors)} errors")
+        if not isinstance(property_ids, list) or not property_ids:
+            raise ValidationError({'property_ids': 'A non-empty list is required.'})
+
+        with transaction.atomic():
+            manageable_properties = self._membership_management_properties()
+            resolved = []
+            resolved_ids = set()
+            # Resolve and authorize the complete request before changing any
+            # membership. Deduplicate aliases that resolve to the same Property.
+            for identifier in property_ids:
+                property_obj = self._resolve_manageable_property(identifier, manageable_properties)
+                if property_obj.pk not in resolved_ids:
+                    resolved.append(property_obj)
+                    resolved_ids.add(property_obj.pk)
+
+            self._assign_current_user_to_properties(resolved)
+
+        assigned = [
+            {
+                'id': property_obj.id,
+                'property_id': property_obj.property_id,
+                'name': property_obj.name,
+            }
+            for property_obj in resolved
+        ]
+        logger.info(f"Authorized bulk Property membership sync for {len(assigned)} properties")
         
         # Send welcome email to new user if properties were assigned successfully
         if assigned and request.user.email:
@@ -276,9 +307,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 # Don't fail the request if email fails
         
         return Response({
-            'success': len(errors) == 0,
+            'success': True,
             'assigned': assigned,
-            'errors': errors,
+            'errors': [],
             'message': f'Assigned {len(assigned)} properties to user {request.user.username}',
             'email_sent': bool(assigned and request.user.email)
         })
@@ -490,4 +521,3 @@ class PropertyViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED if (created or attached) and not errors
             else (status.HTTP_207_MULTI_STATUS if (created or attached) else status.HTTP_400_BAD_REQUEST),
         )
-

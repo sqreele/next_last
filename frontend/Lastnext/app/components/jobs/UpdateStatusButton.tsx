@@ -1,7 +1,7 @@
 // UpdateStatusButton.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/app/components/ui/button";
 import { ClipboardEdit } from "lucide-react";
 import {
@@ -21,7 +21,7 @@ import {
 } from "@/app/components/ui/select";
 import { Label } from "@/app/components/ui/label";
 import { Job, JobStatus } from "@/app/lib/types";
-import { updateJob as apiUpdateJob } from "@/app/lib/data.server";
+import { updateJobStatus } from "@/app/lib/data.server";
 import { useToast } from "@/app/components/ui/use-toast";
 import { useSession } from "@/app/lib/session.client";
 import { cn } from "@/app/lib/utils/cn";
@@ -76,6 +76,23 @@ interface UpdateStatusButtonProps {
   className?: string;
   buttonText?: string;
   onClick?: (e: React.MouseEvent) => void;
+  propertyContextKey?: string | null;
+}
+
+interface MutationContext {
+  jobId: string;
+  propertyContextKey: string | null;
+  sessionUserId: string;
+  accessToken: string;
+}
+
+function sameMutationContext(left: MutationContext, right: MutationContext) {
+  return (
+    left.jobId === right.jobId &&
+    left.propertyContextKey === right.propertyContextKey &&
+    left.sessionUserId === right.sessionUserId &&
+    left.accessToken === right.accessToken
+  );
 }
 
 const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
@@ -86,6 +103,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
   className = "",
   buttonText = "Update Status",
   onClick,
+  propertyContextKey = null,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,9 +112,34 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
   );
   const { toast } = useToast();
   const { data: session, status } = useSession();
+  const isMountedRef = useRef(false);
+  const isSubmittingRef = useRef(false);
+  const currentMutationContextRef = useRef<MutationContext>({
+    jobId: "",
+    propertyContextKey: null,
+    sessionUserId: "",
+    accessToken: "",
+  });
+  const accessToken = session?.user?.accessToken ?? "";
+  const sessionUserId = String(
+    session?.currentUser?.user_id ?? session?.user?.id ?? "",
+  );
+  currentMutationContextRef.current = {
+    jobId: String(job.job_id),
+    propertyContextKey,
+    sessionUserId,
+    accessToken,
+  };
   const currentStatusTone = normalizeStatus(job.status);
   const selectedStatusTone = normalizeStatus(selectedStatus);
   const isCompleted = currentStatusTone === JOB_STATUS.COMPLETED;
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -108,6 +151,8 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isSubmittingRef.current) return;
 
     // Debug logging
 
@@ -135,63 +180,61 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
       return; // No change needed
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
+    const mutationContext = currentMutationContextRef.current;
     try {
-      // Create a minimal update payload that preserves all required fields
-      const updateData = {
-        status: selectedStatus,
-        // Include other fields from the original job that the API requires
-        // NOTE: This is the key fix - including required fields
-        room_id: job.rooms?.[0]?.room_id,
-        topic_data: job.topics?.[0]
-          ? JSON.stringify({
-              title: job.topics[0]?.title || "Unknown",
-              description: job.topics[0]?.description || "",
-            })
-          : JSON.stringify({ title: "Unknown", description: "" }),
-        // Include other fields for completeness
-        description: job.description,
-        priority: job.priority,
-        remarks: job.remarks || "",
-        is_defective: job.is_defective || false,
-        is_preventivemaintenance: job.is_preventivemaintenance || false,
-      };
-
-      // Call API with access token
-      const accessToken = session?.user?.accessToken;
       if (!accessToken) {
         throw new Error("No access token available. Please log in again.");
       }
 
-      const updatedJob = await apiUpdateJob(
+      const updatedJob = await updateJobStatus(
         String(job.job_id),
-        updateData,
+        selectedStatus,
         accessToken,
       );
 
-      // Update local state
+      if (
+        !isMountedRef.current ||
+        !sameMutationContext(
+          mutationContext,
+          currentMutationContextRef.current,
+        )
+      ) {
+        return;
+      }
+
       onStatusUpdated(updatedJob);
 
-      // Show success message
       toast({
         title: "Status Updated",
-        description: `Job #${job.job_id} status changed to ${selectedStatus.replace("_", " ")}`,
+        description: `Job #${updatedJob.job_id} status changed to ${updatedJob.status.replace("_", " ")}`,
       });
 
-      // Close dialog
       setIsOpen(false);
     } catch (error) {
       console.error("Failed to update status:", error);
-      toast({
-        title: "Update Failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to update job status",
-        variant: "destructive",
-      });
+      if (
+        isMountedRef.current &&
+        sameMutationContext(
+          mutationContext,
+          currentMutationContextRef.current,
+        )
+      ) {
+        toast({
+          title: "Update Failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Failed to update job status",
+          variant: "destructive",
+        });
+      }
     } finally {
-      setIsSubmitting(false);
+      isSubmittingRef.current = false;
+      if (isMountedRef.current) {
+        setIsSubmitting(false);
+      }
     }
   };
 

@@ -91,6 +91,7 @@ interface JobActionProps {
   onEdit: (job: Job) => void;
   onDelete: (job: Job) => void;
   onStatusUpdated: (updatedJob: Job) => void;
+  propertyContextKey: string | null;
 }
 
 interface EditDialogProps {
@@ -457,7 +458,13 @@ function FilterBar({
   );
 }
 
-function JobCard({ job, onEdit, onDelete, onStatusUpdated }: JobActionProps) {
+function JobCard({
+  job,
+  onEdit,
+  onDelete,
+  onStatusUpdated,
+  propertyContextKey,
+}: JobActionProps) {
   const router = useRouter();
   const description = job.description || "No description provided.";
   const location = getJobLocation(job);
@@ -532,6 +539,7 @@ function JobCard({ job, onEdit, onDelete, onStatusUpdated }: JobActionProps) {
           size="sm"
           className="h-11 w-full sm:w-auto"
           buttonText="Update Status"
+          propertyContextKey={propertyContextKey}
         />
         <details className="relative col-span-2 sm:ml-auto">
           <summary className="flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-muted-foreground hover:bg-muted sm:border-0">
@@ -1151,6 +1159,7 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onStatusUpdated={updateJob}
+                  propertyContextKey={selectedProperty}
                 />
               ))}
             </div>

@@ -1130,6 +1130,12 @@ class JobComment(models.Model):
         related_name='job_comments',
     )
     comment = models.TextField()
+    client_comment_request_id = models.UUIDField(
+        null=True,
+        blank=True,
+        editable=False,
+        help_text='Immutable client identity used to deduplicate one logical comment submission.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1139,6 +1145,13 @@ class JobComment(models.Model):
         verbose_name_plural = 'Job Comments'
         indexes = [
             models.Index(fields=['job', 'created_at']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['author', 'job', 'client_comment_request_id'],
+                condition=Q(client_comment_request_id__isnull=False),
+                name='uniq_job_comment_request',
+            ),
         ]
 
     def __str__(self):

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Loader, MessageSquare, Send, AlertCircle, Clock } from "lucide-react";
 import { Textarea } from "@/app/components/ui/textarea";
@@ -10,6 +10,7 @@ import { useToast } from "@/app/components/ui/use-toast";
 import { useSession } from "@/app/lib/session.client";
 import { enqueueRequest } from "@/app/lib/offline-queue";
 import { useOfflineQueue } from "@/app/lib/hooks/useOfflineQueue";
+import { useAuthStore } from "@/app/lib/stores/useAuthStore";
 import type { JobComment } from "@/app/lib/types";
 
 type Props = {
@@ -38,15 +39,44 @@ function getErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
+function createClientCommentRequestId(): string {
+  if (typeof crypto === "undefined" || typeof crypto.randomUUID !== "function") {
+    throw new Error("Secure comment request identity is unavailable.");
+  }
+  return crypto.randomUUID();
+}
+
 const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
   const { toast } = useToast();
   const { data: session } = useSession();
+  const { selectedProperty } = useAuthStore();
   const { queue } = useOfflineQueue();
   const [comments, setComments] = useState<JobComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const activeSubmissionRequestRef = useRef<string | null>(null);
+  const componentActiveRef = useRef(true);
+  const currentJobIdRef = useRef(jobId);
+  const currentOwnerUserIdRef = useRef(session?.currentUser?.user_id ?? null);
+  const currentPropertyRef = useRef(selectedProperty);
+  currentJobIdRef.current = jobId;
+  currentOwnerUserIdRef.current = session?.currentUser?.user_id ?? null;
+  currentPropertyRef.current = selectedProperty;
+
+  useEffect(() => {
+    componentActiveRef.current = true;
+    return () => {
+      componentActiveRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    activeSubmissionRequestRef.current = null;
+    setSubmitting(false);
+  }, [jobId, selectedProperty, session?.currentUser?.user_id]);
+
   const pendingComments = queue.filter(
     (item) =>
       item.kind === "job-comment-create" &&
@@ -84,23 +114,37 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingComments.length]);
 
-  const appendPendingComment = (value: string) => {
+  const appendPendingComment = (
+    value: string,
+    requestId: string,
+    submissionJobId: string,
+  ) => {
     const now = new Date().toISOString();
     const pending: JobComment = {
       id: -Date.now(),
-      job: Number(jobId) || 0,
+      job: Number(submissionJobId) || 0,
       comment: value,
+      client_comment_request_id: requestId,
       author_id: null,
       author_username: session?.user?.username || null,
       author_name: session?.user?.first_name || session?.user?.email || "You",
       created_at: now,
       updated_at: now,
     };
-    setComments((prev) => [...prev, pending]);
+    setComments((prev) =>
+      prev.some((comment) => comment.client_comment_request_id === requestId)
+        ? prev
+        : [...prev, pending],
+    );
   };
 
-  const queueComment = (value: string) => {
-    const ownerUserId = session?.currentUser?.user_id;
+  const queueComment = (
+    value: string,
+    requestId: string,
+    submissionJobId: string,
+    ownerUserId: number | null,
+    submissionProperty: string | null,
+  ) => {
     if (!ownerUserId) {
       toast({
         title: "Comment not queued",
@@ -112,43 +156,99 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
     enqueueRequest({
       owner_user_id: ownerUserId,
       kind: "job-comment-create",
-      label: `Comment on #${jobId}`,
-      endpoint: `/api/v1/jobs/${jobId}/comments/`,
+      label: `Comment on #${submissionJobId}`,
+      endpoint: `/api/v1/jobs/${submissionJobId}/comments/`,
       method: "POST",
-      body: { comment: value },
+      body: {
+        comment: value,
+        client_comment_request_id: requestId,
+      },
     });
-    appendPendingComment(value);
-    setText("");
-    toast({
-      title: "Comment queued",
-      description: "It will sync when this device is back online.",
-      variant: "success",
-    });
+    if (
+      componentActiveRef.current &&
+      currentJobIdRef.current === submissionJobId &&
+      currentOwnerUserIdRef.current === ownerUserId &&
+      currentPropertyRef.current === submissionProperty
+    ) {
+      appendPendingComment(value, requestId, submissionJobId);
+      setText("");
+      toast({
+        title: "Comment queued",
+        description: "It will sync when this device is back online.",
+        variant: "success",
+      });
+    }
     return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (activeSubmissionRequestRef.current) return;
     const value = text.trim();
     if (!value) {
       toast({ title: "Comment cannot be empty", variant: "destructive" });
       return;
     }
+    const ownerUserId = session?.currentUser?.user_id ?? null;
+    if (!ownerUserId) {
+      toast({
+        title: "Comment not submitted",
+        description: "Current application user identity is unavailable.",
+        variant: "destructive",
+      });
+      return;
+    }
+    let requestId: string;
+    try {
+      requestId = createClientCommentRequestId();
+    } catch (identityError) {
+      toast({
+        title: "Comment not submitted",
+        description: getErrorMessage(identityError, "Secure request identity is unavailable."),
+        variant: "destructive",
+      });
+      return;
+    }
+    const submissionJobId = jobId;
+    const submissionProperty = selectedProperty;
+    activeSubmissionRequestRef.current = requestId;
     setSubmitting(true);
     try {
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
-        queueComment(value);
+        queueComment(
+          value,
+          requestId,
+          submissionJobId,
+          ownerUserId,
+          submissionProperty,
+        );
         return;
       }
 
       const res = await axios.post(
-        `/api/jobs/${jobId}/comments/`,
-        { comment: value },
+        `/api/jobs/${submissionJobId}/comments/`,
+        { comment: value, client_comment_request_id: requestId },
         { withCredentials: true },
       );
+      if (
+        !componentActiveRef.current ||
+        currentJobIdRef.current !== submissionJobId ||
+        currentOwnerUserIdRef.current !== ownerUserId ||
+        currentPropertyRef.current !== submissionProperty
+      ) {
+        return;
+      }
       // Append the new comment optimistically (server returns full comment shape)
       if (res.data && res.data.id) {
-        setComments((prev) => [...prev, res.data as JobComment]);
+        setComments((prev) => {
+          const authoritative = res.data as JobComment;
+          const withoutPendingRequest = prev.filter(
+            (comment) => comment.client_comment_request_id !== requestId,
+          );
+          return withoutPendingRequest.some((comment) => comment.id === authoritative.id)
+            ? withoutPendingRequest
+            : [...withoutPendingRequest, authoritative];
+        });
       } else {
         fetchComments();
       }
@@ -165,7 +265,13 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
         statusCode === 429 ||
         statusCode >= 500;
       if (transient) {
-        queueComment(value);
+        queueComment(
+          value,
+          requestId,
+          submissionJobId,
+          ownerUserId,
+          submissionProperty,
+        );
         return;
       }
       toast({
@@ -174,7 +280,17 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
         variant: "destructive",
       });
     } finally {
-      setSubmitting(false);
+      if (activeSubmissionRequestRef.current === requestId) {
+        activeSubmissionRequestRef.current = null;
+      }
+      if (
+        componentActiveRef.current &&
+        currentJobIdRef.current === submissionJobId &&
+        currentOwnerUserIdRef.current === ownerUserId &&
+        currentPropertyRef.current === submissionProperty
+      ) {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -213,7 +329,11 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
         <ol className="space-y-3">
           {comments.map((c) => (
             <li
-              key={c.id}
+              key={
+                c.id < 0 && c.client_comment_request_id
+                  ? `pending-${c.client_comment_request_id}`
+                  : c.id
+              }
               className="rounded-lg border bg-card p-3 shadow-soft"
             >
               <div className="flex items-center justify-between gap-2">
@@ -243,7 +363,8 @@ const JobCommentsSection: React.FC<Props> = ({ jobId }) => {
               (item) =>
                 !comments.some(
                   (c) =>
-                    c.id < 0 && c.comment === String(item.body.comment || ""),
+                    c.client_comment_request_id ===
+                      String(item.body.client_comment_request_id || ""),
                 ),
             )
             .map((item) => (

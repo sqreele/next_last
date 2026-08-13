@@ -590,6 +590,7 @@ class AreaSummarySerializer(serializers.ModelSerializer):
 
 # Job comment serializer
 class JobCommentSerializer(serializers.ModelSerializer):
+    client_comment_request_id = serializers.UUIDField(required=True, allow_null=False)
     author_username = serializers.SerializerMethodField()
     author_name = serializers.SerializerMethodField()
     author_id = serializers.IntegerField(source='author.id', read_only=True)
@@ -597,7 +598,7 @@ class JobCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = JobComment
         fields = [
-            'id', 'job', 'comment',
+            'id', 'job', 'comment', 'client_comment_request_id',
             'author_id', 'author_username', 'author_name',
             'created_at', 'updated_at',
         ]

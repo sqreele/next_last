@@ -188,6 +188,7 @@ export interface JobComment {
   id: number;
   job: number;
   comment: string;
+  client_comment_request_id?: string | null;
   author_id?: number | null;
   author_username?: string | null;
   author_name?: string | null;

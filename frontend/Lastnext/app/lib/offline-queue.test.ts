@@ -14,7 +14,11 @@ function queuedInput(ownerUserId: number, suffix = "1") {
     label: `Comment ${suffix}`,
     endpoint: `/api/v1/jobs/JOB-${suffix}/comments/`,
     method: "POST" as const,
-    body: { comment: `note ${suffix}`, property_id: "PROPERTY-A" },
+    body: {
+      comment: `note ${suffix}`,
+      property_id: "PROPERTY-A",
+      client_comment_request_id: `request-${suffix}`,
+    },
   };
 }
 
@@ -85,7 +89,11 @@ describe("offline queue session ownership", () => {
       expect.objectContaining({
         owner_user_id: 41,
         endpoint: "/api/v1/jobs/JOB-1/comments/",
-        body: { comment: "note 1", property_id: "PROPERTY-A" },
+        body: {
+          comment: "note 1",
+          property_id: "PROPERTY-A",
+          client_comment_request_id: "request-1",
+        },
       }),
     ]);
   });
@@ -138,7 +146,11 @@ describe("offline queue session ownership", () => {
 
     expect(result).toEqual({ delivered: 0, remaining: 1 });
     expect(queue.getQueue()).toEqual([
-      expect.objectContaining({ owner_user_id: 41, retries: 0 }),
+      expect.objectContaining({
+        owner_user_id: 41,
+        retries: 0,
+        body: expect.objectContaining({ client_comment_request_id: "request-1" }),
+      }),
     ]);
   });
 

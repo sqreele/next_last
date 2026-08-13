@@ -1,10 +1,11 @@
 import logging
 
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from ..models import JobComment, Property
@@ -46,13 +47,49 @@ class JobCollaborationMixin:
             # POST
             serializer = JobCommentSerializer(data=request.data, context={'request': request})
             serializer.is_valid(raise_exception=True)
-            comment = JobComment.objects.create(
-                job=job,
-                author=request.user if request.user.is_authenticated else None,
-                comment=serializer.validated_data['comment'],
-            )
+            author = request.user if request.user.is_authenticated else None
+            request_id = serializer.validated_data.get('client_comment_request_id')
+            lookup = {
+                'job': job,
+                'author': author,
+                'client_comment_request_id': request_id,
+            }
+            comment = None
+            created = True
+
+            if request_id is not None:
+                comment = JobComment.objects.filter(**lookup).first()
+
+            if comment is None:
+                try:
+                    # The conditional unique constraint is authoritative. The
+                    # inner atomic block supplies a savepoint so a concurrent
+                    # uniqueness collision can be resolved safely afterward.
+                    with transaction.atomic():
+                        comment = JobComment.objects.create(
+                            **lookup,
+                            comment=serializer.validated_data['comment'],
+                        )
+                except IntegrityError:
+                    if request_id is None:
+                        raise
+                    comment = JobComment.objects.filter(**lookup).first()
+                    if comment is None:
+                        raise
+                    created = False
+            else:
+                created = False
+
+            if comment.comment != serializer.validated_data['comment']:
+                raise ValidationError({
+                    'client_comment_request_id': (
+                        'This request ID is already bound to a different comment.'
+                    ),
+                })
+
             out = JobCommentSerializer(comment, context={'request': request})
-            return Response(out.data, status=status.HTTP_201_CREATED)
+            response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            return Response(out.data, status=response_status)
     
         @action(detail=True, methods=['get'], url_path='audit-log')
         def audit_log(self, request, job_id=None):

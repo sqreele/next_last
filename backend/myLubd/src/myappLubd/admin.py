@@ -57,6 +57,7 @@ from .models import (
     JobImage,
     UserProfile,
     PreventiveMaintenance,
+    PMMasterPlan,
     Session,
     Machine,
     MaintenanceProcedure,
@@ -3330,6 +3331,71 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
         """Display inventory items in detail view"""
         return self.get_inventory_items_display(obj)
     inventory_items_display.short_description = 'Inventory Items Used'
+
+@admin.register(PMMasterPlan)
+class PMMasterPlanAdmin(admin.ModelAdmin):
+    """Manage recurring PM rules separately from generated PM work records."""
+
+    list_per_page = 25
+    list_display = (
+        'plan_id',
+        'title',
+        'frequency',
+        'next_due_date',
+        'active',
+        'get_machines_display',
+        'get_generated_maintenance_count',
+        'created_by',
+    )
+    list_filter = ('active', 'frequency', 'next_due_date', 'created_at')
+    search_fields = (
+        'plan_id',
+        'title',
+        'notes',
+        'machines__machine_id',
+        'machines__name',
+        'created_by__username',
+    )
+    readonly_fields = ('plan_id', 'last_completed_date', 'next_due_date', 'created_at', 'updated_at')
+    filter_horizontal = ('machines', 'topics')
+    autocomplete_fields = ('procedure_template', 'assigned_to', 'created_by')
+    date_hierarchy = 'next_due_date'
+    fieldsets = (
+        ('Identification', {
+            'fields': ('plan_id', 'title', 'active', 'created_by', 'assigned_to'),
+        }),
+        ('Schedule', {
+            'fields': (
+                'frequency', 'custom_days', 'start_date', 'lead_time_days',
+                'last_completed_date', 'next_due_date',
+            ),
+        }),
+        ('Maintenance details', {
+            'fields': ('procedure_template', 'procedure', 'notes', 'remarks'),
+        }),
+        ('Related equipment and topics', {
+            'fields': ('machines', 'topics'),
+        }),
+        ('Audit information', {
+            'classes': ('collapse',),
+            'fields': ('created_at', 'updated_at'),
+        }),
+    )
+
+    @admin.display(description='Machines')
+    def get_machines_display(self, obj):
+        machines = obj.machines.all()
+        return ', '.join(machine.name or machine.machine_id for machine in machines) or 'No machines'
+
+    @admin.display(description='Generated PMs')
+    def get_generated_maintenance_count(self, obj):
+        return obj.generated_maintenance_count
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('machines').annotate(
+            generated_maintenance_count=Count('generated_maintenances', distinct=True),
+        )
+
 
 @admin.register(Session)
 class SessionAdmin(admin.ModelAdmin):

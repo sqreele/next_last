@@ -186,7 +186,11 @@ apiClient.interceptors.response.use(
       return response;
   },
   async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: number };
+    const originalRequest = error.config as InternalAxiosRequestConfig & {
+      _retry?: number;
+      skipAutomaticRetry?: boolean;
+    };
+    const automaticRetryAllowed = !originalRequest.skipAutomaticRetry;
     
     // Initialize retry counter if not present
     if (originalRequest._retry === undefined) {
@@ -209,7 +213,7 @@ apiClient.interceptors.response.use(
     }
     
     // Check for timeout errors specifically
-    if (error.code === 'ECONNABORTED' && originalRequest._retry < MAX_RETRIES) {
+    if (automaticRetryAllowed && error.code === 'ECONNABORTED' && originalRequest._retry < MAX_RETRIES) {
       originalRequest._retry++;
       
       // Add an increasing delay between retries
@@ -218,7 +222,7 @@ apiClient.interceptors.response.use(
     }
     
     // Check if it's a 401 error - try to refresh once, then replay the original request
-    if (error.response?.status === 401 && originalRequest._retry < MAX_RETRIES) {
+    if (automaticRetryAllowed && error.response?.status === 401 && originalRequest._retry < MAX_RETRIES) {
       originalRequest._retry++;
 
       try {
@@ -250,7 +254,7 @@ apiClient.interceptors.response.use(
     
     // Network errors - retry with backoff for non-401 responses
     // Only retry if we got a response (not a network error without response)
-    if (error.response && [502, 503, 504].includes(error.response.status) && originalRequest._retry < MAX_RETRIES) {
+    if (automaticRetryAllowed && error.response && [502, 503, 504].includes(error.response.status) && originalRequest._retry < MAX_RETRIES) {
       originalRequest._retry++;
       
       // Add an increasing delay between retries

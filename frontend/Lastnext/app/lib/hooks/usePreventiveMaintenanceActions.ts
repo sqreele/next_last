@@ -22,6 +22,15 @@ export function usePreventiveMaintenanceActions() {
   const accessToken = session?.user?.accessToken || null;
   const loaderShownAtRef = useRef<number | null>(null);
   const maintenanceRequestRef = useRef(0);
+  const deleteInFlightRef = useRef(false);
+  const currentDeleteContextRef = useRef({
+    propertyId: selectedProperty,
+    sessionId: String(session?.user?.id || accessToken || ''),
+  });
+  currentDeleteContextRef.current = {
+    propertyId: selectedProperty,
+    sessionId: String(session?.user?.id || accessToken || ''),
+  };
 
   const {
     maintenanceItems,
@@ -237,33 +246,56 @@ export function usePreventiveMaintenanceActions() {
 
   // Delete maintenance
   const deleteMaintenance = useCallback(async (pmId: string): Promise<boolean> => {
+    if (deleteInFlightRef.current) return false;
     if (!accessToken) {
       logger.warn('No access token available for deleting maintenance');
       return false;
     }
 
+    const requestContext = { ...currentDeleteContextRef.current };
+    const isCurrentContext = () => {
+      const current = currentDeleteContextRef.current;
+      return (
+        current.propertyId === requestContext.propertyId
+        && current.sessionId === requestContext.sessionId
+      );
+    };
+
+    deleteInFlightRef.current = true;
     try {
       setLoading(true);
+      clearStoreError();
       const service = createPreventiveMaintenanceService(accessToken);
       const response = await service.deletePreventiveMaintenance(pmId);
-      
+
+      if (!isCurrentContext()) return false;
       if (response.success) {
-        // Remove from store
-        setMaintenanceItems(maintenanceItems.filter(item => item.pm_id !== pmId));
-        setTotalCount(totalCount - 1);
+        // Reconcile the canonical list only after the server confirms deletion.
+        // Reading the latest store state preserves unrelated records that may
+        // have arrived while the DELETE request was pending.
+        usePreventiveMaintenanceStore.setState((state) => {
+          const exists = state.maintenanceItems.some(item => item.pm_id === pmId);
+          if (!exists) return state;
+          return {
+            maintenanceItems: state.maintenanceItems.filter(item => item.pm_id !== pmId),
+            totalCount: Math.max(0, state.totalCount - 1),
+          };
+        });
         return true;
       } else {
         setError(response.message || 'Failed to delete maintenance item');
         return false;
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      if (!isCurrentContext()) return false;
       logger.error('Error deleting maintenance', error);
-      setError('Failed to delete maintenance item');
+      setError(error instanceof Error ? error.message : 'Failed to delete maintenance item');
       return false;
     } finally {
-      setLoading(false);
+      deleteInFlightRef.current = false;
+      if (isCurrentContext()) setLoading(false);
     }
-  }, [accessToken, maintenanceItems, totalCount, setLoading, setMaintenanceItems, setTotalCount, setError]);
+  }, [accessToken, setLoading, clearStoreError, setError]);
 
   // Fetch maintenance by ID
   const fetchMaintenanceById = useCallback(async (pmId: string): Promise<PMDetail | null> => {

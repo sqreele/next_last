@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { logger } from '@/app/lib/utils/logger';
 import { useRouter } from 'next/navigation';
 import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMaintenanceActions';
@@ -116,6 +116,8 @@ function PreventiveMaintenanceListPageContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deletingPmId, setDeletingPmId] = useState<string | null>(null);
+  const deletePendingRef = useRef(false);
   const [sortBy, setSortBy] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -383,6 +385,9 @@ function PreventiveMaintenanceListPageContent() {
 
   // Delete handlers
   const handleDelete = useCallback(async (pmId: string) => {
+    if (deletePendingRef.current) return;
+    deletePendingRef.current = true;
+    setDeletingPmId(pmId);
     try {
       const success = await deleteMaintenance(pmId);
       if (success) {
@@ -391,6 +396,9 @@ function PreventiveMaintenanceListPageContent() {
       }
     } catch (error) {
       console.error('Delete failed:', error);
+    } finally {
+      deletePendingRef.current = false;
+      setDeletingPmId(null);
     }
   }, [deleteMaintenance]);
 
@@ -688,6 +696,7 @@ function PreventiveMaintenanceListPageContent() {
         <DeleteModal
           onConfirm={() => handleDelete(deleteConfirm)}
           onCancel={() => setDeleteConfirm(null)}
+          isDeleting={deletingPmId === deleteConfirm}
         />
       )}
     </div>

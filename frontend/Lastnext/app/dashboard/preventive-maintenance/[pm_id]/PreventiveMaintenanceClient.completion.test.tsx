@@ -4,10 +4,14 @@ import PreventiveMaintenanceClient from "./PreventiveMaintenanceClient";
 
 const mocks = vi.hoisted(() => ({
   post: vi.fn(),
+  delete: vi.fn(),
   refresh: vi.fn(),
   push: vi.fn(),
   confirm: vi.fn(),
   alert: vi.fn(),
+  selectedProperty: "PROPERTY-A" as string | null,
+  sessionUserId: "505",
+  accessToken: "token-a",
 }));
 
 vi.mock("next/navigation", () => ({
@@ -17,8 +21,17 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/app/lib/session.client", () => ({
   useSession: () => ({
     status: "authenticated",
-    data: { user: { accessToken: "token-a" } },
+    data: {
+      user: {
+        id: mocks.sessionUserId,
+        accessToken: mocks.accessToken,
+      },
+    },
   }),
+}));
+
+vi.mock("@/app/lib/stores/useAuthStore", () => ({
+  useAuthStore: () => ({ selectedProperty: mocks.selectedProperty }),
 }));
 
 vi.mock("@/app/lib/api-client", async (importOriginal) => {
@@ -27,6 +40,7 @@ vi.mock("@/app/lib/api-client", async (importOriginal) => {
     ...actual,
     default: {
       post: mocks.post,
+      delete: mocks.delete,
     },
   };
 });
@@ -151,10 +165,14 @@ beforeEach(() => {
   vi.setSystemTime(new Date("2026-08-12T03:04:05.000Z"));
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   mocks.post.mockReset();
+  mocks.delete.mockReset();
   mocks.refresh.mockReset();
   mocks.push.mockReset();
   mocks.confirm.mockReset().mockReturnValue(true);
   mocks.alert.mockReset();
+  mocks.selectedProperty = "PROPERTY-A";
+  mocks.sessionUserId = "505";
+  mocks.accessToken = "token-a";
   vi.stubGlobal("confirm", mocks.confirm);
   vi.stubGlobal("alert", mocks.alert);
 });
@@ -239,5 +257,92 @@ describe("PreventiveMaintenanceClient completion workflow", () => {
     await waitFor(() => expect(mocks.post).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(mocks.refresh).toHaveBeenCalledTimes(1));
     expect(mocks.alert).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("PreventiveMaintenanceClient delete workflow", () => {
+  it("cancels before mutation when native confirmation is declined", () => {
+    mocks.confirm.mockReturnValueOnce(false);
+    render(<PreventiveMaintenanceClient maintenanceData={maintenance} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(mocks.delete).not.toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(screen.getAllByText("Inspect chiller bearings").length).toBeGreaterThan(0);
+  });
+
+  it("sends one canonical DELETE, preserves the detail while pending, then reconciles", async () => {
+    let resolveDelete!: (value: { status: number; data: string }) => void;
+    mocks.delete.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveDelete = resolve; }),
+    );
+    render(<PreventiveMaintenanceClient maintenanceData={maintenance} />);
+
+    const deleteButton = screen.getByRole("button", { name: "Delete" });
+    fireEvent.click(deleteButton);
+    fireEvent.click(deleteButton);
+
+    await waitFor(() => expect(mocks.delete).toHaveBeenCalledTimes(1));
+    expect(mocks.delete).toHaveBeenCalledWith(
+      "/api/v1/preventive-maintenance/PM-17/",
+      {
+        headers: { Authorization: "Bearer token-a" },
+        skipAutomaticRetry: true,
+      },
+    );
+    expect(screen.getAllByText("Inspect chiller bearings").length).toBeGreaterThan(0);
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+
+    resolveDelete({ status: 204, data: "" });
+    await waitFor(() => {
+      expect(mocks.push).toHaveBeenCalledWith("/dashboard/preventive-maintenance");
+    });
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves the PM and resets after a 403 response", async () => {
+    mocks.delete.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: "Request failed with status code 403",
+      response: {
+        status: 403,
+        data: { detail: "You cannot delete this preventive maintenance." },
+      },
+      config: { url: "/api/v1/preventive-maintenance/PM-17/" },
+    });
+    render(<PreventiveMaintenanceClient maintenanceData={maintenance} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await screen.findByText("You cannot delete this preventive maintenance.");
+    expect(mocks.delete).toHaveBeenCalledTimes(1);
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+    expect(screen.getAllByText("Inspect chiller bearings").length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Delete" })).toBeEnabled();
+    });
+  });
+
+  it("does not navigate when an old property or session DELETE response resolves", async () => {
+    let resolveDelete!: (value: { status: number; data: string }) => void;
+    mocks.delete.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveDelete = resolve; }),
+    );
+    const view = render(<PreventiveMaintenanceClient maintenanceData={maintenance} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    mocks.selectedProperty = "PROPERTY-B";
+    mocks.sessionUserId = "606";
+    mocks.accessToken = "token-b";
+    view.rerender(<PreventiveMaintenanceClient maintenanceData={maintenance} />);
+    resolveDelete({ status: 204, data: "" });
+
+    await waitFor(() => expect(mocks.delete).toHaveBeenCalledTimes(1));
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+    expect(screen.getAllByText("Inspect chiller bearings").length).toBeGreaterThan(0);
   });
 });

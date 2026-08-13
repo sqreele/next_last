@@ -10,7 +10,7 @@ import {
 } from "./preventiveMaintenanceModels";
 // Removed next-auth usage; apiClient handles auth headers
 import { jwtDecode } from "jwt-decode";
-import axios from "axios";
+import axios, { type AxiosRequestConfig } from "axios";
 import type {
   PMCompletionPayload,
   PMCompletionResponse,
@@ -982,9 +982,15 @@ class PreventiveMaintenanceService {
     }
 
     try {
-      const response = await apiClient.delete(`${this.baseUrl}/${id}/`, {
+      const deleteConfig: AxiosRequestConfig & {
+        skipAutomaticRetry: boolean;
+      } = {
         headers: this.getAuthHeaders(),
-      });
+        // DELETE is destructive and must never be replayed automatically by
+        // the shared Axios interceptor after a timeout or gateway response.
+        skipAutomaticRetry: true,
+      };
+      await apiClient.delete(`${this.baseUrl}/${id}/`, deleteConfig);
       return {
         success: true,
         data: null,

@@ -5,10 +5,11 @@ import {
   preventiveMaintenanceService,
   setPreventiveMaintenanceServiceToken,
 } from "@/app/lib/PreventiveMaintenanceService";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/app/lib/session.client";
+import { useAuthStore } from "@/app/lib/stores/useAuthStore";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import type { PMDetail } from "@/app/lib/api/pm-contracts";
 import {
@@ -42,6 +43,7 @@ export default function PreventiveMaintenanceClient({
   maintenanceData,
 }: PreventiveMaintenanceClientProps) {
   const { data: session } = useSession();
+  const { selectedProperty } = useAuthStore();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +57,19 @@ export default function PreventiveMaintenanceClient({
   >({});
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setIsLoading);
+  const deleteInFlightRef = useRef(false);
+  const currentDeleteContextRef = useRef({
+    pmId: maintenanceData.pm_id,
+    propertyId: selectedProperty,
+    sessionId: String(
+      session?.user?.id || session?.user?.accessToken || "",
+    ),
+  });
+  currentDeleteContextRef.current = {
+    pmId: maintenanceData.pm_id,
+    propertyId: selectedProperty,
+    sessionId: String(session?.user?.id || session?.user?.accessToken || ""),
+  };
 
   useEffect(() => {
     const accessToken = session?.user?.accessToken;
@@ -65,6 +80,7 @@ export default function PreventiveMaintenanceClient({
 
   // ฟังก์ชันสำหรับการยืนยันการลบ
   const handleDelete = async () => {
+    if (deleteInFlightRef.current) return;
     if (
       !window.confirm(
         "Are you sure you want to delete this maintenance record?",
@@ -73,6 +89,17 @@ export default function PreventiveMaintenanceClient({
       return;
     }
 
+    const requestContext = { ...currentDeleteContextRef.current };
+    const isCurrentContext = () => {
+      const current = currentDeleteContextRef.current;
+      return (
+        current.pmId === requestContext.pmId &&
+        current.propertyId === requestContext.propertyId &&
+        current.sessionId === requestContext.sessionId
+      );
+    };
+
+    deleteInFlightRef.current = true;
     recordLoaderShown();
     setIsLoading(true);
     setError(null);
@@ -83,6 +110,7 @@ export default function PreventiveMaintenanceClient({
           maintenanceData.pm_id,
         );
 
+      if (!isCurrentContext()) return;
       if (response.success) {
         router.push("/dashboard/preventive-maintenance");
         router.refresh();
@@ -93,8 +121,11 @@ export default function PreventiveMaintenanceClient({
       }
     } catch (err: any) {
       console.error("Error deleting maintenance:", err);
-      setError(err.message || "An error occurred while deleting");
+      if (isCurrentContext()) {
+        setError(err.message || "An error occurred while deleting");
+      }
     } finally {
+      deleteInFlightRef.current = false;
       clearLoadingAfterMinTime();
     }
   };

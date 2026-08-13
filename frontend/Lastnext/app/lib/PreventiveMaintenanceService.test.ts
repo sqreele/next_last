@@ -144,4 +144,71 @@ describe("PreventiveMaintenanceService detail and write contracts", () => {
     expect(body.get("completion_notes")).toBe("Completed safely");
     expect(response.data?.next_schedule_pm_id).toBe("PM-NEXT");
   });
+
+  it("treats the canonical PM DELETE 204 contract as success without retries or a body", async () => {
+    const deleteMock = vi.spyOn(apiClient, "delete").mockResolvedValue({
+      status: 204,
+      data: "",
+    });
+
+    const response = await createPreventiveMaintenanceService("token-a")
+      .deletePreventiveMaintenance("101");
+
+    expect(response).toEqual({
+      success: true,
+      data: null,
+      message: "Maintenance deleted successfully",
+    });
+    expect(deleteMock).toHaveBeenCalledTimes(1);
+    expect(deleteMock).toHaveBeenCalledWith(
+      "/api/v1/preventive-maintenance/101/",
+      {
+        headers: { Authorization: "Bearer token-a" },
+        skipAutomaticRetry: true,
+      },
+    );
+    expect(deleteMock.mock.calls[0]).toHaveLength(2);
+  });
+
+  it("does not replay a destructive DELETE after a retryable gateway response", async () => {
+    const originalAdapter = apiClient.defaults.adapter;
+    const adapter = vi.fn(async (config) => {
+      throw {
+        isAxiosError: true,
+        message: "Request failed with status code 503",
+        config,
+        response: {
+          status: 503,
+          statusText: "Service Unavailable",
+          headers: {},
+          config,
+          data: { detail: "Delete service unavailable" },
+        },
+      };
+    });
+    apiClient.defaults.adapter = adapter;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      return jsonResponse(
+        url.includes("session-compat")
+          ? { user: { accessToken: "token-a" } }
+          : { csrfToken: "csrf-a" },
+      );
+    }));
+
+    try {
+      await expect(
+        createPreventiveMaintenanceService("token-a")
+          .deletePreventiveMaintenance("101"),
+      ).rejects.toThrow("Delete service unavailable");
+      expect(adapter).toHaveBeenCalledTimes(1);
+      expect(adapter.mock.calls[0][0]).toMatchObject({
+        method: "delete",
+        url: "/api/v1/preventive-maintenance/101/",
+        skipAutomaticRetry: true,
+      });
+    } finally {
+      apiClient.defaults.adapter = originalAdapter;
+    }
+  });
 });

@@ -6,9 +6,14 @@ import { AlertCircle } from "lucide-react";
 interface DeleteModalProps {
   onConfirm: () => void;
   onCancel: () => void;
+  isDeleting?: boolean;
 }
 
-const DeleteModal: React.FC<DeleteModalProps> = ({ onConfirm, onCancel }) => {
+const DeleteModal: React.FC<DeleteModalProps> = ({
+  onConfirm,
+  onCancel,
+  isDeleting = false,
+}) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-card p-4 sm:p-6">
@@ -34,15 +39,17 @@ const DeleteModal: React.FC<DeleteModalProps> = ({ onConfirm, onCancel }) => {
         <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
           <button
             onClick={onCancel}
+            disabled={isDeleting}
             className="min-h-11 w-full rounded-lg border border-border px-4 py-2 text-muted-foreground transition-colors hover:bg-muted sm:w-auto"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
+            disabled={isDeleting}
             className="min-h-11 w-full rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700 sm:w-auto"
           >
-            Delete Task
+            {isDeleting ? "Deleting..." : "Delete Task"}
           </button>
         </div>
       </div>

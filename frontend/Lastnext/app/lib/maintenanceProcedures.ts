@@ -12,6 +12,8 @@ const MAX_PAGES_TO_FETCH = 50;
 
 export async function fetchAllMaintenanceProcedures(options: {
   pageSize?: number;
+  propertyId?: string;
+  signal?: AbortSignal;
 } = {}): Promise<MaintenanceProcedureListItem[]> {
   const pageSize = options.pageSize ?? 100;
   const aggregated: MaintenanceProcedureListItem[] = [];
@@ -21,14 +23,20 @@ export async function fetchAllMaintenanceProcedures(options: {
 
   while (hasMore && pagesFetched < MAX_PAGES_TO_FETCH) {
     pagesFetched += 1;
+    const config: {
+      params: MaintenanceProcedureListQuery;
+      signal?: AbortSignal;
+    } = {
+      params: {
+        page,
+        page_size: pageSize,
+        ...(options.propertyId ? { property_id: options.propertyId } : {}),
+      },
+    };
+    if (options.signal) config.signal = options.signal;
     const response = await apiClient.get<MaintenanceProcedureListResponse>(
       '/api/v1/maintenance-procedures/',
-      {
-        params: {
-          page,
-          page_size: pageSize,
-        },
-      }
+      config,
     );
 
     const data = response.data;

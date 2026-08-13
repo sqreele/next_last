@@ -33,9 +33,10 @@ const machinesB = [{
   status: "active",
 }];
 
-const procedures = [
+const proceduresA = [
   {
     id: 501,
+    property_id: "PROPERTY-A",
     name: "Weekly chiller inspection",
     group_id: null,
     category: "HVAC",
@@ -44,11 +45,20 @@ const procedures = [
     responsible_department: "Engineering",
     difficulty_level: "intermediate",
     schedule_count: 0,
-    machine_ids: ["MACHINE-A", "MACHINE-B"],
+    machine_ids: ["MACHINE-A"],
     machines: [],
     created_at: "2026-08-01T00:00:00Z",
   },
 ];
+
+const proceduresB = [{
+  ...proceduresA[0],
+  id: 502,
+  property_id: "PROPERTY-B",
+  name: "Monthly chiller B inspection",
+  frequency: "monthly",
+  machine_ids: ["MACHINE-B"],
+}];
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
@@ -136,9 +146,9 @@ async function renderReadyCreate() {
   return view;
 }
 
-async function selectTemplateAndMachine(machineName: string) {
+async function selectTemplateAndMachine(machineName: string, taskId = 501) {
   fireEvent.change(screen.getByLabelText(/Maintenance Task Template/), {
-    target: { value: "501" },
+    target: { value: String(taskId) },
   });
   const machine = await screen.findByRole("checkbox", { name: new RegExp(machineName) });
   fireEvent.click(machine);
@@ -173,7 +183,9 @@ beforeEach(() => {
       data: propertyId === "PROPERTY-B" ? machinesB : machinesA,
     }),
   );
-  mocks.fetchProcedures.mockReset().mockResolvedValue(procedures);
+  mocks.fetchProcedures.mockReset().mockImplementation(({ propertyId }: { propertyId?: string }) =>
+    Promise.resolve(propertyId === "PROPERTY-B" ? proceduresB : proceduresA),
+  );
   mocks.apiGet.mockReset().mockResolvedValue({ data: {} });
 });
 
@@ -198,6 +210,7 @@ describe("PreventiveMaintenanceForm create workflow", () => {
     await waitFor(() => expect(mocks.createMasterPlan).toHaveBeenCalledTimes(1));
     expect(mocks.createMasterPlan).toHaveBeenCalledWith({
       title: "Weekly chiller inspection",
+      property_id: "PROPERTY-A",
       machine_ids: ["MACHINE-A"],
       topic_ids: [],
       start_date: "2026-09-10T09:30",
@@ -228,10 +241,12 @@ describe("PreventiveMaintenanceForm create workflow", () => {
 
     await waitFor(() => expect(mocks.getMachines).toHaveBeenCalledWith("PROPERTY-B", "token-a"));
     await waitFor(() => {
-      expect(screen.getByRole("option", { name: /Weekly chiller inspection/ })).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: /Monthly chiller B inspection/ })).toBeInTheDocument();
     });
+    expect(screen.queryByRole("option", { name: /Weekly chiller inspection/ })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Maintenance Task Template/)).toHaveValue("");
     expect(screen.queryByRole("checkbox", { name: /Chiller A/ })).not.toBeInTheDocument();
-    await selectTemplateAndMachine("Chiller B");
+    await selectTemplateAndMachine("Chiller B", 502);
     setScheduledDate("2026-09-20T11:45");
     fireEvent.change(screen.getByLabelText("Maintenance Frequency"), {
       target: { value: "custom" },
@@ -246,10 +261,11 @@ describe("PreventiveMaintenanceForm create workflow", () => {
     await waitFor(() => expect(mocks.createMasterPlan).toHaveBeenCalledTimes(1));
     expect(mocks.createMasterPlan.mock.calls[0][0]).toEqual(expect.objectContaining({
       machine_ids: ["MACHINE-B"],
+      property_id: "PROPERTY-B",
       start_date: "2026-09-20T11:45",
       frequency: "custom",
       custom_days: 14,
-      procedure_template: 501,
+      procedure_template: 502,
     }));
     expect(mocks.createMasterPlan.mock.calls[0][0].machine_ids).not.toContain("MACHINE-A");
   });
@@ -302,5 +318,108 @@ describe("PreventiveMaintenanceForm create workflow", () => {
     await screen.findByText("You cannot create this PM plan.");
     expect(mocks.push).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getByLabelText(/Maintenance Title/)).toBeEnabled());
+    expect(screen.getByLabelText(/Maintenance Task Template/)).toHaveValue("501");
+    expect(screen.getByRole("checkbox", { name: /Chiller A/ })).toBeChecked();
+  });
+
+  it("fails closed without a selected property and never requests global procedures", async () => {
+    mocks.propertyId = "";
+    render(<CreatePreventiveMaintenancePage />);
+    await screen.findByRole("form", { name: "Preventive Maintenance Form" });
+
+    expect(mocks.fetchProcedures).not.toHaveBeenCalled();
+    expect(screen.queryByRole("option", { name: /chiller inspection/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Maintenance Task Template/)).toBeDisabled();
+  });
+
+  it("ignores a late Property A procedure response after switching to Property B", async () => {
+    const pendingA: Array<(value: typeof proceduresA) => void> = [];
+    mocks.fetchProcedures.mockImplementation(({ propertyId }: { propertyId?: string }) => {
+      if (propertyId === "PROPERTY-B") return Promise.resolve(proceduresB);
+      return new Promise((resolve) => pendingA.push(resolve));
+    });
+    const view = render(<CreatePreventiveMaintenancePage />);
+    await screen.findByRole("form", { name: "Preventive Maintenance Form" });
+    await waitFor(() => expect(pendingA.length).toBeGreaterThan(0));
+
+    mocks.propertyId = "PROPERTY-B";
+    view.rerender(<CreatePreventiveMaintenancePage />);
+    await screen.findByRole("option", { name: /Monthly chiller B inspection/ });
+    pendingA.forEach((resolve) => resolve(proceduresA));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("option", { name: /Weekly chiller inspection/ })).not.toBeInTheDocument();
+    });
+  });
+
+  it("rejects procedure rows whose canonical property does not match the request", async () => {
+    mocks.fetchProcedures.mockResolvedValue([
+      { ...proceduresB[0], property_id: "PROPERTY-B" },
+    ]);
+    render(<CreatePreventiveMaintenancePage />);
+    await screen.findByRole("form", { name: "Preventive Maintenance Form" });
+
+    await waitFor(() => expect(mocks.fetchProcedures).toHaveBeenCalled());
+    expect(screen.queryByRole("option", { name: /Monthly chiller B inspection/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Create Maintenance" }));
+    expect(mocks.createMasterPlan).not.toHaveBeenCalled();
+  });
+
+  it("shows no options when the selected property is unauthorized", async () => {
+    mocks.propertyId = "PROPERTY-UNAUTHORIZED";
+    mocks.fetchProcedures.mockResolvedValue([]);
+    render(<CreatePreventiveMaintenancePage />);
+    await screen.findByRole("form", { name: "Preventive Maintenance Form" });
+
+    await waitFor(() => expect(mocks.fetchProcedures).toHaveBeenCalledWith(
+      expect.objectContaining({ propertyId: "PROPERTY-UNAUTHORIZED" }),
+    ));
+    expect(screen.queryByRole("option", { name: /chiller inspection/i })).not.toBeInTheDocument();
+  });
+
+  it("does not submit a manually injected foreign procedure ID", async () => {
+    await renderReadyCreate();
+    await selectTemplateAndMachine("Chiller A");
+    setScheduledDate("2026-09-10T09:30");
+    fireEvent.change(screen.getByLabelText(/Maintenance Task Template/), {
+      target: { value: "502" },
+    });
+
+    fireEvent.submit(screen.getByRole("form", { name: "Preventive Maintenance Form" }));
+
+    await waitFor(() => {
+      expect(mocks.createMasterPlan).not.toHaveBeenCalled();
+      expect(mocks.createMaintenance).not.toHaveBeenCalled();
+    });
+  });
+
+  it("does not reconcile a successful mutation after the selected property changes", async () => {
+    const rendered = await renderReadyCreate();
+    await selectTemplateAndMachine("Chiller A");
+    setScheduledDate("2026-09-10T09:30");
+    let resolveCreate!: (value: {
+      success: boolean;
+      data: { plan_id: string; next_due_date: string };
+    }) => void;
+    mocks.createMasterPlan.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveCreate = resolve; }),
+    );
+    const view = screen.getByRole("form", { name: "Preventive Maintenance Form" });
+    fireEvent.submit(view);
+    await waitFor(() => expect(mocks.createMasterPlan).toHaveBeenCalledTimes(1));
+    const pendingMutation = mocks.createMasterPlan.mock.results[0]?.value as Promise<unknown>;
+
+    mocks.propertyId = "PROPERTY-B";
+    rendered.rerender(<CreatePreventiveMaintenancePage />);
+    await screen.findByRole("option", { name: /Monthly chiller B inspection/ });
+    resolveCreate({
+      success: true,
+      data: { plan_id: "PLAN-STALE", next_due_date: "2026-09-10T09:30" },
+    });
+    await pendingMutation;
+
+    expect(screen.queryByText("Preventive maintenance created successfully! Redirecting..."))
+      .not.toBeInTheDocument();
+    expect(mocks.push).not.toHaveBeenCalled();
   });
 });

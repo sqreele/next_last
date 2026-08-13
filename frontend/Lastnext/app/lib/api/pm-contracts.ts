@@ -103,6 +103,7 @@ export interface PMDetail {
 }
 
 export interface PMCreatePayload {
+  property_id?: string;
   scheduled_date: string;
   frequency: PMFrequency;
   machine_ids: string[];
@@ -120,6 +121,7 @@ export interface PMCreatePayload {
 }
 
 export interface PMUpdatePayload {
+  property_id?: string;
   scheduled_date: string;
   frequency: PMFrequency;
   pmtitle?: string;

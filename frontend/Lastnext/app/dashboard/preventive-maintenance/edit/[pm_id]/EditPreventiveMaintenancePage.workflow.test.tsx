@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   apiPut: vi.fn(),
   apiPost: vi.fn(),
   search: "",
+  selectedProperty: "PROPERTY-A",
   listeners: new Set<() => void>(),
   storeState: {} as Record<string, unknown>,
   resetStore: null as unknown as () => void,
@@ -86,6 +87,7 @@ const pmDetail = {
 const procedures = [
   {
     id: 501,
+    property_id: "PROPERTY-A",
     name: "Bearing inspection",
     group_id: null,
     category: "HVAC",
@@ -100,6 +102,7 @@ const procedures = [
   },
   {
     id: 502,
+    property_id: "PROPERTY-A",
     name: "Compressor inspection",
     group_id: null,
     category: "HVAC",
@@ -146,7 +149,7 @@ vi.mock("@/app/lib/session.client", () => ({
 }));
 
 vi.mock("@/app/lib/stores/useAuthStore", () => ({
-  useAuthStore: () => ({ selectedProperty: "PROPERTY-A" }),
+  useAuthStore: () => ({ selectedProperty: mocks.selectedProperty }),
 }));
 
 vi.mock("@/app/lib/stores/usePreventiveMaintenanceStore", async () => {
@@ -244,6 +247,7 @@ function dateInputs() {
 beforeEach(() => {
   mocks.resetStore();
   mocks.search = "";
+  mocks.selectedProperty = "PROPERTY-A";
   mocks.push.mockReset();
   mocks.apiGet.mockReset().mockImplementation(apiGetResponse);
   mocks.apiPut.mockReset().mockResolvedValue({ data: writeResponse });
@@ -293,6 +297,7 @@ describe("EditPreventiveMaintenancePage workflow", () => {
     });
     expect(Object.fromEntries(body.entries())).toEqual({
       pmtitle: "Inspect compressor and bearings",
+      property_id: "PROPERTY-A",
       scheduled_date: "2026-10-20T14:45",
       frequency: "custom",
       custom_days: "14",
@@ -301,7 +306,7 @@ describe("EditPreventiveMaintenancePage workflow", () => {
       topic_ids: "3",
       machine_ids: "MACHINE-A",
     });
-    expect(body.has("property_id")).toBe(false);
+    expect(body.get("property_id")).toBe("PROPERTY-A");
     expect(body.has("assigned_to")).toBe(false);
     expect(body.has("completed_date")).toBe(false);
     expect(mocks.push).not.toHaveBeenCalled();
@@ -353,7 +358,7 @@ describe("EditPreventiveMaintenancePage workflow", () => {
     expect(url).toBe("/api/v1/preventive-maintenance/PM-17/");
     expect(body.get("completed_date")).toBe("2026-08-12T04:05");
     expect(body.get("after_image")).toBe(afterImage);
-    expect(body.has("property_id")).toBe(false);
+    expect(body.get("property_id")).toBe("PROPERTY-A");
     await waitFor(() => {
       expect(mocks.push).toHaveBeenCalledWith("/dashboard/preventive-maintenance/PM-17");
     });

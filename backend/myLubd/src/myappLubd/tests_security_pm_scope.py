@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from .models import Machine, PreventiveMaintenance, Property, User
+from .models import Machine, MaintenanceProcedure, PreventiveMaintenance, Property, User
 
 
 class PreventiveMaintenanceTenantIsolationTests(APITestCase):
@@ -21,6 +21,14 @@ class PreventiveMaintenanceTenantIsolationTests(APITestCase):
         self.bob_machine = Machine.objects.create(
             machine_id='PMBETA001', name='Beta pump', category='Pump', property=self.bob_property
         )
+        self.alice_procedure = MaintenanceProcedure.objects.create(
+            name='Alpha procedure', description='Alpha only', frequency='monthly'
+        )
+        self.alice_procedure.machines.add(self.alice_machine)
+        self.bob_procedure = MaintenanceProcedure.objects.create(
+            name='Beta procedure', description='Beta only', frequency='monthly'
+        )
+        self.bob_procedure.machines.add(self.bob_machine)
         self.alice_pm = self._pm('Alpha service', self.alice, self.alice_machine)
         self.bob_pm = self._pm('Beta service', self.bob, self.bob_machine)
         self.client.force_authenticate(self.alice)
@@ -36,14 +44,34 @@ class PreventiveMaintenanceTenantIsolationTests(APITestCase):
         pm.machines.set([machine])
         return pm
 
-    def _payload(self, machine_ids=None, assigned_to=None, title='New PM'):
-        return {
+    def _payload(self, machine_ids=None, assigned_to=None, title='New PM', procedure=None, property_id=None):
+        payload = {
             'pmtitle': title,
             'scheduled_date': timezone.now().isoformat(),
             'frequency': 'monthly',
             'machine_ids': machine_ids or [self.alice_machine.machine_id],
             'assigned_to': assigned_to or self.alice_peer.pk,
         }
+        if procedure is not None:
+            payload['procedure_template'] = procedure.pk
+        if property_id is not None:
+            payload['property_id'] = property_id
+        return payload
+
+    def test_procedure_selector_is_authorized_and_property_scoped(self):
+        response = self.client.get(
+            f'/api/v1/maintenance-procedures/?property_id={self.alice_property.property_id}'
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        rows = response.data['results']
+        self.assertEqual([row['id'] for row in rows], [self.alice_procedure.pk])
+        self.assertEqual(rows[0]['property_id'], self.alice_property.property_id)
+
+        foreign = self.client.get(
+            f'/api/v1/maintenance-procedures/?property_id={self.bob_property.property_id}'
+        )
+        self.assertEqual(foreign.status_code, status.HTTP_200_OK, foreign.content)
+        self.assertEqual(foreign.data['results'], [])
 
     def test_list_retrieve_and_property_filter_do_not_disclose_foreign_pm(self):
         response = self.client.get('/api/v1/preventive-maintenance/')
@@ -62,11 +90,44 @@ class PreventiveMaintenanceTenantIsolationTests(APITestCase):
         self.assertEqual(filtered.data['results'], [])
 
     def test_create_accepts_same_property_machine_and_assignee(self):
-        response = self.client.post('/api/v1/preventive-maintenance/', self._payload(), format='json')
+        response = self.client.post('/api/v1/preventive-maintenance/', self._payload(
+            procedure=self.alice_procedure,
+            property_id=self.alice_property.property_id,
+        ), format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
         pm = PreventiveMaintenance.objects.get(pm_id=response.data['pm_id'])
         self.assertEqual(pm.assigned_to, self.alice_peer)
         self.assertEqual(list(pm.machines.all()), [self.alice_machine])
+        self.assertEqual(pm.procedure_template, self.alice_procedure)
+
+    def test_create_rejects_foreign_procedure_and_tampered_property(self):
+        before = PreventiveMaintenance.objects.count()
+        foreign_procedure = self.client.post(
+            '/api/v1/preventive-maintenance/',
+            self._payload(
+                procedure=self.bob_procedure,
+                property_id=self.alice_property.property_id,
+            ),
+            format='json',
+        )
+        self.assertEqual(
+            foreign_procedure.status_code, status.HTTP_400_BAD_REQUEST,
+            foreign_procedure.content,
+        )
+
+        tampered_property = self.client.post(
+            '/api/v1/preventive-maintenance/',
+            self._payload(
+                procedure=self.alice_procedure,
+                property_id=self.bob_property.property_id,
+            ),
+            format='json',
+        )
+        self.assertEqual(
+            tampered_property.status_code, status.HTTP_400_BAD_REQUEST,
+            tampered_property.content,
+        )
+        self.assertEqual(PreventiveMaintenance.objects.count(), before)
 
     def test_create_rejects_foreign_or_mixed_property_machines(self):
         before = PreventiveMaintenance.objects.count()
@@ -141,6 +202,33 @@ class PreventiveMaintenanceTenantIsolationTests(APITestCase):
             {**base, 'machine_ids': [self.alice_machine.machine_id], 'assigned_to': self.bob.pk},
         ):
             response = self.client.post('/api/v1/preventive-maintenance/plans/', payload, format='json')
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
+        self.assertEqual(self.alice.created_pm_master_plans.count(), before)
+
+    def test_master_plan_rejects_foreign_procedure_and_property_tampering(self):
+        before = self.alice.created_pm_master_plans.count()
+        base = {
+            'title': 'Procedure-scoped plan',
+            'start_date': timezone.now().isoformat(),
+            'frequency': 'monthly',
+            'machine_ids': [self.alice_machine.machine_id],
+            'assigned_to': self.alice_peer.pk,
+        }
+        for payload in (
+            {
+                **base,
+                'property_id': self.alice_property.property_id,
+                'procedure_template': self.bob_procedure.pk,
+            },
+            {
+                **base,
+                'property_id': self.bob_property.property_id,
+                'procedure_template': self.alice_procedure.pk,
+            },
+        ):
+            response = self.client.post(
+                '/api/v1/preventive-maintenance/plans/', payload, format='json'
+            )
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
         self.assertEqual(self.alice.created_pm_master_plans.count(), before)
 

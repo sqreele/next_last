@@ -24,6 +24,8 @@ export interface MaintenanceProcedureMachineReference {
 
 export interface MaintenanceProcedureListItem {
   id: number;
+  /** Canonical Property.property_id for the backend-authorized query scope. */
+  property_id: string | null;
   name: string;
   group_id: string | null;
   category: string | null;
@@ -46,6 +48,7 @@ export type MaintenanceProcedureListResponse =
 
 export interface MaintenanceProcedureDetail {
   id: number;
+  property_id: string | null;
   name: string;
   group_id: string | null;
   category: string | null;
@@ -110,4 +113,5 @@ export interface MaintenanceProcedureListQuery {
   created_at?: string;
   search?: string;
   ordering?: "name" | "-name" | "created_at" | "-created_at" | "estimated_duration" | "-estimated_duration";
+  property_id?: string;
 }

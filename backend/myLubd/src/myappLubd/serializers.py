@@ -33,6 +33,51 @@ from .tenancy import accessible_property_ids
 RAW_AUTH_PREFIXES = ('google-oauth2_', 'auth0_', 'auth0|')
 
 
+def _resolve_property_reference(value):
+    """Resolve either canonical Property.property_id or a numeric database PK."""
+    if value in (None, ''):
+        return None
+    reference = str(value).strip()
+    lookup = Q(property_id=reference)
+    if reference.isdigit():
+        lookup |= Q(pk=int(reference))
+    return Property.objects.filter(lookup).first()
+
+
+def _validate_procedure_property_binding(serializer, procedure, property_ids):
+    """Bind a selected Procedure to the canonical property derived from Machines.
+
+    ``property_id`` from the request is only a consistency assertion. It never
+    grants access and cannot override the Machine/Procedure relationships.
+    """
+    if not property_ids:
+        return
+
+    raw_property_id = None
+    initial_data = getattr(serializer, 'initial_data', None)
+    if hasattr(initial_data, 'get'):
+        raw_property_id = initial_data.get('property_id')
+
+    if raw_property_id not in (None, ''):
+        submitted_property = _resolve_property_reference(raw_property_id)
+        if submitted_property is None or submitted_property.pk not in property_ids:
+            raise serializers.ValidationError({
+                'property_id': 'Selected property does not match the canonical machine property.'
+            })
+
+    if procedure is None:
+        return
+
+    procedure_property_ids = set(
+        procedure.machines.filter(property_id__in=property_ids)
+        .values_list('property_id', flat=True)
+    )
+    if not property_ids.issubset(procedure_property_ids):
+        raise serializers.ValidationError({
+            'procedure_template': 'Maintenance procedure is not authorized for the selected property.'
+        })
+
+
 def is_raw_auth_identifier(value):
     if value is None:
         return False
@@ -1448,6 +1493,15 @@ class PMMasterPlanSerializer(serializers.ModelSerializer):
             machines = Machine.objects.none()
             property_ids = set()
 
+        procedure_template = (
+            data.get('procedure_template')
+            if 'procedure_template' in data
+            else getattr(self.instance, 'procedure_template', None)
+        )
+        _validate_procedure_property_binding(
+            self, procedure_template, property_ids
+        )
+
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         if user and not (user.is_staff or user.is_superuser):
@@ -2150,6 +2204,15 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                 'machine_ids': 'All machines must belong to the same property.'
             })
 
+        procedure_template = (
+            data.get('procedure_template')
+            if 'procedure_template' in data
+            else getattr(self.instance, 'procedure_template', None)
+        )
+        _validate_procedure_property_binding(
+            self, procedure_template, property_ids
+        )
+
         request = self.context.get('request')
         user = getattr(request, 'user', None)
         if user and not (user.is_staff or user.is_superuser):
@@ -2406,19 +2469,31 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
     # steps field removed from API - not needed in frontend
     machine_ids = serializers.SerializerMethodField()
     machines = serializers.SerializerMethodField()
+    property_id = serializers.SerializerMethodField()
     
     class Meta:
         model = MaintenanceProcedure
         fields = [
             'id', 'name', 'group_id', 'category', 'description', 'frequency', 'estimated_duration', 
             'responsible_department', 'required_tools', 'safety_notes', 
-            'difficulty_level', 'machine_ids', 'machines', 'created_at', 'updated_at'
+            'difficulty_level', 'property_id', 'machine_ids', 'machines', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'machine_ids', 'machines', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'property_id', 'machine_ids', 'machines', 'created_at', 'updated_at']
+
+    def _machines(self, obj):
+        scoped_machines = getattr(obj, '_scoped_machines', None)
+        return scoped_machines if scoped_machines is not None else obj.machines.all()
+
+    def get_property_id(self, obj):
+        scoped_property_id = self.context.get('procedure_property_id')
+        if scoped_property_id:
+            return scoped_property_id
+        property_ids = sorted({machine.property.property_id for machine in self._machines(obj)})
+        return property_ids[0] if len(property_ids) == 1 else None
     
     def get_machine_ids(self, obj):
         """Return machine identifiers explicitly linked to this template."""
-        return list(obj.machines.values_list('machine_id', flat=True))
+        return [machine.machine_id for machine in self._machines(obj)]
 
     def get_machines(self, obj):
         """Return lightweight machine details for filtering template concerns in clients."""
@@ -2429,7 +2504,7 @@ class MaintenanceProcedureSerializer(serializers.ModelSerializer):
                 'group_id': machine.group_id,
                 'property_id': machine.property_id,
             }
-            for machine in obj.machines.all()
+            for machine in self._machines(obj)
         ]
 
     def validate_steps(self, value):
@@ -2481,22 +2556,44 @@ class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
     schedule_count = serializers.SerializerMethodField()
     machine_ids = serializers.SerializerMethodField()
     machines = serializers.SerializerMethodField()
+    property_id = serializers.SerializerMethodField()
     
     class Meta:
         model = MaintenanceProcedure
         fields = [
             'id', 'name', 'group_id', 'category', 'frequency', 'estimated_duration',
-            'responsible_department', 'difficulty_level',
+            'responsible_department', 'difficulty_level', 'property_id',
             'schedule_count', 'machine_ids', 'machines', 'created_at'
         ]
+
+    def _machines(self, obj):
+        scoped_machines = getattr(obj, '_scoped_machines', None)
+        return scoped_machines if scoped_machines is not None else obj.machines.all()
+
+    def get_property_id(self, obj):
+        scoped_property_id = self.context.get('procedure_property_id')
+        if scoped_property_id:
+            return scoped_property_id
+        property_ids = sorted({machine.property.property_id for machine in self._machines(obj)})
+        return property_ids[0] if len(property_ids) == 1 else None
     
     def get_schedule_count(self, obj):
         """Get count of maintenance schedules for this task"""
+        property_pk = self.context.get('procedure_property_pk')
+        if property_pk:
+            return obj.maintenance_schedules.filter(
+                machines__property_id=property_pk
+            ).distinct().count()
+        allowed_property_ids = self.context.get('allowed_property_ids')
+        if allowed_property_ids is not None:
+            return obj.maintenance_schedules.filter(
+                machines__property_id__in=allowed_property_ids
+            ).distinct().count()
         return obj.maintenance_schedules.count()
 
     def get_machine_ids(self, obj):
         """Return machine identifiers explicitly linked to this template."""
-        return list(obj.machines.values_list('machine_id', flat=True))
+        return [machine.machine_id for machine in self._machines(obj)]
 
     def get_machines(self, obj):
         """Return lightweight machine details for filtering template concerns in clients."""
@@ -2507,7 +2604,7 @@ class MaintenanceProcedureListSerializer(serializers.ModelSerializer):
                 'group_id': machine.group_id,
                 'property_id': machine.property_id,
             }
-            for machine in obj.machines.all()
+            for machine in self._machines(obj)
         ]
 
 

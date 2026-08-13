@@ -88,6 +88,7 @@ const normalizeGroupId = (value: unknown): string | null => {
 
 type MaintenanceTaskOption = {
   id: number;
+  property_id: string | null;
   name: string;
   group_id?: string | null;
   category?: string;
@@ -132,6 +133,8 @@ function PreventiveMaintenanceFormEffects({
     const currentValue = values.property_id || "";
     if (nextPropertyId !== currentValue) {
       void setFieldValue("property_id", nextPropertyId, false);
+      void setFieldValue("procedure_template", "", false);
+      void setFieldValue("selected_machine_ids", [], false);
     }
   }, [pmId, selectedProperty, values.property_id, setFieldValue]);
 
@@ -266,6 +269,20 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   const createdMaintenanceIdRef = useRef<string | null>(null);
   const loaderShownAtRef = useRef<number | null>(null);
+  const maintenanceTasksAbortRef = useRef<AbortController | null>(null);
+  const maintenanceTasksRequestRef = useRef(0);
+  const selectedPropertyRef = useRef(selectedProperty);
+  const accessTokenRef = useRef(accessToken);
+  const formInstanceActiveRef = useRef(true);
+  selectedPropertyRef.current = selectedProperty;
+  accessTokenRef.current = accessToken;
+
+  useEffect(() => {
+    formInstanceActiveRef.current = true;
+    return () => {
+      formInstanceActiveRef.current = false;
+    };
+  }, []);
 
   const clearLoadingAfterMinTime = useCallback(() => {
     const shownAt = loaderShownAtRef.current;
@@ -288,6 +305,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const [availableMachines, setAvailableMachines] = useState<MachineSelectionItem[]>(
     [],
   );
+  const availableMachinesRef = useRef<MachineSelectionItem[]>(availableMachines);
+  availableMachinesRef.current = availableMachines;
   const [availableMaintenanceTasks, setAvailableMaintenanceTasks] = useState<
     MaintenanceTaskOption[]
   >([]);
@@ -786,7 +805,8 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     [accessToken],
   );
 
-  // Fetch available maintenance tasks (templates) - filtered by selected machines
+  // Fetch available templates from the backend's authorized Property scope.
+  // Machine/group filtering below may narrow that set, but can never widen it.
   const fetchAvailableMaintenanceTasks = useCallback(
     async (machineIds?: string[]) => {
       const mergeTemplatesById = (
@@ -805,116 +825,64 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         return Array.from(uniqueTemplates.values());
       };
 
+      maintenanceTasksAbortRef.current?.abort();
+      const requestId = maintenanceTasksRequestRef.current + 1;
+      maintenanceTasksRequestRef.current = requestId;
+      setAvailableMaintenanceTasks([]);
+
+      if (!selectedProperty) {
+        setLoadingMaintenanceTasks(false);
+        return;
+      }
+
+      const controller = new AbortController();
+      maintenanceTasksAbortRef.current = controller;
       setLoadingMaintenanceTasks(true);
       try {
-        let tasks: MaintenanceProcedureTemplate[] = [];
+        const allTasks = await fetchAllMaintenanceProcedures({
+          pageSize: 100,
+          propertyId: selectedProperty,
+          signal: controller.signal,
+        });
+        if (
+          controller.signal.aborted ||
+          requestId !== maintenanceTasksRequestRef.current ||
+          selectedPropertyRef.current !== selectedProperty ||
+          accessTokenRef.current !== accessToken
+        ) {
+          return;
+        }
 
-        if (machineIds && machineIds.length > 0) {
-          // Fetch procedures for each selected machine
-          const allProcedureIds = new Set<number>();
-          const machineGroupIdsRaw = new Set<string>();
-          const machineGroupIdsNormalized = new Set<string>();
+        const propertyTasks = allTasks.filter(
+          (task) => task.property_id === selectedProperty,
+        );
+        let tasks = propertyTasks;
 
-          // Fetch machine details to get their maintenance procedures and group_id
-          for (const machineId of machineIds) {
-            try {
-              const response = await apiClient.get(
-                `/api/v1/machines/${machineId}/`,
-              );
-              const machine = response.data as any;
-
-              // Collect machine's group_id if it exists (check for null, undefined, and empty string)
-              const normalizedMachineGroupId = normalizeGroupId(
-                machine.group_id,
-              );
-              if (normalizedMachineGroupId) {
-                machineGroupIdsRaw.add(String(machine.group_id));
-                machineGroupIdsNormalized.add(normalizedMachineGroupId);
-              } else {
-              }
-
-              // Check if machine has maintenance_procedures field
-              if (
-                machine.maintenance_procedures &&
-                Array.isArray(machine.maintenance_procedures)
-              ) {
-                machine.maintenance_procedures.forEach((proc: any) => {
-                  if (proc.id) {
-                    allProcedureIds.add(proc.id);
-                  }
-                });
-              }
-            } catch (err) {
-              console.error(
-                `[PreventiveMaintenanceForm] Failed to fetch machine ${machineId}:`,
-                err,
-              );
-            }
-          }
-
-          // Fetch all available tasks
-          const allTasks = await fetchAllMaintenanceProcedures({
-            pageSize: 100,
-          });
-
-          // Log all tasks to show their group_ids for debugging
-          const taskGroupIds = allTasks.map((t) => ({
-            id: t.id,
-            name: t.name,
-            group_id: t.group_id,
-          }));
-
-          // Filter tasks based on:
-          // 1. If machine has group_id, ONLY show tasks with matching group_id (strict match: machine.group_id === task.group_id)
-          // 2. Otherwise, show tasks linked to the machine via maintenance_procedures
-          // 3. If no group_id and no linked procedures, show all tasks (fallback)
-          const tasksMatchedByGroupId =
-            machineGroupIdsNormalized.size > 0
-              ? allTasks.filter((task) => {
-                  const normalizedTaskGroupId = normalizeGroupId(task.group_id);
-                  const matches = normalizedTaskGroupId
-                    ? machineGroupIdsNormalized.has(normalizedTaskGroupId)
-                    : false;
-                  if (matches) {
-                  }
-                  return matches;
-                })
-              : [];
-
-          const tasksMatchedByProcedures =
-            allProcedureIds.size > 0
-              ? allTasks.filter((task) => allProcedureIds.has(task.id))
-              : [];
-
-          const combinedMatches = mergeTemplatesById([
-            ...tasksMatchedByGroupId,
-            ...tasksMatchedByProcedures,
-          ]);
-
-          if (combinedMatches.length > 0) {
-            tasks = combinedMatches;
-          } else if (
-            machineGroupIdsNormalized.size === 0 &&
-            allProcedureIds.size === 0
-          ) {
-            // No filtering clues available - show everything
-            tasks = allTasks;
-          } else {
-            // Filtering clues existed but nothing matched
-            tasks = [];
-            console.warn(
-              "[PreventiveMaintenanceForm] ⚠️ No maintenance templates matched the selected machines via group_id or linked procedures.",
+        if (machineIds?.length) {
+          const selectedMachineIds = new Set(machineIds.map(String));
+          const selectedGroupIds = new Set(
+            availableMachinesRef.current
+              .filter((machine) => selectedMachineIds.has(machine.machine_id))
+              .map((machine) => normalizeGroupId(machine.group_id))
+              .filter((groupId): groupId is string => Boolean(groupId)),
+          );
+          const narrowed = propertyTasks.filter((task) => {
+            const linkedMachine = task.machine_ids.some((id) =>
+              selectedMachineIds.has(String(id)),
             );
-          }
-        } else {
-          // No machines selected, show all tasks
-          tasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
+            const taskGroupId = normalizeGroupId(task.group_id);
+            return linkedMachine || Boolean(taskGroupId && selectedGroupIds.has(taskGroupId));
+          });
+          // Falling back to the backend-scoped Property set is safe; falling
+          // back to an unscoped/global set is forbidden.
+          tasks = narrowed.length ? mergeTemplatesById(narrowed) : propertyTasks;
         }
 
         setAvailableMaintenanceTasks(
           tasks.map<MaintenanceTaskOption>(
             (task: MaintenanceProcedureTemplate) => ({
               id: task.id,
+              property_id: task.property_id,
               name: task.name,
               group_id: task.group_id ?? undefined,
               category: task.category ?? undefined,
@@ -928,13 +896,18 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           ),
         );
       } catch (err: any) {
+        if (controller.signal.aborted) return;
         console.error("Error fetching maintenance tasks:", err);
-        setAvailableMaintenanceTasks([]);
+        if (requestId === maintenanceTasksRequestRef.current) {
+          setAvailableMaintenanceTasks([]);
+        }
       } finally {
-        setLoadingMaintenanceTasks(false);
+        if (requestId === maintenanceTasksRequestRef.current) {
+          setLoadingMaintenanceTasks(false);
+        }
       }
     },
-    [],
+    [accessToken, selectedProperty],
   );
 
   // Handle property ID changes and fetch machines
@@ -946,13 +919,18 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     }
   }, [selectedProperty, fetchAvailableMachines]);
 
-  // Fetch maintenance tasks when machines are selected or on mount
+  // Fetch only when an authenticated Property context exists.
   useEffect(() => {
-    if (accessToken) {
-      // Initial load - fetch all tasks if no machines selected yet
-      fetchAvailableMaintenanceTasks();
+    if (accessToken && selectedProperty) {
+      void fetchAvailableMaintenanceTasks();
+    } else {
+      maintenanceTasksAbortRef.current?.abort();
+      maintenanceTasksRequestRef.current += 1;
+      setAvailableMaintenanceTasks([]);
+      setLoadingMaintenanceTasks(false);
     }
-  }, [accessToken, fetchAvailableMaintenanceTasks]);
+    return () => maintenanceTasksAbortRef.current?.abort();
+  }, [accessToken, selectedProperty, fetchAvailableMaintenanceTasks]);
 
   // Move all hooks to the top, before any conditional returns
   useEffect(() => {
@@ -1204,6 +1182,26 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         return;
       }
 
+      const submissionPropertyId = selectedPropertyRef.current;
+      const submissionAccessToken = accessTokenRef.current;
+      const selectedProcedure = availableMaintenanceTasks.find(
+        (task) => task.id === Number(values.procedure_template),
+      );
+      if (
+        !submissionPropertyId ||
+        values.property_id !== submissionPropertyId ||
+        !selectedProcedure ||
+        selectedProcedure.property_id !== submissionPropertyId
+      ) {
+        setSubmitError(
+          "The selected maintenance procedure is not authorized for the current property.",
+        );
+        setIsLoading(false);
+        setIsImageUploading(false);
+        setSubmitting(false);
+        return;
+      }
+
       // Prepare ISO 8601 strings for dates
       const scheduledDateISO = convertToISO8601(values.scheduled_date);
       // Include completed_date when editing or when status is completed.
@@ -1250,6 +1248,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       }
 
       const dataForService: CreatePreventiveMaintenanceData = {
+        property_id: submissionPropertyId,
         pmtitle: values.pmtitle.trim() || "Untitled Maintenance",
         scheduled_date: scheduledDateISO,
         frequency: values.frequency,
@@ -1335,6 +1334,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             const masterPlanResponse =
               await preventiveMaintenanceService.createPMMasterPlan({
                 title: dataForService.pmtitle || "Untitled Maintenance",
+                property_id: submissionPropertyId,
                 machine_ids: dataForService.machine_ids,
                 topic_ids: dataForService.topic_ids,
                 start_date: dataForService.scheduled_date,
@@ -1375,6 +1375,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       }
 
       if (!isMounted) return;
+      if (
+        !formInstanceActiveRef.current ||
+        selectedPropertyRef.current !== submissionPropertyId ||
+        accessTokenRef.current !== submissionAccessToken
+      ) {
+        setSubmitError(
+          "Property or session changed while saving. The result was not applied to this form.",
+        );
+        return;
+      }
 
       if (response.success && response.data) {
         toast.success(
@@ -1630,7 +1640,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       ? "border-red-500"
                       : "border-gray-300"
                   }`}
-                  disabled={loadingMaintenanceTasks}
+                  disabled={loadingMaintenanceTasks || !values.property_id}
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                     const taskId = e.target.value ? Number(e.target.value) : "";
                     setFieldValue("procedure_template", taskId);

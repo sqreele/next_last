@@ -8,6 +8,7 @@ import {
 
 const procedure = {
   id: 7,
+  property_id: "PROPERTY-A",
   name: "Inspect pump",
   group_id: "PUMP",
   category: "Pump",
@@ -89,6 +90,22 @@ describe("maintenance procedure backend contracts", () => {
     expect(result.map((item) => item.id)).toEqual([7, 8]);
     expect(getMock).toHaveBeenNthCalledWith(2, "/api/v1/maintenance-procedures/", {
       params: { page: 2, page_size: 100 },
+    });
+  });
+
+  it("binds selector pagination to one canonical property and forwards cancellation", async () => {
+    const controller = new AbortController();
+    const getMock = vi.spyOn(apiClient, "get").mockResolvedValue({ data: page });
+
+    await fetchAllMaintenanceProcedures({
+      pageSize: 100,
+      propertyId: "PROPERTY-A",
+      signal: controller.signal,
+    });
+
+    expect(getMock).toHaveBeenCalledWith("/api/v1/maintenance-procedures/", {
+      params: { page: 1, page_size: 100, property_id: "PROPERTY-A" },
+      signal: controller.signal,
     });
   });
 

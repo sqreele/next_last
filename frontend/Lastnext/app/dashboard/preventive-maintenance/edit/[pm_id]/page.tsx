@@ -29,6 +29,7 @@ import {
   fetchAllMaintenanceProcedures,
   type MaintenanceProcedureTemplate,
 } from "@/app/lib/maintenanceProcedures";
+import { useAuthStore } from "@/app/lib/stores/useAuthStore";
 
 interface FormState {
   pmtitle: string;
@@ -56,6 +57,7 @@ interface FormErrors {
 
 type MaintenanceTaskOption = {
   id: number;
+  property_id: string | null;
   name: string;
   category?: string;
   frequency: string;
@@ -69,6 +71,17 @@ export default function EditPreventiveMaintenancePage() {
   const searchParams = useSearchParams();
   const pmId = params.pm_id as string;
   const completeRequested = searchParams.get("complete") === "true";
+  const { selectedProperty } = useAuthStore();
+  const selectedPropertyRef = useRef(selectedProperty);
+  const pageInstanceActiveRef = useRef(true);
+  selectedPropertyRef.current = selectedProperty;
+
+  useEffect(() => {
+    pageInstanceActiveRef.current = true;
+    return () => {
+      pageInstanceActiveRef.current = false;
+    };
+  }, []);
 
   const {
     fetchMaintenanceById,
@@ -109,17 +122,44 @@ export default function EditPreventiveMaintenancePage() {
     MaintenanceTaskOption[]
   >([]);
   const [loadingMaintenanceTasks, setLoadingMaintenanceTasks] = useState(false);
+  const [loadedProcedureProperty, setLoadedProcedureProperty] = useState<string | null>(null);
+  const procedureRequestRef = useRef(0);
 
   // Load available maintenance tasks
   useEffect(() => {
+    const requestId = procedureRequestRef.current + 1;
+    procedureRequestRef.current = requestId;
+    const controller = new AbortController();
+    setAvailableMaintenanceTasks([]);
+    setLoadedProcedureProperty(null);
+    setFormState((previous) => ({ ...previous, procedure_template: "" }));
+
+    if (!selectedProperty) {
+      setLoadingMaintenanceTasks(false);
+      return () => controller.abort();
+    }
+
     const fetchAvailableMaintenanceTasks = async () => {
       setLoadingMaintenanceTasks(true);
       try {
-        const tasks = await fetchAllMaintenanceProcedures({ pageSize: 100 });
+        const tasks = await fetchAllMaintenanceProcedures({
+          pageSize: 100,
+          propertyId: selectedProperty,
+          signal: controller.signal,
+        });
+        if (
+          controller.signal.aborted ||
+          requestId !== procedureRequestRef.current ||
+          selectedPropertyRef.current !== selectedProperty
+        ) return;
+        const scopedTasks = tasks.filter(
+          (task) => task.property_id === selectedProperty,
+        );
         setAvailableMaintenanceTasks(
-          tasks.map<MaintenanceTaskOption>(
+          scopedTasks.map<MaintenanceTaskOption>(
             (task: MaintenanceProcedureTemplate) => ({
               id: task.id,
+              property_id: task.property_id,
               name: task.name,
               category: task.category ?? undefined,
               frequency: task.frequency || "N/A",
@@ -128,15 +168,41 @@ export default function EditPreventiveMaintenancePage() {
             }),
           ),
         );
+        setLoadedProcedureProperty(selectedProperty);
       } catch (err: any) {
+        if (controller.signal.aborted) return;
         console.error("Error fetching maintenance tasks:", err);
-        setAvailableMaintenanceTasks([]);
+        if (requestId === procedureRequestRef.current) {
+          setAvailableMaintenanceTasks([]);
+          setLoadedProcedureProperty(selectedProperty);
+        }
       } finally {
-        setLoadingMaintenanceTasks(false);
+        if (requestId === procedureRequestRef.current) {
+          setLoadingMaintenanceTasks(false);
+        }
       }
     };
-    fetchAvailableMaintenanceTasks();
-  }, []);
+    void fetchAvailableMaintenanceTasks();
+    return () => controller.abort();
+  }, [selectedProperty]);
+
+  useEffect(() => {
+    if (loadedProcedureProperty !== selectedProperty) return;
+    if (
+      formState.procedure_template !== "" &&
+      !availableMaintenanceTasks.some(
+        (task) => task.id === Number(formState.procedure_template),
+      )
+    ) {
+      setFormState((previous) => ({ ...previous, procedure_template: "" }));
+      setIsDirty(true);
+    }
+  }, [
+    availableMaintenanceTasks,
+    formState.procedure_template,
+    loadedProcedureProperty,
+    selectedProperty,
+  ]);
 
   // Load maintenance data
   useEffect(() => {
@@ -442,6 +508,20 @@ export default function EditPreventiveMaintenancePage() {
 
     if (!validateForm()) return;
 
+    const submissionProperty = selectedPropertyRef.current;
+    const selectedProcedure = availableMaintenanceTasks.find(
+      (task) => task.id === Number(formState.procedure_template),
+    );
+    if (
+      formState.procedure_template !== "" &&
+      (!submissionProperty || selectedProcedure?.property_id !== submissionProperty)
+    ) {
+      setErrors({
+        general: "The selected maintenance procedure is not authorized for the current property.",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     clearError();
 
@@ -455,6 +535,7 @@ export default function EditPreventiveMaintenancePage() {
         ? convertDateTimeForBackend(completionValue)
         : undefined;
       const updateData: UpdatePreventiveMaintenanceData = {
+        property_id: submissionProperty || undefined,
         pmtitle: formState.pmtitle.trim(),
         scheduled_date: scheduledDate,
         frequency: formState.frequency,
@@ -480,9 +561,17 @@ export default function EditPreventiveMaintenancePage() {
 
       const result = await updateMaintenance(resolvedPmId, updateData);
 
-      if (result) {
+      if (
+        result &&
+        pageInstanceActiveRef.current &&
+        selectedPropertyRef.current === submissionProperty
+      ) {
         setIsDirty(false);
         router.push(`/dashboard/preventive-maintenance/${resolvedPmId}`);
+      } else if (result) {
+        setErrors({
+          general: "Property changed while saving. The stale result was not applied.",
+        });
       }
     } catch (error) {
       console.error("Error updating maintenance:", error);

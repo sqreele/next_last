@@ -77,6 +77,7 @@ export interface PMMasterPlan {
 
 export type CreatePMMasterPlanData = {
   title: string;
+  property_id?: string;
   machine_ids: string[];
   topic_ids?: number[];
   start_date: string;
@@ -473,6 +474,9 @@ class PreventiveMaintenanceService {
       if (data.procedure !== undefined) {
         formData.append("procedure", data.procedure?.trim() || "");
       }
+      if (data.property_id) {
+        formData.append("property_id", data.property_id);
+      }
       if (
         data.procedure_template !== undefined &&
         data.procedure_template !== null
@@ -682,6 +686,7 @@ class PreventiveMaintenanceService {
         formData.append("notes", data.notes?.trim() || "");
       if (data.procedure !== undefined)
         formData.append("procedure", data.procedure?.trim() || "");
+      if (data.property_id) formData.append("property_id", data.property_id);
       if (
         data.procedure_template !== undefined &&
         data.procedure_template !== null

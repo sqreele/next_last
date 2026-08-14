@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import {
   Plus,
@@ -28,6 +28,7 @@ import { Alert, AlertDescription } from "@/app/components/ui/alert";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -48,6 +49,11 @@ type AreaFormState = {
   description: string;
   property_id: string;
   is_active: boolean;
+};
+
+type DeleteTarget = {
+  area: Area;
+  originSelectedPropertyId: string | null;
 };
 
 type LegacyProfileProperty = {
@@ -79,6 +85,22 @@ function getErrorMessage(err: unknown, fallback: string): string {
   return fallback;
 }
 
+function isAreaMutationResponse(
+  value: unknown,
+  propertyPk: number,
+  areaId?: number,
+  expectedActive?: boolean,
+): value is Area {
+  if (typeof value !== "object" || value === null) return false;
+  const area = value as Partial<Area>;
+  return typeof area.id === "number"
+    && (areaId === undefined || area.id === areaId)
+    && area.property === propertyPk
+    && typeof area.name === "string"
+    && typeof area.is_active === "boolean"
+    && (expectedActive === undefined || area.is_active === expectedActive);
+}
+
 const AreasClient: React.FC = () => {
   const { userProfile, selectedPropertyId } = useUser();
   const { toast } = useToast();
@@ -94,8 +116,19 @@ const AreasClient: React.FC = () => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<AreaFormState>(emptyForm);
+  const [formOriginSelectedPropertyId, setFormOriginSelectedPropertyId] =
+    useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Area | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const areaRequestIdRef = useRef(0);
+  const areaAbortRef = useRef<AbortController | null>(null);
+  const saveInFlightRef = useRef(false);
+  const deleteInFlightRef = useRef(false);
+  const mountedRef = useRef(true);
+  const selectedPropertyIdRef = useRef<string | null>(selectedPropertyId);
+  selectedPropertyIdRef.current = selectedPropertyId;
 
   const propertyOptions = useMemo<Array<PropertyRef | LegacyProfileProperty>>(() => {
     if (properties.length) return properties;
@@ -126,28 +159,42 @@ const AreasClient: React.FC = () => {
   }, [selectedPropertyId, propertyOptions]);
 
   const fetchAreas = useCallback(async () => {
+    const requestId = areaRequestIdRef.current + 1;
+    areaRequestIdRef.current = requestId;
+    areaAbortRef.current?.abort();
+    const controller = new AbortController();
+    areaAbortRef.current = controller;
     setLoading(true);
     setError(null);
     try {
       const params: Record<string, string> = {};
-      if (selectedPropertyPk) params.property_id = selectedPropertyPk;
+      if (selectedPropertyId) params.property_id = selectedPropertyId;
       if (activeFilter !== "all")
         params.is_active = String(activeFilter === "active");
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
 
       const res = await axios.get<Area[] | { results: Area[] }>("/api/areas/", {
         params,
+        signal: controller.signal,
         withCredentials: true,
       });
+      if (!mountedRef.current || requestId !== areaRequestIdRef.current) return;
       const data = res.data;
       const list: Area[] = Array.isArray(data) ? data : data?.results || [];
       setAreas(list);
     } catch (err) {
+      if (
+        !mountedRef.current ||
+        requestId !== areaRequestIdRef.current ||
+        axios.isCancel(err)
+      ) return;
       setError(getErrorMessage(err, "Failed to load areas"));
     } finally {
-      setLoading(false);
+      if (mountedRef.current && requestId === areaRequestIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [selectedPropertyPk, activeFilter, debouncedSearch]);
+  }, [selectedPropertyId, activeFilter, debouncedSearch]);
 
   const fetchProperties = useCallback(async () => {
     try {
@@ -156,7 +203,7 @@ const AreasClient: React.FC = () => {
       });
       const data = res.data;
       const list: Property[] = Array.isArray(data) ? data : data?.results || [];
-      setProperties(list);
+      if (mountedRef.current) setProperties(list);
     } catch {
       // Fall back to user profile properties
     }
@@ -172,8 +219,15 @@ const AreasClient: React.FC = () => {
     return () => window.clearTimeout(timeout);
   }, [search]);
   useEffect(() => {
-    fetchAreas();
-  }, [fetchAreas]);
+    void fetchAreas();
+  }, [fetchAreas, refreshVersion]);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      areaAbortRef.current?.abort();
+    };
+  }, []);
 
   const openCreate = () => {
     setForm({
@@ -182,6 +236,7 @@ const AreasClient: React.FC = () => {
         selectedPropertyPk ||
         (propertyOptions[0]?.id != null ? String(propertyOptions[0].id) : ""),
     });
+    setFormOriginSelectedPropertyId(selectedPropertyId);
     setDialogOpen(true);
   };
 
@@ -193,10 +248,12 @@ const AreasClient: React.FC = () => {
       property_id: String(area.property),
       is_active: area.is_active,
     });
+    setFormOriginSelectedPropertyId(selectedPropertyId);
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
+    if (saveInFlightRef.current) return;
     if (!form.name.trim()) {
       toast({
         title: "Validation",
@@ -213,52 +270,98 @@ const AreasClient: React.FC = () => {
       });
       return;
     }
+    const propertyPk = Number(form.property_id);
+    if (!Number.isInteger(propertyPk) || propertyPk <= 0) {
+      toast({
+        title: "Validation",
+        description: "Property is invalid",
+        variant: "destructive",
+      });
+      return;
+    }
+    const areaId = form.id;
+    const originSelectedPropertyId = formOriginSelectedPropertyId;
+    const propertyName = propertyOptions.find(
+      (property) => String(property.id) === String(propertyPk),
+    )?.name;
+    saveInFlightRef.current = true;
     setSaving(true);
     try {
       const payload: AreaWritePayload = {
         name: form.name.trim(),
         description: form.description.trim() || null,
         is_active: form.is_active,
-        property_id: Number(form.property_id),
+        property_id: propertyPk,
       };
-      if (form.id) {
-        await axios.patch(`/api/areas/${form.id}/`, payload, {
+      let response: { data: unknown };
+      if (areaId !== undefined) {
+        response = await axios.patch(`/api/areas/${areaId}/`, payload, {
           withCredentials: true,
         });
-        toast({ title: "Area updated", variant: "success" });
       } else {
-        await axios.post("/api/areas/", payload, { withCredentials: true });
-        toast({ title: "Area created", variant: "success" });
+        response = await axios.post("/api/areas/", payload, {
+          withCredentials: true,
+        });
+      }
+      if (!isAreaMutationResponse(response.data, propertyPk, areaId)) {
+        throw new Error("Invalid Area response contract");
+      }
+      if (!mountedRef.current) return;
+      toast({
+        title: areaId !== undefined ? "Area updated" : "Area created",
+        description: propertyName ? `Property: ${propertyName}` : undefined,
+        variant: "success",
+      });
+      if (selectedPropertyIdRef.current === originSelectedPropertyId) {
+        setRefreshVersion((version) => version + 1);
       }
       setDialogOpen(false);
       setForm(emptyForm);
-      fetchAreas();
     } catch (err) {
+      if (!mountedRef.current) return;
       toast({
         title: "Error",
         description: getErrorMessage(err, "Failed to save area"),
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      saveInFlightRef.current = false;
+      if (mountedRef.current) setSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || deleteInFlightRef.current) return;
+    const { area, originSelectedPropertyId } = deleteTarget;
+    deleteInFlightRef.current = true;
+    setDeleting(true);
     try {
-      await axios.delete(`/api/areas/${deleteTarget.id}/`, {
+      const response = await axios.delete(`/api/areas/${area.id}/`, {
         withCredentials: true,
       });
-      toast({ title: "Area deactivated", variant: "success" });
+      if (!isAreaMutationResponse(response.data, area.property, area.id, false)) {
+        throw new Error("Invalid Area deactivate response contract");
+      }
+      if (!mountedRef.current) return;
+      toast({
+        title: "Area deactivated",
+        description: area.property_name ? `Property: ${area.property_name}` : undefined,
+        variant: "success",
+      });
+      if (selectedPropertyIdRef.current === originSelectedPropertyId) {
+        setRefreshVersion((version) => version + 1);
+      }
       setDeleteTarget(null);
-      fetchAreas();
     } catch (err) {
+      if (!mountedRef.current) return;
       toast({
         title: "Error",
         description: getErrorMessage(err, "Failed to delete area"),
         variant: "destructive",
       });
+    } finally {
+      deleteInFlightRef.current = false;
+      if (mountedRef.current) setDeleting(false);
     }
   };
 
@@ -410,7 +513,10 @@ const AreasClient: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setDeleteTarget(area)}
+                        onClick={() => setDeleteTarget({
+                          area,
+                          originSelectedPropertyId: selectedPropertyId,
+                        })}
                         className="min-h-11 min-w-11"
                         aria-label={`Delete ${area.name}`}
                       >
@@ -478,7 +584,10 @@ const AreasClient: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setDeleteTarget(area)}
+                        onClick={() => setDeleteTarget({
+                          area,
+                          originSelectedPropertyId: selectedPropertyId,
+                        })}
                       >
                         <Trash2 className="h-4 w-4 text-red-600" />
                       </Button>
@@ -491,10 +600,20 @@ const AreasClient: React.FC = () => {
         )}
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!saveInFlightRef.current) setDialogOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{form.id ? "Edit Area" : "Add Area"}</DialogTitle>
+            <DialogDescription>
+              {form.id
+                ? "Update this Area within its original Property."
+                : "Create an Area for the selected Property."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -555,7 +674,9 @@ const AreasClient: React.FC = () => {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDialogOpen(false)}
+              onClick={() => {
+                if (!saveInFlightRef.current) setDialogOpen(false);
+              }}
               disabled={saving}
             >
               Cancel
@@ -570,25 +691,43 @@ const AreasClient: React.FC = () => {
 
       <Dialog
         open={Boolean(deleteTarget)}
-        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        onOpenChange={(open) => {
+          if (!open && !deleteInFlightRef.current) setDeleteTarget(null);
+        }}
       >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Deactivate area?</DialogTitle>
+            <DialogDescription>
+              This action keeps existing Job references and marks only the
+              selected Area inactive.
+            </DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This will mark the area “{deleteTarget?.name}” as inactive. Existing
-            jobs keep their reference.
+            This will mark the area “{deleteTarget?.area.name}” as inactive.
+            Existing jobs keep their reference.
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteTarget(null)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!deleteInFlightRef.current) setDeleteTarget(null);
+              }}
+              disabled={deleting}
+            >
               Cancel
             </Button>
             <Button
               onClick={handleDelete}
+              disabled={deleting}
               className="bg-red-600 hover:bg-red-700"
             >
-              <Trash2 className="mr-1 h-4 w-4" /> Deactivate
+              {deleting ? (
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-1 h-4 w-4" />
+              )}
+              Deactivate
             </Button>
           </DialogFooter>
         </DialogContent>

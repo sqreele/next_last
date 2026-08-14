@@ -188,6 +188,23 @@ describe("Header property selection workflow", () => {
     expect(screen.queryByRole("button", { name: "Hotel Bravo" })).not.toBeInTheDocument();
   });
 
+  it("displays profile property selections while the separate property list hydrates", () => {
+    useMainStore.setState({
+      userProfile: currentUser([propertyA, propertyB]),
+      properties: [],
+      selectedPropertyId: "PROPERTY-B",
+      propertyLoading: false,
+    });
+
+    render(<HeaderPropertyList />);
+
+    const selector = screen.getByRole("button", { name: "Select property" });
+    expect(selector).toHaveTextContent("Hotel Bravo");
+    expect(screen.getByRole("button", { name: "Hotel Alpha" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hotel Bravo" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "No Properties" })).not.toBeInTheDocument();
+  });
+
   it("still applies authorized route changes and redirects unauthorized property routes", async () => {
     const view = render(
       <PropertyAccessGuard>

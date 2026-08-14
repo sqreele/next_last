@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useEffect } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,13 +26,6 @@ const HeaderPropertyList = React.memo(() => {
   const userProfile = useMainStore((state) => state.userProfile);
   const propertyLoading = useMainStore((state) => state.propertyLoading);
 
-  // Debug logging to help identify infinite loops
-  useEffect(() => {}, [
-    selectedProperty,
-    userProperties?.length,
-    propertyLoading,
-  ]);
-
   // Helper function to safely get the display name from any property object format
   const getPropertyName = useCallback((property: any): string => {
     if (!property) return "Select Property";
@@ -42,14 +35,23 @@ const HeaderPropertyList = React.memo(() => {
   }, []);
 
   // Memoize the properties array to prevent unnecessary re-renders
-  const safeProperties = useMemo(
-    () =>
-      filterPropertiesForUser(
-        Array.isArray(userProperties) ? userProperties : [],
-        userProfile,
-      ),
-    [userProperties, userProfile],
-  );
+  const safeProperties = useMemo(() => {
+    const loadedProperties = Array.isArray(userProperties)
+      ? userProperties
+      : [];
+    const profileProperties = Array.isArray(userProfile?.properties)
+      ? userProfile.properties
+      : [];
+
+    // The current-user response already contains the authorized property list.
+    // It can arrive before the separate properties collection is hydrated, so
+    // use it as the display source rather than briefly rendering "No Properties".
+    const displayProperties = loadedProperties.length > 0
+      ? loadedProperties
+      : profileProperties;
+
+    return filterPropertiesForUser(displayProperties, userProfile);
+  }, [userProperties, userProfile]);
 
   // Find current property by selectedProperty ID - memoized with stable dependencies
   const currentProperty = useMemo(() => {

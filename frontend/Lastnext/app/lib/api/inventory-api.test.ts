@@ -46,6 +46,20 @@ describe("inventoryApi backend contracts", () => {
     await expect(inventoryApi.list({})).rejects.toThrow("Invalid inventory paginated response");
   });
 
+  it("creates once without automatic mutation replay", async () => {
+    const postMock = vi.spyOn(apiClient, "post").mockResolvedValue({ data: inventoryItem });
+    const payload = { name: "Filter", property: 1001 };
+
+    await inventoryApi.create(payload);
+
+    expect(postMock).toHaveBeenCalledTimes(1);
+    expect(postMock).toHaveBeenCalledWith(
+      "/api/v1/inventory/",
+      payload,
+      { skipAutomaticRetry: true },
+    );
+  });
+
   it("posts a numeric restock payload and returns detail", async () => {
     const postMock = vi.spyOn(apiClient, "post").mockResolvedValue({ data: inventoryItem });
     const result = await inventoryApi.restock("INV-1", { quantity: 5 });

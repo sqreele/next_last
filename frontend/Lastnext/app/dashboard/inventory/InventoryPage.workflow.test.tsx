@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import InventoryPage from "./page";
 
@@ -121,7 +121,18 @@ vi.mock("@/app/lib/session.client", () => ({
 }));
 
 vi.mock("@/app/lib/stores/mainStore", () => ({
-  useUser: () => ({ selectedPropertyId: mocks.selectedProperty }),
+  useUser: () => ({
+    selectedPropertyId: mocks.selectedProperty,
+    userProfile: {
+      id: 5005,
+      profile_id: 5005,
+      user_id: 4004,
+      properties: [
+        { id: 1001, property_id: "PROPERTY-A", name: "Hotel A" },
+        { id: 2002, property_id: "PROPERTY-B", name: "Hotel B" },
+      ],
+    },
+  }),
 }));
 
 vi.mock("@/app/lib/api-client", () => ({
@@ -164,9 +175,41 @@ function inventoryListCalls() {
 }
 
 async function renderInventory() {
-  render(<InventoryPage />);
+  const view = render(<InventoryPage />);
   await screen.findByText("Chiller belt");
   await waitFor(() => expect(inventoryListCalls().length).toBeGreaterThan(0));
+  return view;
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+function createdItem(name = "Server Normalized Filter") {
+  return {
+    ...inventoryItem("PROPERTY-A", 6, "INV-3003"),
+    id: 3003,
+    name,
+    description: "HVAC filter",
+    property: 1001,
+  };
+}
+
+function openAndFillAddItem(name = "New filter") {
+  fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+  fireEvent.change(screen.getByLabelText("Item Name *"), { target: { value: name } });
+  fireEvent.click(screen.getByText("Select category"));
+  fireEvent.click(screen.getByRole("option", { name: "Parts" }));
+  fireEvent.change(screen.getByLabelText("Initial Quantity *"), { target: { value: "6" } });
+  fireEvent.change(screen.getByLabelText("Min Quantity"), { target: { value: "2" } });
+  fireEvent.change(screen.getByLabelText("Description"), { target: { value: "HVAC filter" } });
+  fireEvent.change(screen.getByLabelText("Location"), { target: { value: "Shelf 9" } });
 }
 
 function openUseDialog() {
@@ -202,6 +245,152 @@ afterEach(() => {
 });
 
 describe("InventoryPage mutation and reconciliation workflows", () => {
+  it("creates once for canonical Property A and reconciles server-normalized data", async () => {
+    const createRequest = deferred<{ data: ReturnType<typeof createdItem> }>();
+    mocks.apiPost.mockReturnValue(createRequest.promise);
+    await renderInventory();
+    const initialListCalls = inventoryListCalls().length;
+    openAndFillAddItem();
+
+    const submit = screen.getByRole("button", { name: "Add Item" });
+    fireEvent.click(submit);
+    fireEvent.click(submit);
+
+    expect(mocks.apiPost).toHaveBeenCalledTimes(1);
+    expect(mocks.apiPost).toHaveBeenCalledWith(
+      "/api/v1/inventory/",
+      {
+        name: "New filter",
+        category: "parts",
+        description: "HVAC filter",
+        quantity: 6,
+        min_quantity: 2,
+        unit: "pcs",
+        location: "Shelf 9",
+        property: 1001,
+      },
+      { skipAutomaticRetry: true },
+    );
+    expect(screen.getByRole("dialog", { name: "Add New Inventory Item" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Adding..." })).toBeDisabled();
+    expect(inventoryListCalls()).toHaveLength(initialListCalls);
+
+    const authoritativeItem = createdItem();
+    mocks.apiGet.mockImplementation((url: string, config?: { params?: { property_id?: string } }) => {
+      if (url === "/api/v1/inventory/" && config?.params?.property_id === "PROPERTY-A") {
+        return Promise.resolve({
+          data: {
+            ...listResponse(mocks.itemsByProperty["PROPERTY-A"]),
+            count: 2,
+            results: [authoritativeItem, mocks.itemsByProperty["PROPERTY-A"]],
+          },
+        });
+      }
+      return apiGetResponse(url, config);
+    });
+    await act(async () => createRequest.resolve({ data: authoritativeItem }));
+
+    await screen.findByText("Server Normalized Filter");
+    expect(screen.getAllByText("Server Normalized Filter")).toHaveLength(1);
+    expect(screen.getByText("Chiller belt")).toBeInTheDocument();
+    expect(inventoryListCalls()).toHaveLength(initialListCalls + 1);
+    expect(screen.queryByRole("dialog", { name: "Add New Inventory Item" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+    expect(screen.getByLabelText("Item Name *")).toHaveValue("");
+  });
+
+  it("validates locally and prevents a stale open form from rebinding to Property B", async () => {
+    const view = await renderInventory();
+    fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Item name is required.");
+    expect(mocks.apiPost).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Item Name *"), { target: { value: "Property A draft" } });
+    mocks.selectedProperty = "PROPERTY-B";
+    view.rerender(<InventoryPage />);
+    await screen.findByText("Foreign pump seal");
+    fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Property changed. Close and reopen Add Item to continue.",
+    );
+    expect(screen.getByLabelText("Item Name *")).toHaveValue("Property A draft");
+    expect(mocks.apiPost).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["400", { response: { status: 400, data: { name: ["Already exists."] } } }, "Already exists."],
+    ["403", { response: { status: 403, data: { detail: "Property is forbidden." } } }, "Property is forbidden."],
+    ["network", new Error("Network unavailable"), "Network unavailable"],
+  ])("preserves the form after a %s create failure", async (_kind, failure, message) => {
+    mocks.apiPost.mockRejectedValueOnce(failure);
+    await renderInventory();
+    openAndFillAddItem("Recoverable draft");
+    fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(message);
+    expect(screen.getByRole("dialog", { name: "Add New Inventory Item" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Item Name *")).toHaveValue("Recoverable draft");
+    expect(screen.getByRole("button", { name: "Add Item" })).toBeEnabled();
+    expect(mocks.apiPost).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Chiller belt")).toBeInTheDocument();
+  });
+
+  it("does not reconcile a late Property A success into Property B", async () => {
+    const createRequest = deferred<{ data: ReturnType<typeof createdItem> }>();
+    mocks.apiPost.mockReturnValue(createRequest.promise);
+    const view = await renderInventory();
+    openAndFillAddItem();
+    fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+
+    mocks.selectedProperty = "PROPERTY-B";
+    view.rerender(<InventoryPage />);
+    await screen.findByText("Foreign pump seal");
+    const propertyAListCalls = inventoryListCalls().filter(([, config]) =>
+      config?.params?.property_id === "PROPERTY-A",
+    ).length;
+    await act(async () => createRequest.resolve({ data: createdItem() }));
+
+    expect(screen.getByText("Foreign pump seal")).toBeInTheDocument();
+    expect(screen.queryByText("Server Normalized Filter")).not.toBeInTheDocument();
+    expect(inventoryListCalls().filter(([, config]) =>
+      config?.params?.property_id === "PROPERTY-A",
+    )).toHaveLength(propertyAListCalls);
+    expect(screen.getByRole("dialog", { name: "Add New Inventory Item" })).toBeInTheDocument();
+  });
+
+  it("allows an intentional retry after failure and creates no automatic duplicate", async () => {
+    mocks.apiPost
+      .mockRejectedValueOnce({ response: { status: 500, data: { detail: "Try again." } } })
+      .mockResolvedValueOnce({ data: createdItem() });
+    await renderInventory();
+    openAndFillAddItem("Retry draft");
+    fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Try again.");
+    expect(mocks.apiPost).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+    await waitFor(() => expect(mocks.apiPost).toHaveBeenCalledTimes(2));
+    expect(mocks.apiPost.mock.calls[0][2]).toEqual({ skipAutomaticRetry: true });
+    expect(mocks.apiPost.mock.calls[1][2]).toEqual({ skipAutomaticRetry: true });
+  });
+
+  it("ignores a create response after unmount", async () => {
+    const createRequest = deferred<{ data: ReturnType<typeof createdItem> }>();
+    mocks.apiPost.mockReturnValue(createRequest.promise);
+    const view = await renderInventory();
+    openAndFillAddItem();
+    fireEvent.click(screen.getByRole("button", { name: "Add Item" }));
+    const initialListCalls = inventoryListCalls().length;
+    view.unmount();
+
+    await act(async () => createRequest.resolve({ data: createdItem() }));
+    expect(inventoryListCalls()).toHaveLength(initialListCalls);
+    expect(mocks.apiPost).toHaveBeenCalledTimes(1);
+  });
+
   it("refetches page one after a successful CSV import", async () => {
     await renderInventory();
     const initialListCalls = inventoryListCalls().length;

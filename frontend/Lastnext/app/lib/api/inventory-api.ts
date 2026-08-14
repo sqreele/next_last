@@ -1,4 +1,5 @@
 import apiClient from "../api-client";
+import type { AxiosRequestConfig } from "axios";
 import type {
   InventoryConsumePayload,
   InventoryConsumeResponse,
@@ -40,7 +41,10 @@ export const inventoryApi = {
   },
 
   async create(payload: InventoryCreatePayload): Promise<InventoryDetail> {
-    const response = await apiClient.post<InventoryDetail>(`${baseUrl}/`, payload);
+    const config: AxiosRequestConfig & { skipAutomaticRetry: boolean } = {
+      skipAutomaticRetry: true,
+    };
+    const response = await apiClient.post<InventoryDetail>(`${baseUrl}/`, payload, config);
     return response.data;
   },
 

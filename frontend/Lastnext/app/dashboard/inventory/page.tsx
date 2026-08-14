@@ -8,6 +8,8 @@ import apiClient from "@/app/lib/api-client";
 import { inventoryApi } from "@/app/lib/api/inventory-api";
 import type {
   InventoryCategory,
+  InventoryCreatePayload,
+  InventoryDetail,
   InventoryListItem,
   InventoryQuery,
   InventoryStatus,
@@ -92,11 +94,82 @@ const parseInventoryQuantity = (value: string): number => {
   return Number.isInteger(quantity) && quantity > 0 ? quantity : 0;
 };
 
+interface AddItemFormState {
+  name: string;
+  category: InventoryCategory | "";
+  description: string;
+  quantity: string;
+  minQuantity: string;
+  unit: string;
+  location: string;
+  supplier: string;
+}
+
+interface AddItemPropertyContext {
+  publicId: string;
+  pk: number;
+}
+
+const emptyAddItemForm: AddItemFormState = {
+  name: "",
+  category: "",
+  description: "",
+  quantity: "0",
+  minQuantity: "0",
+  unit: "pcs",
+  location: "",
+  supplier: "",
+};
+
+function parseNonNegativeInteger(value: string): number | null {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function isAuthoritativeCreatedItem(
+  value: unknown,
+  propertyContext: AddItemPropertyContext,
+): value is InventoryDetail {
+  if (typeof value !== "object" || value === null) return false;
+  const item = value as Partial<InventoryDetail>;
+  return typeof item.id === "number"
+    && typeof item.item_id === "string"
+    && item.item_id.length > 0
+    && typeof item.name === "string"
+    && item.property === propertyContext.pk
+    && item.property_id === propertyContext.publicId;
+}
+
+function getAddItemErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error !== "object" || error === null) {
+    return "Failed to add inventory item.";
+  }
+  const record = error as Record<string, unknown>;
+  const response = typeof record.response === "object" && record.response !== null
+    ? record.response as Record<string, unknown>
+    : null;
+  const details = record.details ?? response?.data;
+  if (typeof details === "object" && details !== null) {
+    const detailRecord = details as Record<string, unknown>;
+    for (const value of Object.values(detailRecord)) {
+      if (typeof value === "string") return value;
+      if (Array.isArray(value)) {
+        const message = value.find((entry) => typeof entry === "string");
+        if (typeof message === "string") return message;
+      }
+    }
+  }
+  return typeof record.message === "string"
+    ? record.message
+    : "Failed to add inventory item.";
+}
+
 export default function InventoryPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const t = useT();
-  const { selectedPropertyId: selectedProperty } = useUser();
+  const { selectedPropertyId: selectedProperty, userProfile } = useUser();
   const [inventory, setInventory] = useState<InventoryListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,6 +202,11 @@ export default function InventoryPage() {
     Array<{ value: string; label: string }>
   >([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [addItemForm, setAddItemForm] = useState<AddItemFormState>(emptyAddItemForm);
+  const [addItemPropertyContext, setAddItemPropertyContext] =
+    useState<AddItemPropertyContext | null>(null);
+  const [addItemError, setAddItemError] = useState<string | null>(null);
+  const [isAddingItem, setIsAddingItem] = useState(false);
   const [showRestockDialog, setShowRestockDialog] = useState(false);
   const [showUseDialog, setShowUseDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryListItem | null>(null);
@@ -138,6 +216,11 @@ export default function InventoryPage() {
   const [isUsing, setIsUsing] = useState(false);
   const restockInFlightRef = useRef(false);
   const useInFlightRef = useRef(false);
+  const addItemInFlightRef = useRef(false);
+  const mountedRef = useRef(true);
+  const inventoryRequestIdRef = useRef(0);
+  const selectedPropertyRef = useRef(selectedProperty);
+  selectedPropertyRef.current = selectedProperty;
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [selectedPmId, setSelectedPmId] = useState<string>("");
   const [userJobs, setUserJobs] = useState<
@@ -150,6 +233,13 @@ export default function InventoryPage() {
 
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setLoading);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -359,7 +449,11 @@ export default function InventoryPage() {
     fetchUserJobsAndPMs();
   }, [showUseDialog, status, selectedItem, selectedProperty]);
 
-  const fetchInventory = async () => {
+  const fetchInventory = async (
+    expectedProperty: string | null = selectedProperty,
+  ): Promise<boolean> => {
+    const requestId = inventoryRequestIdRef.current + 1;
+    inventoryRequestIdRef.current = requestId;
     recordLoaderShown();
     setLoading(true);
     setError(null);
@@ -368,8 +462,8 @@ export default function InventoryPage() {
         page: page,
         page_size: pageSize,
       };
-      if (selectedProperty) {
-        params.property_id = selectedProperty;
+      if (expectedProperty) {
+        params.property_id = expectedProperty;
       }
       if (selectedCategory !== "all") {
         params.category = selectedCategory;
@@ -395,17 +489,120 @@ export default function InventoryPage() {
       }
 
       const response = await inventoryApi.list(params);
+      if (
+        !mountedRef.current ||
+        requestId !== inventoryRequestIdRef.current ||
+        selectedPropertyRef.current !== expectedProperty
+      ) return false;
       setTotalCount(response.count);
       setTotalPages(response.total_pages);
       setInventory(response.results);
+      return true;
     } catch (err: any) {
+      if (!mountedRef.current || requestId !== inventoryRequestIdRef.current) {
+        return false;
+      }
       console.error("Error fetching inventory:", err);
       setError(err.message || "Failed to load inventory");
       setInventory([]);
       setTotalCount(0);
       setTotalPages(1);
+      return false;
     } finally {
-      clearLoadingAfterMinTime();
+      if (mountedRef.current && requestId === inventoryRequestIdRef.current) {
+        clearLoadingAfterMinTime();
+      }
+    }
+  };
+
+  const openAddItemDialog = () => {
+    const property = userProfile?.properties?.find(
+      (candidate) =>
+        String(candidate.property_id) === String(selectedProperty) ||
+        String(candidate.id) === String(selectedProperty),
+    );
+    const propertyPk = Number(property?.id);
+    setAddItemPropertyContext(
+      selectedProperty && Number.isInteger(propertyPk) && propertyPk > 0
+        ? { publicId: String(property?.property_id), pk: propertyPk }
+        : null,
+    );
+    setAddItemForm(emptyAddItemForm);
+    setAddItemError(null);
+    setShowAddDialog(true);
+  };
+
+  const handleAddItem = async () => {
+    if (addItemInFlightRef.current) return;
+    const propertyContext = addItemPropertyContext;
+    const quantity = parseNonNegativeInteger(addItemForm.quantity);
+    const minQuantity = parseNonNegativeInteger(addItemForm.minQuantity);
+    if (!propertyContext) {
+      setAddItemError("Select an accessible Property before adding an item.");
+      return;
+    }
+    if (selectedPropertyRef.current !== propertyContext.publicId) {
+      setAddItemError("Property changed. Close and reopen Add Item to continue.");
+      return;
+    }
+    if (!addItemForm.name.trim()) {
+      setAddItemError("Item name is required.");
+      return;
+    }
+    if (!isInventoryCategory(addItemForm.category)) {
+      setAddItemError("Category is required.");
+      return;
+    }
+    if (quantity === null || minQuantity === null) {
+      setAddItemError("Quantities must be whole numbers greater than or equal to zero.");
+      return;
+    }
+    if (!addItemForm.unit.trim()) {
+      setAddItemError("Unit is required.");
+      return;
+    }
+
+    const payload: InventoryCreatePayload = {
+      name: addItemForm.name.trim(),
+      category: addItemForm.category,
+      quantity,
+      min_quantity: minQuantity,
+      unit: addItemForm.unit.trim(),
+      property: propertyContext.pk,
+      ...(addItemForm.description.trim()
+        ? { description: addItemForm.description.trim() }
+        : {}),
+      ...(addItemForm.location.trim()
+        ? { location: addItemForm.location.trim() }
+        : {}),
+      ...(addItemForm.supplier.trim()
+        ? { supplier: addItemForm.supplier.trim() }
+        : {}),
+    };
+
+    addItemInFlightRef.current = true;
+    setIsAddingItem(true);
+    setAddItemError(null);
+    try {
+      const created = await inventoryApi.create(payload);
+      if (!isAuthoritativeCreatedItem(created, propertyContext)) {
+        throw new Error("Invalid Inventory create response contract");
+      }
+      if (
+        !mountedRef.current ||
+        selectedPropertyRef.current !== propertyContext.publicId
+      ) return;
+      const reconciled = await fetchInventory(propertyContext.publicId);
+      if (!reconciled || !mountedRef.current) return;
+      setShowAddDialog(false);
+      setAddItemForm(emptyAddItemForm);
+      setAddItemPropertyContext(null);
+    } catch (err: unknown) {
+      if (!mountedRef.current) return;
+      setAddItemError(getAddItemErrorMessage(err));
+    } finally {
+      addItemInFlightRef.current = false;
+      if (mountedRef.current) setIsAddingItem(false);
     }
   };
 
@@ -572,9 +769,16 @@ export default function InventoryPage() {
               }
             }}
           />
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <Dialog
+            open={showAddDialog}
+            onOpenChange={(open) => {
+              if (isAddingItem) return;
+              if (open) openAddItemDialog();
+              else setShowAddDialog(false);
+            }}
+          >
             <DialogTrigger asChild>
-              <Button className="gap-2">
+              <Button className="gap-2" onClick={openAddItemDialog}>
                 <Plus className="h-4 w-4" />
                 Add Item
               </Button>
@@ -590,11 +794,25 @@ export default function InventoryPage() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="name">Item Name *</Label>
-                    <Input id="name" placeholder="Enter item name" />
+                    <Input
+                      id="name"
+                      placeholder="Enter item name"
+                      value={addItemForm.name}
+                      onChange={(event) => setAddItemForm((form) => ({
+                        ...form,
+                        name: event.target.value,
+                      }))}
+                    />
                   </div>
                   <div>
                     <Label htmlFor="category">Category *</Label>
-                    <Select>
+                    <Select
+                      value={addItemForm.category}
+                      onValueChange={(value) => setAddItemForm((form) => ({
+                        ...form,
+                        category: isInventoryCategory(value) ? value : "",
+                      }))}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -610,42 +828,95 @@ export default function InventoryPage() {
                 </div>
                 <div>
                   <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" placeholder="Enter description" />
+                  <Textarea
+                    id="description"
+                    placeholder="Enter description"
+                    value={addItemForm.description}
+                    onChange={(event) => setAddItemForm((form) => ({
+                      ...form,
+                      description: event.target.value,
+                    }))}
+                  />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
                     <Label htmlFor="quantity">Initial Quantity *</Label>
-                    <Input id="quantity" type="number" defaultValue="0" />
+                    <Input
+                      id="quantity"
+                      type="number"
+                      value={addItemForm.quantity}
+                      onChange={(event) => setAddItemForm((form) => ({
+                        ...form,
+                        quantity: event.target.value,
+                      }))}
+                    />
                   </div>
                   <div>
                     <Label htmlFor="min_quantity">Min Quantity</Label>
-                    <Input id="min_quantity" type="number" defaultValue="0" />
+                    <Input
+                      id="min_quantity"
+                      type="number"
+                      value={addItemForm.minQuantity}
+                      onChange={(event) => setAddItemForm((form) => ({
+                        ...form,
+                        minQuantity: event.target.value,
+                      }))}
+                    />
                   </div>
                   <div>
                     <Label htmlFor="unit">Unit</Label>
-                    <Input id="unit" defaultValue="pcs" />
+                    <Input
+                      id="unit"
+                      value={addItemForm.unit}
+                      onChange={(event) => setAddItemForm((form) => ({
+                        ...form,
+                        unit: event.target.value,
+                      }))}
+                    />
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="location">Location</Label>
-                    <Input id="location" placeholder="Storage location" />
+                    <Input
+                      id="location"
+                      placeholder="Storage location"
+                      value={addItemForm.location}
+                      onChange={(event) => setAddItemForm((form) => ({
+                        ...form,
+                        location: event.target.value,
+                      }))}
+                    />
                   </div>
                   <div>
                     <Label htmlFor="supplier">Supplier</Label>
-                    <Input id="supplier" placeholder="Supplier name" />
+                    <Input
+                      id="supplier"
+                      placeholder="Supplier name"
+                      value={addItemForm.supplier}
+                      onChange={(event) => setAddItemForm((form) => ({
+                        ...form,
+                        supplier: event.target.value,
+                      }))}
+                    />
                   </div>
                 </div>
               </div>
+              {addItemError && (
+                <p role="alert" className="text-sm font-medium text-red-600">
+                  {addItemError}
+                </p>
+              )}
               <DialogFooter>
                 <Button
                   variant="outline"
                   onClick={() => setShowAddDialog(false)}
+                  disabled={isAddingItem}
                 >
                   Cancel
                 </Button>
-                <Button onClick={() => setShowAddDialog(false)}>
-                  Add Item
+                <Button onClick={handleAddItem} disabled={isAddingItem}>
+                  {isAddingItem ? "Adding..." : "Add Item"}
                 </Button>
               </DialogFooter>
             </DialogContent>

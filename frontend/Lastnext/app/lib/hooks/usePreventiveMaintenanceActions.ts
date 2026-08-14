@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useSession } from '@/app/lib/session.client';
 import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import { useAuthStore } from '@/app/lib/stores/useAuthStore';
@@ -31,6 +31,13 @@ export function usePreventiveMaintenanceActions() {
     propertyId: selectedProperty,
     sessionId: String(session?.user?.id || accessToken || ''),
   };
+
+  // Invalidate an outstanding list request when its consumer unmounts. The
+  // request may still complete at the transport layer, but it can no longer
+  // write list data or pagination metadata into the shared store.
+  useEffect(() => () => {
+    maintenanceRequestRef.current += 1;
+  }, []);
 
   const {
     maintenanceItems,
@@ -132,11 +139,13 @@ export function usePreventiveMaintenanceActions() {
     // this guard, a slower response for page 1 can overwrite page 2 after the
     // user navigates quickly.
     const requestId = ++maintenanceRequestRef.current;
+    const requestState = usePreventiveMaintenanceStore.getState();
+    const requestFilterParams = requestState.filterParams;
 
     // Get current items count to determine if we should show loading state
     // Only show full loading state if we don't have existing data (initial load)
     // This prevents data from disappearing during refresh
-    const hasExistingData = maintenanceItems.length > 0;
+    const hasExistingData = requestState.maintenanceItems.length > 0;
     if (!hasExistingData) {
       loaderShownAtRef.current = Date.now();
       setLoading(true);
@@ -145,8 +154,8 @@ export function usePreventiveMaintenanceActions() {
 
     try {
       const fetchParams = { 
-        ...filterParams, 
-        property_id: selectedProperty || filterParams.property_id, 
+        ...requestFilterParams,
+        property_id: selectedProperty || requestFilterParams.property_id,
         ...params 
       };
       
@@ -183,7 +192,7 @@ export function usePreventiveMaintenanceActions() {
             }
             
             // Only update if different to avoid infinite loops
-            const currentFilterParams = filterParams;
+            const currentFilterParams = usePreventiveMaintenanceStore.getState().filterParams;
             if (currentFilterParams.page !== validCurrentPage || currentFilterParams.page_size !== paginatedData.page_size) {
               setFilterParams({ 
                 page: validCurrentPage,
@@ -197,7 +206,7 @@ export function usePreventiveMaintenanceActions() {
         setError(response.message || 'Failed to fetch maintenance items');
         // Only clear items if we don't have existing data
         // This prevents clearing data that was visible before the error
-        if (maintenanceItems.length === 0) {
+        if (usePreventiveMaintenanceStore.getState().maintenanceItems.length === 0) {
           setMaintenanceItems([]);
         }
       }
@@ -208,7 +217,7 @@ export function usePreventiveMaintenanceActions() {
       setError(errorMessage);
       // Only clear items on error if we don't have existing data
       // This prevents clearing data that was visible before the error
-      if (maintenanceItems.length === 0) {
+      if (usePreventiveMaintenanceStore.getState().maintenanceItems.length === 0) {
         setMaintenanceItems([]);
       }
     } finally {
@@ -219,7 +228,7 @@ export function usePreventiveMaintenanceActions() {
         setLoading(false);
       }
     }
-  }, [filterParams, selectedProperty, accessToken, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError, maintenanceItems, clearLoadingAfterMinTime]);
+  }, [selectedProperty, accessToken, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError, clearLoadingAfterMinTime, setFilterParams]);
 
   // Fetch statistics
   const fetchStatistics = useCallback(async () => {

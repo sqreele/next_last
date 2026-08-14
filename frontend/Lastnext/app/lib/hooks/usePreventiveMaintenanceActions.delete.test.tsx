@@ -1,10 +1,12 @@
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
+import { act, cleanup, render, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/app/lib/api-client";
 import apiClient from "@/app/lib/api-client";
 import type { PMListItem } from "@/app/lib/api/pm-contracts";
 import { useAuthStore } from "@/app/lib/stores/useAuthStore";
+import { useFilterStore } from "@/app/lib/stores/useFilterStore";
 import { usePreventiveMaintenanceStore } from "@/app/lib/stores/usePreventiveMaintenanceStore";
+import PreventiveMaintenanceListPage from "@/app/dashboard/preventive-maintenance/page";
 import { usePreventiveMaintenanceActions } from "./usePreventiveMaintenanceActions";
 
 const session = vi.hoisted(() => ({
@@ -22,6 +24,10 @@ vi.mock("@/app/lib/session.client", () => ({
       },
     },
   }),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 function pm(pmId: string, propertyId: string, title: string): PMListItem {
@@ -79,6 +85,29 @@ function deferredDelete() {
   return { promise, resolve, reject };
 }
 
+function deferredList() {
+  let resolve!: (value: { data: ReturnType<typeof listPage> }) => void;
+  const promise = new Promise<{ data: ReturnType<typeof listPage> }>((yes) => {
+    resolve = yes;
+  });
+  return { promise, resolve };
+}
+
+function listPage(
+  items: PMListItem[],
+  pagination: { count?: number; totalPages?: number; currentPage?: number; pageSize?: number } = {},
+) {
+  return {
+    count: pagination.count ?? items.length,
+    total_pages: pagination.totalPages ?? 1,
+    current_page: pagination.currentPage ?? 1,
+    page_size: pagination.pageSize ?? 10,
+    next: null,
+    previous: null,
+    results: items,
+  };
+}
+
 function seed(items: PMListItem[] = [pmA, pmB]) {
   usePreventiveMaintenanceStore.setState({
     maintenanceItems: items,
@@ -93,6 +122,16 @@ beforeEach(() => {
   session.userId = "505";
   session.accessToken = "token-user-a";
   useAuthStore.setState({ selectedProperty: "303" });
+  useFilterStore.setState({
+    status: "all",
+    frequency: "all",
+    search: "",
+    start_date: "",
+    end_date: "",
+    machine_id: "",
+    page: 1,
+    page_size: 10,
+  });
   seed();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
@@ -103,6 +142,150 @@ afterEach(() => {
 });
 
 describe("active PM list delete workflow", () => {
+  it("keeps the list fetch callback stable after a successful state update", async () => {
+    const getMock = vi.spyOn(apiClient, "get").mockResolvedValue({ data: listPage([pmA]) });
+    const view = renderHook(() => usePreventiveMaintenanceActions());
+    const initialFetch = view.result.current.fetchMaintenanceItems;
+
+    await act(async () => {
+      await initialFetch({ page: 1, page_size: 10 });
+    });
+
+    expect(getMock).toHaveBeenCalledTimes(1);
+    expect(getMock).toHaveBeenCalledWith(
+      "/api/v1/preventive-maintenance/",
+      expect.objectContaining({
+        params: expect.objectContaining({ property_id: "303", page: 1, page_size: 10 }),
+      }),
+    );
+    expect(view.result.current.fetchMaintenanceItems).toBe(initialFetch);
+    expect(usePreventiveMaintenanceStore.getState().maintenanceItems).toEqual([pmA]);
+  });
+
+  it("ignores a late Property A list after Property B is selected", async () => {
+    const propertyARequest = deferredList();
+    const propertyBRequest = deferredList();
+    vi.spyOn(apiClient, "get").mockImplementation((_url, config) =>
+      (config?.params as { property_id?: string } | undefined)?.property_id === "PROPERTY-B"
+        ? propertyBRequest.promise
+        : propertyARequest.promise,
+    );
+    const view = renderHook(() => usePreventiveMaintenanceActions());
+
+    let propertyAFetch!: Promise<void>;
+    act(() => {
+      propertyAFetch = view.result.current.fetchMaintenanceItems({ page: 1, page_size: 10 });
+    });
+    act(() => {
+      useAuthStore.setState({ selectedProperty: "PROPERTY-B" });
+    });
+    let propertyBFetch!: Promise<void>;
+    act(() => {
+      propertyBFetch = view.result.current.fetchMaintenanceItems({ page: 1, page_size: 10 });
+    });
+
+    propertyBRequest.resolve({ data: listPage([propertyBItem]) });
+    await act(async () => propertyBFetch);
+    propertyARequest.resolve({ data: listPage([pmA]) });
+    await act(async () => propertyAFetch);
+
+    expect(usePreventiveMaintenanceStore.getState()).toMatchObject({
+      maintenanceItems: [propertyBItem],
+      totalCount: 1,
+      filterParams: { page: 1, page_size: 10 },
+    });
+  });
+
+  it("keeps the newest page when an older page response arrives late", async () => {
+    const pageOneRequest = deferredList();
+    const pageTwoRequest = deferredList();
+    vi.spyOn(apiClient, "get").mockImplementation((_url, config) =>
+      (config?.params as { page?: number } | undefined)?.page === 2
+        ? pageTwoRequest.promise
+        : pageOneRequest.promise,
+    );
+    const view = renderHook(() => usePreventiveMaintenanceActions());
+
+    let pageOneFetch!: Promise<void>;
+    let pageTwoFetch!: Promise<void>;
+    act(() => {
+      pageOneFetch = view.result.current.fetchMaintenanceItems({ page: 1, page_size: 10 });
+      pageTwoFetch = view.result.current.fetchMaintenanceItems({ page: 2, page_size: 10 });
+    });
+
+    pageTwoRequest.resolve({
+      data: listPage([pmB], { count: 20, totalPages: 2, currentPage: 2 }),
+    });
+    await act(async () => pageTwoFetch);
+    pageOneRequest.resolve({
+      data: listPage([pmA], { count: 20, totalPages: 2, currentPage: 1 }),
+    });
+    await act(async () => pageOneFetch);
+
+    expect(usePreventiveMaintenanceStore.getState()).toMatchObject({
+      maintenanceItems: [pmB],
+      totalCount: 20,
+      filterParams: { page: 2, page_size: 10 },
+    });
+  });
+
+  it("ignores a stale pre-filter response and keeps the filtered metadata", async () => {
+    const unfilteredRequest = deferredList();
+    const filteredRequest = deferredList();
+    vi.spyOn(apiClient, "get").mockImplementation((_url, config) =>
+      (config?.params as { search?: string } | undefined)?.search === "pump"
+        ? filteredRequest.promise
+        : unfilteredRequest.promise,
+    );
+    const view = renderHook(() => usePreventiveMaintenanceActions());
+
+    let unfilteredFetch!: Promise<void>;
+    let filteredFetch!: Promise<void>;
+    act(() => {
+      unfilteredFetch = view.result.current.fetchMaintenanceItems({ page: 2, page_size: 10 });
+      filteredFetch = view.result.current.fetchMaintenanceItems({ page: 1, page_size: 10, search: "pump" });
+    });
+
+    filteredRequest.resolve({
+      data: listPage([pmB], { count: 1, totalPages: 1, currentPage: 1 }),
+    });
+    await act(async () => filteredFetch);
+    unfilteredRequest.resolve({
+      data: listPage([pmA], { count: 20, totalPages: 2, currentPage: 2 }),
+    });
+    await act(async () => unfilteredFetch);
+
+    expect(usePreventiveMaintenanceStore.getState()).toMatchObject({
+      maintenanceItems: [pmB],
+      totalCount: 1,
+      filterParams: { page: 1, page_size: 10 },
+    });
+  });
+
+  it("does not update list or pagination metadata after unmount", async () => {
+    const pending = deferredList();
+    vi.spyOn(apiClient, "get").mockImplementation(() => pending.promise);
+    const view = renderHook(() => usePreventiveMaintenanceActions());
+
+    let fetchPromise!: Promise<void>;
+    act(() => {
+      fetchPromise = view.result.current.fetchMaintenanceItems({ page: 2, page_size: 25 });
+    });
+    view.unmount();
+    seed([propertyBItem]);
+
+    pending.resolve({
+      data: listPage([pmA], { count: 50, totalPages: 2, currentPage: 2, pageSize: 25 }),
+    });
+    await act(async () => fetchPromise);
+
+    expect(usePreventiveMaintenanceStore.getState()).toMatchObject({
+      maintenanceItems: [propertyBItem],
+      totalCount: 1,
+      filterParams: { page: 1, page_size: 10 },
+    });
+  });
+
   it("sends the canonical PM identity once and keeps all PMs while DELETE is pending", async () => {
     const pending = deferredDelete();
     const deleteMock = vi.spyOn(apiClient, "delete").mockImplementation(() => pending.promise);
@@ -214,5 +397,120 @@ describe("active PM list delete workflow", () => {
     await expect(deletion).resolves.toBe(false);
     expect(usePreventiveMaintenanceStore.getState().maintenanceItems).toEqual([nextSessionItem]);
     expect(usePreventiveMaintenanceStore.getState().totalCount).toBe(1);
+  });
+});
+
+describe("PM list page fetch and pagination orchestration", () => {
+  it("sends one canonical page-1 request when Property changes and preserves page size", async () => {
+    useFilterStore.setState({ page: 3, page_size: 25 });
+    usePreventiveMaintenanceStore.setState({
+      filterParams: { page: 3, page_size: 25, property_id: "303" },
+    });
+    const getMock = vi.spyOn(apiClient, "get").mockResolvedValue({
+      data: listPage([pmA], { currentPage: 1, pageSize: 25 }),
+    });
+    render(<PreventiveMaintenanceListPage />);
+    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(1));
+    getMock.mockClear();
+
+    act(() => useAuthStore.setState({ selectedProperty: "PROPERTY-B" }));
+
+    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(1));
+    expect(getMock).toHaveBeenLastCalledWith(
+      "/api/v1/preventive-maintenance/",
+      expect.objectContaining({
+        params: expect.objectContaining({ property_id: "PROPERTY-B", page: 1, page_size: 25 }),
+      }),
+    );
+    expect(useFilterStore.getState()).toMatchObject({ page: 1, page_size: 25 });
+  });
+
+  it("sends exactly one request for a page change", async () => {
+    const getMock = vi.spyOn(apiClient, "get").mockImplementation((_url, config) => {
+      const requestedPage = (config?.params as { page?: number } | undefined)?.page ?? 1;
+      return Promise.resolve({
+        data: listPage(requestedPage === 2 ? [pmB] : [pmA], {
+          count: 20,
+          totalPages: 2,
+          currentPage: requestedPage,
+        }),
+      });
+    });
+    render(<PreventiveMaintenanceListPage />);
+    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(1));
+    getMock.mockClear();
+
+    act(() => useFilterStore.getState().setPage(2));
+
+    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(1));
+    expect(getMock.mock.calls[0][1]?.params).toEqual(expect.objectContaining({ page: 2, page_size: 10 }));
+  });
+
+  it("resets to page 1 and sends one request when page size changes", async () => {
+    const getMock = vi.spyOn(apiClient, "get").mockResolvedValue({
+      data: listPage([pmA], { count: 30, totalPages: 3, currentPage: 1, pageSize: 10 }),
+    });
+    render(<PreventiveMaintenanceListPage />);
+    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(1));
+    getMock.mockClear();
+
+    getMock.mockResolvedValue({
+      data: listPage([pmA], { count: 30, totalPages: 2, currentPage: 1, pageSize: 25 }),
+    });
+    act(() => useFilterStore.getState().setPageSize(25));
+
+    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(1));
+    expect(getMock.mock.calls[0][1]?.params).toEqual(expect.objectContaining({ page: 1, page_size: 25 }));
+    expect(useFilterStore.getState()).toMatchObject({ page: 1, page_size: 25 });
+  });
+
+  it("settles an empty out-of-range response on page 1 without another request", async () => {
+    const getMock = vi.spyOn(apiClient, "get").mockImplementation((_url, config) => {
+      const requestedPage = (config?.params as { page?: number } | undefined)?.page ?? 1;
+      return Promise.resolve({
+        data: requestedPage === 2
+          ? listPage([], { count: 0, totalPages: 1, currentPage: 1 })
+          : listPage([pmA], { count: 20, totalPages: 2, currentPage: 1 }),
+      });
+    });
+    render(<PreventiveMaintenanceListPage />);
+    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(1));
+    getMock.mockClear();
+
+    act(() => useFilterStore.getState().setPage(2));
+
+    await waitFor(() => expect(useFilterStore.getState().page).toBe(1));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(getMock).toHaveBeenCalledTimes(1);
+    expect(usePreventiveMaintenanceStore.getState()).toMatchObject({
+      maintenanceItems: [],
+      totalCount: 0,
+      filterParams: { page: 1, page_size: 10 },
+    });
+  });
+
+  it("settles a non-empty out-of-range response on the last page once", async () => {
+    const getMock = vi.spyOn(apiClient, "get").mockImplementation((_url, config) => {
+      const requestedPage = (config?.params as { page?: number } | undefined)?.page ?? 1;
+      return Promise.resolve({
+        data: requestedPage === 4
+          ? listPage([pmB], { count: 20, totalPages: 2, currentPage: 2 })
+          : listPage([pmA], { count: 40, totalPages: 4, currentPage: 1 }),
+      });
+    });
+    render(<PreventiveMaintenanceListPage />);
+    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(1));
+    getMock.mockClear();
+
+    act(() => useFilterStore.getState().setPage(4));
+
+    await waitFor(() => expect(useFilterStore.getState().page).toBe(2));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(getMock).toHaveBeenCalledTimes(1);
+    expect(usePreventiveMaintenanceStore.getState()).toMatchObject({
+      maintenanceItems: [pmB],
+      totalCount: 20,
+      filterParams: { page: 2, page_size: 10 },
+    });
   });
 });

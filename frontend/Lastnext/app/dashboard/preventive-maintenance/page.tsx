@@ -73,6 +73,7 @@ function PreventiveMaintenanceListPageContent() {
     totalCount,
     filterParams: pmFilterParams
   } = usePreventiveMaintenanceActions();
+  const { setFilterParams } = usePreventiveMaintenanceStore();
   
   // Mock functions for backward compatibility
   const debugMachineFilter = useCallback(async (machineId: string) => {
@@ -87,30 +88,20 @@ function PreventiveMaintenanceListPageContent() {
 
   // Debug logging
 
-  // Manual data fetching if no data is present - preserve current pagination
+  // Re-fetch data when selectedProperty changes. Keep both pagination stores
+  // aligned before fetching so the debounced filter sync cannot issue the same
+  // page-1 request a second time.
   useEffect(() => {
-    if (maintenanceItems.length === 0 && !isLoading && !error) {
-      // Use current pagination params when fetching
-      fetchMaintenanceItems({
-        page: page || 1,
-        page_size: page_size || 10,
-      });
-    }
-  }, [maintenanceItems.length, isLoading, error, selectedProperty, fetchMaintenanceItems, page, page_size]);
-
-  // Re-fetch data when selectedProperty changes - preserve current pagination
-  useEffect(() => {
-    
     if (selectedProperty !== null && selectedProperty !== undefined) {
-      // Reset to page 1 when property changes, but preserve page_size
-      fetchMaintenanceItems({
-        page: 1, // Reset to first page when property changes
-        page_size: page_size || 10,
-      });
-      // Also update the filter store to reset page
+      const nextPageSize = page_size || 10;
       setPage(1);
+      setFilterParams({ page: 1, page_size: nextPageSize });
+      fetchMaintenanceItems({
+        page: 1,
+        page_size: nextPageSize,
+      });
     }
-  }, [selectedProperty, fetchMaintenanceItems, page_size, setPage]);
+  }, [selectedProperty, fetchMaintenanceItems, page_size, setFilterParams, setPage]);
 
   // UI state
   const [showFilters, setShowFilters] = useState(false);
@@ -190,9 +181,6 @@ function PreventiveMaintenanceListPageContent() {
     
     return { total: maintenanceItems.length, completed, overdue, pending };
   }, [maintenanceItems]);
-
-  // Get setFilterParams from PM store
-  const { setFilterParams } = usePreventiveMaintenanceStore();
 
   // The filter store is the source of truth for pagination. The PM store keeps
   // the parameters used for the latest request, but must never write an older
@@ -441,19 +429,21 @@ function PreventiveMaintenanceListPageContent() {
     return calculated;
   }, [totalCount, page_size]);
 
-  // Validate and fix current page if it exceeds totalPages
+  // Validate and fix current page if it exceeds totalPages. An empty result is
+  // authoritative page 1 as well; leaving (for example) page 5 in the UI would
+  // make the filter synchronizer repeatedly request that nonexistent page.
   useEffect(() => {
-    if (totalPages > 0 && totalCount > 0) {
-      const currentPageNum = Number(page) || 1;
-      if (currentPageNum > totalPages) {
-        console.warn('📄 Current page exceeds totalPages, resetting to page 1:', {
-          currentPage: currentPageNum,
-          totalPages,
-          totalCount,
-          page_size
-        });
-        setPage(totalPages);
-      }
+    const currentPageNum = Number(page) || 1;
+    const validPage = totalCount === 0 ? 1 : Math.min(currentPageNum, totalPages);
+
+    if (currentPageNum !== validPage) {
+      console.warn('📄 Current page exceeds totalPages, correcting:', {
+        currentPage: currentPageNum,
+        totalPages,
+        totalCount,
+        page_size
+      });
+      setPage(validPage);
     }
   }, [totalPages, totalCount, page, page_size, setPage]);
 

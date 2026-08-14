@@ -1,5 +1,6 @@
 from io import StringIO
 
+from django.db import transaction
 from django.db.models import F
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
@@ -201,10 +202,13 @@ class InventoryViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            inventory.quantity += quantity_to_add
-            inventory.last_restocked = timezone.now()
-            inventory.save()
-            
+            with transaction.atomic():
+                inventory = Inventory.objects.select_for_update().get(pk=inventory.pk)
+                inventory.quantity += quantity_to_add
+                inventory.last_restocked = timezone.now()
+                inventory.save()
+                inventory.refresh_from_db()
+
             serializer = self.get_serializer(inventory)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except ValueError:
@@ -449,4 +453,3 @@ class InventoryViewSet(viewsets.ModelViewSet):
             'categories': categories,
             'statuses': statuses
         })
-

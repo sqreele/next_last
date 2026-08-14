@@ -25,7 +25,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (session.currentUser) {
         const userProfile = session.currentUser;
 
-        const sessionProperties = userProfile.properties;
+        // Prefer the scoped current-user contract. If that endpoint has not
+        // returned assignments, retain the authorized compatibility list from
+        // the properties endpoint instead of hydrating an empty selector.
+        const sessionProperties = userProfile.properties.length > 0
+          ? userProfile.properties
+          : (session.user.properties ?? []);
         const currentProfile = useMainStore.getState().userProfile;
         const currentProfileProperties = Array.isArray(currentProfile?.properties) ? currentProfile.properties : [];
         const profilePropertiesChanged =
@@ -64,8 +69,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setUserProfile(null);
-        setProperties([]);
-        setSelectedPropertyId(null);
+        // The canonical profile request can fail independently of the already
+        // authorized property request. Hydrate only from the current session;
+        // setProperties will also reject a stale persisted selection.
+        setProperties(session.user.properties ?? []);
       }
     } else if (status === 'unauthenticated') {
       // Clear store data when unauthenticated

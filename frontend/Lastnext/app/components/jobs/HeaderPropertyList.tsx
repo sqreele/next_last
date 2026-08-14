@@ -14,6 +14,7 @@ import { useMainStore } from "@/app/lib/stores/mainStore";
 import {
   filterPropertiesForUser,
   getPropertyId,
+  type PropertyLike,
 } from "@/app/lib/security/propertyAccess";
 
 const HeaderPropertyList = React.memo(() => {
@@ -27,7 +28,7 @@ const HeaderPropertyList = React.memo(() => {
   const propertyLoading = useMainStore((state) => state.propertyLoading);
 
   // Helper function to safely get the display name from any property object format
-  const getPropertyName = useCallback((property: any): string => {
+  const getPropertyName = useCallback((property: PropertyLike): string => {
     if (!property) return "Select Property";
     if (typeof property === "string" || typeof property === "number")
       return `Property ${property}`;
@@ -71,7 +72,7 @@ const HeaderPropertyList = React.memo(() => {
 
   // Handle property selection - memoized with stable dependencies
   const handlePropertySelect = useCallback(
-    (property: any) => {
+    (property: PropertyLike) => {
       const propId = getPropertyId(property);
       if (propId && propId !== selectedProperty) {
         setSelectedProperty(propId);
@@ -96,12 +97,13 @@ const HeaderPropertyList = React.memo(() => {
     );
   }
 
-  // If no properties available, show disabled button
+  // If no properties available, show disabled button with helpful message
   if (!safeProperties || safeProperties.length === 0) {
     return (
       <Button
         variant="outline"
         disabled
+        title="No properties assigned to your account. Contact your administrator."
         className="flex items-center gap-2 w-full sm:w-auto h-12 px-4 bg-card border-border text-muted-foreground"
       >
         <Building2 className="h-4 w-4" />
@@ -139,7 +141,7 @@ const HeaderPropertyList = React.memo(() => {
           className="w-full min-w-[200px] max-w-[90vw] bg-card border-border shadow-soft rounded-md mt-1"
           align="start"
         >
-          {safeProperties.map((property: any, index: number) => (
+          {safeProperties.map((property, index) => (
             <DropdownMenuItem
               key={getPropertyId(property) || `property-${index}`}
               onClick={() => handlePropertySelect(property)}

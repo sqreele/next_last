@@ -205,6 +205,44 @@ describe("Header property selection workflow", () => {
     expect(screen.queryByRole("button", { name: "No Properties" })).not.toBeInTheDocument();
   });
 
+  it("distinguishes loading properties from an account with no assignments", () => {
+    useMainStore.setState({
+      userProfile: currentUser([]),
+      properties: [],
+      selectedPropertyId: null,
+      propertyLoading: true,
+    });
+
+    const view = render(<HeaderPropertyList />);
+    expect(screen.getByRole("button", { name: "Loading..." })).toBeDisabled();
+
+    useMainStore.setState({ propertyLoading: false });
+    view.rerender(<HeaderPropertyList />);
+
+    const emptyState = screen.getByRole("button", { name: "No Properties" });
+    expect(emptyState).toBeDisabled();
+    expect(emptyState).toHaveAttribute(
+      "title",
+      "No properties assigned to your account. Contact your administrator.",
+    );
+  });
+
+  it("offers only session-hydrated options when profile assignments are absent", () => {
+    useMainStore.setState({
+      userProfile: null,
+      properties: [propertyA, propertyB],
+      selectedPropertyId: "PROPERTY-X",
+      propertyLoading: false,
+    });
+
+    render(<HeaderPropertyList />);
+
+    expect(screen.getByRole("button", { name: "Select property" })).toHaveTextContent("Hotel Alpha");
+    expect(screen.getByRole("button", { name: "Hotel Alpha" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hotel Bravo" })).toBeInTheDocument();
+    expect(screen.queryByText("PROPERTY-X")).not.toBeInTheDocument();
+  });
+
   it("still applies authorized route changes and redirects unauthorized property routes", async () => {
     const view = render(
       <PropertyAccessGuard>

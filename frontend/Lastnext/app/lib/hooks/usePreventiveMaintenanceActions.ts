@@ -22,6 +22,7 @@ export function usePreventiveMaintenanceActions() {
   const accessToken = session?.user?.accessToken || null;
   const loaderShownAtRef = useRef<number | null>(null);
   const maintenanceRequestRef = useRef(0);
+  const statisticsRequestRef = useRef(0);
   const deleteInFlightRef = useRef(false);
   const currentDeleteContextRef = useRef({
     propertyId: selectedProperty,
@@ -37,6 +38,7 @@ export function usePreventiveMaintenanceActions() {
   // write list data or pagination metadata into the shared store.
   useEffect(() => () => {
     maintenanceRequestRef.current += 1;
+    statisticsRequestRef.current += 1;
   }, []);
 
   const {
@@ -234,12 +236,16 @@ export function usePreventiveMaintenanceActions() {
   const fetchStatistics = useCallback(async () => {
     if (!accessToken) return;
 
+    const requestId = ++statisticsRequestRef.current;
+
     try {
       setLoading(true);
       const service = createPreventiveMaintenanceService(accessToken);
       const response = await service.getMaintenanceStatistics({
         property_id: selectedProperty || undefined
       });
+
+      if (requestId !== statisticsRequestRef.current) return;
       
       if (response.success && response.data) {
         // Type assertion to match store's DashboardStats interface
@@ -247,9 +253,10 @@ export function usePreventiveMaintenanceActions() {
         setStatistics(response.data as unknown as DashboardStats);
       }
     } catch (error) {
+      if (requestId !== statisticsRequestRef.current) return;
       logger.error('Error fetching statistics', error);
     } finally {
-      setLoading(false);
+      if (requestId === statisticsRequestRef.current) setLoading(false);
     }
   }, [accessToken, selectedProperty, setLoading, setStatistics]);
 

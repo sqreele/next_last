@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePreventiveMaintenanceActions } from "@/app/lib/hooks/usePreventiveMaintenanceActions";
 import type { PMListItem } from "@/app/lib/api/pm-contracts";
-import { preventiveMaintenanceService } from "@/app/lib/PreventiveMaintenanceService";
+import {
+  createPreventiveMaintenanceService,
+  preventiveMaintenanceService,
+} from "@/app/lib/PreventiveMaintenanceService";
+import { useAuthStore } from "@/app/lib/stores/useAuthStore";
+import { usePreventiveMaintenanceStore } from "@/app/lib/stores/usePreventiveMaintenanceStore";
+import { useSession } from "@/app/lib/session.client";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import Image from "next/image";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
@@ -90,7 +96,19 @@ const isAllPMItem = (item: PMListItem): boolean => {
 export default function PreventiveMaintenanceDashboard() {
   // Use our store hook to access all maintenance data and actions
   const context = usePreventiveMaintenanceActions();
-  const { maintenanceItems, isLoading, error, fetchMaintenanceItems } = context;
+  const {
+    maintenanceItems,
+    statistics: authoritativeStatistics,
+    isLoading,
+    error,
+    fetchMaintenanceItems,
+    fetchStatistics,
+  } = context;
+  const { selectedProperty } = useAuthStore();
+  const { data: session } = useSession();
+  const accessToken = session?.user?.accessToken || null;
+  const upcomingRequestRef = useRef(0);
+  const upcomingPropertyRef = useRef(selectedProperty);
 
   // Pagination state for upcoming maintenance
   const [upcomingPage, setUpcomingPage] = useState(1);
@@ -106,6 +124,13 @@ export default function PreventiveMaintenanceDashboard() {
   // Function to fetch upcoming maintenance with pagination
   const fetchUpcomingMaintenance = useCallback(
     async (page: number = 1, pageSize: number = 10) => {
+      if (!accessToken || !selectedProperty) {
+        setUpcomingItems([]);
+        setUpcomingTotal(0);
+        return;
+      }
+
+      const requestId = ++upcomingRequestRef.current;
       setUpcomingLoading(true);
       try {
         const params = {
@@ -113,12 +138,13 @@ export default function PreventiveMaintenanceDashboard() {
           page: page,
           page_size: pageSize,
           ordering: "scheduled_date",
+          property_id: selectedProperty,
         };
 
-        const response =
-          await preventiveMaintenanceService.getAllPreventiveMaintenance(
-            params,
-          );
+        const service = createPreventiveMaintenanceService(accessToken);
+        const response = await service.getAllPreventiveMaintenance(params);
+
+        if (requestId !== upcomingRequestRef.current) return;
 
         if (response.success && response.data) {
           const items = response.data.results;
@@ -126,7 +152,12 @@ export default function PreventiveMaintenanceDashboard() {
           // Filter out aggregate/placeholder entries (e.g., title "All PM")
           const filtered = items.filter((it) => !isAllPMItem(it));
           setUpcomingItems(filtered);
-          setUpcomingTotal(filtered.length);
+          setUpcomingTotal(response.data.count);
+          const canonicalPage = Math.max(
+            1,
+            Math.min(response.data.current_page, Math.max(1, response.data.total_pages)),
+          );
+          setUpcomingPage(canonicalPage);
         } else {
           console.error(
             "❌ Failed to fetch upcoming maintenance:",
@@ -136,82 +167,40 @@ export default function PreventiveMaintenanceDashboard() {
           setUpcomingTotal(0);
         }
       } catch (error) {
+        if (requestId !== upcomingRequestRef.current) return;
         console.error("❌ Error fetching upcoming maintenance:", error);
         setUpcomingItems([]);
         setUpcomingTotal(0);
       } finally {
-        setUpcomingLoading(false);
+        if (requestId === upcomingRequestRef.current) setUpcomingLoading(false);
       }
     },
-    [],
+    [accessToken, selectedProperty],
   );
 
-  // Transform maintenance items into statistics format for compatibility
+  // Normalize the authoritative statistics response for the existing cards.
   const statistics = useMemo(() => {
-    if (!maintenanceItems || maintenanceItems.length === 0) {
-      return {
-        counts: { total: 0, pending: 0, overdue: 0, completed: 0 },
-        frequency_distribution: [],
-        upcoming: [],
-        avg_completion_times: {},
-      };
-    }
-
-    // Filter out aggregate/placeholder entries (e.g., title "All PM")
-    const filtered = maintenanceItems.filter(
-      (item: PMListItem) => !isAllPMItem(item),
-    );
-
+    if (!authoritativeStatistics) return null;
+    const distribution = authoritativeStatistics.frequency_distribution;
     return {
-      counts: {
-        total: filtered.length,
-        pending: filtered.filter(
-          (item: any) => !item.status || item.status === "pending",
-        ).length,
-        overdue: filtered.filter((item: any) => item.status === "overdue")
-          .length,
-        completed: filtered.filter((item: any) => item.status === "completed")
-          .length,
-      },
-      frequency_distribution: [],
-      upcoming: filtered.slice(0, 5),
-      avg_completion_times: {},
+      ...authoritativeStatistics,
+      frequency_distribution: Array.isArray(distribution)
+        ? distribution
+        : Object.entries(distribution || {}).map(([frequency, count]) => ({ frequency, count })),
     };
-  }, [maintenanceItems]);
+  }, [authoritativeStatistics]);
 
-  // Fetch maintenance data on component mount
+  // One canonical list/statistics refresh for mount and each Property change.
   useEffect(() => {
-    if (maintenanceItems.length === 0 && !isLoading) {
-      if (typeof fetchMaintenanceItems === "function") {
-        fetchMaintenanceItems();
-      } else {
-        console.error(
-          "❌ fetchMaintenanceItems is not available:",
-          fetchMaintenanceItems,
-        );
-
-        // Try to access the function directly from context
-        if (context && typeof context.fetchMaintenanceItems === "function") {
-          context.fetchMaintenanceItems();
-        } else {
-          console.error("❌ fetchMaintenanceItems not found in context either");
-          // Try to manually fetch data using the service directly
-          const manualFetch = async () => {
-            try {
-              const response =
-                await preventiveMaintenanceService.getAllPreventiveMaintenance();
-              if (response.success && response.data) {
-                // Note: This won't update the context, but will show data is available
-              }
-            } catch (error) {
-              console.error("❌ Manual fetch failed:", error);
-            }
-          };
-          manualFetch();
-        }
-      }
+    if (accessToken && selectedProperty) {
+      const store = usePreventiveMaintenanceStore.getState();
+      store.setMaintenanceItems([]);
+      store.setTotalCount(0);
+      store.setStatistics(null);
+      fetchMaintenanceItems({ page: 1, page_size: 10 });
+      fetchStatistics();
     }
-  }, [maintenanceItems.length, isLoading, fetchMaintenanceItems, context]);
+  }, [accessToken, selectedProperty, fetchMaintenanceItems, fetchStatistics]);
 
   // Debug effect to log data
   useEffect(() => {
@@ -219,10 +208,25 @@ export default function PreventiveMaintenanceDashboard() {
     }
   }, [maintenanceItems, isLoading, error, statistics]);
 
-  // Fetch upcoming maintenance with pagination
+  // Fetch upcoming maintenance with pagination. A Property transition first
+  // invalidates the old request and settles page 1, then performs one fetch.
   useEffect(() => {
+    if (upcomingPropertyRef.current !== selectedProperty) {
+      upcomingPropertyRef.current = selectedProperty;
+      upcomingRequestRef.current += 1;
+      setUpcomingItems([]);
+      setUpcomingTotal(0);
+      if (upcomingPage !== 1) {
+        setUpcomingPage(1);
+        return;
+      }
+    }
     fetchUpcomingMaintenance(upcomingPage, upcomingPageSize);
-  }, [upcomingPage, upcomingPageSize, fetchUpcomingMaintenance]);
+  }, [selectedProperty, upcomingPage, upcomingPageSize, fetchUpcomingMaintenance]);
+
+  useEffect(() => () => {
+    upcomingRequestRef.current += 1;
+  }, []);
 
   // Pagination control functions
   const handlePageChange = (newPage: number) => {

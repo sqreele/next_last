@@ -6,6 +6,7 @@ WORKDIR /app
 
 # Harden npm against flaky networks and speed up installs
 ENV \
+    TZ=Asia/Bangkok \
     NPM_CONFIG_FETCH_RETRIES=5 \
     NPM_CONFIG_FETCH_RETRY_FACTOR=2 \
     NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000 \

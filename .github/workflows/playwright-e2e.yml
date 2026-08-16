@@ -1,6 +1,9 @@
 name: Playwright authenticated property smoke
 
 on:
+  push:
+    paths:
+      - .github/workflows/playwright-e2e.yml
   pull_request:
   workflow_dispatch:
 

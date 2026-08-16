@@ -2,7 +2,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from .models import Inventory, InventoryUsage, Job, Machine, PreventiveMaintenance, Property, Room, User
+from .models import Area, Inventory, InventoryUsage, Job, Machine, PreventiveMaintenance, Property, Room, User
 
 
 class InventoryTenantIsolationTests(APITestCase):
@@ -30,6 +30,19 @@ class InventoryTenantIsolationTests(APITestCase):
         )
         self.foreign_pm.machines.set([machine])
         self.client.force_authenticate(self.alice)
+
+    def assert_rejected_without_inventory_side_effects(self, action, relation):
+        response = self.client.post(
+            f'/api/v1/inventory/{self.local.item_id}/{action}/',
+            {'quantity': 2, **relation},
+            format='json',
+        )
+        self.assertNotIn(response.status_code, range(200, 300), response.content)
+        self.local.refresh_from_db()
+        self.assertEqual(self.local.quantity, 10)
+        self.assertFalse(self.local.jobs.exists())
+        self.assertFalse(self.local.preventive_maintenances.exists())
+        self.assertEqual(InventoryUsage.objects.count(), 0)
 
     def test_list_retrieve_filter_delete_and_numeric_idor(self):
         response = self.client.get('/api/v1/inventory/')
@@ -75,18 +88,92 @@ class InventoryTenantIsolationTests(APITestCase):
         self.assertEqual(self.foreign.quantity, 20)
         self.assertEqual(InventoryUsage.objects.count(), 0)
 
-    def test_consume_rejects_foreign_job_and_pm_without_side_effects(self):
-        for relation in ({'job_id': self.foreign_job.job_id}, {'pm_id': self.foreign_pm.pm_id}):
-            response = self.client.post(
-                f'/api/v1/inventory/{self.local.item_id}/consume/',
-                {'quantity': 2, **relation}, format='json'
+    def test_consume_and_use_reject_foreign_job_and_pm_without_side_effects(self):
+        for action in ('consume', 'use'):
+            for relation in ({'job_id': self.foreign_job.job_id}, {'pm_id': self.foreign_pm.pm_id}):
+                self.assert_rejected_without_inventory_side_effects(action, relation)
+
+    def test_consume_and_use_reject_empty_scope_job_and_pm_without_side_effects(self):
+        unscoped_job = Job.objects.create(
+            user=self.bob,
+            description='Foreign job without property relationships',
+            remarks='ok',
+        )
+        unscoped_pm = PreventiveMaintenance.objects.create(
+            pmtitle='Foreign PM without property relationships',
+            scheduled_date=timezone.now(),
+            created_by=self.bob,
+        )
+
+        for action in ('consume', 'use'):
+            self.assert_rejected_without_inventory_side_effects(
+                action, {'job_id': unscoped_job.job_id}
             )
-            self.assertNotIn(response.status_code, range(200, 300))
+            self.assert_rejected_without_inventory_side_effects(
+                action, {'pm_id': unscoped_pm.pm_id}
+            )
+
+    def test_consume_and_use_reject_ambiguous_job_and_pm_without_side_effects(self):
+        beta_area = Area.objects.create(name='Stock Beta Area', property=self.beta)
+        ambiguous_job = Job.objects.create(
+            user=self.alice,
+            description='Job spanning room and foreign area',
+            remarks='ok',
+            area=beta_area,
+        )
+        ambiguous_job.rooms.set([self.alpha_room])
+
+        alpha_machine = Machine.objects.create(
+            name='Alpha stock machine', category='Pump', property=self.alpha
+        )
+        beta_machine = Machine.objects.create(
+            name='Second beta stock machine', category='Pump', property=self.beta
+        )
+        ambiguous_pm = PreventiveMaintenance.objects.create(
+            pmtitle='PM spanning two properties',
+            scheduled_date=timezone.now(),
+            created_by=self.alice,
+        )
+        ambiguous_pm.machines.set([alpha_machine, beta_machine])
+
+        for action in ('consume', 'use'):
+            self.assert_rejected_without_inventory_side_effects(
+                action, {'job_id': ambiguous_job.job_id}
+            )
+            self.assert_rejected_without_inventory_side_effects(
+                action, {'pm_id': ambiguous_pm.pm_id}
+            )
+
+    def test_valid_same_property_pm_consume_succeeds(self):
+        alpha_machine = Machine.objects.create(
+            name='Valid alpha stock machine', category='Pump', property=self.alpha
+        )
+        local_pm = PreventiveMaintenance.objects.create(
+            pmtitle='Valid alpha stock PM',
+            scheduled_date=timezone.now(),
+            created_by=self.alice,
+        )
+        local_pm.machines.set([alpha_machine])
+
+        response = self.client.post(
+            f'/api/v1/inventory/{self.local.item_id}/consume/',
+            {'quantity': 2, 'pm_id': local_pm.pm_id},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
         self.local.refresh_from_db()
-        self.assertEqual(self.local.quantity, 10)
-        self.assertEqual(InventoryUsage.objects.count(), 0)
-        self.assertFalse(self.local.jobs.exists())
-        self.assertFalse(self.local.preventive_maintenances.exists())
+        self.assertEqual(self.local.quantity, 8)
+        self.assertEqual(list(self.local.preventive_maintenances.all()), [local_pm])
+        self.assertEqual(
+            InventoryUsage.objects.filter(
+                inventory=self.local,
+                preventive_maintenance=local_pm,
+                property=self.alpha,
+                quantity=2,
+            ).count(),
+            1,
+        )
 
     def test_same_property_create_patch_consume_restock_and_delete(self):
         created = self.client.post('/api/v1/inventory/', {

@@ -15,9 +15,21 @@ def _job_property_ids(job):
 
 def _pm_property_ids(pm):
     property_q = Q(machines__preventive_maintenances=pm)
+    property_ids = set(Property.objects.filter(property_q).values_list('id', flat=True))
     if pm.job_id:
-        property_q |= Q(rooms__jobs=pm.job)
-    return set(Property.objects.filter(property_q).values_list('id', flat=True))
+        property_ids.update(_job_property_ids(pm.job))
+    return property_ids
+
+
+def _ensure_related_property_matches_inventory(*, relation, property_ids, inventory):
+    if len(property_ids) != 1:
+        raise ValidationError({
+            'inventory_usage': f'{relation} must belong to exactly one property.'
+        })
+    if inventory.property_id not in property_ids:
+        raise ValidationError({
+            'inventory_usage': f'{inventory.item_id} does not belong to the {relation.lower()} property.'
+        })
 
 
 def _ensure_user_can_use_property(user, property_obj):
@@ -55,13 +67,18 @@ def consume_inventory_items(*, user, items, job=None, preventive_maintenance=Non
                 raise ValidationError({'inventory_usage': f'Inventory item {inventory.item_id} is not assigned to a property.'})
 
             _ensure_user_can_use_property(user, inventory.property)
-            job_property_ids = _job_property_ids(job) if job is not None else set()
-            pm_property_ids = _pm_property_ids(preventive_maintenance) if preventive_maintenance is not None else set()
-
-            if job is not None and job_property_ids and inventory.property_id not in job_property_ids:
-                raise ValidationError({'inventory_usage': f'{inventory.item_id} does not belong to the job property.'})
-            if preventive_maintenance is not None and pm_property_ids and inventory.property_id not in pm_property_ids:
-                raise ValidationError({'inventory_usage': f'{inventory.item_id} does not belong to the PM property.'})
+            if job is not None:
+                _ensure_related_property_matches_inventory(
+                    relation='Job',
+                    property_ids=_job_property_ids(job),
+                    inventory=inventory,
+                )
+            if preventive_maintenance is not None:
+                _ensure_related_property_matches_inventory(
+                    relation='PM',
+                    property_ids=_pm_property_ids(preventive_maintenance),
+                    inventory=inventory,
+                )
             if inventory.quantity < quantity:
                 raise ValidationError({
                     'inventory_usage': f'Insufficient stock for {inventory.item_id}: {inventory.quantity} available, {quantity} requested.'

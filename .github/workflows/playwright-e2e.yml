@@ -51,6 +51,12 @@ jobs:
           {
             echo "E2E_PASSWORD=$e2e_password"
             echo "E2E_SESSION_SECRET=$session_secret"
+            echo "POSTGRES_DB=mylubd_e2e"
+            echo "POSTGRES_USER=mylubd_e2e"
+            echo "POSTGRES_PASSWORD=$database_password"
+            echo "SQL_DATABASE=mylubd_e2e"
+            echo "SQL_USER=mylubd_e2e"
+            echo "SQL_PASSWORD=$database_password"
           } >> "$GITHUB_ENV"
           {
             echo "POSTGRES_DB=mylubd_e2e"

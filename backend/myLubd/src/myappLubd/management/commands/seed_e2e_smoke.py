@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 
-from ...models import Inventory, Property, Tenant
+from ...models import Area, Inventory, Job, Property, Tenant, Topic
 
 
 E2E_USERNAME = 'e2e-browser-smoke'
@@ -14,6 +14,9 @@ PROPERTY_ALPHA = 'E2E Property Alpha'
 PROPERTY_BETA = 'E2E Property Beta'
 INVENTORY_ALPHA = 'E2E Inventory Alpha'
 INVENTORY_BETA = 'E2E Inventory Beta'
+AREA_ALPHA = 'E2E Area Alpha'
+TOPIC_SMOKE = 'E2E Job Smoke Topic'
+TOPIC_DISCOVERY_JOB = 'E2E Topic Discovery Fixture'
 
 
 class Command(BaseCommand):
@@ -35,6 +38,7 @@ class Command(BaseCommand):
         User = get_user_model()
         Tenant.objects.filter(slug=E2E_TENANT_SLUG).delete()
         User.objects.filter(username=E2E_USERNAME, email=E2E_EMAIL).delete()
+        Topic.objects.filter(title=TOPIC_SMOKE).delete()
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -105,4 +109,28 @@ class Command(BaseCommand):
             name=INVENTORY_BETA,
             defaults={'quantity': 22, 'category': 'parts', 'unit': 'pcs', 'created_by': user},
         )
+        area_alpha, _ = Area.objects.update_or_create(
+            property=property_alpha,
+            name=AREA_ALPHA,
+            defaults={'description': 'Owned E2E Job location fixture', 'is_active': True},
+        )
+        topic_smoke, _ = Topic.objects.update_or_create(
+            title=TOPIC_SMOKE,
+            defaults={
+                'description': 'Owned E2E Job category fixture',
+                'is_visible_in_create_job': True,
+            },
+        )
+        topic_discovery_job, _ = Job.objects.update_or_create(
+            user=user,
+            description=TOPIC_DISCOVERY_JOB,
+            defaults={
+                'updated_by': user,
+                'area': area_alpha,
+                'remarks': 'Makes the property-scoped topic discoverable to the real Create Job UI.',
+                'status': 'completed',
+                'priority': 'low',
+            },
+        )
+        topic_discovery_job.topics.set([topic_smoke])
         self.stdout.write(self.style.SUCCESS('Seeded E2E browser-smoke fixture.'))

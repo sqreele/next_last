@@ -7,6 +7,7 @@ from django.core.management.base import CommandError
 from django.test import TestCase
 
 from .management.commands.seed_e2e_smoke import (
+    AREA_ALPHA,
     E2E_EMAIL,
     E2E_TENANT_SLUG,
     E2E_USERNAME,
@@ -14,8 +15,10 @@ from .management.commands.seed_e2e_smoke import (
     INVENTORY_BETA,
     PROPERTY_ALPHA,
     PROPERTY_BETA,
+    TOPIC_SMOKE,
+    TOPIC_DISCOVERY_JOB,
 )
-from .models import Inventory, Property, Tenant
+from .models import Area, Inventory, Job, Property, Tenant, Topic
 
 
 class E2ESmokeSeedCommandTests(TestCase):
@@ -54,6 +57,25 @@ class E2ESmokeSeedCommandTests(TestCase):
             {INVENTORY_ALPHA, INVENTORY_BETA},
         )
         self.assertEqual(User.objects.filter(username=E2E_USERNAME).count(), 1)
+        self.assertTrue(
+            Area.objects.filter(
+                property__name=PROPERTY_ALPHA, name=AREA_ALPHA, is_active=True
+            ).exists()
+        )
+        self.assertTrue(
+            Topic.objects.filter(
+                title=TOPIC_SMOKE, is_visible_in_create_job=True
+            ).exists()
+        )
+        self.assertEqual(
+            Job.objects.filter(
+                user=user,
+                description=TOPIC_DISCOVERY_JOB,
+                area__name=AREA_ALPHA,
+                topics__title=TOPIC_SMOKE,
+            ).count(),
+            1,
+        )
         self.assertTrue(Property.objects.filter(pk=unrelated_property.pk).exists())
 
     def test_reset_removes_only_owned_namespace(self):
@@ -65,6 +87,7 @@ class E2ESmokeSeedCommandTests(TestCase):
         unrelated_property = Property.objects.create(
             name='Reset Survivor Property', tenant=unrelated_tenant
         )
+        unrelated_topic = Topic.objects.create(title='Reset Survivor Topic')
 
         with patch.dict('os.environ', self.env, clear=False):
             call_command('seed_e2e_smoke', stdout=StringIO())
@@ -75,6 +98,8 @@ class E2ESmokeSeedCommandTests(TestCase):
         self.assertFalse(Inventory.objects.filter(name__in=[INVENTORY_ALPHA, INVENTORY_BETA]).exists())
         self.assertTrue(User.objects.filter(pk=unrelated_user.pk).exists())
         self.assertTrue(Property.objects.filter(pk=unrelated_property.pk).exists())
+        self.assertTrue(Topic.objects.filter(pk=unrelated_topic.pk).exists())
+        self.assertFalse(Topic.objects.filter(title=TOPIC_SMOKE).exists())
 
     def test_seed_refuses_to_adopt_a_property_outside_the_owned_namespace(self):
         User = get_user_model()

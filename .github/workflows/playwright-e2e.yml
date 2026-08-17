@@ -129,7 +129,7 @@ jobs:
 
       - name: Run authenticated property smoke
         working-directory: frontend/Lastnext
-        run: npm run test:e2e -- e2e/session-property.spec.ts
+        run: npm run test:e2e
 
       - name: Collect application logs on failure
         if: failure()

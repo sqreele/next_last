@@ -14,3 +14,8 @@ __pycache__/
 optimize_job_images*.log
 *.swp
 before_merge_*.sql
+
+# Playwright test artifacts
+frontend/Lastnext/.playwright/
+frontend/Lastnext/playwright-report/
+frontend/Lastnext/test-results/

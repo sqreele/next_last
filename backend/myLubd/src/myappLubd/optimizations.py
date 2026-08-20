@@ -27,7 +27,7 @@ class QueryOptimizer:
             'user',
             'updated_by'
         ).prefetch_related(
-            'rooms__properties',
+            'rooms__property',
             'topics',
             'job_images__uploaded_by'
         ).annotate(
@@ -48,7 +48,7 @@ class QueryOptimizer:
         ).prefetch_related(
             'topics',
             'machines__property',
-            'job__rooms__properties'
+            'job__property'
         ).annotate(
             # Add computed fields
             topics_count=Count('topics', distinct=True),
@@ -70,7 +70,7 @@ class QueryOptimizer:
         Get optimized queryset for Property model
         """
         return Property.objects.prefetch_related(
-            'rooms',
+            'canonical_rooms',
             'users',
             'machines'
         ).annotate(
@@ -167,7 +167,7 @@ class SerializerOptimizer:
         
         job_images = JobImage.objects.filter(job_id__in=job_ids).select_related('uploaded_by')
         topics = Topic.objects.filter(jobs__id__in=job_ids).distinct()
-        rooms = Room.objects.filter(jobs__id__in=job_ids).prefetch_related('properties')
+        rooms = Room.objects.filter(jobs__id__in=job_ids).select_related('property')
         
         # Create lookup dictionaries
         images_by_job = {}

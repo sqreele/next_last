@@ -1,6 +1,7 @@
 """Tenant and billing helpers for SaaS-scoped access control."""
 
 from django.core.exceptions import PermissionDenied
+from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
@@ -19,6 +20,10 @@ from .models import (
 
 TENANT_ADMIN_ROLES = {'owner', 'admin', 'billing'}
 TENANT_OPERATOR_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'technician'}
+# These are the existing roles which intentionally see every property in a
+# tenant.  Keep this decision here rather than duplicating role checks in API
+# views.
+TENANT_WIDE_PROPERTY_ROLES = {'owner', 'admin', 'manager'}
 
 
 def get_user_tenant_memberships(user):
@@ -34,9 +39,25 @@ def get_user_tenant_memberships(user):
 def get_user_tenants(user):
     if not getattr(user, 'is_authenticated', False):
         return Tenant.objects.none()
-    if user.is_staff or user.is_superuser:
+    if user.is_superuser:
         return Tenant.objects.all()
     return Tenant.objects.filter(memberships__user=user, memberships__is_active=True).distinct()
+
+
+def get_active_membership(user, tenant):
+    """Return a user's active membership for ``tenant``, if any.
+
+    This is the canonical tenant gate for request-facing code.  Platform staff
+    are deliberately handled by callers as an existing global-admin bypass;
+    they are not treated as tenant members.
+    """
+    if not getattr(user, 'is_authenticated', False) or tenant is None:
+        return None
+    return get_user_tenant_memberships(user).filter(tenant=tenant).first()
+
+
+def membership_can_access_all_properties(membership):
+    return bool(membership and membership.is_active and membership.role in TENANT_WIDE_PROPERTY_ROLES)
 
 
 def get_primary_tenant(user):
@@ -57,7 +78,7 @@ def get_primary_tenant(user):
 def user_can_manage_tenant(user, tenant):
     if not getattr(user, 'is_authenticated', False) or tenant is None:
         return False
-    if user.is_staff or user.is_superuser:
+    if user.is_superuser:
         return True
     return TenantMembership.objects.filter(
         tenant=tenant,
@@ -67,24 +88,52 @@ def user_can_manage_tenant(user, tenant):
     ).exists()
 
 
-def get_accessible_properties(user):
+def get_accessible_properties(user, tenant=None):
+    """Return the sole property queryset used for authorization.
+
+    Tenant-backed properties require an active TenantMembership.  Restricted
+    roles receive only the membership's ``properties`` M2M; owner/admin/
+    manager roles have explicit tenant-wide access.  ``Property.users`` and
+    ``UserProfile.properties`` remain a *tenantless legacy* compatibility
+    path only.  This prevents a direct-access row from bypassing membership on
+    a tenant-backed property while keeping the pre-SaaS production data usable
+    until it is migrated.
+    """
     if not getattr(user, 'is_authenticated', False):
         return Property.objects.none()
-    if user.is_staff or user.is_superuser:
-        return Property.objects.all()
+    if user.is_superuser:
+        qs = Property.objects.all()
+        return qs.filter(tenant=tenant) if tenant is not None else qs
 
-    tenant_member_property_q = Q(tenant_memberships__user=user, tenant_memberships__is_active=True)
+    # A membership property grant must belong to the same active membership;
+    # the old implementation accidentally matched any active membership for
+    # the user because the two joins were independent.
+    tenant_member_property_q = Q(
+        tenant_memberships__user=user,
+        tenant_memberships__is_active=True,
+        tenant_memberships__tenant=models.F('tenant'),
+    )
     tenant_wide_q = Q(
         tenant__memberships__user=user,
         tenant__memberships__is_active=True,
-        tenant__memberships__role__in=['owner', 'admin', 'manager'],
+        tenant__memberships__role__in=TENANT_WIDE_PROPERTY_ROLES,
     )
-    legacy_q = Q(users=user) | Q(user_profiles__user=user)
-    return Property.objects.filter(tenant_member_property_q | tenant_wide_q | legacy_q).distinct()
+    # Compatibility is intentionally limited to tenantless records.  Once a
+    # property has a tenant, an inactive/missing membership can never be
+    # overridden by the direct access M2M.
+    legacy_q = Q(tenant__isnull=True) & (Q(users=user) | Q(user_profiles__user=user))
+    qs = Property.objects.filter(tenant_member_property_q | tenant_wide_q | legacy_q).distinct()
+    return qs.filter(tenant=tenant) if tenant is not None else qs
+
+
+def user_can_access_property(user, property_obj):
+    if property_obj is None:
+        return False
+    return get_accessible_properties(user).filter(pk=property_obj.pk).exists()
 
 
 def accessible_property_ids(user):
-    if user.is_staff or user.is_superuser:
+    if user.is_superuser:
         return None
     return set(get_accessible_properties(user).values_list('id', flat=True))
 
@@ -151,12 +200,12 @@ def tenant_usage_counts(tenant):
         'max_properties': properties.count(),
         'max_users': TenantMembership.objects.filter(tenant=tenant, is_active=True).count(),
         'max_monthly_work_orders': Job.objects.filter(
-            Q(rooms__properties__tenant=tenant) | Q(area__property__tenant=tenant),
+            property__tenant=tenant,
             created_at__gte=start,
         ).distinct().count(),
         'max_assets': Machine.objects.filter(property__tenant=tenant).count(),
         'max_pm_schedules': PreventiveMaintenance.objects.filter(
-            Q(job__rooms__properties__tenant=tenant) | Q(machines__property__tenant=tenant)
+            Q(job__property__tenant=tenant) | Q(machines__property__tenant=tenant)
         ).distinct().count(),
     }
 

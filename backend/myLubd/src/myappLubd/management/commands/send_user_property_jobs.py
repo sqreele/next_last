@@ -100,7 +100,7 @@ class Command(BaseCommand):
         # Jobs are related to properties through rooms.properties
         if property_id:
             jobs_query = jobs_query.filter(
-                rooms__properties__id=property_id
+                property__id=property_id
             )
         else:
             # Get user's accessible properties (support both legacy + primary assignment paths)
@@ -115,7 +115,7 @@ class Command(BaseCommand):
 
             if user_property_ids:
                 jobs_query = jobs_query.filter(
-                    rooms__properties__id__in=user_property_ids
+                    property__id__in=user_property_ids
                 )
             else:
                 # If user has no properties, return empty queryset

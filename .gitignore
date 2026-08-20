@@ -9,3 +9,8 @@ nginx/ssl/*
 
 __pycache__/
 *.pyc
+
+# Local maintenance / editor artifacts
+optimize_job_images*.log
+*.swp
+before_merge_*.sql

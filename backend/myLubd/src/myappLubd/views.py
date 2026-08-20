@@ -39,6 +39,8 @@ from .serializers import (
     TenantMembershipSerializer, SubscriptionPlanSerializer,
     TenantSubscriptionSerializer, UsageMetricSerializer,
 )
+from .job_property import resolve_job_property
+from .room_property import sync_room_legacy_property
 from PIL import Image
 from io import BytesIO
 from django.core.files.base import ContentFile
@@ -53,6 +55,7 @@ import re
 from difflib import SequenceMatcher
 from datetime import timedelta
 from calendar import monthrange
+from contextvars import ContextVar
 from django.http import JsonResponse, HttpResponseRedirect
 import os
 from django.http import HttpResponse, Http404
@@ -75,6 +78,7 @@ from .timezones import timezone_options
 
 
 GEMINI_CHAT_MODEL = 'gemini-2.5-flash'
+_ai_accessible_properties = ContextVar('ai_accessible_properties', default=None)
 GEMINI_SYSTEM_INSTRUCTION = """
 คุณคือ AI ผู้ช่วยประจำระบบบริหารจัดการงานช่าง (HotelCare Pro)
 หน้าที่ของคุณคือช่วยตอบคำถามเกี่ยวกับงานแจ้งซ่อมและสถิติของระบบเป็นภาษาไทยที่สุภาพ กระชับ และเข้าใจง่าย
@@ -100,7 +104,14 @@ def _resolve_property(property_name=None):
     if not search:
         return None, None
 
-    properties = list(Property.objects.all())
+    properties_queryset = Property.objects.all()
+    # This context is set only by the authenticated AI dispatcher.  It is not a
+    # tool argument, so a model/provider cannot widen the server-controlled
+    # property scope.
+    ai_scope = _ai_accessible_properties.get()
+    if ai_scope is not None:
+        properties_queryset = properties_queryset.filter(pk__in=ai_scope.values('pk'))
+    properties = list(properties_queryset)
     normalized_search = _normalize_search_text(search)
 
     for prop in properties:
@@ -142,10 +153,10 @@ def _resolve_room(room_name=None, property_obj=None):
     if not search:
         return None, None
 
-    rooms = Room.objects.all()
+    rooms = Room.objects.select_related('property')
     if property_obj:
-        rooms = rooms.filter(properties=property_obj)
-    rooms = list(rooms.distinct())
+        rooms = rooms.filter(property=property_obj)
+    rooms = list(rooms)
     normalized_search = _normalize_search_text(search)
 
     for room in rooms:
@@ -615,11 +626,11 @@ def get_maintenance_summary(property_name: str = "", room_name: str = "", catego
         }
 
     jobs = Job.objects.all()
+    ai_scope = _ai_accessible_properties.get()
+    if ai_scope is not None:
+        jobs = jobs.filter(property__in=ai_scope)
     if property_obj:
-        jobs = jobs.filter(
-            Q(area__property=property_obj) |
-            Q(rooms__properties=property_obj)
-        ).distinct()
+        jobs = jobs.filter(property=property_obj)
     if room_obj:
         jobs = jobs.filter(rooms=room_obj).distinct()
     if topic_obj:
@@ -835,7 +846,7 @@ def get_maintenance_summary(property_name: str = "", room_name: str = "", catego
     room_details = []
     room_queryset = Room.objects.all()
     if property_obj:
-        room_queryset = room_queryset.filter(properties=property_obj)
+        room_queryset = room_queryset.filter(property=property_obj)
     if room_obj:
         room_queryset = room_queryset.filter(pk=room_obj.pk)
 
@@ -867,8 +878,7 @@ def get_maintenance_summary(property_name: str = "", room_name: str = "", catego
     ).prefetch_related('topics')
     if property_obj:
         preventive_maintenance = preventive_maintenance.filter(
-            Q(job__area__property=property_obj) |
-            Q(job__rooms__properties=property_obj)
+            Q(job__property=property_obj)
         ).distinct()
 
     pm_status_counts = list(
@@ -965,11 +975,11 @@ def get_today_maintenance_jobs(property_name: str = ""):
         created_at__lt=end_of_day,
     )
 
+    ai_scope = _ai_accessible_properties.get()
+    if ai_scope is not None:
+        jobs = jobs.filter(property__in=ai_scope)
     if property_obj:
-        jobs = jobs.filter(
-            Q(area__property=property_obj) |
-            Q(rooms__properties=property_obj)
-        ).distinct()
+        jobs = jobs.filter(property=property_obj)
 
     status_counts = list(
         jobs.values('status')
@@ -1151,10 +1161,18 @@ def get_recurring_maintenance_tasks(property_name: str = '', frequency: str = ''
         'procedure_template',
     ).prefetch_related('topics', 'job__rooms', 'machines', 'machines__property')
 
+    ai_scope = _ai_accessible_properties.get()
+    if ai_scope is not None:
+        # Linked Jobs are scoped exclusively by canonical Job.property.  A PM
+        # with no linked Job may still be scoped by its native Machine property.
+        tasks = tasks.filter(
+            Q(job__property__in=ai_scope)
+            | Q(job__isnull=True, machines__property__in=ai_scope)
+        )
+
     if property_obj:
         tasks = tasks.filter(
-            Q(job__area__property=property_obj) |
-            Q(job__rooms__properties=property_obj) |
+            Q(job__property=property_obj) |
             Q(machines__property=property_obj)
         ).distinct()
 
@@ -1257,9 +1275,13 @@ def _gemini_config(include_tools=True):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def chat_with_gemini(request):
     """REST API สำหรับคุยกับ Gemini พร้อม Function Calling เพื่อดึงข้อมูลแจ้งซ่อมจากระบบ"""
+    # Establish the canonical authorization boundary before any AI processing.
+    # A.2h-2 propagates this scope through each context helper.
+    accessible_properties = get_accessible_properties(request.user)
+    ai_scope_token = _ai_accessible_properties.set(accessible_properties)
     message = str(request.data.get('message') or '').strip()
     if not message:
         return Response(
@@ -1430,6 +1452,8 @@ def chat_with_gemini(request):
             {'detail': 'ไม่สามารถเชื่อมต่อ Gemini ได้ในขณะนี้', 'error': str(exc)},
             status=status.HTTP_502_BAD_GATEWAY,
         )
+    finally:
+        _ai_accessible_properties.reset(ai_scope_token)
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -1476,17 +1500,13 @@ def display_name_from_user(user, fallback='Unknown Technician'):
 
 
 def _job_property_ids(job):
-    return set(
-        Property.objects.filter(
-            Q(rooms__jobs=job) | Q(areas__jobs=job)
-        ).values_list('id', flat=True)
-    )
+    return {job.property_id} if job is not None and job.property_id else set()
 
 
 def _pm_property_ids(pm):
     property_q = Q(machines__preventive_maintenances=pm)
     if pm.job_id:
-        property_q |= Q(rooms__jobs=pm.job)
+        property_q |= Q(jobs=pm.job)
     return set(Property.objects.filter(property_q).values_list('id', flat=True))
 
 
@@ -1703,8 +1723,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             'topics',  # Many-to-many
             'machines',  # Many-to-many
             'machines__property',  # Related property through machines
-            'job__rooms',  # Rooms through job
-            'job__rooms__properties',  # Properties through rooms
+            'job__rooms',  # Physical location detail only
         )
 
         property_filter = self.request.query_params.get('property_id')
@@ -1719,7 +1738,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             property_ids = accessible_property_ids(user)
             logger.info(f"[PM Filter] Non-admin user - accessible properties: {sorted(property_ids)}")
             queryset = queryset.filter(
-                Q(job__rooms__properties__id__in=property_ids)
+                Q(job__property_id__in=property_ids)
                 |
                 Q(machines__property_id__in=property_ids)
             )
@@ -1729,7 +1748,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             logger.info(f"[PM Filter] Applying property filter: {property_filter}")
             before_count = queryset.count()
             queryset = queryset.filter(
-                Q(job__rooms__properties__property_id=property_filter)
+                Q(job__property__property_id=property_filter)
                 |
                 Q(machines__property__property_id=property_filter)
             )
@@ -2552,7 +2571,7 @@ class MachineViewSet(viewsets.ModelViewSet):
         )
 
         if not (user.is_staff or user.has_perm('machines.view_all_machines')):
-            queryset = queryset.filter(property__users=user)
+            queryset = queryset.filter(property__in=get_accessible_properties(user))
 
         status_filter = self.request.query_params.get('status')
         if status_filter:
@@ -2958,16 +2977,17 @@ class RoomViewSet(viewsets.ModelViewSet):
         user = self.request.user
         logger.info(f"User {user.username} requesting rooms")
 
-        base_queryset = Room.objects.prefetch_related('properties')
+        base_queryset = Room.objects.select_related('property')
         property_id = self.request.query_params.get('property') or self.request.query_params.get('property_id')
         area_id = self.request.query_params.get('area_id') or self.request.query_params.get('area')
         floor = self.request.query_params.get('floor')
         is_active = self.request.query_params.get('is_active')
 
         if area_id:
-            area_qs = Area.objects.select_related('property').filter(id=area_id)
-            if not (user.is_staff or user.is_superuser or user.username == 'admin'):
-                area_qs = area_qs.filter(property__users=user)
+            area_qs = Area.objects.select_related('property').filter(
+                id=area_id,
+                property__in=get_accessible_properties(user),
+            )
             area_obj = area_qs.first()
             if not area_obj:
                 return Room.objects.none()
@@ -2993,16 +3013,12 @@ class RoomViewSet(viewsets.ModelViewSet):
         def apply_property_filter(queryset, prop_value):
             if not prop_value:
                 return queryset
-            property_q = Q(properties__property_id=prop_value)
+            property_q = Q(property__property_id=prop_value)
             if str(prop_value).isdigit():
-                property_q |= Q(properties__id=int(prop_value))
+                property_q |= Q(property__id=int(prop_value))
             return queryset.filter(property_q)
 
-        if user.is_superuser or user.is_staff or user.username == 'admin':
-            queryset = apply_property_filter(base_queryset, property_id)
-            return apply_floor_filter(queryset).distinct()
-
-        user_properties = Property.objects.filter(users=user)
+        user_properties = get_accessible_properties(user)
         logger.info(f"User has access to {user_properties.count()} properties")
 
         if property_id:
@@ -3013,11 +3029,11 @@ class RoomViewSet(viewsets.ModelViewSet):
             if not property_qs.exists():
                 logger.warning(f"User {user.username} doesn't have access to property {property_id}")
                 return Room.objects.none()
-            queryset = Room.objects.filter(properties__in=property_qs)
+            queryset = Room.objects.filter(property__in=property_qs)
         else:
-            queryset = Room.objects.filter(properties__in=user_properties)
+            queryset = Room.objects.filter(property__in=user_properties)
 
-        return apply_floor_filter(queryset).distinct()
+        return apply_floor_filter(queryset)
 
     @action(detail=False, methods=['get'], url_path='import-template')
     def import_template(self, request):
@@ -3042,12 +3058,13 @@ class RoomViewSet(viewsets.ModelViewSet):
 
         Required: name. Optional: room_type (default 'Standard'), is_active
         (default true), property_id (defaults to ?property_id= query param).
-        Existing rooms (same name) get attached to the target property
-        instead of being recreated, so re-uploading the same sheet is
-        idempotent — Room.name has a unique constraint globally.
+        Existing rooms (same name) may only be reused for their existing
+        canonical Property.  Room ownership is immutable and globally unique
+        names must never be attached to a second Property.
 
         Tenant scoping: the request user must have access to every property
-        being targeted. Staff/superuser bypass."""
+        being targeted. Only the documented superuser break-glass scope is
+        represented by ``get_accessible_properties``."""
         import csv as _csv
         from io import StringIO
 
@@ -3078,16 +3095,14 @@ class RoomViewSet(viewsets.ModelViewSet):
         if reader.fieldnames is None:
             return Response({'error': 'CSV is empty.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        is_staff_bypass = request.user.is_staff or request.user.is_superuser
-        accessible_props = list(Property.objects.filter(users=request.user))
-        if not accessible_props and not is_staff_bypass:
+        accessible_props = list(get_accessible_properties(request.user))
+        if not accessible_props:
             return Response(
                 {'error': 'You have no property access — cannot import rooms.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
         prop_lookup = {}
-        prop_source = Property.objects.all() if is_staff_bypass else accessible_props
-        for prop in prop_source:
+        for prop in accessible_props:
             prop_lookup[str(prop.id)] = prop
             if prop.property_id:
                 prop_lookup[str(prop.property_id)] = prop
@@ -3113,7 +3128,7 @@ class RoomViewSet(viewsets.ModelViewSet):
             is_active = is_active_raw not in ('0', 'false', 'no', 'inactive')
 
             target_prop = prop_lookup.get(row.get('property_id', '')) if row.get('property_id') else default_prop
-            if target_prop is None and not is_staff_bypass:
+            if target_prop is None:
                 errors.append({
                     'row': row_index,
                     'error': 'property_id missing or not accessible to you.',
@@ -3121,21 +3136,32 @@ class RoomViewSet(viewsets.ModelViewSet):
                 continue
 
             try:
-                existing = Room.objects.filter(name=name[:100]).first()
-                if existing is not None:
-                    if target_prop is not None:
-                        existing.properties.add(target_prop)
-                    attached.append({'row': row_index, 'room_id': existing.room_id, 'name': existing.name})
-                    continue
+                with transaction.atomic():
+                    existing = Room.objects.select_for_update().filter(name=name[:100]).first()
+                    if existing is not None:
+                        if existing.property_id != target_prop.pk:
+                            errors.append({
+                                'row': row_index,
+                                'error': (
+                                    'ROOM PROPERTY CONFLICT: '
+                                    f'room_id={existing.room_id}, name={existing.name}, '
+                                    f'existing_property={existing.property_id}, '
+                                    f'requested_property={target_prop.property_id}.'
+                                ),
+                            })
+                            continue
+                        sync_room_legacy_property(existing, target_prop)
+                        attached.append({'row': row_index, 'room_id': existing.room_id, 'name': existing.name})
+                        continue
 
-                room = Room.objects.create(
-                    name=name[:100],
-                    room_type=room_type,
-                    is_active=is_active,
-                )
-                if target_prop is not None:
-                    room.properties.add(target_prop)
-                created.append({'row': row_index, 'room_id': room.room_id, 'name': room.name})
+                    room = Room.objects.create(
+                        name=name[:100],
+                        room_type=room_type,
+                        is_active=is_active,
+                        property=target_prop,
+                    )
+                    sync_room_legacy_property(room, target_prop)
+                    created.append({'row': row_index, 'room_id': room.room_id, 'name': room.name})
             except Exception as exc:  # pragma: no cover - defensive
                 errors.append({'row': row_index, 'error': str(exc)})
 
@@ -3195,10 +3221,8 @@ class TopicViewSet(viewsets.ModelViewSet):
 
         def filter_topics_by_properties(queryset, properties):
             return queryset.filter(
-                Q(jobs__rooms__properties__in=properties) |
-                Q(jobs__area__property__in=properties) |
-                Q(preventive_maintenances__job__rooms__properties__in=properties) |
-                Q(preventive_maintenances__job__area__property__in=properties)
+                Q(jobs__property__in=properties) |
+                Q(preventive_maintenances__job__property__in=properties)
             ).distinct()
 
         # Admin users can access all topics, with optional hidden topic filtering
@@ -3211,7 +3235,7 @@ class TopicViewSet(viewsets.ModelViewSet):
             return queryset
         
         # Get properties the user has access to
-        accessible_properties = Property.objects.filter(users=user)
+        accessible_properties = get_accessible_properties(user)
         if has_property_filter:
             accessible_properties = accessible_properties.filter(id__in=selected_properties.values_list('id', flat=True))
         
@@ -3246,21 +3270,16 @@ class JobViewSet(viewsets.ModelViewSet):
             'area',           # Foreign key to Area
             'area__property',
         ).prefetch_related(
-            'rooms__properties',  # Many-to-many through rooms
+            'rooms__property',
             'topics',            # Many-to-many relationship
             'job_images',        # Reverse foreign key to JobImage
             'preventivemaintenance_set'  # Reverse foreign key
-        ).distinct()  # Remove duplicates from joins
+        )
 
-        # Restrict by user's accessible properties unless staff/admin.
-        # Area-only jobs do not have a room join, so include the job's area
-        # property in the tenant predicate as well.
-        if not (user.is_staff or user.is_superuser):
-            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
-            queryset = queryset.filter(
-                Q(rooms__properties__in=accessible_property_ids) |
-                Q(area__property_id__in=accessible_property_ids)
-            )
+        # Canonical ownership scope; Area/Rooms remain location detail only.
+        if not user.is_superuser:
+            accessible_property_ids = get_accessible_properties(user).values_list('id', flat=True)
+            queryset = queryset.filter(property_id__in=accessible_property_ids)
 
         # Filters
         property_filter = self.request.query_params.get('property_id') or self.request.query_params.get('property')
@@ -3273,9 +3292,9 @@ class JobViewSet(viewsets.ModelViewSet):
         user_filter = self.request.query_params.get('user_id')
 
         if property_filter:
-            property_q = Q(rooms__properties__property_id=property_filter) | Q(area__property__property_id=property_filter)
+            property_q = Q(property__property_id=property_filter)
             if str(property_filter).isdigit():
-                property_q |= Q(rooms__properties__id=int(property_filter)) | Q(area__property_id=int(property_filter))
+                property_q |= Q(property_id=int(property_filter))
             queryset = queryset.filter(property_q)
 
         if topic_filter and str(topic_filter).lower() != 'all':
@@ -3350,14 +3369,14 @@ class JobViewSet(viewsets.ModelViewSet):
 
         # Base room queryset scoped by permissions
         room_qs = Room.objects.filter(is_active=True)
-        if not (user.is_staff or user.is_superuser):
-            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
-            room_qs = room_qs.filter(properties__in=accessible_property_ids)
+        if not user.is_superuser:
+            accessible_property_ids = get_accessible_properties(user).values_list('id', flat=True)
+            room_qs = room_qs.filter(property_id__in=accessible_property_ids)
 
         if property_filter:
             room_qs = room_qs.filter(
-                Q(properties__property_id=property_filter) |
-                Q(properties__id=property_filter)
+                Q(property__property_id=property_filter) |
+                Q(property__id=property_filter)
             )
 
         # Scope by floor using room name prefix (e.g. 6 => 6xx)
@@ -3369,15 +3388,12 @@ class JobViewSet(viewsets.ModelViewSet):
 
         # Job rooms under same permission and optional filters
         job_qs = Job.objects.all()
-        if not (user.is_staff or user.is_superuser):
-            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
-            job_qs = job_qs.filter(rooms__properties__in=accessible_property_ids)
+        if not user.is_superuser:
+            accessible_property_ids = get_accessible_properties(user).values_list('id', flat=True)
+            job_qs = job_qs.filter(property_id__in=accessible_property_ids)
 
         if property_filter:
-            job_qs = job_qs.filter(
-                Q(rooms__properties__property_id=property_filter) |
-                Q(rooms__properties__id=property_filter)
-            )
+            job_qs = job_qs.filter(Q(property__property_id=property_filter) | Q(property_id=property_filter))
 
         if floor:
             floor_str = str(floor).strip()
@@ -3399,19 +3415,16 @@ class JobViewSet(viewsets.ModelViewSet):
         base_queryset = Job.objects.all()
         
         # Apply same filtering logic as get_queryset
-        if not (user.is_staff or user.is_superuser):
-            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
-            base_queryset = base_queryset.filter(
-                Q(rooms__properties__in=accessible_property_ids) |
-                Q(area__property_id__in=accessible_property_ids)
-            )
+        if not user.is_superuser:
+            accessible_property_ids = get_accessible_properties(user).values_list('id', flat=True)
+            base_queryset = base_queryset.filter(property_id__in=accessible_property_ids)
         
         # Apply filters
         property_filter = query_params.get('property_id')
         if property_filter:
-            property_q = Q(rooms__properties__property_id=property_filter) | Q(area__property__property_id=property_filter)
+            property_q = Q(property__property_id=property_filter)
             if str(property_filter).isdigit():
-                property_q |= Q(rooms__properties__id=int(property_filter)) | Q(area__property_id=int(property_filter))
+                property_q |= Q(property_id=int(property_filter))
             base_queryset = base_queryset.filter(property_q)
             
         # Calculate stats using aggregation
@@ -3506,7 +3519,7 @@ class JobViewSet(viewsets.ModelViewSet):
         jobs = Job.objects.filter(user=target_user).select_related(
             'user', 'updated_by', 'area', 'area__property'
         ).prefetch_related(
-            'rooms', 'rooms__properties', 'topics', 'job_images', 'job_images__uploaded_by'
+            'rooms', 'rooms__property', 'topics', 'job_images', 'job_images__uploaded_by'
         ).order_by('-created_at')
         
         initial_count = jobs.count()
@@ -3521,9 +3534,9 @@ class JobViewSet(viewsets.ModelViewSet):
         room_name_filter = request.query_params.get('room_name')
         
         if property_filter:
-            property_q = Q(rooms__properties__property_id=property_filter) | Q(area__property__property_id=property_filter)
+            property_q = Q(property__property_id=property_filter)
             if str(property_filter).isdigit():
-                property_q |= Q(rooms__properties__id=int(property_filter)) | Q(area__property_id=int(property_filter))
+                property_q |= Q(property_id=int(property_filter))
             jobs = jobs.filter(property_q)
             logger.info(f"Applied property filter: {property_filter}")
         
@@ -3629,24 +3642,39 @@ class JobViewSet(viewsets.ModelViewSet):
 
         room_id = serializer.validated_data.get('room_id')
         if room_id:
-            room = Room.objects.prefetch_related('properties').filter(room_id=room_id).first()
+            room = Room.objects.select_related('property').filter(room_id=room_id).first()
             if room is None:
                 raise ValidationError({'room_id': 'Invalid room ID'})
             room_instances.append(room)
 
+        room_instances.extend(serializer.validated_data.get('room_ids') or [])
+
+        resolved_property = serializer.validated_data.get('_resolved_property')
+        if resolved_property is not None and resolved_property.id not in accessible:
+            raise PermissionDenied("You don't have access to the selected property.")
+
+        selected_room_property_ids = set()
         for room in room_instances:
-            room_property_ids = set(room.properties.values_list('id', flat=True))
+            room_property_ids = {room.property_id} if room.property_id else set()
             if not room_property_ids & accessible:
                 raise PermissionDenied(
                     f"You don't have access to a property containing room '{room.name}'."
                 )
+            selected_room_property_ids.update(room_property_ids)
 
-        area = serializer.validated_data.get('area')
+        if len(selected_room_property_ids) > 1:
+            raise ValidationError({'rooms': 'All selected rooms must belong to the same property.'})
+
+        area = serializer.validated_data.get('area', getattr(serializer.instance, 'area', None))
         if area is not None and getattr(area, 'property_id', None) is not None:
             if area.property_id not in accessible:
                 raise PermissionDenied(
                     "You don't have access to that area's property."
                 )
+            if selected_room_property_ids and area.property_id not in selected_room_property_ids:
+                raise ValidationError({
+                    'area_id': 'Selected area must belong to the same property as the selected room.'
+                })
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
@@ -3832,11 +3860,9 @@ class JobViewSet(viewsets.ModelViewSet):
         # the job (either through a job-rooms property or the job's area
         # property). Staff/superusers bypass.
         if not (target.is_staff or target.is_superuser):
-            job_property_ids = set(
-                Property.objects.filter(rooms__jobs=job).values_list('id', flat=True)
-            )
+            job_property_ids = {job.property_id} if job.property_id else set()
             target_property_ids = set(
-                Property.objects.filter(users=target).values_list('id', flat=True)
+                get_accessible_properties(target).values_list('id', flat=True)
             )
             if job_property_ids and not job_property_ids & target_property_ids:
                 return Response(
@@ -4090,8 +4116,8 @@ class AreaViewSet(viewsets.ModelViewSet):
         user = self.request.user
         qs = Area.objects.select_related('property').all()
 
-        if not (user.is_staff or user.is_superuser):
-            accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
+        if not user.is_superuser:
+            accessible_property_ids = get_accessible_properties(user).values_list('id', flat=True)
             qs = qs.filter(property_id__in=accessible_property_ids)
 
         property_filter = self.request.query_params.get('property_id') or self.request.query_params.get('property')
@@ -4115,18 +4141,16 @@ class AreaViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         property_obj = serializer.validated_data.get('property')
         user = self.request.user
-        if not (user.is_staff or user.is_superuser):
-            if not Property.objects.filter(id=property_obj.id, users=user).exists():
-                raise PermissionDenied("You do not have access to this property.")
+        if not user.is_superuser and not get_accessible_properties(user).filter(id=property_obj.id).exists():
+            raise PermissionDenied("You do not have access to this property.")
         serializer.save()
 
     def perform_update(self, serializer):
         instance = self.get_object()
         new_property = serializer.validated_data.get('property', instance.property)
         user = self.request.user
-        if not (user.is_staff or user.is_superuser):
-            if not Property.objects.filter(id=new_property.id, users=user).exists():
-                raise PermissionDenied("You do not have access to this property.")
+        if not user.is_superuser and not get_accessible_properties(user).filter(id=new_property.id).exists():
+            raise PermissionDenied("You do not have access to this property.")
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):
@@ -4211,7 +4235,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         property_id = request.data.get('property_id')
         if not property_id:
             return Response({'error': 'property_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-        property = get_object_or_404(Property, property_id=property_id)
+        property = get_object_or_404(get_accessible_properties(request.user), property_id=property_id)
+        if property.tenant_id and not user_can_manage_tenant(request.user, property.tenant):
+            raise PermissionDenied("You do not have permission to administer this property's tenant.")
         profile.properties.add(property)
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
@@ -4222,7 +4248,9 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         property_id = request.data.get('property_id')
         if not property_id:
             return Response({'error': 'property_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-        property = get_object_or_404(Property, property_id=property_id)
+        property = get_object_or_404(get_accessible_properties(request.user), property_id=property_id)
+        if property.tenant_id and not user_can_manage_tenant(request.user, property.tenant):
+            raise PermissionDenied("You do not have permission to administer this property's tenant.")
         profile.properties.remove(property)
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
@@ -4236,25 +4264,19 @@ class PropertyViewSet(viewsets.ModelViewSet):
         logger.info(f"User {self.request.user.username} requesting properties")
         
         # ✅ PERFORMANCE: Optimize query with prefetch_related
-        base_queryset = Property.objects.select_related('tenant').prefetch_related('users', 'rooms')
+        base_queryset = Property.objects.select_related('tenant').prefetch_related('users', 'canonical_rooms')
         
-        # Check if user is admin/superuser - give access to all properties
-        if self.request.user.is_superuser or self.request.user.is_staff:
-            logger.info(f"User {self.request.user.username} is admin/staff - returning all properties")
+        # Only superuser is the documented platform-wide break-glass scope.
+        # Staff users remain scoped by TenantMembership.
+        if self.request.user.is_superuser:
+            logger.info(f"Platform superuser {self.request.user.username} - returning all properties")
             queryset = base_queryset
             logger.info(f"Found {queryset.count()} total properties")
             return queryset
         
         # Check if user has properties assigned
-        user_properties = get_accessible_properties(self.request.user).select_related('tenant').prefetch_related('users', 'rooms')
+        user_properties = get_accessible_properties(self.request.user).select_related('tenant').prefetch_related('users', 'canonical_rooms')
         logger.info(f"User {self.request.user.username} has {user_properties.count()} assigned properties")
-        
-        # If user has no properties assigned, check if they're admin user
-        if user_properties.count() == 0 and self.request.user.username == 'admin':
-            logger.info(f"Admin user {self.request.user.username} has no properties - returning all properties")
-            queryset = base_queryset
-            logger.info(f"Found {queryset.count()} total properties for admin")
-            return queryset
         
         # Return only properties assigned to the user
         return user_properties
@@ -4285,23 +4307,13 @@ class PropertyViewSet(viewsets.ModelViewSet):
             obj = Property.objects.select_related('tenant').get(property_id=property_id)
             logger.info(f"Found property: {obj.name}")
 
-            # Admin users can access all properties
-            if self.request.user.is_superuser or self.request.user.is_staff:
-                logger.info(f"Admin user {self.request.user.username} accessing property {property_id}")
+            if self.request.user.is_superuser:
+                logger.info(f"Platform superuser {self.request.user.username} accessing property {property_id}")
                 return obj
             
-            # Special case for admin username
-            if self.request.user.username == 'admin':
-                logger.info(f"Admin username {self.request.user.username} accessing property {property_id}")
-                return obj
-
             # Check if user has access to this property through SaaS membership
             if not get_accessible_properties(self.request.user).filter(id=obj.id).exists():
                 logger.warning(f"Property {property_id} exists but not associated with user {self.request.user.username}")
-                if property_id == "PB749146D" and settings.DEBUG:
-                    logger.info(f"SPECIAL CASE: Allowing access to test property {property_id} in debug mode")
-                    return obj
-                # For non-admin users, deny access
                 raise PermissionDenied(f"You do not have permission to access property {property_id}")
 
             return obj
@@ -4316,24 +4328,18 @@ class PropertyViewSet(viewsets.ModelViewSet):
             property_obj = Property.objects.get(property_id=property_id)
             logger.info(f"Found property: {property_obj.name}")
 
-            # Admin users can access all properties
-            if request.user.is_superuser or request.user.is_staff:
-                logger.info(f"Admin user {request.user.username} accessing property {property_id}")
+            if request.user.is_superuser:
+                logger.info(f"Platform superuser {request.user.username} accessing property {property_id}")
                 pass  # Allow access
-            elif request.user.username == 'admin':
-                logger.info(f"Admin username {request.user.username} accessing property {property_id}")
-                pass  # Allow access
-            elif not property_obj.users.filter(id=request.user.id).exists():
-                if property_id != "PB749146D" or not settings.DEBUG:
-                    logger.warning(f"User {request.user.username} does not have permission for property {property_id}")
-                    return Response(
-                        {"detail": "You do not have permission to access this property"},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-                logger.info(f"Special case: Allowing access to {property_id} in DEBUG mode")
+            elif not get_accessible_properties(request.user).filter(id=property_obj.id).exists():
+                logger.warning(f"User {request.user.username} does not have permission for property {property_id}")
+                return Response(
+                    {"detail": "You do not have permission to access this property"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
             has_pm_jobs = Job.objects.filter(
-                rooms__properties=property_obj,
+                property=property_obj,
                 is_preventivemaintenance=True
             ).exists()
 
@@ -4494,7 +4500,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         Only accessible to authenticated users.
         """
         logger.info(f"all properties requested by user: {request.user.username}")
-        if request.user.is_staff or request.user.is_superuser:
+        if request.user.is_superuser:
             properties = Property.objects.all()
         else:
             properties = get_accessible_properties(request.user)
@@ -4533,11 +4539,11 @@ class PropertyViewSet(viewsets.ModelViewSet):
         from io import StringIO
 
         user = request.user
-        if user.is_staff or user.is_superuser:
+        if user.is_superuser:
             qs = Property.objects.all()
         else:
-            qs = Property.objects.filter(users=user)
-        qs = qs.prefetch_related('users', 'rooms').order_by('name')
+            qs = get_accessible_properties(user)
+        qs = qs.prefetch_related('users', 'canonical_rooms').order_by('name')
 
         buf = StringIO()
         writer = _csv.writer(buf)
@@ -4550,7 +4556,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 prop.name,
                 prop.property_id or '',
                 (prop.description or '').replace('\n', ' ').strip(),
-                prop.rooms.count(),
+                prop.canonical_rooms.count(),
                 prop.users.count(),
                 'true' if prop.is_preventivemaintenance else 'false',
                 prop.created_at.isoformat() if prop.created_at else '',
@@ -4717,7 +4723,13 @@ class PreventiveMaintenanceImageUploadView(APIView):
 
     def post(self, request, pm_id):
         try:
-            pm = PreventiveMaintenance.objects.get(pm_id=pm_id)
+            accessible = get_accessible_properties(request.user)
+            pm = get_object_or_404(
+                PreventiveMaintenance.objects.filter(
+                    Q(machines__property__in=accessible) | Q(job__property__in=accessible)
+                ).distinct(),
+                pm_id=pm_id,
+            )
 
             before_image = request.FILES.get('before_image')
             after_image = request.FILES.get('after_image')
@@ -4739,8 +4751,6 @@ class PreventiveMaintenanceImageUploadView(APIView):
 
             pm.save()
             return Response({'message': 'Images uploaded and processed successfully'}, status=status.HTTP_200_OK)
-        except PreventiveMaintenance.DoesNotExist:
-            return Response({'error': 'PreventiveMaintenance not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -5092,12 +5102,12 @@ def get_preventive_maintenance_data(request):
     logger.info(f"get_preventive_maintenance_data called by user: {request.user.username}")
     try:
         # Get properties accessible to the current user
-        user_properties = Property.objects.filter(users=request.user)
+        user_properties = get_accessible_properties(request.user)
         logger.info(f"Found {user_properties.count()} properties for user")
         
         # Get preventive maintenance jobs for these properties
         pm_jobs = Job.objects.filter(
-            rooms__properties__in=user_properties,
+            property__in=user_properties,
             is_preventivemaintenance=True
         ).select_related('user').prefetch_related('rooms', 'topics')
         
@@ -5147,13 +5157,12 @@ def get_preventive_maintenance_jobs(request):
     if property_id:
         try:
             property_obj = get_object_or_404(Property, property_id=property_id)
-            # Check user has access to this property
-            if not property_obj.users.filter(id=request.user.id).exists():
+            if not get_accessible_properties(request.user).filter(pk=property_obj.pk).exists():
                 return Response(
                     {"detail": "You do not have permission to access this property"},
                     status=status.HTTP_403_FORBIDDEN
                 )
-            query = query.filter(rooms__properties__in=[property_obj])
+            query = query.filter(property=property_obj)
         except Property.DoesNotExist:
             return Response(
                 {"detail": f"Property with ID {property_id} not found"},
@@ -5161,8 +5170,8 @@ def get_preventive_maintenance_jobs(request):
             )
     else:
         # If no property specified, filter by user's properties
-        user_properties = Property.objects.filter(users=request.user)
-        query = query.filter(rooms__properties__in=user_properties)
+        user_properties = get_accessible_properties(request.user)
+        query = query.filter(property__in=user_properties)
     
     # Add status filter if provided
     if status_param:
@@ -5212,7 +5221,7 @@ def get_preventive_maintenance_rooms(request):
                     {"detail": "You do not have permission to access this property"},
                     status=status.HTTP_403_FORBIDDEN
                 )
-            rooms_with_pm = rooms_with_pm.filter(properties=property_obj)
+            rooms_with_pm = rooms_with_pm.filter(property=property_obj)
         except Property.DoesNotExist:
             return Response(
                 {"detail": f"Property with ID {property_id} not found"},
@@ -5220,8 +5229,8 @@ def get_preventive_maintenance_rooms(request):
             )
     else:
         # If no property specified, filter by user's properties
-        user_properties = Property.objects.filter(users=request.user)
-        rooms_with_pm = rooms_with_pm.filter(properties__in=user_properties)
+        user_properties = get_accessible_properties(request.user)
+        rooms_with_pm = rooms_with_pm.filter(property__in=user_properties)
     
     # Serialize and return
     serializer = RoomSerializer(rooms_with_pm, many=True)
@@ -5234,12 +5243,12 @@ def get_preventive_maintenance_topics(request):
     """Get topics used in preventive maintenance jobs"""
     
     # Get user's properties
-    user_properties = Property.objects.filter(users=request.user)
+    user_properties = get_accessible_properties(request.user)
     
     # Get topics from PM jobs for user's properties
     topics = Topic.objects.filter(
         jobs__is_preventivemaintenance=True,
-        jobs__rooms__properties__in=user_properties
+        jobs__property__in=user_properties
     ).distinct()
     
     # Serialize and return
@@ -5265,7 +5274,7 @@ def property_is_preventivemaintenance(request, property_id):
     
     # Check if property has any PM jobs
     has_pm_jobs = Job.objects.filter(
-        rooms__properties=property_instance,
+        property=property_instance,
         is_preventivemaintenance=True
     ).exists()
     
@@ -5288,13 +5297,13 @@ def get_dashboard_summary(request):
 
     base_queryset = Job.objects.all()
 
-    if not (user.is_staff or user.is_superuser):
-        accessible_property_ids = Property.objects.filter(users=user).values_list('id', flat=True)
-        base_queryset = base_queryset.filter(rooms__properties__in=accessible_property_ids)
+    if not user.is_superuser:
+        accessible_property_ids = get_accessible_properties(user).values_list('id', flat=True)
+        base_queryset = base_queryset.filter(property_id__in=accessible_property_ids)
 
     property_filter = request.query_params.get('property_id')
     if property_filter:
-        base_queryset = base_queryset.filter(rooms__properties__property_id=property_filter)
+        base_queryset = base_queryset.filter(property__property_id=property_filter)
 
     base_queryset = base_queryset.distinct()
 
@@ -5536,7 +5545,7 @@ def generate_maintenance_pdf_report(request):
         ).prefetch_related(
             'topics',
             'job__rooms',
-            'job__rooms__properties'
+            'job__property'
         )
         
         # Apply filters
@@ -5562,15 +5571,15 @@ def generate_maintenance_pdf_report(request):
             queryset = queryset.filter(topics__id=topic_id)
         
         if property_id:
-            queryset = queryset.filter(job__rooms__properties__property_id=property_id)
+            queryset = queryset.filter(job__property__property_id=property_id)
             report_property = Property.objects.filter(property_id=property_id).select_related('tenant').first()
         else:
             report_property = None
         
         # Filter by user access (only show maintenance for properties user has access to)
-        if not request.user.is_staff:
-            user_properties = Property.objects.filter(users=request.user)
-            queryset = queryset.filter(job__rooms__properties__in=user_properties)
+        if not request.user.is_superuser:
+            user_properties = get_accessible_properties(request.user)
+            queryset = queryset.filter(job__property__in=user_properties)
         
         # Order by scheduled date
         queryset = queryset.order_by('scheduled_date')
@@ -5749,7 +5758,7 @@ class UtilityConsumptionViewSet(viewsets.ModelViewSet):
         # Filter by property if user is not staff
         if not (user.is_staff or user.is_superuser):
             # Get properties the user has access to
-            user_properties = Property.objects.filter(users=user)
+            user_properties = get_accessible_properties(user)
             queryset = queryset.filter(property__in=user_properties)
         
         # Filter by property_id if provided
@@ -5825,7 +5834,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
         # Filter by property if user is not staff
         if not (user.is_staff or user.is_superuser):
             # Get properties the user has access to
-            user_properties = Property.objects.filter(users=user)
+            user_properties = get_accessible_properties(user)
             queryset = queryset.filter(property__in=user_properties)
         
         # Filter by property_id if provided
@@ -5915,10 +5924,24 @@ class InventoryViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         if job_id:
-            job = get_object_or_404(Job, job_id=job_id)
+            accessible = get_accessible_properties(request.user)
+            job = get_object_or_404(
+                Job.objects.filter(property__in=accessible),
+                job_id=job_id,
+            )
+            if inventory.property_id not in _job_property_ids(job):
+                return Response({'detail': 'The job must belong to the inventory property.'}, status=status.HTTP_400_BAD_REQUEST)
             source = 'job'
         if pm_id:
-            pm = get_object_or_404(PreventiveMaintenance, pm_id=pm_id)
+            accessible = get_accessible_properties(request.user)
+            pm = get_object_or_404(
+                PreventiveMaintenance.objects.filter(
+                    Q(machines__property__in=accessible) | Q(job__property__in=accessible)
+                ).distinct(),
+                pm_id=pm_id,
+            )
+            if inventory.property_id not in _pm_property_ids(pm):
+                return Response({'detail': 'The PM must belong to the inventory property.'}, status=status.HTTP_400_BAD_REQUEST)
             source = 'preventive_maintenance'
 
         try:
@@ -6016,30 +6039,26 @@ class InventoryViewSet(viewsets.ModelViewSet):
             
             # Link to job or PM if provided
             if job_id:
-                from .models import Job
-                try:
-                    job = Job.objects.get(job_id=job_id, user=request.user)
-                    inventory.jobs.add(job)
-                except Job.DoesNotExist:
-                    return Response(
-                        {'error': f'Job with ID {job_id} not found or not accessible'},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
+                accessible = get_accessible_properties(request.user)
+                job = get_object_or_404(
+                    Job.objects.filter(property__in=accessible),
+                    job_id=job_id,
+                )
+                if inventory.property_id not in _job_property_ids(job):
+                    return Response({'error': 'Job must belong to the inventory property.'}, status=status.HTTP_400_BAD_REQUEST)
+                inventory.jobs.add(job)
             
             if pm_id:
-                from .models import PreventiveMaintenance
-                pm = PreventiveMaintenance.objects.filter(
-                    pm_id=pm_id
-                ).filter(
-                    Q(assigned_to=request.user) | Q(created_by=request.user)
-                ).first()
-                if pm:
-                    inventory.preventive_maintenances.add(pm)
-                else:
-                    return Response(
-                        {'error': f'PM with ID {pm_id} not found or not accessible'},
-                        status=status.HTTP_404_NOT_FOUND
-                    )
+                accessible = get_accessible_properties(request.user)
+                pm = get_object_or_404(
+                    PreventiveMaintenance.objects.filter(
+                        Q(machines__property__in=accessible) | Q(job__property__in=accessible)
+                    ).distinct(),
+                    pm_id=pm_id,
+                )
+                if inventory.property_id not in _pm_property_ids(pm):
+                    return Response({'error': 'PM must belong to the inventory property.'}, status=status.HTTP_400_BAD_REQUEST)
+                inventory.preventive_maintenances.add(pm)
             
             inventory.quantity -= quantity_to_use
             inventory.save()
@@ -6152,7 +6171,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
             )
 
         # Resolve property scope: which properties this user can write to.
-        accessible_props = list(Property.objects.filter(users=request.user))
+        accessible_props = list(get_accessible_properties(request.user))
         if not accessible_props and not (request.user.is_staff or request.user.is_superuser):
             return Response(
                 {'error': 'You have no property access — cannot import inventory.'},
@@ -6579,6 +6598,7 @@ def public_job_request(request, property_id, room_id):
     job = Job.objects.create(
         user=assignee,
         updated_by=assignee,
+        property=resolve_job_property(explicit_property=property_obj, rooms=[room_obj]),
         description=description,
         remarks='\n'.join(remark_lines),
         status='pending',

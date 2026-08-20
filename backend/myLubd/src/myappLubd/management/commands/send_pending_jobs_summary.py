@@ -105,8 +105,8 @@ class Command(BaseCommand):
         # Apply property filter if specified
         if property_id:
             jobs_query = jobs_query.filter(
-                Q(rooms__properties__id=property_id) |
-                Q(rooms__properties__property_id=property_id)
+                Q(property__id=property_id) |
+                Q(property__property_id=property_id)
             ).distinct()
         
         return jobs_query

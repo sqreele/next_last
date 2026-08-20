@@ -26,9 +26,47 @@ from pathlib import Path
 import math
 
 from .timezones import is_valid_timezone
+from .tenancy import get_accessible_properties
+from .job_property import resolve_job_property, resolve_property_reference
+from .room_property import resolve_room_property, sync_room_legacy_property
 
 
 RAW_AUTH_PREFIXES = ('google-oauth2_', 'auth0_', 'auth0|')
+
+
+def _validate_request_property_access(serializer, property_obj, field='property'):
+    """Apply the canonical property scope to serializer writes.
+
+    Relation fields otherwise resolve primary keys against ``objects.all()``,
+    which makes forged IDs a write-time authorization bypass.  Viewsets pass
+    the DRF request in serializer context automatically.
+    """
+    if property_obj is None:
+        return
+    request = serializer.context.get('request')
+    user = getattr(request, 'user', None)
+    if user is None or user.is_superuser:
+        return
+    if not get_accessible_properties(user).filter(pk=property_obj.pk).exists():
+        raise serializers.ValidationError({field: 'You do not have access to this property.'})
+
+
+def _validate_room_belongs_to_property(room, property_obj):
+    if room is not None and property_obj is not None and room.property_id != property_obj.pk:
+        raise serializers.ValidationError({'room': 'The room must belong to the selected property.'})
+
+
+def _validate_machine_ids_in_request_scope(serializer, machine_ids):
+    if not machine_ids:
+        return []
+    machines = list(Machine.objects.select_related('property').filter(machine_id__in=machine_ids))
+    if len(machines) != len(set(machine_ids)):
+        raise serializers.ValidationError({'machine_ids': 'One or more machine_ids are invalid.'})
+    property_ids = {machine.property_id for machine in machines}
+    if len(property_ids) > 1:
+        raise serializers.ValidationError({'machine_ids': 'All machines must belong to the same property.'})
+    _validate_request_property_access(serializer, machines[0].property, 'machine_ids')
+    return machines
 
 
 def is_raw_auth_identifier(value):
@@ -202,9 +240,73 @@ class TenantSerializer(serializers.ModelSerializer):
 
 # Room serializer defined first to avoid circular import issues
 class RoomSerializer(serializers.ModelSerializer):
+    properties = serializers.PrimaryKeyRelatedField(
+        queryset=Property.objects.all(), many=True, required=False,
+    )
+    property_id = serializers.CharField(write_only=True, required=False)
+
     class Meta:
         model = Room
-        fields = ['room_id', 'name', 'room_type', 'is_active', 'created_at', 'properties']
+        fields = ['room_id', 'name', 'room_type', 'is_active', 'created_at', 'properties', 'property_id']
+
+    @staticmethod
+    def _as_drf_validation_error(error):
+        if hasattr(error, 'message_dict'):
+            return serializers.ValidationError(error.message_dict)
+        return serializers.ValidationError(str(error))
+
+    def validate(self, attrs):
+        explicit_value = attrs.pop('property_id', serializers.empty)
+        legacy_properties = attrs.get('properties', serializers.empty)
+
+        if legacy_properties is serializers.empty:
+            legacy_properties = None
+        elif len(legacy_properties) != 1:
+            raise serializers.ValidationError({
+                'properties': 'Exactly one property is required for a room.',
+            })
+
+        explicit_property = None
+        if explicit_value is not serializers.empty:
+            try:
+                explicit_property = resolve_property_reference(explicit_value)
+            except ValidationError as error:
+                raise self._as_drf_validation_error(error)
+
+        existing_property = self.instance.property if self.instance and self.instance.property_id else None
+        if legacy_properties is None and explicit_property is None and existing_property is not None:
+            resolved_property = existing_property
+        else:
+            try:
+                resolved_property = resolve_room_property(
+                    explicit_property=explicit_property,
+                    legacy_properties=legacy_properties,
+                    existing_property=existing_property,
+                )
+            except ValidationError as error:
+                raise self._as_drf_validation_error(error)
+
+        _validate_request_property_access(self, resolved_property, 'property_id')
+        attrs['_canonical_room_property'] = resolved_property
+        return attrs
+
+    def create(self, validated_data):
+        canonical_property = validated_data.pop('_canonical_room_property')
+        validated_data.pop('properties', None)
+        with transaction.atomic():
+            room = Room.objects.create(property=canonical_property, **validated_data)
+            sync_room_legacy_property(room, canonical_property)
+        return room
+
+    def update(self, instance, validated_data):
+        canonical_property = validated_data.pop('_canonical_room_property')
+        validated_data.pop('properties', None)
+        with transaction.atomic():
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
+            sync_room_legacy_property(instance, canonical_property)
+        return instance
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -212,7 +314,7 @@ class RoomSerializer(serializers.ModelSerializer):
         data['name'] = data.get('name') or 'Unnamed room'
         data['room_type'] = data.get('room_type') or 'Room'
         data['is_active'] = bool(data.get('is_active'))
-        data['properties'] = data.get('properties') if isinstance(data.get('properties'), list) else []
+        data['properties'] = [instance.property_id] if instance.property_id else []
         return data
 
 
@@ -231,10 +333,7 @@ class RoomSummarySerializer(serializers.ModelSerializer):
     def get_properties(self, obj):
         # Return property_id strings to keep payload small. Missing/removed
         # property relations should not break nested dashboard payloads.
-        try:
-            return list(obj.properties.values_list('property_id', flat=True))
-        except Exception:
-            return []
+        return [obj.property.property_id] if obj.property_id else []
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -286,7 +385,7 @@ class PropertySerializer(serializers.ModelSerializer):
         include_rooms = self.context.get('include_rooms', False)
         if not include_rooms:
             return []
-        rooms = obj.rooms.all()
+        rooms = obj.canonical_rooms.all()
         return RoomSummarySerializer(rooms, many=True, context=self.context).data
     
     def get_is_preventivemaintenance(self, obj):
@@ -299,7 +398,7 @@ class PropertySerializer(serializers.ModelSerializer):
             return None
             
         has_pm_jobs = Job.objects.filter(
-            rooms__properties=obj,
+            property=obj,
             is_preventivemaintenance=True
         ).exists()
         
@@ -478,6 +577,10 @@ class AreaSerializer(serializers.ModelSerializer):
     def get_jobs_count(self, obj):
         return obj.jobs.count()
 
+    def validate(self, data):
+        _validate_request_property_access(self, data.get('property') or getattr(self.instance, 'property', None))
+        return data
+
 
 # Area summary serializer (nested usage)
 class AreaSummarySerializer(serializers.ModelSerializer):
@@ -547,6 +650,9 @@ class JobSerializer(serializers.ModelSerializer):
     rooms = RoomSummarySerializer(many=True, read_only=True)
     topic_data = serializers.JSONField(write_only=True)
     room_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    room_ids = serializers.PrimaryKeyRelatedField(
+        queryset=Room.objects.all(), many=True, write_only=True, required=False
+    )
     property_id = serializers.CharField(write_only=True, required=False, allow_blank=True)
     image_urls = serializers.SerializerMethodField()
     area = AreaSummarySerializer(read_only=True)
@@ -565,7 +671,7 @@ class JobSerializer(serializers.ModelSerializer):
             'updated_by', 'description', 'status', 'priority',
             'remarks', 'created_at', 'updated_at', 'completed_at', 'is_defective',
             'rooms', 'topics', 'images', 'profile_image', 'room_type', 'name',
-            'topic_data', 'room_id', 'property_id', 'image_urls', 'is_preventivemaintenance',
+            'topic_data', 'room_id', 'room_ids', 'property_id', 'image_urls', 'is_preventivemaintenance',
             'area', 'area_id', 'area_name', 'comments_count',
         ]
         read_only_fields = [
@@ -601,39 +707,46 @@ class JobSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Updated date cannot be before created date")
 
         room_id = data.get('room_id')
-        property_id = str(data.get('property_id') or '').strip()
-        area = data.get('area')
-        if room_id and area is not None:
+        supplied_rooms = list(data.get('room_ids') or [])
+        if room_id and supplied_rooms:
+            raise serializers.ValidationError({'non_field_errors': 'Use room_id or room_ids, not both.'})
+        if room_id:
             try:
-                room = Room.objects.prefetch_related('properties').get(room_id=room_id)
+                supplied_rooms = [Room.objects.select_related('property').get(room_id=room_id)]
             except Room.DoesNotExist:
                 raise serializers.ValidationError({'room_id': 'Invalid room ID'})
 
-            if not room.properties.filter(id=area.property_id).exists():
-                raise serializers.ValidationError({
-                    'area_id': 'Selected area must belong to the same property as the selected room.'
-                })
+        instance = self.instance
+        future_rooms = supplied_rooms if (room_id or 'room_ids' in data) else (
+            list(instance.rooms.all()) if instance is not None else []
+        )
+        future_area = data.get('area') if 'area' in data else (instance.area if instance is not None else None)
+        explicit_input = data.get('property_id')
+        try:
+            explicit_property = resolve_property_reference(explicit_input) if explicit_input else None
+        except ValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict) from exc
 
-        if property_id:
-            property_q = Q(property_id=property_id)
-            if property_id.isdigit():
-                property_q |= Q(id=int(property_id))
-            property_obj = Property.objects.filter(property_q).first()
-            if not property_obj:
-                raise serializers.ValidationError({'property_id': 'Invalid property ID'})
-            if room_id:
-                try:
-                    room = Room.objects.prefetch_related('properties').get(room_id=room_id)
-                except Room.DoesNotExist:
-                    raise serializers.ValidationError({'room_id': 'Invalid room ID'})
-                if not room.properties.filter(id=property_obj.id).exists():
-                    raise serializers.ValidationError({
-                        'room_id': 'Selected room does not belong to the selected property.'
-                    })
-            if area is not None and area.property_id != property_obj.id:
-                raise serializers.ValidationError({
-                    'area_id': 'Selected area does not belong to the selected property.'
-                })
+        if instance is not None:
+            if instance.property_id is None:
+                raise serializers.ValidationError({'property_id': 'Existing Job has no canonical property.'})
+            if explicit_property is not None and explicit_property.pk != instance.property_id:
+                raise serializers.ValidationError({'property_id': 'Job property is immutable after creation.'})
+            explicit_property = instance.property
+
+        try:
+            resolved_property = resolve_job_property(
+                explicit_property=explicit_property,
+                area=future_area,
+                rooms=future_rooms,
+                require=True,
+            )
+        except ValidationError as exc:
+            raise serializers.ValidationError(exc.message_dict) from exc
+
+        data['_resolved_property'] = resolved_property
+        if room_id or 'room_ids' in data:
+            data['_resolved_rooms'] = future_rooms
 
         return data
 
@@ -730,12 +843,14 @@ class JobSerializer(serializers.ModelSerializer):
         validated_data.pop('username', None)
         validated_data.pop('user_id', None)
         validated_data.pop('property_id', None)
+        resolved_property = validated_data.pop('_resolved_property')
+        resolved_rooms = validated_data.pop('_resolved_rooms', None)
 
         topic_data = validated_data.pop('topic_data', None)
         room_id = validated_data.pop('room_id', None)
         area = validated_data.get('area')
 
-        if not room_id and not area:
+        if not room_id and not resolved_rooms and not area and not resolved_property:
             raise serializers.ValidationError(
                 {'non_field_errors': 'Either room_id or area_id is required.'}
             )
@@ -751,9 +866,12 @@ class JobSerializer(serializers.ModelSerializer):
                 )
                 job = Job.objects.create(
                     **validated_data,
-                    user=request.user
+                    user=request.user,
+                    property=resolved_property,
                 )
-                if room:
+                if resolved_rooms is not None:
+                    job.rooms.set(resolved_rooms)
+                elif room:
                     job.rooms.add(room)
                 job.topics.add(topic)
 
@@ -771,6 +889,20 @@ class JobSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'room_id': 'Invalid room ID'})
         except Exception as e:
             raise serializers.ValidationError({'detail': str(e)})
+
+    def update(self, instance, validated_data):
+        validated_data.pop('property_id', None)
+        resolved_property = validated_data.pop('_resolved_property')
+        resolved_rooms = validated_data.pop('_resolved_rooms', None)
+        validated_data.pop('room_id', None)
+        validated_data.pop('room_ids', None)
+        if resolved_property.pk != instance.property_id:
+            raise serializers.ValidationError({'property_id': 'Job property is immutable after creation.'})
+        with transaction.atomic():
+            instance = super().update(instance, validated_data)
+            if resolved_rooms is not None:
+                instance.rooms.set(resolved_rooms)
+        return instance
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -1013,8 +1145,7 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
     def get_property_id(self, obj):
         # Prefer properties via job -> rooms
         if obj.job and obj.job.rooms.exists():
-            properties = Property.objects.filter(rooms__job=obj.job).distinct()
-            return [prop.property_id for prop in properties]
+            return [obj.job.property.property_id] if obj.job.property_id else []
 
         # Fallback: infer from machines' property
         if obj.machines.exists():
@@ -1167,6 +1298,7 @@ class MachineCreateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Custom validation for machine creation"""
+        _validate_request_property_access(self, data.get('property'))
         installation_date = data.get('installation_date')
         last_maintenance_date = data.get('last_maintenance_date')
         
@@ -1192,6 +1324,7 @@ class MachineUpdateSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Custom validation for machine updates"""
+        _validate_request_property_access(self, data.get('property') or getattr(self.instance, 'property', None))
         installation_date = data.get('installation_date')
         last_maintenance_date = data.get('last_maintenance_date')
         
@@ -1306,12 +1439,7 @@ class PMMasterPlanSerializer(serializers.ModelSerializer):
         if self.instance is None and not machine_ids:
             raise serializers.ValidationError({'machine_ids': 'At least one machine is required.'})
         if machine_ids:
-            machines = Machine.objects.filter(machine_id__in=machine_ids)
-            if machines.count() != len(set(machine_ids)):
-                raise serializers.ValidationError({'machine_ids': 'One or more machine_ids are invalid.'})
-            property_ids = set(m.property_id for m in machines)
-            if len(property_ids) > 1:
-                raise serializers.ValidationError({'machine_ids': 'All machines must belong to the same property.'})
+            _validate_machine_ids_in_request_scope(self, machine_ids)
         return data
 
     def create(self, validated_data):
@@ -1994,16 +2122,7 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             })
         
         # Validate machine_ids exist and belong to the same property
-        machines = Machine.objects.filter(machine_id__in=machine_ids)
-        if len(machines) != len(machine_ids):
-            raise serializers.ValidationError({
-                'machine_ids': 'One or more machine_ids are invalid.'
-            })
-        property_ids = set(machine.property.property_id for machine in machines)
-        if len(property_ids) > 1:
-            raise serializers.ValidationError({
-                'machine_ids': 'All machines must belong to the same property.'
-            })
+        _validate_machine_ids_in_request_scope(self, machine_ids)
         
         return data
 
@@ -2089,12 +2208,7 @@ class PreventiveMaintenanceCompleteSerializer(serializers.ModelSerializer):
 
         machine_ids = data.get('machine_ids', [])
         if machine_ids:
-            machines = Machine.objects.filter(machine_id__in=machine_ids)
-            if len(machines) != len(machine_ids):
-                raise serializers.ValidationError("One or more machine_ids are invalid.")
-            property_ids = set(machine.property.property_id for machine in machines)
-            if len(property_ids) > 1:
-                raise serializers.ValidationError("All machines must belong to the same property.")
+            _validate_machine_ids_in_request_scope(self, machine_ids)
 
         return data
 
@@ -2199,12 +2313,7 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
     def validate(self, data):
         machine_ids = data.get('machine_ids', [])
         if machine_ids:
-            machines = Machine.objects.filter(machine_id__in=machine_ids)
-            if len(machines) != len(machine_ids):
-                raise serializers.ValidationError("One or more machine_ids are invalid.")
-            property_ids = set(machine.property.property_id for machine in machines)
-            if len(property_ids) > 1:
-                raise serializers.ValidationError("All machines must belong to the same property.")
+            _validate_machine_ids_in_request_scope(self, machine_ids)
         return data
 
 class MaintenanceStepSerializer(serializers.Serializer):
@@ -2455,10 +2564,12 @@ class UtilityConsumptionSerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Validate that property is provided"""
-        if not data.get('property'):
+        property_obj = data.get('property') or getattr(self.instance, 'property', None)
+        if not property_obj:
             raise serializers.ValidationError({
                 'property': 'Property must be provided.'
             })
+        _validate_request_property_access(self, property_obj)
         
         # Validate month range
         month = data.get('month')
@@ -2646,6 +2757,10 @@ class InventorySerializer(serializers.ModelSerializer):
     
     def validate(self, data):
         """Validate inventory data"""
+        property_obj = data.get('property') or getattr(self.instance, 'property', None)
+        room = data.get('room') if 'room' in data else getattr(self.instance, 'room', None)
+        _validate_request_property_access(self, property_obj)
+        _validate_room_belongs_to_property(room, property_obj)
         quantity = data.get('quantity', self.instance.quantity if self.instance else 0)
         min_quantity = data.get('min_quantity', self.instance.min_quantity if self.instance else 0)
         

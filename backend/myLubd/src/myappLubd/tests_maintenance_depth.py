@@ -31,6 +31,7 @@ class MaintenanceDepthTests(TestCase):
         self.room.properties.add(self.prop)
         self.job = Job.objects.create(
             user=self.user,
+            property=self.prop,
             description='Replace lamp driver',
             remarks='',
             status='pending',

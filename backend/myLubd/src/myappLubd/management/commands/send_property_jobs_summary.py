@@ -76,7 +76,7 @@ class Command(BaseCommand):
         # Get all jobs for this property within the time range
         # Jobs are related to properties through rooms.properties
         jobs = Job.objects.filter(
-            rooms__properties__id=property_id
+            property__id=property_id
         ).filter(
             created_at__gte=start_date
         ).distinct()

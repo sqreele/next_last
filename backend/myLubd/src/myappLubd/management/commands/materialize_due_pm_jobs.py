@@ -21,6 +21,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from myappLubd.models import Job, PreventiveMaintenance
+from myappLubd.job_property import resolve_job_property
 from myappLubd.push import send_push_to_user
 
 logger = logging.getLogger(__name__)
@@ -114,6 +115,14 @@ class Command(BaseCommand):
             # No automatic room attachment: Machine -> Property, not Room.
             # The dispatcher attaches a room when they pick the job up.
             target_rooms = []
+            machine_properties = {machine.property for machine in pm.machines.all() if machine.property_id}
+            if len(machine_properties) != 1:
+                self.stdout.write(self.style.WARNING(
+                    f"  ! Skipping {pm.pm_id}: expected exactly one machine property, found {len(machine_properties)}."
+                ))
+                skipped += 1
+                continue
+            resolved_property = resolve_job_property(explicit_property=next(iter(machine_properties)))
 
             description_parts = [pm.pmtitle or "Preventive maintenance"]
             if pm.notes:
@@ -145,6 +154,7 @@ class Command(BaseCommand):
                     job = Job.objects.create(
                         user=owner,
                         updated_by=owner,
+                        property=resolved_property,
                         description=description,
                         remarks=f"Auto-created from PM {pm.pm_id} due {pm.scheduled_date.isoformat()}",
                         status="pending",

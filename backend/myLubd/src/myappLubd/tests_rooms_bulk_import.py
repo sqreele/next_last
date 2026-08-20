@@ -63,10 +63,9 @@ class RoomBulkImportTests(TestCase):
         for room in Room.objects.all():
             self.assertIn(self.prop, room.properties.all())
 
-    def test_existing_room_is_reattached_not_duplicated(self):
-        # Seed an existing room with no property and re-upload — the import
-        # must attach it to the target property and report it as 'attached'.
-        existing = Room.objects.create(name='A-101', room_type='Standard')
+    def test_existing_room_for_same_property_is_reused_not_duplicated(self):
+        existing = Room.objects.create(name='A-101', room_type='Standard', property=self.prop)
+        existing.properties.set([self.prop])
         resp = self._post(
             {'file': _csv_file(GOOD_CSV)},
             format='multipart',
@@ -75,7 +74,22 @@ class RoomBulkImportTests(TestCase):
         self.assertEqual(Room.objects.count(), 3)  # only 2 new
         self.assertEqual(resp.data['attached_count'], 1)
         existing.refresh_from_db()
+        self.assertEqual(existing.property, self.prop)
         self.assertIn(self.prop, existing.properties.all())
+
+    def test_existing_room_for_different_property_is_a_conflict(self):
+        other_prop = Property.objects.create(name='Hotel B')
+        existing = Room.objects.create(name='A-101', room_type='Standard', property=other_prop)
+        existing.properties.set([other_prop])
+
+        response = self._post({'file': _csv_file(GOOD_CSV)}, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_207_MULTI_STATUS, response.content)
+        self.assertEqual(response.data['error_count'], 1)
+        self.assertIn('ROOM PROPERTY CONFLICT', response.data['errors'][0]['error'])
+        existing.refresh_from_db()
+        self.assertEqual(existing.property, other_prop)
+        self.assertEqual(list(existing.properties.all()), [other_prop])
 
     def test_idempotent_on_rerun(self):
         # First run creates everything; second run must not create duplicates

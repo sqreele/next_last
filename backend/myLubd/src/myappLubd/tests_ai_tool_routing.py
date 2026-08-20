@@ -48,6 +48,7 @@ class AISummaryCategoryDetailsTests(TestCase):
         air_job_101 = Job.objects.create(
             user=self.user,
             updated_by=self.user,
+            property=self.property,
             description='แอร์ไม่เย็น',
             remarks='ตรวจเช็กคอยล์เย็น',
             status='pending',
@@ -58,6 +59,7 @@ class AISummaryCategoryDetailsTests(TestCase):
         air_job_102 = Job.objects.create(
             user=self.user,
             updated_by=self.user,
+            property=self.property,
             description='น้ำหยดจากแอร์',
             remarks='รออะไหล่',
             status='in_progress',
@@ -68,6 +70,7 @@ class AISummaryCategoryDetailsTests(TestCase):
         plumbing_job = Job.objects.create(
             user=self.user,
             updated_by=self.user,
+            property=self.property,
             description='อ่างล้างหน้ารั่ว',
             remarks='เปลี่ยนข้อต่อ',
             status='completed',
@@ -117,6 +120,7 @@ class AIRecurringMonthlyCountsTests(TestCase):
         job = Job.objects.create(
             user=self.user,
             updated_by=self.user,
+            property=self.property,
             description=title,
             remarks='PM',
             status='pending',

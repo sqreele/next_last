@@ -779,6 +779,13 @@ class Room(models.Model):
         related_name='rooms',
         blank=True
     )
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='canonical_rooms',
+    )
 
     class Meta:
         ordering = ['room_type', 'name']
@@ -1002,6 +1009,11 @@ class Job(models.Model):
         on_delete=models.CASCADE, 
         related_name='maintenance_jobs'
     )
+    property = models.ForeignKey(
+        Property,
+        on_delete=models.PROTECT,
+        related_name='jobs',
+    )
     rooms = models.ManyToManyField(
         Room,
         related_name='jobs',
@@ -1071,6 +1083,13 @@ class Job(models.Model):
 
     def __str__(self):
         return f"Job {self.job_id} - {self.get_status_display()}"
+
+    def clean(self):
+        super().clean()
+        if self.property_id and self.area_id and self.area.property_id != self.property_id:
+            raise ValidationError({
+                'area': 'Selected area must belong to the Job property.',
+            })
 
     def save(self, *args, **kwargs):
         if not self.job_id:

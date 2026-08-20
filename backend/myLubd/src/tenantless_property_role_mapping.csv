@@ -1,0 +1,20 @@
+user_id,legacy_chinatown,legacy_siam,legacy_property_set,existing_role,approved_role,approved_chinatown,approved_siam,approved_tenant_wide_expansion,approval_status,notes
+1,YES,NO,PB749146D,,NONE,NO,NO,NO,APPROVED_RETIREMENT,Business approved retirement of legacy property access; preserve historical User record
+5,NO,YES,PE17D8D2C,,NONE,NO,NO,NO,APPROVED_RETIREMENT,Business approved retirement of legacy property access; preserve historical User record
+8,YES,YES,PB749146D;PE17D8D2C,admin,admin,YES,YES,NO,APPROVED,Existing authoritative role; no expansion
+9,YES,NO,PB749146D,technician,technician,YES,NO,NO,APPROVED,Existing authoritative role
+10,YES,NO,PB749146D,technician,technician,YES,NO,NO,APPROVED,Existing authoritative role
+11,YES,NO,PB749146D,technician,technician,YES,NO,NO,APPROVED,Existing authoritative role
+12,YES,YES,PB749146D;PE17D8D2C,,NONE,NO,NO,NO,APPROVED_RETIREMENT,Business approved retirement of legacy property access; preserve historical User record
+14,YES,NO,PB749146D,,NONE,NO,NO,NO,APPROVED_RETIREMENT,Business approved retirement of legacy property access; preserve historical User record
+15,NO,YES,PE17D8D2C,manager,supervisor,NO,YES,NO,APPROVED,Business approved role reduction manager to supervisor; preserve Siam-only property access
+16,YES,NO,PB749146D,manager,supervisor,YES,NO,NO,APPROVED,Business approved role reduction manager to supervisor; preserve Chinatown-only property access
+17,NO,YES,PE17D8D2C,,NONE,NO,NO,NO,APPROVED_RETIREMENT,Business approved retirement of legacy property access; preserve historical User record
+18,NO,YES,PE17D8D2C,,NONE,NO,NO,NO,APPROVED_RETIREMENT,Business approved retirement of legacy property access; preserve historical User record
+20,YES,NO,PB749146D,technician,technician,YES,NO,NO,APPROVED,Existing authoritative role
+21,YES,NO,PB749146D,,NONE,NO,NO,NO,APPROVED_RETIREMENT,Business approved retirement of legacy property access; preserve historical User record
+22,YES,YES,PB749146D;PE17D8D2C,,NONE,NO,NO,NO,APPROVED_RETIREMENT,Business approved retirement of legacy property access; preserve historical User record
+23,NO,YES,PE17D8D2C,technician,technician,NO,YES,NO,APPROVED,Existing authoritative role
+29,YES,NO,PB749146D,,NONE,NO,NO,NO,APPROVED_RETIREMENT,Business approved retirement of legacy property access; preserve historical User record
+30,YES,YES,PB749146D;PE17D8D2C,,NONE,NO,NO,NO,APPROVED_RETIREMENT,Business approved retirement of legacy property access; preserve historical User record
+31,YES,YES,PB749146D;PE17D8D2C,,NONE,NO,NO,NO,APPROVED_RETIREMENT,Business approved retirement of legacy property access; preserve historical User record

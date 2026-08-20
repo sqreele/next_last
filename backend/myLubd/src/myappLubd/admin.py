@@ -77,6 +77,8 @@ from .models import (
     UsageMetric,
     InventoryUsage,
 )
+from .room_property import sync_room_legacy_property
+from .tenancy import get_accessible_properties
 
 
 
@@ -946,6 +948,7 @@ class JobAdminForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        from .job_property import resolve_job_property
         created_at = cleaned_data.get('created_at')
         updated_at = cleaned_data.get('updated_at')
         completed_at = cleaned_data.get('completed_at')
@@ -966,6 +969,22 @@ class JobAdminForm(forms.ModelForm):
         # Validate that completed_at is not in the future when job is completed
         if status == 'completed' and completed_at and completed_at > timezone.now():
             raise ValidationError("Completed date cannot be in the future")
+
+        future_area = cleaned_data.get('area') if 'area' in cleaned_data else self.instance.area
+        future_rooms = list(cleaned_data.get('rooms')) if 'rooms' in cleaned_data else list(self.instance.rooms.all())
+        explicit_property = self.instance.property if self.instance.pk else None
+        try:
+            resolved_property = resolve_job_property(
+                explicit_property=explicit_property,
+                area=future_area,
+                rooms=future_rooms,
+            )
+        except ValidationError as exc:
+            self.add_error(None, exc)
+            return cleaned_data
+        if self.instance.pk and resolved_property.pk != self.instance.property_id:
+            self.add_error(None, 'Job property is immutable after creation.')
+        self.instance.property = resolved_property
         
         return cleaned_data
 
@@ -992,9 +1011,7 @@ class PropertyFilter(admin.SimpleListFilter):
 
     def queryset(self, request, queryset):
         if self.value():
-            return queryset.filter(
-                Q(rooms__properties__id=self.value()) | Q(area__property__id=self.value())
-            ).distinct()
+            return queryset.filter(property__id=self.value())
         return queryset
 
 
@@ -1133,7 +1150,7 @@ class JobImagePropertyFilter(admin.SimpleListFilter):
 
     def queryset(self, request, queryset):
         if self.value():
-            return queryset.filter(job__rooms__properties__id=self.value()).distinct()
+            return queryset.filter(job__property__id=self.value())
         return queryset
 
 class JobImageRoomFilter(admin.SimpleListFilter):
@@ -1170,7 +1187,7 @@ class JobAdmin(admin.ModelAdmin):
     list_filter = ['status', 'priority', IsDefectFilter, 'created_at', CreatedAtMonthFilter, CreatedAtBeforeYearFilter, 'updated_at', UpdatedAtMonthFilter, 'is_preventivemaintenance', 'user', PropertyFilter, AreaFilter, FloorFilter, RoomFilter, TopicFilter]
     search_fields = ['description', 'topics__title', 'rooms__name', 'area__name', 'area__property__name']
     search_help_text = 'Search by description, topic title, room name, area name, or area property.'
-    readonly_fields = ['job_id', 'updated_by', 'inventory_items_display', 'preventive_maintenance_images']
+    readonly_fields = ['job_id', 'updated_by', 'property', 'inventory_items_display', 'preventive_maintenance_images']
     filter_horizontal = ['rooms', 'topics']
     inlines = [JobImageInline]
     fieldsets = (
@@ -1181,7 +1198,7 @@ class JobAdmin(admin.ModelAdmin):
             'fields': ('user', 'updated_by')
         }),
         ('Related Items', {
-            'fields': ('rooms', 'area', 'topics')
+            'fields': ('property', 'rooms', 'area', 'topics')
         }),
         ('Inventory Used', {
             'fields': ('inventory_items_display',),
@@ -1264,14 +1281,9 @@ class JobAdmin(admin.ModelAdmin):
     get_updated_by_display.admin_order_field = 'updated_by__username'
 
     def get_properties_display(self, obj):
-        properties = []
-        if obj.rooms.exists():
-            for room in obj.rooms.all():
-                for prop in room.properties.all():
-                    prop_display = f"{prop.property_id} - {prop.name}"
-                    if prop_display not in properties:
-                        properties.append(prop_display)
-        return ", ".join(properties) if properties else "No Properties"
+        if obj.property_id:
+            return f"{obj.property.property_id} - {obj.property.name}"
+        return "No Properties"
     get_properties_display.short_description = 'Properties (ID - Name)'
 
     def get_description_display(self, obj):
@@ -1404,7 +1416,7 @@ class JobAdmin(admin.ModelAdmin):
 
         job_qs = Job.objects.all()
         if property_filter:
-            job_qs = job_qs.filter(rooms__properties__id=property_filter)
+            job_qs = job_qs.filter(property__id=property_filter)
         if topic_filter:
             job_qs = job_qs.filter(topics__id=topic_filter)
         if floor:
@@ -1479,7 +1491,7 @@ class JobAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         self._request = request
-        return super().get_queryset(request).select_related('user', 'updated_by', 'area', 'area__property').prefetch_related('rooms__properties', 'topics', 'preventivemaintenance_set')
+        return super().get_queryset(request).select_related('user', 'updated_by', 'property', 'area', 'area__property').prefetch_related('rooms__property', 'topics', 'preventivemaintenance_set')
 
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
@@ -1536,7 +1548,7 @@ class JobAdmin(admin.ModelAdmin):
         from xml.sax.saxutils import escape as xml_escape
 
         # Prefetch related data to avoid N+1 queries
-        qs = queryset.select_related('user', 'area', 'area__property').prefetch_related('rooms__properties', 'rooms', 'topics', 'job_images').order_by('created_at')
+        qs = queryset.select_related('user', 'property', 'area', 'area__property').prefetch_related('rooms__property', 'rooms', 'topics', 'job_images').order_by('created_at')
 
         buffer = BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=36, rightMargin=36, topMargin=48, bottomMargin=36)
@@ -2226,7 +2238,7 @@ class JobAdmin(admin.ModelAdmin):
         from django.utils import timezone
         
         # Prefetch related data to avoid N+1 queries
-        qs = queryset.select_related('user', 'area', 'area__property').prefetch_related('rooms__properties', 'rooms', 'topics', 'job_images').order_by('created_at')
+        qs = queryset.select_related('user', 'property', 'area', 'area__property').prefetch_related('rooms__property', 'rooms', 'topics', 'job_images').order_by('created_at')
         
         # Create the HttpResponse object with CSV header
         filename = f"jobs_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
@@ -2277,18 +2289,7 @@ class JobAdmin(admin.ModelAdmin):
             floor = location['floor'] if location['floor'] != '-' else ''
             
             # Get properties
-            properties = []
-            if job.rooms.exists():
-                for room in job.rooms.all():
-                    for prop in room.properties.all():
-                        prop_display = f"{prop.property_id} - {prop.name}"
-                        if prop_display not in properties:
-                            properties.append(prop_display)
-            if job.area and job.area.property:
-                prop_display = f"{job.area.property.property_id} - {job.area.property.name}"
-                if prop_display not in properties:
-                    properties.append(prop_display)
-            properties_str = ", ".join(properties)
+            properties_str = f"{job.property.property_id} - {job.property.name}" if job.property_id else ''
             
             # Format dates
             created_at = job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else ''
@@ -2353,8 +2354,8 @@ class JobAdmin(admin.ModelAdmin):
         sheet = workbook.active
         sheet.title = 'Jobs'
 
-        qs = list(queryset.select_related('user', 'area', 'area__property').prefetch_related(
-            'rooms__properties', 'rooms', 'topics', 'job_images'
+        qs = list(queryset.select_related('user', 'property', 'area', 'area__property').prefetch_related(
+            'rooms__property', 'rooms', 'topics', 'job_images'
         ).order_by('created_at'))
         max_image_count = max(
             (sum(1 for image in job.job_images.all() if image.image) for job in qs),
@@ -2401,17 +2402,7 @@ class JobAdmin(admin.ModelAdmin):
             area = location['area'] if location['area'] != '-' else ''
             floor = location['floor'] if location['floor'] != '-' else ''
 
-            properties = []
-            if job.rooms.exists():
-                for room in job.rooms.all():
-                    for prop in room.properties.all():
-                        prop_display = f"{prop.property_id} - {prop.name}"
-                        if prop_display not in properties:
-                            properties.append(prop_display)
-            if job.area and job.area.property:
-                prop_display = f"{job.area.property.property_id} - {job.area.property.name}"
-                if prop_display not in properties:
-                    properties.append(prop_display)
+            properties = [f"{job.property.property_id} - {job.property.name}"] if job.property_id else []
 
             created_at = job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else ''
             updated_at = job.updated_at.strftime('%Y-%m-%d %H:%M:%S') if job.updated_at else ''
@@ -2631,15 +2622,49 @@ class HasPreventiveMaintenanceFilter(admin.SimpleListFilter):
             return queryset.exclude(jobs__is_preventivemaintenance=True).distinct()
         return queryset
 
+class RoomAdminForm(forms.ModelForm):
+    class Meta:
+        model = Room
+        fields = ['name', 'room_type', 'is_active', 'property']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['property'].required = True
+
+    def clean_property(self):
+        property_obj = self.cleaned_data['property']
+        if self.instance.pk and self.instance.property_id != property_obj.pk:
+            raise ValidationError('Room.property is immutable after creation.')
+        return property_obj
+
+
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
+    form = RoomAdminForm
     list_per_page = 25
     list_display = ['room_id', 'name', 'room_type', 'is_active', 'created_at', 'get_properties_display']
-    list_filter = ['room_type', 'properties', 'is_active', 'created_at', CreatedAtMonthFilter, HasPreventiveMaintenanceFilter]
-    search_fields = ['name', 'room_type', 'properties__name']
-    filter_horizontal = ['properties']
+    list_filter = ['room_type', 'property', 'is_active', 'created_at', CreatedAtMonthFilter, HasPreventiveMaintenanceFilter]
+    search_fields = ['name', 'room_type', 'property__name']
+    # Legacy M2M remains only as a synchronized compatibility representation.
+    filter_horizontal = []
     readonly_fields = ['room_id', 'created_at']
     actions = ['activate_rooms', 'deactivate_rooms', 'export_rooms_csv']
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = list(self.readonly_fields)
+        if obj is not None:
+            fields.append('property')
+        return fields
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if 'property' in form.base_fields:
+            form.base_fields['property'].queryset = get_accessible_properties(request.user)
+        return form
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        sync_room_legacy_property(form.instance, form.instance.property)
 
     def get_properties_display(self, obj):
         return ", ".join([f"{prop.property_id} - {prop.name}" for prop in obj.properties.all()])
@@ -2657,7 +2682,7 @@ class RoomAdmin(admin.ModelAdmin):
     
     def export_rooms_csv(self, request, queryset):
         """Export selected/filtered rooms to CSV"""
-        qs = queryset.prefetch_related('properties').order_by('room_id')
+        qs = queryset.select_related('property').order_by('room_id')
         
         filename = f"rooms_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
         response = HttpResponse(content_type='text/csv; charset=utf-8')
@@ -2675,7 +2700,7 @@ class RoomAdmin(admin.ModelAdmin):
         ])
         
         for room in qs:
-            properties = ", ".join([f"{p.property_id} - {p.name}" for p in room.properties.all()])
+            properties = f"{room.property.property_id} - {room.property.name}" if room.property_id else ''
             writer.writerow([
                 room.room_id or '',
                 room.name or '',
@@ -2914,13 +2939,8 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
     def get_properties_display(self, obj):
         properties = []
         
-        # Get properties through job->rooms->properties relationship
-        if obj.job and obj.job.rooms.exists():
-            for room in obj.job.rooms.all():
-                for prop in room.properties.all():
-                    prop_display = f"{prop.property_id} - {prop.name}"
-                    if prop_display not in properties:
-                        properties.append(prop_display)
+        if obj.job and obj.job.property_id:
+            properties.append(f"{obj.job.property.property_id} - {obj.job.property.name}")
         
         # Get properties through machines->property relationship
         if obj.machines.exists():
@@ -2960,8 +2980,8 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
     created_by_user.admin_order_field = 'created_by'
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('created_by', 'assigned_to', 'procedure_template').prefetch_related(
-            'topics', 'machines__property', 'job__rooms__properties'
+        return super().get_queryset(request).select_related('created_by', 'assigned_to', 'procedure_template', 'job__property').prefetch_related(
+            'topics', 'machines__property'
         )
 
     def save_model(self, request, obj, form, change):
@@ -3113,8 +3133,8 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
         from reportlab.graphics.charts.barcharts import VerticalBarChart
 
         qs = queryset.select_related(
-            'created_by', 'assigned_to', 'procedure_template'
-        ).prefetch_related('topics', 'machines__property', 'job__rooms__properties').order_by('scheduled_date')
+            'created_by', 'assigned_to', 'procedure_template', 'job__property'
+        ).prefetch_related('topics', 'machines__property').order_by('scheduled_date')
         total_records = qs.count()
         now = timezone.now()
 
@@ -3166,11 +3186,9 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
                     property_label = f"{machine.property.property_id} - {machine.property.name}"
                     property_counts[property_label] += 1
 
-            if pm.job and pm.job.rooms.exists():
-                for room in pm.job.rooms.all():
-                    for prop in room.properties.all():
-                        property_label = f"{prop.property_id} - {prop.name}"
-                        property_counts[property_label] += 1
+            if pm.job and pm.job.property_id:
+                property_label = f"{pm.job.property.property_id} - {pm.job.property.name}"
+                property_counts[property_label] += 1
 
         top_topics = topic_counts.most_common(10)
         top_machines = machine_counts.most_common(10)

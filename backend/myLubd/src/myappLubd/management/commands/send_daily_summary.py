@@ -223,7 +223,7 @@ class Command(BaseCommand):
             property_filter = Q()
             if property_id:
                 # Jobs are related to properties through rooms.properties
-                property_filter = Q(rooms__properties__id=property_id)
+                property_filter = Q(property__id=property_id)
 
             # Aggregate Job status counts for today
             jobs_today = Job.objects.filter(created_at__range=(start_of_day, end_of_window)).filter(property_filter).distinct()
@@ -504,7 +504,7 @@ class Command(BaseCommand):
             
             # Build property filter for this property
             # Jobs are related to properties through rooms.properties
-            property_filter = Q(rooms__properties__id=property_id)
+            property_filter = Q(property__id=property_id)
             
             # Get job statistics for this property
             start_of_day, end_of_window = local_date_bounds(now)

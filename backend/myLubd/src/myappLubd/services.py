@@ -24,6 +24,8 @@ from .models import (
 from .optimizations import QueryOptimizer, CacheOptimizer
 from .cache_enhanced import cache_manager, cache_invalidation
 from .timezones import object_timezone
+from .tenancy import get_accessible_properties
+from .job_property import resolve_job_property, resolve_property_reference
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -41,10 +43,12 @@ class JobService:
         """
         try:
             with transaction.atomic():
+                job_data = dict(job_data)
                 # Extract related data
                 topic_data = job_data.pop('topic_data', {})
                 room_id = job_data.pop('room_id')
                 images = job_data.pop('images', [])
+                explicit_property = resolve_property_reference(job_data.pop('property_id', None) or job_data.pop('property', None))
                 
                 # Validate required fields
                 if not room_id:
@@ -63,11 +67,18 @@ class JobService:
                     room = Room.objects.get(room_id=room_id)
                 except Room.DoesNotExist:
                     raise ValidationError("Invalid room ID")
+                area = job_data.get('area')
+                resolved_property = resolve_job_property(
+                    explicit_property=explicit_property,
+                    area=area,
+                    rooms=[room],
+                )
                 
                 # Create job
                 job = Job.objects.create(
                     user=user,
                     updated_by=user,
+                    property=resolved_property,
                     **job_data
                 )
                 
@@ -109,7 +120,7 @@ class JobService:
             queryset = queryset.filter(status=filters['status'])
         
         if filters.get('property_id'):
-            queryset = queryset.filter(rooms__properties__property_id=filters['property_id'])
+            queryset = queryset.filter(property__property_id=filters['property_id'])
         
         if filters.get('is_preventivemaintenance') is not None:
             queryset = queryset.filter(is_preventivemaintenance=filters['is_preventivemaintenance'])
@@ -194,9 +205,9 @@ class PropertyService:
         cache_key = f"user_properties:{user.id}"
         
         def fetch_properties():
-            if user.is_staff or user.is_superuser:
+            if user.is_superuser:
                 return list(Property.objects.all())
-            return list(Property.objects.filter(users=user))
+            return list(get_accessible_properties(user))
         
         return cache_manager.get_or_set(cache_key, fetch_properties, timeout=300)
     
@@ -211,7 +222,7 @@ class PropertyService:
         cache_key = f"property_rooms:{property_id}"
         
         def fetch_rooms():
-            return list(Room.objects.filter(properties=property_obj))
+            return list(Room.objects.filter(property=property_obj))
         
         return cache_manager.get_or_set(cache_key, fetch_rooms, timeout=300)
 
@@ -225,9 +236,8 @@ class PropertyService:
             property_obj = Property.objects.get(property_id=property_id)
             
             # Check access
-            if not (user.is_staff or user.is_superuser):
-                if not property_obj.users.filter(id=user.id).exists():
-                    raise ValidationError("Access denied to this property")
+            if not user.is_superuser and not get_accessible_properties(user).filter(pk=property_obj.pk).exists():
+                raise ValidationError("Access denied to this property")
             
             return property_obj
             
@@ -244,7 +254,7 @@ class PropertyService:
         cache_key = f"property_stats:{property_id}"
         
         def fetch_stats():
-            jobs = Job.objects.filter(rooms__properties=property_obj)
+            jobs = Job.objects.filter(property=property_obj)
             
             return {
                 'total_jobs': jobs.count(),
@@ -252,7 +262,7 @@ class PropertyService:
                 'in_progress_jobs': jobs.filter(status='in_progress').count(),
                 'completed_jobs': jobs.filter(status='completed').count(),
                 'preventive_maintenance_jobs': jobs.filter(is_preventivemaintenance=True).count(),
-                'rooms_count': property_obj.rooms.count(),
+                'rooms_count': property_obj.canonical_rooms.count(),
                 'machines_count': property_obj.machines.count()
             }
         
@@ -367,10 +377,10 @@ class PreventiveMaintenanceService:
         ).order_by('scheduled_date')
         
         # Filter by user access
-        if not user.is_staff:
-            user_properties = Property.objects.filter(users=user)
+        if not user.is_superuser:
+            user_properties = get_accessible_properties(user)
             queryset = queryset.filter(
-                Q(job__rooms__properties__in=user_properties) |
+                Q(job__property__in=user_properties) |
                 Q(machines__property__in=user_properties)
             )
         
@@ -420,10 +430,10 @@ class MachineService:
         """
         Get machines accessible to a user
         """
-        if user.is_staff or user.is_superuser:
+        if user.is_superuser:
             return list(Machine.objects.select_related('property').all())
-        
-        user_properties = Property.objects.filter(users=user)
+
+        user_properties = get_accessible_properties(user)
         return list(Machine.objects.filter(property__in=user_properties).select_related('property'))
     
     @staticmethod
@@ -542,12 +552,13 @@ class NotificationService:
         """
         Scope a preventive maintenance queryset to a single property, matching
         on the human-facing Property.property_id (e.g. "P1A2B3C4"). PMs link to
-        a property either through their job's rooms or through their machines.
+        a property either through their canonical Job property or through their
+        machines.
         """
         if not property_id:
             return queryset
         return queryset.filter(
-            Q(job__rooms__properties__property_id=property_id) |
+            Q(job__property__property_id=property_id) |
             Q(machines__property__property_id=property_id)
         )
 
@@ -564,10 +575,10 @@ class NotificationService:
         ).order_by('scheduled_date')
 
         # Filter by user access
-        if not user.is_staff:
-            user_properties = Property.objects.filter(users=user)
+        if not user.is_superuser:
+            user_properties = get_accessible_properties(user)
             queryset = queryset.filter(
-                Q(job__rooms__properties__in=user_properties) |
+                Q(job__property__in=user_properties) |
                 Q(machines__property__in=user_properties)
             )
 
@@ -591,10 +602,10 @@ class NotificationService:
         ).order_by('scheduled_date')
 
         # Filter by user access
-        if not user.is_staff:
-            user_properties = Property.objects.filter(users=user)
+        if not user.is_superuser:
+            user_properties = get_accessible_properties(user)
             queryset = queryset.filter(
-                Q(job__rooms__properties__in=user_properties) |
+                Q(job__property__in=user_properties) |
                 Q(machines__property__in=user_properties)
             )
 

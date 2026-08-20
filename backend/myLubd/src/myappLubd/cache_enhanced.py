@@ -283,11 +283,11 @@ class CacheWarming:
             property_obj = Property.objects.get(property_id=property_id)
             
             # Warm property rooms
-            rooms = Room.objects.filter(properties=property_obj).values('room_id', 'name', 'room_type')
+            rooms = Room.objects.filter(property=property_obj).values('room_id', 'name', 'room_type')
             cache.set(f"property_rooms:{property_id}", list(rooms), 300)
             
             # Warm property jobs count
-            jobs_count = Job.objects.filter(rooms__properties=property_obj).count()
+            jobs_count = Job.objects.filter(property=property_obj).count()
             cache.set(f"property_jobs_count:{property_id}", jobs_count, 300)
             
             logger.info(f"Warmed cache for property: {property_id}")

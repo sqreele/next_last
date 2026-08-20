@@ -60,6 +60,7 @@ class PublicJobRequestTests(TestCase):
 
         job = Job.objects.get(job_id=resp.data['job_id'])
         self.assertEqual(job.user, self.engineer)
+        self.assertEqual(job.property_id, self.prop.id)
         self.assertEqual(job.status, 'pending')
         self.assertIn(self.room, job.rooms.all())
         self.assertIn('Alice', job.remarks)

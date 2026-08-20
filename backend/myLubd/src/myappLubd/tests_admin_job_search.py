@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 
 from .admin import IsDefectFilter, JobAdmin, _excel_image_for_export
-from .models import Job, Room
+from .models import Job, Property, Room
 
 
 User = get_user_model()
@@ -14,9 +14,13 @@ class JobAdminSearchTests(TestCase):
         self.request = RequestFactory().get('/admin/myappLubd/job/')
         self.admin = JobAdmin(Job, AdminSite())
         self.user = User.objects.create_user(username='engineer', password='pw12345!')
-        self.room = Room.objects.create(name='LUBD-1205', room_type='Deluxe')
+        self.property = Property.objects.create(name='Admin Search Hotel')
+        self.room = Room.objects.create(
+            name='LUBD-1205', room_type='Deluxe', property=self.property,
+        )
         self.job = Job.objects.create(
             user=self.user,
+            property=self.property,
             description='Replace air filter',
             remarks='Admin search test',
             status='pending',

@@ -782,8 +782,6 @@ class Room(models.Model):
     property = models.ForeignKey(
         Property,
         on_delete=models.PROTECT,
-        null=True,
-        blank=True,
         related_name='canonical_rooms',
     )
 

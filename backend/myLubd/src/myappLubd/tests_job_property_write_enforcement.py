@@ -28,11 +28,17 @@ class JobPropertyWriteApiTests(APITestCase):
         self.chinatown_area = Area.objects.create(property=self.chinatown, name='Lobby')
         self.chinatown_area_2 = Area.objects.create(property=self.chinatown, name='Roof')
         self.siam_area = Area.objects.create(property=self.siam, name='Restaurant')
-        self.chinatown_room = Room.objects.create(name='WE-C-101', room_type='Standard')
+        self.chinatown_room = Room.objects.create(
+            name='WE-C-101', room_type='Standard', property=self.chinatown,
+        )
         self.chinatown_room.properties.add(self.chinatown)
-        self.chinatown_room_2 = Room.objects.create(name='WE-C-102', room_type='Standard')
+        self.chinatown_room_2 = Room.objects.create(
+            name='WE-C-102', room_type='Standard', property=self.chinatown,
+        )
         self.chinatown_room_2.properties.add(self.chinatown)
-        self.siam_room = Room.objects.create(name='WE-S-101', room_type='Standard')
+        self.siam_room = Room.objects.create(
+            name='WE-S-101', room_type='Standard', property=self.siam,
+        )
         self.siam_room.properties.add(self.siam)
         self.client.force_authenticate(self.user)
 
@@ -122,7 +128,9 @@ class JobPropertyWriteServiceAndPmTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='job-property-service', password='pw12345!')
         self.property = Property.objects.create(name='Service property')
-        self.room = Room.objects.create(name='WE-SVC-101', room_type='Standard')
+        self.room = Room.objects.create(
+            name='WE-SVC-101', room_type='Standard', property=self.property,
+        )
         self.room.properties.add(self.property)
 
     def test_legacy_service_populates_property(self):

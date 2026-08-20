@@ -28,7 +28,7 @@ class PublicJobRequestTests(TestCase):
         self.prop = Property.objects.create(name='Hotel A')
         self.prop.users.add(self.engineer)
 
-        self.room = Room.objects.create(name='201', room_type='Suite')
+        self.room = Room.objects.create(name='201', room_type='Suite', property=self.prop)
         self.room.properties.add(self.prop)
 
         # A second property with its own room — used to confirm cross-tenant
@@ -36,7 +36,9 @@ class PublicJobRequestTests(TestCase):
         self.other = Property.objects.create(name='Hotel B')
         self.other_user = User.objects.create_user(username='eng2', password='pw12345!')
         self.other.users.add(self.other_user)
-        self.other_room = Room.objects.create(name='B-1', room_type='Standard')
+        self.other_room = Room.objects.create(
+            name='B-1', room_type='Standard', property=self.other,
+        )
         self.other_room.properties.add(self.other)
 
     def _post(self, property_key, room_key, **payload):

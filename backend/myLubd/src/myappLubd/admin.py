@@ -1046,7 +1046,7 @@ class FloorFilter(admin.SimpleListFilter):
 
         selected_property = request.GET.get('property')
         if selected_property:
-            rooms_queryset = rooms_queryset.filter(properties__id=selected_property)
+            rooms_queryset = rooms_queryset.filter(property__id=selected_property)
 
         floors = sorted(
             {self._floor_from_room_name(name) for name in rooms_queryset.values_list('name', flat=True)},
@@ -1096,7 +1096,7 @@ class RoomFilter(admin.SimpleListFilter):
 
         selected_property = request.GET.get('property')
         if selected_property:
-            rooms_queryset = rooms_queryset.filter(properties__id=selected_property)
+            rooms_queryset = rooms_queryset.filter(property__id=selected_property)
 
         rooms_queryset = rooms_queryset.order_by('name').distinct()
 
@@ -1408,7 +1408,7 @@ class JobAdmin(admin.ModelAdmin):
 
         room_qs = Room.objects.filter(is_active=True)
         if property_filter:
-            room_qs = room_qs.filter(properties__id=property_filter)
+            room_qs = room_qs.filter(property__id=property_filter)
         if floor:
             room_qs = room_qs.filter(name__regex=rf'^{floor}[0-9]+$')
 

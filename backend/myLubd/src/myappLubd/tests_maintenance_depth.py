@@ -27,7 +27,7 @@ class MaintenanceDepthTests(TestCase):
         self.user = User.objects.create_user(username='engineer', password='pw12345!')
         self.prop = Property.objects.create(name='Hotel Depth')
         self.prop.users.add(self.user)
-        self.room = Room.objects.create(name='D-101', room_type='Standard')
+        self.room = Room.objects.create(name='D-101', room_type='Standard', property=self.prop)
         self.room.properties.add(self.prop)
         self.job = Job.objects.create(
             user=self.user,

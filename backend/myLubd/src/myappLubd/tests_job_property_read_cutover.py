@@ -23,9 +23,13 @@ class JobPropertyReadCutoverTests(APITestCase):
         for user, property_obj in ((self.siam_user, self.siam), (self.chinatown_user, self.chinatown), (self.staff, self.chinatown)):
             membership = TenantMembership.objects.create(user=user, tenant=self.tenant, role='supervisor')
             membership.properties.add(property_obj)
-        self.chinatown_room = Room.objects.create(name='RC-C', room_type='Standard')
+        self.chinatown_room = Room.objects.create(
+            name='RC-C', room_type='Standard', property=self.chinatown,
+        )
         self.chinatown_room.properties.add(self.chinatown)
-        self.siam_room = Room.objects.create(name='RC-S', room_type='Standard')
+        self.siam_room = Room.objects.create(
+            name='RC-S', room_type='Standard', property=self.siam,
+        )
         self.siam_room.properties.add(self.siam)
         self.chinatown_job = Job.objects.create(user=self.chinatown_user, property=self.chinatown, description='C', remarks='x')
         self.chinatown_job.rooms.add(self.chinatown_room)

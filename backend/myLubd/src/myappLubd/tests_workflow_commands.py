@@ -89,7 +89,7 @@ class EscalateStaleJobsTests(TestCase):
         self.user = User.objects.create_user(username='tech', password='pw12345!')
         self.prop = Property.objects.create(name='Hotel Stale')
         self.prop.users.add(self.user)
-        self.room = Room.objects.create(name='201', room_type='Suite')
+        self.room = Room.objects.create(name='201', room_type='Suite', property=self.prop)
         self.room.properties.add(self.prop)
 
     def _make_job(self, *, hours_old, priority='low', status='pending'):

@@ -37,8 +37,12 @@ class AISummaryCategoryDetailsTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username='tech', password='pass')
         self.property = Property.objects.create(name='Test Hotel')
-        self.room_101 = Room.objects.create(name='101', room_type='Guest Room')
-        self.room_102 = Room.objects.create(name='102', room_type='Guest Room')
+        self.room_101 = Room.objects.create(
+            name='101', room_type='Guest Room', property=self.property,
+        )
+        self.room_102 = Room.objects.create(
+            name='102', room_type='Guest Room', property=self.property,
+        )
         self.property.users.add(self.user)
         self.room_101.properties.add(self.property)
         self.room_102.properties.add(self.property)
@@ -112,7 +116,9 @@ class AIRecurringMonthlyCountsTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username='pm-tech', password='pass')
         self.property = Property.objects.create(name='Monthly PM Hotel')
-        self.room = Room.objects.create(name='201', room_type='Guest Room')
+        self.room = Room.objects.create(
+            name='201', room_type='Guest Room', property=self.property,
+        )
         self.property.users.add(self.user)
         self.room.properties.add(self.property)
 

@@ -18,9 +18,13 @@ class BackfillJobPropertyCommandTests(TestCase):
         self.chinatown = Property.objects.create(name='Chinatown')
         self.siam = Property.objects.create(name='Siam')
         self.area = Area.objects.create(property=self.chinatown, name='Lobby')
-        self.chinatown_room = Room.objects.create(name='BF-C-101', room_type='Standard')
+        self.chinatown_room = Room.objects.create(
+            name='BF-C-101', room_type='Standard', property=self.chinatown,
+        )
         self.chinatown_room.properties.add(self.chinatown)
-        self.siam_room = Room.objects.create(name='BF-S-101', room_type='Standard')
+        self.siam_room = Room.objects.create(
+            name='BF-S-101', room_type='Standard', property=self.siam,
+        )
         self.siam_room.properties.add(self.siam)
 
     def make_job(self, **kwargs):

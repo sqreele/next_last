@@ -81,7 +81,7 @@ class JobWithAreaTests(APITestCase):
         self.prop = Property.objects.create(name='Hotel X')
         self.prop.users.add(self.user)
         self.area = Area.objects.create(property=self.prop, name='Lobby')
-        self.room = Room.objects.create(name='101', room_type='Standard')
+        self.room = Room.objects.create(name='101', room_type='Standard', property=self.prop)
         self.room.properties.add(self.prop)
         self.topic = Topic.objects.create(title='Plumbing')
 
@@ -131,7 +131,7 @@ class JobWithAreaTests(APITestCase):
     def test_area_and_room_must_belong_to_same_property(self):
         other_prop = Property.objects.create(name='Hotel Other')
         other_prop.users.add(self.user)
-        other_room = Room.objects.create(name='909', room_type='Standard')
+        other_room = Room.objects.create(name='909', room_type='Standard', property=other_prop)
         other_room.properties.add(other_prop)
 
         _login(self.client, self.user)
@@ -152,7 +152,7 @@ class JobWithAreaTests(APITestCase):
         other_user = User.objects.create_user(username='other-tech', password='pw12345!')
         other_prop = Property.objects.create(name='Hotel Other Tenant')
         other_prop.users.add(other_user)
-        other_room = Room.objects.create(name='808', room_type='Standard')
+        other_room = Room.objects.create(name='808', room_type='Standard', property=other_prop)
         other_room.properties.add(other_prop)
 
         _login(self.client, self.user)
@@ -180,7 +180,7 @@ class JobCommentTests(APITestCase):
         self.other_prop = Property.objects.create(name='Hotel Z')
         self.other_prop.users.add(self.intruder)
 
-        self.room = Room.objects.create(name='202', room_type='Suite')
+        self.room = Room.objects.create(name='202', room_type='Suite', property=self.prop)
         self.room.properties.add(self.prop)
         self.topic = Topic.objects.create(title='Electrical')
 

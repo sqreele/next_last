@@ -1,11 +1,14 @@
 """B.6 canonical Room.property read, scope, and compatibility regressions."""
 
 from django.contrib.auth import get_user_model
+from django.contrib import admin
 from django.core.cache import cache
+from django.test import RequestFactory
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Property, Room, Tenant, TenantMembership
+from .admin import FloorFilter, JobAdmin, RoomFilter
+from .models import Job, Property, Room, Tenant, TenantMembership
 from .services import PropertyService
 from .views import _resolve_room
 
@@ -101,9 +104,33 @@ class RoomPropertyReadCutoverTests(APITestCase):
         self.assertIsNone(room)
         self.assertIsNotNone(error)
 
-    def test_direct_scope_excludes_transitional_null_room(self):
-        legacy_only = Room.objects.create(name='RR-TRANSITIONAL', room_type='Standard')
-        legacy_only.properties.set([self.chinatown])
+    def test_direct_scope_ignores_conflicting_legacy_membership(self):
+        canonical_siam = Room.objects.create(
+            name='RR-LEGACY-CONFLICT',
+            room_type='Standard',
+            property=self.siam,
+        )
+        canonical_siam.properties.set([self.chinatown])
 
-        self.assertIn(legacy_only.pk, self.pks(Room.objects.filter(properties=self.chinatown)))
-        self.assertNotIn(legacy_only.pk, self.pks(Room.objects.filter(property=self.chinatown)))
+        self.assertIn(canonical_siam.pk, self.pks(Room.objects.filter(properties=self.chinatown)))
+        self.assertNotIn(canonical_siam.pk, self.pks(Room.objects.filter(property=self.chinatown)))
+
+    def test_admin_room_ownership_filters_use_canonical_property(self):
+        canonical_siam = Room.objects.create(
+            name='901',
+            room_type='Standard',
+            property=self.siam,
+        )
+        canonical_siam.properties.set([self.chinatown])
+        job = Job.objects.create(
+            user=self.siam_user,
+            property=self.siam,
+            description='Admin canonical room filter',
+        )
+        job.rooms.add(canonical_siam)
+        request = RequestFactory().get('/admin/', {'property': self.chinatown.pk})
+
+        self.assertEqual(FloorFilter.lookups(object(), request, None), [])
+        self.assertEqual(RoomFilter.lookups(object(), request, None), [])
+        summary = JobAdmin(Job, admin.site)._get_missing_rooms_summary(request)
+        self.assertNotIn(canonical_siam.name, summary['missing_rooms'])

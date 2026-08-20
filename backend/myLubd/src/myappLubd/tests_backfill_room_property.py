@@ -1,8 +1,10 @@
+from copy import copy
 from io import StringIO
 
 from django.core.management import CommandError, call_command
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.db import connection
+from django.test import TransactionTestCase
 
 from .models import Job, Property, Room
 
@@ -10,7 +12,36 @@ from .models import Job, Property, Room
 User = get_user_model()
 
 
-class BackfillRoomPropertyTests(TestCase):
+class BackfillRoomPropertyTests(TransactionTestCase):
+    """Exercise the historical backfill against its nullable migration state."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.required_field = Room._meta.get_field('property')
+        cls.nullable_field = copy(cls.required_field)
+        cls.nullable_field.null = True
+        cls.nullable_field.blank = True
+        cls.nullable_field.model = Room
+        with connection.schema_editor() as schema_editor:
+            schema_editor.alter_field(
+                Room,
+                cls.required_field,
+                cls.nullable_field,
+                strict=True,
+            )
+
+    @classmethod
+    def tearDownClass(cls):
+        with connection.schema_editor() as schema_editor:
+            schema_editor.alter_field(
+                Room,
+                cls.nullable_field,
+                cls.required_field,
+                strict=True,
+            )
+        super().tearDownClass()
+
     def setUp(self):
         self.chinatown = Property.objects.create(name='Backfill Chinatown')
         self.siam = Property.objects.create(name='Backfill Siam')

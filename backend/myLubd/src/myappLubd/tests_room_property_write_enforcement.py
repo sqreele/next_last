@@ -51,6 +51,7 @@ class RoomPropertyWriteEnforcementTests(APITestCase):
     def test_api_create_rejects_missing_multi_mismatched_or_unauthorized_property(self):
         cases = [
             ({}, 'RW-MISSING'),
+            ({'property_id': None}, 'RW-NULL'),
             ({'properties': []}, 'RW-EMPTY'),
             ({'properties': [self.chinatown.pk, self.siam.pk]}, 'RW-MULTI'),
             ({'property_id': str(self.chinatown.pk), 'properties': [self.siam.pk]}, 'RW-DISAGREE'),
@@ -80,6 +81,7 @@ class RoomPropertyWriteEnforcementTests(APITestCase):
             {'properties': []},
             {'properties': [self.siam.pk]},
             {'property_id': str(self.siam.pk)},
+            {'property_id': None},
         ):
             response = self.client.patch(f'/api/v1/rooms/{room.room_id}/', payload, format='json')
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)

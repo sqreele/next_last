@@ -49,11 +49,11 @@ class TenantPropertyAuthorizationTests(APITestCase):
         self.property_a2.users.add(self.user)
         self.property_b.users.add(self.user)
 
-        self.room_a1 = Room.objects.create(name='A1-101', room_type='Standard')
+        self.room_a1 = Room.objects.create(name='A1-101', room_type='Standard', property=self.property_a1)
         self.room_a1.properties.add(self.property_a1)
-        self.room_b = Room.objects.create(name='B1-101', room_type='Standard')
+        self.room_b = Room.objects.create(name='B1-101', room_type='Standard', property=self.property_b)
         self.room_b.properties.add(self.property_b)
-        self.room_a2 = Room.objects.create(name='A2-101', room_type='Standard')
+        self.room_a2 = Room.objects.create(name='A2-101', room_type='Standard', property=self.property_a2)
         self.room_a2.properties.add(self.property_a2)
         self.job_b = Job.objects.create(
             user=self.other,

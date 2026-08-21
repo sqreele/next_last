@@ -71,10 +71,10 @@ def object_timezone(obj=None):
     rooms = getattr(obj, 'rooms', None)
     if rooms is not None:
         try:
-            first_property = rooms.first().properties.select_related('tenant').first()
-            if first_property is not None:
-                return property_timezone(first_property)
-        except Exception:
+            room = rooms.select_related('property__tenant').first()
+            if room is not None:
+                return property_timezone(getattr(room, 'property', None))
+        except (AttributeError, TypeError):
             pass
     machines = getattr(obj, 'machines', None)
     if machines is not None:

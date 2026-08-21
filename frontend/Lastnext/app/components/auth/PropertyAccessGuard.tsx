@@ -7,7 +7,6 @@ import {
   getAuthorizedDashboardPath,
   getDefaultAuthorizedPropertyId,
   isPropertyAllowedForUser,
-  userHasPropertyRestrictions,
 } from '@/app/lib/security/propertyAccess';
 
 function getPropertyIdFromRoute(pathname: string, searchParams: URLSearchParams): string | null {
@@ -41,7 +40,7 @@ export function PropertyAccessGuard({ children }: { children: React.ReactNode })
   );
 
   useEffect(() => {
-    if (!userProfile || !userHasPropertyRestrictions(userProfile)) return;
+    if (!userProfile) return;
 
     const fallbackPropertyId = getDefaultAuthorizedPropertyId(userProfile);
 

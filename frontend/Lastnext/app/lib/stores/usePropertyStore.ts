@@ -4,6 +4,7 @@ import { create } from "zustand";
 
 // Import the consolidated Property interface from types
 import { Property } from '../types';
+import { getDefaultPropertyId, getPropertyId } from '../security/propertyAccess';
 
 interface PropertyState {
   selectedProperty: string | null;
@@ -35,10 +36,10 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
     }
     
     // Verify user has access to this property
-    const hasAccess = props.some((p) => p.property_id === propertyId);
+    const hasAccess = props.some((p) => getPropertyId(p) === propertyId);
     if (!hasAccess) {
       console.warn(`⚠️ Security: Attempted to select unauthorized property: ${propertyId}`);
-      console.warn(`⚠️ User only has access to: ${props.map(p => p.property_id).join(', ')}`);
+      console.warn(`⚠️ User only has access to: ${props.map(getPropertyId).join(', ')}`);
       // Don't set the unauthorized property
       return;
     }
@@ -50,15 +51,23 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
     set({ selectedProperty: propertyId });
   },
   setUserProperties: (properties: Property[]) => {
-    set({ userProperties: properties });
-    // Don't automatically change selectedProperty here to prevent infinite loops
+    const selectedProperty = get().selectedProperty;
+    const selectedIsAllowed = properties.some(
+      (property) => getPropertyId(property) === selectedProperty,
+    );
+    set({
+      userProperties: properties,
+      selectedProperty: selectedIsAllowed
+        ? selectedProperty
+        : getDefaultPropertyId(properties),
+    });
   },
   hydrateFromStorage: () => {
     if (typeof window === "undefined") return;
     const saved = localStorage.getItem("selectedPropertyId");
     // Only set if matches current user properties; otherwise leave null
     const props = get().userProperties;
-    if (saved && props.some((p) => p.property_id === saved)) {
+    if (saved && props.some((p) => getPropertyId(p) === saved)) {
       set({ selectedProperty: saved });
     }
     // Remove automatic property selection to prevent infinite loops
@@ -70,5 +79,4 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
     }
   },
 }));
-
 

@@ -185,6 +185,62 @@ class TenantPropertyAuthorizationTests(APITestCase):
         property_ids = {row['property_id'] for row in UserProfileSerializer(profile).data['properties']}
         self.assertEqual(property_ids, {self.property_a1.property_id})
 
+    def test_profile_properties_contract_matches_canonical_access_for_all_scopes(self):
+        tenant_c = Tenant.objects.create(name='Tenant C')
+        property_c = Property.objects.create(name='C1', tenant=tenant_c)
+        TenantMembership.objects.create(
+            user=self.user, tenant=tenant_c, role='viewer'
+        ).properties.add(property_c)
+        owner = User.objects.create_user(username='tenant-a-owner', password='pw12345!')
+        TenantMembership.objects.create(user=owner, tenant=self.tenant_a, role='owner')
+
+        users = (
+            self.user,
+            self.staff_technician,
+            self.staff_supervisor,
+            self.staff_admin,
+            self.staff_manager,
+            owner,
+            self.staff_without_membership,
+            self.staff_inactive,
+            self.platform_superuser,
+        )
+        for user in users:
+            with self.subTest(user=user.username):
+                profile, _ = UserProfile.objects.get_or_create(user=user)
+                serializer = UserProfileSerializer(profile)
+                expected = list(
+                    get_accessible_properties(user).values_list('property_id', flat=True)
+                )
+                actual = [row['property_id'] for row in serializer.data['properties']]
+                self.assertEqual(actual, expected)
+                self.assertTrue(serializer.fields['properties'].read_only)
+
+        profile = UserProfile.objects.get(user=self.user)
+        property_row = UserProfileSerializer(profile).data['properties'][0]
+        self.assertEqual(
+            set(property_row),
+            {
+                'id', 'tenant', 'tenant_name', 'property_id', 'name',
+                'description', 'created_at', 'rooms', 'is_preventivemaintenance',
+            },
+        )
+
+    def test_profile_me_api_keeps_membership_derived_properties_contract(self):
+        UserProfile.objects.get_or_create(user=self.staff_supervisor)
+        self.client.force_authenticate(self.staff_supervisor)
+
+        response = self.client.get(
+            reverse('myappLubd:user-profile-me'), secure=True,
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertIn('properties', response.data)
+        self.assertEqual(
+            [row['property_id'] for row in response.data['properties']],
+            [self.property_a2.property_id],
+        )
+
     def test_direct_profile_property_endpoints_are_retired(self):
         profile, _ = UserProfile.objects.get_or_create(user=self.user)
         self.client.force_authenticate(self.user)

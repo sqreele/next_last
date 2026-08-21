@@ -185,9 +185,10 @@ const storeImplementation: StateCreator<MainStore, [], []> = (set, get) => ({
     const state = get();
     const userProps = filterPropertiesForUser(state.properties, state.userProfile);
 
-    // Verify user has access to this property. If user.properties is empty, fall back to loaded properties.
+    // Client-side validation is a UI guard; the backend remains authoritative.
+    // An empty compatibility projection means no accessible properties.
     const hasAccess = isPropertyAllowedForUser(state.userProfile, propertyId)
-      && (userProps.length === 0 || userProps.some((p: Property) => getPropertyId(p) === String(propertyId)));
+      && userProps.some((p: Property) => getPropertyId(p) === String(propertyId));
     if (!hasAccess) {
       logger.warn('Security: Attempted to select unauthorized property', {
         propertyId,

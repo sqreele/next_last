@@ -3,6 +3,7 @@ import { API_CONFIG } from "./config";
 import { getCsrfHeaders } from "./csrf";
 import { fixJobsImageUrls, fixJobImageUrls, sanitizeJobsData, sanitizeJobData } from "./utils/image-utils";
 import { logger } from "./utils/logger";
+import { getPropertyId } from "./security/propertyAccess";
 
 // Allow using process.env without requiring Node types in this module
 declare const process: { env: Record<string, string | undefined> };
@@ -771,9 +772,9 @@ export async function fetchUsersByProperty(propertyId: string, accessToken?: str
       if (!profile.properties || !Array.isArray(profile.properties)) {
         return false;
       }
-      return profile.properties.some((prop: any) => 
-        prop.property_id === propertyId || prop.id === propertyId
-      );
+      // UI filtering over the backend-scoped profile response only. Django
+      // remains the authorization authority for every subsequent request.
+      return profile.properties.some((prop: any) => getPropertyId(prop) === propertyId);
     });
 
     // Transform to User format

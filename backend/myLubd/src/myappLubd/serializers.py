@@ -242,7 +242,7 @@ class RoomPropertiesCompatibilityField(serializers.Field):
     """Legacy ``properties[]`` wire field backed only by ``Room.property``."""
 
     def get_attribute(self, instance):
-        # Avoid DRF resolving the similarly named transitional M2M relation.
+        # This is a projection; no model field named ``properties`` exists.
         return instance
 
     def to_representation(self, room):
@@ -448,7 +448,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return get_user_public_username(obj.user)
 
     def get_properties(self, obj):
-        """Expose canonical accessible properties, not profile compatibility rows."""
+        """Return the read-only compatibility projection of canonical access."""
         return PropertySerializer(
             get_accessible_properties(obj.user),
             many=True,

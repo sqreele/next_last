@@ -51,6 +51,10 @@ import FileUpload from "@/app/components/jobs/FileUpload";
 import { Room, TopicFromAPI, Area, Property } from "@/app/lib/types";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/app/lib/stores/mainStore";
+import {
+  getDefaultPropertyId,
+  getPropertyId,
+} from "@/app/lib/security/propertyAccess";
 
 // Use Next.js API routes for proxying to the backend
 const MIN_LOADER_MS = 400; // Minimum time to show loader to avoid flash
@@ -422,13 +426,11 @@ function LoadingSkeleton({ label }: { label: string }) {
 const propertyLabel = (property: Property | string | number) => {
   if (typeof property === "string" || typeof property === "number")
     return String(property);
-  return property.name || property.property_id || String(property.id);
+  return property.name || getPropertyId(property) || "Property";
 };
 
 const propertyValue = (property: Property | string | number) => {
-  if (typeof property === "string" || typeof property === "number")
-    return String(property);
-  return property.property_id || String(property.id);
+  return getPropertyId(property);
 };
 
 const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
@@ -622,18 +624,15 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const hasProperties =
     userProfile?.properties && userProfile.properties.length > 0;
 
-  // Auto-select first property if none selected and user has properties
+  // Preserve the existing first-accessible-property default through the
+  // canonical external property identity.
   useEffect(() => {
-    if (!selectedProperty && hasProperties && userProfile?.properties?.[0]) {
-      const firstProperty = userProfile.properties[0];
-      const propertyId =
-        typeof firstProperty === "string"
-          ? firstProperty
-          : typeof firstProperty === "number"
-            ? String(firstProperty)
-            : firstProperty.property_id || String(firstProperty.id);
-      setSelectedProperty(propertyId);
-      setCurrentPropertyId(propertyId);
+    if (!selectedProperty && hasProperties) {
+      const propertyId = getDefaultPropertyId(userProfile?.properties);
+      if (propertyId) {
+        setSelectedProperty(propertyId);
+        setCurrentPropertyId(propertyId);
+      }
     } else if (selectedProperty) {
       setCurrentPropertyId(selectedProperty);
     }

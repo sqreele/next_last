@@ -37,6 +37,7 @@ export interface UserProfile {
   display_name?: string | null;
   profile_image: string | null;
   positions: string;
+  /** Read-only accessible-property compatibility projection from the API. */
   properties: Property[];
   created_at: string;
 

@@ -5,6 +5,7 @@ import { Property } from '@/app/lib/types';
 import { DEBUG_CONFIG } from '@/app/lib/config';
 import { API_CONFIG } from '@/app/lib/config';
 import { sanitizeSessionForClient } from '@/app/lib/auth0/session-cookie';
+import { getPropertyId } from '@/app/lib/security/propertyAccess';
 
 interface UserProfileResponse {
   profile_image?: string | null;
@@ -28,9 +29,8 @@ export async function GET() {
     if (DEBUG_CONFIG.logSessions) {
     }
 
-    // Fetch properties for the user if they have an access token.
-    // Backend property access can come from either Property.users or UserProfile.properties,
-    // so we merge both sources to keep frontend session data complete.
+    // Both endpoints expose the backend-authorized membership projection. Merge
+    // only for wire compatibility; this route does not grant property access.
     let properties: Property[] = [];
     let profileData: UserProfileResponse | null = null;
     if (session.user.accessToken) {
@@ -68,12 +68,11 @@ export async function GET() {
     const profileProperties = Array.isArray(profileData?.properties) ? profileData.properties : [];
     const mergedProperties = [...properties];
     for (const profileProp of profileProperties) {
-      const profilePropId = String(profileProp?.property_id || profileProp?.id || '');
+      const profilePropId = getPropertyId(profileProp);
       if (!profilePropId) continue;
-      const exists = mergedProperties.some((existingProp) => {
-        const existingId = String(existingProp?.property_id || existingProp?.id || '');
-        return existingId === profilePropId;
-      });
+      const exists = mergedProperties.some(
+        (existingProp) => getPropertyId(existingProp) === profilePropId,
+      );
       if (!exists) {
         mergedProperties.push(profileProp);
       }

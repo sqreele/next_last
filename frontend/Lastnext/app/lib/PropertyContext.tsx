@@ -1,10 +1,10 @@
 "use client";
 
-import React, { createContext, useContext, ReactNode, useCallback, useEffect } from 'react';
-import { useSession } from '@/app/lib/session.client';
+import React, { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useUser } from '@/app/lib/user-context';
-import { usePropertyStore, useAuthStore } from '@/app/lib/stores';
+import { usePropertyStore } from '@/app/lib/stores';
 import type { Property } from '@/app/lib/types';
+import { getDefaultPropertyId } from '@/app/lib/security/propertyAccess';
 
 interface PropertyContextType {
   selectedProperty: string | null;
@@ -16,8 +16,7 @@ interface PropertyContextType {
 const PropertyContext = createContext<PropertyContextType | undefined>(undefined);
 
 export function PropertyProvider({ children }: { children: ReactNode }) {
-  const { data: session } = useSession();
-  const { userProfile, loading: userLoading, refetch: userRefetch } = useUser();
+  const { userProfile } = useUser();
   
   // Zustand stores
   const { 
@@ -39,10 +38,9 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
       setStoreProperties(userProfile.properties);
       
       // Auto-select first property if no property is currently selected
-      if (!selectedProperty && userProfile.properties.length > 0) {
-        const firstProperty = userProfile.properties[0];
-        const propertyId = String(firstProperty.property_id);
-        setStoreProperty(propertyId);
+      if (!selectedProperty) {
+        const propertyId = getDefaultPropertyId(userProfile.properties);
+        if (propertyId) setStoreProperty(propertyId);
       }
     }
   }, [userProfile?.properties, setStoreProperties, selectedProperty, setStoreProperty]);
@@ -50,9 +48,8 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
   // Additional effect to ensure a property is selected when properties are available
   useEffect(() => {
     if (storeProperties.length > 0 && !selectedProperty) {
-      const firstProperty = storeProperties[0];
-      const propertyId = String(firstProperty.property_id);
-      setStoreProperty(propertyId);
+      const propertyId = getDefaultPropertyId(storeProperties);
+      if (propertyId) setStoreProperty(propertyId);
     }
   }, [storeProperties, selectedProperty, setStoreProperty]);
 

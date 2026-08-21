@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect } from 'react';
 import { useMainStore } from '../stores/mainStore';
-import { getPropertyId } from '../security/propertyAccess';
+import { getDefaultPropertyId, getPropertyId } from '../security/propertyAccess';
 import { useSession } from '../session.client';
 
 interface StoreProviderProps {
@@ -69,11 +69,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // Auto-select first authorized property if none selected.
         const currentSelectedProperty = useMainStore.getState().selectedPropertyId;
         if (!currentSelectedProperty) {
-          const firstProperty = sessionProperties[0];
-          if (firstProperty) {
-            const propertyId = getPropertyId(firstProperty);
-            setSelectedPropertyId(propertyId);
-          }
+          setSelectedPropertyId(getDefaultPropertyId(sessionProperties));
         }
       }
     } else if (status === 'unauthenticated') {

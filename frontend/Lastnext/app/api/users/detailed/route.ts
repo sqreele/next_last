@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/app/lib/config';
+import type { Property } from '@/app/lib/types';
+
+interface DetailedProfileResponse {
+  id: string | number;
+  username: string;
+  email?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  positions?: string | null;
+  profile_image?: string | null;
+  properties?: Property[];
+  created_at: string;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,10 +49,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userProfiles = await response.json();
+    const userProfiles = (await response.json()) as DetailedProfileResponse[];
     
     // Transform the data to include first_name, last_name, and properties from the user model
-    const detailedUsers = userProfiles.map((profile: any) => ({
+    const detailedUsers = userProfiles.map((profile) => ({
       id: profile.id,
       username: profile.username,
       email: profile.email,

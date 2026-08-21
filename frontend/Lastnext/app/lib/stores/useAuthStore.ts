@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { getDefaultPropertyId, getPropertyId } from "../security/propertyAccess";
 
 export interface UserProfile {
   id: string | number;
@@ -50,8 +51,7 @@ export const useAuthStore = create<AuthState>()(
         
         // Auto-select property if none selected
         if (profile && profile.properties.length > 0 && !get().selectedProperty) {
-          const firstProperty = profile.properties[0];
-          set({ selectedProperty: firstProperty.property_id });
+          set({ selectedProperty: getDefaultPropertyId(profile.properties) });
         }
       },
 
@@ -76,7 +76,7 @@ export const useAuthStore = create<AuthState>()(
 
       updatePropertySelection: (propertyId) => {
         const { userProfile } = get();
-        if (userProfile?.properties.some(p => p.property_id === propertyId)) {
+        if (userProfile?.properties.some(p => getPropertyId(p) === propertyId)) {
           set({ selectedProperty: propertyId });
         }
       },

@@ -3,6 +3,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useSession } from '@/app/lib/session.client';
 import { Property } from '@/app/lib/types';
+import {
+  getDefaultPropertyId,
+  isPropertyAllowedForUser,
+} from '@/app/lib/security/propertyAccess';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 const CACHE_DURATION = 5 * 60 * 1000;
@@ -38,19 +42,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [selectedProperty, setSelectedProperty] = useState('');
   const [lastFetched, setLastFetched] = useState(0);
-
-  // Helper function to safely extract property ID
-  const getPropertyId = useCallback((property: any): string => {
-    if (!property) return "";
-    if (typeof property === "string" || typeof property === "number") return String(property);
-    if (typeof property.property_id === "string" || typeof property.property_id === "number") {
-      return String(property.property_id);
-    }
-    if (typeof property.id === "string" || typeof property.id === "number") {
-      return String(property.id);
-    }
-    return "";
-  }, []);
 
   const fetchUserProfile = useCallback(async () => {
     if (!session?.user?.accessToken) return null;
@@ -88,13 +79,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           setLastFetched(Date.now());
           setError(null);
 
-          // Auto-select first property if none selected and user has properties
-          if (!selectedProperty && profile.properties.length > 0) {
-            const firstProperty = profile.properties[0];
-            const propertyId = getPropertyId(firstProperty);
-            if (propertyId) {
-              setSelectedProperty(propertyId);
-            }
+          const defaultPropertyId = getDefaultPropertyId(profile.properties);
+          if (!selectedProperty && defaultPropertyId) {
+            setSelectedProperty(defaultPropertyId);
+          } else if (selectedProperty && !isPropertyAllowedForUser(profile, selectedProperty)) {
+            setSelectedProperty(defaultPropertyId || '');
           }
 
           return profile;
@@ -121,13 +110,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setLastFetched(Date.now());
       setError(null);
 
-      // Auto-select first property if none selected and user has properties
-      if (!selectedProperty && profile.properties.length > 0) {
-        const firstProperty = profile.properties[0];
-        const propertyId = getPropertyId(firstProperty);
-        if (propertyId) {
-          setSelectedProperty(propertyId);
-        }
+      const defaultPropertyId = getDefaultPropertyId(profile.properties);
+      if (!selectedProperty && defaultPropertyId) {
+        setSelectedProperty(defaultPropertyId);
+      } else if (selectedProperty && !isPropertyAllowedForUser(profile, selectedProperty)) {
+        setSelectedProperty(defaultPropertyId || '');
       }
 
       return profile;
@@ -140,7 +127,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [session?.user, lastFetched, userProfile, selectedProperty, setSelectedProperty, getPropertyId]);
+  }, [session?.user, lastFetched, userProfile, selectedProperty, setSelectedProperty]);
 
   // Force refresh session data and user profile
   const forceRefresh = useCallback(async () => {

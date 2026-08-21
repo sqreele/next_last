@@ -20,6 +20,7 @@ import { Check, ChevronsUpDown, Building, Loader } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
 import { useUser, useProperties } from "@/app/lib/stores/mainStore";
 import { Room } from "@/app/lib/types";
+import { getRoomPropertyId } from "@/app/lib/utils/property-filter";
 
 interface RoomAutocompleteProps {
   rooms: Room[];
@@ -79,12 +80,7 @@ const RoomAutocomplete = ({
 
   // Determine if rooms have any property association data at all
   const anyRoomHasPropertyAssociation = useMemo(() => {
-    return safeRooms.some(
-      (r) =>
-        r &&
-        ((r.property_id !== undefined && r.property_id !== null) ||
-          (Array.isArray(r.properties) && r.properties.length > 0)),
-    );
+    return safeRooms.some((room) => room && getRoomPropertyId(room) != null);
   }, [safeRooms]);
 
   // Log data for debugging on component mount and when key props change
@@ -143,57 +139,10 @@ const RoomAutocomplete = ({
         }
       }
 
-      // Check the room.properties array (if it exists)
-      if (room.properties && Array.isArray(room.properties)) {
-        for (const prop of room.properties) {
-          if (prop === null || prop === undefined) continue;
-
-          if (typeof prop === "object") {
-            if (
-              "property_id" in prop &&
-              (prop.property_id === propertyId ||
-                String(prop.property_id) === propIdStr)
-            ) {
-              debugLog(`✓ MATCH: Found property_id match in room.properties`);
-              return true;
-            }
-            if (
-              "id" in prop &&
-              (prop.id === propertyId || String(prop.id) === propIdStr)
-            ) {
-              debugLog(`✓ MATCH: Found id match in room.properties`);
-              return true;
-            }
-            if (numericPropId !== null) {
-              if ("id" in prop && Number(prop.id) === numericPropId) {
-                debugLog(`✓ MATCH: Found numeric id match in room.properties`);
-                return true;
-              }
-              if (
-                "property_id" in prop &&
-                Number(prop.property_id) === numericPropId
-              ) {
-                debugLog(
-                  `✓ MATCH: Found numeric property_id match in room.properties`,
-                );
-                return true;
-              }
-            }
-          }
-
-          if (typeof prop === "string" || typeof prop === "number") {
-            if (String(prop) === propIdStr) {
-              debugLog(`✓ MATCH: Found direct ID match in room.properties`);
-              return true;
-            }
-            if (numericPropId !== null && Number(prop) === numericPropId) {
-              debugLog(
-                `✓ MATCH: Found numeric direct ID match in room.properties`,
-              );
-              return true;
-            }
-          }
-        }
+      const canonicalPropertyId = getRoomPropertyId(room);
+      if (canonicalPropertyId != null) {
+        if (String(canonicalPropertyId) === propIdStr) return true;
+        if (numericPropId !== null && Number(canonicalPropertyId) === numericPropId) return true;
       }
 
       // No match found

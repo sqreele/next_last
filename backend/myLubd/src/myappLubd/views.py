@@ -40,7 +40,6 @@ from .serializers import (
     TenantSubscriptionSerializer, UsageMetricSerializer,
 )
 from .job_property import resolve_job_property
-from .room_property import sync_room_legacy_property
 from PIL import Image
 from io import BytesIO
 from django.core.files.base import ContentFile
@@ -3150,7 +3149,6 @@ class RoomViewSet(viewsets.ModelViewSet):
                                 ),
                             })
                             continue
-                        sync_room_legacy_property(existing, target_prop)
                         attached.append({'row': row_index, 'room_id': existing.room_id, 'name': existing.name})
                         continue
 
@@ -3160,7 +3158,6 @@ class RoomViewSet(viewsets.ModelViewSet):
                         is_active=is_active,
                         property=target_prop,
                     )
-                    sync_room_legacy_property(room, target_prop)
                     created.append({'row': row_index, 'room_id': room.room_id, 'name': room.name})
             except Exception as exc:  # pragma: no cover - defensive
                 errors.append({'row': row_index, 'error': str(exc)})

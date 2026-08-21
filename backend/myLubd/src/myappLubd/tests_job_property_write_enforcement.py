@@ -31,15 +31,12 @@ class JobPropertyWriteApiTests(APITestCase):
         self.chinatown_room = Room.objects.create(
             name='WE-C-101', room_type='Standard', property=self.chinatown,
         )
-        self.chinatown_room.properties.add(self.chinatown)
         self.chinatown_room_2 = Room.objects.create(
             name='WE-C-102', room_type='Standard', property=self.chinatown,
         )
-        self.chinatown_room_2.properties.add(self.chinatown)
         self.siam_room = Room.objects.create(
             name='WE-S-101', room_type='Standard', property=self.siam,
         )
-        self.siam_room.properties.add(self.siam)
         self.client.force_authenticate(self.user)
 
     def payload(self, **overrides):
@@ -131,7 +128,6 @@ class JobPropertyWriteServiceAndPmTests(TestCase):
         self.room = Room.objects.create(
             name='WE-SVC-101', room_type='Standard', property=self.property,
         )
-        self.room.properties.add(self.property)
 
     def test_legacy_service_populates_property(self):
         job = JobService.create_job(self.user, {

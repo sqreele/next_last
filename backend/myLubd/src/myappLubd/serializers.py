@@ -28,7 +28,7 @@ import math
 from .timezones import is_valid_timezone
 from .tenancy import get_accessible_properties
 from .job_property import resolve_job_property, resolve_property_reference
-from .room_property import resolve_room_property, sync_room_legacy_property
+from .room_property import resolve_room_property
 
 
 RAW_AUTH_PREFIXES = ('google-oauth2_', 'auth0_', 'auth0|')
@@ -238,12 +238,22 @@ class TenantSerializer(serializers.ModelSerializer):
             )
         return value
 
+class RoomPropertiesCompatibilityField(serializers.Field):
+    """Legacy ``properties[]`` wire field backed only by ``Room.property``."""
+
+    def get_attribute(self, instance):
+        # Avoid DRF resolving the similarly named transitional M2M relation.
+        return instance
+
+    def to_representation(self, room):
+        return [room.property_id]
+
 # Room serializer defined first to avoid circular import issues
 class RoomSerializer(serializers.ModelSerializer):
-    properties = serializers.PrimaryKeyRelatedField(
-        queryset=Property.objects.all(), many=True, required=False,
-    )
-    property_id = serializers.CharField(write_only=True, required=False)
+    properties = RoomPropertiesCompatibilityField(read_only=True)
+    # The canonical FK is both the singular read contract and a supported
+    # write reference. ``properties`` is output-only compatibility.
+    property_id = serializers.CharField(required=False)
 
     class Meta:
         model = Room
@@ -256,15 +266,11 @@ class RoomSerializer(serializers.ModelSerializer):
         return serializers.ValidationError(str(error))
 
     def validate(self, attrs):
-        explicit_value = attrs.pop('property_id', serializers.empty)
-        legacy_properties = attrs.get('properties', serializers.empty)
-
-        if legacy_properties is serializers.empty:
-            legacy_properties = None
-        elif len(legacy_properties) != 1:
+        if 'properties' in self.initial_data:
             raise serializers.ValidationError({
-                'properties': 'Exactly one property is required for a room.',
+                'properties': 'properties is read-only; use property_id.',
             })
+        explicit_value = attrs.pop('property_id', serializers.empty)
 
         explicit_property = None
         if explicit_value is not serializers.empty:
@@ -274,13 +280,12 @@ class RoomSerializer(serializers.ModelSerializer):
                 raise self._as_drf_validation_error(error)
 
         existing_property = self.instance.property if self.instance and self.instance.property_id else None
-        if legacy_properties is None and explicit_property is None and existing_property is not None:
+        if explicit_property is None and existing_property is not None:
             resolved_property = existing_property
         else:
             try:
                 resolved_property = resolve_room_property(
                     explicit_property=explicit_property,
-                    legacy_properties=legacy_properties,
                     existing_property=existing_property,
                 )
             except ValidationError as error:
@@ -292,20 +297,16 @@ class RoomSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         canonical_property = validated_data.pop('_canonical_room_property')
-        validated_data.pop('properties', None)
         with transaction.atomic():
             room = Room.objects.create(property=canonical_property, **validated_data)
-            sync_room_legacy_property(room, canonical_property)
         return room
 
     def update(self, instance, validated_data):
         canonical_property = validated_data.pop('_canonical_room_property')
-        validated_data.pop('properties', None)
         with transaction.atomic():
             for attr, value in validated_data.items():
                 setattr(instance, attr, value)
             instance.save()
-            sync_room_legacy_property(instance, canonical_property)
         return instance
 
     def to_representation(self, instance):
@@ -314,6 +315,9 @@ class RoomSerializer(serializers.ModelSerializer):
         data['name'] = data.get('name') or 'Unnamed room'
         data['room_type'] = data.get('room_type') or 'Room'
         data['is_active'] = bool(data.get('is_active'))
+        # Compatibility output is deliberately derived from the canonical FK,
+        # never from the transitional Room.properties M2M.
+        data['property_id'] = instance.property_id
         data['properties'] = [instance.property_id] if instance.property_id else []
         return data
 
@@ -325,21 +329,21 @@ class RoomSummarySerializer(serializers.ModelSerializer):
     avoid deep nesting and large payloads.
     """
     properties = serializers.SerializerMethodField()
+    property_id = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Room
-        fields = ['room_id', 'name', 'room_type', 'properties']
+        fields = ['room_id', 'name', 'room_type', 'property_id', 'properties']
 
     def get_properties(self, obj):
-        # Return property_id strings to keep payload small. Missing/removed
-        # property relations should not break nested dashboard payloads.
-        return [obj.property.property_id] if obj.property_id else []
+        return [obj.property_id] if obj.property_id else []
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['room_id'] = data.get('room_id') or getattr(instance, 'room_id', None)
         data['name'] = data.get('name') or 'Unnamed room'
         data['room_type'] = data.get('room_type') or 'Room'
+        data['property_id'] = instance.property_id
         data['properties'] = data.get('properties') if isinstance(data.get('properties'), list) else []
         return data
 

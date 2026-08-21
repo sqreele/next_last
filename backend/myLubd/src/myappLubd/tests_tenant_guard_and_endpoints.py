@@ -46,10 +46,8 @@ class JobTenantGuardTests(APITestCase):
         self.prop_b.users.add(self.bob)
 
         self.room_a = Room.objects.create(name='A-101', room_type='Standard', property=self.prop_a)
-        self.room_a.properties.add(self.prop_a)
 
         self.room_b = Room.objects.create(name='B-201', room_type='Standard', property=self.prop_b)
-        self.room_b.properties.add(self.prop_b)
 
         self.topic = Topic.objects.create(title='Plumbing')
 
@@ -129,7 +127,6 @@ class JobAuditLogTests(APITestCase):
         self.prop = Property.objects.create(name='Hotel X')
         self.prop.users.add(self.user)
         self.room = Room.objects.create(name='101', room_type='Standard', property=self.prop)
-        self.room.properties.add(self.prop)
 
         self.job = Job.objects.create(
             user=self.user,
@@ -175,7 +172,6 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
         self.prop = Property.objects.create(name='Hotel S')
         self.prop.users.add(self.user)
         self.room = Room.objects.create(name='S-1', room_type='Standard', property=self.prop)
-        self.room.properties.add(self.prop)
 
         now = timezone.now()
         self.pm_today = PreventiveMaintenance.objects.create(

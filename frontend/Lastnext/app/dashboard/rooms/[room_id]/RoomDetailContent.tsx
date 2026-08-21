@@ -13,6 +13,7 @@ import { CalendarClock, Home, MapPin, Wrench } from "lucide-react";
 import { Room, Property, Job } from "@/app/lib/types";
 import Link from "next/link";
 import { RoomMaintenanceHistory } from "@/app/components/rooms/RoomMaintenanceHistory";
+import { getRoomPropertyName } from "@/app/lib/utils/property-filter";
 
 type RoomDetailContentProps = {
   room: Room;
@@ -36,47 +37,7 @@ export default function RoomDetailContent({
     (job) => job.is_preventivemaintenance === true,
   );
 
-  const getPropertyName = () => {
-    // Helper to resolve a property name by an arbitrary id-like value
-    const resolvePropertyName = (maybeId: unknown): string | null => {
-      if (maybeId === null || maybeId === undefined) return null;
-      const idStr = String(maybeId);
-      const match = properties.find(
-        (p) => String(p.property_id) === idStr || String(p.id) === idStr,
-      );
-      return match?.name ?? null;
-    };
-
-    // Prefer the explicit properties array if present
-    if (Array.isArray(room.properties) && room.properties.length > 0) {
-      // Try to resolve using the first valid entry; fall through if none resolve
-      for (const prop of room.properties) {
-        if (prop === null || prop === undefined) continue;
-        if (typeof prop === "string" || typeof prop === "number") {
-          const name = resolvePropertyName(prop);
-          if (name) return name;
-        } else if (typeof prop === "object") {
-          const obj: any = prop;
-          const nameFromPropertyId = resolvePropertyName(obj.property_id);
-          if (nameFromPropertyId) return nameFromPropertyId;
-          const nameFromId = resolvePropertyName(obj.id);
-          if (nameFromId) return nameFromId;
-        }
-      }
-    }
-
-    // Fallback: many room responses include a single property_id field
-    if (
-      room.property_id !== undefined &&
-      room.property_id !== null &&
-      room.property_id !== ""
-    ) {
-      const name = resolvePropertyName(room.property_id);
-      if (name) return name;
-    }
-
-    return "N/A";
-  };
+  const getPropertyName = () => getRoomPropertyName(room, properties, "N/A");
 
   return (
     <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">

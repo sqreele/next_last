@@ -187,12 +187,12 @@ class Command(BaseCommand):
         all_ids = direct_ids | profile_ids
 
         jobs = Job.objects.filter(
-            Q(area__property=property_obj) | Q(rooms__properties=property_obj)
+            Q(area__property=property_obj) | Q(rooms__property=property_obj)
         ).distinct()
         pm = PreventiveMaintenance.objects.filter(
             Q(machines__property=property_obj)
             | Q(job__area__property=property_obj)
-            | Q(job__rooms__properties=property_obj)
+            | Q(job__rooms__property=property_obj)
         ).distinct()
 
         self.stdout.write('')
@@ -200,7 +200,7 @@ class Command(BaseCommand):
         self.stdout.write('  current tenant: NULL')
         self.stdout.write(
             '  resources: '
-            f'rooms={property_obj.rooms.count()} areas={Area.objects.filter(property=property_obj).count()} '
+            f'rooms={property_obj.canonical_rooms.count()} areas={Area.objects.filter(property=property_obj).count()} '
             f'jobs={jobs.count()} machines={Machine.objects.filter(property=property_obj).count()} '
             f'inventory={Inventory.objects.filter(property=property_obj).count()} pm={pm.count()} '
             f'utility={UtilityConsumption.objects.filter(property=property_obj).count()} '

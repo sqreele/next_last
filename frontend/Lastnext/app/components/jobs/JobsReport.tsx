@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { getRoomPropertyId } from "@/app/lib/utils/property-filter";
 import { Button } from "@/app/components/ui/button";
 import { PageLoader } from "@/app/components/ui/loading";
 import {
@@ -1038,16 +1039,10 @@ export default function JobsReport({
         });
       }
 
-      // Check rooms.properties
       if (job.rooms && Array.isArray(job.rooms)) {
-        return job.rooms.some((room) => {
-          if (room.properties && Array.isArray(room.properties)) {
-            return room.properties.some(
-              (prop) => String(prop) === String(selectedProperty),
-            );
-          }
-          return false;
-        });
+        return job.rooms.some(
+          (room) => String(getRoomPropertyId(room)) === String(selectedProperty),
+        );
       }
 
       return false;

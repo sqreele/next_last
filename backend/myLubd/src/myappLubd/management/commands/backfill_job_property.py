@@ -20,9 +20,9 @@ class Command(BaseCommand):
     def _candidate_property_ids(job):
         area_property_ids = {job.area.property_id} if job.area_id else set()
         room_property_ids = {
-            property_obj.id
+            room.property_id
             for room in job.rooms.all()
-            for property_obj in room.properties.all()
+            if room.property_id is not None
         }
         return area_property_ids | room_property_ids, area_property_ids, room_property_ids
 
@@ -40,7 +40,7 @@ class Command(BaseCommand):
             batch = list(
                 queryset.filter(pk__gt=last_pk)
                 .select_related('area__property')
-                .prefetch_related('rooms__properties')
+                .prefetch_related('rooms')
                 .order_by('pk')[:batch_size]
             )
             if not batch:

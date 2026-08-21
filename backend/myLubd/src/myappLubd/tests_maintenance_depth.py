@@ -28,7 +28,6 @@ class MaintenanceDepthTests(TestCase):
         self.prop = Property.objects.create(name='Hotel Depth')
         self.prop.users.add(self.user)
         self.room = Room.objects.create(name='D-101', room_type='Standard', property=self.prop)
-        self.room.properties.add(self.prop)
         self.job = Job.objects.create(
             user=self.user,
             property=self.prop,

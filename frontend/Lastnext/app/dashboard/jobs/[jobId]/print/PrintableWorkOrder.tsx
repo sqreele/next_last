@@ -1,5 +1,7 @@
 'use client';
 
+import { getRoomPropertyId } from '@/app/lib/utils/property-filter';
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
 import { Printer, ArrowLeft, Download, Loader2 } from 'lucide-react';
@@ -138,14 +140,12 @@ export function PrintableWorkOrder({ job, properties }: PrintableWorkOrderProps)
   const qrValue = useMemo(() => {
     const origin = typeof window === 'undefined' ? '' : window.location.origin;
     const room = job.rooms?.[0];
+    const roomPropertyId = room ? getRoomPropertyId(room) : null;
     const property = properties.find(
       (p) =>
-        room?.properties?.some(
-          (rp) =>
-            (typeof rp === 'object' && rp && 'property_id' in rp
-              ? String((rp as { property_id?: string }).property_id) === String(p.property_id)
-              : String(rp) === String(p.property_id) || String(rp) === String(p.id)),
-        ),
+        roomPropertyId != null &&
+        (String(roomPropertyId) === String(p.property_id) ||
+          String(roomPropertyId) === String(p.id)),
     );
     if (room?.room_id && property?.property_id) {
       return `${origin}/report/${property.property_id}/${room.room_id}`;

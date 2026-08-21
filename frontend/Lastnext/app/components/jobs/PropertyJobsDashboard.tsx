@@ -22,6 +22,7 @@ import {
 } from "recharts";
 import _ from "lodash";
 import { Job, JobStatus, STATUS_COLORS } from "@/app/lib/types";
+import { getRoomPropertyId } from "@/app/lib/utils/property-filter";
 import { useUser, useProperties, useJobs } from "@/app/lib/stores/mainStore";
 import { useSession } from "@/app/lib/session.client";
 import { appSignOut } from "@/app/lib/logout";
@@ -343,29 +344,9 @@ const PropertyJobsDashboard = ({
       // Room property match with special case handling
       if (job.rooms && job.rooms.length > 0) {
         for (const room of job.rooms) {
-          if (!room?.properties?.length) continue;
-
-          for (const prop of room.properties) {
-            // Special case for property ID "1"
-            if (prop === 1 || String(prop) === "1") return true;
-
-            // Object property representation
-            if (
-              typeof prop === "object" &&
-              prop !== null &&
-              "property_id" in prop
-            ) {
-              if (
-                String(
-                  (prop as { property_id: string | number }).property_id,
-                ) === effectiveProperty
-              )
-                return true;
-            }
-
-            // Direct property representation
-            if (String(prop) === effectiveProperty) return true;
-          }
+          const propertyId = getRoomPropertyId(room);
+          if (propertyId === 1 || String(propertyId) === "1") return true;
+          if (String(propertyId) === effectiveProperty) return true;
         }
       }
 

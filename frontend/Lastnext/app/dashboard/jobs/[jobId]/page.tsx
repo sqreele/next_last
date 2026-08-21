@@ -20,6 +20,7 @@ import { Job, JobImage } from "@/app/lib/types";
 import Image from "next/image";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
 import { getDisplayName } from "@/app/lib/utils/display-name";
+import { getRoomPropertyId } from "@/app/lib/utils/property-filter";
 import JobCommentsSection from "@/app/components/jobs/JobCommentsSection";
 import { BeforeAfterCompare } from "@/app/components/jobs/BeforeAfterCompare";
 import { JobAuditTimeline } from "@/app/components/jobs/JobAuditTimeline";
@@ -52,7 +53,7 @@ const getJobPropertyIds = (job: Job): Set<string> => {
   job.properties?.forEach(add);
   job.rooms?.forEach((room) => {
     add(room.property_id);
-    room.properties?.forEach(add);
+    add(getRoomPropertyId(room));
   });
   if (job.area?.property_id) add(job.area.property_id);
 

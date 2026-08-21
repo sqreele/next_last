@@ -77,7 +77,6 @@ from .models import (
     UsageMetric,
     InventoryUsage,
 )
-from .room_property import sync_room_legacy_property
 from .tenancy import get_accessible_properties
 
 
@@ -2662,12 +2661,10 @@ class RoomAdmin(admin.ModelAdmin):
             form.base_fields['property'].queryset = get_accessible_properties(request.user)
         return form
 
-    def save_related(self, request, form, formsets, change):
-        super().save_related(request, form, formsets, change)
-        sync_room_legacy_property(form.instance, form.instance.property)
-
     def get_properties_display(self, obj):
-        return ", ".join([f"{prop.property_id} - {prop.name}" for prop in obj.properties.all()])
+        if not obj.property_id:
+            return ""
+        return f"{obj.property.property_id} - {obj.property.name}"
     get_properties_display.short_description = 'Properties (ID - Name)'
 
     def activate_rooms(self, request, queryset):

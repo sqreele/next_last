@@ -26,27 +26,25 @@ class JobPropertyReadCutoverTests(APITestCase):
         self.chinatown_room = Room.objects.create(
             name='RC-C', room_type='Standard', property=self.chinatown,
         )
-        self.chinatown_room.properties.add(self.chinatown)
         self.siam_room = Room.objects.create(
             name='RC-S', room_type='Standard', property=self.siam,
         )
-        self.siam_room.properties.add(self.siam)
         self.chinatown_job = Job.objects.create(user=self.chinatown_user, property=self.chinatown, description='C', remarks='x')
         self.chinatown_job.rooms.add(self.chinatown_room)
         self.siam_job = Job.objects.create(user=self.siam_user, property=self.siam, description='S', remarks='x')
         self.siam_job.rooms.add(self.siam_room)
 
-    def legacy_ids(self, properties):
+    def canonical_ids(self, properties):
         return set(Job.objects.filter(
-            Q(rooms__properties__in=properties) | Q(area__property__in=properties)
+            Q(rooms__property__in=properties) | Q(area__property__in=properties)
         ).distinct().values_list('pk', flat=True))
 
     def direct_ids(self, properties):
         return set(Job.objects.filter(property__in=properties).values_list('pk', flat=True))
 
-    def test_legacy_direct_parity_for_property_shapes(self):
+    def test_canonical_property_shapes(self):
         for properties in ([self.chinatown], [self.siam], [self.chinatown, self.siam], []):
-            self.assertEqual(self.legacy_ids(properties), self.direct_ids(properties))
+            self.assertEqual(self.canonical_ids(properties), self.direct_ids(properties))
 
     def test_locationless_canonical_job_is_expected_direct_only(self):
         """A manually resolved Job remains visible through canonical ownership."""

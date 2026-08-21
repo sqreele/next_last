@@ -25,7 +25,7 @@ def resolve_property_reference(value):
 def resolve_job_property(*, explicit_property=None, area=None, rooms=None, require=True):
     """Return the sole Property supported by the supplied Job location state.
 
-    Only explicit Property, Area.property, and Room.properties are evidence.
+    Only explicit Property, Area.property, and Room.property are evidence.
     This function deliberately performs no authorization decision.
     """
     candidates = {}

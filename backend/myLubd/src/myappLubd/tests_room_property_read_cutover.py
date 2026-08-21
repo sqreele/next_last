@@ -33,9 +33,7 @@ class RoomPropertyReadCutoverTests(APITestCase):
         self.superuser = User.objects.create_superuser(username='room-read-superuser', password='pw12345!')
 
     def room(self, name, property_obj):
-        room = Room.objects.create(name=name, room_type='Standard', property=property_obj)
-        room.properties.set([property_obj])
-        return room
+        return Room.objects.create(name=name, room_type='Standard', property=property_obj)
 
     def user(self, username, property_obj, *, role, is_staff=False):
         user = User.objects.create_user(username=username, password='pw12345!', is_staff=is_staff)
@@ -48,11 +46,10 @@ class RoomPropertyReadCutoverTests(APITestCase):
     def pks(queryset):
         return set(queryset.values_list('room_id', flat=True))
 
-    def test_legacy_and_direct_property_scopes_have_exact_parity(self):
+    def test_direct_property_scopes_are_canonical(self):
         for scope in ([self.chinatown], [self.siam], [self.chinatown, self.siam], []):
-            legacy = self.pks(Room.objects.filter(properties__in=scope).distinct())
             direct = self.pks(Room.objects.filter(property__in=scope))
-            self.assertEqual(legacy, direct)
+            self.assertEqual(direct, {room.room_id for room in (self.chinatown_room, self.siam_room) if room.property in scope})
 
     def test_room_list_and_detail_enforce_canonical_property_scope(self):
         self.client.force_authenticate(self.siam_user)
@@ -104,24 +101,12 @@ class RoomPropertyReadCutoverTests(APITestCase):
         self.assertIsNone(room)
         self.assertIsNotNone(error)
 
-    def test_direct_scope_ignores_conflicting_legacy_membership(self):
-        canonical_siam = Room.objects.create(
-            name='RR-LEGACY-CONFLICT',
-            room_type='Standard',
-            property=self.siam,
-        )
-        canonical_siam.properties.set([self.chinatown])
-
-        self.assertIn(canonical_siam.pk, self.pks(Room.objects.filter(properties=self.chinatown)))
-        self.assertNotIn(canonical_siam.pk, self.pks(Room.objects.filter(property=self.chinatown)))
-
     def test_admin_room_ownership_filters_use_canonical_property(self):
         canonical_siam = Room.objects.create(
             name='901',
             room_type='Standard',
             property=self.siam,
         )
-        canonical_siam.properties.set([self.chinatown])
         job = Job.objects.create(
             user=self.siam_user,
             property=self.siam,

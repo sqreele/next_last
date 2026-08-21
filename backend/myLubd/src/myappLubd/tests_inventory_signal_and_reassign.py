@@ -91,7 +91,6 @@ class JobReassignTests(TestCase):
         self.other_prop.users.add(self.outsider)
 
         self.room = Room.objects.create(name='R-101', room_type='Standard', property=self.prop)
-        self.room.properties.add(self.prop)
 
         self.job = Job.objects.create(
             user=self.alice,

@@ -14,6 +14,7 @@ import { JobBatchActionBar } from "@/app/components/jobs/JobBatchActionBar";
 import { Job, TabValue, Property, SortOrder } from "@/app/lib/types";
 import { EmptyState, LoadingSkeleton } from "@/app/components/pcms-ui";
 import { cn } from "@/app/lib/utils/cn";
+import { getRoomPropertyId } from "@/app/lib/utils/property-filter";
 import {
   startOfDay,
   endOfDay,
@@ -206,20 +207,7 @@ export default function JobList({
 
     if (Array.isArray(job.rooms)) {
       for (const room of job.rooms) {
-        if (matches(room.property_id)) return true;
-        if (Array.isArray(room.properties)) {
-          for (const prop of room.properties) {
-            if (typeof prop === "string" || typeof prop === "number") {
-              if (matches(prop)) return true;
-            } else if (
-              prop &&
-              typeof prop === "object" &&
-              "property_id" in prop
-            ) {
-              if (matches(prop.property_id)) return true;
-            }
-          }
-        }
+        if (matches(getRoomPropertyId(room))) return true;
       }
     }
 

@@ -44,8 +44,6 @@ class AISummaryCategoryDetailsTests(TestCase):
             name='102', room_type='Guest Room', property=self.property,
         )
         self.property.users.add(self.user)
-        self.room_101.properties.add(self.property)
-        self.room_102.properties.add(self.property)
         self.air_topic = Topic.objects.create(title='ระบบแอร์')
         self.plumbing_topic = Topic.objects.create(title='ประปา')
 
@@ -120,7 +118,6 @@ class AIRecurringMonthlyCountsTests(TestCase):
             name='201', room_type='Guest Room', property=self.property,
         )
         self.property.users.add(self.user)
-        self.room.properties.add(self.property)
 
     def _create_pm(self, title, scheduled_date):
         job = Job.objects.create(

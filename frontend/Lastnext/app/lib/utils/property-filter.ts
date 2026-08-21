@@ -46,12 +46,19 @@ const matchesPropertyEntry = (entry: PropertyLike, idSet: Set<string>): boolean 
   return false;
 };
 
+/**
+ * Return the canonical Room property identifier.  The array fallback exists
+ * solely for clients receiving pre-B.10 payloads.
+ */
+export const getRoomPropertyId = (room: Room): PropertyLike => {
+  if (room.property_id != null) return room.property_id;
+  const legacy = room.properties?.[0];
+  if (legacy == null || typeof legacy === 'string' || typeof legacy === 'number') return legacy;
+  return legacy.property_id ?? legacy.id;
+};
+
 export const roomBelongsToProperty = (room: Room, idSet: Set<string>): boolean => {
-  if (room.property_id != null && idSet.has(String(room.property_id))) return true;
-  if (Array.isArray(room.properties)) {
-    return room.properties.some((p) => matchesPropertyEntry(p as PropertyLike, idSet));
-  }
-  return false;
+  return matchesPropertyEntry(getRoomPropertyId(room), idSet);
 };
 
 export const jobBelongsToProperty = (job: Job, idSet: Set<string>): boolean => {
@@ -117,35 +124,27 @@ export const getRoomPropertyName = (
   properties?: Property[] | null,
   fallback = 'N/A'
 ): string => {
-  const entries: PropertyLike[] = [];
-  if (room?.property_id != null) entries.push(room.property_id as PropertyLike);
-  if (Array.isArray(room?.properties)) {
-    for (const p of room.properties) entries.push(p as PropertyLike);
-  }
-  if (entries.length === 0) return fallback;
+  const entry = getRoomPropertyId(room);
+  if (entry == null) return fallback;
 
-  for (const entry of entries) {
-    if (entry && typeof entry === 'object' && 'name' in entry) {
-      const name = (entry as { name?: string }).name;
-      if (name) return name;
-    }
+  if (entry && typeof entry === 'object' && 'name' in entry) {
+    const name = (entry as { name?: string }).name;
+    if (name) return name;
   }
 
   if (Array.isArray(properties)) {
-    for (const entry of entries) {
-      if (entry == null) continue;
-      const idSet = new Set<string>();
-      if (typeof entry === 'string' || typeof entry === 'number') {
-        idSet.add(String(entry));
-      } else if (typeof entry === 'object') {
-        if (entry.property_id != null) idSet.add(String(entry.property_id));
-        if (entry.id != null) idSet.add(String(entry.id));
-      }
-      const match = properties.find(
-        (p: any) => idSet.has(String(p?.property_id)) || idSet.has(String(p?.id))
-      );
-      if (match?.name) return match.name;
+    const idSet = new Set<string>();
+    if (typeof entry === 'string' || typeof entry === 'number') {
+      idSet.add(String(entry));
+    } else if (typeof entry === 'object') {
+      if (entry.property_id != null) idSet.add(String(entry.property_id));
+      if (entry.id != null) idSet.add(String(entry.id));
     }
+
+    const match = properties.find(
+      (p: any) => idSet.has(String(p?.property_id)) || idSet.has(String(p?.id))
+    );
+    if (match?.name) return match.name;
   }
 
   return fallback;
@@ -166,7 +165,9 @@ export const getJobPropertyName = (
   const jobPropertyEntries: PropertyLike[] = [
     ...(((job.profile_image as { properties?: PropertyLike[] } | null | undefined)?.properties) || []),
     ...((job.properties as PropertyLike[] | undefined) || []),
-    ...((job.rooms?.flatMap((r) => (r?.properties as PropertyLike[] | undefined) || []) || []) as PropertyLike[]),
+    ...(((job.rooms || [])
+      .map((room) => getRoomPropertyId(room))
+      .filter((entry) => entry != null)) as PropertyLike[]),
   ];
 
   if (selectedPropertyId) {

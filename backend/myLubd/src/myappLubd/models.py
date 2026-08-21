@@ -774,11 +774,6 @@ class Room(models.Model):
     room_type = models.CharField(max_length=50, db_index=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    properties = models.ManyToManyField(
-        Property,
-        related_name='rooms',
-        blank=True
-    )
     property = models.ForeignKey(
         Property,
         on_delete=models.PROTECT,

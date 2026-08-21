@@ -4,6 +4,7 @@ import * as React from "react";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
+import { getRoomPropertyId } from "@/app/lib/utils/property-filter";
 import Link from "next/link";
 import {
   Package,
@@ -221,12 +222,7 @@ export default function SearchContent() {
               ? String(room.room_id).toLowerCase()
               : ""
             ).includes(query.toLowerCase()) ||
-            (Array.isArray(room.properties) &&
-              room.properties.some((prop) =>
-                String(prop || "")
-                  .toLowerCase()
-                  .includes(query.toLowerCase()),
-              ))),
+            String(getRoomPropertyId(room) || "").toLowerCase().includes(query.toLowerCase())),
       )
     : [];
 

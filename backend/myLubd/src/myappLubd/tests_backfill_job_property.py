@@ -21,11 +21,9 @@ class BackfillJobPropertyCommandTests(TestCase):
         self.chinatown_room = Room.objects.create(
             name='BF-C-101', room_type='Standard', property=self.chinatown,
         )
-        self.chinatown_room.properties.add(self.chinatown)
         self.siam_room = Room.objects.create(
             name='BF-S-101', room_type='Standard', property=self.siam,
         )
-        self.siam_room.properties.add(self.siam)
 
     def make_job(self, **kwargs):
         defaults = {
@@ -45,12 +43,12 @@ class BackfillJobPropertyCommandTests(TestCase):
 
     def test_historical_candidate_classification_without_weakening_constraint(self):
         relation = lambda values: SimpleNamespace(all=lambda: values)
-        room = lambda properties: SimpleNamespace(properties=relation(properties))
+        room = lambda property_obj: SimpleNamespace(property_id=property_obj.pk, property=property_obj)
         area_only = SimpleNamespace(area_id=self.area.pk, area=self.area, rooms=relation([]))
-        rooms_only = SimpleNamespace(area_id=None, area=None, rooms=relation([room([self.chinatown])]))
-        matching = SimpleNamespace(area_id=self.area.pk, area=self.area, rooms=relation([room([self.chinatown])]))
+        rooms_only = SimpleNamespace(area_id=None, area=None, rooms=relation([room(self.chinatown)]))
+        matching = SimpleNamespace(area_id=self.area.pk, area=self.area, rooms=relation([room(self.chinatown)]))
         missing = SimpleNamespace(area_id=None, area=None, rooms=relation([]))
-        conflicting = SimpleNamespace(area_id=self.area.pk, area=self.area, rooms=relation([room([self.siam])]))
+        conflicting = SimpleNamespace(area_id=self.area.pk, area=self.area, rooms=relation([room(self.siam)]))
 
         self.assertEqual(Command._candidate_property_ids(area_only)[0], {self.chinatown.pk})
         self.assertEqual(Command._candidate_property_ids(rooms_only)[0], {self.chinatown.pk})

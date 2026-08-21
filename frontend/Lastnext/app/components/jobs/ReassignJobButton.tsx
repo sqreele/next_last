@@ -1,5 +1,7 @@
 "use client";
 
+import { getRoomPropertyId } from '@/app/lib/utils/property-filter';
+
 import React, { useMemo, useState } from "react";
 import { UserPlus, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
@@ -71,9 +73,10 @@ export function ReassignJobButton({
     };
     if (job.property_id != null) ids.add(String(job.property_id));
     (job.properties || []).forEach(addProperty);
-    (job.rooms || []).forEach((room) =>
-      (room as { properties?: unknown[] }).properties?.forEach(addProperty),
-    );
+    (job.rooms || []).forEach((room) => {
+      const roomPropertyId = getRoomPropertyId(room);
+      if (roomPropertyId != null) addProperty(roomPropertyId);
+    });
     return ids;
   }, [job]);
 

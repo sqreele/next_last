@@ -82,7 +82,6 @@ class JobWithAreaTests(APITestCase):
         self.prop.users.add(self.user)
         self.area = Area.objects.create(property=self.prop, name='Lobby')
         self.room = Room.objects.create(name='101', room_type='Standard', property=self.prop)
-        self.room.properties.add(self.prop)
         self.topic = Topic.objects.create(title='Plumbing')
 
     def test_create_job_with_area(self):
@@ -132,7 +131,6 @@ class JobWithAreaTests(APITestCase):
         other_prop = Property.objects.create(name='Hotel Other')
         other_prop.users.add(self.user)
         other_room = Room.objects.create(name='909', room_type='Standard', property=other_prop)
-        other_room.properties.add(other_prop)
 
         _login(self.client, self.user)
         resp = self.client.post('/api/v1/jobs/', {
@@ -153,7 +151,6 @@ class JobWithAreaTests(APITestCase):
         other_prop = Property.objects.create(name='Hotel Other Tenant')
         other_prop.users.add(other_user)
         other_room = Room.objects.create(name='808', room_type='Standard', property=other_prop)
-        other_room.properties.add(other_prop)
 
         _login(self.client, self.user)
         resp = self.client.post('/api/v1/jobs/', {
@@ -181,7 +178,6 @@ class JobCommentTests(APITestCase):
         self.other_prop.users.add(self.intruder)
 
         self.room = Room.objects.create(name='202', room_type='Suite', property=self.prop)
-        self.room.properties.add(self.prop)
         self.topic = Topic.objects.create(title='Electrical')
 
         _login(self.client, self.owner)

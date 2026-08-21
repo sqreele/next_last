@@ -17,7 +17,6 @@ class JobPropertySchemaTests(APITestCase):
         self.property = Property.objects.create(name='Job Property Hotel')
         self.property.users.add(self.user)
         self.room = Room.objects.create(name='JP-101', room_type='Standard', property=self.property)
-        self.room.properties.add(self.property)
 
     def test_database_rejects_job_without_property(self):
         with self.assertRaises(IntegrityError):

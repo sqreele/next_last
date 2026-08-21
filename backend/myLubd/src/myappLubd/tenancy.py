@@ -69,9 +69,6 @@ def get_primary_tenant(user):
     membership = get_user_tenant_memberships(user).order_by('created_at').first()
     if membership:
         return membership.tenant
-    legacy_property = Property.objects.filter(users=user, tenant__isnull=False).select_related('tenant').first()
-    if legacy_property:
-        return legacy_property.tenant
     return None
 
 
@@ -93,11 +90,8 @@ def get_accessible_properties(user, tenant=None):
 
     Tenant-backed properties require an active TenantMembership.  Restricted
     roles receive only the membership's ``properties`` M2M; owner/admin/
-    manager roles have explicit tenant-wide access.  ``Property.users`` and
-    ``UserProfile.properties`` remain a *tenantless legacy* compatibility
-    path only.  This prevents a direct-access row from bypassing membership on
-    a tenant-backed property while keeping the pre-SaaS production data usable
-    until it is migrated.
+    manager roles have explicit tenant-wide access.  Direct legacy property
+    relations are deliberately not authorization inputs.
     """
     if not getattr(user, 'is_authenticated', False):
         return Property.objects.none()
@@ -118,12 +112,29 @@ def get_accessible_properties(user, tenant=None):
         tenant__memberships__is_active=True,
         tenant__memberships__role__in=TENANT_WIDE_PROPERTY_ROLES,
     )
-    # Compatibility is intentionally limited to tenantless records.  Once a
-    # property has a tenant, an inactive/missing membership can never be
-    # overridden by the direct access M2M.
-    legacy_q = Q(tenant__isnull=True) & (Q(users=user) | Q(user_profiles__user=user))
-    qs = Property.objects.filter(tenant_member_property_q | tenant_wide_q | legacy_q).distinct()
+    qs = Property.objects.filter(tenant_member_property_q | tenant_wide_q).distinct()
     return qs.filter(tenant=tenant) if tenant is not None else qs
+
+
+def get_property_summary_recipients(property_obj):
+    """Return unique users authorized to receive one property's summary.
+
+    Recipients are derived solely from active memberships.
+    """
+    user_model = TenantMembership._meta.get_field('user').remote_field.model
+    if property_obj is None:
+        return user_model.objects.none()
+    return user_model.objects.filter(
+        Q(
+            tenant_memberships__is_active=True,
+            tenant_memberships__properties=property_obj,
+        )
+        | Q(
+            tenant_memberships__is_active=True,
+            tenant_memberships__tenant_id=property_obj.tenant_id,
+            tenant_memberships__role__in=TENANT_WIDE_PROPERTY_ROLES,
+        )
+    ).distinct()
 
 
 def user_can_access_property(user, property_obj):

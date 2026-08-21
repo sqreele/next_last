@@ -69,7 +69,9 @@ from .tenancy import (
     ensure_tenant_for_property,
     ensure_tenant_for_user,
     get_accessible_properties,
+    get_property_summary_recipients,
     get_user_tenants,
+    TENANT_WIDE_PROPERTY_ROLES,
     tenant_usage_counts,
     user_can_manage_tenant,
 )
@@ -1510,7 +1512,7 @@ def _pm_property_ids(pm):
 
 
 def _ensure_user_can_use_property(user, property_obj):
-    if user.is_staff or user.is_superuser:
+    if user.is_superuser:
         return
     if not get_accessible_properties(user).filter(id=property_obj.id).exists():
         raise PermissionDenied("You do not have access to this property's inventory.")
@@ -1628,7 +1630,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         ).prefetch_related('topics', 'machines', 'machines__property', 'generated_maintenances')
         property_filter = self.request.query_params.get('property_id')
         user = self.request.user
-        if not (user.is_staff or user.is_superuser):
+        if not user.is_superuser:
             property_ids = accessible_property_ids(user)
             queryset = queryset.filter(machines__property_id__in=property_ids)
         if property_filter:
@@ -1730,9 +1732,9 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
 
         logger.info(f"[PM Filter] User: {self.request.user.username}, property_filter: {property_filter}, machine_filter: {machine_filter}")
 
-        # Restrict by user's accessible properties unless staff/admin
+        # Restrict by canonical property scope; only platform superusers bypass.
         user = self.request.user
-        if not (user.is_staff or user.is_superuser):
+        if not user.is_superuser:
             # Limit to PMs whose jobs are in rooms belonging to user's properties OR via machines' property
             property_ids = accessible_property_ids(user)
             logger.info(f"[PM Filter] Non-admin user - accessible properties: {sorted(property_ids)}")
@@ -2562,14 +2564,15 @@ class MachineViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Return a list of machines for the authenticated user or all machines for staff.
+        Return machines scoped to canonical property access; only a platform
+        superuser receives the global list.
         """
         user = self.request.user
         queryset = Machine.objects.select_related('property').prefetch_related(
             Prefetch('preventive_maintenances', queryset=PreventiveMaintenance.objects.order_by('next_due_date'))
         )
 
-        if not (user.is_staff or user.has_perm('machines.view_all_machines')):
+        if not user.is_superuser:
             queryset = queryset.filter(property__in=get_accessible_properties(user))
 
         status_filter = self.request.query_params.get('status')
@@ -2730,21 +2733,21 @@ class MaintenanceProcedureViewSet(viewsets.ModelViewSet):
         return MaintenanceProcedure.objects.prefetch_related('machines').all()
 
     def perform_create(self, serializer):
-        """Only admin users can create procedures"""
-        if not (self.request.user.is_superuser or self.request.user.is_staff):
-            raise PermissionDenied("Only admin users can create maintenance procedures")
+        """Only the platform break-glass user can create shared procedures."""
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only a platform superuser can create maintenance procedures")
         serializer.save()
 
     def perform_update(self, serializer):
-        """Only admin users can update procedures"""
-        if not (self.request.user.is_superuser or self.request.user.is_staff):
-            raise PermissionDenied("Only admin users can update maintenance procedures")
+        """Only the platform break-glass user can update shared procedures."""
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only a platform superuser can update maintenance procedures")
         serializer.save()
 
     def perform_destroy(self, instance):
-        """Only admin users can delete procedures"""
-        if not (self.request.user.is_superuser or self.request.user.is_staff):
-            raise PermissionDenied("Only admin users can delete maintenance procedures")
+        """Only the platform break-glass user can delete shared procedures."""
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only a platform superuser can delete maintenance procedures")
         instance.delete()
 
     def get_serializer_class(self):
@@ -3200,8 +3203,7 @@ class TopicViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Return topics that are associated with jobs in properties the user has access to.
-        Admin/staff users can see all topics.
+        Return topics associated with jobs in properties the user can access.
         """
         user = self.request.user
         
@@ -3222,8 +3224,8 @@ class TopicViewSet(viewsets.ModelViewSet):
                 Q(preventive_maintenances__job__property__in=properties)
             ).distinct()
 
-        # Admin users can access all topics, with optional hidden topic filtering
-        if user.is_superuser or user.is_staff:
+        # Only the platform break-glass user can access all topics.
+        if user.is_superuser:
             queryset = Topic.objects.all()
             if has_property_filter:
                 queryset = filter_topics_by_properties(queryset, selected_properties)
@@ -3490,7 +3492,7 @@ class JobViewSet(viewsets.ModelViewSet):
         
         logger.info(f"my_jobs endpoint called by user {user.username} (ID: {user.id})")
 
-        # Optional override: allow filtering by a specific user (admin/staff only)
+        # Optional override: platform break-glass may inspect another user's jobs.
         target_user = user
         user_filter = request.query_params.get('user_id')
         if user_filter and str(user_filter).lower() != 'all':
@@ -3502,8 +3504,7 @@ class JobViewSet(viewsets.ModelViewSet):
                 resolved_user = User.objects.filter(username=str(user_filter)).first()
 
             if resolved_user:
-                # Only admins can view other users' jobs
-                if (user.is_staff or user.is_superuser) or resolved_user.id == user.id:
+                if user.is_superuser or resolved_user.id == user.id:
                     target_user = resolved_user
                     logger.info(f"Filtering jobs for target_user: {target_user.username} (ID: {target_user.id})")
                 else:
@@ -3855,17 +3856,17 @@ class JobViewSet(viewsets.ModelViewSet):
 
         # Reassignment scope: target must share at least one property with
         # the job (either through a job-rooms property or the job's area
-        # property). Staff/superusers bypass.
-        if not (target.is_staff or target.is_superuser):
-            job_property_ids = {job.property_id} if job.property_id else set()
-            target_property_ids = set(
-                get_accessible_properties(target).values_list('id', flat=True)
+        # property). The target's canonical scope is always enforced. A
+        # platform superuser naturally receives all properties from the helper.
+        job_property_ids = {job.property_id} if job.property_id else set()
+        target_property_ids = set(
+            get_accessible_properties(target).values_list('id', flat=True)
+        )
+        if job_property_ids and not job_property_ids & target_property_ids:
+            return Response(
+                {'error': "Target user has no access to this job's property."},
+                status=status.HTTP_403_FORBIDDEN,
             )
-            if job_property_ids and not job_property_ids & target_property_ids:
-                return Response(
-                    {'error': "Target user has no access to this job's property."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
 
         previous = job.user
         if previous and previous.pk == target.pk:
@@ -3944,7 +3945,7 @@ class TenantViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
-        if not (self.request.user.is_staff or self.request.user.is_superuser):
+        if not self.request.user.is_superuser:
             if get_user_tenants(self.request.user).exists():
                 raise PermissionDenied("Your user already belongs to a tenant.")
         tenant = serializer.save(owner=self.request.user)
@@ -3979,23 +3980,23 @@ class SubscriptionPlanViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = SubscriptionPlan.objects.all()
-        if not (self.request.user.is_staff or self.request.user.is_superuser):
+        if not self.request.user.is_superuser:
             qs = qs.filter(is_active=True)
         return qs.order_by('sort_order', 'monthly_price', 'name')
 
     def perform_create(self, serializer):
-        if not (self.request.user.is_staff or self.request.user.is_superuser):
-            raise PermissionDenied("Only staff can create subscription plans.")
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only a platform superuser can create subscription plans.")
         serializer.save()
 
     def perform_update(self, serializer):
-        if not (self.request.user.is_staff or self.request.user.is_superuser):
-            raise PermissionDenied("Only staff can update subscription plans.")
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only a platform superuser can update subscription plans.")
         serializer.save()
 
     def perform_destroy(self, instance):
-        if not (self.request.user.is_staff or self.request.user.is_superuser):
-            raise PermissionDenied("Only staff can delete subscription plans.")
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only a platform superuser can delete subscription plans.")
         instance.delete()
 
 
@@ -4004,7 +4005,7 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
     serializer_class = TenantMembershipSerializer
 
     def get_queryset(self):
-        if self.request.user.is_staff or self.request.user.is_superuser:
+        if self.request.user.is_superuser:
             return TenantMembership.objects.select_related('tenant', 'user').prefetch_related('properties')
         return (
             TenantMembership.objects.select_related('tenant', 'user')
@@ -4041,11 +4042,6 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
             if prop.tenant_id is None:
                 prop.tenant = membership.tenant
                 prop.save(update_fields=['tenant'])
-            if prop.tenant_id != membership.tenant_id:
-                continue
-            prop.users.add(membership.user)
-            profile, _ = UserProfile.objects.get_or_create(user=membership.user)
-            profile.properties.add(prop)
 
     def perform_update(self, serializer):
         instance = self.get_object()
@@ -4057,11 +4053,6 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
             if prop.tenant_id is None:
                 prop.tenant = membership.tenant
                 prop.save(update_fields=['tenant'])
-            if prop.tenant_id != membership.tenant_id:
-                continue
-            prop.users.add(membership.user)
-            profile, _ = UserProfile.objects.get_or_create(user=membership.user)
-            profile.properties.add(prop)
 
     def perform_destroy(self, instance):
         if not user_can_manage_tenant(self.request.user, instance.tenant):
@@ -4076,7 +4067,7 @@ class TenantSubscriptionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = TenantSubscription.objects.select_related('tenant', 'plan')
-        if self.request.user.is_staff or self.request.user.is_superuser:
+        if self.request.user.is_superuser:
             return qs
         return qs.filter(tenant__in=get_user_tenants(self.request.user))
 
@@ -4099,7 +4090,7 @@ class UsageMetricViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         qs = UsageMetric.objects.select_related('tenant')
-        if self.request.user.is_staff or self.request.user.is_superuser:
+        if self.request.user.is_superuser:
             return qs
         return qs.filter(tenant__in=get_user_tenants(self.request.user))
 
@@ -4155,7 +4146,7 @@ class AreaViewSet(viewsets.ModelViewSet):
         jobs keep their area reference."""
         instance = self.get_object()
         hard = str(request.query_params.get('hard', '')).lower() in ['1', 'true', 'yes']
-        if hard and (request.user.is_staff or request.user.is_superuser):
+        if hard and request.user.is_superuser:
             instance.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         instance.is_active = False
@@ -4171,14 +4162,14 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # For the 'detailed' action, only admins can see all user profiles
         if self.action == 'detailed':
-            if self.request.user.is_superuser or self.request.user.is_staff:
-                return UserProfile.objects.all().prefetch_related('properties')
+            if self.request.user.is_superuser:
+                return UserProfile.objects.all()
             else:
                 # Non-admin users can only see their own profile
-                return UserProfile.objects.filter(user=self.request.user).prefetch_related('properties')
+                return UserProfile.objects.filter(user=self.request.user)
         else:
             # For other actions, return only the current user's profile
-            return UserProfile.objects.filter(user=self.request.user).prefetch_related('properties')
+            return UserProfile.objects.filter(user=self.request.user)
 
     @action(detail=False, methods=['get'])
     def me(self, request):
@@ -4190,7 +4181,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def detailed(self, request):
         """Get all user profiles with properties for admin users"""
         # Verify admin access
-        if not (request.user.is_superuser or request.user.is_staff):
+        if not request.user.is_superuser:
             raise PermissionDenied("Only admin users can access all user profiles")
         
         queryset = self.get_queryset()
@@ -4228,29 +4219,15 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def add_property(self, request, pk=None):
-        profile = self.get_object()
-        property_id = request.data.get('property_id')
-        if not property_id:
-            return Response({'error': 'property_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-        property = get_object_or_404(get_accessible_properties(request.user), property_id=property_id)
-        if property.tenant_id and not user_can_manage_tenant(request.user, property.tenant):
-            raise PermissionDenied("You do not have permission to administer this property's tenant.")
-        profile.properties.add(property)
-        serializer = self.get_serializer(profile)
-        return Response(serializer.data)
+        raise ValidationError({
+            'detail': 'Direct property grants are retired; manage access through TenantMembership.'
+        })
 
     @action(detail=True, methods=['post'])
     def remove_property(self, request, pk=None):
-        profile = self.get_object()
-        property_id = request.data.get('property_id')
-        if not property_id:
-            return Response({'error': 'property_id is required'}, status=status.HTTP_400_BAD_REQUEST)
-        property = get_object_or_404(get_accessible_properties(request.user), property_id=property_id)
-        if property.tenant_id and not user_can_manage_tenant(request.user, property.tenant):
-            raise PermissionDenied("You do not have permission to administer this property's tenant.")
-        profile.properties.remove(property)
-        serializer = self.get_serializer(profile)
-        return Response(serializer.data)
+        raise ValidationError({
+            'detail': 'Direct property grants are retired; manage access through TenantMembership.'
+        })
 
 class PropertyViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -4261,7 +4238,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         logger.info(f"User {self.request.user.username} requesting properties")
         
         # ✅ PERFORMANCE: Optimize query with prefetch_related
-        base_queryset = Property.objects.select_related('tenant').prefetch_related('users', 'canonical_rooms')
+        base_queryset = Property.objects.select_related('tenant').prefetch_related('canonical_rooms')
         
         # Only superuser is the documented platform-wide break-glass scope.
         # Staff users remain scoped by TenantMembership.
@@ -4272,7 +4249,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return queryset
         
         # Check if user has properties assigned
-        user_properties = get_accessible_properties(self.request.user).select_related('tenant').prefetch_related('users', 'canonical_rooms')
+        user_properties = get_accessible_properties(self.request.user).select_related('tenant').prefetch_related('canonical_rooms')
         logger.info(f"User {self.request.user.username} has {user_properties.count()} assigned properties")
         
         # Return only properties assigned to the user
@@ -4286,9 +4263,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You do not have permission to add properties to this tenant.")
         enforce_subscription_limit(tenant, 'max_properties')
         prop = serializer.save(tenant=tenant)
-        prop.users.add(self.request.user)
-        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
-        profile.properties.add(prop)
         membership, _ = TenantMembership.objects.get_or_create(
             tenant=tenant,
             user=self.request.user,
@@ -4323,6 +4297,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
         logger.info(f"is_preventivemaintenance called for property_id: {property_id}")
         try:
             property_obj = Property.objects.get(property_id=property_id)
+            if property_obj.tenant_id:
+                raise PermissionDenied("Tenant-backed property access is managed by TenantMembership.")
             logger.info(f"Found property: {property_obj.name}")
 
             if request.user.is_superuser:
@@ -4354,50 +4330,21 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def add_user(self, request, property_id=None):
-        """
-        Add the current authenticated user to this property.
-        Used during onboarding for new users.
-        """
-        logger.info(f"add_user called for property_id: {property_id} by user: {request.user.username}")
-        try:
-            property_obj = Property.objects.get(property_id=property_id)
-            
-            # Add the current user to the property
-            if not property_obj.users.filter(id=request.user.id).exists():
-                property_obj.users.add(request.user)
-                logger.info(f"Added user {request.user.username} to property {property_id}")
-                
-                # Also update the UserProfile if it exists
-                try:
-                    from .models import UserProfile
-                    profile, created = UserProfile.objects.get_or_create(user=request.user)
-                    if not profile.properties.filter(id=property_obj.id).exists():
-                        profile.properties.add(property_obj)
-                        logger.info(f"Added property {property_id} to user profile")
-                except Exception as profile_error:
-                    logger.warning(f"Could not update user profile: {profile_error}")
-                
-                return Response({
-                    'success': True,
-                    'message': f'User {request.user.username} added to property {property_obj.name}',
-                    'property_id': property_obj.property_id,
-                    'property_name': property_obj.name
-                })
-            else:
-                logger.info(f"User {request.user.username} already has access to property {property_id}")
-                return Response({
-                    'success': True,
-                    'message': f'User already has access to property {property_obj.name}',
-                    'property_id': property_obj.property_id,
-                    'property_name': property_obj.name
-                })
-                
-        except Property.DoesNotExist:
-            logger.error(f"Property {property_id} not found")
-            return Response(
-                {"detail": f"Property with ID {property_id} not found"},
-                status=status.HTTP_404_NOT_FOUND
-            )
+        property_obj = get_object_or_404(Property, property_id=property_id)
+        membership = TenantMembership.objects.filter(
+            user=request.user, tenant=property_obj.tenant, is_active=True
+        ).first()
+        if property_obj.tenant_id is None or membership is None:
+            raise ValidationError({
+                'detail': 'User must have an active TenantMembership before property access can be assigned.'
+            })
+        if membership.role not in TENANT_WIDE_PROPERTY_ROLES:
+            membership.properties.add(property_obj)
+        return Response({
+            'success': True,
+            'property_id': property_obj.property_id,
+            'property_name': property_obj.name,
+        })
 
     @action(detail=False, methods=['post'])
     def assign_properties(self, request):
@@ -4408,6 +4355,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
         Expected payload: { "property_ids": [1, 2, 3] }
         """
         logger.info(f"assign_properties called by user: {request.user.username}")
+        membership = TenantMembership.objects.filter(user=request.user, is_active=True).first()
+        if membership is None:
+            raise ValidationError({'detail': 'User must have an active TenantMembership before property access can be assigned.'})
         property_ids = request.data.get('property_ids', [])
         
         if not property_ids:
@@ -4418,6 +4368,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         
         assigned = []
         errors = []
+        resolved_properties = []
         
         for prop_id in property_ids:
             try:
@@ -4426,20 +4377,9 @@ class PropertyViewSet(viewsets.ModelViewSet):
                     property_obj = Property.objects.get(id=prop_id)
                 else:
                     property_obj = Property.objects.get(property_id=prop_id)
-                
-                # Add user to property
-                if not property_obj.users.filter(id=request.user.id).exists():
-                    property_obj.users.add(request.user)
-                    logger.info(f"Added user {request.user.username} to property {property_obj.property_id}")
-                    
-                    # Also update UserProfile
-                    try:
-                        from .models import UserProfile
-                        profile, created = UserProfile.objects.get_or_create(user=request.user)
-                        if not profile.properties.filter(id=property_obj.id).exists():
-                            profile.properties.add(property_obj)
-                    except Exception as e:
-                        logger.warning(f"Could not update user profile: {e}")
+                if property_obj.tenant_id != membership.tenant_id:
+                    raise ValidationError({'property_ids': 'Every property must belong to your membership tenant.'})
+                resolved_properties.append(property_obj)
                 
                 assigned.append({
                     'id': property_obj.id,
@@ -4451,6 +4391,10 @@ class PropertyViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 errors.append({'id': prop_id, 'error': str(e)})
         
+        if errors:
+            return Response({'success': False, 'assigned': [], 'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
+        if membership.role not in TENANT_WIDE_PROPERTY_ROLES:
+            membership.properties.set(resolved_properties)
         logger.info(f"assign_properties result: {len(assigned)} assigned, {len(errors)} errors")
         
         # Send welcome email to new user if properties were assigned successfully
@@ -4540,7 +4484,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             qs = Property.objects.all()
         else:
             qs = get_accessible_properties(user)
-        qs = qs.prefetch_related('users', 'canonical_rooms').order_by('name')
+        qs = qs.prefetch_related('canonical_rooms').order_by('name')
 
         buf = StringIO()
         writer = _csv.writer(buf)
@@ -4554,7 +4498,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 prop.property_id or '',
                 (prop.description or '').replace('\n', ' ').strip(),
                 prop.canonical_rooms.count(),
-                prop.users.count(),
+                get_property_summary_recipients(prop).count(),
                 'true' if prop.is_preventivemaintenance else 'false',
                 prop.created_at.isoformat() if prop.created_at else '',
             ])
@@ -4576,16 +4520,10 @@ class PropertyViewSet(viewsets.ModelViewSet):
         request user so the dashboard's tenant-scoped queries pick it up
         immediately.
 
-        Only staff/superusers can create properties — otherwise an operator
-        could conjure tenants for themselves at will."""
+        A user must be able to manage their canonical tenant before importing
+        properties; staff status never expands this scope."""
         import csv as _csv
         from io import StringIO
-
-        if not (request.user.is_staff or request.user.is_superuser):
-            return Response(
-                {'error': 'Only staff can bulk-import properties.'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
 
         file_obj = request.FILES.get('file') if hasattr(request, 'FILES') else None
         if file_obj is not None:
@@ -4617,7 +4555,18 @@ class PropertyViewSet(viewsets.ModelViewSet):
         created = []
         attached = []
         errors = []
+        if not request.user.is_superuser and not get_user_tenants(request.user).exists():
+            return Response(
+                {'error': 'You must belong to a tenant before importing properties.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         tenant = ensure_tenant_for_user(request.user)
+        if not user_can_manage_tenant(request.user, tenant):
+            return Response(
+                {'error': 'You do not have permission to import properties for this tenant.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         for row_index, raw_row in enumerate(reader, start=2):
             row = {(k or '').strip().lower(): (v or '').strip() for k, v in raw_row.items() if k}
@@ -4644,7 +4593,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
                     elif not user_can_manage_tenant(request.user, existing.tenant):
                         errors.append({'row': row_index, 'error': 'You cannot attach this property.'})
                         continue
-                    existing.users.add(request.user)
                     attached.append({
                         'row': row_index,
                         'property_id': existing.property_id,
@@ -4663,7 +4611,6 @@ class PropertyViewSet(viewsets.ModelViewSet):
                     prop.property_id = explicit_id[:50]
                 prop.tenant = tenant
                 prop.save()
-                prop.users.add(request.user)
                 membership, _ = TenantMembership.objects.get_or_create(
                     tenant=tenant,
                     user=request.user,
@@ -4699,17 +4646,17 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff or user.is_superuser:
+        if user.is_superuser:
             return User.objects.all()
         return User.objects.filter(pk=user.pk)
 
     def create(self, request, *args, **kwargs):
-        if not (request.user.is_staff or request.user.is_superuser):
+        if not request.user.is_superuser:
             raise PermissionDenied("You do not have permission to create users.")
         return super().create(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
-        if not (request.user.is_staff or request.user.is_superuser):
+        if not request.user.is_superuser:
             raise PermissionDenied("You do not have permission to delete users.")
         return super().destroy(request, *args, **kwargs)
 
@@ -4928,7 +4875,7 @@ def forgot_password(request):
         profile.reset_password_expires_at = timezone.now() + timedelta(hours=1)
         profile.reset_password_used = False
         profile.save(update_fields=['reset_password_token', 'reset_password_expires_at', 'reset_password_used'])
-        logger.info(f"Password reset token for {user.username}: {token}")
+        logger.info("Password reset requested for user_id=%s", user.id)
 
         # Send email if the user has an email address configured
         if user.email:
@@ -4952,11 +4899,10 @@ def forgot_password(request):
                 # Continue to avoid enumeration
                 pass
 
-        # In development, include token in response for easier testing
-        response_payload = {'message': 'If an account exists, password reset instructions have been sent.'}
-        if settings.DEBUG:
-            response_payload['token'] = token
-        return Response(response_payload, status=status.HTTP_200_OK)
+        return Response(
+            {'message': 'If an account exists, password reset instructions have been sent.'},
+            status=status.HTTP_200_OK,
+        )
 
     return Response({'message': 'If an account exists, password reset instructions have been sent.'}, status=status.HTTP_200_OK)
 
@@ -5071,7 +5017,7 @@ def google_auth(request):
                 'email': user.email,
                 'profile_image': userprofile.profile_image.url if userprofile.profile_image else None,
                 'positions': userprofile.positions,
-                'properties': list(userprofile.properties.values('id', 'name', 'property_id')),
+                'properties': list(get_accessible_properties(user).values('id', 'name', 'property_id')),
             }
         }
         logger.info(f"Response Data to Frontend: {json.dumps(response_data)}")
@@ -5213,7 +5159,7 @@ def get_preventive_maintenance_rooms(request):
         try:
             property_obj = get_object_or_404(Property, property_id=property_id)
             # Check user has access to this property
-            if not property_obj.users.filter(id=request.user.id).exists():
+            if not get_accessible_properties(request.user).filter(pk=property_obj.pk).exists():
                 return Response(
                     {"detail": "You do not have permission to access this property"},
                     status=status.HTTP_403_FORBIDDEN
@@ -5262,12 +5208,11 @@ def property_is_preventivemaintenance(request, property_id):
     property_instance = get_object_or_404(Property, property_id=property_id)
     
     # Check user has access to this property
-    if not property_instance.users.filter(id=request.user.id).exists():
-        if property_id != "PB749146D" or not settings.DEBUG:
-            return Response(
-                {"detail": "You do not have permission to access this property"},
-                status=status.HTTP_403_FORBIDDEN
-            )
+    if not get_accessible_properties(request.user).filter(pk=property_instance.pk).exists():
+        return Response(
+            {"detail": "You do not have permission to access this property"},
+            status=status.HTTP_403_FORBIDDEN
+        )
     
     # Check if property has any PM jobs
     has_pm_jobs = Job.objects.filter(
@@ -5752,8 +5697,8 @@ class UtilityConsumptionViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = UtilityConsumption.objects.select_related('property', 'created_by').all()
         
-        # Filter by property if user is not staff
-        if not (user.is_staff or user.is_superuser):
+        # Filter by canonical property scope unless platform break-glass.
+        if not user.is_superuser:
             # Get properties the user has access to
             user_properties = get_accessible_properties(user)
             queryset = queryset.filter(property__in=user_properties)
@@ -5828,8 +5773,8 @@ class InventoryViewSet(viewsets.ModelViewSet):
             .all()
         )
         
-        # Filter by property if user is not staff
-        if not (user.is_staff or user.is_superuser):
+        # Filter by canonical property scope unless platform break-glass.
+        if not user.is_superuser:
             # Get properties the user has access to
             user_properties = get_accessible_properties(user)
             queryset = queryset.filter(property__in=user_properties)
@@ -6169,7 +6114,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
 
         # Resolve property scope: which properties this user can write to.
         accessible_props = list(get_accessible_properties(request.user))
-        if not accessible_props and not (request.user.is_staff or request.user.is_superuser):
+        if not accessible_props:
             return Response(
                 {'error': 'You have no property access — cannot import inventory.'},
                 status=status.HTTP_403_FORBIDDEN,
@@ -6219,7 +6164,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
                     continue
 
             target_prop = prop_lookup.get(row.get('property_id', '')) if row.get('property_id') else default_prop
-            if target_prop is None and not (request.user.is_staff or request.user.is_superuser):
+            if target_prop is None:
                 errors.append({
                     'row': row_index,
                     'error': 'property_id missing or not accessible to you.',
@@ -6571,13 +6516,13 @@ def public_job_request(request, property_id, room_id):
         # Allow lookup by name as a fallback so QRs printed with the visible
         # room number still work.
         room_obj = Room.objects.filter(name=str(room_id)).first()
-    if room_obj is None or not room_obj.properties.filter(pk=property_obj.pk).exists():
+    if room_obj is None or room_obj.property_id != property_obj.pk:
         return Response(
             {'error': 'Room not found at this property.'},
             status=status.HTTP_404_NOT_FOUND,
         )
 
-    assignee = property_obj.users.order_by('id').first()
+    assignee = get_property_summary_recipients(property_obj).order_by('id').first()
     if assignee is None:
         return Response(
             {'error': 'Property has no staff to dispatch the request to.'},

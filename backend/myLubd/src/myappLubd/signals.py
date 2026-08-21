@@ -17,6 +17,7 @@ from django.dispatch import receiver
 
 from .models import Inventory, Job, JobComment
 from .push import send_push_to_user
+from .tenancy import get_property_summary_recipients
 
 logger = logging.getLogger(__name__)
 
@@ -126,9 +127,9 @@ def _push_on_inventory_low_stock(sender, instance: Inventory, created: bool, **k
         f"{instance.name} — {instance.quantity} {instance.unit} "
         f"(min {instance.min_quantity})"
     )
-    # Notify every user attached to the property; let each device decide
-    # whether to actually show the notification (the SW handles it).
-    for user in instance.property.users.all():
+    # Notify the users canonically authorized for this property's tenant
+    # scope; the client still decides whether to surface the notification.
+    for user in get_property_summary_recipients(instance.property):
         try:
             send_push_to_user(
                 user,

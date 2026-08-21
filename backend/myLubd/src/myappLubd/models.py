@@ -745,7 +745,6 @@ class Property(models.Model):
     )
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, null=True)
-    users = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name='accessible_properties')
     created_at = models.DateTimeField(auto_now_add=True)
     is_preventivemaintenance=models.BooleanField(default=False)
 
@@ -837,8 +836,8 @@ class Topic(models.Model):
 class Area(models.Model):
     """
     Represents a physical area/zone inside a Property (e.g. Lobby, Pump Room).
-    Tenant isolation is enforced via the related Property (users have
-    access to specific properties through Property.users).
+    Tenant isolation is enforced via the related Property and canonical
+    TenantMembership property grants.
     """
     id = models.AutoField(primary_key=True)
     property = models.ForeignKey(
@@ -1162,12 +1161,6 @@ class UserProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     positions = models.TextField(blank=True, null=True)
     profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
-    properties = models.ManyToManyField(
-        Property,
-        related_name='user_profiles',
-        blank=True
-    )
-    
     # Property fields (also available in User model)
     property_name = models.CharField(max_length=255, blank=True, null=True, help_text="Name of the property this user belongs to")
     property_id = models.CharField(max_length=50, blank=True, null=True, help_text="ID of the property this user belongs to")

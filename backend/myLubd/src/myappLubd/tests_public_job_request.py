@@ -14,7 +14,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from .models import Job, Property, Room
+from .models import Job, Property, Room, Tenant, TenantMembership
 
 
 User = get_user_model()
@@ -25,16 +25,18 @@ class PublicJobRequestTests(TestCase):
         self.client = APIClient()
         cache.clear()
         self.engineer = User.objects.create_user(username='eng', password='pw12345!')
-        self.prop = Property.objects.create(name='Hotel A')
-        self.prop.users.add(self.engineer)
+        tenant = Tenant.objects.create(name='Public Request Tenant A')
+        self.prop = Property.objects.create(name='Hotel A', tenant=tenant)
+        TenantMembership.objects.create(user=self.engineer, tenant=tenant, role='technician').properties.add(self.prop)
 
         self.room = Room.objects.create(name='201', room_type='Suite', property=self.prop)
 
         # A second property with its own room — used to confirm cross-tenant
         # combinations are rejected.
-        self.other = Property.objects.create(name='Hotel B')
+        other_tenant = Tenant.objects.create(name='Public Request Tenant B')
+        self.other = Property.objects.create(name='Hotel B', tenant=other_tenant)
         self.other_user = User.objects.create_user(username='eng2', password='pw12345!')
-        self.other.users.add(self.other_user)
+        TenantMembership.objects.create(user=self.other_user, tenant=other_tenant, role='technician').properties.add(self.other)
         self.other_room = Room.objects.create(
             name='B-1', room_type='Standard', property=self.other,
         )

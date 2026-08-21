@@ -7,7 +7,8 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from .models import Property
+from .models import Property, SubscriptionPlan, Tenant, TenantMembership, TenantSubscription
+from .tenancy import get_accessible_properties
 
 
 User = get_user_model()
@@ -31,6 +32,12 @@ class PropertyBulkImportTests(TestCase):
         self.client = APIClient()
         self.staff = User.objects.create_user(username='owner', password='pw12345!', is_staff=True)
         self.regular = User.objects.create_user(username='alice', password='pw12345!')
+        self.tenant = Tenant.objects.create(name='Import Tenant')
+        TenantMembership.objects.create(user=self.staff, tenant=self.tenant, role='owner')
+        plan = SubscriptionPlan.objects.create(
+            code='import-test', name='Import Test', max_properties=10,
+        )
+        TenantSubscription.objects.create(tenant=self.tenant, plan=plan, status='active')
 
     def _post(self, payload, **extra):
         return self.client.post('/api/v1/properties/bulk-import/', payload, **extra)
@@ -44,7 +51,7 @@ class PropertyBulkImportTests(TestCase):
         for field in ('name', 'property_id', 'description'):
             self.assertIn(field, header)
 
-    def test_staff_can_import_and_gets_attached(self):
+    def test_tenant_owner_can_import_and_gets_attached(self):
         self.client.force_authenticate(user=self.staff)
         resp = self._post({'file': _csv_file(GOOD_CSV)}, format='multipart')
         self.assertIn(resp.status_code, (status.HTTP_201_CREATED, status.HTTP_207_MULTI_STATUS), resp.content)
@@ -52,7 +59,7 @@ class PropertyBulkImportTests(TestCase):
         self.assertEqual(resp.data['error_count'], 0)
         self.assertEqual(Property.objects.count(), 2)
         for prop in Property.objects.all():
-            self.assertIn(self.staff, prop.users.all())
+            self.assertTrue(get_accessible_properties(self.staff).filter(pk=prop.pk).exists())
             self.assertTrue(prop.property_id, 'property_id should be auto-generated when blank.')
 
     def test_regular_user_is_forbidden(self):
@@ -68,13 +75,14 @@ class PropertyBulkImportTests(TestCase):
         # duplicates.
         self._post({'file': _csv_file(GOOD_CSV)}, format='multipart')
         other_staff = User.objects.create_user(username='owner2', password='pw12345!', is_staff=True)
+        TenantMembership.objects.create(user=other_staff, tenant=self.tenant, role='admin')
         self.client.force_authenticate(user=other_staff)
         resp = self._post({'file': _csv_file(GOOD_CSV)}, format='multipart')
         self.assertEqual(Property.objects.count(), 2)
         self.assertEqual(resp.data['created_count'], 0)
         self.assertEqual(resp.data['attached_count'], 2)
         for prop in Property.objects.all():
-            self.assertIn(other_staff, prop.users.all())
+            self.assertTrue(get_accessible_properties(other_staff).filter(pk=prop.pk).exists())
 
     def test_missing_name_is_reported_per_row(self):
         self.client.force_authenticate(user=self.staff)
@@ -89,17 +97,17 @@ class PropertyBulkImportTests(TestCase):
 class PropertyExportTests(TestCase):
     """The /export action mirrors the import schema so a round-trip works.
 
-    Tenant scoping is enforced via get_queryset-style logic in the action:
-    regular users see only their accessible properties, staff sees all."""
+    Tenant scoping is enforced via canonical membership access."""
 
     def setUp(self):
         self.client = APIClient()
         self.staff = User.objects.create_user(username='owner', password='pw12345!', is_staff=True)
         self.alice = User.objects.create_user(username='alice', password='pw12345!')
-        self.prop_a = Property.objects.create(name='Hotel Alice', description='Alice resort')
-        self.prop_a.users.add(self.alice)
-        self.prop_b = Property.objects.create(name='Hotel Bob', description='Bob resort')
-        # Bob's property has nobody attached except staff visibility.
+        self.tenant = Tenant.objects.create(name='Export Tenant')
+        self.prop_a = Property.objects.create(name='Hotel Alice', description='Alice resort', tenant=self.tenant)
+        self.prop_b = Property.objects.create(name='Hotel Bob', description='Bob resort', tenant=self.tenant)
+        TenantMembership.objects.create(user=self.alice, tenant=self.tenant, role='technician').properties.add(self.prop_a)
+        TenantMembership.objects.create(user=self.staff, tenant=self.tenant, role='admin')
 
     def test_regular_user_only_sees_their_properties(self):
         self.client.force_authenticate(user=self.alice)
@@ -112,7 +120,7 @@ class PropertyExportTests(TestCase):
         self.assertIn('Hotel Alice', lines[1])
         self.assertNotIn('Hotel Bob', body)
 
-    def test_staff_sees_all_properties(self):
+    def test_staff_admin_membership_sees_tenant_properties(self):
         self.client.force_authenticate(user=self.staff)
         resp = self.client.get('/api/v1/properties/export/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)

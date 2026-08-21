@@ -12,8 +12,9 @@ from django.core.cache import cache
 from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
+from unittest.mock import patch
 
-from .models import Inventory, Job, Property, Room
+from .models import Inventory, Job, Property, Room, Tenant, TenantMembership
 
 
 User = get_user_model()
@@ -23,8 +24,9 @@ class InventoryLowStockSignalTests(TestCase):
     def setUp(self):
         cache.clear()
         self.engineer = User.objects.create_user(username='eng', password='pw12345!')
-        self.prop = Property.objects.create(name='Hotel A')
-        self.prop.users.add(self.engineer)
+        tenant = Tenant.objects.create(name='Inventory Signal Tenant')
+        self.prop = Property.objects.create(name='Hotel A', tenant=tenant)
+        TenantMembership.objects.create(user=self.engineer, tenant=tenant, role='technician').properties.add(self.prop)
 
     def _make_item(self, *, quantity=50, min_quantity=10):
         return Inventory.objects.create(
@@ -75,6 +77,30 @@ class InventoryLowStockSignalTests(TestCase):
         item.save()
         self.assertIsNone(cache.get(dedupe_key), 'Signal must not push when status stayed the same.')
 
+    @patch('myappLubd.signals.send_push_to_user')
+    def test_low_stock_recipients_follow_canonical_memberships(self, send_push):
+        manager = User.objects.create_user(username='inventory-manager', password='pw12345!')
+        scoped_elsewhere = User.objects.create_user(username='inventory-other', password='pw12345!')
+        inactive = User.objects.create_user(username='inventory-inactive', password='pw12345!')
+        TenantMembership.objects.create(
+            user=manager, tenant=self.prop.tenant, role='manager'
+        )
+        other_property = Property.objects.create(name='Hotel B', tenant=self.prop.tenant)
+        TenantMembership.objects.create(
+            user=scoped_elsewhere, tenant=self.prop.tenant, role='technician'
+        ).properties.add(other_property)
+        inactive_membership = TenantMembership.objects.create(
+            user=inactive, tenant=self.prop.tenant, role='technician', is_active=False
+        )
+        inactive_membership.properties.add(self.prop)
+
+        item = self._make_item(quantity=50, min_quantity=10)
+        item.quantity = 5
+        item.save()
+
+        recipients = {call.args[0] for call in send_push.call_args_list}
+        self.assertEqual(recipients, {self.engineer, manager})
+
 
 class JobReassignTests(TestCase):
     def setUp(self):
@@ -84,16 +110,19 @@ class JobReassignTests(TestCase):
         self.bob = User.objects.create_user(username='bob', password='pw12345!')
         self.outsider = User.objects.create_user(username='outsider', password='pw12345!')
 
-        self.prop = Property.objects.create(name='Hotel R')
-        self.prop.users.add(self.alice, self.bob)
-
-        self.other_prop = Property.objects.create(name='Hotel Other')
-        self.other_prop.users.add(self.outsider)
+        tenant = Tenant.objects.create(name='Inventory Reassign Tenant')
+        other_tenant = Tenant.objects.create(name='Inventory Other Tenant')
+        self.prop = Property.objects.create(name='Hotel R', tenant=tenant)
+        for user in (self.alice, self.bob):
+            TenantMembership.objects.create(user=user, tenant=tenant, role='technician').properties.add(self.prop)
+        self.other_prop = Property.objects.create(name='Hotel Other', tenant=other_tenant)
+        TenantMembership.objects.create(user=self.outsider, tenant=other_tenant, role='technician').properties.add(self.other_prop)
 
         self.room = Room.objects.create(name='R-101', room_type='Standard', property=self.prop)
 
         self.job = Job.objects.create(
             user=self.alice,
+            property=self.prop,
             description='Leaking faucet',
             remarks='',
             status='pending',

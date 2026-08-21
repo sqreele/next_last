@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 from myappLubd.models import Job, Property
 from myappLubd.email_utils import send_email
 from myappLubd.timezones import localtime_for
+from myappLubd.tenancy import get_accessible_properties, get_property_summary_recipients
 
 
 logger = logging.getLogger(__name__)
@@ -17,6 +18,14 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = "Send personalized job emails to users based on their property access and date filtering"
+
+    def _users_with_property_access(self, property_id):
+        """Return active users authorized by the canonical access helper."""
+        User = get_user_model()
+        property_obj = Property.objects.filter(pk=property_id).first()
+        if property_obj is None:
+            return User.objects.none()
+        return get_property_summary_recipients(property_obj)
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -76,13 +85,7 @@ class Command(BaseCommand):
         )
 
     def _primary_user_property(self, user):
-        try:
-            prop = user.userprofile.properties.select_related('tenant').first()
-            if prop:
-                return prop
-        except Exception:
-            pass
-        return Property.objects.filter(users=user).select_related('tenant').first()
+        return get_accessible_properties(user).select_related('tenant').first()
 
     def get_user_property_jobs(self, user, property_id, days, status_filter=None, priority_filter=None, now=None):
         """Get jobs for a specific user and property within date range."""
@@ -103,23 +106,7 @@ class Command(BaseCommand):
                 property__id=property_id
             )
         else:
-            # Get user's accessible properties (support both legacy + primary assignment paths)
-            # - Primary: UserProfile.properties (matches access control + other email commands)
-            # - Legacy: Property.users ManyToMany
-            user_property_ids = set(Property.objects.filter(users=user).values_list('id', flat=True))
-            try:
-                user_property_ids.update(user.userprofile.properties.values_list('id', flat=True))
-            except Exception:
-                # If userprofile is missing for any reason, fall back to legacy mapping only
-                pass
-
-            if user_property_ids:
-                jobs_query = jobs_query.filter(
-                    property__id__in=user_property_ids
-                )
-            else:
-                # If user has no properties, return empty queryset
-                return Job.objects.none()
+            jobs_query = jobs_query.filter(property__in=get_accessible_properties(user))
         
         # Apply status filter
         if status_filter:
@@ -304,9 +291,8 @@ class Command(BaseCommand):
                 users = User.objects.filter(id=user_id, is_active=True).exclude(email__isnull=True).exclude(email__exact="")
             elif property_id:
                 # Filter users by property assignment - only users assigned to this property receive emails
-                users = User.objects.filter(
-                    is_active=True,
-                    userprofile__properties__id=property_id
+                users = self._users_with_property_access(property_id).filter(
+                    is_active=True
                 ).exclude(email__isnull=True).exclude(email__exact="")
             else:
                 users = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
@@ -404,9 +390,8 @@ class Command(BaseCommand):
             property_id = property_obj.id
             
             # Get users assigned to this property
-            users = User.objects.filter(
-                is_active=True,
-                userprofile__properties__id=property_id
+            users = self._users_with_property_access(property_id).filter(
+                is_active=True
             ).exclude(email__isnull=True).exclude(email__exact="")
             
             # Exclude users with email notifications disabled

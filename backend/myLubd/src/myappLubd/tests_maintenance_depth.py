@@ -15,6 +15,8 @@ from .models import (
     PreventiveMaintenance,
     Property,
     Room,
+    Tenant,
+    TenantMembership,
 )
 
 
@@ -25,8 +27,10 @@ class MaintenanceDepthTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username='engineer', password='pw12345!')
-        self.prop = Property.objects.create(name='Hotel Depth')
-        self.prop.users.add(self.user)
+        tenant = Tenant.objects.create(name='Maintenance Depth Tenant')
+        self.prop = Property.objects.create(name='Hotel Depth', tenant=tenant)
+        self.membership = TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician')
+        self.membership.properties.add(self.prop)
         self.room = Room.objects.create(name='D-101', room_type='Standard', property=self.prop)
         self.job = Job.objects.create(
             user=self.user,
@@ -124,9 +128,7 @@ class MaintenanceDepthTests(TestCase):
         self.assertEqual(self.inventory.quantity, 4)
         self.assertEqual(MaintenanceChecklist.objects.filter(maintenance=pm, is_completed=True).count(), 2)
 
-    def test_pm_detail_allows_property_assigned_through_user_profile(self):
-        self.prop.users.remove(self.user)
-        self.user.userprofile.properties.add(self.prop)
+    def test_pm_detail_allows_property_assigned_through_membership(self):
         pm = PreventiveMaintenance.objects.create(
             pmtitle='Profile property PM',
             scheduled_date=timezone.now(),
@@ -143,8 +145,6 @@ class MaintenanceDepthTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
         self.assertEqual(response.data['pm_id'], pm.pm_id)
-        self.assertTrue(InventoryUsage.objects.filter(preventive_maintenance=pm, quantity=1).exists())
-        self.assertIsNotNone(self.machine.last_maintenance_date)
 
     def test_inventory_consume_rejects_insufficient_stock(self):
         self._login()

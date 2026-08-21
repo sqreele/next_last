@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from rest_framework import exceptions
 
 from .auth import Auth0JWTAuthentication
-from .models import Property
+from .models import Property, Tenant, TenantMembership
 
 
 User = get_user_model()
@@ -17,8 +18,12 @@ class Auth0IdentityMatchingTests(TestCase):
             username='existing-user',
             email='existing@example.com',
         )
-        property_obj = Property.objects.create(name='Existing Hotel')
-        property_obj.users.add(existing_user)
+        tenant = Tenant.objects.create(name='Auth0 Identity Tenant')
+        property_obj = Property.objects.create(name='Existing Hotel', tenant=tenant)
+        membership = TenantMembership.objects.create(
+            user=existing_user, tenant=tenant, role='viewer'
+        )
+        membership.properties.add(property_obj)
 
         authenticated_user = self.authentication._get_or_create_user_from_claims(
             {
@@ -29,7 +34,7 @@ class Auth0IdentityMatchingTests(TestCase):
         )
 
         self.assertEqual(authenticated_user.pk, existing_user.pk)
-        self.assertTrue(property_obj.users.filter(pk=existing_user.pk).exists())
+        self.assertTrue(membership.properties.filter(pk=property_obj.pk).exists())
         self.assertEqual(User.objects.count(), 1)
 
     def test_unverified_namespaced_email_does_not_merge_accounts(self):
@@ -38,14 +43,13 @@ class Auth0IdentityMatchingTests(TestCase):
             email='existing@example.com',
         )
 
-        authenticated_user = self.authentication._get_or_create_user_from_claims(
-            {
-                'sub': 'auth0|different-identity',
-                'https://hotelcarepro.com/email': 'existing@example.com',
-                'https://hotelcarepro.com/email_verified': False,
-            }
-        )
+        with self.assertRaises(exceptions.AuthenticationFailed):
+            self.authentication._get_or_create_user_from_claims(
+                {
+                    'sub': 'auth0|different-identity',
+                    'https://hotelcarepro.com/email': 'existing@example.com',
+                    'https://hotelcarepro.com/email_verified': False,
+                }
+            )
 
-        self.assertNotEqual(authenticated_user.pk, existing_user.pk)
-        self.assertEqual(authenticated_user.email, '')
-        self.assertEqual(User.objects.count(), 2)
+        self.assertEqual(User.objects.count(), 1)

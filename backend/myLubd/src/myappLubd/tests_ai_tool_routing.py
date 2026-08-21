@@ -3,7 +3,7 @@ from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 from datetime import datetime
 
-from .models import Job, Machine, PreventiveMaintenance, Property, Room, Topic
+from .models import Job, Machine, PreventiveMaintenance, Property, Room, Tenant, TenantMembership, Topic
 from .views import (
     _extract_category_name_from_message,
     _should_force_recurring_tool,
@@ -36,14 +36,16 @@ class AIToolRoutingTests(SimpleTestCase):
 class AISummaryCategoryDetailsTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username='tech', password='pass')
-        self.property = Property.objects.create(name='Test Hotel')
+        tenant = Tenant.objects.create(name='AI Summary Tenant')
+        self.property = Property.objects.create(name='Test Hotel', tenant=tenant)
         self.room_101 = Room.objects.create(
             name='101', room_type='Guest Room', property=self.property,
         )
         self.room_102 = Room.objects.create(
             name='102', room_type='Guest Room', property=self.property,
         )
-        self.property.users.add(self.user)
+        membership = TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician')
+        membership.properties.add(self.property)
         self.air_topic = Topic.objects.create(title='ระบบแอร์')
         self.plumbing_topic = Topic.objects.create(title='ประปา')
 
@@ -113,11 +115,13 @@ class AISummaryCategoryDetailsTests(TestCase):
 class AIRecurringMonthlyCountsTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username='pm-tech', password='pass')
-        self.property = Property.objects.create(name='Monthly PM Hotel')
+        tenant = Tenant.objects.create(name='AI PM Tenant')
+        self.property = Property.objects.create(name='Monthly PM Hotel', tenant=tenant)
         self.room = Room.objects.create(
             name='201', room_type='Guest Room', property=self.property,
         )
-        self.property.users.add(self.user)
+        membership = TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician')
+        membership.properties.add(self.property)
 
     def _create_pm(self, title, scheduled_date):
         job = Job.objects.create(

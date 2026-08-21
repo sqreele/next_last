@@ -3,7 +3,7 @@ from rest_framework import exceptions
 from rest_framework.test import APITestCase
 
 from .auth import Auth0JWTAuthentication
-from .models import Property
+from .models import Property, Tenant, TenantMembership
 
 
 User = get_user_model()
@@ -16,8 +16,12 @@ class Auth0AccountMatchingTests(APITestCase):
             username='existing-user',
             email='person@example.com',
         )
-        self.property = Property.objects.create(name='Existing Hotel')
-        self.user.userprofile.properties.add(self.property)
+        self.tenant = Tenant.objects.create(name='Auth0 Existing Tenant')
+        self.property = Property.objects.create(name='Existing Hotel', tenant=self.tenant)
+        self.membership = TenantMembership.objects.create(
+            user=self.user, tenant=self.tenant, role='viewer'
+        )
+        self.membership.properties.add(self.property)
 
     def test_verified_email_matches_existing_user_case_insensitively(self):
         result = self.authenticator._get_or_create_user_from_claims({
@@ -27,7 +31,7 @@ class Auth0AccountMatchingTests(APITestCase):
         })
 
         self.assertEqual(result, self.user)
-        self.assertEqual(list(result.userprofile.properties.all()), [self.property])
+        self.assertEqual(list(self.membership.properties.all()), [self.property])
         self.assertEqual(User.objects.count(), 1)
 
     def test_unknown_email_does_not_create_user(self):

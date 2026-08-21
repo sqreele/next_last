@@ -77,7 +77,7 @@ from .models import (
     UsageMetric,
     InventoryUsage,
 )
-from .tenancy import get_accessible_properties
+from .tenancy import get_accessible_properties, get_property_summary_recipients
 
 
 
@@ -242,10 +242,9 @@ class UserAdmin(BaseUserAdmin):
         if obj.property_id:
             return obj.property_id
         
-        # If User.property_id is empty, try to get it from the related Property
-        if obj.accessible_properties.exists():
-            property_obj = obj.accessible_properties.first()
-            return property_obj.property_id if property_obj else "-"
+        property_obj = get_accessible_properties(obj).order_by('property_id').first()
+        if property_obj:
+            return property_obj.property_id
         
         return "-"
     get_property_id_display.short_description = 'Property ID'
@@ -2547,15 +2546,11 @@ class PropertyAdmin(admin.ModelAdmin):
     list_display = ['property_id', 'name', 'created_at', 'get_users_count', 'is_preventivemaintenance']
     search_fields = ['property_id', 'name', 'description']
     list_filter = ['created_at', CreatedAtMonthFilter, 'is_preventivemaintenance']
-    filter_horizontal = ['users']
     readonly_fields = ['property_id', 'created_at']
     
     fieldsets = (
         ('Property Information', {
             'fields': ('property_id', 'name', 'description', 'is_preventivemaintenance')
-        }),
-        ('Users', {
-            'fields': ('users',)
         }),
         ('Timestamps', {
             'classes': ('collapse',),
@@ -2564,14 +2559,14 @@ class PropertyAdmin(admin.ModelAdmin):
     )
 
     def get_users_count(self, obj):
-        return obj.users.count()
-    get_users_count.short_description = 'Assigned Users'
+        return get_property_summary_recipients(obj).count()
+    get_users_count.short_description = 'Authorized Users'
     
     actions = ['export_properties_csv']
     
     def export_properties_csv(self, request, queryset):
         """Export selected/filtered properties to CSV"""
-        qs = queryset.prefetch_related('users').order_by('property_id')
+        qs = queryset.order_by('property_id')
         
         filename = f"properties_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
         response = HttpResponse(content_type='text/csv; charset=utf-8')
@@ -2590,14 +2585,15 @@ class PropertyAdmin(admin.ModelAdmin):
         ])
         
         for prop in qs:
-            users = ", ".join([f"{u.username} ({u.email})" for u in prop.users.all()])
+            recipients = get_property_summary_recipients(prop)
+            users = ", ".join([f"{u.username} ({u.email})" for u in recipients])
             writer.writerow([
                 prop.property_id or '',
                 prop.name or '',
                 prop.description or '',
                 'Yes' if prop.is_preventivemaintenance else 'No',
                 users,
-                prop.users.count(),
+                recipients.count(),
                 prop.created_at.strftime('%Y-%m-%d %H:%M:%S') if prop.created_at else '',
             ])
         
@@ -2755,9 +2751,8 @@ class TopicAdmin(admin.ModelAdmin):
 class UserProfileAdmin(admin.ModelAdmin):
     list_per_page = 25
     list_display = ['user_link', 'positions', 'user_property_name', 'user_property_id', 'get_properties_display', 'email_notifications_enabled', 'profile_image_preview']
-    search_fields = ['user__username', 'user__first_name', 'user__last_name', 'positions', 'properties__name', 'properties__property_id']
-    list_filter = ['email_notifications_enabled', 'properties']
-    filter_horizontal = ['properties']
+    search_fields = ['user__username', 'user__first_name', 'user__last_name', 'positions']
+    list_filter = ['email_notifications_enabled']
     raw_id_fields = ['user']
     readonly_fields = [
         'profile_image_preview', 'google_id', 'email_verified', 
@@ -2766,7 +2761,6 @@ class UserProfileAdmin(admin.ModelAdmin):
     fieldsets = (
         (None, {'fields': ('user', 'positions', 'profile_image', 'profile_image_preview')}),
         ('Email Settings', {'fields': ('email_notifications_enabled',)}),
-        ('Accessible Properties', {'fields': ('properties',)}),
         ('Google Authentication Details', {
             'classes': ('collapse',),
             'fields': ('google_id', 'email_verified', 'access_token', 'refresh_token', 'login_provider'),
@@ -2792,10 +2786,9 @@ class UserProfileAdmin(admin.ModelAdmin):
         if obj.user.property_id:
             return obj.user.property_id
         
-        # If User.property_id is empty, try to get it from the related Property
-        if obj.user.accessible_properties.exists():
-            property_obj = obj.user.accessible_properties.first()
-            return property_obj.property_id if property_obj else "-"
+        property_obj = get_accessible_properties(obj.user).order_by('property_id').first()
+        if property_obj:
+            return property_obj.property_id
         
         return "-"
     user_property_id.short_description = 'User Property ID'
@@ -2809,26 +2802,24 @@ class UserProfileAdmin(admin.ModelAdmin):
         if obj.property_id:
             return obj.property_id
         
-        # If UserProfile.property_id is empty, try to get it from the related Property
-        if obj.properties.exists():
-            property_obj = obj.properties.first()
-            return property_obj.property_id if property_obj else "-"
+        property_obj = get_accessible_properties(obj.user).order_by('property_id').first()
+        if property_obj:
+            return property_obj.property_id
         
         return "-"
     profile_property_id.short_description = 'Profile Property ID'
 
     def get_properties_display(self, obj):
-        """Display properties from the ManyToManyField relationship"""
-        if obj.properties.exists():
-            return ", ".join([f"{prop.property_id} - {prop.name}" for prop in obj.properties.all()])
-        return "No Properties"
-    get_properties_display.short_description = 'Properties (ID - Name)'
+        """Display canonical accessible properties."""
+        properties = get_accessible_properties(obj.user)
+        return ", ".join(f"{prop.property_id} - {prop.name}" for prop in properties) or "No Properties"
+    get_properties_display.short_description = 'Accessible Properties (ID - Name)'
     
     actions = ['export_userprofiles_csv']
     
     def export_userprofiles_csv(self, request, queryset):
         """Export selected/filtered user profiles to CSV"""
-        qs = queryset.select_related('user').prefetch_related('properties').order_by('user__username')
+        qs = queryset.select_related('user').order_by('user__username')
         
         filename = f"user_profiles_{timezone.now().strftime('%Y_%m_%d_%H%M')}.csv"
         response = HttpResponse(content_type='text/csv; charset=utf-8')
@@ -2850,7 +2841,9 @@ class UserProfileAdmin(admin.ModelAdmin):
         ])
         
         for profile in qs:
-            properties = ", ".join([f"{p.property_id} - {p.name}" for p in profile.properties.all()])
+            properties = ", ".join(
+                f"{p.property_id} - {p.name}" for p in get_accessible_properties(profile.user)
+            )
             writer.writerow([
                 profile.user.username if profile.user else '',
                 profile.user.username if profile.user else '',

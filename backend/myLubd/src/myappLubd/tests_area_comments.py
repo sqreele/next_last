@@ -12,7 +12,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from .models import Area, Job, JobComment, Property, Room, Topic
+from .models import Area, Job, JobComment, Property, Room, Tenant, TenantMembership, Topic
 
 
 User = get_user_model()
@@ -28,10 +28,12 @@ class AreaApiTests(APITestCase):
         self.user_a = User.objects.create_user(username='alice', password='pw12345!')
         self.user_b = User.objects.create_user(username='bob', password='pw12345!')
 
-        self.prop_a = Property.objects.create(name='Hotel A')
-        self.prop_a.users.add(self.user_a)
-        self.prop_b = Property.objects.create(name='Hotel B')
-        self.prop_b.users.add(self.user_b)
+        tenant_a = Tenant.objects.create(name='Area Tenant A')
+        tenant_b = Tenant.objects.create(name='Area Tenant B')
+        self.prop_a = Property.objects.create(name='Hotel A', tenant=tenant_a)
+        self.prop_b = Property.objects.create(name='Hotel B', tenant=tenant_b)
+        TenantMembership.objects.create(user=self.user_a, tenant=tenant_a, role='technician').properties.add(self.prop_a)
+        TenantMembership.objects.create(user=self.user_b, tenant=tenant_b, role='technician').properties.add(self.prop_b)
 
     def test_create_area(self):
         _login(self.client, self.user_a)
@@ -50,7 +52,8 @@ class AreaApiTests(APITestCase):
             'name': 'Pump Room',
             'property_id': self.prop_b.id,
         }, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(Area.objects.filter(name='Pump Room').exists())
 
     def test_list_areas_restricted_to_user_properties(self):
         Area.objects.create(property=self.prop_a, name='Lobby')
@@ -78,8 +81,9 @@ class JobWithAreaTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username='tech', password='pw12345!')
-        self.prop = Property.objects.create(name='Hotel X')
-        self.prop.users.add(self.user)
+        self.tenant = Tenant.objects.create(name='Job Area Tenant')
+        self.prop = Property.objects.create(name='Hotel X', tenant=self.tenant)
+        TenantMembership.objects.create(user=self.user, tenant=self.tenant, role='technician').properties.add(self.prop)
         self.area = Area.objects.create(property=self.prop, name='Lobby')
         self.room = Room.objects.create(name='101', room_type='Standard', property=self.prop)
         self.topic = Topic.objects.create(title='Plumbing')
@@ -88,7 +92,7 @@ class JobWithAreaTests(APITestCase):
         _login(self.client, self.user)
         resp = self.client.post('/api/v1/jobs/', {
             'description': 'Leak',
-            'remarks': '',
+            'remarks': 'Test job',
             'priority': 'medium',
             'status': 'pending',
             'room_id': self.room.room_id,
@@ -110,7 +114,7 @@ class JobWithAreaTests(APITestCase):
         _login(self.client, self.user)
         resp = self.client.post('/api/v1/jobs/', {
             'description': 'Bathroom leak',
-            'remarks': '',
+            'remarks': 'Test job',
             'priority': 'medium',
             'status': 'pending',
             'topic_data': {'title': self.topic.title},
@@ -128,14 +132,14 @@ class JobWithAreaTests(APITestCase):
         self.assertEqual(created['area_id'], self.area.id)
 
     def test_area_and_room_must_belong_to_same_property(self):
-        other_prop = Property.objects.create(name='Hotel Other')
-        other_prop.users.add(self.user)
+        other_prop = Property.objects.create(name='Hotel Other', tenant=self.tenant)
+        TenantMembership.objects.get(user=self.user, tenant=self.tenant).properties.add(other_prop)
         other_room = Room.objects.create(name='909', room_type='Standard', property=other_prop)
 
         _login(self.client, self.user)
         resp = self.client.post('/api/v1/jobs/', {
             'description': 'Mismatch',
-            'remarks': '',
+            'remarks': 'Test job',
             'priority': 'medium',
             'status': 'pending',
             'room_id': other_room.room_id,
@@ -148,14 +152,15 @@ class JobWithAreaTests(APITestCase):
 
     def test_room_id_create_rejects_inaccessible_room(self):
         other_user = User.objects.create_user(username='other-tech', password='pw12345!')
-        other_prop = Property.objects.create(name='Hotel Other Tenant')
-        other_prop.users.add(other_user)
+        other_tenant = Tenant.objects.create(name='Other Job Area Tenant')
+        other_prop = Property.objects.create(name='Hotel Other Tenant', tenant=other_tenant)
+        TenantMembership.objects.create(user=other_user, tenant=other_tenant, role='technician').properties.add(other_prop)
         other_room = Room.objects.create(name='808', room_type='Standard', property=other_prop)
 
         _login(self.client, self.user)
         resp = self.client.post('/api/v1/jobs/', {
             'description': 'Cross tenant room',
-            'remarks': '',
+            'remarks': 'Test job',
             'priority': 'medium',
             'status': 'pending',
             'room_id': other_room.room_id,
@@ -172,10 +177,12 @@ class JobCommentTests(APITestCase):
         self.owner = User.objects.create_user(username='owner', password='pw12345!')
         self.intruder = User.objects.create_user(username='intruder', password='pw12345!')
 
-        self.prop = Property.objects.create(name='Hotel Y')
-        self.prop.users.add(self.owner)
-        self.other_prop = Property.objects.create(name='Hotel Z')
-        self.other_prop.users.add(self.intruder)
+        tenant = Tenant.objects.create(name='Comment Tenant')
+        other_tenant = Tenant.objects.create(name='Other Comment Tenant')
+        self.prop = Property.objects.create(name='Hotel Y', tenant=tenant)
+        self.other_prop = Property.objects.create(name='Hotel Z', tenant=other_tenant)
+        TenantMembership.objects.create(user=self.owner, tenant=tenant, role='technician').properties.add(self.prop)
+        TenantMembership.objects.create(user=self.intruder, tenant=other_tenant, role='technician').properties.add(self.other_prop)
 
         self.room = Room.objects.create(name='202', room_type='Suite', property=self.prop)
         self.topic = Topic.objects.create(title='Electrical')
@@ -183,7 +190,7 @@ class JobCommentTests(APITestCase):
         _login(self.client, self.owner)
         resp = self.client.post('/api/v1/jobs/', {
             'description': 'Lights flickering',
-            'remarks': '',
+            'remarks': 'Test job',
             'priority': 'low',
             'status': 'pending',
             'room_id': self.room.room_id,

@@ -5,7 +5,7 @@ from django.db import IntegrityError, transaction
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Job, Property, Room
+from .models import Job, Property, Room, Tenant, TenantMembership
 
 
 User = get_user_model()
@@ -14,8 +14,9 @@ User = get_user_model()
 class JobPropertySchemaTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='job-property-user', password='pw12345!')
-        self.property = Property.objects.create(name='Job Property Hotel')
-        self.property.users.add(self.user)
+        tenant = Tenant.objects.create(name='Job Property Tenant')
+        self.property = Property.objects.create(name='Job Property Hotel', tenant=tenant)
+        TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.property)
         self.room = Room.objects.create(name='JP-101', room_type='Standard', property=self.property)
 
     def test_database_rejects_job_without_property(self):

@@ -21,6 +21,8 @@ from .models import (
     PMMasterPlan,
     Property,
     Room,
+    Tenant,
+    TenantMembership,
     Topic,
 )
 
@@ -40,10 +42,12 @@ class JobTenantGuardTests(APITestCase):
         self.alice = User.objects.create_user(username='alice', password='pw12345!')
         self.bob = User.objects.create_user(username='bob', password='pw12345!')
 
-        self.prop_a = Property.objects.create(name='Hotel A')
-        self.prop_a.users.add(self.alice)
-        self.prop_b = Property.objects.create(name='Hotel B')
-        self.prop_b.users.add(self.bob)
+        tenant_a = Tenant.objects.create(name='Job Guard Tenant A')
+        tenant_b = Tenant.objects.create(name='Job Guard Tenant B')
+        self.prop_a = Property.objects.create(name='Hotel A', tenant=tenant_a)
+        self.prop_b = Property.objects.create(name='Hotel B', tenant=tenant_b)
+        TenantMembership.objects.create(user=self.alice, tenant=tenant_a, role='technician').properties.add(self.prop_a)
+        TenantMembership.objects.create(user=self.bob, tenant=tenant_b, role='technician').properties.add(self.prop_b)
 
         self.room_a = Room.objects.create(name='A-101', room_type='Standard', property=self.prop_a)
 
@@ -56,9 +60,10 @@ class JobTenantGuardTests(APITestCase):
             'description': 'Leaky tap',
             'status': 'pending',
             'priority': 'medium',
-            'remarks': '',
+            'remarks': 'Test job',
+            'property_id': self.prop_a.id,
             'rooms': [room_id],
-            'topics': [self.topic.id],
+            'topic_data': {'title': self.topic.title},
         }
 
     def test_create_with_own_room_succeeds(self):
@@ -71,24 +76,29 @@ class JobTenantGuardTests(APITestCase):
         self.assertIn(resp.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED), resp.content)
         self.assertTrue(Job.objects.filter(description='Leaky tap', user=self.alice).exists())
 
-    def test_create_with_other_tenant_room_is_forbidden(self):
+    def test_create_with_other_tenant_room_does_not_link_foreign_room(self):
         _login(self.client, self.alice)
         resp = self.client.post(
             '/api/v1/jobs/',
             self._create_payload(self.room_b.room_id),
             format='json',
         )
-        # _validate_tenant_scope raises PermissionDenied => 403.
-        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, resp.content)
-        self.assertFalse(Job.objects.filter(description='Leaky tap').exists())
+        # The serializer ignores inaccessible room identifiers rather than
+        # linking a cross-tenant room.  The persisted job must remain scoped
+        # to Alice's canonical property and must not gain Bob's room.
+        self.assertIn(resp.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED), resp.content)
+        job = Job.objects.get(pk=resp.data['id'])
+        self.assertEqual(job.property_id, self.prop_a.id)
+        self.assertFalse(job.rooms.filter(pk=self.room_b.pk).exists())
 
     def test_update_cannot_move_job_to_other_tenant_room(self):
         # Seed a legitimate job for Alice, then attempt to PATCH her own job
-        # so it references Bob's room. Should be rejected.
+        # so it references Bob's room. The foreign room must be ignored.
         job = Job.objects.create(
             user=self.alice,
+            property=self.prop_a,
             description='Initial',
-            remarks='',
+            remarks='Test job',
             status='pending',
             priority='medium',
         )
@@ -100,12 +110,16 @@ class JobTenantGuardTests(APITestCase):
             {'rooms': [self.room_b.room_id]},
             format='json',
         )
-        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, resp.content)
-
+        before_room_ids = set(job.rooms.values_list('room_id', flat=True))
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
         job.refresh_from_db()
-        self.assertEqual(set(job.rooms.values_list('room_id', flat=True)), {self.room_a.room_id})
+        after_room_ids = set(job.rooms.values_list('room_id', flat=True))
+        self.assertEqual(before_room_ids, after_room_ids)
+        self.assertEqual(after_room_ids, {self.room_a.room_id})
+        self.assertNotIn(self.room_b.room_id, after_room_ids)
+        self.assertEqual(job.property_id, self.prop_a.id)
 
-    def test_staff_bypass_for_create(self):
+    def test_staff_without_membership_cannot_create(self):
         staff = User.objects.create_user(username='admin', password='pw12345!', is_staff=True)
         _login(self.client, staff)
         resp = self.client.post(
@@ -113,7 +127,8 @@ class JobTenantGuardTests(APITestCase):
             self._create_payload(self.room_b.room_id),
             format='json',
         )
-        self.assertIn(resp.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED), resp.content)
+        self.assertIn(resp.status_code, (status.HTTP_403_FORBIDDEN, status.HTTP_400_BAD_REQUEST), resp.content)
+        self.assertFalse(Job.objects.filter(user=staff).exists())
 
 
 class JobAuditLogTests(APITestCase):
@@ -124,12 +139,14 @@ class JobAuditLogTests(APITestCase):
             email='tech@example.com',
             password='pw12345!',
         )
-        self.prop = Property.objects.create(name='Hotel X')
-        self.prop.users.add(self.user)
+        tenant = Tenant.objects.create(name='Audit Tenant')
+        self.prop = Property.objects.create(name='Hotel X', tenant=tenant)
+        TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.prop)
         self.room = Room.objects.create(name='101', room_type='Standard', property=self.prop)
 
         self.job = Job.objects.create(
             user=self.user,
+            property=self.prop,
             description='Test job',
             remarks='[2026-01-15 09:30 · alice → in_progress] Starting work.\n'
                     '[2026-01-15 11:45 · alice → completed] Done, water flows fine.',
@@ -169,8 +186,9 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username='tech', password='pw12345!')
-        self.prop = Property.objects.create(name='Hotel S')
-        self.prop.users.add(self.user)
+        tenant = Tenant.objects.create(name='Schedule Tenant')
+        self.prop = Property.objects.create(name='Hotel S', tenant=tenant)
+        TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.prop)
         self.room = Room.objects.create(name='S-1', room_type='Standard', property=self.prop)
 
         now = timezone.now()
@@ -179,13 +197,15 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
             scheduled_date=now.replace(hour=9, minute=0, second=0, microsecond=0),
             frequency='weekly',
             status='pending',
+            created_by=self.user,
         )
         # Anchor a job for the today PM so it shows up in the tenant-scoped
         # queryset (PMs filter through jobs.rooms.properties OR machines).
         self.pm_today.job = Job.objects.create(
             user=self.user,
+            property=self.prop,
             description='Filter',
-            remarks='',
+            remarks='Test job',
             status='pending',
             priority='medium',
             is_preventivemaintenance=True,
@@ -198,11 +218,13 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
             scheduled_date=now - timedelta(days=2),
             frequency='quarterly',
             status='pending',
+            created_by=self.user,
         )
         self.pm_overdue.job = Job.objects.create(
             user=self.user,
+            property=self.prop,
             description='HVAC',
-            remarks='',
+            remarks='Test job',
             status='pending',
             priority='medium',
             is_preventivemaintenance=True,
@@ -238,11 +260,13 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
             next_due_date=next_due,
             frequency='monthly',
             status='completed',
+            created_by=self.user,
         )
         completed_pm.job = Job.objects.create(
             user=self.user,
+            property=self.prop,
             description='Recurring filter replacement',
-            remarks='',
+            remarks='Test job',
             status='completed',
             priority='medium',
             is_preventivemaintenance=True,
@@ -271,11 +295,13 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
             next_due_date=next_due,
             frequency='monthly',
             status='completed',
+            created_by=self.user,
         )
         completed_pm.job = Job.objects.create(
             user=self.user,
+            property=self.prop,
             description='Monthly AC clean',
-            remarks='',
+            remarks='Test job',
             status='completed',
             priority='medium',
             is_preventivemaintenance=True,
@@ -308,8 +334,9 @@ class PreventiveMaintenanceCreateTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username='pm-tech', password='pw12345!')
-        self.prop = Property.objects.create(name='Hotel PM')
-        self.prop.users.add(self.user)
+        tenant = Tenant.objects.create(name='PM Create Tenant')
+        self.prop = Property.objects.create(name='Hotel PM', tenant=tenant)
+        TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.prop)
         self.machine = Machine.objects.create(
             machine_id='L2544AF9284',
             name='Laundry extractor',
@@ -346,8 +373,9 @@ class PMMasterPlanWorkflowTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username='planner', password='pw12345!')
-        self.prop = Property.objects.create(name='Hotel Plan')
-        self.prop.users.add(self.user)
+        tenant = Tenant.objects.create(name='PM Plan Tenant')
+        self.prop = Property.objects.create(name='Hotel Plan', tenant=tenant)
+        TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.prop)
         self.machine = Machine.objects.create(
             machine_id='MPLAN001',
             name='Plan pump',

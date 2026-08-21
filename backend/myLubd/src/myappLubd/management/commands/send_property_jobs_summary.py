@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 from myappLubd.models import Job, Property
 from myappLubd.email_utils import send_email
 from myappLubd.timezones import localtime_for, object_timezone
+from myappLubd.tenancy import get_property_summary_recipients
 
 
 logger = logging.getLogger(__name__)
@@ -161,16 +162,16 @@ class Command(BaseCommand):
         User = get_user_model()
         if strict_mode:
             # Only users explicitly assigned to this property
-            users_qs = User.objects.filter(
-                is_active=True,
-                userprofile__properties__id=property_id
-            ).exclude(email__isnull=True).exclude(email__exact="")
+            users_qs = get_property_summary_recipients(
+                Property.objects.filter(pk=property_id).first()
+            ).filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
         else:
-            # Include staff users (legacy behavior)
-            users_qs = User.objects.filter(
-                Q(is_active=True) & 
-                (Q(userprofile__properties__id=property_id) | Q(is_staff=True))
-            ).exclude(email__isnull=True).exclude(email__exact="")
+            # Platform break-glass may receive this property summary; staff
+            # status does not expand application property access.
+            users_qs = (
+                get_property_summary_recipients(Property.objects.filter(pk=property_id).first())
+                | User.objects.filter(is_superuser=True)
+            ).filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="").distinct()
         
         # Exclude users with email notifications disabled
         users_qs = users_qs.filter(
@@ -255,10 +256,10 @@ class Command(BaseCommand):
                     users = list(user_objects.values_list("email", flat=True))
                     
                     if not users:
-                        # Fallback to staff users if no property-assigned users found
+                        # Only platform break-glass may receive a global fallback.
                         User = get_user_model()
                         staff_users = User.objects.filter(
-                            is_active=True, is_staff=True
+                            is_active=True, is_superuser=True
                         ).exclude(email__isnull=True).exclude(email__exact="")
                         users = list(staff_users.values_list("email", flat=True))
                         

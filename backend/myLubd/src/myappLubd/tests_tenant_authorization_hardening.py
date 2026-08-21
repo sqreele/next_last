@@ -1,14 +1,23 @@
 """Focused regression coverage for the canonical tenant/property guard."""
 
+import csv
+from io import StringIO
+
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
+from unittest.mock import patch
 
 from django.utils import timezone
 
-from .models import Area, Inventory, Job, Machine, PreventiveMaintenance, Property, Room, Tenant, TenantMembership
-from .tenancy import get_accessible_properties
+from .models import Area, Inventory, Job, Machine, PreventiveMaintenance, Property, Room, Tenant, TenantMembership, UserProfile
+from .serializers import UserProfileSerializer
+from .tenancy import get_accessible_properties, get_property_summary_recipients
+from .management.commands.send_daily_summary import Command as DailySummaryCommand
+from .management.commands.send_pending_jobs_summary import Command as PendingJobsSummaryCommand
+from .management.commands.send_property_jobs_summary import Command as PropertyJobsSummaryCommand
 
 
 User = get_user_model()
@@ -32,22 +41,19 @@ class TenantPropertyAuthorizationTests(APITestCase):
         TenantMembership.objects.create(user=self.other, tenant=self.tenant_b, role='technician').properties.add(self.property_b)
         self.staff_technician = User.objects.create_user(username='staff-technician', password='pw12345!', is_staff=True)
         self.staff_supervisor = User.objects.create_user(username='staff-supervisor', password='pw12345!', is_staff=True)
+        self.staff_admin = User.objects.create_user(username='staff-admin', password='pw12345!', is_staff=True)
         self.staff_manager = User.objects.create_user(username='staff-manager', password='pw12345!', is_staff=True)
         self.staff_without_membership = User.objects.create_user(username='staff-no-membership', password='pw12345!', is_staff=True)
         self.staff_inactive = User.objects.create_user(username='staff-inactive', password='pw12345!', is_staff=True)
         self.platform_superuser = User.objects.create_superuser(username='platform-superuser', password='pw12345!')
         TenantMembership.objects.create(user=self.staff_technician, tenant=self.tenant_a, role='technician').properties.add(self.property_a1)
         TenantMembership.objects.create(user=self.staff_supervisor, tenant=self.tenant_a, role='supervisor').properties.add(self.property_a2)
+        TenantMembership.objects.create(user=self.staff_admin, tenant=self.tenant_a, role='admin')
         TenantMembership.objects.create(user=self.staff_manager, tenant=self.tenant_a, role='manager')
         inactive_membership = TenantMembership.objects.create(
             user=self.staff_inactive, tenant=self.tenant_a, role='technician', is_active=False
         )
         inactive_membership.properties.add(self.property_a1)
-
-        # A legacy direct grant must never bypass the active tenant membership
-        # rule for a tenant-backed property.
-        self.property_a2.users.add(self.user)
-        self.property_b.users.add(self.user)
 
         self.room_a1 = Room.objects.create(name='A1-101', room_type='Standard', property=self.property_a1)
         self.room_b = Room.objects.create(name='B1-101', room_type='Standard', property=self.property_b)
@@ -95,9 +101,161 @@ class TenantPropertyAuthorizationTests(APITestCase):
             {self.property_a1.id, self.property_a2.id},
         )
 
+    def _property_ids_from_response(self, response):
+        payload = response.data
+        rows = payload.get('results', payload) if isinstance(payload, dict) else payload
+        return {row['property_id'] for row in rows}
+
+    def test_staff_technician_endpoints_follow_explicit_property_grant(self):
+        self.client.force_authenticate(self.staff_technician)
+
+        properties = self.client.get(reverse('myappLubd:property-list'), secure=True)
+        self.assertEqual(properties.status_code, status.HTTP_200_OK, properties.content)
+        self.assertEqual(self._property_ids_from_response(properties), {self.property_a1.property_id})
+
+        machines = self.client.get(reverse('myappLubd:machine-list'), secure=True)
+        self.assertEqual(machines.status_code, status.HTTP_200_OK, machines.content)
+        machine_rows = machines.data.get('results', machines.data)
+        self.assertEqual({row['machine_id'] for row in machine_rows}, {self.machine_a1.machine_id})
+
+        inventory = self.client.get(reverse('myappLubd:inventory-list'), secure=True)
+        self.assertEqual(inventory.status_code, status.HTTP_200_OK, inventory.content)
+        inventory_rows = inventory.data.get('results', inventory.data)
+        self.assertEqual({row['item_id'] for row in inventory_rows}, {self.inventory_a1.item_id})
+
+        preventive_maintenance = self.client.get(reverse('myappLubd:preventive-maintenance-list'), secure=True)
+        self.assertEqual(preventive_maintenance.status_code, status.HTTP_200_OK, preventive_maintenance.content)
+        pm_rows = preventive_maintenance.data.get('results', preventive_maintenance.data)
+        self.assertEqual({row['pm_id'] for row in pm_rows}, {self.pm_a1.pm_id})
+
+    def test_staff_supervisor_endpoint_scope_is_not_widened(self):
+        self.client.force_authenticate(self.staff_supervisor)
+        response = self.client.get(reverse('myappLubd:property-list'), secure=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(self._property_ids_from_response(response), {self.property_a2.property_id})
+
+    def test_admin_membership_is_tenant_wide_but_not_cross_tenant(self):
+        self.client.force_authenticate(self.staff_admin)
+        response = self.client.get(reverse('myappLubd:property-list'), secure=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(
+            self._property_ids_from_response(response),
+            {self.property_a1.property_id, self.property_a2.property_id},
+        )
+
+        foreign = self.client.get(
+            reverse('myappLubd:property-detail', kwargs={'property_id': self.property_b.property_id}),
+            secure=True,
+        )
+        self.assertEqual(foreign.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_inactive_staff_membership_has_no_endpoint_property_scope(self):
+        self.client.force_authenticate(self.staff_inactive)
+        response = self.client.get(reverse('myappLubd:property-list'), secure=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(self._property_ids_from_response(response), set())
+
+    def test_superuser_endpoint_scope_remains_platform_wide(self):
+        self.client.force_authenticate(self.platform_superuser)
+        response = self.client.get(reverse('myappLubd:property-list'), secure=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(
+            self._property_ids_from_response(response),
+            {self.property_a1.property_id, self.property_a2.property_id, self.property_b.property_id},
+        )
+
+    def test_summary_recipients_use_active_memberships_not_legacy_links(self):
+        self.assertEqual(
+            set(get_property_summary_recipients(self.property_a1).values_list('pk', flat=True)),
+            {
+                self.user.pk, self.manager.pk, self.staff_technician.pk,
+                self.staff_manager.pk, self.staff_admin.pk,
+            },
+        )
+        self.assertEqual(
+            set(get_property_summary_recipients(self.property_a2).values_list('pk', flat=True)),
+            {self.manager.pk, self.staff_manager.pk, self.staff_supervisor.pk, self.staff_admin.pk},
+        )
+        self.assertFalse(get_property_summary_recipients(self.property_b).filter(pk=self.user.pk).exists())
+        self.assertFalse(get_property_summary_recipients(self.property_a1).filter(pk=self.staff_inactive.pk).exists())
+
+    def test_profile_serializer_uses_canonical_access(self):
+        profile, _ = UserProfile.objects.get_or_create(user=self.user)
+
+        property_ids = {row['property_id'] for row in UserProfileSerializer(profile).data['properties']}
+        self.assertEqual(property_ids, {self.property_a1.property_id})
+
+    def test_direct_profile_property_endpoints_are_retired(self):
+        profile, _ = UserProfile.objects.get_or_create(user=self.user)
+        self.client.force_authenticate(self.user)
+        for route_name in ('user-profile-add-property', 'user-profile-remove-property'):
+            response = self.client.post(
+                reverse('myappLubd:' + route_name, kwargs={'pk': profile.pk}),
+                {'property_id': self.property_a1.property_id},
+                format='json',
+                secure=True,
+            )
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
+            self.assertIn('Direct property grants are retired', str(response.data))
+
+    def test_property_export_uses_canonical_authorized_user_counts(self):
+        self.client.force_authenticate(self.staff_admin)
+        response = self.client.get('/api/v1/properties/export/', secure=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        rows = {
+            row['property_id']: row
+            for row in csv.DictReader(StringIO(response.content.decode('utf-8-sig')))
+        }
+        self.assertEqual(rows[self.property_a1.property_id]['user_count'], '5')
+        self.assertEqual(rows[self.property_a2.property_id]['user_count'], '4')
+
     def test_staff_without_active_membership_has_no_tenant_property_access(self):
         self.assertFalse(get_accessible_properties(self.staff_without_membership).exists())
         self.assertFalse(get_accessible_properties(self.staff_inactive).exists())
+
+    def test_user_without_membership_has_no_property_access(self):
+        no_membership_user = User.objects.create_user(username='no-membership', password='pw12345!')
+        self.assertFalse(get_accessible_properties(no_membership_user).exists())
+        self.client.force_authenticate(no_membership_user)
+        response = self.client.get(reverse('myappLubd:property-list'), secure=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(self._property_ids_from_response(response), set())
+
+    def test_scoped_membership_without_grants_has_no_property_access(self):
+        ungranted_user = User.objects.create_user(username='scoped-no-grants', password='pw12345!')
+        TenantMembership.objects.create(user=ungranted_user, tenant=self.tenant_a, role='technician')
+        self.assertFalse(get_accessible_properties(ungranted_user).exists())
+        self.client.force_authenticate(ungranted_user)
+        response = self.client.get(reverse('myappLubd:property-list'), secure=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(self._property_ids_from_response(response), set())
+
+    def test_add_user_assigns_only_the_authenticated_scoped_membership(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.post(
+            reverse('myappLubd:property-add-user', kwargs={'property_id': self.property_a2.property_id}),
+            {}, format='json', secure=True,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(
+            set(self.membership.properties.values_list('pk', flat=True)),
+            {self.property_a1.pk, self.property_a2.pk},
+        )
+
+    def test_assign_properties_replaces_scoped_grants_and_rejects_cross_tenant_input(self):
+        self.client.force_authenticate(self.user)
+        assign_url = reverse('myappLubd:property-assign-properties')
+        response = self.client.post(
+            assign_url, {'property_ids': [self.property_a2.pk]}, format='json', secure=True,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(set(self.membership.properties.values_list('pk', flat=True)), {self.property_a2.pk})
+
+        response = self.client.post(
+            assign_url, {'property_ids': [self.property_a1.pk, self.property_b.pk]}, format='json', secure=True,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
+        self.assertEqual(set(self.membership.properties.values_list('pk', flat=True)), {self.property_a2.pk})
 
     def test_superuser_remains_explicit_platform_break_glass(self):
         self.assertEqual(

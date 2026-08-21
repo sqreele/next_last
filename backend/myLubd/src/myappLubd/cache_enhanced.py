@@ -256,12 +256,13 @@ class CacheWarming:
         """
         Warm cache for a specific user
         """
-        from .models import User, Property, Job
+        from .models import User, Job
+        from .tenancy import get_accessible_properties
         
         try:
             # Warm user properties cache
             user = User.objects.get(id=user_id)
-            properties = Property.objects.filter(users=user).values('id', 'property_id', 'name')
+            properties = get_accessible_properties(user).values('id', 'property_id', 'name')
             cache.set(f"user_properties:{user_id}", list(properties), 300)
             
             # Warm user jobs count

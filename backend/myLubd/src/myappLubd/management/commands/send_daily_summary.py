@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 from myappLubd.models import Job, Property
 from myappLubd.email_utils import send_email
 from myappLubd.timezones import local_date_bounds, localtime_for, object_timezone
+from myappLubd.tenancy import get_property_summary_recipients
 
 
 logger = logging.getLogger(__name__)
@@ -389,15 +390,14 @@ class Command(BaseCommand):
                 User = get_user_model()
                 if property_id:
                     # Filter users by property assignment - only users assigned to this property receive emails
-                    users_qs = User.objects.filter(
-                        is_active=True,
-                        userprofile__properties__id=property_id
-                    ).exclude(email__isnull=True).exclude(email__exact="")
+                    users_qs = get_property_summary_recipients(
+                        Property.objects.filter(pk=property_id).first()
+                    ).filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
                 elif options.get("all_users"):
                     users_qs = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
                 else:
                     users_qs = (
-                        User.objects.filter(is_active=True, is_staff=True)
+                        User.objects.filter(is_active=True, is_superuser=True)
                         .exclude(email__isnull=True)
                         .exclude(email__exact="")
                     )
@@ -472,9 +472,8 @@ class Command(BaseCommand):
             timezone_label = object_timezone(property_obj).key
             
             # Get users assigned to this property
-            users_qs = User.objects.filter(
-                is_active=True,
-                userprofile__properties__id=property_id
+            users_qs = get_property_summary_recipients(property_obj).filter(
+                is_active=True
             ).exclude(email__isnull=True).exclude(email__exact="")
             
             # Exclude users with email notifications disabled

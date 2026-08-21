@@ -10,7 +10,7 @@ from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 from PIL import Image
 
-from .models import Job, JobImage
+from .models import Job, JobImage, Property
 
 
 class JobImageTestMixin:
@@ -20,7 +20,14 @@ class JobImageTestMixin:
         self.settings_override = override_settings(MEDIA_ROOT=self.media.name)
         self.settings_override.enable()
         user = get_user_model().objects.create_user(username='image-test')
-        self.job = Job.objects.create(user=user, updated_by=user, description='test', remarks='')
+        self.property = Property.objects.create(name='Job Image Test Property')
+        self.job = Job.objects.create(
+            user=user,
+            updated_by=user,
+            property=self.property,
+            description='test',
+            remarks='Image test job',
+        )
         self.user = user
 
     def tearDown(self):
@@ -111,6 +118,11 @@ class OptimizeJobImagesCommandTests(JobImageTestMixin, TestCase):
 
     def test_apply_writes_verified_file_and_updates_both_references(self):
         row = self.create_image(self.upload((100, 50)))
+        storage = row.image.storage
+        with storage.open(row.image.name, 'rb') as source:
+            short_name = storage.save('job-image.png', ContentFile(source.read()))
+        JobImage.objects.filter(pk=row.pk).update(image=short_name, jpeg_path=short_name)
+        row.refresh_from_db()
         JobImage.objects.filter(pk=row.pk).update(jpeg_path='legacy-copy.jpg')
         call_command('optimize_job_images', '--apply', stdout=StringIO())
         row.refresh_from_db()

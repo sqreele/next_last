@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional
 import logging
 
 from .models import Job, PreventiveMaintenance, Property
+from .tenancy import get_accessible_properties
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +72,9 @@ class QueryOptimizer:
         """
         return Property.objects.prefetch_related(
             'canonical_rooms',
-            'users',
             'machines'
         ).annotate(
             rooms_count=Count('rooms', distinct=True),
-            users_count=Count('users', distinct=True),
             machines_count=Count('machines', distinct=True)
         )
 
@@ -97,11 +96,13 @@ class CacheOptimizer:
             logger.debug(f"Cache hit for user properties: {user_id}")
             return cached_data
         
-        # Fetch from database
-        from .models import Property
-        properties = Property.objects.filter(users__id=user_id).values(
+        # Canonical tenant membership is the sole property access source.
+        from django.contrib.auth import get_user_model
+
+        user = get_user_model().objects.filter(pk=user_id).first()
+        properties = get_accessible_properties(user).values(
             'id', 'property_id', 'name', 'description'
-        )
+        ) if user else Property.objects.none().values('id', 'property_id', 'name', 'description')
         
         data = list(properties)
         cache.set(cache_key, data, timeout)

@@ -88,11 +88,11 @@ class UserViewSetPermissionTests(APITestCase):
         self.assertFalse(User.objects.filter(username='charlie').exists())
         self.assertTrue(User.objects.filter(pk=self.alice.pk).exists())
 
-    def test_staff_user_can_list_all_users(self):
+    def test_staff_user_without_platform_break_glass_lists_only_self(self):
         self.client.force_authenticate(user=self.admin)
 
         resp = self.client.get('/api/v1/users/')
 
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
         usernames = {item['username'] for item in resp.data}
-        self.assertEqual(usernames, {'alice', 'bob', 'admin'})
+        self.assertEqual(usernames, {'admin'})

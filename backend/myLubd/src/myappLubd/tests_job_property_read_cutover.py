@@ -46,7 +46,7 @@ class JobPropertyReadCutoverTests(APITestCase):
         for properties in ([self.chinatown], [self.siam], [self.chinatown, self.siam], []):
             self.assertEqual(self.canonical_ids(properties), self.direct_ids(properties))
 
-    def test_locationless_canonical_job_is_expected_direct_only(self):
+    def test_locationless_canonical_job_is_visible_through_direct_property(self):
         """A manually resolved Job remains visible through canonical ownership."""
         locationless = Job.objects.create(
             user=self.chinatown_user,
@@ -55,12 +55,13 @@ class JobPropertyReadCutoverTests(APITestCase):
             remarks='x',
         )
 
-        legacy = self.legacy_ids([self.chinatown])
         direct = self.direct_ids([self.chinatown])
 
-        expected_canonical_only = direct - legacy
-        self.assertEqual(expected_canonical_only, {locationless.pk})
-        self.assertEqual(legacy - direct, set())
+        self.assertIn(locationless.pk, direct)
+        self.assertEqual(
+            set(Job.objects.filter(property=self.chinatown).values_list('pk', flat=True)),
+            direct,
+        )
 
     def test_ai_summary_uses_server_controlled_canonical_property_scope(self):
         locationless = Job.objects.create(

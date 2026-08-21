@@ -7,7 +7,7 @@ from django.test import TestCase
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from .models import Property, Room
+from .models import Property, Room, Tenant, TenantMembership
 
 
 User = get_user_model()
@@ -31,8 +31,9 @@ class RoomBulkImportTests(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username='alice', password='pw12345!')
-        self.prop = Property.objects.create(name='Hotel A')
-        self.prop.users.add(self.user)
+        tenant = Tenant.objects.create(name='Room Import Tenant')
+        self.prop = Property.objects.create(name='Hotel A', tenant=tenant)
+        TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.prop)
         self.client.force_authenticate(user=self.user)
 
     def _post(self, payload, **extra):

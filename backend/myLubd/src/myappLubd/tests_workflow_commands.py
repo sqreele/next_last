@@ -10,7 +10,16 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.utils import timezone
 
-from .models import Job, PreventiveMaintenance, Property, Room, Topic
+from .models import (
+    Job,
+    Machine,
+    PreventiveMaintenance,
+    Property,
+    Room,
+    Tenant,
+    TenantMembership,
+    Topic,
+)
 
 
 User = get_user_model()
@@ -19,8 +28,19 @@ User = get_user_model()
 class MaterializeDuePmJobsTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='alice', password='pw12345!')
-        self.prop = Property.objects.create(name='Hotel A')
-        self.prop.users.add(self.user)
+        tenant = Tenant.objects.create(name='Workflow PM Tenant')
+        self.prop = Property.objects.create(name='Hotel A', tenant=tenant)
+        TenantMembership.objects.create(
+            user=self.user,
+            tenant=tenant,
+            role='technician',
+        ).properties.add(self.prop)
+        self.machine = Machine.objects.create(
+            machine_id='WORKFLOWPM001',
+            name='Workflow HVAC unit',
+            category='HVAC',
+            property=self.prop,
+        )
         self.topic = Topic.objects.create(title='HVAC')
 
     def _make_pm(self, *, scheduled_offset_minutes, status='pending'):
@@ -31,8 +51,10 @@ class MaterializeDuePmJobsTests(TestCase):
             status=status,
             priority='medium',
             assigned_to=self.user,
+            created_by=self.user,
         )
         pm.topics.add(self.topic)
+        pm.machines.add(self.machine)
         return pm
 
     def test_due_pm_gets_a_job_linked(self):
@@ -87,15 +109,21 @@ class MaterializeDuePmJobsTests(TestCase):
 class EscalateStaleJobsTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='tech', password='pw12345!')
-        self.prop = Property.objects.create(name='Hotel Stale')
-        self.prop.users.add(self.user)
+        tenant = Tenant.objects.create(name='Workflow Stale Tenant')
+        self.prop = Property.objects.create(name='Hotel Stale', tenant=tenant)
+        TenantMembership.objects.create(
+            user=self.user,
+            tenant=tenant,
+            role='technician',
+        ).properties.add(self.prop)
         self.room = Room.objects.create(name='201', room_type='Suite', property=self.prop)
 
     def _make_job(self, *, hours_old, priority='low', status='pending'):
         job = Job.objects.create(
             user=self.user,
+            property=self.prop,
             description='Stale job',
-            remarks='',
+            remarks='Test job',
             status=status,
             priority=priority,
         )

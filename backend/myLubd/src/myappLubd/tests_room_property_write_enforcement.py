@@ -16,9 +16,10 @@ User = get_user_model()
 class RoomPropertyWriteEnforcementTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='room-writer', password='pw12345!')
-        self.chinatown = Property.objects.create(name='Room Write Chinatown')
-        self.siam = Property.objects.create(name='Room Write Siam')
-        self.chinatown.users.add(self.user)
+        tenant, _ = Tenant.objects.get_or_create(name='Room Write Tenant')
+        self.chinatown = Property.objects.create(name='Room Write Chinatown', tenant=tenant)
+        self.siam = Property.objects.create(name='Room Write Siam', tenant=tenant)
+        TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.chinatown)
         self.client.force_authenticate(self.user)
 
     def create_room(self, name='RW-101', **payload):
@@ -110,7 +111,7 @@ class RoomPropertyWriteEnforcementTests(APITestCase):
         self.assertEqual(job.property_id, room.property_id)
 
     def test_restricted_staff_cannot_write_other_property(self):
-        tenant = Tenant.objects.create(name='Room Write Tenant')
+        tenant, _ = Tenant.objects.get_or_create(name='Room Write Tenant')
         staff_chinatown = Property.objects.create(name='Staff Chinatown', tenant=tenant)
         staff_siam = Property.objects.create(name='Staff Siam', tenant=tenant)
         staff = User.objects.create_user(username='restricted-room-staff', password='pw12345!', is_staff=True)

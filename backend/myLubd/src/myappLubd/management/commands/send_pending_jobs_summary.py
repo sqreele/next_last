@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from myappLubd.models import Job, JobImage, Property
 from myappLubd.email_utils import send_email
 from myappLubd.timezones import localtime_for, object_timezone
+from myappLubd.tenancy import get_property_summary_recipients
 
 
 logger = logging.getLogger(__name__)
@@ -235,21 +236,21 @@ class Command(BaseCommand):
             # Build user queryset
             if property_id:
                 # Get users assigned to this property
-                users_qs = User.objects.filter(
-                    is_active=True,
-                    userprofile__properties__id=property_id
-                ).exclude(email__isnull=True).exclude(email__exact="")
+                users_qs = get_property_summary_recipients(
+                    Property.objects.filter(pk=property_id).first()
+                ).filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
                 
-                # If no property users found, fallback to staff
+                # No property recipient fallback may widen tenant scope. Only
+                # the platform break-glass account can receive a global summary.
                 if not users_qs.exists():
                     users_qs = User.objects.filter(
-                        is_active=True, is_staff=True
+                        is_active=True, is_superuser=True
                     ).exclude(email__isnull=True).exclude(email__exact="")
             elif options.get("all_users"):
                 users_qs = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
             else:
                 users_qs = (
-                    User.objects.filter(is_active=True, is_staff=True)
+                    User.objects.filter(is_active=True, is_superuser=True)
                     .exclude(email__isnull=True)
                     .exclude(email__exact="")
                 )

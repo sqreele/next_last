@@ -117,8 +117,6 @@ class SaaSFoundationTests(APITestCase):
 
         visible = Property.objects.create(name='Visible Hotel', tenant=visible_tenant)
         hidden = Property.objects.create(name='Hidden Hotel', tenant=hidden_tenant)
-        visible.users.add(self.owner)
-        hidden.users.add(self.other)
 
         _login(self.client, self.owner)
         resp = self.client.get('/api/v1/properties/all/')

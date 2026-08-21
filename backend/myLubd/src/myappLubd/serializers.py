@@ -371,15 +371,11 @@ class PropertySerializer(serializers.ModelSerializer):
             'property_id',
             'name',
             'description',
-            'users',
             'created_at',
             'rooms',
             'is_preventivemaintenance',
         ]
         read_only_fields = ['created_at', 'is_preventivemaintenance']
-        extra_kwargs = {
-            'users': {'required': False},
-        }
     
     def get_rooms(self, obj):
         """Get rooms for this property.
@@ -410,7 +406,7 @@ class PropertySerializer(serializers.ModelSerializer):
 
 # User profile serializer
 class UserProfileSerializer(serializers.ModelSerializer):
-    properties = PropertySerializer(many=True, read_only=True)
+    properties = serializers.SerializerMethodField()
     username = serializers.SerializerMethodField()
     email = serializers.EmailField(source='user.email', read_only=True)
     first_name = serializers.CharField(source='user.first_name', read_only=True)
@@ -450,6 +446,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_username(self, obj):
         return get_user_public_username(obj.user)
+
+    def get_properties(self, obj):
+        """Expose canonical accessible properties, not profile compatibility rows."""
+        return PropertySerializer(
+            get_accessible_properties(obj.user),
+            many=True,
+            read_only=True,
+            context=self.context,
+        ).data
 
 def _build_media_absolute_uri(request, media_path):
     """Build a stable media URL from paths stored by FileField or helper fields.
@@ -802,7 +807,7 @@ class JobSerializer(serializers.ModelSerializer):
         elif userprofile.profile_image:
             image_url = userprofile.profile_image.url
 
-        properties_qs = userprofile.properties.all().values('property_id', 'name')
+        properties_qs = get_accessible_properties(user).values('property_id', 'name')
         properties = list(properties_qs)
 
         return {

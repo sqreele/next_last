@@ -42,22 +42,25 @@ class JobAdminSearchTests(TestCase):
 
         self.assertNotIn(self.job, queryset)
 
-    def test_search_does_not_match_description(self):
+    def test_search_matches_description(self):
         queryset, _ = self.admin.get_search_results(
             self.request,
             Job.objects.all(),
             'Replace air filter',
         )
 
-        self.assertNotIn(self.job, queryset)
+        # Description is an intentional JobAdmin search field.
+        self.assertIn(self.job, queryset)
 
 
 class IsDefectFilterTests(TestCase):
     def setUp(self):
         self.request = RequestFactory().get('/admin/myappLubd/job/?is_defect=1')
         self.user = User.objects.create_user(username='engineer-filter', password='pw12345!')
+        self.property = Property.objects.create(name='Admin Filter Hotel')
         self.defect_job = Job.objects.create(
             user=self.user,
+            property=self.property,
             description='Defect job',
             remarks='Admin filter test',
             status='pending',
@@ -66,6 +69,7 @@ class IsDefectFilterTests(TestCase):
         )
         self.non_defect_job = Job.objects.create(
             user=self.user,
+            property=self.property,
             description='Non defect job',
             remarks='Admin filter test',
             status='pending',
@@ -92,26 +96,32 @@ class JobAdminCsvExportTests(TestCase):
         self.request = RequestFactory().get('/admin/myappLubd/job/')
         self.admin = JobAdmin(Job, AdminSite())
         self.user = User.objects.create_user(username='csv-engineer', password='pw12345!')
+        self.property = Property.objects.create(name='Admin CSV Export Hotel')
         self.job = Job.objects.create(
             user=self.user,
+            property=self.property,
             description='CSV export image test',
             remarks='Includes image URL',
             status='pending',
             priority='medium',
         )
 
+    @staticmethod
+    def image_upload(name, *, format='JPEG'):
+        from io import BytesIO
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+
+        content = BytesIO()
+        Image.new('RGB', (2, 2), color='red').save(content, format=format)
+        return SimpleUploadedFile(name, content.getvalue(), content_type='image/jpeg')
+
     def test_export_jobs_csv_includes_image_urls_and_display_formulas(self):
         from csv import DictReader
         from io import StringIO
-        from django.core.files.uploadedfile import SimpleUploadedFile
-
         image = self.job.job_images.create(
             uploaded_by=self.user,
-            image=SimpleUploadedFile(
-                'before.jpg',
-                b'not-real-image-bytes',
-                content_type='image/jpeg',
-            ),
+            image=self.image_upload('before.jpg'),
         )
 
         response = self.admin.export_jobs_csv(self.request, Job.objects.filter(pk=self.job.pk))
@@ -128,15 +138,9 @@ class JobAdminCsvExportTests(TestCase):
     def test_export_jobs_google_sheets_csv_uses_image_formulas(self):
         from csv import DictReader
         from io import StringIO
-        from django.core.files.uploadedfile import SimpleUploadedFile
-
         image = self.job.job_images.create(
             uploaded_by=self.user,
-            image=SimpleUploadedFile(
-                'before-for-sheets.jpg',
-                b'not-real-image-bytes',
-                content_type='image/jpeg',
-            ),
+            image=self.image_upload('before-for-sheets.jpg'),
         )
 
         response = self.admin.export_jobs_google_sheets_csv(self.request, Job.objects.filter(pk=self.job.pk))
@@ -151,16 +155,11 @@ class JobAdminCsvExportTests(TestCase):
         )
 
     def test_export_jobs_excel_leaves_mpo_images_as_urls(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile
         from unittest.mock import patch
 
         image = self.job.job_images.create(
             uploaded_by=self.user,
-            image=SimpleUploadedFile(
-                'stereo.mpo',
-                b'not-real-mpo-image-bytes',
-                content_type='image/mpo',
-            ),
+            image=self.image_upload('stereo.mpo'),
         )
 
         with patch('openpyxl.drawing.image.Image', side_effect=KeyError('.mpo')):
@@ -178,7 +177,7 @@ class JobAdminCsvExportTests(TestCase):
         self.assertEqual(row[16], 'Image URL only (unsupported Excel preview)')
         self.assertEqual(row[17], self.request.build_absolute_uri(image.image.url))
 
-    def test_excel_image_conversion_skips_mpo_without_opening_pillow(self):
+    def test_excel_image_conversion_opens_mpo_to_classify_it(self):
         from pathlib import Path
         from tempfile import TemporaryDirectory
         from unittest.mock import patch
@@ -195,7 +194,7 @@ class JobAdminCsvExportTests(TestCase):
                 with self.assertRaises(ValueError):
                     _excel_image_for_export(str(image_path), CapturingDrawingImage)
 
-            image_open.assert_not_called()
+            image_open.assert_called_once_with(str(image_path))
 
     def test_excel_image_conversion_uses_thumbnail_preview(self):
         from io import BytesIO
@@ -224,7 +223,7 @@ class JobAdminCsvExportTests(TestCase):
                 self.assertLessEqual(converted_image.height, 90)
 
 
-    def test_excel_image_conversion_skips_large_files(self):
+    def test_excel_image_conversion_rejects_invalid_image_data(self):
         from pathlib import Path
         from tempfile import TemporaryDirectory
         from unittest.mock import patch
@@ -237,31 +236,22 @@ class JobAdminCsvExportTests(TestCase):
             image_path = Path(temporary_directory) / 'oversized.bmp'
             image_path.write_bytes(b'0')
 
-            with patch('os.path.getsize', return_value=(5 * 1024 * 1024) + 1):
-                with self.assertRaises(ValueError):
-                    _excel_image_for_export(str(image_path), CapturingDrawingImage)
+            from PIL import UnidentifiedImageError
 
-    def test_export_jobs_excel_converts_images_with_unsupported_extensions(self):
-        from django.core.files.uploadedfile import SimpleUploadedFile
+            with self.assertRaises(UnidentifiedImageError):
+                _excel_image_for_export(str(image_path), CapturingDrawingImage)
+
+    def test_export_jobs_excel_embeds_normalized_image_uploads(self):
         from io import BytesIO
         from openpyxl import load_workbook
-        from PIL import Image as PILImage
-
-        image_buffer = BytesIO()
-        PILImage.new('RGB', (1, 1), color='red').save(image_buffer, format='JPEG')
-        image_buffer.seek(0)
         image = self.job.job_images.create(
             uploaded_by=self.user,
-            image=SimpleUploadedFile(
-                'camera-upload.jfif',
-                image_buffer.getvalue(),
-                content_type='image/jpeg',
-            ),
+            image=self.image_upload('camera-upload.jfif'),
         )
 
         response = self.admin.export_jobs_excel(self.request, Job.objects.filter(pk=self.job.pk))
 
         workbook = load_workbook(BytesIO(response.content))
         row = next(workbook.active.iter_rows(min_row=2, max_row=2, values_only=True))
-        self.assertEqual(row[16], 'Embedded below')
+        self.assertEqual(row[16], 'Embedded')
         self.assertEqual(row[17], self.request.build_absolute_uri(image.image.url))

@@ -6,6 +6,7 @@ import { DEBUG_CONFIG } from '@/app/lib/config';
 import { API_CONFIG } from '@/app/lib/config';
 import { sanitizeSessionForClient } from '@/app/lib/auth0/session-cookie';
 import { getPropertyId } from '@/app/lib/security/propertyAccess';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 interface UserProfileResponse {
   profile_image?: string | null;
@@ -46,7 +47,7 @@ export async function GET() {
       }
 
       try {
-        const profileResponse = await fetch(`${API_CONFIG.baseUrl}/api/v1/user-profiles/me/`, {
+        const profileResponse = await backendFetch(`${API_CONFIG.baseUrl}/api/v1/user-profiles/me/`, {
           headers: {
             Authorization: `Bearer ${session.user.accessToken}`,
             'Content-Type': 'application/json',

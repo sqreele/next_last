@@ -4,6 +4,7 @@ import { getCsrfHeaders } from "./csrf";
 import { fixJobsImageUrls, fixJobImageUrls, sanitizeJobsData, sanitizeJobData } from "./utils/image-utils";
 import { logger } from "./utils/logger";
 import { getPropertyId } from "./security/propertyAccess";
+import { backendFetch } from "./backend-fetch";
 
 // Allow using process.env without requiring Node types in this module
 declare const process: { env: Record<string, string | undefined> };
@@ -114,10 +115,15 @@ export async function fetchWithToken<T>(
   }, timeoutMs);
 
   try {
-    const response = await fetch(absoluteUrl, {
-      ...options,
-      signal: controller.signal,
-    });
+    const response = typeof window === 'undefined'
+      ? await backendFetch(absoluteUrl, {
+          ...options,
+          signal: controller.signal,
+        })
+      : await fetch(absoluteUrl, {
+          ...options,
+          signal: controller.signal,
+        });
     
     clearTimeout(timeoutId);
     const responseText = await response.text();

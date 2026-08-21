@@ -128,7 +128,7 @@ services:
       GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN}
       REDIS_URL: redis://redis:6379/1
     healthcheck:
-      test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/api/v1/health/'); response = conn.getresponse(); exit(0 if response.status == 200 else 1)"]
+      test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/api/v1/health/', headers={'X-Forwarded-Proto': 'https'}); response = conn.getresponse(); exit(0 if response.status == 200 else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3

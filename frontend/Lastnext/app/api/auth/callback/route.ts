@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { backendFetch } from '@/app/lib/backend-fetch';
 import { setSessionCookie } from '@/app/lib/auth0/session-cookie';
 
 const RAW_AUTH_ID_PATTERN = /^(google-oauth2_|auth0_)/i;
@@ -244,7 +245,7 @@ export async function GET(request: NextRequest) {
       try {
         const backendUrl = process.env.NEXT_PRIVATE_API_URL || 'http://backend:8000';
         
-        const propertiesResponse = await fetch(`${backendUrl}/api/v1/properties/`, {
+        const propertiesResponse = await backendFetch(`${backendUrl}/api/v1/properties/`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${tokens.access_token}`,

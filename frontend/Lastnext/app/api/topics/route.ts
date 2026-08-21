@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
 import { getErrorMessage } from '@/app/lib/utils/error-utils';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     if (DEBUG_CONFIG.logApiCalls) {
     }
 
-    const response = await fetch(apiUrl, {
+    const response = await backendFetch(apiUrl, {
       headers: {
         Authorization: `Bearer ${session.user.accessToken}`,
         'Content-Type': 'application/json',

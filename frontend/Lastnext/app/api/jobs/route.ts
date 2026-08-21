@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 export async function GET(request: NextRequest) {
   try {
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create job in the external API
-    const response = await fetch(`${API_CONFIG.baseUrl}/api/v1/jobs/`, fetchOptions);
+    const response = await backendFetch(`${API_CONFIG.baseUrl}/api/v1/jobs/`, fetchOptions);
 
     if (!response.ok) {
       let errorData: unknown = null;
@@ -105,4 +106,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

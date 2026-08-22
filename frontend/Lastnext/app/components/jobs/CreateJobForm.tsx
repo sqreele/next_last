@@ -502,16 +502,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const roomBelongsToActiveProperty = useCallback(
     (room: Room): boolean => {
       if (!activePropertyNumericId) return false;
-      if (room.property_id !== null && room.property_id !== undefined) {
-        return String(room.property_id) === activePropertyNumericId;
-      }
-      return Array.isArray(room.properties)
-        ? room.properties.some((property) => {
-            if (typeof property === "object" && property !== null) {
-              return String(property.id) === activePropertyNumericId;
-            }
-            return String(property) === activePropertyNumericId;
-          })
+      return room.property_id !== null && room.property_id !== undefined
+        ? String(room.property_id) === activePropertyNumericId
         : false;
     },
     [activePropertyNumericId],
@@ -938,6 +930,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
   const fetchData = useCallback(async () => {
     const requestId = ++dataRequestIdRef.current;
+    // A full property-scoped reload supersedes dependent requests that may
+    // still be in flight for the previous active Property.
+    roomRequestIdRef.current += 1;
+    floorRequestIdRef.current += 1;
     if (!session?.user?.accessToken || !activePropertyId) {
       setRooms([]);
       setAreas([]);

@@ -66,11 +66,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           setProperties(sessionProperties);
         }
 
-        // Auto-select only when the authorized property is unambiguous.
-        // Multi-property users choose their active context in the header.
+        // Revalidate persisted selection against the current authorized payload.
+        // Auto-select only when the authorized property is unambiguous;
+        // multi-property users choose their active context in the header.
         const currentSelectedProperty = useMainStore.getState().selectedPropertyId;
-        if (!currentSelectedProperty) {
-          setSelectedPropertyId(getDefaultPropertyId(sessionProperties));
+        const selectedPropertyIsAuthorized = Boolean(currentSelectedProperty) &&
+          sessionProperties.some(
+            (property) => getPropertyId(property) === currentSelectedProperty,
+          );
+        const nextSelectedProperty = selectedPropertyIsAuthorized
+          ? currentSelectedProperty
+          : getDefaultPropertyId(sessionProperties);
+        if (nextSelectedProperty !== currentSelectedProperty) {
+          setSelectedPropertyId(nextSelectedProperty);
         }
       }
     } else if (status === 'unauthenticated') {

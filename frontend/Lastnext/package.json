@@ -9,7 +9,8 @@
     "shadcn": "shadcn-ui",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"No automated tests configured yet\""
+    "test": "echo \"No automated tests configured yet\"",
+    "test:pm-pdf": "node --test tests/pm-pdf-evidence.test.cjs"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.13.3",

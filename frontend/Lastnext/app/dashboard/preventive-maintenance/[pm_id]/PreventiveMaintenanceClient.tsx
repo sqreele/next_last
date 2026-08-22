@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
 import { fetchImageAsDataURL } from "@/app/lib/imageUtils";
+import { selectPMPdfEvidence } from "@/app/lib/pmPdfEvidence";
 import { MaintenanceImage } from "@/app/components/ui/UniversalImage";
 import { getDisplayName, getUserEmail } from "@/app/lib/utils/display-name";
 import { StatusBadge } from "@/app/components/StatusBadge";
@@ -74,6 +75,9 @@ export default function PreventiveMaintenanceClient({
   const [pdfImageDataUrls, setPdfImageDataUrls] = useState<
     Record<string, string>
   >({});
+  const [pdfFailedImageUrls, setPdfFailedImageUrls] = useState<Set<string>>(
+    () => new Set(),
+  );
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setIsLoading);
 
@@ -130,6 +134,10 @@ export default function PreventiveMaintenanceClient({
     remaining: Math.max(0, 10 - evidenceImages.length),
     limit: 10,
   };
+  const pdfEvidence = useMemo(
+    () => selectPMPdfEvidence(evidenceImages, imageCounts.total),
+    [evidenceImages, imageCounts.total],
+  );
   const canOperate = (
     maintenanceData.can_operate === true
     && maintenanceData.property_id === selectedPropertyId
@@ -428,21 +436,21 @@ export default function PreventiveMaintenanceClient({
     const machineImageUrls = machinesWithImages
       .map(({ imageUrl }) => imageUrl)
       .filter((url): url is string => !!url);
+    const evidenceImageUrls = pdfEvidence.items.map(({ imageUrl }) => imageUrl);
 
     const imageUrls = Array.from(
-      new Set(
-        [beforeImageUrl, afterImageUrl, ...machineImageUrls].filter(
-          (url): url is string => !!url,
-        ),
-      ),
+      new Set([...evidenceImageUrls, ...machineImageUrls]),
     );
 
-    if (imageUrls.length === 0) return;
+    if (imageUrls.length === 0) {
+      setPdfFailedImageUrls(new Set());
+      return;
+    }
 
     const convertedEntries = await Promise.all(
       imageUrls.map(async (url) => {
         if (pdfImageDataUrls[url]) {
-          return [url, pdfImageDataUrls[url]] as const;
+          return { url, dataUrl: pdfImageDataUrls[url] };
         }
 
         try {
@@ -453,27 +461,28 @@ export default function PreventiveMaintenanceClient({
             maxSize: 1200,
             quality: 0.82,
           });
-          return [url, dataUrl] as const;
+          return { url, dataUrl };
         } catch (error) {
           console.warn("[PM PDF] Failed to prepare image for PDF:", url, error);
-          return null;
+          return { url, dataUrl: null };
         }
       }),
     );
 
-    const nextDataUrls = convertedEntries.reduce<Record<string, string>>(
-      (acc, entry) => {
-        if (entry) {
-          acc[entry[0]] = entry[1];
-        }
-        return acc;
-      },
-      {},
-    );
+    const nextDataUrls: Record<string, string> = {};
+    const failedUrls = new Set<string>();
+    convertedEntries.forEach(({ url, dataUrl }) => {
+      if (dataUrl) {
+        nextDataUrls[url] = dataUrl;
+      } else {
+        failedUrls.add(url);
+      }
+    });
 
     if (Object.keys(nextDataUrls).length > 0) {
       setPdfImageDataUrls((current) => ({ ...current, ...nextDataUrls }));
     }
+    setPdfFailedImageUrls(failedUrls);
   };
 
   const getPdfImageSrc = (imageUrl: string | null | undefined) => {
@@ -516,65 +525,72 @@ export default function PreventiveMaintenanceClient({
         import("jspdf"),
       ]);
 
-      const canvas = await html2canvas(pdfContent, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
-
       const pdf = new jsPDF("p", "mm", "a4");
       const pageWidth = 210;
       const pageHeight = 297;
       const margin = 10;
       const targetWidth = pageWidth - margin * 2;
       const targetHeight = pageHeight - margin * 2;
-      const pxPerMm = canvas.width / targetWidth;
-      const pageCanvasHeight = Math.floor(targetHeight * pxPerMm);
-
       let pageIndex = 0;
-      let yOffset = 0;
+      const reportPages = Array.from(
+        pdfContent.querySelectorAll<HTMLElement>("[data-pdf-page]"),
+      );
 
-      while (yOffset < canvas.height) {
-        const sliceHeight = Math.min(pageCanvasHeight, canvas.height - yOffset);
-        const pageCanvas = document.createElement("canvas");
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = sliceHeight;
+      for (const reportPage of reportPages) {
+        const canvas = await html2canvas(reportPage, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+        });
+        const pxPerMm = canvas.width / targetWidth;
+        const pageCanvasHeight = Math.floor(targetHeight * pxPerMm);
+        let yOffset = 0;
 
-        const context = pageCanvas.getContext("2d");
-        if (!context) {
-          throw new Error("Failed to create canvas context for PDF export.");
+        while (yOffset < canvas.height) {
+          const sliceHeight = Math.min(
+            pageCanvasHeight,
+            canvas.height - yOffset,
+          );
+          const pageCanvas = document.createElement("canvas");
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = sliceHeight;
+
+          const context = pageCanvas.getContext("2d");
+          if (!context) {
+            throw new Error("Failed to create canvas context for PDF export.");
+          }
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          context.drawImage(
+            canvas,
+            0,
+            yOffset,
+            canvas.width,
+            sliceHeight,
+            0,
+            0,
+            canvas.width,
+            sliceHeight,
+          );
+
+          const imageData = pageCanvas.toDataURL("image/jpeg", 0.86);
+          const renderedHeight = (sliceHeight * targetWidth) / canvas.width;
+
+          if (pageIndex > 0) {
+            pdf.addPage();
+          }
+          pdf.addImage(
+            imageData,
+            "JPEG",
+            margin,
+            margin,
+            targetWidth,
+            renderedHeight,
+          );
+          yOffset += sliceHeight;
+          pageIndex += 1;
         }
-
-        context.drawImage(
-          canvas,
-          0,
-          yOffset,
-          canvas.width,
-          sliceHeight,
-          0,
-          0,
-          canvas.width,
-          sliceHeight,
-        );
-
-        const imageData = pageCanvas.toDataURL("image/png");
-        const renderedHeight = (sliceHeight * targetWidth) / canvas.width;
-
-        if (pageIndex > 0) {
-          pdf.addPage();
-        }
-
-        pdf.addImage(
-          imageData,
-          "PNG",
-          margin,
-          margin,
-          targetWidth,
-          renderedHeight,
-        );
-        yOffset += sliceHeight;
-        pageIndex += 1;
       }
 
       const generatedDate = new Date().toISOString().slice(0, 10);
@@ -1480,6 +1496,7 @@ export default function PreventiveMaintenanceClient({
       <div id="pdf-content" className="hidden print:block">
         {/* A4 Paper Container */}
         <div
+          data-pdf-page
           className="a4-page bg-card mx-auto"
           style={{
             width: "210mm",
@@ -1639,50 +1656,6 @@ export default function PreventiveMaintenanceClient({
               </div>
             )}
 
-            {(beforeImageUrl || afterImageUrl) && (
-              <div className="mt-4 pt-3 border-t border-border">
-                <h3 className="font-medium text-muted-foreground mb-3 flex items-center">
-                  <Camera className="h-4 w-4 mr-2" />
-                  Maintenance Images
-                </h3>
-                <div className="pdf-image-grid grid grid-cols-2 gap-3">
-                  {beforeImageUrl && (
-                    <div>
-                      <span className="text-sm font-medium text-muted-foreground block mb-2">
-                        Before:
-                      </span>
-                      <img
-                        src={getPdfImageSrc(beforeImageUrl)}
-                        alt="Before maintenance"
-                        className="pdf-maintenance-image w-full h-40 object-contain rounded-lg border border-border"
-                      />
-                      <div className="hidden w-full h-48 bg-muted rounded-lg border border-border flex items-center justify-center">
-                        <span className="text-muted-foreground text-sm">
-                          Before image unavailable
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {afterImageUrl && (
-                    <div>
-                      <span className="text-sm font-medium text-muted-foreground block mb-2">
-                        After:
-                      </span>
-                      <img
-                        src={getPdfImageSrc(afterImageUrl)}
-                        alt="After maintenance"
-                        className="pdf-maintenance-image w-full h-40 object-contain rounded-lg border border-border"
-                      />
-                      <div className="hidden w-full h-48 bg-muted rounded-lg border border-border flex items-center justify-center">
-                        <span className="text-muted-foreground text-sm">
-                          After image unavailable
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Footer */}
@@ -1704,7 +1677,7 @@ export default function PreventiveMaintenanceClient({
                 <p>
                   <strong>Page:</strong>
                 </p>
-                <p>1 of 1</p>
+                <p>1 of {pdfEvidence.items.length > 0 ? 2 : 1}</p>
               </div>
             </div>
             <div className="mt-4 text-center text-muted-foreground">
@@ -1718,6 +1691,65 @@ export default function PreventiveMaintenanceClient({
             </div>
           </div>
         </div>
+
+        {pdfEvidence.items.length > 0 && (
+          <div
+            data-pdf-page
+            className="a4-page pdf-evidence-page bg-card mx-auto"
+          >
+            <div className="border-b-2 border-border pb-3 text-center">
+              <div className="mb-1 flex items-center justify-center gap-2">
+                <Camera className="h-5 w-5 text-blue-700" aria-hidden="true" />
+                <h2 className="text-xl font-bold text-foreground">
+                  Maintenance Evidence
+                </h2>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                PM {maintenanceData.pm_id} · Before and After Work
+              </p>
+              {pdfEvidence.truncated && (
+                <p className="mt-1 text-xs font-semibold text-amber-700">
+                  Showing {pdfEvidence.items.length} of {pdfEvidence.total} images
+                </p>
+              )}
+            </div>
+
+            <div className="pdf-evidence-grid">
+              {pdfEvidence.items.map((image) => (
+                <div key={image.key} className="pdf-evidence-card">
+                  <p className="pdf-evidence-label">{image.label}</p>
+                  {pdfFailedImageUrls.has(image.imageUrl) ? (
+                    <div className="pdf-evidence-placeholder">
+                      Image unavailable
+                    </div>
+                  ) : (
+                    <>
+                      <img
+                        src={getPdfImageSrc(image.imageUrl)}
+                        alt={`${image.label} maintenance evidence`}
+                        className="pdf-evidence-image"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                          event.currentTarget.nextElementSibling?.classList.remove(
+                            "hidden",
+                          );
+                        }}
+                      />
+                      <div className="pdf-evidence-placeholder hidden">
+                        Image unavailable
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="pdf-evidence-footer">
+              <span>Maintenance ID: {maintenanceData.pm_id}</span>
+              <span>Page 2 of 2</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Image modal */}
@@ -1780,6 +1812,77 @@ export default function PreventiveMaintenanceClient({
         #pdf-content .pdf-maintenance-image {
           background: #ffffff;
           display: block;
+        }
+
+        #pdf-content .pdf-evidence-page {
+          height: 297mm;
+          min-height: 297mm;
+          max-height: 297mm;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+
+        #pdf-content .pdf-evidence-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-auto-rows: 42mm;
+          gap: 3mm;
+          margin-top: 4mm;
+          align-content: start;
+        }
+
+        #pdf-content .pdf-evidence-card {
+          height: 42mm;
+          overflow: hidden;
+          border: 1px solid #d1d5db;
+          border-radius: 2mm;
+          padding: 1.5mm;
+          background: #ffffff;
+          box-sizing: border-box;
+          break-inside: avoid;
+        }
+
+        #pdf-content .pdf-evidence-label {
+          height: 4mm;
+          margin: 0 0 1mm;
+          color: #374151;
+          font-size: 8pt;
+          font-weight: 700;
+          line-height: 4mm;
+        }
+
+        #pdf-content .pdf-evidence-image,
+        #pdf-content .pdf-evidence-placeholder {
+          width: 100% !important;
+          height: 32mm !important;
+          max-width: 100% !important;
+          max-height: 32mm !important;
+          border: 0 !important;
+          border-radius: 1mm;
+          background: #f3f4f6;
+        }
+
+        #pdf-content .pdf-evidence-image {
+          display: block;
+          object-fit: contain;
+        }
+
+        #pdf-content .pdf-evidence-placeholder {
+          align-items: center;
+          justify-content: center;
+          color: #6b7280;
+          font-size: 8pt;
+        }
+
+        #pdf-content .pdf-evidence-footer {
+          display: flex;
+          justify-content: space-between;
+          margin-top: auto;
+          border-top: 1px solid #d1d5db;
+          padding-top: 2mm;
+          color: #6b7280;
+          font-size: 8pt;
         }
 
         @media print {

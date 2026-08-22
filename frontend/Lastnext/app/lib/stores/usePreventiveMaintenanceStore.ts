@@ -19,11 +19,13 @@ export interface SearchParams {
 }
 
 export interface DashboardStats {
+  can_operate?: boolean;
   counts: {
     total: number;
     completed: number;
     pending: number;
     overdue: number;
+    cancelled?: number;
   };
   frequency_distribution: Record<FrequencyType, number>;
   upcoming: PreventiveMaintenance[];

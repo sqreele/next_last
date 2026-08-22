@@ -280,7 +280,7 @@ export function PMScheduleCalendar() {
             ))}
             <div className="ml-2 flex h-9 items-center gap-1 rounded-full border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700">
               <span>Days:</span>
-              {[30, 60, 180, 365].map((value) => (
+              {[30, 60, 180].map((value) => (
                 <button
                   key={value}
                   type="button"

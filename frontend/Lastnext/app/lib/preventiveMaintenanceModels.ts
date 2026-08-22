@@ -242,25 +242,18 @@ export function getMachineDetails(machine: MachineDetails | null | undefined): {
 // Helper to safely get property details regardless of format
 export function getPropertyDetails(property: any): { id: string | null, name: string | null } {
   if (!property) return { id: null, name: null };
-  
-  // If property is an array (API may return [property_id])
-  if (Array.isArray(property)) {
-    const first = property.length > 0 ? property[0] : null;
-    return { id: first ? String(first) : null, name: null };
-  }
-  
-  // If property is just a string ID
-  if (typeof property === 'string' || typeof property === 'number') {
-    return { id: String(property), name: null };
+
+  // PM APIs use Property.property_id as a scalar external string. Numeric
+  // values and legacy arrays are deliberately rejected to avoid mixing them
+  // with Django's internal Property.id namespace.
+  if (typeof property === 'string') {
+    return { id: property, name: null };
   }
   
   // If property is an object, extract ID and name
   if (typeof property === 'object') {
-    // Try different potential property names for property ID
-    const id = property.property_id || property.id || property.propertyId || null;
-    
-    // Try different potential property names for property name
-    const name = property.name || property.property_name || property.propertyName || null;
+    const id = typeof property.property_id === 'string' ? property.property_id : null;
+    const name = property.name || null;
     
     return { id, name };
   }

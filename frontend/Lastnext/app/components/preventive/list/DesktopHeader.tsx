@@ -6,7 +6,6 @@ import {
   RefreshCw,
   Filter,
   Plus,
-  Bug,
   CalendarDays,
 } from "lucide-react";
 
@@ -15,11 +14,10 @@ interface DesktopHeaderProps {
   isLoading: boolean;
   showFilters: boolean;
   activeFiltersCount: number;
+  canOperate: boolean;
   getMachineNameById: (id: string) => string;
   onRefresh: () => void;
   onToggleFilters: () => void;
-  onTestFiltering?: () => void;
-  onDebugMachine?: () => void;
 }
 
 export default function DesktopHeader({
@@ -27,11 +25,10 @@ export default function DesktopHeader({
   isLoading,
   showFilters,
   activeFiltersCount,
+  canOperate,
   getMachineNameById,
   onRefresh,
   onToggleFilters,
-  onTestFiltering,
-  onDebugMachine,
 }: DesktopHeaderProps) {
   return (
     <div className="hidden md:block container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl py-8">
@@ -52,28 +49,6 @@ export default function DesktopHeader({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          {/* DEBUG BUTTONS - Remove in production */}
-          {process.env.NODE_ENV === "development" && (
-            <div className="flex gap-2">
-              <button
-                onClick={onTestFiltering}
-                className="flex items-center px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm transition-colors"
-                title="Test Filtering"
-              >
-                <Bug className="h-4 w-4 mr-1" />
-                Test
-              </button>
-              <button
-                onClick={onDebugMachine}
-                className="flex items-center px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm transition-colors"
-                title="Debug Machine"
-              >
-                <Bug className="h-4 w-4 mr-1" />
-                Debug
-              </button>
-            </div>
-          )}
-
           <Link
             href="/dashboard/preventive-maintenance/dashboard"
             className="flex items-center px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted transition-colors"
@@ -121,13 +96,15 @@ export default function DesktopHeader({
             )}
           </button>
 
-          <Link
-            href="/dashboard/preventive-maintenance/create"
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Maintenance
-          </Link>
+          {canOperate && (
+            <Link
+              href="/dashboard/preventive-maintenance/create"
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Maintenance
+            </Link>
+          )}
         </div>
       </div>
     </div>

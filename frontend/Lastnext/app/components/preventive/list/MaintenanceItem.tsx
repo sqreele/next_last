@@ -11,10 +11,7 @@ import {
   Calendar,
   Wrench,
   Clipboard,
-  CheckCircle2,
-  XCircle,
 } from "lucide-react";
-import { Badge } from "@/app/components/ui/badge";
 import { StatusBadge } from "@/app/components/StatusBadge";
 
 interface MaintenanceItemProps {
@@ -29,14 +26,7 @@ interface MaintenanceItemProps {
     color: string;
     icon: string;
   };
-  // getFrequencyText removed - frequency no longer displayed
-  verifyPMProperty?: (item: PreventiveMaintenance) => {
-    matches: boolean;
-    message: string;
-    machinesAtProperty: number;
-    totalMachines: number;
-  };
-  selectedProperty?: string | null;
+  canOperate: boolean;
 }
 
 const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
@@ -47,26 +37,23 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
   formatDate,
   getMachineNames,
   getStatusInfo,
-  // getFrequencyText removed
-  verifyPMProperty,
-  selectedProperty,
+  canOperate,
 }) => {
   const statusInfo = getStatusInfo(item);
-  const verification =
-    verifyPMProperty && selectedProperty ? verifyPMProperty(item) : null;
 
   return (
     <div className="px-4 md:px-6 py-4 hover:bg-muted transition-colors">
       <div className="flex items-start md:items-center">
         {/* Desktop Checkbox */}
-        <div className="hidden md:block">
+        {canOperate && <div className="hidden md:block">
           <input
             type="checkbox"
             checked={isSelected}
             onChange={(e) => onSelect(e.target.checked)}
+            aria-label={`Select ${item.pmtitle || `task ${item.pm_id}`}`}
             className="h-4 w-4 text-blue-600 rounded border-border focus:ring-blue-500"
           />
-        </div>
+        </div>}
 
         <div className="flex-1 md:ml-4">
           {/* Mobile Layout */}
@@ -74,12 +61,13 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
-                  <input
+                  {canOperate && <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={(e) => onSelect(e.target.checked)}
+                    aria-label={`Select ${item.pmtitle || `task ${item.pm_id}`}`}
                     className="h-5 w-5 flex-none rounded border-border text-blue-600 focus:ring-blue-500"
-                  />
+                  />}
                   <Link
                     href={`/dashboard/preventive-maintenance/${item.pm_id}`}
                     className="min-w-0 text-base font-semibold text-foreground hover:text-blue-600"
@@ -123,25 +111,28 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                   <div className="flex items-center space-x-2">
                     <Link
                       href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                      className="grid h-10 w-10 place-items-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-800"
+                      className="grid h-11 w-11 place-items-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-800"
                       title="View Details"
+                      aria-label={`View ${item.pmtitle || `task ${item.pm_id}`}`}
                     >
                       <Eye className="h-4 w-4" />
                     </Link>
-                    <Link
+                    {canOperate && <Link
                       href={`/dashboard/preventive-maintenance/edit/${item.pm_id}`}
-                      className="grid h-10 w-10 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                      className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                       title="Edit"
+                      aria-label={`Edit ${item.pmtitle || `task ${item.pm_id}`}`}
                     >
                       <Edit className="h-4 w-4" />
-                    </Link>
-                    <button
+                    </Link>}
+                    {canOperate && <button
                       onClick={() => onDelete(item.pm_id)}
-                      className="grid h-10 w-10 place-items-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-800"
+                      className="grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-800"
                       title="Delete"
+                      aria-label={`Delete ${item.pmtitle || `task ${item.pm_id}`}`}
                     >
                       <Trash2 className="h-4 w-4" />
-                    </button>
+                    </button>}
                   </div>
                 </div>
               </div>
@@ -179,25 +170,6 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                   <span className="truncate">
                     {getMachineNames(item.machines)}
                   </span>
-                  {verification && verification.totalMachines > 0 && (
-                    <Badge
-                      variant="outline"
-                      className={`text-xs flex-shrink-0 ${
-                        verification.matches
-                          ? "bg-green-50 text-green-700 border-green-300"
-                          : "bg-orange-50 text-orange-700 border-orange-300"
-                      }`}
-                      title={verification.message}
-                    >
-                      {verification.matches ? (
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                      ) : (
-                        <XCircle className="h-3 w-3 mr-1" />
-                      )}
-                      {verification.machinesAtProperty}/
-                      {verification.totalMachines}
-                    </Badge>
-                  )}
                 </div>
               </div>
 
@@ -229,25 +201,28 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
               <div className="flex items-center space-x-2">
                 <Link
                   href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                  className="p-1 text-blue-600 hover:text-blue-800"
+                  className="grid h-11 w-11 place-items-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-800"
                   title="View Details"
+                  aria-label={`View ${item.pmtitle || `task ${item.pm_id}`}`}
                 >
                   <Eye className="h-4 w-4" />
                 </Link>
-                <Link
+                {canOperate && <Link
                   href={`/dashboard/preventive-maintenance/edit/${item.pm_id}`}
-                  className="p-1 text-muted-foreground hover:text-foreground"
+                  className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
                   title="Edit"
+                  aria-label={`Edit ${item.pmtitle || `task ${item.pm_id}`}`}
                 >
                   <Edit className="h-4 w-4" />
-                </Link>
-                <button
+                </Link>}
+                {canOperate && <button
                   onClick={() => onDelete(item.pm_id)}
-                  className="p-1 text-red-600 hover:text-red-800"
+                  className="grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-800"
                   title="Delete"
+                  aria-label={`Delete ${item.pmtitle || `task ${item.pm_id}`}`}
                 >
                   <Trash2 className="h-4 w-4" />
-                </button>
+                </button>}
               </div>
             </div>
           </div>

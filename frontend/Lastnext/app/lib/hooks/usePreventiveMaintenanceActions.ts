@@ -3,10 +3,10 @@
 
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useSession } from '@/app/lib/session.client';
 import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
-import { useAuthStore } from '@/app/lib/stores/useAuthStore';
+import { useMainStore } from '@/app/lib/stores/mainStore';
 import { createPreventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
 import { fetchTopics } from '@/app/lib/data.server';
 import MachineService from '@/app/lib/MachineService';
@@ -18,10 +18,12 @@ const MIN_LOADER_MS = 400;
 
 export function usePreventiveMaintenanceActions() {
   const { data: session } = useSession();
-  const { selectedProperty } = useAuthStore();
+  const selectedProperty = useMainStore(state => state.selectedPropertyId);
   const accessToken = session?.user?.accessToken || null;
   const loaderShownAtRef = useRef<number | null>(null);
   const maintenanceRequestRef = useRef(0);
+  const statisticsRequestRef = useRef(0);
+  const renderedPropertyRef = useRef(selectedProperty);
 
   const {
     maintenanceItems,
@@ -44,6 +46,24 @@ export function usePreventiveMaintenanceActions() {
     setFilterParams,
     clearError: clearStoreError,
   } = usePreventiveMaintenanceStore();
+
+  const propertyChangedDuringRender = renderedPropertyRef.current !== selectedProperty;
+  if (propertyChangedDuringRender) {
+    renderedPropertyRef.current = selectedProperty;
+  }
+
+  // A property switch is a hard data boundary. Invalidate in-flight work and
+  // remove the previous property's records before any new request can resolve.
+  useEffect(() => {
+    maintenanceRequestRef.current += 1;
+    statisticsRequestRef.current += 1;
+    setMaintenanceItems([]);
+    setMachines([]);
+    setStatistics(null);
+    setTotalCount(0);
+    setError(null);
+    setLoading(false);
+  }, [selectedProperty, setError, setLoading, setMachines, setMaintenanceItems, setStatistics, setTotalCount]);
 
   const clearLoadingAfterMinTime = useCallback(() => {
     const shownAt = loaderShownAtRef.current;
@@ -68,8 +88,12 @@ export function usePreventiveMaintenanceActions() {
       return;
     }
 
+    if (!selectedProperty) {
+      setTopics([]);
+      return;
+    }
+
     try {
-      setLoading(true);
       // Use fetchTopics from data.server.ts
       const topicsData = await fetchTopics(accessToken, selectedProperty);
       // Map topics to match the expected type (convert null to undefined for description)
@@ -83,10 +107,8 @@ export function usePreventiveMaintenanceActions() {
     } catch (error) {
       logger.error('Error fetching topics', error);
       setError('Failed to fetch topics');
-    } finally {
-      setLoading(false);
     }
-  }, [accessToken, selectedProperty, setLoading, setTopics, setError]);
+  }, [accessToken, selectedProperty, setTopics, setError]);
 
   // Fetch machines
   const fetchMachines = useCallback(async (propertyId?: string) => {
@@ -95,10 +117,14 @@ export function usePreventiveMaintenanceActions() {
       return;
     }
 
+    const targetPropertyId = propertyId || selectedProperty;
+    if (!targetPropertyId) {
+      setMachines([]);
+      return;
+    }
+
     try {
-      setLoading(true);
       const machineService = new MachineService();
-      const targetPropertyId = propertyId || selectedProperty || undefined;
       const response = await machineService.getMachines(targetPropertyId, accessToken);
       
       if (response.success && response.data) {
@@ -107,15 +133,21 @@ export function usePreventiveMaintenanceActions() {
     } catch (error) {
       logger.error('Error fetching machines', error);
       setError('Failed to fetch machines');
-    } finally {
-      setLoading(false);
     }
-  }, [accessToken, selectedProperty, setLoading, setMachines, setError]);
+  }, [accessToken, selectedProperty, setMachines, setError]);
 
   // Fetch maintenance items
   const fetchMaintenanceItems = useCallback(async (params?: SearchParams) => {
     if (!accessToken) {
       logger.warn('No access token available for fetching maintenance items');
+      return;
+    }
+
+    if (!selectedProperty) {
+      maintenanceRequestRef.current += 1;
+      setMaintenanceItems([]);
+      setTotalCount(0);
+      setLoading(false);
       return;
     }
 
@@ -127,7 +159,8 @@ export function usePreventiveMaintenanceActions() {
     // Get current items count to determine if we should show loading state
     // Only show full loading state if we don't have existing data (initial load)
     // This prevents data from disappearing during refresh
-    const hasExistingData = maintenanceItems.length > 0;
+    const currentState = usePreventiveMaintenanceStore.getState();
+    const hasExistingData = currentState.maintenanceItems.length > 0;
     if (!hasExistingData) {
       loaderShownAtRef.current = Date.now();
       setLoading(true);
@@ -135,10 +168,12 @@ export function usePreventiveMaintenanceActions() {
     clearStoreError();
 
     try {
-      const fetchParams = { 
-        ...filterParams, 
-        property_id: selectedProperty || filterParams.property_id, 
-        ...params 
+      const { property_id: _storedPropertyId, ...storedFilters } = currentState.filterParams;
+      const { property_id: _requestedPropertyId, ...requestedFilters } = params || {};
+      const fetchParams = {
+        ...storedFilters,
+        ...requestedFilters,
+        property_id: selectedProperty,
       };
       
       logger.debug('Fetching maintenance items with params', fetchParams);
@@ -202,7 +237,7 @@ export function usePreventiveMaintenanceActions() {
             }
             
             // Only update if different to avoid infinite loops
-            const currentFilterParams = filterParams;
+            const currentFilterParams = usePreventiveMaintenanceStore.getState().filterParams;
             if (currentFilterParams.page !== validCurrentPage || currentFilterParams.page_size !== paginatedData.page_size) {
               setFilterParams({ 
                 page: validCurrentPage,
@@ -217,7 +252,7 @@ export function usePreventiveMaintenanceActions() {
         setError(response.message || 'Failed to fetch maintenance items');
         // Only clear items if we don't have existing data
         // This prevents clearing data that was visible before the error
-        if (maintenanceItems.length === 0) {
+        if (usePreventiveMaintenanceStore.getState().maintenanceItems.length === 0) {
           setMaintenanceItems([]);
         }
       }
@@ -228,7 +263,7 @@ export function usePreventiveMaintenanceActions() {
       setError(errorMessage);
       // Only clear items on error if we don't have existing data
       // This prevents clearing data that was visible before the error
-      if (maintenanceItems.length === 0) {
+      if (usePreventiveMaintenanceStore.getState().maintenanceItems.length === 0) {
         setMaintenanceItems([]);
       }
     } finally {
@@ -239,30 +274,36 @@ export function usePreventiveMaintenanceActions() {
         setLoading(false);
       }
     }
-  }, [filterParams, selectedProperty, accessToken, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError, maintenanceItems, clearLoadingAfterMinTime]);
+  }, [selectedProperty, accessToken, setLoading, clearStoreError, setMaintenanceItems, setTotalCount, setError, setFilterParams, clearLoadingAfterMinTime]);
 
   // Fetch statistics
   const fetchStatistics = useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessToken || !selectedProperty) {
+      statisticsRequestRef.current += 1;
+      setStatistics(null);
+      return;
+    }
+
+    const requestId = ++statisticsRequestRef.current;
 
     try {
-      setLoading(true);
       const service = createPreventiveMaintenanceService(accessToken);
       const response = await service.getMaintenanceStatistics({
-        property_id: selectedProperty || undefined
+        property_id: selectedProperty
       });
       
-      if (response.success && response.data) {
+      if (requestId === statisticsRequestRef.current && response.success && response.data) {
         // Type assertion to match store's DashboardStats interface
         // The API returns array format but store expects Record format
         setStatistics(response.data as unknown as DashboardStats);
       }
     } catch (error) {
       logger.error('Error fetching statistics', error);
-    } finally {
-      setLoading(false);
+      if (requestId === statisticsRequestRef.current) {
+        setError('Failed to fetch maintenance statistics');
+      }
     }
-  }, [accessToken, selectedProperty, setLoading, setStatistics]);
+  }, [accessToken, selectedProperty, setError, setStatistics]);
 
   // Delete maintenance
   const deleteMaintenance = useCallback(async (pmId: string): Promise<boolean> => {
@@ -408,13 +449,13 @@ export function usePreventiveMaintenanceActions() {
 
   return {
     // State
-    maintenanceItems,
+    maintenanceItems: propertyChangedDuringRender ? [] : maintenanceItems,
     topics,
-    machines,
-    statistics,
+    machines: propertyChangedDuringRender ? [] : machines,
+    statistics: propertyChangedDuringRender ? null : statistics,
     selectedMaintenance,
-    totalCount,
-    isLoading,
+    totalCount: propertyChangedDuringRender ? 0 : totalCount,
+    isLoading: propertyChangedDuringRender && Boolean(selectedProperty) ? true : isLoading,
     error,
     filterParams,
     

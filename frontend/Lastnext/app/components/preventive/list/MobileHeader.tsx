@@ -5,11 +5,12 @@ import { BarChart3, RefreshCw, Filter, Plus, CalendarDays } from "lucide-react";
 
 interface MobileHeaderProps {
   totalCount: number;
-  overdueCount: number;
+  overdueCount?: number;
   currentFilters: any;
   isLoading: boolean;
   showFilters: boolean;
   activeFiltersCount: number;
+  canOperate: boolean;
   onRefresh: () => void;
   onToggleFilters: () => void;
 }
@@ -21,6 +22,7 @@ export default function MobileHeader({
   isLoading,
   showFilters,
   activeFiltersCount,
+  canOperate,
   onRefresh,
   onToggleFilters,
 }: MobileHeaderProps) {
@@ -32,13 +34,13 @@ export default function MobileHeader({
             Preventive Maintenance
           </h1>
           <p className="text-sm text-muted-foreground">
-            {totalCount} tasks • {overdueCount} overdue
+            {totalCount} tasks • {overdueCount === undefined ? "…" : overdueCount} overdue
             {currentFilters.machine && (
               <span className="text-blue-600"> • Filtered</span>
             )}
           </p>
         </div>
-        <div className="grid grid-cols-5 gap-2">
+        <div className={`grid gap-2 ${canOperate ? "grid-cols-5" : "grid-cols-4"}`}>
           <Link
             href="/dashboard/preventive-maintenance/dashboard"
             className="grid h-11 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -82,13 +84,15 @@ export default function MobileHeader({
               </span>
             )}
           </button>
-          <Link
-            href="/dashboard/preventive-maintenance/create"
-            className="grid h-11 place-items-center rounded-lg bg-blue-600 text-white transition-colors hover:bg-blue-700"
-            aria-label="Create new maintenance task"
-          >
-            <Plus className="h-5 w-5" />
-          </Link>
+          {canOperate && (
+            <Link
+              href="/dashboard/preventive-maintenance/create"
+              className="grid h-11 place-items-center rounded-lg bg-blue-600 text-white transition-colors hover:bg-blue-700"
+              aria-label="Create new maintenance task"
+            >
+              <Plus className="h-5 w-5" />
+            </Link>
+          )}
         </div>
       </div>
     </div>

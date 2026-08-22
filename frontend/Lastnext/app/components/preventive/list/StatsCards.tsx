@@ -10,6 +10,20 @@ interface StatsCardsProps {
 export default function StatsCards({ stats }: StatsCardsProps) {
   const cards = [
     {
+      label: "Overdue",
+      value: stats.overdue,
+      icon: AlertCircle,
+      color: "text-red-600",
+      bgColor: "text-red-600",
+    },
+    {
+      label: "Open",
+      value: stats.pending,
+      icon: Clock,
+      color: "text-yellow-600",
+      bgColor: "text-yellow-600",
+    },
+    {
       label: "Total",
       value: stats.total,
       icon: Settings,
@@ -22,20 +36,6 @@ export default function StatsCards({ stats }: StatsCardsProps) {
       icon: CheckCircle,
       color: "text-green-600",
       bgColor: "text-green-600",
-    },
-    {
-      label: "Pending",
-      value: stats.pending,
-      icon: Clock,
-      color: "text-yellow-600",
-      bgColor: "text-yellow-600",
-    },
-    {
-      label: "Overdue",
-      value: stats.overdue,
-      icon: AlertCircle,
-      color: "text-red-600",
-      bgColor: "text-red-600",
     },
   ];
 

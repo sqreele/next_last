@@ -510,7 +510,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         : machineIdsFromData;
 
       const propertyDetails = getPropertyDetails(currentData.property_id);
-      const propertyId = propertyDetails.id || selectedProperty || "";
+      const propertyId = propertyDetails.id || "";
 
       const customDays =
         currentData.custom_days === null ||

@@ -1,16 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { logger } from '@/app/lib/utils/logger';
-import { useRouter } from 'next/navigation';
 import { usePreventiveMaintenanceActions } from '@/app/lib/hooks/usePreventiveMaintenanceActions';
 import { useFilterStore } from '@/app/lib/stores';
-import { useAuthStore } from '@/app/lib/stores/useAuthStore';
+import { useMainStore } from '@/app/lib/stores/mainStore';
 import { usePreventiveMaintenanceStore } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import { PreventiveMaintenance, determinePMStatus } from '@/app/lib/preventiveMaintenanceModels';
 
 // Import types
-import { FilterState, MachineOption, Stats } from '@/app/lib/hooks/filterTypes';
+import { MachineOption, Stats } from '@/app/lib/hooks/filterTypes';
 
 // Import components
 import MobileHeader from '@/app/components/preventive/list/MobileHeader';
@@ -25,7 +23,7 @@ import LoadingState from '@/app/components/preventive/list/LoadingState';
 import EmptyState from '@/app/components/preventive/list/EmptyState';
 import ErrorDisplay from '@/app/components/preventive/list/ErrorDisplay';
 import Link from 'next/link';
-import { Filter, Plus, FileText, CheckCircle2, AlertTriangle, XCircle, Building } from 'lucide-react';
+import { Filter, Plus, Building } from 'lucide-react';
 
 // Import utility functions
 import {
@@ -39,8 +37,7 @@ import {
 type SortField = 'date' | 'status' | 'machine';
 
 function PreventiveMaintenanceListPageContent() {
-  const router = useRouter();
-  const { selectedProperty } = useAuthStore();
+  const selectedProperty = useMainStore(state => state.selectedPropertyId);
   const { 
     status, 
     frequency, 
@@ -63,54 +60,18 @@ function PreventiveMaintenanceListPageContent() {
   
   const {
     maintenanceItems,
-    topics,
     machines,
+    statistics,
     isLoading,
     error,
     fetchMaintenanceItems,
+    fetchMachines,
+    fetchStatistics,
     deleteMaintenance,
     clearError,
     totalCount,
     filterParams: pmFilterParams
   } = usePreventiveMaintenanceActions();
-  
-  // Mock functions for backward compatibility
-  const debugMachineFilter = useCallback(async (machineId: string) => {
-    logger.debug('Debug machine filter', { machineId });
-  }, []);
-  
-  const testMachineFiltering = useCallback(() => {
-    logger.debug('Test machine filtering');
-  }, []);
-
-  // Now using real data from context - removed mock implementations
-
-  // Debug logging
-
-  // Manual data fetching if no data is present - preserve current pagination
-  useEffect(() => {
-    if (maintenanceItems.length === 0 && !isLoading && !error) {
-      // Use current pagination params when fetching
-      fetchMaintenanceItems({
-        page: page || 1,
-        page_size: page_size || 10,
-      });
-    }
-  }, [maintenanceItems.length, isLoading, error, selectedProperty, fetchMaintenanceItems, page, page_size]);
-
-  // Re-fetch data when selectedProperty changes - preserve current pagination
-  useEffect(() => {
-    
-    if (selectedProperty !== null && selectedProperty !== undefined) {
-      // Reset to page 1 when property changes, but preserve page_size
-      fetchMaintenanceItems({
-        page: 1, // Reset to first page when property changes
-        page_size: page_size || 10,
-      });
-      // Also update the filter store to reset page
-      setPage(1);
-    }
-  }, [selectedProperty, fetchMaintenanceItems, page_size, setPage]);
 
   // UI state
   const [showFilters, setShowFilters] = useState(false);
@@ -118,6 +79,20 @@ function PreventiveMaintenanceListPageContent() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  useEffect(() => {
+    setSelectedItems([]);
+    setDeleteConfirm(null);
+    setMachineId('');
+    setPage(1);
+
+    if (!selectedProperty) return;
+
+    const currentPageSize = useFilterStore.getState().page_size || 10;
+    fetchMaintenanceItems({ page: 1, page_size: currentPageSize, machine_id: '' });
+    fetchMachines(selectedProperty);
+    fetchStatistics();
+  }, [selectedProperty, fetchMaintenanceItems, fetchMachines, fetchStatistics, setMachineId, setPage]);
 
   // Enhanced machine options with better display
   const machineOptions = useMemo((): MachineOption[] => {
@@ -136,62 +111,10 @@ function PreventiveMaintenanceListPageContent() {
     return options.sort((a, b) => a.name.localeCompare(b.name));
   }, [machines, maintenanceItems]);
 
-  // Verify preventive maintenance item's machines against selected property
-  const verifyPMProperty = useCallback((item: PreventiveMaintenance): { matches: boolean; message: string; machinesAtProperty: number; totalMachines: number } => {
-    if (!selectedProperty) {
-      return { matches: true, message: 'No property selected', machinesAtProperty: 0, totalMachines: 0 };
-    }
-    
-    if (!item.machines || !Array.isArray(item.machines) || item.machines.length === 0) {
-      return { matches: true, message: 'No machines assigned', machinesAtProperty: 0, totalMachines: 0 };
-    }
-    
-    // Check each machine's property
-    const machinesAtProperty = item.machines.filter((machine: any) => {
-      // Machine can have property_id directly or through property object
-      const machinePropertyId = machine.property_id || machine.property?.property_id;
-      return machinePropertyId === selectedProperty;
-    }).length;
-    
-    const totalMachines = item.machines.length;
-    const matches = machinesAtProperty === totalMachines && totalMachines > 0;
-    
-    if (matches) {
-      return { 
-        matches: true, 
-        message: `All ${totalMachines} equipment item${totalMachines !== 1 ? 's' : ''} verified at selected property`,
-        machinesAtProperty,
-        totalMachines
-      };
-    } else if (machinesAtProperty > 0) {
-      return { 
-        matches: false, 
-        message: `${machinesAtProperty} of ${totalMachines} equipment item${totalMachines !== 1 ? 's' : ''} at selected property`,
-        machinesAtProperty,
-        totalMachines
-      };
-    } else {
-      return { 
-        matches: false, 
-        message: `None of the ${totalMachines} equipment item${totalMachines !== 1 ? 's' : ''} are at the selected property`,
-        machinesAtProperty,
-        totalMachines
-      };
-    }
-  }, [selectedProperty]);
-
-  // Enhanced stats calculation
-  const stats = useMemo((): Stats => {
-    const completed = maintenanceItems.filter(item => item.completed_date).length;
-    const overdue = maintenanceItems.filter(item => 
-      !item.completed_date && new Date(item.scheduled_date) < new Date()
-    ).length;
-    const pending = maintenanceItems.filter(item => 
-      !item.completed_date && new Date(item.scheduled_date) >= new Date()
-    ).length;
-    
-    return { total: maintenanceItems.length, completed, overdue, pending };
-  }, [maintenanceItems]);
+  // The stats endpoint is authoritative across every page of the selected
+  // property's result set. Never derive KPI totals from the visible page.
+  const stats = statistics?.counts as Stats | undefined;
+  const canOperate = statistics?.can_operate === true;
 
   // Get setFilterParams from PM store
   const { setFilterParams } = usePreventiveMaintenanceStore();
@@ -287,18 +210,6 @@ function PreventiveMaintenanceListPageContent() {
     
     return sorted;
   }, [maintenanceItems, sortBy, sortOrder]);
-
-  // Count PM items matching selected property (must be after sortedItems)
-  const matchingPMItems = useMemo(() => {
-    return sortedItems.filter(item => verifyPMProperty(item).matches);
-  }, [sortedItems, verifyPMProperty]);
-
-  const mismatchedPMItems = useMemo(() => {
-    return sortedItems.filter(item => {
-      const verification = verifyPMProperty(item);
-      return !verification.matches && verification.totalMachines > 0;
-    });
-  }, [sortedItems, verifyPMProperty]);
 
   // Utility function to get machine name by ID
   const getMachineNameById = useCallback((machineId: string) => {
@@ -424,11 +335,6 @@ function PreventiveMaintenanceListPageContent() {
     });
   }, [fetchMaintenanceItems, page, page_size, status, frequency, search, start_date, end_date, machine_id]);
 
-  // DEBUG handlers
-  const handleDebugMachine = useCallback(async () => {
-    await debugMachineFilter('M257E5AC03B');
-  }, [debugMachineFilter]);
-
   // Pagination - calculate from totalCount and page_size
   const totalPages = useMemo(() => {
     if (!totalCount || totalCount === 0) return 1;
@@ -477,16 +383,31 @@ function PreventiveMaintenanceListPageContent() {
     pageSize: page_size || 10
   }), [status, frequency, search, start_date, end_date, machine_id, page, page_size]);
 
+  if (!selectedProperty) {
+    return (
+      <div className="mx-auto flex min-h-[55vh] w-full max-w-2xl items-center justify-center px-4 py-12">
+        <div className="w-full rounded-2xl border border-border bg-card p-8 text-center shadow-soft">
+          <Building className="mx-auto h-12 w-12 text-muted-foreground" aria-hidden="true" />
+          <h1 className="mt-4 text-2xl font-bold text-foreground">Select a property</h1>
+          <p className="mt-2 text-muted-foreground">
+            Choose an active property from the dashboard header to view and manage its preventive maintenance.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-4 px-3 pb-4 pt-2 sm:px-4 md:px-5">
       {/* Mobile Header */}
       <MobileHeader
         totalCount={totalCount}
-        overdueCount={stats.overdue}
+        overdueCount={stats?.overdue}
         currentFilters={currentFilters}
         isLoading={isLoading}
         showFilters={showFilters}
         activeFiltersCount={activeFiltersCount}
+        canOperate={canOperate}
         onRefresh={handleRefresh}
         onToggleFilters={() => setShowFilters(!showFilters)}
       />
@@ -497,62 +418,18 @@ function PreventiveMaintenanceListPageContent() {
         isLoading={isLoading}
         showFilters={showFilters}
         activeFiltersCount={activeFiltersCount}
+        canOperate={canOperate}
         getMachineNameById={getMachineNameById}
         onRefresh={handleRefresh}
         onToggleFilters={() => setShowFilters(!showFilters)}
-        onTestFiltering={testMachineFiltering}
-        onDebugMachine={handleDebugMachine}
       />
 
-      {/* Property Verification Info */}
-      {selectedProperty && (
-        <div className="mb-4 w-full max-w-none lg:mx-auto lg:max-w-7xl">
-          <div className="text-sm text-gray-600">
-            {matchingPMItems.length} verified • {mismatchedPMItems.length} at different property
-          </div>
-        </div>
-      )}
-
-      {/* Property Verification Alert */}
-      {selectedProperty && mismatchedPMItems.length > 0 && (
-        <div className="mb-4 w-full max-w-none lg:mx-auto lg:max-w-7xl">
-          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-orange-900 mb-1">Location Verification</h3>
-                <p className="text-sm text-orange-800">
-                  {mismatchedPMItems.length} maintenance task{mismatchedPMItems.length !== 1 ? 's' : ''} {mismatchedPMItems.length === 1 ? 'has' : 'have'} equipment located at a different property than the selected one.
-                </p>
-                <p className="text-xs text-orange-700 mt-2">
-                  These tasks will still be displayed but may include equipment from other properties.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Property Match Confirmation */}
-      {selectedProperty && mismatchedPMItems.length === 0 && matchingPMItems.length > 0 && (
-        <div className="mb-4 w-full max-w-none lg:mx-auto lg:max-w-7xl">
-          <div className="rounded-2xl border border-green-200 bg-green-50 p-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-medium text-green-900">
-                  ✓ All displayed maintenance tasks have equipment verified to be at the selected property location.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Stats Cards */}
-      <div className="hidden w-full max-w-none md:block lg:mx-auto lg:max-w-7xl">
-        <StatsCards stats={stats} />
-      </div>
+      {stats && (
+        <div className="w-full max-w-none lg:mx-auto lg:max-w-7xl">
+          <StatsCards stats={stats} />
+        </div>
+      )}
 
       <div className="w-full max-w-none space-y-4 lg:mx-auto lg:max-w-7xl">
         {/* Error Display */}
@@ -575,7 +452,7 @@ function PreventiveMaintenanceListPageContent() {
         )}
 
         {/* Bulk Actions */}
-        {selectedItems.length > 0 && (
+        {canOperate && selectedItems.length > 0 && (
           <BulkActions
             selectedCount={selectedItems.length}
             onBulkDelete={handleBulkDelete}
@@ -616,8 +493,7 @@ function PreventiveMaintenanceListPageContent() {
               formatDate={formatDate}
               getMachineNames={getMachineNames}
               getStatusInfo={getStatusInfo}
-              verifyPMProperty={verifyPMProperty}
-              selectedProperty={selectedProperty}
+              canOperate={canOperate}
             />
           </div>
         )}
@@ -676,13 +552,15 @@ function PreventiveMaintenanceListPageContent() {
             )}
           </button>
           
-          <Link
-            href="/dashboard/preventive-maintenance/create"
-            className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-[var(--pcms-primary)] px-4 py-2 font-semibold text-white transition-colors hover:bg-[var(--pcms-primary-hover)]"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Maintenance
-          </Link>
+          {canOperate && (
+            <Link
+              href="/dashboard/preventive-maintenance/create"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-[var(--pcms-primary)] px-4 py-2 font-semibold text-white transition-colors hover:bg-[var(--pcms-primary-hover)]"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Maintenance
+            </Link>
+          )}
           
         </div>
       </div>

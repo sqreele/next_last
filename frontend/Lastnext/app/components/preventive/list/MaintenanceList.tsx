@@ -20,9 +20,7 @@ interface MaintenanceListProps {
   formatDate: (date: string) => string;
   getMachineNames: (machines: PreventiveMaintenance['machines']) => string;
   getStatusInfo: (item: PreventiveMaintenance) => StatusInfo;
-  // getFrequencyText removed - frequency no longer displayed
-  verifyPMProperty?: (item: PreventiveMaintenance) => { matches: boolean; message: string; machinesAtProperty: number; totalMachines: number };
-  selectedProperty?: string | null;
+  canOperate: boolean;
 }
 
 const MaintenanceList: React.FC<MaintenanceListProps> = ({
@@ -37,23 +35,22 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
   formatDate,
   getMachineNames,
   getStatusInfo,
-  // getFrequencyText removed
-  verifyPMProperty,
-  selectedProperty,
+  canOperate,
 }) => {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
       {/* Desktop Header */}
       <div className="hidden border-b border-border bg-muted/50 px-5 py-3 md:block">
         <div className="flex items-center">
-          <div className="w-8">
+          {canOperate && <div className="w-8">
             <input
               type="checkbox"
               checked={selectedItems.length === items.length && items.length > 0}
               onChange={(e) => onSelectAll(e.target.checked)}
+              aria-label="Select all maintenance tasks on this page"
               className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
             />
-          </div>
+          </div>}
           
           <div className="flex-1 grid grid-cols-6 gap-4 ml-4">
             <button
@@ -104,8 +101,7 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
             formatDate={formatDate}
             getMachineNames={getMachineNames}
             getStatusInfo={getStatusInfo}
-            verifyPMProperty={verifyPMProperty}
-            selectedProperty={selectedProperty}
+            canOperate={canOperate}
           />
         ))}
       </div>

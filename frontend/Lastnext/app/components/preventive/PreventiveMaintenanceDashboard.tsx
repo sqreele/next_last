@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePreventiveMaintenanceActions } from "@/app/lib/hooks/usePreventiveMaintenanceActions";
 import { PreventiveMaintenance } from "@/app/lib/preventiveMaintenanceModels";
-import { preventiveMaintenanceService } from "@/app/lib/PreventiveMaintenanceService";
+import { createPreventiveMaintenanceService } from "@/app/lib/PreventiveMaintenanceService";
+import { useSession } from "@/app/lib/session.client";
+import { useMainStore } from "@/app/lib/stores/mainStore";
 import { StatusBadge } from "@/app/components/StatusBadge";
 import Image from "next/image";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
@@ -90,7 +92,17 @@ const isAllPMItem = (item: PreventiveMaintenance): boolean => {
 export default function PreventiveMaintenanceDashboard() {
   // Use our store hook to access all maintenance data and actions
   const context = usePreventiveMaintenanceActions();
-  const { maintenanceItems, isLoading, error, fetchMaintenanceItems } = context;
+  const {
+    statistics,
+    isLoading,
+    error,
+    fetchMaintenanceItems,
+    fetchStatistics,
+  } = context;
+  const selectedProperty = useMainStore(state => state.selectedPropertyId);
+  const { data: session } = useSession();
+  const accessToken = session?.user?.accessToken || null;
+  const upcomingRequestRef = useRef(0);
 
   // Pagination state for upcoming maintenance
   const [upcomingPage, setUpcomingPage] = useState(1);
@@ -98,14 +110,23 @@ export default function PreventiveMaintenanceDashboard() {
   const [upcomingItems, setUpcomingItems] = useState<PreventiveMaintenance[]>(
     [],
   );
+  const [upcomingPropertyId, setUpcomingPropertyId] = useState<string | null>(null);
   const [upcomingTotal, setUpcomingTotal] = useState(0);
   const [upcomingLoading, setUpcomingLoading] = useState(false);
-
-  // Debug: Log what's available in the context
 
   // Function to fetch upcoming maintenance with pagination
   const fetchUpcomingMaintenance = useCallback(
     async (page: number = 1, pageSize: number = 10) => {
+      if (!selectedProperty || !accessToken) {
+        upcomingRequestRef.current += 1;
+        setUpcomingItems([]);
+        setUpcomingPropertyId(null);
+        setUpcomingTotal(0);
+        setUpcomingLoading(false);
+        return;
+      }
+
+      const requestId = ++upcomingRequestRef.current;
       setUpcomingLoading(true);
       try {
         const params = {
@@ -113,12 +134,14 @@ export default function PreventiveMaintenanceDashboard() {
           page: page,
           page_size: pageSize,
           ordering: "scheduled_date",
+          property_id: selectedProperty,
         };
 
+        const service = createPreventiveMaintenanceService(accessToken);
         const response =
-          await preventiveMaintenanceService.getAllPreventiveMaintenance(
-            params,
-          );
+          await service.getAllPreventiveMaintenance(params);
+
+        if (requestId !== upcomingRequestRef.current) return;
 
         if (response.success && response.data) {
           let items: PreventiveMaintenance[];
@@ -136,98 +159,37 @@ export default function PreventiveMaintenanceDashboard() {
           // Filter out aggregate/placeholder entries (e.g., title "All PM")
           const filtered = items.filter((it) => !isAllPMItem(it));
           setUpcomingItems(filtered);
-          setUpcomingTotal(filtered.length);
+          setUpcomingPropertyId(selectedProperty);
+          setUpcomingTotal(Array.isArray(response.data) ? filtered.length : total);
         } else {
           console.error(
             "❌ Failed to fetch upcoming maintenance:",
             response.message,
           );
           setUpcomingItems([]);
+          setUpcomingPropertyId(selectedProperty);
           setUpcomingTotal(0);
         }
       } catch (error) {
+        if (requestId !== upcomingRequestRef.current) return;
         console.error("❌ Error fetching upcoming maintenance:", error);
         setUpcomingItems([]);
+        setUpcomingPropertyId(selectedProperty);
         setUpcomingTotal(0);
       } finally {
-        setUpcomingLoading(false);
+        if (requestId === upcomingRequestRef.current) setUpcomingLoading(false);
       }
     },
-    [],
+    [accessToken, selectedProperty],
   );
-
-  // Transform maintenance items into statistics format for compatibility
-  const statistics = useMemo(() => {
-    if (!maintenanceItems || maintenanceItems.length === 0) {
-      return {
-        counts: { total: 0, pending: 0, overdue: 0, completed: 0 },
-        frequency_distribution: [],
-        upcoming: [],
-        avg_completion_times: {},
-      };
-    }
-
-    // Filter out aggregate/placeholder entries (e.g., title "All PM")
-    const filtered = maintenanceItems.filter(
-      (item: PreventiveMaintenance) => !isAllPMItem(item),
-    );
-
-    return {
-      counts: {
-        total: filtered.length,
-        pending: filtered.filter(
-          (item: any) => !item.status || item.status === "pending",
-        ).length,
-        overdue: filtered.filter((item: any) => item.status === "overdue")
-          .length,
-        completed: filtered.filter((item: any) => item.status === "completed")
-          .length,
-      },
-      frequency_distribution: [],
-      upcoming: filtered.slice(0, 5),
-      avg_completion_times: {},
-    };
-  }, [maintenanceItems]);
 
   // Fetch maintenance data on component mount
   useEffect(() => {
-    if (maintenanceItems.length === 0 && !isLoading) {
-      if (typeof fetchMaintenanceItems === "function") {
-        fetchMaintenanceItems();
-      } else {
-        console.error(
-          "❌ fetchMaintenanceItems is not available:",
-          fetchMaintenanceItems,
-        );
-
-        // Try to access the function directly from context
-        if (context && typeof context.fetchMaintenanceItems === "function") {
-          context.fetchMaintenanceItems();
-        } else {
-          console.error("❌ fetchMaintenanceItems not found in context either");
-          // Try to manually fetch data using the service directly
-          const manualFetch = async () => {
-            try {
-              const response =
-                await preventiveMaintenanceService.getAllPreventiveMaintenance();
-              if (response.success && response.data) {
-                // Note: This won't update the context, but will show data is available
-              }
-            } catch (error) {
-              console.error("❌ Manual fetch failed:", error);
-            }
-          };
-          manualFetch();
-        }
-      }
-    }
-  }, [maintenanceItems.length, isLoading, fetchMaintenanceItems, context]);
-
-  // Debug effect to log data
-  useEffect(() => {
-    if (statistics) {
-    }
-  }, [maintenanceItems, isLoading, error, statistics]);
+    setUpcomingPage(1);
+    if (!selectedProperty) return;
+    fetchMaintenanceItems({ page: 1, page_size: 10 });
+    fetchStatistics();
+  }, [selectedProperty, fetchMaintenanceItems, fetchStatistics]);
 
   // Fetch upcoming maintenance with pagination
   useEffect(() => {
@@ -244,7 +206,9 @@ export default function PreventiveMaintenanceDashboard() {
     setUpcomingPage(1); // Reset to first page when changing page size
   };
 
-  const totalPages = Math.ceil(upcomingTotal / upcomingPageSize);
+  const visibleUpcomingTotal = upcomingPropertyId === selectedProperty ? upcomingTotal : 0;
+  const totalPages = Math.ceil(visibleUpcomingTotal / upcomingPageSize);
+  const visibleUpcomingItems = upcomingPropertyId === selectedProperty ? upcomingItems : [];
 
   // Format date
   const formatDate = (dateString: string | null | undefined): string => {
@@ -269,14 +233,16 @@ export default function PreventiveMaintenanceDashboard() {
     return item.pmtitle || `Maintenance #${item.pm_id}`;
   };
 
-  // Debug function to call service debug
-  const handleDebugClick = async () => {
-    try {
-      await preventiveMaintenanceService.debugMaintenanceData();
-    } catch (error) {
-      console.error("Debug failed:", error);
-    }
-  };
+  if (!selectedProperty) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold text-foreground">Select a property</h1>
+        <p className="mt-2 text-muted-foreground">
+          Choose an active property from the dashboard header to view preventive maintenance analytics.
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -305,24 +271,21 @@ export default function PreventiveMaintenanceDashboard() {
     );
   }
 
-  // If statistics is null, show a no data message
+  // A null statistics value means the scoped request has not resolved yet;
+  // an actual zero-data response still has a counts object full of zeroes.
   if (!statistics || !statistics.counts) {
     return (
       <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
         <div className="text-center py-10">
           <p className="text-lg text-muted-foreground">
-            No maintenance data available.
+            Loading maintenance summary...
           </p>
-          <Link
-            href="/dashboard/preventive-maintenance/create"
-            className="mt-4 inline-block bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
-          >
-            Create Your First Maintenance Task
-          </Link>
         </div>
       </div>
     );
   }
+
+  const canOperate = statistics.can_operate === true;
 
   return (
     <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
@@ -337,67 +300,16 @@ export default function PreventiveMaintenanceDashboard() {
           >
             View All Tasks
           </Link>
-          <Link
-            href="/dashboard/preventive-maintenance/create"
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-blue-700 sm:px-4"
-          >
-            Create New
-          </Link>
+          {canOperate && (
+            <Link
+              href="/dashboard/preventive-maintenance/create"
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-blue-700 sm:px-4"
+            >
+              Create New
+            </Link>
+          )}
         </div>
       </div>
-
-      {/* Debug Section (remove in production) */}
-      {process.env.NODE_ENV === "development" && statistics && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-medium text-yellow-800">
-              Debug Information
-            </h3>
-            <button
-              onClick={handleDebugClick}
-              className="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded hover:bg-yellow-300"
-            >
-              Run Debug
-            </button>
-          </div>
-          <div className="text-xs text-yellow-700 space-y-1">
-            <p>
-              <strong>Total tasks:</strong> {statistics.counts.total}
-            </p>
-            <p>
-              <strong>Frequency distribution count:</strong>{" "}
-              {Object.keys(statistics.frequency_distribution || {}).length}
-            </p>
-            <p>
-              <strong>Upcoming tasks length:</strong>{" "}
-              {statistics.upcoming?.length || 0}
-            </p>
-            <p>
-              <strong>Avg completion times keys:</strong>{" "}
-              {Object.keys(statistics.avg_completion_times || {}).join(", ")}
-            </p>
-            <details className="mt-2">
-              <summary className="cursor-pointer text-yellow-600 hover:text-yellow-800">
-                Show raw data
-              </summary>
-              <div className="mt-2 space-y-2">
-                <div>
-                  <strong>Frequency Distribution:</strong>
-                  <pre className="text-xs bg-yellow-100 p-2 rounded mt-1 overflow-x-auto">
-                    {JSON.stringify(statistics.frequency_distribution, null, 2)}
-                  </pre>
-                </div>
-                <div>
-                  <strong>Upcoming Tasks:</strong>
-                  <pre className="text-xs bg-yellow-100 p-2 rounded mt-1 overflow-x-auto max-h-32">
-                    {JSON.stringify(statistics.upcoming, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            </details>
-          </div>
-        </div>
-      )}
 
       {/* Main Stats Cards */}
       <div className="mb-6 grid grid-cols-2 gap-3 md:mb-8 md:gap-6 lg:grid-cols-4">
@@ -431,7 +343,7 @@ export default function PreventiveMaintenanceDashboard() {
           </div>
         </div>
 
-        {/* Pending */}
+        {/* Upcoming open work */}
         <div className="rounded-lg bg-card p-4 shadow sm:p-6">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
@@ -452,7 +364,7 @@ export default function PreventiveMaintenanceDashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-muted-foreground">
-                Pending
+                Upcoming
               </p>
               <p className="text-2xl font-bold text-foreground sm:text-3xl">
                 {statistics.counts.pending}
@@ -621,7 +533,7 @@ export default function PreventiveMaintenanceDashboard() {
             </h2>
             <div className="flex flex-wrap items-center gap-3 sm:space-x-4">
               <span className="text-sm text-muted-foreground">
-                Total: {upcomingTotal} tasks
+                Total: {visibleUpcomingTotal} tasks
               </span>
               <div className="flex items-center space-x-2">
                 <label className="text-sm text-muted-foreground">Show:</label>
@@ -637,14 +549,6 @@ export default function PreventiveMaintenanceDashboard() {
                 </select>
                 <span className="text-sm text-muted-foreground">per page</span>
               </div>
-              {process.env.NODE_ENV === "development" && (
-                <button
-                  onClick={handleDebugClick}
-                  className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200"
-                >
-                  Debug
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -656,9 +560,7 @@ export default function PreventiveMaintenanceDashboard() {
               Loading upcoming maintenance...
             </p>
           </div>
-        ) : upcomingItems &&
-          Array.isArray(upcomingItems) &&
-          upcomingItems.length > 0 ? (
+        ) : visibleUpcomingItems.length > 0 ? (
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -709,7 +611,7 @@ export default function PreventiveMaintenanceDashboard() {
                   </tr>
                 </thead>
                 <tbody className="bg-card divide-y divide-gray-200">
-                  {upcomingItems
+                  {visibleUpcomingItems
                     .filter(
                       (item: PreventiveMaintenance) =>
                         item && typeof item === "object",
@@ -789,7 +691,7 @@ export default function PreventiveMaintenanceDashboard() {
                               >
                                 View
                               </Link>
-                              {status !== "completed" && (
+                              {canOperate && status !== "completed" && (
                                 <Link
                                   href={`/dashboard/preventive-maintenance/edit/${item.pm_id}?complete=true`}
                                   className="text-green-600 hover:text-green-900"
@@ -813,8 +715,8 @@ export default function PreventiveMaintenanceDashboard() {
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-muted-foreground">
                       Showing {(upcomingPage - 1) * upcomingPageSize + 1} to{" "}
-                      {Math.min(upcomingPage * upcomingPageSize, upcomingTotal)}{" "}
-                      of {upcomingTotal} results
+                      {Math.min(upcomingPage * upcomingPageSize, visibleUpcomingTotal)}{" "}
+                      of {visibleUpcomingTotal} results
                     </span>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -894,12 +796,14 @@ export default function PreventiveMaintenanceDashboard() {
               <li>Try adjusting your filters</li>
             </ul>
             <div className="mt-4 space-x-2">
-              <Link
-                href="/dashboard/preventive-maintenance/create"
-                className="inline-block bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
-              >
-                Create New Task
-              </Link>
+              {canOperate && (
+                <Link
+                  href="/dashboard/preventive-maintenance/create"
+                  className="inline-block bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                >
+                  Create New Task
+                </Link>
+              )}
               <Link
                 href="/dashboard/preventive-maintenance"
                 className="inline-block bg-muted text-muted-foreground px-4 py-2 rounded text-sm hover:bg-gray-200"
@@ -917,7 +821,7 @@ export default function PreventiveMaintenanceDashboard() {
           Quick Actions
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link
+          {canOperate && <Link
             href="/dashboard/preventive-maintenance/create"
             className="flex items-center p-4 border rounded-lg hover:bg-blue-50 hover:border-blue-300"
           >
@@ -938,7 +842,7 @@ export default function PreventiveMaintenanceDashboard() {
               </svg>
             </div>
             <span>Create New Task</span>
-          </Link>
+          </Link>}
 
           <Link
             href="/dashboard/preventive-maintenance?status=overdue"
@@ -983,7 +887,7 @@ export default function PreventiveMaintenanceDashboard() {
                 />
               </svg>
             </div>
-            <span>View Pending Tasks</span>
+            <span>View Upcoming Tasks</span>
           </Link>
         </div>
       </div>

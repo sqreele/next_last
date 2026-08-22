@@ -10,10 +10,12 @@ import { useSession } from '@/app/lib/session.client';
 import {
   preventiveMaintenanceService,
   setPreventiveMaintenanceServiceToken,
+  createPreventiveMaintenanceService,
   type PMMasterPlan,
 } from '@/app/lib/PreventiveMaintenanceService';
 import type { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import PreventiveMaintenanceClient from './PreventiveMaintenanceClient';
+import { useMainStore } from '@/app/lib/stores/mainStore';
 
 type DetailLoaderProps = {
   pmId: string;
@@ -23,10 +25,14 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
   const router = useRouter();
   const isMasterPlanId = /^PMP[0-9A-F]+$/i.test(pmId);
   const { data: session, status } = useSession();
+  const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
   const [maintenance, setMaintenance] = useState<PreventiveMaintenance | null>(null);
   const [masterPlan, setMasterPlan] = useState<PMMasterPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [canOperate, setCanOperate] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -38,13 +44,35 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     const accessToken = session?.user?.accessToken;
     if (status !== 'authenticated' || !accessToken) return;
 
+    if (isMasterPlanId && !selectedPropertyId) {
+      setMaintenance(null);
+      setMasterPlan(null);
+      setCanOperate(false);
+      setLoading(false);
+      return;
+    }
+
     let active = true;
     setPreventiveMaintenanceServiceToken(accessToken);
     setLoading(true);
     setError(null);
+    setCanOperate(false);
+    if (isMasterPlanId) {
+      setMasterPlan(null);
+    } else {
+      setMaintenance(null);
+    }
+    let requestedCanOperate = false;
 
+    const service = createPreventiveMaintenanceService(accessToken);
     const detailRequest = isMasterPlanId
-      ? preventiveMaintenanceService.getPMMasterPlans({ plan_id: pmId })
+      ? Promise.all([
+          service.getPMMasterPlan(pmId, selectedPropertyId!),
+          service.getMaintenanceStatistics({ property_id: selectedPropertyId! }).catch(() => null),
+        ]).then(([planResponse, statsResponse]) => {
+          requestedCanOperate = statsResponse?.data?.can_operate === true;
+          return planResponse;
+        })
       : preventiveMaintenanceService.getPreventiveMaintenanceById(pmId);
 
     detailRequest
@@ -54,10 +82,8 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
           throw new Error(response.message || 'Preventive maintenance record could not be loaded.');
         }
         if (isMasterPlanId) {
-          const plans = response.data as PMMasterPlan[];
-          const plan = plans.find((item) => item.plan_id.toLowerCase() === pmId.toLowerCase());
-          if (!plan) throw new Error(`No projected maintenance plan found with ID: ${pmId}`);
-          setMasterPlan(plan);
+          setCanOperate(requestedCanOperate);
+          setMasterPlan(response.data as PMMasterPlan);
         } else {
           setMaintenance(response.data as PreventiveMaintenance);
         }
@@ -76,10 +102,40 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     return () => {
       active = false;
     };
-  }, [isMasterPlanId, pmId, session?.user?.accessToken, status]);
+  }, [isMasterPlanId, pmId, selectedPropertyId, session?.user?.accessToken, status]);
+
+  const deleteMasterPlan = async () => {
+    const accessToken = session?.user?.accessToken;
+    if (!accessToken || !selectedPropertyId || !masterPlan) return;
+    const requestPropertyId = selectedPropertyId;
+    setDeleting(true);
+    setError(null);
+    try {
+      await createPreventiveMaintenanceService(accessToken)
+        .deletePMMasterPlan(masterPlan.plan_id, requestPropertyId);
+      if (useMainStore.getState().selectedPropertyId !== requestPropertyId) return;
+      router.push('/dashboard/preventive-maintenance/plans');
+      router.refresh();
+    } catch (requestError: unknown) {
+      if (useMainStore.getState().selectedPropertyId !== requestPropertyId) return;
+      setError(requestError instanceof Error ? requestError.message : 'Unable to delete this PM master plan.');
+      setConfirmingDelete(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading || status === 'loading' || (status === 'authenticated' && !session?.user?.accessToken)) {
     return <PageLoader />;
+  }
+
+  if (isMasterPlanId && !selectedPropertyId) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold">Select a property</h1>
+        <p className="mt-2 text-muted-foreground">Select a property to view PM master plans.</p>
+      </div>
+    );
   }
 
   if (masterPlan) {
@@ -87,13 +143,19 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     const assigneeName = [assignee?.first_name, assignee?.last_name].filter(Boolean).join(' ') || assignee?.username || 'Unassigned';
     return (
       <div className="mx-auto w-full max-w-5xl px-3 py-4 sm:px-6 sm:py-6">
+        {error && <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-red-800" role="alert">{error}</div>}
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
             <span className="inline-flex rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800">Projected master plan</span>
             <h1 className="mt-2 text-2xl font-bold text-foreground">{masterPlan.title}</h1>
             <p className="text-sm text-muted-foreground">#{masterPlan.plan_id}</p>
           </div>
-          <Button asChild variant="outline"><Link href="/dashboard/preventive-maintenance/schedule">View schedule</Link></Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline"><Link href="/dashboard/preventive-maintenance/plans">All plans</Link></Button>
+            <Button asChild variant="outline"><Link href="/dashboard/preventive-maintenance/schedule">View schedule</Link></Button>
+            {canOperate && <Button asChild><Link href={`/dashboard/preventive-maintenance/plans/${masterPlan.plan_id}/edit`}>Edit plan</Link></Button>}
+            {canOperate && <Button variant="destructive" onClick={() => setConfirmingDelete(true)}>Delete</Button>}
+          </div>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-border bg-card p-5"><CalendarClock className="mb-3 h-5 w-5 text-primary" /><p className="text-xs font-semibold uppercase text-muted-foreground">Next due</p><p className="mt-1 font-semibold">{new Date(masterPlan.next_due_date || masterPlan.start_date).toLocaleString()}</p></div>
@@ -133,6 +195,16 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
             </p>
           )}
         </div>
+        {confirmingDelete && (
+          <div className="mt-4 rounded-xl border border-red-300 bg-red-50 p-5" role="alertdialog" aria-labelledby="delete-master-plan-title">
+            <h2 id="delete-master-plan-title" className="font-bold text-red-950">Delete this recurring plan?</h2>
+            <p className="mt-2 text-sm text-red-900">Generated PM work records will be preserved, but no new work will be projected from this rule.</p>
+            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => setConfirmingDelete(false)} disabled={deleting}>Cancel</Button>
+              <Button variant="destructive" onClick={() => void deleteMasterPlan()} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete plan'}</Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

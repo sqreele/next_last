@@ -459,10 +459,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     if (values.procedure_template === "") {
       errors.procedure_template = "Maintenance Task Template is required";
     }
-    // Machines are now optional - maintenance tasks can exist without specific machine assignments
-    // if (!values.selected_machine_ids || values.selected_machine_ids.length === 0) {
-    //   errors.selected_machine_ids = 'At least one machine must be selected';
-    // }
+    if (values.create_master_plan && values.selected_machine_ids.length === 0) {
+      errors.selected_machine_ids = "Select at least one machine for a PM master plan";
+    }
     // assigned_to is optional - defaults to current user if not provided
     // if (!values.assigned_to) {
     //   errors.assigned_to = 'Assigned user is required';
@@ -583,7 +582,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       procedure: "",
       procedure_template: "",
       assigned_to: currentUserId ? String(currentUserId) : "",
-      create_master_plan: !pmId,
+      create_master_plan: false,
       lead_time_days: 7,
     };
   }, [
@@ -1254,7 +1253,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 procedure: dataForService.procedure,
                 remarks: dataForService.remarks,
                 active: true,
-              });
+              }, selectedProperty || undefined);
             response = {
               success: masterPlanResponse.success,
               data: {

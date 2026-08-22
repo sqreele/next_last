@@ -7,6 +7,7 @@ import {
   Filter,
   Plus,
   CalendarDays,
+  Repeat2,
 } from "lucide-react";
 
 interface DesktopHeaderProps {
@@ -48,7 +49,7 @@ export default function DesktopHeader({
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <Link
             href="/dashboard/preventive-maintenance/dashboard"
             className="flex items-center px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted transition-colors"
@@ -63,6 +64,14 @@ export default function DesktopHeader({
           >
             <CalendarDays className="h-4 w-4 mr-2" />
             Calendar
+          </Link>
+
+          <Link
+            href="/dashboard/preventive-maintenance/plans"
+            className="flex items-center px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted transition-colors"
+          >
+            <Repeat2 className="h-4 w-4 mr-2" />
+            Master Plans
           </Link>
 
           <button

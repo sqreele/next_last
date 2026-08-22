@@ -83,6 +83,8 @@ export interface PMMasterPlan {
   machines?: Array<{ machine_id: string; name?: string }>;
   topics?: Array<{ id: number; title?: string }>;
   procedure_template_name?: string | null;
+  procedure_template?: number | null;
+  assigned_to?: number | null;
   assigned_to_details?: {
     username?: string;
     first_name?: string;
@@ -90,6 +92,29 @@ export interface PMMasterPlan {
   } | null;
   generated_pm_id?: string | null;
   generated_pm_status?: string | null;
+}
+
+export interface PMMasterPlanProjection {
+  from: string;
+  to: string;
+  total: number;
+  items: Array<{
+    plan_id: string;
+    pmtitle: string;
+    scheduled_date: string;
+    frequency: string;
+    occurrence_type: "projected" | "generated";
+    generated_pm_id?: string | null;
+    machine_ids: string[];
+  }>;
+}
+
+export interface PMMasterPlanMaterializationResult {
+  created: Array<{ plan_id: string; due_date: string; pm_id: string | null }>;
+  created_count: number;
+  skipped: number;
+  dry_run: boolean;
+  property_id?: string | null;
 }
 
 export type CreatePMMasterPlanData = {
@@ -473,12 +498,14 @@ class PreventiveMaintenanceService {
 
   async createPMMasterPlan(
     data: CreatePMMasterPlanData,
+    propertyId?: string,
   ): Promise<ServiceResponse<PMMasterPlan>> {
     try {
       const response = await apiClient.post<PMMasterPlan>(
         `${this.baseUrl}/plans/`,
         data,
         {
+          params: propertyId ? { property_id: propertyId } : undefined,
           headers: this.getAuthHeaders(),
         },
       );
@@ -493,13 +520,89 @@ class PreventiveMaintenanceService {
     }
   }
 
+  async getPMMasterPlan(
+    planId: string,
+    propertyId: string,
+  ): Promise<ServiceResponse<PMMasterPlan>> {
+    try {
+      const response = await apiClient.get<PMMasterPlan>(
+        `${this.baseUrl}/plans/${encodeURIComponent(planId)}/`,
+        {
+          params: { property_id: propertyId },
+          headers: this.getAuthHeaders(),
+        },
+      );
+      return { success: true, data: response.data, message: "PM master plan fetched successfully" };
+    } catch (error: any) {
+      console.error("Service error fetching PM master plan:", error);
+      throw handleApiError(error);
+    }
+  }
+
+  async updatePMMasterPlan(
+    planId: string,
+    data: Partial<CreatePMMasterPlanData>,
+    propertyId: string,
+  ): Promise<ServiceResponse<PMMasterPlan>> {
+    try {
+      const response = await apiClient.patch<PMMasterPlan>(
+        `${this.baseUrl}/plans/${encodeURIComponent(planId)}/`,
+        data,
+        {
+          params: { property_id: propertyId },
+          headers: this.getAuthHeaders(),
+        },
+      );
+      return { success: true, data: response.data, message: "PM master plan updated successfully" };
+    } catch (error: any) {
+      console.error("Service error updating PM master plan:", error);
+      throw handleApiError(error);
+    }
+  }
+
+  async deletePMMasterPlan(
+    planId: string,
+    propertyId: string,
+  ): Promise<ServiceResponse<void>> {
+    try {
+      await apiClient.delete(`${this.baseUrl}/plans/${encodeURIComponent(planId)}/`, {
+        params: { property_id: propertyId },
+        headers: this.getAuthHeaders(),
+      });
+      return { success: true, message: "PM master plan deleted successfully" };
+    } catch (error: any) {
+      console.error("Service error deleting PM master plan:", error);
+      throw handleApiError(error);
+    }
+  }
+
+  async getPMMasterPlanProjection(
+    propertyId: string,
+    days = 30,
+  ): Promise<ServiceResponse<PMMasterPlanProjection>> {
+    try {
+      const response = await apiClient.get<PMMasterPlanProjection>(
+        `${this.baseUrl}/projection/`,
+        {
+          params: { property_id: propertyId, days },
+          headers: this.getAuthHeaders(),
+        },
+      );
+      return { success: true, data: response.data, message: "PM master plan projection fetched successfully" };
+    } catch (error: any) {
+      console.error("Service error fetching PM master plan projection:", error);
+      throw handleApiError(error);
+    }
+  }
+
   async materializePMMasterPlans(
     dryRun = false,
-  ): Promise<ServiceResponse<any>> {
+    propertyId?: string,
+  ): Promise<ServiceResponse<PMMasterPlanMaterializationResult>> {
     try {
       const response = await apiClient.post(
         `${this.baseUrl}/materialize-plans/`,
-        { dry_run: dryRun },
+        { dry_run: dryRun, property_id: propertyId },
         {
           headers: this.getAuthHeaders(),
         },

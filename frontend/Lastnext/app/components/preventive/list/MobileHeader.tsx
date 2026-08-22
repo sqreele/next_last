@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, RefreshCw, Filter, Plus, CalendarDays } from "lucide-react";
+import { BarChart3, RefreshCw, Filter, Plus, CalendarDays, Repeat2 } from "lucide-react";
 
 interface MobileHeaderProps {
   totalCount: number;
@@ -40,7 +40,7 @@ export default function MobileHeader({
             )}
           </p>
         </div>
-        <div className={`grid gap-2 ${canOperate ? "grid-cols-5" : "grid-cols-4"}`}>
+        <div className={`grid gap-2 ${canOperate ? "grid-cols-6" : "grid-cols-5"}`}>
           <Link
             href="/dashboard/preventive-maintenance/dashboard"
             className="grid h-11 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -56,6 +56,14 @@ export default function MobileHeader({
             aria-label="Open maintenance calendar"
           >
             <CalendarDays className="h-5 w-5" />
+          </Link>
+          <Link
+            href="/dashboard/preventive-maintenance/plans"
+            className="grid h-11 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="Master Plans"
+            aria-label="Open PM master plans"
+          >
+            <Repeat2 className="h-5 w-5" />
           </Link>
           <button
             onClick={onRefresh}

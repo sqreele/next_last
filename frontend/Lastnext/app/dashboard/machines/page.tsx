@@ -113,10 +113,16 @@ export default function MachinesListPage() {
     setSelectedCategory("all");
     if (!selectedProperty) {
       setLoading(false);
-      return () => controller.abort();
+      return;
     }
     void fetchMachines(selectedProperty, controller.signal, requestId);
-    return () => controller.abort();
+    return () => {
+      if (!controller.signal.aborted) {
+        controller.abort(
+          new DOMException("Machine request superseded", "AbortError"),
+        );
+      }
+    };
   }, [status, selectedProperty]);
 
   const fetchMachines = async (

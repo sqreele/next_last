@@ -189,6 +189,12 @@ apiClient.interceptors.response.use(
       return response;
   },
   async (error: AxiosError) => {
+    // Component cleanup intentionally cancels in-flight requests. Keep the
+    // Axios cancellation intact and do not report it as an API/network error.
+    if (axios.isCancel(error) || error.code === "ERR_CANCELED") {
+      return Promise.reject(error);
+    }
+
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: number };
     
     // Initialize retry counter if not present

@@ -39,6 +39,11 @@ type MachineApiPayload =
 
 const DEFAULT_MACHINE_PAGE_SIZE = 200;
 
+const isRequestCancellation = (error: unknown): boolean =>
+  error instanceof Error &&
+  (error.name === "AbortError" ||
+    ("code" in error && error.code === "ERR_CANCELED"));
+
 const normalizeMachineResponse = (payload: MachineApiPayload): Machine[] => {
   if (!payload) {
     return [];
@@ -211,7 +216,12 @@ export default class MachineService {
       }
 
       return { success: true, data: accumulatedMachines };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      // Request cancellation is expected when the selected property changes or
+      // the page unmounts. Preserve it so the caller can ignore it silently.
+      if (isRequestCancellation(error)) {
+        throw error;
+      }
       console.error("Service error fetching machines:", error);
       throw handleApiError(error);
     }

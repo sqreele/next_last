@@ -1651,7 +1651,13 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     def _get_master_plan_queryset(self):
         queryset = PMMasterPlan.objects.select_related(
             'created_by', 'assigned_to', 'procedure_template'
-        ).prefetch_related('topics', 'machines', 'machines__property', 'generated_maintenances')
+        ).prefetch_related(
+            'topics', 'machines', 'machines__property__tenant', 'generated_maintenances'
+        ).annotate(
+            machine_property_count=Count('machines__property_id', distinct=True)
+        ).filter(
+            machine_property_count=1
+        )
         property_filter = self.request.query_params.get('property_id')
         user = self.request.user
         if not user.is_superuser:
@@ -2030,10 +2036,50 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             serializer = PMMasterPlanSerializer(queryset, many=True, context={'request': request})
             return Response(serializer.data)
 
+        if not request.user.is_superuser and not request.query_params.get('property_id'):
+            raise ValidationError({'property_id': 'An active property is required.'})
         serializer = PMMasterPlanSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         plan = serializer.save(created_by=request.user)
         return Response(PMMasterPlanSerializer(plan, context={'request': request}).data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=False,
+        methods=['get', 'put', 'patch', 'delete'],
+        url_path=r'plans/(?P<plan_id>[^/.]+)',
+    )
+    def plan_detail(self, request, plan_id=None):
+        """Retrieve or mutate one canonically scoped PM master plan."""
+        if not request.user.is_superuser and not request.query_params.get('property_id'):
+            raise ValidationError({'property_id': 'An active property is required.'})
+        plan = get_object_or_404(self._get_master_plan_queryset(), plan_id__iexact=plan_id)
+
+        if request.method.lower() == 'get':
+            return Response(PMMasterPlanSerializer(plan, context={'request': request}).data)
+
+        if not request.user.is_superuser:
+            plan_property_ids = set(plan.machines.values_list('property_id', flat=True))
+            operable_property_ids = set(
+                get_operable_properties(request.user)
+                .filter(pk__in=plan_property_ids)
+                .values_list('pk', flat=True)
+            )
+            if not plan_property_ids or operable_property_ids != plan_property_ids:
+                raise PermissionDenied("Your role cannot modify this PM master plan")
+
+        if request.method.lower() == 'delete':
+            plan.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        serializer = PMMasterPlanSerializer(
+            plan,
+            data=request.data,
+            partial=request.method.lower() == 'patch',
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        updated_plan = serializer.save()
+        return Response(PMMasterPlanSerializer(updated_plan, context={'request': request}).data)
 
     @action(detail=False, methods=['get'], url_path='projection')
     def projection(self, request):
@@ -2070,13 +2116,18 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='materialize-plans')
     def materialize_plans(self, request):
         """Generate actual PM forms whose master-plan occurrences are inside their lead window."""
-        if not request.user.is_superuser and not get_operable_properties(request.user).exists():
-            raise PermissionDenied("Your role cannot materialize preventive maintenance plans")
+        property_id = str(request.data.get('property_id') or '').strip() or None
+        if not request.user.is_superuser:
+            if not property_id:
+                raise ValidationError({'property_id': 'An active property is required.'})
+            if not get_operable_properties(request.user).filter(property_id=property_id).exists():
+                raise PermissionDenied("Your role cannot materialize preventive maintenance plans for this property")
         dry_run = str(request.data.get('dry_run', '')).lower() in {'1', 'true', 'yes'}
         result = PreventiveMaintenanceService.materialize_master_plan_occurrences(
             cutoff=timezone.now(),
             user=request.user,
             dry_run=dry_run,
+            property_id=property_id,
         )
         return Response(result)
 

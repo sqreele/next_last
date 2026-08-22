@@ -80,6 +80,7 @@ export interface PMMasterPlan {
   procedure?: string | null;
   remarks?: string | null;
   property_id?: string | null;
+  can_operate?: boolean;
   machines?: Array<{ machine_id: string; name?: string }>;
   topics?: Array<{ id: number; title?: string }>;
   procedure_template_name?: string | null;

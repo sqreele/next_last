@@ -764,7 +764,9 @@ class PreventiveMaintenanceService:
             day = min(base_date.day, monthrange(year, month)[1])
             return base_date.replace(year=year, month=month, day=day)
         if frequency == 'annual':
-            return base_date.replace(year=base_date.year + 1)
+            year = base_date.year + 1
+            day = min(base_date.day, monthrange(year, base_date.month)[1])
+            return base_date.replace(year=year, day=day)
         if frequency == 'custom':
             if not custom_days or custom_days <= 0:
                 raise ValidationError("Custom days must be greater than zero for custom frequency")
@@ -822,12 +824,19 @@ class PreventiveMaintenanceService:
                 'occurrence_type': 'generated' if generated else 'projected',
                 'generated_pm_id': generated.pm_id if generated else None,
                 'assigned_to_id': plan.assigned_to_id,
-                'machine_ids': list(plan.machines.values_list('machine_id', flat=True)),
+                'machine_ids': [machine.machine_id for machine in plan.machines.all()],
             })
         return out
 
     @staticmethod
-    def materialize_master_plan_occurrences(cutoff: datetime, user=None, dry_run: bool = False, limit: int = 500) -> Dict[str, Any]:
+    @transaction.atomic
+    def materialize_master_plan_occurrences(
+        cutoff: datetime,
+        user=None,
+        dry_run: bool = False,
+        limit: int = 500,
+        property_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Create actual PM records for active master-plan occurrences due by cutoff + lead window."""
         now = timezone.now()
         created = []
@@ -835,13 +844,18 @@ class PreventiveMaintenanceService:
         plans = (
             PMMasterPlan.objects.filter(active=True)
             .select_related('created_by', 'assigned_to', 'procedure_template')
-            .prefetch_related('topics', 'machines')
+            .prefetch_related('topics', 'machines', 'generated_maintenances')
+            .annotate(machine_property_count=Count('machines__property_id', distinct=True))
+            .filter(machine_property_count=1)
             .order_by('next_due_date', 'start_date')
         )
         if user is not None and not user.is_superuser:
-            # Request-triggered materialization must never process plans from
-            # properties outside the caller's active membership grants.
-            plans = plans.filter(machines__property__in=get_operable_properties(user)).distinct()
+            operable_properties = get_operable_properties(user)
+            plans = plans.filter(machines__property__in=operable_properties).distinct()
+            if property_id:
+                plans = plans.filter(machines__property__property_id=property_id)
+        elif property_id:
+            plans = plans.filter(machines__property__property_id=property_id)
         for plan in plans:
             if len(created) >= limit:
                 break
@@ -883,7 +897,13 @@ class PreventiveMaintenanceService:
                     pm.topics.set(locked.topics.all())
                     pm.machines.set(locked.machines.all())
                     created.append({'plan_id': locked.plan_id, 'due_date': due.isoformat(), 'pm_id': pm.pm_id})
-        return {'created': created, 'created_count': len(created), 'skipped': skipped, 'dry_run': dry_run}
+        return {
+            'created': created,
+            'created_count': len(created),
+            'skipped': skipped,
+            'dry_run': dry_run,
+            'property_id': property_id,
+        }
 
     @staticmethod
     def update_status(

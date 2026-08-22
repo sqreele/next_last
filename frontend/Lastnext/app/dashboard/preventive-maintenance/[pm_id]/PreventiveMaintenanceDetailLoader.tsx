@@ -62,17 +62,9 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     } else {
       setMaintenance(null);
     }
-    let requestedCanOperate = false;
-
     const service = createPreventiveMaintenanceService(accessToken);
     const detailRequest = isMasterPlanId
-      ? Promise.all([
-          service.getPMMasterPlan(pmId, selectedPropertyId!),
-          service.getMaintenanceStatistics({ property_id: selectedPropertyId! }).catch(() => null),
-        ]).then(([planResponse, statsResponse]) => {
-          requestedCanOperate = statsResponse?.data?.can_operate === true;
-          return planResponse;
-        })
+      ? service.getPMMasterPlan(pmId, selectedPropertyId!)
       : preventiveMaintenanceService.getPreventiveMaintenanceById(pmId);
 
     detailRequest
@@ -82,8 +74,9 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
           throw new Error(response.message || 'Preventive maintenance record could not be loaded.');
         }
         if (isMasterPlanId) {
-          setCanOperate(requestedCanOperate);
-          setMasterPlan(response.data as PMMasterPlan);
+          const plan = response.data as PMMasterPlan;
+          setCanOperate(plan.can_operate === true);
+          setMasterPlan(plan);
         } else {
           setMaintenance(response.data as PreventiveMaintenance);
         }

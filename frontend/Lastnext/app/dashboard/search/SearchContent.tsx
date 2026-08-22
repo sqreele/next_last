@@ -32,7 +32,7 @@ import {
 } from "@/app/components/ui/tabs";
 import { Job, Property, Room } from "@/app/lib/types";
 import { useRouter } from "next/navigation";
-import { useUser, useProperties } from "@/app/lib/stores/mainStore";
+import { useUser } from "@/app/lib/stores/mainStore";
 import { useSession } from "@/app/lib/session.client";
 import { PriorityBadge, StatusBadge } from "@/app/components/pcms-ui";
 import {
@@ -49,19 +49,27 @@ export default function SearchContent() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const searchRequestIdRef = React.useRef(0);
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setIsLoading);
 
   // Get auth token from session
   const { data: session } = useSession();
   const accessToken = session?.user?.accessToken;
-  // Get currently selected property (fallback to first user property if available)
+  // The shared global store owns the active Property context.
   const { selectedPropertyId: selectedProperty } = useUser();
-  const { properties: userProperties } = useProperties();
 
   useEffect(() => {
+    const requestId = ++searchRequestIdRef.current;
     const fetchSearchResults = async () => {
-      if (!query) return;
+      if (!query) {
+        setJobs([]);
+        setProperties([]);
+        setRooms([]);
+        setError(null);
+        setIsLoading(false);
+        return;
+      }
 
       recordLoaderShown();
       setIsLoading(true);
@@ -77,11 +85,9 @@ export default function SearchContent() {
         // Fetch jobs with proper error handling
         let jobsData: Job[] = [];
         try {
-          const effectivePropertyId =
-            selectedProperty || userProperties?.[0]?.property_id;
           const jobsParams = new URLSearchParams();
-          if (effectivePropertyId)
-            jobsParams.set("property_id", String(effectivePropertyId));
+          if (selectedProperty)
+            jobsParams.set("property_id", selectedProperty);
           if (query) jobsParams.set("search", query);
           const jobsRes = await fetch(
             `/api/jobs/${jobsParams.toString() ? `?${jobsParams.toString()}` : ""}`,
@@ -125,13 +131,11 @@ export default function SearchContent() {
         // Fetch rooms with proper error handling
         let roomsData: Room[] = [];
         try {
-          const effectivePropertyId =
-            selectedProperty || userProperties?.[0]?.property_id;
-          if (!effectivePropertyId) {
+          if (!selectedProperty) {
             console.warn("Skipping rooms fetch: no property selected");
           } else {
             const roomsRes = await fetch(
-              `/api/rooms/?property=${encodeURIComponent(effectivePropertyId)}`,
+              `/api/rooms/?property=${encodeURIComponent(selectedProperty)}`,
               { headers },
             );
             if (roomsRes.ok) {
@@ -149,26 +153,35 @@ export default function SearchContent() {
           console.error("Error fetching rooms:", roomError);
         }
 
+        if (requestId !== searchRequestIdRef.current) return;
+
         // Set state with our safely fetched data
         setJobs(jobsData);
         setProperties(propertiesData);
         setRooms(roomsData);
       } catch (error) {
+        if (requestId !== searchRequestIdRef.current) return;
         console.error("Error fetching search results:", error);
         setError(
           "An error occurred while fetching search results. Please try again.",
         );
       } finally {
-        clearLoadingAfterMinTime();
+        if (requestId === searchRequestIdRef.current) {
+          clearLoadingAfterMinTime();
+        }
       }
     };
 
-    fetchSearchResults();
+    void fetchSearchResults();
+    return () => {
+      if (requestId === searchRequestIdRef.current) {
+        searchRequestIdRef.current += 1;
+      }
+    };
   }, [
     query,
     accessToken,
     selectedProperty,
-    userProperties,
     recordLoaderShown,
     clearLoadingAfterMinTime,
   ]);

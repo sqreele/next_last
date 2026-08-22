@@ -13,6 +13,7 @@ import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import {
   PreventiveMaintenance,
   determinePMStatus,
+  isPMCompletionEligible,
 } from "@/app/lib/preventiveMaintenanceModels";
 import {
   AlertCircle,
@@ -133,6 +134,7 @@ export default function PreventiveMaintenanceClient({
     maintenanceData.can_operate === true
     && maintenanceData.property_id === selectedPropertyId
   );
+  const canComplete = canOperate && isPMCompletionEligible(maintenanceData);
 
   // ฟังก์ชันสำหรับการยืนยันการลบ
   const handleDelete = async () => {
@@ -172,6 +174,12 @@ export default function PreventiveMaintenanceClient({
 
   // Function to mark maintenance as complete
   const handleMarkComplete = async () => {
+    if (!canComplete || !selectedPropertyId) {
+      setError("This maintenance task cannot be completed in its current status.");
+      return;
+    }
+    const requestPropertyId = selectedPropertyId;
+
     if (!window.confirm("Mark this maintenance task as completed?")) {
       return;
     }
@@ -216,11 +224,16 @@ export default function PreventiveMaintenanceClient({
           {
             completed_date: completedDate.toISOString(),
           },
+          requestPropertyId,
         );
 
-      if (response.success) {
+      if (response.success && response.data) {
+        if (useMainStore.getState().selectedPropertyId !== requestPropertyId) {
+          return;
+        }
         // Get the updated data from response
         const updatedData = response.data;
+        setMaintenanceData(updatedData);
         const nextScheduledDate =
           updatedData?.scheduled_date || updatedData?.next_due_date;
 
@@ -955,7 +968,7 @@ export default function PreventiveMaintenanceClient({
             {isExportingPdf ? "Generating..." : "PDF"}
           </button>
 
-          {canOperate && !maintenanceData.completed_date && maintenanceData.status !== "cancelled" && (
+          {canComplete && (
             <button
               type="button"
               onClick={handleMarkComplete}
@@ -1423,7 +1436,7 @@ export default function PreventiveMaintenanceClient({
                 {isExportingPdf ? "Generating PDF report..." : "Generate PDF"}
               </button>
 
-              {canOperate && !maintenanceData.completed_date && maintenanceData.status !== "cancelled" && (
+              {canComplete && (
                 <button
                   onClick={handleMarkComplete}
                   disabled={isCompleting}

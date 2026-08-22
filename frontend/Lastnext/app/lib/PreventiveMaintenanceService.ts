@@ -962,6 +962,7 @@ class PreventiveMaintenanceService {
   async completePreventiveMaintenance(
     id: string,
     data: CompletePreventiveMaintenanceData,
+    propertyId?: string,
   ): Promise<ServiceResponse<PreventiveMaintenance>> {
     if (!id) {
       console.error("Cannot complete: PM ID is undefined or empty");
@@ -990,6 +991,7 @@ class PreventiveMaintenanceService {
         `${this.baseUrl}/${id}/complete/`,
         formData,
         {
+          params: propertyId ? { property_id: propertyId } : undefined,
           headers: {
             "Content-Type": "multipart/form-data",
             ...this.getAuthHeaders(),

@@ -117,6 +117,26 @@ export interface PreventiveMaintenance {
   remarks?: string | null;
 }
 
+const PM_COMPLETABLE_STATUSES = new Set([
+  'pending',
+  'in_progress',
+  'overdue',
+]);
+
+export function isPMCompleted(
+  item: Pick<PreventiveMaintenance, 'status' | 'completed_date'>,
+): boolean {
+  const status = item.status?.trim().toLowerCase();
+  return Boolean(item.completed_date) || status === 'completed';
+}
+
+export function isPMCompletionEligible(
+  item: Pick<PreventiveMaintenance, 'status' | 'completed_date'>,
+): boolean {
+  const status = item.status?.trim().toLowerCase();
+  return !isPMCompleted(item) && PM_COMPLETABLE_STATUSES.has(status || '');
+}
+
 // Request structure for creating/updating maintenance
 export interface PreventiveMaintenanceRequest {
   pmtitle?: string;

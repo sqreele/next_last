@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePreventiveMaintenanceActions } from "@/app/lib/hooks/usePreventiveMaintenanceActions";
 import { CompletePreventiveMaintenanceData } from "@/app/lib/PreventiveMaintenanceService";
+import {
+  isPMCompleted,
+  isPMCompletionEligible,
+} from "@/app/lib/preventiveMaintenanceModels";
 import React from "react";
 import { MaintenanceImage as OptimizedMaintenanceImage } from "@/app/components/ui/UniversalImage";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
@@ -73,6 +77,13 @@ export default function CompletePreventiveMaintenance({
     [],
   );
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+  const canCompleteSelectedMaintenance = Boolean(
+    selectedMaintenance?.can_operate === true &&
+      isPMCompletionEligible(selectedMaintenance),
+  );
+  const isSelectedMaintenanceCompleted = Boolean(
+    selectedMaintenance && isPMCompleted(selectedMaintenance),
+  );
 
   // Check if mobile
   useEffect(() => {
@@ -156,7 +167,7 @@ export default function CompletePreventiveMaintenance({
       }
 
       // If already completed, show message
-      if (selectedMaintenance.completed_date) {
+      if (isPMCompleted(selectedMaintenance)) {
         setSuccessMessage("This maintenance task has already been completed.");
       }
     }
@@ -207,8 +218,8 @@ export default function CompletePreventiveMaintenance({
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
-    if (!pmId) {
-      console.error("Cannot submit: No pmId available");
+    if (!pmId || !canCompleteSelectedMaintenance) {
+      console.error("Cannot submit: maintenance task is not eligible for completion");
       return;
     }
 
@@ -542,7 +553,7 @@ export default function CompletePreventiveMaintenance({
 
         {/* Maintenance Details Summary */}
         {selectedMaintenance &&
-          !selectedMaintenance.completed_date &&
+          canCompleteSelectedMaintenance &&
           !successMessage && (
             <div className="bg-card md:shadow md:rounded-lg mb-4 md:mb-6">
               <div className="px-4 py-4 md:py-5 md:px-6 bg-muted md:rounded-t-lg">
@@ -596,7 +607,7 @@ export default function CompletePreventiveMaintenance({
 
         {/* Completion Form */}
         {selectedMaintenance &&
-          !selectedMaintenance.completed_date &&
+          canCompleteSelectedMaintenance &&
           !successMessage && (
             <div className="bg-card md:shadow md:rounded-lg">
               <div className="px-4 py-4 md:py-5 md:px-6 bg-muted md:rounded-t-lg">
@@ -792,7 +803,7 @@ export default function CompletePreventiveMaintenance({
           )}
 
         {/* Already Completed Message */}
-        {selectedMaintenance && selectedMaintenance.completed_date && (
+        {selectedMaintenance && isSelectedMaintenanceCompleted && (
           <div className="bg-card md:shadow md:rounded-lg mx-4 md:mx-0">
             <div className="px-4 py-4 md:py-5 md:px-6 bg-green-50 md:rounded-t-lg">
               <div className="flex items-center">

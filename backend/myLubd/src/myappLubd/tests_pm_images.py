@@ -16,6 +16,7 @@ from rest_framework.test import APITestCase
 from .models import (
     Job,
     Machine,
+    MaintenanceHistory,
     PreventiveMaintenance,
     PreventiveMaintenanceImage,
     Property,
@@ -197,6 +198,47 @@ class PreventiveMaintenanceImageTests(APITestCase):
         self.pm.refresh_from_db()
         self.assertFalse(self.pm.after_image)
         self.assertIsNotNone(self.pm.completed_date)
+
+    def test_repeat_completion_does_not_duplicate_history_or_after_image(self):
+        self.client.force_authenticate(self.operator)
+        first_response = self.client.post(
+            f'/api/v1/preventive-maintenance/{self.pm.pm_id}/complete/',
+            {'after_image': self._image(name='first.jpg', color=(40, 80, 120))},
+            format='multipart',
+        )
+        self.assertEqual(first_response.status_code, status.HTTP_200_OK, first_response.content)
+        self.pm.refresh_from_db()
+        original_completed_date = self.pm.completed_date
+        original_image_ids = list(
+            PreventiveMaintenanceImage.objects.filter(
+                preventive_maintenance=self.pm,
+            ).values_list('pk', flat=True)
+        )
+
+        repeat_response = self.client.post(
+            f'/api/v1/preventive-maintenance/{self.pm.pm_id}/complete/',
+            {'after_image': self._image(name='second.jpg', color=(120, 80, 40))},
+            format='multipart',
+        )
+
+        self.assertEqual(repeat_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.pm.refresh_from_db()
+        self.assertEqual(self.pm.completed_date, original_completed_date)
+        self.assertEqual(
+            list(
+                PreventiveMaintenanceImage.objects.filter(
+                    preventive_maintenance=self.pm,
+                ).values_list('pk', flat=True)
+            ),
+            original_image_ids,
+        )
+        self.assertEqual(
+            MaintenanceHistory.objects.filter(
+                maintenance=self.pm,
+                action='completed',
+            ).count(),
+            1,
+        )
 
     def test_completion_image_cannot_exceed_global_limit(self):
         for index in range(10):

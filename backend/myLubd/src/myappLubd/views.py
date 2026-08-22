@@ -2476,8 +2476,17 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                     pk=scoped_instance.pk,
                 )
                 self.check_object_permissions(request, instance)
-                if instance.completed_date:
+                if instance.status == 'completed' or instance.completed_date:
                     raise ValidationError({'detail': 'This maintenance task is already completed.'})
+                if instance.status == 'cancelled':
+                    raise ValidationError({'detail': 'A cancelled maintenance task cannot be completed.'})
+                if 'completed' not in PreventiveMaintenanceService.STATUS_TRANSITIONS.get(
+                    instance.status,
+                    set(),
+                ):
+                    raise ValidationError({
+                        'detail': f'Maintenance status {instance.status!r} cannot transition to completed.'
+                    })
 
                 if prepared_after_image:
                     existing_count = (

@@ -26,7 +26,7 @@ from pathlib import Path
 import math
 
 from .timezones import is_valid_timezone
-from .tenancy import get_accessible_properties
+from .tenancy import get_accessible_properties, get_operable_properties
 from .job_property import (
     resolve_external_property_reference,
     resolve_job_property,
@@ -70,6 +70,11 @@ def _validate_machine_ids_in_request_scope(serializer, machine_ids):
     if len(property_ids) > 1:
         raise serializers.ValidationError({'machine_ids': 'All machines must belong to the same property.'})
     _validate_request_property_access(serializer, machines[0].property, 'machine_ids')
+    request = serializer.context.get('request')
+    user = getattr(request, 'user', None)
+    if user is not None and not user.is_superuser:
+        if not get_operable_properties(user).filter(pk=machines[0].property_id).exists():
+            raise serializers.ValidationError({'machine_ids': 'Your role cannot modify maintenance for this property.'})
     return machines
 
 
@@ -1117,6 +1122,19 @@ class MachineListSerializer(serializers.ModelSerializer):
         elif obj.image:
             return obj.image.url
         return None
+
+
+def get_pm_property_external_id(obj):
+    """Return the canonical external property ID for a PM record."""
+    if obj.job_id and obj.job.property_id:
+        return obj.job.property.property_id
+
+    property_ids = list(
+        obj.machines.values_list('property__property_id', flat=True).distinct()[:2]
+    )
+    return property_ids[0] if len(property_ids) == 1 else None
+
+
 class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
     job_id = serializers.SerializerMethodField()
     job_description = serializers.SerializerMethodField()
@@ -1166,23 +1184,16 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
         return MachineSerializer(obj.machines.all(), many=True).data if obj.machines.exists() else []
 
     def get_property_id(self, obj):
-        # Prefer properties via job -> rooms
-        if obj.job and obj.job.rooms.exists():
-            return [obj.job.property.property_id] if obj.job.property_id else []
-
-        # Fallback: infer from machines' property
-        if obj.machines.exists():
-            machine_props = Property.objects.filter(machines__in=obj.machines.all()).distinct()
-            return [prop.property_id for prop in machine_props]
-
-        return []
+        return get_pm_property_external_id(obj)
 
     def get_status(self, obj):
         if obj.completed_date:
             return 'completed'
+        if obj.status == 'cancelled':
+            return obj.status
         if obj.scheduled_date and obj.scheduled_date < timezone.now():
             return 'overdue'
-        return 'pending'
+        return obj.status or 'pending'
 
     def get_procedure(self, obj):
         return obj.procedure
@@ -1617,12 +1628,7 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
             return math.ceil(delta.total_seconds() / 86400)
     
     def get_property_id(self, obj):
-        machines = obj.machines.all()
-        logger.debug(f"[PreventiveMaintenanceDetailSerializer] get_property_id for PM {obj.pm_id}: {machines.count()} machines")
-        if machines:
-            # All machines must belong to the same property, so return the first one
-            return machines.first().property.property_id
-        return None
+        return get_pm_property_external_id(obj)
     
     def to_representation(self, instance):
         """Override to add debug logging for machines"""
@@ -1926,11 +1932,7 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         return None
 
     def get_property_id(self, obj):
-        machines = obj.machines.all()
-        if machines:
-            # All machines must belong to the same property, so return the first one
-            return machines.first().property.property_id
-        return None
+        return get_pm_property_external_id(obj)
 
     def create(self, validated_data):
         
@@ -2168,11 +2170,7 @@ class PreventiveMaintenanceCompleteSerializer(serializers.ModelSerializer):
         read_only_fields = ['next_due_date']  # Will be set by the view
 
     def get_property_id(self, obj):
-        machines = obj.machines.all()
-        if machines:
-            # All machines must belong to the same property, so return the first one
-            return machines.first().property.property_id
-        return None
+        return get_pm_property_external_id(obj)
 
     def update(self, instance, validated_data):
         machine_ids = validated_data.pop('machine_ids', None)
@@ -2286,11 +2284,7 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
         }
 
     def get_property_id(self, obj):
-        machines = obj.machines.all()
-        if machines:
-            # All machines must belong to the same property, so return the first one
-            return machines.first().property.property_id
-        return None
+        return get_pm_property_external_id(obj)
 
     def get_assigned_to_name(self, obj):
         return get_user_display_name(obj.assigned_to)

@@ -392,6 +392,40 @@ class TenantPropertyAuthorizationTests(APITestCase):
         response = self.client.get(reverse('myappLubd:preventive-maintenance-detail', kwargs={'pm_id': self.pm_a1.pm_id}), secure=True)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_pm_list_uses_scalar_external_property_identity(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.get(reverse('myappLubd:preventive-maintenance-list'), secure=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        rows = response.data.get('results', response.data)
+        row = next(item for item in rows if item['pm_id'] == self.pm_a1.pm_id)
+        self.assertEqual(row['property_id'], self.property_a1.property_id)
+        self.assertIsInstance(row['property_id'], str)
+
+    def test_viewer_can_read_but_cannot_modify_pm(self):
+        viewer = User.objects.create_user(username='pm-viewer', password='pw12345!')
+        TenantMembership.objects.create(
+            user=viewer, tenant=self.tenant_a, role='viewer'
+        ).properties.add(self.property_a1)
+        self.client.force_authenticate(viewer)
+
+        detail_url = reverse(
+            'myappLubd:preventive-maintenance-detail',
+            kwargs={'pm_id': self.pm_a1.pm_id},
+        )
+        self.assertEqual(self.client.get(detail_url, secure=True).status_code, status.HTTP_200_OK)
+        response = self.client.patch(detail_url, {'pmtitle': 'Forbidden edit'}, format='json', secure=True)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.content)
+
+    def test_non_superuser_cannot_use_unscoped_pm_csv_import(self):
+        self.client.force_authenticate(self.user)
+        response = self.client.post(
+            reverse('myappLubd:preventive-maintenance-import-csv'),
+            {},
+            format='multipart',
+            secure=True,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.content)
+
     def test_ai_chat_requires_authentication(self):
         response = self.client.post('/api/v1/ai/chat/', {'message': 'hello'}, format='json', secure=True)
         self.assertIn(response.status_code, (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN))

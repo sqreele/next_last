@@ -24,7 +24,7 @@ from .models import (
 from .optimizations import QueryOptimizer, CacheOptimizer
 from .cache_enhanced import cache_manager, cache_invalidation
 from .timezones import object_timezone
-from .tenancy import get_accessible_properties
+from .tenancy import get_accessible_properties, get_operable_properties
 from .job_property import resolve_job_property, resolve_property_reference
 
 logger = logging.getLogger(__name__)
@@ -838,6 +838,10 @@ class PreventiveMaintenanceService:
             .prefetch_related('topics', 'machines')
             .order_by('next_due_date', 'start_date')
         )
+        if user is not None and not user.is_superuser:
+            # Request-triggered materialization must never process plans from
+            # properties outside the caller's active membership grants.
+            plans = plans.filter(machines__property__in=get_operable_properties(user)).distinct()
         for plan in plans:
             if len(created) >= limit:
                 break

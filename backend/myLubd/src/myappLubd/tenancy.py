@@ -116,6 +116,29 @@ def get_accessible_properties(user, tenant=None):
     return qs.filter(tenant=tenant) if tenant is not None else qs
 
 
+def get_operable_properties(user, tenant=None):
+    """Properties on which the user may perform operational writes."""
+    if not getattr(user, 'is_authenticated', False):
+        return Property.objects.none()
+    if user.is_superuser:
+        qs = Property.objects.all()
+        return qs.filter(tenant=tenant) if tenant is not None else qs
+
+    assigned_operator_q = Q(
+        tenant_memberships__user=user,
+        tenant_memberships__is_active=True,
+        tenant_memberships__role__in=TENANT_OPERATOR_ROLES,
+        tenant_memberships__tenant=models.F('tenant'),
+    )
+    tenant_wide_operator_q = Q(
+        tenant__memberships__user=user,
+        tenant__memberships__is_active=True,
+        tenant__memberships__role__in=TENANT_WIDE_PROPERTY_ROLES & TENANT_OPERATOR_ROLES,
+    )
+    qs = Property.objects.filter(assigned_operator_q | tenant_wide_operator_q).distinct()
+    return qs.filter(tenant=tenant) if tenant is not None else qs
+
+
 def get_property_summary_recipients(property_obj):
     """Return unique users authorized to receive one property's summary.
 

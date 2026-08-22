@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework import status, viewsets, filters
 from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -69,6 +69,7 @@ from .tenancy import (
     ensure_tenant_for_property,
     ensure_tenant_for_user,
     get_accessible_properties,
+    get_operable_properties,
     get_property_summary_recipients,
     get_user_tenants,
     TENANT_WIDE_PROPERTY_ROLES,
@@ -80,6 +81,13 @@ from .timezones import timezone_options
 
 GEMINI_CHAT_MODEL = 'gemini-2.5-flash'
 _ai_accessible_properties = ContextVar('ai_accessible_properties', default=None)
+
+
+class IsPlatformSuperuser(BasePermission):
+    """Restrict mutations of globally shared resources to break-glass users."""
+
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
 GEMINI_SYSTEM_INSTRUCTION = """
 คุณคือ AI ผู้ช่วยประจำระบบบริหารจัดการงานช่าง (HotelCare Pro)
 หน้าที่ของคุณคือช่วยตอบคำถามเกี่ยวกับงานแจ้งซ่อมและสถิติของระบบเป็นภาษาไทยที่สุภาพ กระชับ และเข้าใจง่าย
@@ -1623,6 +1631,22 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     ordering = ['-scheduled_date']
     permission_classes = [IsAuthenticated]
 
+    def check_object_permissions(self, request, obj):
+        super().check_object_permissions(request, obj)
+        if request.method in {'GET', 'HEAD', 'OPTIONS'} or request.user.is_superuser:
+            return
+
+        property_ids = set(obj.machines.values_list('property_id', flat=True))
+        if obj.job_id and obj.job.property_id:
+            property_ids.add(obj.job.property_id)
+        operable_ids = set(
+            get_operable_properties(request.user)
+            .filter(pk__in=property_ids)
+            .values_list('pk', flat=True)
+        )
+        if not property_ids or operable_ids != property_ids:
+            raise PermissionDenied("Your role cannot modify maintenance for this property")
+
 
     def _get_master_plan_queryset(self):
         queryset = PMMasterPlan.objects.select_related(
@@ -1786,9 +1810,15 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             if status_param == 'completed':
                 queryset = queryset.filter(completed_date__isnull=False)
             elif status_param == 'pending':
-                queryset = queryset.filter(completed_date__isnull=True, scheduled_date__gte=now)
+                queryset = queryset.filter(
+                    completed_date__isnull=True,
+                    scheduled_date__gte=now,
+                ).exclude(status='cancelled')
             elif status_param == 'overdue':
-                queryset = queryset.filter(completed_date__isnull=True, scheduled_date__lt=now)
+                queryset = queryset.filter(
+                    completed_date__isnull=True,
+                    scheduled_date__lt=now,
+                ).exclude(status='cancelled')
 
         if topic_id:
             queryset = queryset.filter(topics__id=topic_id)
@@ -1891,8 +1921,12 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
 
         total = queryset.count()
         completed = queryset.filter(completed_date__isnull=False).count()
-        overdue = queryset.filter(completed_date__isnull=True, scheduled_date__lt=now).count()
-        pending = total - completed - overdue
+        cancelled = queryset.filter(completed_date__isnull=True, status='cancelled').count()
+        overdue = queryset.filter(
+            completed_date__isnull=True,
+            scheduled_date__lt=now,
+        ).exclude(status='cancelled').count()
+        pending = total - completed - overdue - cancelled
 
         frequency_queryset = queryset.values('frequency').annotate(count=Count('frequency'))
         frequency_distribution = [
@@ -1917,7 +1951,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         )
 
         avg_completion_times = {}
-        for freq in ['daily', 'weekly', 'biweekly', 'monthly', 'quarterly', 'biannually', 'annually']:
+        for freq in ['daily', 'weekly', 'monthly', 'quarterly', 'semi_annual', 'annual', 'custom']:
             tasks = completed_tasks.filter(frequency=freq)
             if tasks.count() > 0:
                 sum_days = sum(
@@ -1928,11 +1962,15 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 avg_completion_times[freq] = round(sum_days / tasks.count(), 1) if tasks.count() > 0 else 0
 
         response_data = {
+            'can_operate': request.user.is_superuser or get_operable_properties(request.user).filter(
+                property_id=request.query_params.get('property_id')
+            ).exists(),
             'counts': {
                 'total': total,
                 'completed': completed,
                 'pending': pending,
-                'overdue': overdue
+                'overdue': overdue,
+                'cancelled': cancelled,
             },
             'frequency_distribution': frequency_distribution,
             'completion_rate': round(completion_rate, 1),
@@ -1993,6 +2031,8 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='materialize-plans')
     def materialize_plans(self, request):
         """Generate actual PM forms whose master-plan occurrences are inside their lead window."""
+        if not request.user.is_superuser and not get_operable_properties(request.user).exists():
+            raise PermissionDenied("Your role cannot materialize preventive maintenance plans")
         dry_run = str(request.data.get('dry_run', '')).lower() in {'1', 'true', 'yes'}
         result = PreventiveMaintenanceService.materialize_master_plan_occurrences(
             cutoff=timezone.now(),
@@ -2084,7 +2124,10 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         # Use only tenant/property/machine scoping here. Generic list filters such
         # as date_from/date_to target scheduled_date only, which would hide a
         # completed recurring PM whose next_due_date is inside this schedule window.
-        qs = self._get_base_queryset().filter(occurrence_filter).distinct().order_by('scheduled_date')
+        qs = self._get_base_queryset().filter(occurrence_filter)
+        if status_filter == 'open':
+            qs = qs.exclude(status='cancelled')
+        qs = qs.distinct().order_by('scheduled_date')
 
         serializer = PreventiveMaintenanceListSerializer(qs, many=True, context={'request': request})
         items_by_id = {str(item.get('pm_id')): item for item in serializer.data}
@@ -2195,7 +2238,10 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         sort_by = request.query_params.get('sort_by', 'date')
         now = timezone.now()
 
-        queryset = self.get_queryset().filter(completed_date__isnull=True, scheduled_date__lt=now)
+        queryset = self.get_queryset().filter(
+            completed_date__isnull=True,
+            scheduled_date__lt=now,
+        ).exclude(status='cancelled')
 
         if sort_by == 'overdue_days':
             queryset = queryset.annotate(
@@ -2429,6 +2475,9 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         """
         Import preventive maintenance records from a CSV file.
         """
+        if not request.user.is_superuser:
+            raise PermissionDenied("Only a platform superuser can import preventive maintenance records")
+
         upload = request.FILES.get('file')
         if not upload:
             return Response(
@@ -2724,6 +2773,15 @@ class MaintenanceProcedureViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'created_at', 'estimated_duration']
     ordering = ['name']
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        shared_template_writes = {
+            'create', 'update', 'partial_update', 'destroy',
+            'add_step', 'update_step', 'delete_step', 'reorder_steps', 'duplicate',
+        }
+        if self.action in shared_template_writes:
+            return [IsPlatformSuperuser()]
+        return super().get_permissions()
 
     def get_queryset(self):
         """

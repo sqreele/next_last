@@ -1,11 +1,13 @@
 """Regression coverage for the required canonical Job.property field."""
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import FieldDoesNotExist
 from django.db import IntegrityError, transaction
+from django.db.models import ForeignKey, ManyToManyField
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Job, Property, Room, Tenant, TenantMembership
+from .models import Job, Property, Room, Tenant, TenantMembership, UserProfile
 
 
 User = get_user_model()
@@ -28,6 +30,23 @@ class JobPropertySchemaTests(APITestCase):
                     description='Invalid propertyless job',
                     remarks='',
                 )
+
+    def test_canonical_relations_exist_and_legacy_relations_remain_removed(self):
+        self.assertIsInstance(Job._meta.get_field('property'), ForeignKey)
+        self.assertFalse(Job._meta.get_field('property').null)
+        self.assertIsInstance(Job._meta.get_field('rooms'), ManyToManyField)
+        self.assertIsInstance(Room._meta.get_field('property'), ForeignKey)
+        self.assertFalse(Room._meta.get_field('property').null)
+        self.assertIsInstance(TenantMembership._meta.get_field('properties'), ManyToManyField)
+
+        for model, field_name in (
+            (Room, 'properties'),
+            (Property, 'users'),
+            (UserProfile, 'properties'),
+        ):
+            with self.subTest(model=model.__name__, field=field_name):
+                with self.assertRaises(FieldDoesNotExist):
+                    model._meta.get_field(field_name)
 
     def test_model_can_reference_property_without_changing_location_relations(self):
         job = Job.objects.create(

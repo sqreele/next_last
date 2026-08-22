@@ -61,8 +61,8 @@ class JobTenantGuardTests(APITestCase):
             'status': 'pending',
             'priority': 'medium',
             'remarks': 'Test job',
-            'property_id': self.prop_a.id,
-            'rooms': [room_id],
+            'property_id': self.prop_a.property_id,
+            'room_ids': [room_id],
             'topic_data': {'title': self.topic.title},
         }
 
@@ -83,17 +83,12 @@ class JobTenantGuardTests(APITestCase):
             self._create_payload(self.room_b.room_id),
             format='json',
         )
-        # The serializer ignores inaccessible room identifiers rather than
-        # linking a cross-tenant room.  The persisted job must remain scoped
-        # to Alice's canonical property and must not gain Bob's room.
-        self.assertIn(resp.status_code, (status.HTTP_200_OK, status.HTTP_201_CREATED), resp.content)
-        job = Job.objects.get(pk=resp.data['id'])
-        self.assertEqual(job.property_id, self.prop_a.id)
-        self.assertFalse(job.rooms.filter(pk=self.room_b.pk).exists())
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
+        self.assertFalse(Job.objects.filter(user=self.alice).exists())
 
     def test_update_cannot_move_job_to_other_tenant_room(self):
         # Seed a legitimate job for Alice, then attempt to PATCH her own job
-        # so it references Bob's room. The foreign room must be ignored.
+        # so it references Bob's room. The request must be rejected.
         job = Job.objects.create(
             user=self.alice,
             property=self.prop_a,
@@ -107,11 +102,11 @@ class JobTenantGuardTests(APITestCase):
         _login(self.client, self.alice)
         resp = self.client.patch(
             f'/api/v1/jobs/{job.job_id}/',
-            {'rooms': [self.room_b.room_id]},
+            {'room_ids': [self.room_b.room_id]},
             format='json',
         )
         before_room_ids = set(job.rooms.values_list('room_id', flat=True))
-        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
         job.refresh_from_db()
         after_room_ids = set(job.rooms.values_list('room_id', flat=True))
         self.assertEqual(before_room_ids, after_room_ids)

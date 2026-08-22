@@ -22,6 +22,19 @@ def resolve_property_reference(value):
     return property_obj
 
 
+def resolve_external_property_reference(value):
+    """Resolve only the public/business ``Property.property_id`` identity."""
+    if value is None or value == '':
+        return None
+    if isinstance(value, Property):
+        return value
+
+    property_obj = Property.objects.filter(property_id=str(value).strip()).first()
+    if property_obj is None:
+        raise ValidationError({'property_id': 'Invalid property ID.'})
+    return property_obj
+
+
 def resolve_job_property(*, explicit_property=None, area=None, rooms=None, require=True):
     """Return the sole Property supported by the supplied Job location state.
 

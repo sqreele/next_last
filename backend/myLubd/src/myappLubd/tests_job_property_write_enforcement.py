@@ -1,6 +1,7 @@
 """Write-path invariants for canonical Job.property."""
 
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -37,6 +38,13 @@ class JobPropertyWriteApiTests(APITestCase):
         self.siam_room = Room.objects.create(
             name='WE-S-101', room_type='Standard', property=self.siam,
         )
+        self.other_tenant = Tenant.objects.create(name='Other job property tenant')
+        self.unauthorized_property = Property.objects.create(
+            name='Unauthorized property', tenant=self.other_tenant,
+        )
+        self.unauthorized_room = Room.objects.create(
+            name='WE-U-101', room_type='Standard', property=self.unauthorized_property,
+        )
         self.client.force_authenticate(self.user)
 
     def payload(self, **overrides):
@@ -72,6 +80,89 @@ class JobPropertyWriteApiTests(APITestCase):
             room_id=self.chinatown_room.room_id,
         )
         self.assertEqual(job.property_id, self.chinatown.id)
+
+    def test_create_with_single_room_id_attaches_room(self):
+        job = self.create_job(
+            property_id=self.chinatown.property_id,
+            room_ids=[self.chinatown_room.room_id],
+        )
+        self.assertEqual(job.property, self.chinatown)
+        self.assertEqual(list(job.rooms.all()), [self.chinatown_room])
+
+    def test_create_with_multiple_room_ids_uses_m2m_not_job_constructor(self):
+        with patch.object(Job.objects, 'create', wraps=Job.objects.create) as create_job:
+            job = self.create_job(
+                property_id=self.chinatown.property_id,
+                room_ids=[self.chinatown_room.room_id, self.chinatown_room_2.room_id],
+            )
+
+        self.assertNotIn('room_ids', create_job.call_args.kwargs)
+        self.assertEqual(job.property, self.chinatown)
+        self.assertEqual(
+            set(job.rooms.values_list('room_id', flat=True)),
+            {self.chinatown_room.room_id, self.chinatown_room_2.room_id},
+        )
+
+    def test_create_rejects_invalid_unauthorized_and_cross_property_room_ids(self):
+        payloads_and_statuses = (
+            (
+                self.payload(
+                    property_id=self.chinatown.property_id,
+                    room_ids=[99999999],
+                ),
+                status.HTTP_400_BAD_REQUEST,
+            ),
+            (
+                self.payload(
+                    property_id=self.unauthorized_property.property_id,
+                    room_ids=[self.unauthorized_room.room_id],
+                ),
+                status.HTTP_403_FORBIDDEN,
+            ),
+            (
+                self.payload(
+                    property_id=self.chinatown.property_id,
+                    room_ids=[self.chinatown_room.room_id, self.siam_room.room_id],
+                ),
+                status.HTTP_400_BAD_REQUEST,
+            ),
+        )
+        for payload, expected_status in payloads_and_statuses:
+            with self.subTest(payload=payload):
+                response = self.client.post('/api/v1/jobs/', payload, format='json')
+                self.assertEqual(response.status_code, expected_status, response.content)
+        self.assertFalse(Job.objects.filter(user=self.user).exists())
+
+    def test_create_property_id_uses_external_identity_not_django_pk(self):
+        response = self.client.post(
+            '/api/v1/jobs/',
+            self.payload(property_id=self.chinatown.pk),
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
+        self.assertIn('property_id', response.data)
+
+    def test_property_like_http_header_is_not_create_job_authority(self):
+        header_only = self.client.post(
+            '/api/v1/jobs/',
+            self.payload(),
+            format='json',
+            HTTP_X_PROPERTY_ID=self.chinatown.property_id,
+        )
+        self.assertEqual(header_only.status_code, status.HTTP_400_BAD_REQUEST, header_only.content)
+
+        payload_wins = self.client.post(
+            '/api/v1/jobs/',
+            self.payload(
+                property_id=self.chinatown.property_id,
+                room_ids=[self.chinatown_room.room_id],
+            ),
+            format='json',
+            HTTP_X_PROPERTY_ID=self.unauthorized_property.property_id,
+        )
+        self.assertEqual(payload_wins.status_code, status.HTTP_201_CREATED, payload_wins.content)
+        job = Job.objects.get(job_id=payload_wins.data['job_id'])
+        self.assertEqual(job.property, self.chinatown)
 
     def test_create_rejects_missing_or_cross_property_location(self):
         for payload in (

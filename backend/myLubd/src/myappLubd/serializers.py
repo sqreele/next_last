@@ -27,7 +27,11 @@ import math
 
 from .timezones import is_valid_timezone
 from .tenancy import get_accessible_properties
-from .job_property import resolve_job_property, resolve_property_reference
+from .job_property import (
+    resolve_external_property_reference,
+    resolve_job_property,
+    resolve_property_reference,
+)
 from .room_property import resolve_room_property
 
 
@@ -732,7 +736,10 @@ class JobSerializer(serializers.ModelSerializer):
         future_area = data.get('area') if 'area' in data else (instance.area if instance is not None else None)
         explicit_input = data.get('property_id')
         try:
-            explicit_property = resolve_property_reference(explicit_input) if explicit_input else None
+            explicit_property = (
+                resolve_external_property_reference(explicit_input)
+                if explicit_input else None
+            )
         except ValidationError as exc:
             raise serializers.ValidationError(exc.message_dict) from exc
 
@@ -857,6 +864,9 @@ class JobSerializer(serializers.ModelSerializer):
 
         topic_data = validated_data.pop('topic_data', None)
         room_id = validated_data.pop('room_id', None)
+        # ``room_ids`` is request-only input.  The resolved Room instances are
+        # attached through Job.rooms after the Job row exists.
+        validated_data.pop('room_ids', None)
         area = validated_data.get('area')
 
         if not room_id and not resolved_rooms and not area and not resolved_property:

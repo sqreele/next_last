@@ -1,6 +1,7 @@
 """Focused regression coverage for the canonical tenant/property guard."""
 
 import csv
+from datetime import timedelta
 from io import StringIO
 
 from django.contrib.auth import get_user_model
@@ -400,6 +401,46 @@ class TenantPropertyAuthorizationTests(APITestCase):
         row = next(item for item in rows if item['pm_id'] == self.pm_a1.pm_id)
         self.assertEqual(row['property_id'], self.property_a1.property_id)
         self.assertIsInstance(row['property_id'], str)
+
+    def test_pm_stats_are_property_scoped_and_exclude_cancelled_from_open_work(self):
+        self.pm_a1.status = 'cancelled'
+        self.pm_a1.scheduled_date = timezone.now() + timedelta(days=1)
+        self.pm_a1.save(update_fields=['status', 'scheduled_date'])
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(
+            reverse('myappLubd:preventive-maintenance-stats'),
+            {'property_id': self.property_a1.property_id},
+            secure=True,
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(response.data['counts']['total'], 1)
+        self.assertEqual(response.data['counts']['cancelled'], 1)
+        self.assertEqual(response.data['counts']['pending'], 0)
+        self.assertEqual(response.data['upcoming'], [])
+
+        upcoming = self.client.get(
+            reverse('myappLubd:preventive-maintenance-upcoming'),
+            {'property_id': self.property_a1.property_id, 'days': 7},
+            secure=True,
+        )
+        self.assertEqual(upcoming.status_code, status.HTTP_200_OK, upcoming.content)
+        self.assertEqual(upcoming.data['count'], 0)
+
+    def test_historical_cross_property_pm_is_hidden_from_restricted_reads(self):
+        self.pm_a1.machines.add(self.machine_b)
+        self.client.force_authenticate(self.user)
+
+        listing = self.client.get(reverse('myappLubd:preventive-maintenance-list'), secure=True)
+        rows = listing.data.get('results', listing.data)
+        self.assertNotIn(self.pm_a1.pm_id, {row['pm_id'] for row in rows})
+
+        detail = self.client.get(
+            reverse('myappLubd:preventive-maintenance-detail', kwargs={'pm_id': self.pm_a1.pm_id}),
+            secure=True,
+        )
+        self.assertEqual(detail.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_viewer_can_read_but_cannot_modify_pm(self):
         viewer = User.objects.create_user(username='pm-viewer', password='pw12345!')

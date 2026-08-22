@@ -13,7 +13,7 @@ from google.auth.transport import requests
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
 import math
-from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg
+from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg, Exists, OuterRef
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import models, transaction
 from .models import (
@@ -1656,9 +1656,25 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if not user.is_superuser:
             property_ids = accessible_property_ids(user)
-            queryset = queryset.filter(machines__property_id__in=property_ids)
+            inaccessible_machines = Machine.objects.filter(
+                pm_master_plans=OuterRef('pk')
+            ).exclude(property_id__in=property_ids)
+            queryset = queryset.annotate(
+                has_inaccessible_machine=Exists(inaccessible_machines)
+            ).filter(
+                has_inaccessible_machine=False,
+                machines__property_id__in=property_ids,
+            )
         if property_filter:
-            queryset = queryset.filter(machines__property__property_id=property_filter)
+            machines_outside_property = Machine.objects.filter(
+                pm_master_plans=OuterRef('pk')
+            ).exclude(property__property_id=property_filter)
+            queryset = queryset.annotate(
+                has_machine_outside_property=Exists(machines_outside_property)
+            ).filter(
+                has_machine_outside_property=False,
+                machines__property__property_id=property_filter,
+            )
         return queryset.distinct()
 
     def _serialize_projected_plan_item(self, occurrence):
@@ -1759,22 +1775,36 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         # Restrict by canonical property scope; only platform superusers bypass.
         user = self.request.user
         if not user.is_superuser:
-            # Limit to PMs whose jobs are in rooms belonging to user's properties OR via machines' property
             property_ids = accessible_property_ids(user)
             logger.info(f"[PM Filter] Non-admin user - accessible properties: {sorted(property_ids)}")
-            queryset = queryset.filter(
-                Q(job__property_id__in=property_ids)
-                |
-                Q(machines__property_id__in=property_ids)
+            inaccessible_machines = Machine.objects.filter(
+                preventive_maintenances=OuterRef('pk')
+            ).exclude(property_id__in=property_ids)
+            queryset = queryset.annotate(
+                has_inaccessible_machine=Exists(inaccessible_machines)
+            ).filter(
+                has_inaccessible_machine=False,
+            ).filter(
+                Q(job__isnull=True) | Q(job__property_id__in=property_ids)
+            ).filter(
+                Q(job__property_id__in=property_ids) | Q(machines__property_id__in=property_ids)
             )
             logger.info(f"[PM Filter] After permission filter: {queryset.count()} records")
 
         if property_filter:
             logger.info(f"[PM Filter] Applying property filter: {property_filter}")
             before_count = queryset.count()
-            queryset = queryset.filter(
-                Q(job__property__property_id=property_filter)
-                |
+            machines_outside_property = Machine.objects.filter(
+                preventive_maintenances=OuterRef('pk')
+            ).exclude(property__property_id=property_filter)
+            queryset = queryset.annotate(
+                has_machine_outside_property=Exists(machines_outside_property)
+            ).filter(
+                has_machine_outside_property=False,
+            ).filter(
+                Q(job__isnull=True) | Q(job__property__property_id=property_filter)
+            ).filter(
+                Q(job__property__property_id=property_filter) |
                 Q(machines__property__property_id=property_filter)
             )
             after_count = queryset.count()
@@ -1944,7 +1974,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             completed_date__isnull=True,
             scheduled_date__gte=now,
             scheduled_date__lte=seven_days_later
-        ).order_by('scheduled_date')[:5]
+        ).exclude(status='cancelled').order_by('scheduled_date')[:5]
 
         upcoming_serializer = PreventiveMaintenanceListSerializer(
             upcoming_queryset, many=True, context={'request': request}
@@ -2054,7 +2084,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             completed_date__isnull=True,
             scheduled_date__gte=now,
             scheduled_date__lte=end_date
-        ).order_by('scheduled_date')
+        ).exclude(status='cancelled').order_by('scheduled_date')
 
         page = self.paginate_queryset(queryset)
         if page is not None:

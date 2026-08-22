@@ -76,7 +76,7 @@ from .tenancy import (
     tenant_usage_counts,
     user_can_manage_tenant,
 )
-from .timezones import timezone_options
+from .timezones import object_timezone, property_timezone, timezone_options
 
 
 GEMINI_CHAT_MODEL = 'gemini-2.5-flash'
@@ -1754,7 +1754,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         """Return PMs scoped to the authenticated user's accessible properties."""
         # ✅ PERFORMANCE: Optimize query with select_related and prefetch_related
         queryset = PreventiveMaintenance.objects.select_related(
-            'job',  # Foreign key
+            'job__property',  # Canonical job ownership
             'created_by',  # Foreign key
             'completed_by',  # Foreign key
             'verified_by',  # Foreign key
@@ -2114,34 +2114,59 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         what was done in the visible window.
 
         Query params:
-            from   ISO date (default = today).
+            property_id External active Property identifier (required).
+            from   ISO date (default = start of current property-local week).
             days   Window length in days (default 30, capped at 180).
             status `open` (default) | `completed` | `all`.
+
+        Date-only inputs and response buckets use the selected property's
+        tenant timezone. The upper date boundary is exclusive.
         """
-        from datetime import datetime
+        from datetime import date, datetime, time
+
+        property_id = str(request.query_params.get('property_id') or '').strip()
+        if not property_id:
+            raise ValidationError({'property_id': 'An active property is required.'})
+
+        if request.user.is_superuser:
+            schedule_property = Property.objects.select_related('tenant').filter(
+                property_id=property_id
+            ).first()
+        else:
+            schedule_property = get_accessible_properties(request.user).select_related('tenant').filter(
+                property_id=property_id
+            ).first()
+        if schedule_property is None:
+            raise PermissionDenied('You do not have access to this property schedule.')
+
+        schedule_timezone = property_timezone(schedule_property)
 
         days_param = request.query_params.get('days', '30')
         try:
-            days = max(1, min(int(days_param), 180))
+            requested_days = int(days_param)
         except (TypeError, ValueError):
-            days = 30
+            raise ValidationError({'days': 'Days must be a whole number from 1 to 180.'})
+        if requested_days < 1:
+            raise ValidationError({'days': 'Days must be a whole number from 1 to 180.'})
+        days = min(requested_days, 180)
 
         from_param = request.query_params.get('from')
         if from_param:
             try:
-                start_dt = datetime.fromisoformat(from_param.replace('Z', '+00:00'))
-                if timezone.is_naive(start_dt):
-                    start_dt = timezone.make_aware(start_dt, timezone.get_current_timezone())
+                if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', from_param):
+                    raise ValueError
+                start_date = date.fromisoformat(from_param)
             except ValueError:
-                start_dt = timezone.now()
+                raise ValidationError({'from': 'From must be an ISO date in YYYY-MM-DD format.'})
         else:
-            start_dt = timezone.now()
-        start_dt = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+            start_date = timezone.localtime(timezone.now(), schedule_timezone).date()
+            start_date -= timedelta(days=start_date.weekday())
+        start_dt = timezone.make_aware(datetime.combine(start_date, time.min), schedule_timezone)
         end_dt = start_dt + timedelta(days=days)
 
         status_filter = (request.query_params.get('status') or 'open').lower()
         if status_filter not in {'open', 'completed', 'all'}:
-            status_filter = 'open'
+            raise ValidationError({'status': 'Status must be open, completed, or all.'})
 
         # A completed recurring PM keeps its original scheduled date and stores
         # its next occurrence in next_due_date. Include both fields in the
@@ -2185,6 +2210,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 'overdue_count': 0,
                 'open_count': 0,
                 'completed_count': 0,
+                'cancelled_count': 0,
             }
             bucket_index[key] = bucket
             days_out.append(bucket)
@@ -2193,7 +2219,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         now = timezone.now()
 
         def add_occurrence(pm, occurrence_date, occurrence_type, calendar_status):
-            local_date = timezone.localtime(occurrence_date)
+            local_date = timezone.localtime(occurrence_date, schedule_timezone)
             key = local_date.date().isoformat()
             bucket = bucket_index.get(key)
             if bucket is None:
@@ -2208,6 +2234,8 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
 
             if calendar_status == 'completed':
                 bucket['completed_count'] += 1
+            elif calendar_status == 'cancelled':
+                bucket['cancelled_count'] += 1
             elif occurrence_date < now:
                 bucket['overdue_count'] += 1
             else:
@@ -2219,7 +2247,12 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 and pm.completed_date is None
                 and start_dt <= pm.scheduled_date < end_dt
             ):
-                add_occurrence(pm, pm.scheduled_date, 'scheduled', 'open')
+                add_occurrence(
+                    pm,
+                    pm.scheduled_date,
+                    'scheduled',
+                    'cancelled' if pm.status == 'cancelled' else 'open',
+                )
 
             if (
                 status_filter in {'completed', 'all'}
@@ -2245,7 +2278,7 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                     if occurrence.get('generated_pm_id'):
                         continue
                     due = occurrence['due_date']
-                    local_date = timezone.localtime(due)
+                    local_date = timezone.localtime(due, schedule_timezone)
                     key = local_date.date().isoformat()
                     bucket = bucket_index.get(key)
                     if bucket is None:
@@ -2267,6 +2300,13 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
             'days': days_out,
             'total': sum(len(bucket['items']) for bucket in days_out),
             'status': status_filter,
+            'property_id': schedule_property.property_id,
+            'property_name': schedule_property.name,
+            'timezone': str(schedule_timezone),
+            'today': timezone.localtime(timezone.now(), schedule_timezone).date().isoformat(),
+            'can_operate': request.user.is_superuser or get_operable_properties(request.user).filter(
+                pk=schedule_property.pk
+            ).exists(),
         })
 
     @action(detail=False, methods=['get'])
@@ -2584,7 +2624,18 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        instance.scheduled_date = request.data['scheduled_date']
+        from django.utils.dateparse import parse_datetime
+
+        scheduled_date = parse_datetime(str(request.data['scheduled_date']))
+        if scheduled_date is None:
+            return Response(
+                {'detail': 'Scheduled date must be a valid ISO date and time.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if timezone.is_naive(scheduled_date):
+            scheduled_date = timezone.make_aware(scheduled_date, object_timezone(instance))
+
+        instance.scheduled_date = scheduled_date
         if 'reason' in request.data:
             instance.notes = (instance.notes or "") + f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M')}] Rescheduled: {request.data['reason']}"
 

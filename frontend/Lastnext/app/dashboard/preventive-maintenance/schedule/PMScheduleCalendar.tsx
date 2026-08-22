@@ -17,7 +17,7 @@ import { useSession } from "@/app/lib/session.client";
 import { fetchWithToken } from "@/app/lib/data.server";
 import { Button } from "@/app/components/ui/button";
 import { cn } from "@/app/lib/utils/cn";
-import { useUser } from "@/app/lib/stores/mainStore";
+import { useMainStore } from "@/app/lib/stores/mainStore";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -39,9 +39,12 @@ interface PMItem {
   priority?: string;
   calendar_date?: string;
   occurrence_type?: "scheduled" | "next_due" | "projected" | "generated";
-  calendar_status?: "open" | "completed" | "projected" | "generated";
+  calendar_status?: "open" | "completed" | "cancelled" | "projected" | "generated";
   generated_pm_id?: string | null;
   lead_time_days?: number;
+  machines?: Array<{ machine_id: string; name?: string }>;
+  procedure_template_name?: string | null;
+  assigned_to_name?: string | null;
 }
 
 interface DayBucket {
@@ -51,6 +54,7 @@ interface DayBucket {
   overdue_count: number;
   open_count: number;
   completed_count: number;
+  cancelled_count: number;
 }
 
 interface ScheduleResponse {
@@ -59,6 +63,11 @@ interface ScheduleResponse {
   days: DayBucket[];
   total: number;
   status: StatusFilter;
+  property_id: string;
+  property_name: string;
+  timezone: string;
+  today: string;
+  can_operate: boolean;
 }
 
 function toISODate(date: Date): string {
@@ -86,21 +95,24 @@ const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function PMScheduleCalendar() {
   const { data: session } = useSession();
-  const { selectedPropertyId } = useUser();
-  const [anchor, setAnchor] = useState<Date>(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
+  const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
+  const properties = useMainStore((state) => state.properties);
+  const activeProperty = properties.find((property) => property.property_id === selectedPropertyId);
+  const [anchor, setAnchor] = useState<{ propertyId: string; date: Date } | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
   const [days, setDays] = useState(30);
   const [data, setData] = useState<ScheduleResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const visibleData = data?.property_id === selectedPropertyId ? data : null;
 
-  // Anchor to start-of-week-monday for a tidy calendar grid; pad to 35 cells.
-  const gridStart = useMemo(() => startOfWeekMonday(anchor), [anchor]);
+  const activeAnchor = anchor?.propertyId === selectedPropertyId ? anchor.date : null;
+  const gridStart = useMemo(
+    () => startOfWeekMonday(activeAnchor || parseISODate(visibleData?.from || toISODate(new Date()))),
+    [activeAnchor, visibleData?.from],
+  );
   const gridCells = useMemo(() => {
     const cells: Date[] = [];
     for (let i = 0; i < days; i += 1) {
@@ -122,27 +134,31 @@ export function PMScheduleCalendar() {
     if (!selectedPropertyId) {
       setData(null);
       setLoading(false);
-      setError("Select a property to view the PM schedule.");
+      setError(null);
+      setSelectedDate(null);
       return;
     }
+    setData(null);
+    setSelectedDate(null);
     setLoading(true);
     setError(null);
-    const from = toISODate(gridStart);
     const params = new URLSearchParams({
-      from,
       days: String(Math.min(days, 180)),
       status: statusFilter,
       property_id: selectedPropertyId,
     });
+    if (activeAnchor) params.set("from", toISODate(startOfWeekMonday(activeAnchor)));
     const url = `${API_BASE_URL}/api/v1/preventive-maintenance/schedule/?${params.toString()}`;
     fetchWithToken<ScheduleResponse>(url, token)
       .then((res) => {
         if (cancelled) return;
         setData(res);
       })
-      .catch((err: any) => {
+      .catch((requestError: unknown) => {
         if (cancelled) return;
-        setError(err?.message || "Failed to load PM schedule.");
+        setError(requestError instanceof Error && requestError.message
+          ? requestError.message
+          : "Failed to load PM schedule.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -151,8 +167,9 @@ export function PMScheduleCalendar() {
       cancelled = true;
     };
   }, [
-    gridStart,
+    activeAnchor,
     days,
+    refreshKey,
     statusFilter,
     selectedPropertyId,
     session?.user?.accessToken,
@@ -160,26 +177,42 @@ export function PMScheduleCalendar() {
 
   const dayIndex = useMemo(() => {
     const map = new Map<string, DayBucket>();
-    data?.days.forEach((b) => map.set(b.date, b));
+    visibleData?.days.forEach((b) => map.set(b.date, b));
     return map;
-  }, [data]);
+  }, [visibleData]);
 
   const selectedBucket = selectedDate ? dayIndex.get(selectedDate) : null;
-  const todayKey = toISODate(new Date());
+  const todayKey = visibleData?.today || toISODate(new Date());
   const windowLabel = `${gridStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${gridCells[gridCells.length - 1]?.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
 
   const totalOpen = useMemo(
-    () => (data?.days || []).reduce((sum, b) => sum + b.open_count, 0),
-    [data],
+    () => (visibleData?.days || []).reduce((sum, b) => sum + b.open_count, 0),
+    [visibleData],
   );
   const totalOverdue = useMemo(
-    () => (data?.days || []).reduce((sum, b) => sum + b.overdue_count, 0),
-    [data],
+    () => (visibleData?.days || []).reduce((sum, b) => sum + b.overdue_count, 0),
+    [visibleData],
   );
   const totalCompleted = useMemo(
-    () => (data?.days || []).reduce((sum, b) => sum + b.completed_count, 0),
-    [data],
+    () => (visibleData?.days || []).reduce((sum, b) => sum + b.completed_count, 0),
+    [visibleData],
   );
+  const totalCancelled = useMemo(
+    () => (visibleData?.days || []).reduce((sum, b) => sum + b.cancelled_count, 0),
+    [visibleData],
+  );
+
+  if (!selectedPropertyId) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <CalendarDays className="mx-auto h-10 w-10 text-slate-400" aria-hidden />
+        <h1 className="mt-3 text-xl font-bold text-slate-900">Select a property</h1>
+        <p className="mt-2 text-sm text-slate-600">
+          Select a property to view the preventive maintenance schedule.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -194,28 +227,27 @@ export function PMScheduleCalendar() {
                 PM Calendar
               </h1>
               <p className="text-xs font-medium text-slate-600 sm:text-sm">
-                Plan projected and generated preventive maintenance across{" "}
-                {days} days.
+                {visibleData?.property_name || activeProperty?.name || selectedPropertyId} ·{" "}
+                {visibleData?.timezone || "property timezone"} · {days} days
               </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Link
+            {visibleData?.can_operate && <Link
               href="/dashboard/preventive-maintenance/create"
-              className="inline-flex h-10 items-center gap-1 rounded-full bg-[var(--pcms-primary)] px-3 text-sm font-bold text-white hover:bg-[var(--pcms-primary-hover)]"
+              className="inline-flex h-11 items-center gap-1 rounded-full bg-[var(--pcms-primary)] px-3 text-sm font-bold text-white hover:bg-[var(--pcms-primary-hover)]"
             >
               <Plus className="h-4 w-4" /> New PM
-            </Link>
+            </Link>}
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => {
-                const d = new Date();
-                d.setHours(0, 0, 0, 0);
-                setAnchor(d);
+                setAnchor(null);
+                setRefreshKey((value) => value + 1);
               }}
-              className="h-10"
+              className="h-11"
             >
               Today
             </Button>
@@ -229,12 +261,12 @@ export function PMScheduleCalendar() {
               variant="outline"
               size="sm"
               onClick={() => {
-                const d = new Date(anchor);
+                const d = new Date(gridStart);
                 d.setDate(d.getDate() - days);
-                setAnchor(d);
+                setAnchor({ propertyId: selectedPropertyId, date: d });
               }}
               aria-label="Previous window"
-              className="h-10 w-10 p-0"
+              className="h-11 w-11 p-0"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -243,21 +275,21 @@ export function PMScheduleCalendar() {
               variant="outline"
               size="sm"
               onClick={() => {
-                const d = new Date(anchor);
+                const d = new Date(gridStart);
                 d.setDate(d.getDate() + days);
-                setAnchor(d);
+                setAnchor({ propertyId: selectedPropertyId, date: d });
               }}
               aria-label="Next window"
-              className="h-10 w-10 p-0"
+              className="h-11 w-11 p-0"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
             <div className="ml-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">
-              {windowLabel}
+              {visibleData ? windowLabel : "Loading range…"}
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {(["open", "completed", "all"] as StatusFilter[]).map((value) => (
               <button
                 key={value}
@@ -265,7 +297,7 @@ export function PMScheduleCalendar() {
                 onClick={() => setStatusFilter(value)}
                 aria-pressed={statusFilter === value}
                 className={cn(
-                  "h-9 rounded-full px-3 text-xs font-bold transition-colors",
+                  "h-11 rounded-full px-3 text-xs font-bold transition-colors",
                   statusFilter === value
                     ? "bg-slate-900 text-white"
                     : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
@@ -278,7 +310,7 @@ export function PMScheduleCalendar() {
                     : "Completed"}
               </button>
             ))}
-            <div className="ml-2 flex h-9 items-center gap-1 rounded-full border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700">
+            <div className="ml-2 flex min-h-11 items-center gap-1 rounded-full border border-slate-200 bg-white px-2 text-xs font-bold text-slate-700">
               <span>Days:</span>
               {[30, 60, 180].map((value) => (
                 <button
@@ -286,7 +318,7 @@ export function PMScheduleCalendar() {
                   type="button"
                   onClick={() => setDays(value)}
                   className={cn(
-                    "rounded-full px-2 py-0.5 transition-colors",
+                    "min-h-9 rounded-full px-2 py-0.5 transition-colors",
                     days === value
                       ? "bg-slate-900 text-white"
                       : "hover:bg-slate-100",
@@ -300,9 +332,9 @@ export function PMScheduleCalendar() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setAnchor(new Date(anchor))}
+              onClick={() => setRefreshKey((value) => value + 1)}
               disabled={loading}
-              className="h-9"
+              className="h-11 w-11 p-0"
               aria-label="Refresh"
             >
               <RefreshCw
@@ -312,7 +344,7 @@ export function PMScheduleCalendar() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-xs font-bold">
+        {visibleData && <div className="grid grid-cols-2 gap-2 text-xs font-bold sm:grid-cols-4">
           <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-blue-900">
             Open · {totalOpen}
           </div>
@@ -322,17 +354,24 @@ export function PMScheduleCalendar() {
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900">
             Completed · {totalCompleted}
           </div>
-        </div>
+          <div className="rounded-xl border border-slate-300 bg-slate-100 px-3 py-2 text-slate-800">
+            Cancelled · {totalCancelled}
+          </div>
+        </div>}
       </header>
 
       {error && (
-        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800" role="alert">
           <AlertCircle className="mt-0.5 h-4 w-4 flex-none" />
           {error}
         </div>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+      {loading && !visibleData ? (
+        <div className="flex min-h-48 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-6 text-sm font-medium text-slate-600 shadow-sm" role="status">
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading schedule…
+        </div>
+      ) : error && !visibleData ? null : <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
         <div className="hidden grid-cols-7 gap-1 pb-2 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500 sm:grid">
           {WEEKDAY_LABELS.map((label) => (
             <div key={label}>{label}</div>
@@ -355,6 +394,7 @@ export function PMScheduleCalendar() {
             const overdue = bucket?.overdue_count || 0;
             const open = bucket?.open_count || 0;
             const completed = bucket?.completed_count || 0;
+            const cancelled = bucket?.cancelled_count || 0;
             const previewItems = bucket?.items.slice(0, 2) || [];
             const hiddenItems = Math.max(0, totalItems - previewItems.length);
             return (
@@ -363,6 +403,7 @@ export function PMScheduleCalendar() {
                 type="button"
                 onClick={() => setSelectedDate(isSelected ? null : key)}
                 aria-pressed={isSelected}
+                aria-label={`${key}: ${totalItems} maintenance ${totalItems === 1 ? "item" : "items"}${overdue ? `, ${overdue} overdue` : ""}`}
                 className={cn(
                   "group flex h-24 flex-col items-stretch rounded-xl border-2 p-2 text-left transition-all sm:h-28",
                   isSelected
@@ -408,6 +449,11 @@ export function PMScheduleCalendar() {
                       {completed} done
                     </span>
                   )}
+                  {cancelled > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-1.5 py-0.5 text-slate-800">
+                      {cancelled} cancelled
+                    </span>
+                  )}
                   {previewItems.length > 0 && (
                     <div className="mt-1 space-y-0.5 overflow-hidden">
                       {previewItems.map((item) => (
@@ -415,7 +461,9 @@ export function PMScheduleCalendar() {
                           key={`${item.pm_id || item.plan_id}-${item.calendar_date || item.scheduled_date}-${item.occurrence_type || "scheduled"}`}
                           className={cn(
                             "truncate rounded-md px-1.5 py-0.5 text-[10px] font-extrabold leading-4",
-                            item.occurrence_type === "projected"
+                            item.calendar_status === "cancelled"
+                              ? "bg-slate-200 text-slate-800 line-through"
+                              : item.occurrence_type === "projected"
                               ? "bg-purple-100 text-purple-900"
                               : item.occurrence_type === "next_due"
                                 ? "bg-amber-100 text-amber-900"
@@ -451,12 +499,8 @@ export function PMScheduleCalendar() {
           })}
         </div>
 
-        {loading && !data && (
-          <div className="flex items-center justify-center gap-2 pt-3 text-sm font-medium text-slate-500">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading schedule...
-          </div>
-        )}
-      </section>
+        {visibleData?.total === 0 && <p className="pt-4 text-center text-sm font-medium text-slate-500">No preventive maintenance is scheduled in this period.</p>}
+      </section>}
 
       {selectedBucket && (
         <section
@@ -508,6 +552,15 @@ export function PMScheduleCalendar() {
                           : `Plan #${item.plan_id}`}{" "}
                         · {item.frequency || "one-off"}
                       </p>
+                      <p className="mt-1 text-xs font-bold capitalize text-slate-700">
+                        Status: {item.calendar_status || item.status || "open"}
+                      </p>
+                      {item.machines && item.machines.length > 0 && (
+                        <p className="mt-1 line-clamp-2 text-xs font-medium text-slate-600">
+                          Machines: {item.machines.map((machine) => machine.name || machine.machine_id).join(", ")}
+                        </p>
+                      )}
+                      {item.assigned_to_name && <p className="mt-1 text-xs font-medium text-slate-600">Assigned to: {item.assigned_to_name}</p>}
                       {item.calendar_date && (
                         <p className="mt-1 text-xs font-semibold text-slate-600">
                           {item.occurrence_type === "projected"
@@ -521,13 +574,14 @@ export function PMScheduleCalendar() {
                             {
                               hour: "numeric",
                               minute: "2-digit",
+                              timeZone: visibleData?.timezone,
                             },
                           )}
                         </p>
                       )}
                     </div>
                     <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-700">
-                      {targetPmId ? "Open" : "Projected"}{" "}
+                      {targetPmId ? "View" : "View plan"}{" "}
                       <ArrowRight className="h-3 w-3" />
                     </span>
                   </>
@@ -537,14 +591,14 @@ export function PMScheduleCalendar() {
                     {targetPmId ? (
                       <Link
                         href={`/dashboard/preventive-maintenance/${targetPmId}`}
-                        className="flex items-start justify-between gap-3 rounded-xl border border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-50"
+                        className="flex min-h-11 items-start justify-between gap-3 rounded-xl border border-slate-200 p-3 transition-colors hover:border-slate-300 hover:bg-slate-50"
                       >
                         {cardBody}
                       </Link>
                     ) : item.plan_id ? (
                       <Link
                         href={`/dashboard/preventive-maintenance/${item.plan_id}`}
-                        className="flex items-start justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50/50 p-3 transition-colors hover:border-purple-300 hover:bg-purple-50"
+                        className="flex min-h-11 items-start justify-between gap-3 rounded-xl border border-purple-200 bg-purple-50/50 p-3 transition-colors hover:border-purple-300 hover:bg-purple-50"
                       >
                         {cardBody}
                       </Link>
@@ -561,7 +615,7 @@ export function PMScheduleCalendar() {
 
       <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-3 text-xs font-medium text-slate-600">
         <Sparkles className="mr-1 inline h-3 w-3 text-blue-500" />
-        Tap any day with items to see what's scheduled. Cells with red borders
+        Tap any day with items to see what&apos;s scheduled. Cells with red borders
         include overdue work.
       </div>
     </div>

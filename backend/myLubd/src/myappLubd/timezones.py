@@ -79,7 +79,12 @@ def object_timezone(obj=None):
     machines = getattr(obj, 'machines', None)
     if machines is not None:
         try:
-            machine = machines.select_related('property__tenant').first()
+            prefetched_machines = getattr(obj, '_prefetched_objects_cache', {}).get('machines')
+            if prefetched_machines is not None:
+                machine_list = list(prefetched_machines)
+                machine = machine_list[0] if machine_list else None
+            else:
+                machine = machines.select_related('property__tenant').first()
             if machine and machine.property:
                 return property_timezone(machine.property)
         except Exception:

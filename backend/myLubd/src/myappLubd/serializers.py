@@ -1129,10 +1129,12 @@ def get_pm_property_external_id(obj):
     if obj.job_id and obj.job.property_id:
         return obj.job.property.property_id
 
-    property_ids = list(
-        obj.machines.values_list('property__property_id', flat=True).distinct()[:2]
-    )
-    return property_ids[0] if len(property_ids) == 1 else None
+    property_ids = {
+        machine.property.property_id
+        for machine in obj.machines.all()
+        if machine.property_id
+    }
+    return next(iter(property_ids)) if len(property_ids) == 1 else None
 
 
 class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
@@ -1181,7 +1183,8 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
         return obj.job.description if obj.job else None
 
     def get_machines(self, obj):
-        return MachineSerializer(obj.machines.all(), many=True).data if obj.machines.exists() else []
+        machines = list(obj.machines.all())
+        return MachineSerializer(machines, many=True).data if machines else []
 
     def get_property_id(self, obj):
         return get_pm_property_external_id(obj)

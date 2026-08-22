@@ -5,7 +5,9 @@ These complement tests_area_comments.py and use the same APITestCase /
 force_authenticate pattern so they slot into the existing `manage.py test`
 runner without extra config."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
+from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
 
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -181,9 +183,9 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(username='tech', password='pw12345!')
-        tenant = Tenant.objects.create(name='Schedule Tenant')
-        self.prop = Property.objects.create(name='Hotel S', tenant=tenant)
-        TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.prop)
+        self.tenant = Tenant.objects.create(name='Schedule Tenant')
+        self.prop = Property.objects.create(name='Hotel S', tenant=self.tenant)
+        TenantMembership.objects.create(user=self.user, tenant=self.tenant, role='technician').properties.add(self.prop)
         self.room = Room.objects.create(name='S-1', room_type='Standard', property=self.prop)
 
         now = timezone.now()
@@ -227,21 +229,32 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
         self.pm_overdue.job.rooms.set([self.room])
         self.pm_overdue.save(update_fields=['job'])
 
+    def schedule_url(self, **params):
+        return '/api/v1/preventive-maintenance/schedule/?' + urlencode({
+            'property_id': self.prop.property_id,
+            **params,
+        })
+
     def test_schedule_returns_buckets(self):
         _login(self.client, self.user)
-        resp = self.client.get('/api/v1/preventive-maintenance/schedule/?days=30')
+        resp = self.client.get(self.schedule_url(days=30))
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
         body = resp.data
         self.assertEqual(body['status'], 'open')
         self.assertEqual(len(body['days']), 30)
         # Each bucket has the expected shape.
         first = body['days'][0]
-        for key in ('date', 'weekday', 'items', 'overdue_count', 'open_count', 'completed_count'):
+        for key in ('date', 'weekday', 'items', 'overdue_count', 'open_count', 'completed_count', 'cancelled_count'):
             self.assertIn(key, first)
+        self.assertEqual(body['property_id'], self.prop.property_id)
+        self.assertEqual(body['timezone'], self.tenant.timezone)
+        self.assertTrue(body['can_operate'])
+        expected_from = timezone.localdate() - timedelta(days=timezone.localdate().weekday())
+        self.assertEqual(body['from'], expected_from.isoformat())
 
     def test_schedule_caps_days_param(self):
         _login(self.client, self.user)
-        resp = self.client.get('/api/v1/preventive-maintenance/schedule/?days=9999')
+        resp = self.client.get(self.schedule_url(days=9999))
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         # Cap is 180.
         self.assertEqual(len(resp.data['days']), 180)
@@ -270,7 +283,7 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
         completed_pm.save(update_fields=['job'])
 
         _login(self.client, self.user)
-        resp = self.client.get('/api/v1/preventive-maintenance/schedule/?days=30&status=open')
+        resp = self.client.get(self.schedule_url(days=30, status='open'))
 
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
         due_date = timezone.localtime(next_due).date().isoformat()
@@ -306,9 +319,9 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
 
         _login(self.client, self.user)
         from_date = timezone.localdate().isoformat()
-        resp = self.client.get(
-            f'/api/v1/preventive-maintenance/schedule/?from={from_date}&date_from={from_date}&days=30&status=open'
-        )
+        resp = self.client.get(self.schedule_url(
+            **{'from': from_date, 'date_from': from_date, 'days': 30, 'status': 'open'}
+        ))
 
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
         due_date = timezone.localtime(next_due).date().isoformat()
@@ -320,9 +333,165 @@ class PreventiveMaintenanceScheduleTests(APITestCase):
     def test_schedule_is_tenant_scoped(self):
         other = User.objects.create_user(username='outsider', password='pw12345!')
         _login(self.client, other)
-        resp = self.client.get('/api/v1/preventive-maintenance/schedule/?days=30')
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data['total'], 0)
+        resp = self.client.get(self.schedule_url(days=30))
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_schedule_requires_property_and_rejects_invalid_range_inputs(self):
+        _login(self.client, self.user)
+        missing_property = self.client.get('/api/v1/preventive-maintenance/schedule/?days=30')
+        invalid_from = self.client.get(self.schedule_url(**{'from': 'not-a-date'}))
+        invalid_days = self.client.get(self.schedule_url(days=0))
+        invalid_status = self.client.get(self.schedule_url(status='unknown'))
+
+        self.assertEqual(missing_property.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(invalid_from.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(invalid_days.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(invalid_status.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_schedule_hides_mixed_property_pm_and_deduplicates_multi_machine_pm(self):
+        second_machine = Machine.objects.create(name='Second local machine', property=self.prop)
+        self.pm_today.machines.add(second_machine, Machine.objects.create(name='Third local machine', property=self.prop))
+
+        foreign_tenant = Tenant.objects.create(name='Foreign Schedule Tenant')
+        foreign_property = Property.objects.create(name='Foreign Hotel', tenant=foreign_tenant)
+        foreign_machine = Machine.objects.create(name='Foreign machine', property=foreign_property)
+        self.pm_overdue.machines.add(foreign_machine)
+        orphan = PreventiveMaintenance.objects.create(
+            pmtitle='No canonical property',
+            scheduled_date=timezone.now(),
+            created_by=self.user,
+        )
+
+        _login(self.client, self.user)
+        start = (timezone.localdate() - timedelta(days=7)).isoformat()
+        response = self.client.get(self.schedule_url(**{'from': start, 'days': 14, 'status': 'all'}))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        items = [item for bucket in response.data['days'] for item in bucket['items']]
+        self.assertEqual(sum(item['pm_id'] == self.pm_today.pm_id for item in items), 1)
+        self.assertNotIn(self.pm_overdue.pm_id, {item['pm_id'] for item in items})
+        self.assertNotIn(orphan.pm_id, {item['pm_id'] for item in items})
+
+    def test_schedule_property_switch_queries_remain_isolated(self):
+        second_property = Property.objects.create(name='Hotel S2', tenant=self.tenant)
+        TenantMembership.objects.get(user=self.user, tenant=self.tenant).properties.add(second_property)
+        second_room = Room.objects.create(name='S2-1', room_type='Standard', property=second_property)
+        second_job = Job.objects.create(
+            user=self.user,
+            property=second_property,
+            description='Second property PM',
+            remarks='Test job',
+            status='pending',
+            priority='medium',
+            is_preventivemaintenance=True,
+        )
+        second_job.rooms.add(second_room)
+        second_pm = PreventiveMaintenance.objects.create(
+            pmtitle='Second property schedule',
+            job=second_job,
+            scheduled_date=timezone.now(),
+            created_by=self.user,
+        )
+        _login(self.client, self.user)
+        start = (timezone.localdate() - timedelta(days=7)).isoformat()
+
+        first_response = self.client.get(self.schedule_url(
+            **{'from': start, 'days': 14, 'status': 'all'}
+        ))
+        second_response = self.client.get(
+            '/api/v1/preventive-maintenance/schedule/?' + urlencode({
+                'property_id': second_property.property_id,
+                'from': start,
+                'days': 14,
+                'status': 'all',
+            })
+        )
+
+        self.assertEqual(first_response.status_code, status.HTTP_200_OK, first_response.content)
+        self.assertEqual(second_response.status_code, status.HTTP_200_OK, second_response.content)
+        first_ids = {item['pm_id'] for bucket in first_response.data['days'] for item in bucket['items']}
+        second_ids = {item['pm_id'] for bucket in second_response.data['days'] for item in bucket['items']}
+        self.assertNotIn(second_pm.pm_id, first_ids)
+        self.assertEqual(second_ids, {second_pm.pm_id})
+
+    def test_schedule_viewer_can_read_but_cannot_reschedule(self):
+        viewer = User.objects.create_user(username='schedule-viewer', password='pw12345!')
+        TenantMembership.objects.create(user=viewer, tenant=self.tenant, role='viewer').properties.add(self.prop)
+        _login(self.client, viewer)
+
+        schedule_response = self.client.get(self.schedule_url(days=30))
+        reschedule_response = self.client.post(
+            f'/api/v1/preventive-maintenance/{self.pm_today.pm_id}/reschedule/',
+            {'scheduled_date': (timezone.now() + timedelta(days=3)).isoformat()},
+            format='json',
+        )
+
+        self.assertEqual(schedule_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(schedule_response.data['can_operate'])
+        self.assertEqual(reschedule_response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_operator_reschedule_validates_and_localizes_naive_datetime(self):
+        self.tenant.timezone = 'America/New_York'
+        self.tenant.save(update_fields=['timezone'])
+        _login(self.client, self.user)
+
+        invalid = self.client.post(
+            f'/api/v1/preventive-maintenance/{self.pm_today.pm_id}/reschedule/',
+            {'scheduled_date': 'not-a-date'},
+            format='json',
+        )
+        valid = self.client.post(
+            f'/api/v1/preventive-maintenance/{self.pm_today.pm_id}/reschedule/',
+            {'scheduled_date': '2026-01-15T09:30:00'},
+            format='json',
+        )
+
+        self.assertEqual(invalid.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(valid.status_code, status.HTTP_200_OK, valid.content)
+        self.pm_today.refresh_from_db()
+        self.assertEqual(str(self.pm_today.scheduled_date.astimezone(ZoneInfo('America/New_York')).time()), '09:30:00')
+
+    def test_cancelled_pm_is_not_counted_open_or_overdue(self):
+        self.pm_today.status = 'cancelled'
+        cancelled_at = timezone.now() - timedelta(hours=1)
+        self.pm_today.scheduled_date = cancelled_at
+        self.pm_today.save(update_fields=['status', 'scheduled_date'])
+        _login(self.client, self.user)
+        cancelled_date = timezone.localtime(
+            cancelled_at, ZoneInfo(self.tenant.timezone)
+        ).date().isoformat()
+
+        response = self.client.get(self.schedule_url(
+            **{'from': cancelled_date, 'days': 1, 'status': 'all'}
+        ))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        bucket = response.data['days'][0]
+        item = next(item for item in bucket['items'] if item['pm_id'] == self.pm_today.pm_id)
+        self.assertEqual(item['calendar_status'], 'cancelled')
+        self.assertEqual(bucket['cancelled_count'], 1)
+        self.assertEqual(bucket['open_count'], 0)
+        self.assertEqual(bucket['overdue_count'], 0)
+
+    def test_schedule_uses_property_timezone_at_utc_date_boundary(self):
+        self.tenant.timezone = 'America/Los_Angeles'
+        self.tenant.save(update_fields=['timezone'])
+        boundary = datetime(2026, 1, 2, 0, 30, tzinfo=ZoneInfo('UTC'))
+        self.pm_today.scheduled_date = boundary
+        self.pm_today.save(update_fields=['scheduled_date'])
+        _login(self.client, self.user)
+
+        response = self.client.get(self.schedule_url(
+            **{'from': '2026-01-01', 'days': 1, 'status': 'all'}
+        ))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(response.data['timezone'], 'America/Los_Angeles')
+        self.assertEqual(response.data['days'][0]['date'], '2026-01-01')
+        self.assertEqual(
+            [item['pm_id'] for item in response.data['days'][0]['items']],
+            [self.pm_today.pm_id],
+        )
 
 
 class PreventiveMaintenanceCreateTests(APITestCase):
@@ -391,7 +560,9 @@ class PMMasterPlanWorkflowTests(APITestCase):
         plan.machines.set([self.machine])
 
         _login(self.client, self.user)
-        resp = self.client.get('/api/v1/preventive-maintenance/schedule/?days=30&status=open')
+        resp = self.client.get(
+            f'/api/v1/preventive-maintenance/schedule/?days=30&status=open&property_id={self.prop.property_id}'
+        )
 
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
         items = [item for bucket in resp.data['days'] for item in bucket['items']]

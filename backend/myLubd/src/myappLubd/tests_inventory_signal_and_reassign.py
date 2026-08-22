@@ -137,7 +137,11 @@ class JobReassignTests(TestCase):
         self._login(self.alice)
         resp = self.client.post(
             f'/api/v1/jobs/{self.job.job_id}/reassign/',
-            {'user_id': self.bob.id, 'note': 'Bob is closer to the floor.'},
+            {
+                'user_id': self.bob.id,
+                'property_id': self.prop.property_id,
+                'note': 'Bob is closer to the floor.',
+            },
             format='json',
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
@@ -154,27 +158,27 @@ class JobReassignTests(TestCase):
         self._login(self.alice)
         resp = self.client.post(
             f'/api/v1/jobs/{self.job.job_id}/reassign/',
-            {'user_id': self.outsider.id},
+            {'user_id': self.outsider.id, 'property_id': self.prop.property_id},
             format='json',
         )
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, resp.content)
         self.job.refresh_from_db()
         self.assertEqual(self.job.user, self.alice)
 
-    def test_reassign_missing_user_returns_404(self):
+    def test_reassign_missing_user_does_not_disclose_directory_membership(self):
         self._login(self.alice)
         resp = self.client.post(
             f'/api/v1/jobs/{self.job.job_id}/reassign/',
-            {'user_id': 99999},
+            {'user_id': 99999, 'property_id': self.prop.property_id},
             format='json',
         )
-        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_reassign_to_current_assignee_is_rejected(self):
         self._login(self.alice)
         resp = self.client.post(
             f'/api/v1/jobs/{self.job.job_id}/reassign/',
-            {'user_id': self.alice.id},
+            {'user_id': self.alice.id, 'property_id': self.prop.property_id},
             format='json',
         )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
@@ -183,9 +187,204 @@ class JobReassignTests(TestCase):
         self._login(self.alice)
         resp = self.client.post(
             f'/api/v1/jobs/{self.job.job_id}/reassign/',
-            {'user_id': 'bob'},
+            {'user_id': 'bob', 'property_id': self.prop.property_id},
             format='json',
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
         self.job.refresh_from_db()
         self.assertEqual(self.job.user, self.bob)
+
+    def test_job_detail_supplies_assignee_property_and_assignment_capability(self):
+        self.alice.first_name = 'Alice'
+        self.alice.last_name = 'Engineer'
+        self.alice.save(update_fields=['first_name', 'last_name'])
+
+        self._login(self.alice)
+        resp = self.client.get(f'/api/v1/jobs/{self.job.job_id}/')
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        self.assertEqual(resp.data['property_id'], self.prop.property_id)
+        self.assertTrue(resp.data['can_operate'])
+        self.assertTrue(resp.data['can_assign'])
+        self.assertEqual(resp.data['user']['id'], self.alice.id)
+        self.assertEqual(resp.data['user']['full_name'], 'Alice Engineer')
+
+    def test_viewer_can_read_job_but_cannot_enumerate_or_reassign(self):
+        viewer = User.objects.create_user(username='viewer', password='pw12345!')
+        TenantMembership.objects.create(
+            user=viewer,
+            tenant=self.prop.tenant,
+            role='viewer',
+        ).properties.add(self.prop)
+        self._login(viewer)
+
+        detail = self.client.get(f'/api/v1/jobs/{self.job.job_id}/')
+        self.assertEqual(detail.status_code, status.HTTP_200_OK, detail.content)
+        self.assertFalse(detail.data['can_operate'])
+        self.assertFalse(detail.data['can_assign'])
+
+        candidates = self.client.get(
+            f'/api/v1/jobs/{self.job.job_id}/assignment-candidates/',
+            {'property_id': self.prop.property_id},
+        )
+        self.assertEqual(candidates.status_code, status.HTTP_403_FORBIDDEN)
+
+        mutation = self.client.post(
+            f'/api/v1/jobs/{self.job.job_id}/reassign/',
+            {'user_id': self.bob.id, 'property_id': self.prop.property_id},
+            format='json',
+        )
+        self.assertEqual(mutation.status_code, status.HTTP_403_FORBIDDEN)
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.user, self.alice)
+
+    def test_billing_can_read_job_but_has_no_assignment_capability(self):
+        billing = User.objects.create_user(username='billing', password='pw12345!')
+        TenantMembership.objects.create(
+            user=billing,
+            tenant=self.prop.tenant,
+            role='billing',
+        ).properties.add(self.prop)
+        self._login(billing)
+
+        detail = self.client.get(f'/api/v1/jobs/{self.job.job_id}/')
+        self.assertEqual(detail.status_code, status.HTTP_200_OK, detail.content)
+        self.assertFalse(detail.data['can_operate'])
+        self.assertFalse(detail.data['can_assign'])
+
+    def test_role_assignment_capabilities_follow_canonical_operator_roles(self):
+        expected_by_role = {
+            'owner': True,
+            'admin': True,
+            'manager': True,
+            'supervisor': True,
+            'technician': True,
+            'viewer': False,
+            'billing': False,
+        }
+        for role, expected in expected_by_role.items():
+            with self.subTest(role=role):
+                user = User.objects.create_user(
+                    username=f'role-{role}',
+                    password='pw12345!',
+                )
+                membership = TenantMembership.objects.create(
+                    user=user,
+                    tenant=self.prop.tenant,
+                    role=role,
+                )
+                if role in {'supervisor', 'technician', 'viewer', 'billing'}:
+                    membership.properties.add(self.prop)
+                self._login(user)
+
+                detail = self.client.get(f'/api/v1/jobs/{self.job.job_id}/')
+
+                self.assertEqual(detail.status_code, status.HTTP_200_OK, detail.content)
+                self.assertEqual(detail.data['can_operate'], expected)
+                self.assertEqual(detail.data['can_assign'], expected)
+
+        superuser = User.objects.create_superuser(
+            username='role-superuser',
+            password='pw12345!',
+        )
+        self._login(superuser)
+        detail = self.client.get(f'/api/v1/jobs/{self.job.job_id}/')
+        self.assertEqual(detail.status_code, status.HTTP_200_OK, detail.content)
+        self.assertTrue(detail.data['can_operate'])
+        self.assertTrue(detail.data['can_assign'])
+
+    def test_assignment_candidates_are_active_operator_members_of_same_property(self):
+        manager = User.objects.create_user(username='manager', password='pw12345!')
+        TenantMembership.objects.create(
+            user=manager,
+            tenant=self.prop.tenant,
+            role='manager',
+        )
+        supervisor = User.objects.create_user(username='supervisor', password='pw12345!')
+        TenantMembership.objects.create(
+            user=supervisor,
+            tenant=self.prop.tenant,
+            role='supervisor',
+        ).properties.add(self.prop)
+        viewer = User.objects.create_user(username='candidate-viewer', password='pw12345!')
+        TenantMembership.objects.create(
+            user=viewer,
+            tenant=self.prop.tenant,
+            role='viewer',
+        ).properties.add(self.prop)
+        other_property = Property.objects.create(name='Same Tenant Other', tenant=self.prop.tenant)
+        cross_property_operator = User.objects.create_user(
+            username='cross-property', password='pw12345!'
+        )
+        TenantMembership.objects.create(
+            user=cross_property_operator,
+            tenant=self.prop.tenant,
+            role='technician',
+        ).properties.add(other_property)
+        inactive_membership_user = User.objects.create_user(
+            username='inactive-membership', password='pw12345!'
+        )
+        TenantMembership.objects.create(
+            user=inactive_membership_user,
+            tenant=self.prop.tenant,
+            role='technician',
+            is_active=False,
+        ).properties.add(self.prop)
+
+        self._login(self.alice)
+        resp = self.client.get(
+            f'/api/v1/jobs/{self.job.job_id}/assignment-candidates/',
+            {'property_id': self.prop.property_id},
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
+        usernames = {candidate['username'] for candidate in resp.data}
+        self.assertEqual(usernames, {'alice', 'bob', 'manager', 'supervisor'})
+
+    def test_assignment_rejects_ineligible_same_property_role(self):
+        viewer = User.objects.create_user(username='target-viewer', password='pw12345!')
+        TenantMembership.objects.create(
+            user=viewer,
+            tenant=self.prop.tenant,
+            role='viewer',
+        ).properties.add(self.prop)
+        self._login(self.alice)
+
+        resp = self.client.post(
+            f'/api/v1/jobs/{self.job.job_id}/reassign/',
+            {'user_id': viewer.id, 'property_id': self.prop.property_id},
+            format='json',
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.job.refresh_from_db()
+        self.assertEqual(self.job.user, self.alice)
+
+    def test_assignment_requires_matching_external_active_property(self):
+        other_property = Property.objects.create(name='Wrong Active Property', tenant=self.prop.tenant)
+        self._login(self.alice)
+
+        missing = self.client.get(
+            f'/api/v1/jobs/{self.job.job_id}/assignment-candidates/'
+        )
+        self.assertEqual(missing.status_code, status.HTTP_400_BAD_REQUEST)
+
+        mismatch = self.client.get(
+            f'/api/v1/jobs/{self.job.job_id}/assignment-candidates/',
+            {'property_id': other_property.property_id},
+        )
+        # JobViewSet applies property_id to its scoped queryset before the
+        # action, so a mismatched active Property hides the job.
+        self.assertEqual(mismatch.status_code, status.HTTP_404_NOT_FOUND)
+
+        mutation_mismatch = self.client.post(
+            f'/api/v1/jobs/{self.job.job_id}/reassign/',
+            {'user_id': self.bob.id, 'property_id': other_property.property_id},
+            format='json',
+        )
+        self.assertEqual(mutation_mismatch.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_unauthorized_property_job_remains_hidden(self):
+        self._login(self.outsider)
+        resp = self.client.get(f'/api/v1/jobs/{self.job.job_id}/')
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)

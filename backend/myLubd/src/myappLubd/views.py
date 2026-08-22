@@ -36,7 +36,7 @@ from .serializers import (
     MaintenanceProcedureSerializer, MaintenanceProcedureListSerializer,
     UtilityConsumptionSerializer, UtilityConsumptionListSerializer,
     InventorySerializer, InventoryListSerializer, InventoryUsageSerializer,
-    AreaSerializer, JobCommentSerializer, TenantSerializer,
+    AreaSerializer, JobCommentSerializer, TenantSerializer, JobAssignmentCandidateSerializer,
     TenantMembershipSerializer, SubscriptionPlanSerializer,
     TenantSubscriptionSerializer, UsageMetricSerializer,
 )
@@ -71,6 +71,7 @@ from .tenancy import (
     get_operable_properties,
     get_property_summary_recipients,
     get_user_tenants,
+    TENANT_OPERATOR_ROLES,
     TENANT_WIDE_PROPERTY_ROLES,
     tenant_usage_counts,
     user_can_manage_tenant,
@@ -1533,6 +1534,29 @@ def _ensure_user_can_operate_property(user, property_obj):
         return
     if not get_operable_properties(user).filter(pk=property_obj.pk).exists():
         raise PermissionDenied("Your role cannot modify data for this property.")
+
+
+def _job_assignment_candidates(property_obj):
+    """Active users whose canonical membership can operate one Property."""
+    if property_obj is None or property_obj.tenant_id is None:
+        return User.objects.none()
+
+    operator_roles = TENANT_OPERATOR_ROLES
+    tenant_wide_operator_roles = TENANT_WIDE_PROPERTY_ROLES & operator_roles
+    return User.objects.filter(
+        Q(
+            tenant_memberships__tenant_id=property_obj.tenant_id,
+            tenant_memberships__is_active=True,
+            tenant_memberships__role__in=tenant_wide_operator_roles,
+        )
+        | Q(
+            tenant_memberships__tenant_id=property_obj.tenant_id,
+            tenant_memberships__is_active=True,
+            tenant_memberships__role__in=operator_roles,
+            tenant_memberships__properties=property_obj,
+        ),
+        is_active=True,
+    ).distinct().order_by('first_name', 'last_name', 'username', 'pk')
 
 
 def consume_inventory_items(*, user, items, job=None, preventive_maintenance=None, source='manual'):
@@ -3575,6 +3599,7 @@ class JobViewSet(viewsets.ModelViewSet):
         queryset = Job.objects.select_related(
             'user',           # Foreign key to User
             'updated_by',     # Foreign key to User
+            'property',       # Canonical Job ownership
             'area',           # Foreign key to Area
             'area__property',
         ).prefetch_related(
@@ -3600,10 +3625,9 @@ class JobViewSet(viewsets.ModelViewSet):
         user_filter = self.request.query_params.get('user_id')
 
         if property_filter:
-            property_q = Q(property__property_id=property_filter)
-            if str(property_filter).isdigit():
-                property_q |= Q(property_id=int(property_filter))
-            queryset = queryset.filter(property_q)
+            # Request-facing Job scope uses only the public Property identity.
+            # Database primary keys are not an active-property contract.
+            queryset = queryset.filter(property__property_id=property_filter)
 
         if topic_filter and str(topic_filter).lower() != 'all':
             queryset = queryset.filter(topics__id=topic_filter)
@@ -4135,15 +4159,25 @@ class JobViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], url_path='reassign')
     def reassign(self, request, job_id=None):
-        """Reassign the job to another user that shares at least one of the
-        job's properties.
+        """Reassign a job to an active operator for its canonical Property.
 
-        Body: {"user_id": <id|username>, "note"?: str}
+        Body: {"user_id": <id|username>, "property_id": <external id>, "note"?: str}
 
         Stamps the remarks with the same status-note format the audit log
         already parses, so the timeline picks up the reassignment as a
         first-class event. Pushes both the new and previous assignee."""
         job = self.get_object()
+        _ensure_user_can_operate_property(request.user, job.property)
+
+        active_property_id = str((request.data or {}).get('property_id') or '').strip()
+        if not active_property_id:
+            raise ValidationError({'property_id': 'An active property is required.'})
+        active_property = Property.objects.filter(property_id=active_property_id).first()
+        if active_property is None:
+            raise ValidationError({'property_id': 'Invalid property ID.'})
+        if active_property.pk != job.property_id:
+            raise ValidationError({'property_id': 'Active property does not match this job.'})
+
         target_raw = (request.data or {}).get('user_id')
         if not target_raw:
             return Response(
@@ -4151,29 +4185,16 @@ class JobViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        target = None
         target_str = str(target_raw).strip()
+        candidates = _job_assignment_candidates(job.property)
+        target = None
         if target_str.isdigit():
-            target = User.objects.filter(pk=int(target_str)).first()
+            target = candidates.filter(pk=int(target_str)).first()
         if target is None:
-            target = User.objects.filter(username__iexact=target_str).first()
+            target = candidates.filter(username__iexact=target_str).first()
         if target is None:
             return Response(
-                {'error': 'Target user not found.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        # Reassignment scope: target must share at least one property with
-        # the job (either through a job-rooms property or the job's area
-        # property). The target's canonical scope is always enforced. A
-        # platform superuser naturally receives all properties from the helper.
-        job_property_ids = {job.property_id} if job.property_id else set()
-        target_property_ids = set(
-            get_accessible_properties(target).values_list('id', flat=True)
-        )
-        if job_property_ids and not job_property_ids & target_property_ids:
-            return Response(
-                {'error': "Target user has no access to this job's property."},
+                {'error': 'Target user is not eligible for this property.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -4236,6 +4257,24 @@ class JobViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+
+    @action(detail=True, methods=['get'], url_path='assignment-candidates')
+    def assignment_candidates(self, request, job_id=None):
+        """Return the smallest same-Property set needed by reassignment UI."""
+        job = self.get_object()
+        _ensure_user_can_operate_property(request.user, job.property)
+
+        active_property_id = str(request.query_params.get('property_id') or '').strip()
+        if not active_property_id:
+            raise ValidationError({'property_id': 'An active property is required.'})
+        active_property = Property.objects.filter(property_id=active_property_id).first()
+        if active_property is None:
+            raise ValidationError({'property_id': 'Invalid property ID.'})
+        if active_property.pk != job.property_id:
+            raise ValidationError({'property_id': 'Active property does not match this job.'})
+
+        candidates = _job_assignment_candidates(job.property)
+        return Response(JobAssignmentCandidateSerializer(candidates, many=True).data)
 
 
 class TenantViewSet(viewsets.ModelViewSet):

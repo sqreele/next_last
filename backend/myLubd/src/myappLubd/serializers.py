@@ -163,6 +163,14 @@ class UserSummarySerializer(serializers.ModelSerializer):
         return get_user_public_username(obj)
 
 
+class JobAssignmentCandidateSerializer(UserSummarySerializer):
+    """Minimal identity projection for a property-scoped assignment choice."""
+
+    class Meta(UserSummarySerializer.Meta):
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'full_name', 'display_name']
+        read_only_fields = fields
+
+
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubscriptionPlan
@@ -686,6 +694,8 @@ class JobSerializer(serializers.ModelSerializer):
     )
     area_name = serializers.CharField(source='area.name', read_only=True)
     comments_count = serializers.SerializerMethodField()
+    can_operate = serializers.SerializerMethodField()
+    can_assign = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -696,13 +706,43 @@ class JobSerializer(serializers.ModelSerializer):
             'remarks', 'created_at', 'updated_at', 'completed_at', 'is_defective',
             'rooms', 'topics', 'images', 'profile_image', 'room_type', 'name',
             'topic_data', 'room_id', 'room_ids', 'property_id', 'image_urls', 'is_preventivemaintenance',
-            'area', 'area_id', 'area_name', 'comments_count',
+            'area', 'area_id', 'area_name', 'comments_count', 'can_operate', 'can_assign',
         ]
         read_only_fields = [
             'id', 'job_id', 'user', 'user_username', 'user_first_name', 'user_last_name',
             'user_email', 'user_name', 'technician_name', 'created_by_name',
             'updated_by_name', 'images', 'topics', 'area', 'area_name', 'comments_count',
+            'can_operate', 'can_assign',
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Writes accept the public Property.property_id through the existing
+        # write-only field. Reads expose that same public identity rather than
+        # the database primary key so clients can preserve active-property
+        # context without guessing from rooms or legacy profile fields.
+        property_obj = getattr(instance, 'property', None)
+        data['property_id'] = getattr(property_obj, 'property_id', None)
+        return data
+
+    def _can_operate(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False) or not obj.property_id:
+            return False
+        if user.is_superuser:
+            return True
+        if not hasattr(self, '_operable_property_ids'):
+            self._operable_property_ids = set(
+                get_operable_properties(user).values_list('pk', flat=True)
+            )
+        return obj.property_id in self._operable_property_ids
+
+    def get_can_operate(self, obj):
+        return self._can_operate(obj)
+
+    def get_can_assign(self, obj):
+        return self._can_operate(obj)
 
     def get_comments_count(self, obj):
         try:

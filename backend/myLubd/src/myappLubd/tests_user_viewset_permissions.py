@@ -96,3 +96,22 @@ class UserViewSetPermissionTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)
         usernames = {item['username'] for item in resp.data}
         self.assertEqual(usernames, {'admin'})
+
+    def test_staff_user_cannot_access_superuser_detailed_profile_directory(self):
+        self.client.force_authenticate(user=self.admin)
+
+        resp = self.client.get('/api/v1/user-profiles/detailed/')
+
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, resp.content)
+
+    def test_platform_superuser_can_access_detailed_profile_directory(self):
+        superuser = User.objects.create_superuser(
+            username='platform-superuser',
+            email='platform@example.com',
+            password='pw12345!',
+        )
+        self.client.force_authenticate(user=superuser)
+
+        resp = self.client.get('/api/v1/user-profiles/detailed/')
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.content)

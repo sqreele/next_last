@@ -10,7 +10,7 @@ import { useMainStore } from '@/app/lib/stores/mainStore';
 import { createPreventiveMaintenanceService } from '@/app/lib/PreventiveMaintenanceService';
 import { fetchTopics } from '@/app/lib/data.server';
 import MachineService from '@/app/lib/MachineService';
-import type { SearchParams, DashboardStats } from '@/app/lib/stores/usePreventiveMaintenanceStore';
+import type { SearchParams } from '@/app/lib/stores/usePreventiveMaintenanceStore';
 import type { PreventiveMaintenance } from '@/app/lib/preventiveMaintenanceModels';
 import { logger } from '@/app/lib/utils/logger';
 
@@ -293,9 +293,7 @@ export function usePreventiveMaintenanceActions() {
       });
       
       if (requestId === statisticsRequestRef.current && response.success && response.data) {
-        // Type assertion to match store's DashboardStats interface
-        // The API returns array format but store expects Record format
-        setStatistics(response.data as unknown as DashboardStats);
+        setStatistics(response.data);
       }
     } catch (error) {
       logger.error('Error fetching statistics', error);

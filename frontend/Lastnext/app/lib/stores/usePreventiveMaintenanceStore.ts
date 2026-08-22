@@ -27,7 +27,10 @@ export interface DashboardStats {
     overdue: number;
     cancelled?: number;
   };
-  frequency_distribution: Record<FrequencyType, number>;
+  frequency_distribution: Array<{
+    frequency: string;
+    count: number;
+  }>;
   upcoming: PreventiveMaintenance[];
   avg_completion_times: Record<string, number>;
 }

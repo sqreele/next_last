@@ -167,15 +167,7 @@ export function PreventiveMaintenanceProvider({ children }: { children: React.Re
     try {
       const response = await preventiveMaintenanceService.getEnhancedStatistics(30);
       if (response.success && response.data) {
-        // Convert the service response to match the store's expected format
-        const convertedStats = {
-          ...response.data,
-          frequency_distribution: response.data.frequency_distribution.reduce((acc, item) => {
-            acc[item.frequency as any] = item.count;
-            return acc;
-          }, {} as Record<string, number>)
-        };
-        setStatistics(convertedStats);
+        setStatistics(response.data);
       }
     } catch (error: any) {
       console.error('Error fetching statistics:', error);

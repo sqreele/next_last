@@ -42,12 +42,14 @@ export interface CompletePreventiveMaintenanceData {
 }
 
 export interface DashboardStats {
+  can_operate?: boolean;
   avg_completion_times: Record<string, number>;
   counts: {
     total: number;
     completed: number;
     pending: number;
     overdue: number;
+    cancelled?: number;
   };
   frequency_distribution: {
     frequency: string;

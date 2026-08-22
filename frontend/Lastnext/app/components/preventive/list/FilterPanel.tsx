@@ -125,7 +125,7 @@ export default function FilterPanel({
             >
               <option value="">All Status</option>
               <option value="completed">Completed</option>
-              <option value="pending">Pending</option>
+              <option value="pending">Upcoming</option>
               <option value="overdue">Overdue</option>
             </select>
             <select

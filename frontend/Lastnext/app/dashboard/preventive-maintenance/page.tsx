@@ -80,6 +80,20 @@ function PreventiveMaintenanceListPageContent() {
   const [sortBy, setSortBy] = useState<SortField>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
+  // Dashboard quick actions use shareable status query parameters. Hydrate
+  // that value into the existing filter store instead of creating a second
+  // URL-specific filter authority.
+  useEffect(() => {
+    const requestedStatus = new URLSearchParams(window.location.search).get('status');
+    if (
+      requestedStatus &&
+      ['pending', 'overdue', 'completed'].includes(requestedStatus) &&
+      useFilterStore.getState().status !== requestedStatus
+    ) {
+      setStatus(requestedStatus);
+    }
+  }, [setStatus]);
+
   useEffect(() => {
     setSelectedItems([]);
     setDeleteConfirm(null);

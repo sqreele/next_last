@@ -17,28 +17,6 @@ interface FrequencyDistributionItem {
   count: number; // Changed to match Django API response
 }
 
-// Helper function to get image URL
-const getImageUrl = (image: any): string | null => {
-  if (!image) return null;
-
-  // First try to get direct URL property
-  if (typeof image === "object" && "image_url" in image && image.image_url) {
-    return image.image_url;
-  }
-
-  // If no direct URL but we have an ID, construct URL
-  if (typeof image === "object" && "id" in image && image.id) {
-    return `/api/images/${image.id}`;
-  }
-
-  // If image is just a string URL
-  if (typeof image === "string") {
-    return image;
-  }
-
-  return null;
-};
-
 // Helper function to determine PM status
 const determinePMStatus = (item: PreventiveMaintenance): string => {
   // If status is already set, return it
@@ -73,20 +51,8 @@ const formatFrequencyName = (frequency: string | undefined | null): string => {
   if (!frequency || typeof frequency !== "string") {
     return "Unknown";
   }
-  return frequency.charAt(0).toUpperCase() + frequency.slice(1);
-};
-
-// Exclude placeholder/aggregate PM records like "All PM" from counts/lists
-const isAllPMItem = (item: PreventiveMaintenance): boolean => {
-  const title = (item?.pmtitle || "").trim().toLowerCase();
-  if (!title) return false;
-  return (
-    title === "all pm" ||
-    title === "all preventive maintenance" ||
-    title === "all preventive" ||
-    title.startsWith("all pm ") ||
-    title.endsWith(" all pm")
-  );
+  const normalized = frequency.replaceAll("_", " ");
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
 export default function PreventiveMaintenanceDashboard() {
@@ -94,15 +60,14 @@ export default function PreventiveMaintenanceDashboard() {
   const context = usePreventiveMaintenanceActions();
   const {
     statistics,
-    isLoading,
     error,
-    fetchMaintenanceItems,
     fetchStatistics,
   } = context;
   const selectedProperty = useMainStore(state => state.selectedPropertyId);
   const { data: session } = useSession();
   const accessToken = session?.user?.accessToken || null;
   const upcomingRequestRef = useRef(0);
+  const statisticsRequestRef = useRef(0);
 
   // Pagination state for upcoming maintenance
   const [upcomingPage, setUpcomingPage] = useState(1);
@@ -113,6 +78,8 @@ export default function PreventiveMaintenanceDashboard() {
   const [upcomingPropertyId, setUpcomingPropertyId] = useState<string | null>(null);
   const [upcomingTotal, setUpcomingTotal] = useState(0);
   const [upcomingLoading, setUpcomingLoading] = useState(false);
+  const [upcomingError, setUpcomingError] = useState<string | null>(null);
+  const [statisticsLoading, setStatisticsLoading] = useState(false);
 
   // Function to fetch upcoming maintenance with pagination
   const fetchUpcomingMaintenance = useCallback(
@@ -128,6 +95,7 @@ export default function PreventiveMaintenanceDashboard() {
 
       const requestId = ++upcomingRequestRef.current;
       setUpcomingLoading(true);
+      setUpcomingError(null);
       try {
         const params = {
           status: "pending",
@@ -156,11 +124,9 @@ export default function PreventiveMaintenanceDashboard() {
             total = response.data.count || 0;
           }
 
-          // Filter out aggregate/placeholder entries (e.g., title "All PM")
-          const filtered = items.filter((it) => !isAllPMItem(it));
-          setUpcomingItems(filtered);
+          setUpcomingItems(items);
           setUpcomingPropertyId(selectedProperty);
-          setUpcomingTotal(Array.isArray(response.data) ? filtered.length : total);
+          setUpcomingTotal(total);
         } else {
           console.error(
             "❌ Failed to fetch upcoming maintenance:",
@@ -169,6 +135,7 @@ export default function PreventiveMaintenanceDashboard() {
           setUpcomingItems([]);
           setUpcomingPropertyId(selectedProperty);
           setUpcomingTotal(0);
+          setUpcomingError(response.message || "Unable to load upcoming maintenance.");
         }
       } catch (error) {
         if (requestId !== upcomingRequestRef.current) return;
@@ -176,6 +143,7 @@ export default function PreventiveMaintenanceDashboard() {
         setUpcomingItems([]);
         setUpcomingPropertyId(selectedProperty);
         setUpcomingTotal(0);
+        setUpcomingError("Unable to load upcoming maintenance.");
       } finally {
         if (requestId === upcomingRequestRef.current) setUpcomingLoading(false);
       }
@@ -186,10 +154,20 @@ export default function PreventiveMaintenanceDashboard() {
   // Fetch maintenance data on component mount
   useEffect(() => {
     setUpcomingPage(1);
-    if (!selectedProperty) return;
-    fetchMaintenanceItems({ page: 1, page_size: 10 });
-    fetchStatistics();
-  }, [selectedProperty, fetchMaintenanceItems, fetchStatistics]);
+    if (!selectedProperty) {
+      statisticsRequestRef.current += 1;
+      setStatisticsLoading(false);
+      return;
+    }
+
+    const requestId = ++statisticsRequestRef.current;
+    setStatisticsLoading(true);
+    void fetchStatistics().finally(() => {
+      if (requestId === statisticsRequestRef.current) {
+        setStatisticsLoading(false);
+      }
+    });
+  }, [selectedProperty, fetchStatistics]);
 
   // Fetch upcoming maintenance with pagination
   useEffect(() => {
@@ -222,10 +200,13 @@ export default function PreventiveMaintenanceDashboard() {
 
   // Get completion rate percentage
   const getCompletionRate = (): number => {
-    if (!statistics?.counts?.total) return 0;
-    return Math.round(
-      (statistics.counts.completed / statistics.counts.total) * 100,
+    const completed = statistics?.counts?.completed || 0;
+    const eligibleTotal = Math.max(
+      0,
+      (statistics?.counts?.total || 0) - (statistics?.counts?.cancelled || 0),
     );
+    if (!eligibleTotal) return 0;
+    return Math.round((completed / eligibleTotal) * 100);
   };
 
   // Get maintenance title with fallback
@@ -244,7 +225,7 @@ export default function PreventiveMaintenanceDashboard() {
     );
   }
 
-  if (isLoading) {
+  if (statisticsLoading && !statistics) {
     return (
       <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
         <div className="text-center py-10">
@@ -286,6 +267,10 @@ export default function PreventiveMaintenanceDashboard() {
   }
 
   const canOperate = statistics.can_operate === true;
+  const completionEligibleTotal = Math.max(
+    0,
+    statistics.counts.total - (statistics.counts.cancelled || 0),
+  );
 
   return (
     <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
@@ -314,7 +299,7 @@ export default function PreventiveMaintenanceDashboard() {
       {/* Main Stats Cards */}
       <div className="mb-6 grid grid-cols-2 gap-3 md:mb-8 md:gap-6 lg:grid-cols-4">
         {/* Total */}
-        <div className="rounded-lg bg-card p-4 shadow sm:p-6">
+        <div className="order-3 rounded-lg bg-card p-4 shadow sm:p-6">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-blue-100 text-blue-600">
               <svg
@@ -344,7 +329,7 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
 
         {/* Upcoming open work */}
-        <div className="rounded-lg bg-card p-4 shadow sm:p-6">
+        <div className="order-2 rounded-lg bg-card p-4 shadow sm:p-6">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
               <svg
@@ -374,7 +359,7 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
 
         {/* Overdue */}
-        <div className="rounded-lg bg-card p-4 shadow sm:p-6">
+        <div className="order-1 rounded-lg bg-card p-4 shadow sm:p-6">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-red-100 text-red-600">
               <svg
@@ -404,7 +389,7 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
 
         {/* Completed */}
-        <div className="rounded-lg bg-card p-4 shadow sm:p-6">
+        <div className="order-4 rounded-lg bg-card p-4 shadow sm:p-6">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-green-100 text-green-600">
               <svg
@@ -449,8 +434,8 @@ export default function PreventiveMaintenanceDashboard() {
           <span className="ml-4 text-xl font-bold">{getCompletionRate()}%</span>
         </div>
         <p className="text-sm text-muted-foreground">
-          {statistics.counts.completed} of {statistics.counts.total} maintenance
-          tasks completed
+          {statistics.counts.completed} of {completionEligibleTotal} non-cancelled
+          maintenance tasks completed
         </p>
       </div>
 
@@ -484,6 +469,17 @@ export default function PreventiveMaintenanceDashboard() {
             </div>
           </div>
         )}
+      {(!statistics.frequency_distribution ||
+        statistics.frequency_distribution.length === 0) && (
+        <div className="mb-8 rounded-lg bg-card p-6 shadow">
+          <h2 className="mb-2 text-lg font-semibold text-muted-foreground">
+            Maintenance Frequency Distribution
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            No frequency data is available for this property yet.
+          </p>
+        </div>
+      )}
 
       {/* Average Completion Times - Using avg_completion_times data */}
       {statistics.avg_completion_times &&
@@ -523,6 +519,17 @@ export default function PreventiveMaintenanceDashboard() {
             </p>
           </div>
         )}
+      {(!statistics.avg_completion_times ||
+        Object.keys(statistics.avg_completion_times).length === 0) && (
+        <div className="mb-8 rounded-lg bg-card p-6 shadow">
+          <h2 className="mb-2 text-lg font-semibold text-muted-foreground">
+            Average Completion Times
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Completion timing will appear after tasks have been completed.
+          </p>
+        </div>
+      )}
 
       {/* Enhanced Upcoming Maintenance Section */}
       <div className="bg-card rounded-lg shadow mb-8">
@@ -560,9 +567,64 @@ export default function PreventiveMaintenanceDashboard() {
               Loading upcoming maintenance...
             </p>
           </div>
+        ) : upcomingError ? (
+          <div className="p-8 text-center" role="alert">
+            <p className="font-medium text-red-700">{upcomingError}</p>
+            <button
+              type="button"
+              onClick={() => void fetchUpcomingMaintenance(upcomingPage, upcomingPageSize)}
+              className="mt-4 inline-flex min-h-11 items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Try again
+            </button>
+          </div>
         ) : visibleUpcomingItems.length > 0 ? (
           <>
-            <div className="overflow-x-auto">
+            <div className="divide-y divide-border md:hidden">
+              {visibleUpcomingItems.map((item: PreventiveMaintenance) => {
+                const status = item.status || determinePMStatus(item);
+                const title = getMaintenanceTitle(item);
+
+                return (
+                  <article key={item.pm_id} className="space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-foreground">{title}</p>
+                        <p className="text-sm text-muted-foreground">Task #{item.pm_id}</p>
+                      </div>
+                      <StatusBadge status={status} />
+                    </div>
+                    <dl className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <dt className="text-muted-foreground">Scheduled</dt>
+                        <dd className="font-medium text-foreground">{formatDate(item.scheduled_date)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Next due</dt>
+                        <dd className="font-medium text-foreground">{formatDate(item.next_due_date)}</dd>
+                      </div>
+                    </dl>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Link
+                        href={`/dashboard/preventive-maintenance/${item.pm_id}`}
+                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-3 py-2 text-sm font-semibold text-blue-700"
+                      >
+                        View
+                      </Link>
+                      {canOperate && status !== "completed" && (
+                        <Link
+                          href={`/dashboard/preventive-maintenance/edit/${item.pm_id}?complete=true`}
+                          className="inline-flex min-h-11 items-center justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white"
+                        >
+                          Complete
+                        </Link>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-muted">
                   <tr>
@@ -654,7 +716,7 @@ export default function PreventiveMaintenanceDashboard() {
                                 <div className="h-10 w-10 rounded overflow-hidden border">
                                   <Image
                                     src={beforeImageUrl}
-                                    alt="Before"
+                                    alt={`${title} before maintenance`}
                                     width={40}
                                     height={40}
                                     className="h-full w-full object-cover"
@@ -669,7 +731,7 @@ export default function PreventiveMaintenanceDashboard() {
                                 <div className="h-10 w-10 rounded overflow-hidden border">
                                   <Image
                                     src={afterImageUrl}
-                                    alt="After"
+                                    alt={`${title} after maintenance`}
                                     width={40}
                                     height={40}
                                     className="h-full w-full object-cover"
@@ -711,8 +773,8 @@ export default function PreventiveMaintenanceDashboard() {
             {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t bg-muted">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center justify-between gap-2 sm:justify-start">
                     <span className="text-sm text-muted-foreground">
                       Showing {(upcomingPage - 1) * upcomingPageSize + 1} to{" "}
                       {Math.min(upcomingPage * upcomingPageSize, visibleUpcomingTotal)}{" "}
@@ -723,13 +785,13 @@ export default function PreventiveMaintenanceDashboard() {
                     <button
                       onClick={() => handlePageChange(upcomingPage - 1)}
                       disabled={upcomingPage <= 1}
-                      className="px-3 py-1 text-sm border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="min-h-11 px-3 py-2 text-sm border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Previous
                     </button>
 
                     {/* Page numbers */}
-                    <div className="flex space-x-1">
+                    <div className="hidden space-x-1 sm:flex">
                       {Array.from(
                         { length: Math.min(5, totalPages) },
                         (_, i) => {
@@ -744,7 +806,9 @@ export default function PreventiveMaintenanceDashboard() {
                             <button
                               key={pageNum}
                               onClick={() => handlePageChange(pageNum)}
-                              className={`px-3 py-1 text-sm border rounded ${
+                              aria-label={`Go to page ${pageNum}`}
+                              aria-current={pageNum === upcomingPage ? "page" : undefined}
+                              className={`min-h-11 min-w-11 px-3 py-2 text-sm border rounded ${
                                 pageNum === upcomingPage
                                   ? "bg-blue-600 text-white border-blue-600"
                                   : "border-border hover:bg-muted"
@@ -760,7 +824,7 @@ export default function PreventiveMaintenanceDashboard() {
                     <button
                       onClick={() => handlePageChange(upcomingPage + 1)}
                       disabled={upcomingPage >= totalPages}
-                      className="px-3 py-1 text-sm border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="min-h-11 px-3 py-2 text-sm border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Next
                     </button>

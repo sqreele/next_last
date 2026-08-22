@@ -133,6 +133,7 @@ export default function MachineDetailPage({
   const [error, setError] = useState<string | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const qrCodeRef = useRef<HTMLDivElement>(null);
+  const requestIdRef = useRef(0);
 
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setLoading);
@@ -169,12 +170,25 @@ export default function MachineDetailPage({
   }, [status, router]);
 
   useEffect(() => {
-    if (status === "authenticated") {
-      fetchMachineDetails();
+    if (status !== "authenticated") return;
+    const controller = new AbortController();
+    const requestId = ++requestIdRef.current;
+    setMachine(null);
+    setPMHistory([]);
+    setError(null);
+    if (!selectedProperty) {
+      setLoading(false);
+      return () => controller.abort();
     }
+    void fetchMachineDetails(selectedProperty, controller.signal, requestId);
+    return () => controller.abort();
   }, [status, unwrappedParams.machine_id, selectedProperty]);
 
-  const fetchMachineDetails = async () => {
+  const fetchMachineDetails = async (
+    propertyId: string,
+    signal: AbortSignal,
+    requestId: number,
+  ) => {
     recordLoaderShown();
     setLoading(true);
     setLoadingHistory(true);
@@ -183,16 +197,16 @@ export default function MachineDetailPage({
       const response = await apiClient.get(
         `/api/v1/machines/${unwrappedParams.machine_id}/`,
         {
-          params: selectedProperty
-            ? { property_id: selectedProperty }
-            : undefined,
+          params: { property_id: propertyId },
+          signal,
         },
       );
+      if (requestId !== requestIdRef.current) return;
       setMachine(response.data);
 
       // Extract PM history from the machine data
       if (response.data.preventive_maintenances) {
-        const historyData = response.data.preventive_maintenances;
+        const historyData = [...response.data.preventive_maintenances];
         // Sort by scheduled date (most recent first)
         historyData.sort(
           (a: PMHistory, b: PMHistory) =>
@@ -202,28 +216,36 @@ export default function MachineDetailPage({
         setPMHistory(historyData);
       } else {
         // Fallback: fetch PM history separately
-        fetchPMHistory();
+        void fetchPMHistory(propertyId, signal, requestId);
         return;
       }
       setLoadingHistory(false);
     } catch (err: any) {
+      if (err?.code === "ERR_CANCELED") return;
       console.error("Error fetching machine details:", err);
-      setError(err.message || "Failed to load machine details");
-      setLoadingHistory(false);
+      if (requestId === requestIdRef.current) {
+        setError(err.message || "Failed to load machine details");
+        setLoadingHistory(false);
+      }
     } finally {
-      clearLoadingAfterMinTime();
+      if (requestId === requestIdRef.current) clearLoadingAfterMinTime();
     }
   };
 
-  const fetchPMHistory = async () => {
+  const fetchPMHistory = async (
+    propertyId: string,
+    signal: AbortSignal,
+    requestId: number,
+  ) => {
     setLoadingHistory(true);
     try {
       const response = await apiClient.get("/api/v1/preventive-maintenance/", {
         params: {
           machine_id: unwrappedParams.machine_id,
           page_size: 100,
-          ...(selectedProperty ? { property_id: selectedProperty } : {}),
+          property_id: propertyId,
         },
+        signal,
       });
 
       let historyData: PMHistory[] = [];
@@ -240,13 +262,14 @@ export default function MachineDetailPage({
           new Date(a.scheduled_date).getTime(),
       );
 
-      setPMHistory(historyData);
+      if (requestId === requestIdRef.current) setPMHistory(historyData);
     } catch (err: any) {
+      if (err?.code === "ERR_CANCELED") return;
       console.error("Error fetching PM history:", err);
       // Don't set error, just leave history empty
-      setPMHistory([]);
+      if (requestId === requestIdRef.current) setPMHistory([]);
     } finally {
-      setLoadingHistory(false);
+      if (requestId === requestIdRef.current) setLoadingHistory(false);
     }
   };
 
@@ -394,6 +417,19 @@ export default function MachineDetailPage({
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-muted-foreground">Loading machine details...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!selectedProperty) {
+    return (
+      <div className="mx-auto w-full max-w-3xl px-3 py-10 text-center">
+        <h1 className="text-2xl font-semibold text-foreground">
+          Select a property
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Select a property to view machine details.
+        </p>
       </div>
     );
   }

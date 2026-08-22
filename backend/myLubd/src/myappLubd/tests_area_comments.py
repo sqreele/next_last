@@ -40,7 +40,7 @@ class AreaApiTests(APITestCase):
         resp = self.client.post('/api/v1/areas/', {
             'name': 'Lobby',
             'description': 'Main lobby',
-            'property_id': self.prop_a.id,
+            'property_id': self.prop_a.property_id,
         }, format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
         self.assertEqual(resp.data['name'], 'Lobby')
@@ -50,7 +50,7 @@ class AreaApiTests(APITestCase):
         _login(self.client, self.user_a)
         resp = self.client.post('/api/v1/areas/', {
             'name': 'Pump Room',
-            'property_id': self.prop_b.id,
+            'property_id': self.prop_b.property_id,
         }, format='json')
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(Area.objects.filter(name='Pump Room').exists())

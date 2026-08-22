@@ -1521,8 +1521,18 @@ def _pm_property_ids(pm):
 def _ensure_user_can_use_property(user, property_obj):
     if user.is_superuser:
         return
-    if not get_accessible_properties(user).filter(id=property_obj.id).exists():
-        raise PermissionDenied("You do not have access to this property's inventory.")
+    if not get_operable_properties(user).filter(id=property_obj.id).exists():
+        raise PermissionDenied("Your role cannot modify data for this property.")
+
+
+def _ensure_user_can_operate_property(user, property_obj):
+    """Canonical write gate for Property-owned operational resources."""
+    if property_obj is None:
+        raise ValidationError({'property': 'Property must be provided.'})
+    if user.is_superuser:
+        return
+    if not get_operable_properties(user).filter(pk=property_obj.pk).exists():
+        raise PermissionDenied("Your role cannot modify data for this property.")
 
 
 def consume_inventory_items(*, user, items, job=None, preventive_maintenance=None, source='manual'):
@@ -2900,6 +2910,23 @@ class MachineViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
+    def perform_create(self, serializer):
+        _ensure_user_can_operate_property(
+            self.request.user, serializer.validated_data.get('property')
+        )
+        serializer.save()
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        _ensure_user_can_operate_property(self.request.user, instance.property)
+        target_property = serializer.validated_data.get('property', instance.property)
+        _ensure_user_can_operate_property(self.request.user, target_property)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        _ensure_user_can_operate_property(self.request.user, instance.property)
+        instance.delete()
+
     def update(self, request, *args, **kwargs):
         """Update an existing machine"""
         partial = kwargs.pop('partial', False)
@@ -2910,9 +2937,10 @@ class MachineViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
-    def set_maintenance(self, request, pk=None):
+    def set_maintenance(self, request, machine_id=None):
         """Set the last maintenance date to current time"""
         machine = self.get_object()
+        _ensure_user_can_operate_property(request.user, machine.property)
         machine.last_maintenance_date = timezone.now()
         machine.save(update_fields=['last_maintenance_date', 'updated_at'])
         serializer = MachineDetailSerializer(machine, context={'request': request})
@@ -2922,9 +2950,10 @@ class MachineViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=True, methods=['post'])
-    def change_status(self, request, pk=None):
+    def change_status(self, request, machine_id=None):
         """Change the status of a machine"""
         machine = self.get_object()
+        _ensure_user_can_operate_property(request.user, machine.property)
         status_value = request.data.get('status')
         status_choices = dict(Machine.STATUS_CHOICES)
 
@@ -2946,9 +2975,10 @@ class MachineViewSet(viewsets.ModelViewSet):
         })
 
     @action(detail=True, methods=['post'])
-    def set_preventive_maintenances(self, request, pk=None):
+    def set_preventive_maintenances(self, request, machine_id=None):
         """Associate preventive maintenance schedules with the machine"""
         machine = self.get_object()
+        _ensure_user_can_operate_property(request.user, machine.property)
         serializer = self.get_serializer(machine, data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -4372,7 +4402,9 @@ class AreaViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = Area.objects.select_related('property').all()
+        qs = Area.objects.select_related('property').annotate(
+            jobs_count_value=Count('jobs', distinct=True)
+        )
 
         if not user.is_superuser:
             accessible_property_ids = get_accessible_properties(user).values_list('id', flat=True)
@@ -4380,10 +4412,7 @@ class AreaViewSet(viewsets.ModelViewSet):
 
         property_filter = self.request.query_params.get('property_id') or self.request.query_params.get('property')
         if property_filter:
-            property_q = Q(property__property_id=property_filter)
-            if str(property_filter).isdigit():
-                property_q |= Q(property_id=int(property_filter))
-            qs = qs.filter(property_q)
+            qs = qs.filter(property__property_id=property_filter)
 
         is_active = self.request.query_params.get('is_active')
         if is_active is not None:
@@ -4398,23 +4427,21 @@ class AreaViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         property_obj = serializer.validated_data.get('property')
-        user = self.request.user
-        if not user.is_superuser and not get_accessible_properties(user).filter(id=property_obj.id).exists():
-            raise PermissionDenied("You do not have access to this property.")
+        _ensure_user_can_operate_property(self.request.user, property_obj)
         serializer.save()
 
     def perform_update(self, serializer):
         instance = self.get_object()
         new_property = serializer.validated_data.get('property', instance.property)
-        user = self.request.user
-        if not user.is_superuser and not get_accessible_properties(user).filter(id=new_property.id).exists():
-            raise PermissionDenied("You do not have access to this property.")
+        _ensure_user_can_operate_property(self.request.user, instance.property)
+        _ensure_user_can_operate_property(self.request.user, new_property)
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):
         """Soft-delete: mark inactive rather than removing the row so historical
         jobs keep their area reference."""
         instance = self.get_object()
+        _ensure_user_can_operate_property(request.user, instance.property)
         hard = str(request.query_params.get('hard', '')).lower() in ['1', 'true', 'yes']
         if hard and request.user.is_superuser:
             instance.delete()
@@ -6142,11 +6169,22 @@ class UtilityConsumptionViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         """Add the current user as the creator when creating a record"""
+        _ensure_user_can_operate_property(
+            self.request.user, serializer.validated_data.get('property')
+        )
         serializer.save(created_by=self.request.user)
     
     def perform_update(self, serializer):
         """Update the updated_at timestamp when updating a record"""
+        instance = self.get_object()
+        _ensure_user_can_operate_property(self.request.user, instance.property)
+        target_property = serializer.validated_data.get('property', instance.property)
+        _ensure_user_can_operate_property(self.request.user, target_property)
         serializer.save()
+
+    def perform_destroy(self, instance):
+        _ensure_user_can_operate_property(self.request.user, instance.property)
+        instance.delete()
 
 
 class InventoryViewSet(viewsets.ModelViewSet):
@@ -6254,7 +6292,21 @@ class InventoryViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         """Add the current user as the creator when creating an inventory item"""
+        _ensure_user_can_operate_property(
+            self.request.user, serializer.validated_data.get('property')
+        )
         serializer.save(created_by=self.request.user)
+
+    def perform_update(self, serializer):
+        instance = self.get_object()
+        _ensure_user_can_operate_property(self.request.user, instance.property)
+        target_property = serializer.validated_data.get('property', instance.property)
+        _ensure_user_can_operate_property(self.request.user, target_property)
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        _ensure_user_can_operate_property(self.request.user, instance.property)
+        instance.delete()
 
     @action(detail=True, methods=['post'])
     def consume(self, request, item_id=None):
@@ -6337,6 +6389,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
         Expects: {'quantity': <number>}
         """
         inventory = self.get_object()
+        _ensure_user_can_operate_property(request.user, inventory.property)
         quantity_to_add = request.data.get('quantity', 0)
         
         try:
@@ -6347,9 +6400,11 @@ class InventoryViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            inventory.quantity += quantity_to_add
-            inventory.last_restocked = timezone.now()
-            inventory.save()
+            with transaction.atomic():
+                inventory = Inventory.objects.select_for_update().get(pk=inventory.pk)
+                inventory.quantity += quantity_to_add
+                inventory.last_restocked = timezone.now()
+                inventory.save()
             
             serializer = self.get_serializer(inventory)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -6367,6 +6422,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
         Job/PM identifiers will be added to the item's relationship history.
         """
         inventory = self.get_object()
+        _ensure_user_can_operate_property(request.user, inventory.property)
         quantity_to_use = request.data.get('quantity', 0)
         job_id = request.data.get('job_id')
         pm_id = request.data.get('pm_id')
@@ -6379,13 +6435,14 @@ class InventoryViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            if inventory.quantity < quantity_to_use:
-                return Response(
-                    {'error': f'Insufficient stock. Available: {inventory.quantity}'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
             # Link to job or PM if provided
+            if job_id and pm_id:
+                return Response(
+                    {'error': 'Send either job_id or pm_id, not both.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            job = None
+            pm = None
             if job_id:
                 accessible = get_accessible_properties(request.user)
                 job = get_object_or_404(
@@ -6394,7 +6451,6 @@ class InventoryViewSet(viewsets.ModelViewSet):
                 )
                 if inventory.property_id not in _job_property_ids(job):
                     return Response({'error': 'Job must belong to the inventory property.'}, status=status.HTTP_400_BAD_REQUEST)
-                inventory.jobs.add(job)
             
             if pm_id:
                 accessible = get_accessible_properties(request.user)
@@ -6406,11 +6462,21 @@ class InventoryViewSet(viewsets.ModelViewSet):
                 )
                 if inventory.property_id not in _pm_property_ids(pm):
                     return Response({'error': 'PM must belong to the inventory property.'}, status=status.HTTP_400_BAD_REQUEST)
-                inventory.preventive_maintenances.add(pm)
-            
-            inventory.quantity -= quantity_to_use
-            inventory.save()
-            
+            try:
+                consume_inventory_items(
+                    user=request.user,
+                    items=[{'item_id': inventory.item_id, 'quantity': quantity_to_use}],
+                    job=job,
+                    preventive_maintenance=pm,
+                    source='job' if job else ('preventive_maintenance' if pm else 'manual'),
+                )
+            except ValidationError as exc:
+                detail = exc.detail if hasattr(exc, 'detail') else {'error': str(exc)}
+                if isinstance(detail, dict) and 'inventory_usage' in detail:
+                    detail = {'error': detail['inventory_usage']}
+                return Response(detail, status=status.HTTP_400_BAD_REQUEST)
+
+            inventory.refresh_from_db()
             serializer = self.get_serializer(inventory)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except ValueError:
@@ -6519,7 +6585,7 @@ class InventoryViewSet(viewsets.ModelViewSet):
             )
 
         # Resolve property scope: which properties this user can write to.
-        accessible_props = list(get_accessible_properties(request.user))
+        accessible_props = list(get_operable_properties(request.user))
         if not accessible_props:
             return Response(
                 {'error': 'You have no property access — cannot import inventory.'},
@@ -6527,7 +6593,6 @@ class InventoryViewSet(viewsets.ModelViewSet):
             )
         prop_lookup = {}
         for prop in accessible_props:
-            prop_lookup[str(prop.id)] = prop
             if prop.property_id:
                 prop_lookup[str(prop.property_id)] = prop
 

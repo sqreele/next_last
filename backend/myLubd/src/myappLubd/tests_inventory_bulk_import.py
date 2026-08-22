@@ -37,7 +37,7 @@ class InventoryBulkImportTests(TestCase):
 
     def _post(self, payload, **extra):
         return self.client.post(
-            f'/api/v1/inventory/bulk-import/?property_id={self.prop.id}',
+            f'/api/v1/inventory/bulk-import/?property_id={self.prop.property_id}',
             payload,
             **extra,
         )

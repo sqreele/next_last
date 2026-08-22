@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
 import ActualVsBudgetChart from "./components/ActualVsBudgetChart";
 import BudgetStatusPieChart from "./components/BudgetStatusPieChart";
@@ -37,11 +37,18 @@ export default function UtilityConsumptionView() {
   const [selectedMonth, setSelectedMonth] = useState<MonthName | "All">("All");
   const [selectedMetric, setSelectedMetric] = useState<MetricKey>("totalkwh");
   const { selectedPropertyId: selectedProperty } = useUser();
+  const requestIdRef = useRef(0);
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setLoading);
 
   useEffect(() => {
     const controller = new AbortController();
+    const requestId = ++requestIdRef.current;
+    setRows([]);
+    setSelectedYears([]);
+    setPrimaryYear(null);
+    setSelectedMonth("All");
+    setError(null);
 
     async function loadData() {
       try {
@@ -64,14 +71,18 @@ export default function UtilityConsumptionView() {
           throw new Error("Unable to load utility consumption data.");
         }
         const payload: UtilityConsumptionRow[] = await response.json();
-        setRows(sortRows(payload));
+        if (requestId === requestIdRef.current) {
+          setRows(sortRows(payload));
+        }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") {
           return;
         }
-        setError(err instanceof Error ? err.message : "Unknown error");
+        if (requestId === requestIdRef.current) {
+          setError(err instanceof Error ? err.message : "Unknown error");
+        }
       } finally {
-        clearLoadingAfterMinTime();
+        if (requestId === requestIdRef.current) clearLoadingAfterMinTime();
       }
     }
 
@@ -178,17 +189,30 @@ export default function UtilityConsumptionView() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <FiltersBar
-        availableYears={availableYears}
-        selectedYears={activeYears}
-        primaryYear={primaryYear}
-        selectedMonth={selectedMonth}
-        selectedMetric={selectedMetric}
-        onYearsChange={setSelectedYears}
-        onPrimaryYearChange={setPrimaryYear}
-        onMonthChange={setSelectedMonth}
-        onMetricChange={setSelectedMetric}
-      />
+      <header>
+        <h1 className="text-2xl font-bold text-foreground sm:text-3xl">
+          Utility Consumption
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {selectedProperty
+            ? `Property: ${selectedProperty}`
+            : "Select a property to view utility consumption."}
+        </p>
+      </header>
+
+      {selectedProperty ? (
+        <FiltersBar
+          availableYears={availableYears}
+          selectedYears={activeYears}
+          primaryYear={primaryYear}
+          selectedMonth={selectedMonth}
+          selectedMetric={selectedMetric}
+          onYearsChange={setSelectedYears}
+          onPrimaryYearChange={setPrimaryYear}
+          onMonthChange={setSelectedMonth}
+          onMetricChange={setSelectedMetric}
+        />
+      ) : null}
 
       {loading && (
         <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center">

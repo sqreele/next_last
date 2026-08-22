@@ -1,8 +1,8 @@
 // app/lib/MachineService.ts
 
-import apiClient from './api-client';
-import { handleApiError } from './api-client';
-import type { ServiceResponse } from './preventiveMaintenanceModels';
+import apiClient from "./api-client";
+import { handleApiError } from "./api-client";
+import type { ServiceResponse } from "./preventiveMaintenanceModels";
 
 export interface Machine {
   machine_id: string;
@@ -20,20 +20,22 @@ export interface Machine {
   image_url?: string | null;
 }
 
-type MachineApiPayload = Machine[] | {
-  results?: Machine[];
-  data?: Machine[];
-  items?: Machine[];
-  count?: number;
-  total?: number;
-  total_count?: number;
-  next?: string | null;
-  previous?: string | null;
-  links?: {
-    next?: string | null;
-  };
-  [key: string]: any;
-};
+type MachineApiPayload =
+  | Machine[]
+  | {
+      results?: Machine[];
+      data?: Machine[];
+      items?: Machine[];
+      count?: number;
+      total?: number;
+      total_count?: number;
+      next?: string | null;
+      previous?: string | null;
+      links?: {
+        next?: string | null;
+      };
+      [key: string]: any;
+    };
 
 const DEFAULT_MACHINE_PAGE_SIZE = 200;
 
@@ -62,8 +64,8 @@ const normalizeMachineResponse = (payload: MachineApiPayload): Machine[] => {
 };
 
 const extractNextLink = (payload: MachineApiPayload): string | null => {
-  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-    if (typeof payload.next === 'string') {
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    if (typeof payload.next === "string") {
       return payload.next;
     }
     if (payload.next === null) {
@@ -78,7 +80,10 @@ const extractNextLink = (payload: MachineApiPayload): string | null => {
 
 const parseNextParams = (nextUrl: string): Record<string, string> => {
   try {
-    const safeBase = typeof window === 'undefined' ? 'http://localhost' : window.location.origin;
+    const safeBase =
+      typeof window === "undefined"
+        ? "http://localhost"
+        : window.location.origin;
     const parsedUrl = new URL(nextUrl, safeBase);
     const entries: Record<string, string> = {};
     parsedUrl.searchParams.forEach((value, key) => {
@@ -86,13 +91,17 @@ const parseNextParams = (nextUrl: string): Record<string, string> => {
     });
     return entries;
   } catch (error) {
-    console.warn('Failed to parse next pagination url for machines:', nextUrl, error);
+    console.warn(
+      "Failed to parse next pagination url for machines:",
+      nextUrl,
+      error,
+    );
     return {};
   }
 };
 
 const buildQueryString = (params?: Record<string, string>): string => {
-  if (!params) return '';
+  if (!params) return "";
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
@@ -100,15 +109,19 @@ const buildQueryString = (params?: Record<string, string>): string => {
     }
   });
   const qs = searchParams.toString();
-  return qs ? `?${qs}` : '';
+  return qs ? `?${qs}` : "";
 };
 
 export default class MachineService {
-  private baseUrl: string = '/api/v1/machines';
+  private baseUrl: string = "/api/v1/machines";
 
   // Remove constructor and accessToken storage - use parameter-based approach
 
-  async getMachines(propertyId?: string | undefined, accessToken?: string): Promise<ServiceResponse<Machine[]>> {
+  async getMachines(
+    propertyId?: string,
+    accessToken?: string,
+    signal?: AbortSignal,
+  ): Promise<ServiceResponse<Machine[]>> {
     try {
       const initialParams: Record<string, string> = {
         ...(propertyId ? { property_id: propertyId } : {}),
@@ -119,39 +132,47 @@ export default class MachineService {
       // deployments do not depend on NEXT_PUBLIC_API_URL/CORS and can use the
       // secure session cookie for authentication. Server-side callers with an
       // explicit token can still call the Django API directly.
-      const useProxy = typeof window !== 'undefined' || !accessToken;
+      const useProxy = typeof window !== "undefined" || !accessToken;
       if (!useProxy && !accessToken) {
-        throw new Error('Access token required for direct machine request is missing.');
+        throw new Error(
+          "Access token required for direct machine request is missing.",
+        );
       }
       const accumulatedMachines: Machine[] = [];
 
       const fetchPage = async (
         params?: Record<string, string>,
-        urlOverride?: string
+        urlOverride?: string,
       ): Promise<MachineApiPayload> => {
         if (!useProxy) {
           const authToken = accessToken as string;
           const headers: Record<string, string> = {
             Authorization: `Bearer ${authToken}`,
           };
-          const response = await apiClient.get<MachineApiPayload>(urlOverride || this.baseUrl, { 
-            params,
-            headers
-          });
+          const response = await apiClient.get<MachineApiPayload>(
+            urlOverride || this.baseUrl,
+            {
+              params,
+              headers,
+              signal,
+            },
+          );
           return response.data;
         }
 
         const queryString = buildQueryString(params);
-        const targetUrl = `${urlOverride || '/api/machines/'}${queryString}`;
-        const res = await fetch(targetUrl, { credentials: 'include' });
-        
+        const targetUrl = `${urlOverride || "/api/machines/"}${queryString}`;
+        const res = await fetch(targetUrl, { credentials: "include", signal });
+
         if (!res.ok) {
-          console.error('❌ Next.js API failed:', res.status, res.statusText);
+          console.error("❌ Next.js API failed:", res.status, res.statusText);
           const errorText = await res.text();
-          console.error('❌ Error details:', errorText);
-          throw new Error(`Failed to fetch machines: ${res.status} - ${errorText}`);
+          console.error("❌ Error details:", errorText);
+          throw new Error(
+            `Failed to fetch machines: ${res.status} - ${errorText}`,
+          );
         }
-        
+
         return res.json();
       };
 
@@ -162,7 +183,9 @@ export default class MachineService {
       while (true) {
         pageCounter += 1;
         if (pageCounter > 50) {
-          console.warn('⚠️ MachineService pagination limit reached. Stopping to prevent infinite loop.');
+          console.warn(
+            "⚠️ MachineService pagination limit reached. Stopping to prevent infinite loop.",
+          );
           break;
         }
 
@@ -189,8 +212,8 @@ export default class MachineService {
 
       return { success: true, data: accumulatedMachines };
     } catch (error: any) {
-        console.error('Service error fetching machines:', error);
-        throw handleApiError(error);
+      console.error("Service error fetching machines:", error);
+      throw handleApiError(error);
     }
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/app/lib/session.client";
 import { useUser } from "@/app/lib/stores/mainStore";
@@ -52,6 +52,7 @@ interface Machine {
   serial_number?: string;
   location?: string;
   category?: string;
+  status?: string;
   image_url?: string | null;
   image?: {
     image_url?: string | null;
@@ -89,6 +90,7 @@ export default function MachinesListPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const requestIdRef = useRef(0);
 
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setLoading);
@@ -100,24 +102,37 @@ export default function MachinesListPage() {
   }, [status, router]);
 
   useEffect(() => {
-    if (status === "authenticated") {
-      fetchMachines();
+    if (status !== "authenticated") return;
+    const requestId = ++requestIdRef.current;
+    const controller = new AbortController();
+    setAllMachines([]);
+    setTotalCount(0);
+    setError(null);
+    setPage(1);
+    setSearchTerm("");
+    setSelectedCategory("all");
+    if (!selectedProperty) {
+      setLoading(false);
+      return () => controller.abort();
     }
+    void fetchMachines(selectedProperty, controller.signal, requestId);
+    return () => controller.abort();
   }, [status, selectedProperty]);
 
-  // Reset to page 1 when property changes
-  useEffect(() => {
-    setPage(1);
-  }, [selectedProperty]);
-
-  const fetchMachines = async () => {
+  const fetchMachines = async (
+    propertyId: string,
+    signal: AbortSignal,
+    requestId: number,
+  ) => {
     recordLoaderShown();
     setLoading(true);
     setError(null);
     try {
       const machineService = new MachineService();
       const machineResponse = await machineService.getMachines(
-        selectedProperty || undefined,
+        propertyId,
+        undefined,
+        signal,
       );
 
       if (!machineResponse.success || !machineResponse.data) {
@@ -125,6 +140,7 @@ export default function MachinesListPage() {
       }
 
       const allMachines = machineResponse.data as Machine[];
+      if (requestId !== requestIdRef.current) return;
       setTotalCount(allMachines.length);
 
       // Fetch PM rows once, then aggregate by machine_id to avoid N+1 requests.
@@ -134,13 +150,12 @@ export default function MachinesListPage() {
       >();
       try {
         const pmParams: Record<string, string | number> = { page_size: 1000 };
-        if (selectedProperty) {
-          pmParams.property_id = selectedProperty;
-        }
+        pmParams.property_id = propertyId;
         const pmResponse = await apiClient.get(
           "/api/v1/preventive-maintenance/",
           {
             params: pmParams,
+            signal,
           },
         );
         const pmRows: PreventiveMaintenanceRow[] = Array.isArray(
@@ -171,6 +186,13 @@ export default function MachinesListPage() {
           });
         });
       } catch (pmError) {
+        if (
+          pmError instanceof Error &&
+          (pmError.name === "AbortError" ||
+            (pmError as any).code === "ERR_CANCELED")
+        ) {
+          throw pmError;
+        }
         console.error(
           "Error fetching preventive maintenance aggregation:",
           pmError,
@@ -189,13 +211,18 @@ export default function MachinesListPage() {
         };
       });
 
-      setAllMachines(machinesWithCounts);
+      if (requestId === requestIdRef.current) {
+        setAllMachines(machinesWithCounts);
+      }
     } catch (err: any) {
+      if (err?.name === "AbortError" || err?.code === "ERR_CANCELED") return;
       console.error("Error fetching machines:", err);
-      setError(err.message || "Failed to load machines");
-      setAllMachines([]);
+      if (requestId === requestIdRef.current) {
+        setError(err.message || "Failed to load machines");
+        setAllMachines([]);
+      }
     } finally {
-      clearLoadingAfterMinTime();
+      if (requestId === requestIdRef.current) clearLoadingAfterMinTime();
     }
   };
 
@@ -272,6 +299,18 @@ export default function MachinesListPage() {
           variant="error"
           title="Unable to load equipment"
           description={error}
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!selectedProperty) {
+    return (
+      <PageContainer>
+        <FeedbackState
+          variant="empty"
+          title="Select a property"
+          description="Select a property to view machines."
         />
       </PageContainer>
     );
@@ -428,11 +467,21 @@ export default function MachinesListPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {machine.category && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {machine.category}
-                        </Badge>
+                    {(machine.category || machine.status) && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {machine.category ? (
+                          <Badge variant="secondary" className="text-xs">
+                            {machine.category}
+                          </Badge>
+                        ) : null}
+                        {machine.status ? (
+                          <Badge
+                            variant="outline"
+                            className="text-xs capitalize"
+                          >
+                            {machine.status.replaceAll("_", " ")}
+                          </Badge>
+                        ) : null}
                       </div>
                     )}
 
@@ -512,6 +561,14 @@ export default function MachinesListPage() {
                           {machine.category ? (
                             <Badge variant="secondary" className="text-xs">
                               {machine.category}
+                            </Badge>
+                          ) : null}
+                          {machine.status ? (
+                            <Badge
+                              variant="outline"
+                              className="text-xs capitalize"
+                            >
+                              {machine.status.replaceAll("_", " ")}
                             </Badge>
                           ) : null}
                           <Badge variant="outline" className="text-xs">
@@ -631,15 +688,25 @@ export default function MachinesListPage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {machine.category ? (
-                            <Badge variant="secondary" className="text-xs">
-                              {machine.category}
-                            </Badge>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">
-                              —
-                            </span>
-                          )}
+                          <div className="flex flex-wrap gap-2">
+                            {machine.category ? (
+                              <Badge variant="secondary" className="text-xs">
+                                {machine.category}
+                              </Badge>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">
+                                —
+                              </span>
+                            )}
+                            {machine.status ? (
+                              <Badge
+                                variant="outline"
+                                className="text-xs capitalize"
+                              >
+                                {machine.status.replaceAll("_", " ")}
+                              </Badge>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {machine.location ? (

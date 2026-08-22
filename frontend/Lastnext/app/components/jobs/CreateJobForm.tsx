@@ -452,10 +452,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     }
   }, []);
 
-  const {
-    selectedPropertyId: selectedProperty,
-    userProfile,
-  } = useUser();
+  const { selectedPropertyId: selectedProperty, userProfile } = useUser();
   const router = useRouter();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [topics, setTopics] = useState<TopicFromAPI[]>([]);
@@ -511,13 +508,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
   const areaBelongsToActiveProperty = useCallback(
     (area: Area): boolean => {
-      if (!activePropertyId || !activePropertyNumericId) return false;
-      if (area.property_uuid) {
-        return area.property_uuid === activePropertyId;
-      }
-      return String(area.property) === activePropertyNumericId;
+      if (!activePropertyId) return false;
+      return area.property_uuid === activePropertyId;
     },
-    [activePropertyId, activePropertyNumericId],
+    [activePropertyId],
   );
 
   const getFloorFromRoomName = useCallback(
@@ -1669,16 +1663,12 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 value={values.topic}
                                 onChange={(topic) => {
                                   setFieldValue("topic", topic);
-                                  setFieldTouched(
-                                    "topic.title",
-                                    true,
-                                    false,
-                                  );
+                                  setFieldTouched("topic.title", true, false);
                                 }}
                                 disabled={isSubmitting}
                                 invalid={Boolean(
                                   (touched.topic?.title || submitCount > 0) &&
-                                    errors.topic?.title,
+                                  errors.topic?.title,
                                 )}
                               />
 

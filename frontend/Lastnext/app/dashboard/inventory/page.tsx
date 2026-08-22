@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/app/lib/session.client";
 import { useUser } from "@/app/lib/stores/mainStore";
@@ -172,6 +172,24 @@ export default function InventoryPage() {
     Array<{ pm_id: string; pmtitle: string }>
   >([]);
   const [loadingJobsPMs, setLoadingJobsPMs] = useState(false);
+  const [stockMutationPending, setStockMutationPending] = useState(false);
+  const [stockMutationError, setStockMutationError] = useState<string | null>(
+    null,
+  );
+  const [addPending, setAddPending] = useState(false);
+  const [newItem, setNewItem] = useState({
+    name: "",
+    category: "other",
+    description: "",
+    quantity: "0",
+    min_quantity: "0",
+    unit: "pcs",
+    location: "",
+    supplier: "",
+  });
+  const requestIdRef = useRef(0);
+  const selectedPropertyRef = useRef(selectedProperty);
+  selectedPropertyRef.current = selectedProperty;
 
   const { recordLoaderShown, clearLoadingAfterMinTime } =
     useMinLoaderTime(setLoading);
@@ -183,9 +201,39 @@ export default function InventoryPage() {
   }, [status, router]);
 
   useEffect(() => {
-    if (status === "authenticated") {
-      fetchInventory();
+    setInventory([]);
+    setRooms([]);
+    setJobsForFilter([]);
+    setPmsForFilter([]);
+    setUserJobs([]);
+    setUserPMs([]);
+    setSelectedJobId("");
+    setSelectedPmId("");
+    setSelectedItem(null);
+    setShowRestockDialog(false);
+    setShowUseDialog(false);
+    setShowAddDialog(false);
+    setStockMutationError(null);
+    setSelectedCategory("all");
+    setSelectedStatus("all");
+    setSelectedRoom("all");
+    setLowStockOnly(false);
+    setSelectedJobFilter("all");
+    setSelectedPmFilter("all");
+    setSearchTerm("");
+  }, [selectedProperty]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const controller = new AbortController();
+    const requestId = ++requestIdRef.current;
+    setInventory([]);
+    if (!selectedProperty) {
+      setLoading(false);
+      return () => controller.abort();
     }
+    void fetchInventory(controller.signal, requestId);
+    return () => controller.abort();
   }, [
     status,
     selectedProperty,
@@ -240,8 +288,14 @@ export default function InventoryPage() {
 
   // Fetch rooms, jobs, and PMs for filters when property changes or on load
   useEffect(() => {
+    const controller = new AbortController();
     const fetchFilterOptions = async () => {
-      if (status !== "authenticated") return;
+      if (status !== "authenticated" || !selectedProperty) {
+        setRooms([]);
+        setJobsForFilter([]);
+        setPmsForFilter([]);
+        return;
+      }
 
       try {
         // Fetch rooms for the selected property
@@ -251,10 +305,12 @@ export default function InventoryPage() {
         }
         const roomsResponse = await apiClient.get("/api/v1/rooms/", {
           params: roomParams,
+          signal: controller.signal,
         });
         const roomsData = Array.isArray(roomsResponse.data)
           ? roomsResponse.data
           : roomsResponse.data?.results || [];
+        if (selectedProperty !== selectedPropertyRef.current) return;
         setRooms(
           roomsData.map((room: any) => ({
             room_id: room.room_id,
@@ -269,10 +325,12 @@ export default function InventoryPage() {
             ordering: "-updated_at",
             ...(selectedProperty ? { property_id: selectedProperty } : {}),
           },
+          signal: controller.signal,
         });
         const jobsData = Array.isArray(jobsResponse.data)
           ? jobsResponse.data
           : jobsResponse.data?.results || [];
+        if (selectedProperty !== selectedPropertyRef.current) return;
         setJobsForFilter(
           jobsData.map((job: any) => ({
             job_id: job.job_id,
@@ -289,11 +347,13 @@ export default function InventoryPage() {
               ordering: "-updated_at",
               ...(selectedProperty ? { property_id: selectedProperty } : {}),
             },
+            signal: controller.signal,
           },
         );
         const pmData = Array.isArray(pmResponse.data)
           ? pmResponse.data
           : pmResponse.data?.results || [];
+        if (selectedProperty !== selectedPropertyRef.current) return;
         setPmsForFilter(
           pmData.map((pm: any) => ({
             pm_id: pm.pm_id,
@@ -301,11 +361,13 @@ export default function InventoryPage() {
           })),
         );
       } catch (err: any) {
+        if (err?.code === "ERR_CANCELED") return;
         console.error("Error fetching filter options:", err);
       }
     };
 
-    fetchFilterOptions();
+    void fetchFilterOptions();
+    return () => controller.abort();
   }, [status, selectedProperty]);
 
   // Reset to page 1 when filters change
@@ -324,8 +386,13 @@ export default function InventoryPage() {
 
   // Fetch user's jobs and PMs when use dialog opens
   useEffect(() => {
+    const controller = new AbortController();
     const fetchUserJobsAndPMs = async () => {
-      if (!showUseDialog || status !== "authenticated") return;
+      if (!showUseDialog || status !== "authenticated" || !selectedProperty) {
+        setUserJobs([]);
+        setUserPMs([]);
+        return;
+      }
 
       setLoadingJobsPMs(true);
       try {
@@ -336,10 +403,12 @@ export default function InventoryPage() {
             ordering: "-updated_at",
             ...(selectedProperty ? { property_id: selectedProperty } : {}),
           },
+          signal: controller.signal,
         });
         const jobsData = Array.isArray(jobsResponse.data)
           ? jobsResponse.data
           : jobsResponse.data?.results || [];
+        if (selectedProperty !== selectedPropertyRef.current) return;
         setUserJobs(
           jobsData.map((job: any) => ({
             job_id: job.job_id,
@@ -356,11 +425,13 @@ export default function InventoryPage() {
               ordering: "-updated_at",
               ...(selectedProperty ? { property_id: selectedProperty } : {}),
             },
+            signal: controller.signal,
           },
         );
         const pmData = Array.isArray(pmResponse.data)
           ? pmResponse.data
           : pmResponse.data?.results || [];
+        if (selectedProperty !== selectedPropertyRef.current) return;
         setUserPMs(
           pmData.map((pm: any) => ({
             pm_id: pm.pm_id,
@@ -378,16 +449,24 @@ export default function InventoryPage() {
           }
         }
       } catch (err: any) {
+        if (err?.code === "ERR_CANCELED") return;
         console.error("Error fetching jobs/PMs:", err);
       } finally {
-        setLoadingJobsPMs(false);
+        if (selectedProperty === selectedPropertyRef.current) {
+          setLoadingJobsPMs(false);
+        }
       }
     };
 
-    fetchUserJobsAndPMs();
+    void fetchUserJobsAndPMs();
+    return () => controller.abort();
   }, [showUseDialog, status, selectedItem, selectedProperty]);
 
-  const fetchInventory = async () => {
+  const fetchInventory = async (
+    signal?: AbortSignal,
+    requestId = requestIdRef.current,
+  ) => {
+    if (!selectedProperty) return;
     recordLoaderShown();
     setLoading(true);
     setError(null);
@@ -396,9 +475,7 @@ export default function InventoryPage() {
         page: page,
         page_size: pageSize,
       };
-      if (selectedProperty) {
-        params.property_id = selectedProperty;
-      }
+      params.property_id = selectedProperty;
       if (selectedCategory !== "all") {
         params.category = selectedCategory;
       }
@@ -422,7 +499,10 @@ export default function InventoryPage() {
         params.search = searchTerm;
       }
 
-      const response = await apiClient.get("/api/v1/inventory/", { params });
+      const response = await apiClient.get("/api/v1/inventory/", {
+        params,
+        signal,
+      });
 
       let inventoryData: InventoryItem[] = [];
       let total = 0;
@@ -440,17 +520,22 @@ export default function InventoryPage() {
           Math.ceil(total / (response.data.page_size || pageSize));
       }
 
-      setTotalCount(total);
-      setTotalPages(pages);
-      setInventory(inventoryData);
+      if (requestId === requestIdRef.current) {
+        setTotalCount(total);
+        setTotalPages(pages);
+        setInventory(inventoryData);
+      }
     } catch (err: any) {
+      if (err?.code === "ERR_CANCELED") return;
       console.error("Error fetching inventory:", err);
-      setError(err.message || "Failed to load inventory");
-      setInventory([]);
-      setTotalCount(0);
-      setTotalPages(1);
+      if (requestId === requestIdRef.current) {
+        setError(err.message || "Failed to load inventory");
+        setInventory([]);
+        setTotalCount(0);
+        setTotalPages(1);
+      }
     } finally {
-      clearLoadingAfterMinTime();
+      if (requestId === requestIdRef.current) clearLoadingAfterMinTime();
     }
   };
 
@@ -459,28 +544,47 @@ export default function InventoryPage() {
   const filteredInventory = inventory;
 
   const handleRestock = async () => {
-    if (!selectedItem || !restockQuantity) return;
+    if (!selectedItem || !restockQuantity || stockMutationPending) return;
 
+    setStockMutationPending(true);
+    setStockMutationError(null);
+    const mutationProperty = selectedProperty;
     try {
-      await apiClient.post(
+      const response = await apiClient.post(
         `/api/v1/inventory/${selectedItem.item_id}/restock/`,
         {
           quantity: parseInt(restockQuantity),
         },
       );
+      if (mutationProperty !== selectedPropertyRef.current) return;
+      const authoritative = response.data as InventoryItem;
+      setInventory((items) =>
+        items.map((item) =>
+          item.item_id === authoritative.item_id ? authoritative : item,
+        ),
+      );
       setShowRestockDialog(false);
       setRestockQuantity("");
       setSelectedItem(null);
-      fetchInventory();
+      void fetchInventory();
     } catch (err: any) {
       console.error("Error restocking:", err);
-      alert(err.response?.data?.error || "Failed to restock item");
+      if (mutationProperty === selectedPropertyRef.current) {
+        setStockMutationError(
+          err.response?.data?.error || "Failed to restock item",
+        );
+      }
+    } finally {
+      setStockMutationPending(false);
     }
   };
 
   const handleUse = async () => {
-    if (!selectedItem || !useQuantity) return;
+    if (!selectedItem || !useQuantity || stockMutationPending) return;
 
+    setStockMutationPending(true);
+    setStockMutationError(null);
+    const mutationProperty = selectedProperty;
     try {
       const payload: any = {
         quantity: parseInt(useQuantity),
@@ -495,18 +599,67 @@ export default function InventoryPage() {
       }
 
       await apiClient.post(
-        `/api/v1/inventory/${selectedItem.item_id}/use/`,
+        `/api/v1/inventory/${selectedItem.item_id}/consume/`,
         payload,
       );
+      if (mutationProperty !== selectedPropertyRef.current) return;
       setShowUseDialog(false);
       setUseQuantity("");
       setSelectedJobId("");
       setSelectedPmId("");
       setSelectedItem(null);
-      fetchInventory();
+      void fetchInventory();
     } catch (err: any) {
       console.error("Error using item:", err);
-      alert(err.response?.data?.error || "Failed to use item");
+      if (mutationProperty === selectedPropertyRef.current) {
+        setStockMutationError(
+          err.response?.data?.error ||
+            err.response?.data?.detail ||
+            err.response?.data?.inventory_usage ||
+            "Failed to use item",
+        );
+      }
+    } finally {
+      setStockMutationPending(false);
+    }
+  };
+
+  const handleAddItem = async () => {
+    if (!selectedProperty || !newItem.name.trim() || addPending) return;
+    setAddPending(true);
+    const mutationProperty = selectedProperty;
+    try {
+      await apiClient.post("/api/v1/inventory/", {
+        ...newItem,
+        name: newItem.name.trim(),
+        description: newItem.description.trim() || null,
+        location: newItem.location.trim() || null,
+        supplier: newItem.supplier.trim() || null,
+        quantity: Number.parseInt(newItem.quantity, 10) || 0,
+        min_quantity: Number.parseInt(newItem.min_quantity, 10) || 0,
+        property_id: selectedProperty,
+      });
+      if (mutationProperty !== selectedPropertyRef.current) return;
+      setShowAddDialog(false);
+      setNewItem({
+        name: "",
+        category: "other",
+        description: "",
+        quantity: "0",
+        min_quantity: "0",
+        unit: "pcs",
+        location: "",
+        supplier: "",
+      });
+      void fetchInventory();
+    } catch (err: any) {
+      if (mutationProperty === selectedPropertyRef.current) {
+        setStockMutationError(
+          err.response?.data?.detail || "Failed to add inventory item",
+        );
+      }
+    } finally {
+      setAddPending(false);
     }
   };
 
@@ -547,6 +700,18 @@ export default function InventoryPage() {
           action={
             <Button onClick={() => void fetchInventory()}>Try again</Button>
           }
+        />
+      </PageContainer>
+    );
+  }
+
+  if (!selectedProperty) {
+    return (
+      <PageContainer>
+        <FeedbackState
+          variant="empty"
+          title="Select a property"
+          description="Select a property to view inventory."
         />
       </PageContainer>
     );
@@ -603,12 +768,15 @@ export default function InventoryPage() {
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
           <InventoryCsvImport
             currentPropertyId={selectedProperty}
-            onImported={() => {
-              // Force a refetch by toggling page (the page hook depends on it).
-              setPage(1);
-            }}
+            onImported={() => void fetchInventory()}
           />
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <Dialog
+            open={showAddDialog}
+            onOpenChange={(open) => {
+              setShowAddDialog(open);
+              setStockMutationError(null);
+            }}
+          >
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
@@ -623,14 +791,34 @@ export default function InventoryPage() {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                {stockMutationError ? (
+                  <p className="text-sm text-red-600" role="alert">
+                    {stockMutationError}
+                  </p>
+                ) : null}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="name">Item Name *</Label>
-                    <Input id="name" placeholder="Enter item name" />
+                    <Input
+                      id="name"
+                      placeholder="Enter item name"
+                      value={newItem.name}
+                      onChange={(event) =>
+                        setNewItem((item) => ({
+                          ...item,
+                          name: event.target.value,
+                        }))
+                      }
+                    />
                   </div>
                   <div>
                     <Label htmlFor="category">Category *</Label>
-                    <Select>
+                    <Select
+                      value={newItem.category}
+                      onValueChange={(category) =>
+                        setNewItem((item) => ({ ...item, category }))
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -646,30 +834,91 @@ export default function InventoryPage() {
                 </div>
                 <div>
                   <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" placeholder="Enter description" />
+                  <Textarea
+                    id="description"
+                    placeholder="Enter description"
+                    value={newItem.description}
+                    onChange={(event) =>
+                      setNewItem((item) => ({
+                        ...item,
+                        description: event.target.value,
+                      }))
+                    }
+                  />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
                     <Label htmlFor="quantity">Initial Quantity *</Label>
-                    <Input id="quantity" type="number" defaultValue="0" />
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="0"
+                      value={newItem.quantity}
+                      onChange={(event) =>
+                        setNewItem((item) => ({
+                          ...item,
+                          quantity: event.target.value,
+                        }))
+                      }
+                    />
                   </div>
                   <div>
                     <Label htmlFor="min_quantity">Min Quantity</Label>
-                    <Input id="min_quantity" type="number" defaultValue="0" />
+                    <Input
+                      id="min_quantity"
+                      type="number"
+                      min="0"
+                      value={newItem.min_quantity}
+                      onChange={(event) =>
+                        setNewItem((item) => ({
+                          ...item,
+                          min_quantity: event.target.value,
+                        }))
+                      }
+                    />
                   </div>
                   <div>
                     <Label htmlFor="unit">Unit</Label>
-                    <Input id="unit" defaultValue="pcs" />
+                    <Input
+                      id="unit"
+                      value={newItem.unit}
+                      onChange={(event) =>
+                        setNewItem((item) => ({
+                          ...item,
+                          unit: event.target.value,
+                        }))
+                      }
+                    />
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="location">Location</Label>
-                    <Input id="location" placeholder="Storage location" />
+                    <Input
+                      id="location"
+                      placeholder="Storage location"
+                      value={newItem.location}
+                      onChange={(event) =>
+                        setNewItem((item) => ({
+                          ...item,
+                          location: event.target.value,
+                        }))
+                      }
+                    />
                   </div>
                   <div>
                     <Label htmlFor="supplier">Supplier</Label>
-                    <Input id="supplier" placeholder="Supplier name" />
+                    <Input
+                      id="supplier"
+                      placeholder="Supplier name"
+                      value={newItem.supplier}
+                      onChange={(event) =>
+                        setNewItem((item) => ({
+                          ...item,
+                          supplier: event.target.value,
+                        }))
+                      }
+                    />
                   </div>
                 </div>
               </div>
@@ -680,8 +929,11 @@ export default function InventoryPage() {
                 >
                   Cancel
                 </Button>
-                <Button onClick={() => setShowAddDialog(false)}>
-                  Add Item
+                <Button
+                  onClick={() => void handleAddItem()}
+                  disabled={addPending || !newItem.name.trim()}
+                >
+                  {addPending ? "Adding…" : "Add Item"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -1351,7 +1603,13 @@ export default function InventoryPage() {
       )}
 
       {/* Restock Dialog */}
-      <Dialog open={showRestockDialog} onOpenChange={setShowRestockDialog}>
+      <Dialog
+        open={showRestockDialog}
+        onOpenChange={(open) => {
+          setShowRestockDialog(open);
+          if (open) setStockMutationError(null);
+        }}
+      >
         <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-4 sm:max-w-lg sm:p-6">
           <DialogHeader>
             <DialogTitle>Restock Item</DialogTitle>
@@ -1360,6 +1618,11 @@ export default function InventoryPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            {stockMutationError ? (
+              <p className="text-sm text-red-600" role="alert">
+                {stockMutationError}
+              </p>
+            ) : null}
             <div>
               <Label htmlFor="restock-quantity">Quantity to Add</Label>
               <Input
@@ -1396,9 +1659,13 @@ export default function InventoryPage() {
             </Button>
             <Button
               onClick={handleRestock}
-              disabled={!restockQuantity || parseInt(restockQuantity) <= 0}
+              disabled={
+                stockMutationPending ||
+                !restockQuantity ||
+                parseInt(restockQuantity) <= 0
+              }
             >
-              Restock
+              {stockMutationPending ? "Restocking…" : "Restock"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1409,6 +1676,7 @@ export default function InventoryPage() {
         open={showUseDialog}
         onOpenChange={(open) => {
           setShowUseDialog(open);
+          if (open) setStockMutationError(null);
           if (!open) {
             setUseQuantity("");
             setSelectedJobId("");
@@ -1450,6 +1718,11 @@ export default function InventoryPage() {
           )}
 
           <div className="grid gap-4 py-4">
+            {stockMutationError ? (
+              <p className="text-sm text-red-600" role="alert">
+                {stockMutationError}
+              </p>
+            ) : null}
             <div className="space-y-2">
               <Label htmlFor="use-quantity" className="text-sm font-bold">
                 Quantity to use
@@ -1493,8 +1766,7 @@ export default function InventoryPage() {
                     )
                   }
                   disabled={
-                    !selectedItem ||
-                    parsedUseQuantity >= selectedItem.quantity
+                    !selectedItem || parsedUseQuantity >= selectedItem.quantity
                   }
                   aria-label="Increase quantity"
                 >
@@ -1618,9 +1890,9 @@ export default function InventoryPage() {
             <Button
               onClick={handleUse}
               className="h-12 w-full rounded-xl bg-blue-600 font-bold text-white hover:bg-blue-700"
-              disabled={invalidUseQuantity}
+              disabled={stockMutationPending || invalidUseQuantity}
             >
-              Use
+              {stockMutationPending ? "Saving…" : "Use"}
             </Button>
           </DialogFooter>
         </DialogContent>

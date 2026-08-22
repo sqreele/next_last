@@ -577,8 +577,9 @@ class TopicSerializer(serializers.ModelSerializer):
 
 # Area serializer
 class AreaSerializer(serializers.ModelSerializer):
-    property_id = serializers.PrimaryKeyRelatedField(
+    property_id = serializers.SlugRelatedField(
         source='property',
+        slug_field='property_id',
         queryset=Property.objects.all(),
         write_only=True,
     )
@@ -596,6 +597,8 @@ class AreaSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'property', 'created_at', 'updated_at', 'jobs_count']
 
     def get_jobs_count(self, obj):
+        if hasattr(obj, 'jobs_count_value'):
+            return obj.jobs_count_value
         return obj.jobs.count()
 
     def validate(self, data):
@@ -1092,6 +1095,7 @@ class MachineSerializer(serializers.ModelSerializer):
 class MachineListSerializer(serializers.ModelSerializer):
     """Lighter serializer for listing equipment following ER diagram"""
     property_name = serializers.CharField(source='property.name', read_only=True)
+    property_id = serializers.CharField(source='property.property_id', read_only=True)
     task_count = serializers.SerializerMethodField()
     next_maintenance_date = serializers.SerializerMethodField()
     image_url = serializers.SerializerMethodField()
@@ -1102,7 +1106,7 @@ class MachineListSerializer(serializers.ModelSerializer):
         model = Machine
         fields = [
             'id', 'machine_id', 'name', 'brand', 'category', 'serial_number',
-            'status', 'location', 'property_name', 
+            'status', 'location', 'property_id', 'property_name',
             'task_count', 'next_maintenance_date', 'last_maintenance_date',
             'expected_replacement_date', 'warranty_end_date', 'lifecycle_state',
             'is_under_warranty', 'image_url'
@@ -1338,10 +1342,14 @@ class MachineDetailSerializer(serializers.ModelSerializer):
 
 class MachineCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating machines"""
+    property_id = serializers.SlugRelatedField(
+        source='property', slug_field='property_id', queryset=Property.objects.all()
+    )
+
     class Meta:
         model = Machine
         fields = [
-            'name', 'brand', 'category', 'serial_number', 'description', 'location', 'property',
+            'name', 'brand', 'category', 'serial_number', 'description', 'location', 'property_id',
             'status', 'group_id', 'installation_date', 'last_maintenance_date',
             'purchase_date', 'purchase_cost', 'warranty_start_date', 'warranty_end_date',
             'expected_replacement_date', 'replacement_cost_estimate', 'supplier',
@@ -1364,10 +1372,14 @@ class MachineCreateSerializer(serializers.ModelSerializer):
 
 class MachineUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating machines"""
+    property_id = serializers.SlugRelatedField(
+        source='property', slug_field='property_id', queryset=Property.objects.all(), required=False
+    )
+
     class Meta:
         model = Machine
         fields = [
-            'name', 'brand', 'category', 'serial_number', 'description', 'location', 'property',
+            'name', 'brand', 'category', 'serial_number', 'description', 'location', 'property_id',
             'status', 'group_id', 'installation_date', 'last_maintenance_date',
             'purchase_date', 'purchase_cost', 'warranty_start_date', 'warranty_end_date',
             'expected_replacement_date', 'replacement_cost_estimate', 'supplier',
@@ -1401,22 +1413,40 @@ class MachinePreventiveMaintenanceSerializer(serializers.ModelSerializer):
     
     def update(self, instance, validated_data):
         pm_ids = validated_data.pop('preventive_maintenance_ids', [])
-        
-        if pm_ids:
-            pm_instances = PreventiveMaintenance.objects.filter(pm_id__in=pm_ids)
-            
-            if pm_instances.count() < len(pm_ids):
-                missing_ids = set(pm_ids) - set(pm_instances.values_list('pm_id', flat=True))
-                raise serializers.ValidationError({
-                    'preventive_maintenance_ids': f'Invalid maintenance IDs: {", ".join(missing_ids)}'
-                })
-            
-            instance.preventive_maintenances.set(pm_instances)
-            
-            latest_completed = pm_instances.filter(
-                completed_date__isnull=False
-            ).order_by('-completed_date').first()
-            
+        if len(pm_ids) != len(set(pm_ids)):
+            raise serializers.ValidationError({
+                'preventive_maintenance_ids': 'Duplicate maintenance IDs are not allowed.'
+            })
+
+        pm_instances = list(
+            PreventiveMaintenance.objects.filter(pm_id__in=pm_ids)
+            .select_related('job__property')
+            .prefetch_related('machines__property')
+        )
+        if len(pm_instances) != len(pm_ids):
+            raise serializers.ValidationError({
+                'preventive_maintenance_ids': 'One or more maintenance IDs are invalid.'
+            })
+
+        invalid_property = [
+            pm.pm_id for pm in pm_instances
+            if get_pm_property(pm) != instance.property
+        ]
+        if invalid_property:
+            raise serializers.ValidationError({
+                'preventive_maintenance_ids': (
+                    'Every maintenance record must belong to the machine property.'
+                )
+            })
+
+        instance.preventive_maintenances.set(pm_instances)
+
+        if pm_instances:
+            latest_completed = max(
+                (pm for pm in pm_instances if pm.completed_date),
+                key=lambda pm: pm.completed_date,
+                default=None,
+            )
             if latest_completed:
                 instance.last_maintenance_date = latest_completed.completed_date
                 instance.save(update_fields=['last_maintenance_date', 'updated_at'])
@@ -2769,7 +2799,10 @@ _UTILITY_DECIMAL_KWARGS = dict(
 class UtilityConsumptionSerializer(serializers.ModelSerializer):
     """Serializer for Utility Consumption records"""
     property_name = serializers.CharField(source='property.name', read_only=True)
-    property_id = serializers.CharField(source='property.property_id', read_only=True)
+    property = serializers.PrimaryKeyRelatedField(read_only=True)
+    property_id = serializers.SlugRelatedField(
+        source='property', slug_field='property_id', queryset=Property.objects.all()
+    )
     month_display = serializers.CharField(source='get_month_display', read_only=True)
     created_by_username = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
@@ -2827,6 +2860,14 @@ class UtilityConsumptionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'month': 'Month must be between 1 and 12.'
             })
+
+        for field in (
+            'totalkwh', 'onpeakkwh', 'offpeakkwh', 'totalelectricity',
+            'electricity_cost_budget', 'water', 'nightsale',
+        ):
+            value = data.get(field)
+            if value is not None and value < 0:
+                raise serializers.ValidationError({field: 'Value cannot be negative.'})
         
         return data
 
@@ -2894,7 +2935,10 @@ class InventoryUsageSerializer(serializers.ModelSerializer):
 class InventorySerializer(serializers.ModelSerializer):
     """Serializer for Inventory items"""
     property_name = serializers.CharField(source='property.name', read_only=True)
-    property_id = serializers.CharField(source='property.property_id', read_only=True)
+    property = serializers.PrimaryKeyRelatedField(read_only=True)
+    property_id = serializers.SlugRelatedField(
+        source='property', slug_field='property_id', queryset=Property.objects.all()
+    )
     room_name = serializers.CharField(source='room.name', read_only=True)
     room_id = serializers.CharField(source='room.room_id', read_only=True)
     created_by_username = serializers.SerializerMethodField()
@@ -3008,6 +3052,8 @@ class InventorySerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Validate inventory data"""
         property_obj = data.get('property') or getattr(self.instance, 'property', None)
+        if property_obj is None:
+            raise serializers.ValidationError({'property': 'Property must be provided.'})
         room = data.get('room') if 'room' in data else getattr(self.instance, 'room', None)
         _validate_request_property_access(self, property_obj)
         _validate_room_belongs_to_property(room, property_obj)
@@ -3092,11 +3138,21 @@ class InventoryListSerializer(serializers.ModelSerializer):
             return obj.image.url
         return None
     
+    def _get_jobs(self, obj):
+        if not hasattr(obj, '_inventory_list_jobs'):
+            obj._inventory_list_jobs = list(obj.jobs.all())
+        return obj._inventory_list_jobs
+
+    def _get_pms(self, obj):
+        if not hasattr(obj, '_inventory_list_pms'):
+            obj._inventory_list_pms = list(obj.preventive_maintenances.all())
+        return obj._inventory_list_pms
+
     def _get_primary_job(self, obj):
-        return obj.jobs.all().first()
+        return self._get_jobs(obj)[0] if self._get_jobs(obj) else None
     
     def _get_primary_pm(self, obj):
-        return obj.preventive_maintenances.all().first()
+        return self._get_pms(obj)[0] if self._get_pms(obj) else None
     
     def get_job_id(self, obj):
         job = self._get_primary_job(obj)
@@ -3115,13 +3171,13 @@ class InventoryListSerializer(serializers.ModelSerializer):
         return pm.pmtitle if pm else None
     
     def get_job_ids(self, obj):
-        return list(obj.jobs.values_list('job_id', flat=True))
+        return [job.job_id for job in self._get_jobs(obj)]
     
     def get_pm_ids(self, obj):
-        return list(obj.preventive_maintenances.values_list('pm_id', flat=True))
+        return [pm.pm_id for pm in self._get_pms(obj)]
     
     def get_jobs_detail(self, obj):
-        jobs = obj.jobs.all()[:5]
+        jobs = self._get_jobs(obj)[:5]
         return [
             {
                 'job_id': job.job_id,
@@ -3132,7 +3188,7 @@ class InventoryListSerializer(serializers.ModelSerializer):
         ]
     
     def get_preventive_maintenances_detail(self, obj):
-        pms = obj.preventive_maintenances.all()[:5]
+        pms = self._get_pms(obj)[:5]
         return [
             {
                 'pm_id': pm.pm_id,
@@ -3149,37 +3205,17 @@ class InventoryListSerializer(serializers.ModelSerializer):
             return None
         
         user = request.user
-        user_job = obj.jobs.filter(user=user).order_by('-updated_at').first()
+        user_job = max(
+            (job for job in self._get_jobs(obj) if job.user_id == user.id),
+            key=lambda job: job.updated_at,
+            default=None,
+        )
         if user_job:
             return {
                 'job_id': user_job.job_id,
                 'description': user_job.description[:50] + '...' if len(user_job.description) > 50 else user_job.description,
                 'full_description': user_job.description
             }
-        
-        from .models import Inventory
-        last_inventory = (
-            Inventory.objects.filter(
-                jobs__user=user,
-                item_id=obj.item_id
-            )
-            .order_by('-updated_at')
-            .prefetch_related('jobs')
-            .first()
-        )
-        
-        if last_inventory:
-            related_job = (
-                last_inventory.jobs.filter(user=user)
-                .order_by('-updated_at')
-                .first()
-            )
-            if related_job:
-                return {
-                    'job_id': related_job.job_id,
-                    'description': related_job.description[:50] + '...' if len(related_job.description) > 50 else related_job.description,
-                    'full_description': related_job.description
-                }
         
         return None
     
@@ -3190,44 +3226,19 @@ class InventoryListSerializer(serializers.ModelSerializer):
             return None
         
         user = request.user
-        pm = obj.preventive_maintenances.filter(
-            Q(assigned_to=user) | Q(created_by=user)
-        ).order_by('-updated_at').first()
+        pm = max(
+            (
+                pm for pm in self._get_pms(obj)
+                if pm.assigned_to_id == user.id or pm.created_by_id == user.id
+            ),
+            key=lambda item: item.updated_at,
+            default=None,
+        )
         if pm:
             return {
                 'pm_id': pm.pm_id,
                 'title': pm.pmtitle[:50] + '...' if len(pm.pmtitle) > 50 else pm.pmtitle,
                 'full_title': pm.pmtitle
             }
-        
-        from .models import Inventory
-        last_inventory = (
-            Inventory.objects.filter(
-                preventive_maintenances__isnull=False,
-                item_id=obj.item_id
-            )
-            .filter(
-                Q(preventive_maintenances__assigned_to=user) |
-                Q(preventive_maintenances__created_by=user)
-            )
-            .order_by('-updated_at')
-            .prefetch_related('preventive_maintenances')
-            .first()
-        )
-        
-        if last_inventory:
-            pm = (
-                last_inventory.preventive_maintenances.filter(
-                    Q(assigned_to=user) | Q(created_by=user)
-                )
-                .order_by('-updated_at')
-                .first()
-            )
-            if pm:
-                return {
-                    'pm_id': pm.pm_id,
-                    'title': pm.pmtitle[:50] + '...' if len(pm.pmtitle) > 50 else pm.pmtitle,
-                    'full_title': pm.pmtitle
-                }
         
         return None

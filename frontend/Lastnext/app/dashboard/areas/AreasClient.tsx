@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import axios from "axios";
 import {
   Plus,
@@ -33,8 +39,8 @@ import {
   DialogTitle,
 } from "@/app/components/ui/dialog";
 import { useToast } from "@/app/components/ui/use-toast";
-import { useUser } from "@/app/lib/stores/mainStore";
-import type { Area, Property } from "@/app/lib/types";
+import { useProperties, useUser } from "@/app/lib/stores/mainStore";
+import type { Area } from "@/app/lib/types";
 
 type AreaFormState = {
   id?: number;
@@ -67,10 +73,10 @@ function getErrorMessage(err: unknown, fallback: string): string {
 }
 
 const AreasClient: React.FC = () => {
-  const { userProfile, selectedPropertyId } = useUser();
+  const { selectedPropertyId } = useUser();
+  const { properties } = useProperties();
   const { toast } = useToast();
   const [areas, setAreas] = useState<Area[]>([]);
-  const [properties, setProperties] = useState<Property[]>([]);
   const [activeFilter, setActiveFilter] = useState<
     "all" | "active" | "inactive"
   >("all");
@@ -83,76 +89,55 @@ const AreasClient: React.FC = () => {
   const [form, setForm] = useState<AreaFormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Area | null>(null);
-
-  const propertyOptions = useMemo<Property[]>(() => {
-    if (properties.length) return properties;
-    const profProps = (userProfile?.properties as any[]) || [];
-    return profProps as Property[];
-  }, [properties, userProfile]);
-
-  // Map the globally selected property_id (string like "P1A2B3C4") to the
-  // integer PK that the areas API expects.
-  const selectedPropertyPk = useMemo<string | null>(() => {
-    if (!selectedPropertyId) return null;
-    const match = propertyOptions.find(
-      (p: any) =>
-        String(p?.property_id ?? "") === String(selectedPropertyId) ||
-        String(p?.id ?? "") === String(selectedPropertyId),
-    );
-    if (!match) return null;
-    return (match as any).id != null ? String((match as any).id) : null;
-  }, [selectedPropertyId, propertyOptions]);
+  const requestIdRef = useRef(0);
+  const selectedPropertyRef = useRef(selectedPropertyId);
+  selectedPropertyRef.current = selectedPropertyId;
 
   const selectedPropertyName = useMemo(() => {
     if (!selectedPropertyId) return null;
-    const match = propertyOptions.find(
-      (p: any) =>
-        String(p?.property_id ?? "") === String(selectedPropertyId) ||
-        String(p?.id ?? "") === String(selectedPropertyId),
+    const match = properties.find(
+      (property) => property.property_id === selectedPropertyId,
     );
-    return (match as any)?.name || null;
-  }, [selectedPropertyId, propertyOptions]);
+    return match?.name || null;
+  }, [selectedPropertyId, properties]);
 
-  const fetchAreas = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params: Record<string, string> = {};
-      if (selectedPropertyPk) params.property_id = selectedPropertyPk;
-      if (activeFilter !== "all")
-        params.is_active = String(activeFilter === "active");
-      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+  const fetchAreas = useCallback(
+    async (signal?: AbortSignal, requestId = requestIdRef.current) => {
+      if (!selectedPropertyId) {
+        setAreas([]);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const params: Record<string, string> = {
+          property_id: selectedPropertyId,
+        };
+        if (activeFilter !== "all")
+          params.is_active = String(activeFilter === "active");
+        if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
 
-      const res = await axios.get("/api/areas/", {
-        params,
-        withCredentials: true,
-      });
-      const data = res.data;
-      const list: Area[] = Array.isArray(data) ? data : data?.results || [];
-      setAreas(list);
-    } catch (err) {
-      setError(getErrorMessage(err, "Failed to load areas"));
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedPropertyPk, activeFilter, debouncedSearch]);
-
-  const fetchProperties = useCallback(async () => {
-    try {
-      const res = await axios.get("/api/properties/", {
-        withCredentials: true,
-      });
-      const data = res.data;
-      const list: Property[] = Array.isArray(data) ? data : data?.results || [];
-      setProperties(list);
-    } catch {
-      // Fall back to user profile properties
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchProperties();
-  }, [fetchProperties]);
+        const res = await axios.get("/api/areas/", {
+          params,
+          withCredentials: true,
+          signal,
+        });
+        const data = res.data;
+        const list: Area[] = Array.isArray(data) ? data : data?.results || [];
+        if (requestId === requestIdRef.current) setAreas(list);
+      } catch (err) {
+        if (axios.isCancel(err)) return;
+        if (requestId === requestIdRef.current) {
+          setError(getErrorMessage(err, "Failed to load areas"));
+        }
+      } finally {
+        if (requestId === requestIdRef.current) setLoading(false);
+      }
+    },
+    [selectedPropertyId, activeFilter, debouncedSearch],
+  );
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setDebouncedSearch(search);
@@ -160,15 +145,20 @@ const AreasClient: React.FC = () => {
     return () => window.clearTimeout(timeout);
   }, [search]);
   useEffect(() => {
-    fetchAreas();
+    const controller = new AbortController();
+    const requestId = ++requestIdRef.current;
+    setAreas([]);
+    setDialogOpen(false);
+    setDeleteTarget(null);
+    setForm(emptyForm);
+    void fetchAreas(controller.signal, requestId);
+    return () => controller.abort();
   }, [fetchAreas]);
 
   const openCreate = () => {
     setForm({
       ...emptyForm,
-      property_id:
-        selectedPropertyPk ||
-        (propertyOptions[0]?.id != null ? String(propertyOptions[0].id) : ""),
+      property_id: selectedPropertyId || "",
     });
     setDialogOpen(true);
   };
@@ -178,7 +168,7 @@ const AreasClient: React.FC = () => {
       id: area.id,
       name: area.name,
       description: area.description || "",
-      property_id: String(area.property),
+      property_id: area.property_uuid || selectedPropertyId || "",
       is_active: area.is_active,
     });
     setDialogOpen(true);
@@ -202,26 +192,31 @@ const AreasClient: React.FC = () => {
       return;
     }
     setSaving(true);
+    const mutationProperty = selectedPropertyId;
     try {
       const payload: any = {
         name: form.name.trim(),
         description: form.description.trim() || null,
         is_active: form.is_active,
-        property_id: Number(form.property_id),
+        property_id: form.property_id,
       };
       if (form.id) {
         await axios.patch(`/api/areas/${form.id}/`, payload, {
           withCredentials: true,
         });
-        toast({ title: "Area updated", variant: "success" });
       } else {
         await axios.post("/api/areas/", payload, { withCredentials: true });
-        toast({ title: "Area created", variant: "success" });
       }
+      if (mutationProperty !== selectedPropertyRef.current) return;
+      toast({
+        title: form.id ? "Area updated" : "Area created",
+        variant: "success",
+      });
       setDialogOpen(false);
       setForm(emptyForm);
       fetchAreas();
     } catch (err) {
+      if (mutationProperty !== selectedPropertyRef.current) return;
       toast({
         title: "Error",
         description: getErrorMessage(err, "Failed to save area"),
@@ -234,14 +229,17 @@ const AreasClient: React.FC = () => {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    const mutationProperty = selectedPropertyId;
     try {
       await axios.delete(`/api/areas/${deleteTarget.id}/`, {
         withCredentials: true,
       });
+      if (mutationProperty !== selectedPropertyRef.current) return;
       toast({ title: "Area deactivated", variant: "success" });
       setDeleteTarget(null);
       fetchAreas();
     } catch (err) {
+      if (mutationProperty !== selectedPropertyRef.current) return;
       toast({
         title: "Error",
         description: getErrorMessage(err, "Failed to delete area"),
@@ -249,6 +247,17 @@ const AreasClient: React.FC = () => {
       });
     }
   };
+
+  if (!selectedPropertyId) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-10 text-center">
+        <h1 className="text-2xl font-semibold text-foreground">Areas</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Select a property to view areas.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -262,11 +271,7 @@ const AreasClient: React.FC = () => {
                 Property:{" "}
                 <strong>{selectedPropertyName || selectedPropertyId}</strong>
               </span>
-            ) : (
-              <span className="ml-1 text-muted-foreground">
-                Showing all properties
-              </span>
-            )}
+            ) : null}
           </p>
         </div>
         <Button onClick={openCreate} className="w-full gap-1 sm:w-auto">
@@ -487,24 +492,9 @@ const AreasClient: React.FC = () => {
           <div className="space-y-3">
             <div>
               <Label>Property</Label>
-              <Select
-                value={form.property_id}
-                onValueChange={(v) =>
-                  setForm((f) => ({ ...f, property_id: v }))
-                }
-                disabled={Boolean(form.id)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a property" />
-                </SelectTrigger>
-                <SelectContent>
-                  {propertyOptions.map((p) => (
-                    <SelectItem key={String(p.id)} value={String(p.id)}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="rounded-md border border-border bg-muted px-3 py-2 text-sm">
+                {selectedPropertyName || selectedPropertyId}
+              </div>
             </div>
             <div>
               <Label>Name</Label>

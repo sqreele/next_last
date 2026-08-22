@@ -455,7 +455,7 @@ export default function PreventiveMaintenanceDashboard() {
                 )
                 .map((item: FrequencyDistributionItem, index: number) => (
                   <div
-                    key={item.frequency || `freq-${index}`}
+                    key={`${item.frequency || "unknown"}-${index}`}
                     className="bg-muted rounded-lg p-4 text-center"
                   >
                     <p className="text-xl font-bold text-foreground">

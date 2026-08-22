@@ -428,6 +428,46 @@ class TenantPropertyAuthorizationTests(APITestCase):
         self.assertEqual(upcoming.status_code, status.HTTP_200_OK, upcoming.content)
         self.assertEqual(upcoming.data['count'], 0)
 
+    def test_pm_stats_aggregate_each_frequency_once_without_machine_inflation(self):
+        second_machine = Machine.objects.create(
+            name='Tenant A1 Pump', property=self.property_a1
+        )
+        second_monthly = PreventiveMaintenance.objects.create(
+            pmtitle='Second monthly PM',
+            frequency='monthly',
+            scheduled_date=timezone.now() + timedelta(days=2),
+            created_by=self.user,
+        )
+        second_monthly.machines.add(self.machine_a1, second_machine)
+        weekly = PreventiveMaintenance.objects.create(
+            pmtitle='Weekly PM',
+            frequency='weekly',
+            scheduled_date=timezone.now() + timedelta(days=3),
+            created_by=self.user,
+        )
+        weekly.machines.add(self.machine_a1)
+        self.client.force_authenticate(self.user)
+
+        response = self.client.get(
+            reverse('myappLubd:preventive-maintenance-stats'),
+            {'property_id': self.property_a1.property_id},
+            secure=True,
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(response.data['counts']['total'], 3)
+        self.assertEqual(
+            response.data['frequency_distribution'],
+            [
+                {'frequency': 'monthly', 'count': 2},
+                {'frequency': 'weekly', 'count': 1},
+            ],
+        )
+        self.assertEqual(
+            sum(item['count'] for item in response.data['frequency_distribution']),
+            response.data['counts']['total'],
+        )
+
     def test_historical_cross_property_pm_is_hidden_from_restricted_reads(self):
         self.pm_a1.machines.add(self.machine_b)
         self.client.force_authenticate(self.user)

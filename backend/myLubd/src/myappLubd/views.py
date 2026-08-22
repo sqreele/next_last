@@ -1958,7 +1958,16 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         ).exclude(status='cancelled').count()
         pending = total - completed - overdue - cancelled
 
-        frequency_queryset = queryset.values('frequency').annotate(count=Count('frequency'))
+        # Clear PreventiveMaintenance.Meta.ordering before grouping. Otherwise
+        # PostgreSQL includes scheduled_date in GROUP BY and returns duplicate
+        # rows for the same frequency. Count distinct PMs so machine/topic joins
+        # cannot inflate the distribution.
+        frequency_queryset = (
+            queryset.order_by()
+            .values('frequency')
+            .annotate(count=Count('pk', distinct=True))
+            .order_by('frequency')
+        )
         frequency_distribution = [
             {'frequency': item['frequency'], 'count': item['count']}
             for item in frequency_queryset

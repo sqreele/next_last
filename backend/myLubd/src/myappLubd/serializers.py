@@ -64,6 +64,8 @@ def _validate_room_belongs_to_property(room, property_obj):
 def _validate_machine_ids_in_request_scope(serializer, machine_ids):
     if not machine_ids:
         return []
+    if len(machine_ids) != len(set(machine_ids)):
+        raise serializers.ValidationError({'machine_ids': 'Duplicate machine_ids are not allowed.'})
     machines = list(Machine.objects.select_related('property').filter(machine_id__in=machine_ids))
     if len(machines) != len(set(machine_ids)):
         raise serializers.ValidationError({'machine_ids': 'One or more machine_ids are invalid.'})
@@ -1138,6 +1140,18 @@ def get_pm_property_external_id(obj):
     return next(iter(property_ids)) if len(property_ids) == 1 else None
 
 
+def get_pm_property(obj):
+    """Return the sole canonical Property for a PM, or None if malformed."""
+    if obj is None:
+        return None
+    if obj.job_id and obj.job.property_id:
+        return obj.job.property
+    property_ids = set(obj.machines.values_list('property_id', flat=True))
+    if len(property_ids) != 1:
+        return None
+    return Property.objects.filter(pk=next(iter(property_ids))).first()
+
+
 class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
     job_id = serializers.SerializerMethodField()
     job_description = serializers.SerializerMethodField()
@@ -1983,9 +1997,12 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         required=False,
         allow_empty=True
     )
+    job_id = serializers.CharField(write_only=True, required=False, allow_blank=False)
     before_image_url = serializers.SerializerMethodField()
     after_image_url = serializers.SerializerMethodField()
-    property_id = serializers.SerializerMethodField()
+    # Request scope only. PreventiveMaintenance ownership remains derived from
+    # its canonical Machine/Job relations; this is not a model FK.
+    property_id = serializers.CharField(write_only=True, required=False, allow_blank=False)
     procedure_template_name = serializers.CharField(source='procedure_template.name', read_only=True)
     procedure_template_id = serializers.IntegerField(source='procedure_template.id', read_only=True)
     assigned_to_name = serializers.SerializerMethodField()
@@ -2003,11 +2020,12 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             'frequency', 'custom_days', 'next_due_date', 'before_image', 'after_image',
             'before_image_url', 'after_image_url', 'notes', 'procedure', 'procedure_template',
             'procedure_template_id', 'procedure_template_name', 'machine_ids', 'machines',
-            'property_id', 'assigned_to', 'assigned_to_name', 'technician_name', 'remarks'
+            'property_id', 'assigned_to', 'assigned_to_name', 'technician_name', 'remarks',
+            'status', 'job_id'
         ]
         read_only_fields = [
             'pm_id', 'next_due_date', 'procedure_template_id', 'procedure_template_name',
-            'assigned_to_name', 'technician_name'
+            'assigned_to_name', 'technician_name', 'status'
         ]
         extra_kwargs = {
             'before_image': {'required': False},
@@ -2015,7 +2033,7 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             'notes': {'required': False},
             'procedure': {'required': False},
             'procedure_template': {'required': False, 'allow_null': True},
-            'pmtitle': {'required': False},
+            'pmtitle': {'required': True},
             'custom_days': {'required': False},
             'completed_date': {'required': False},
             'next_due_date': {'required': False},
@@ -2028,6 +2046,12 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
 
     def get_technician_name(self, obj):
         return get_user_display_name(obj.assigned_to)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['property_id'] = get_pm_property_external_id(instance)
+        data['job_id'] = instance.job.job_id if instance.job_id else None
+        return data
     
     def to_internal_value(self, data):
         
@@ -2083,7 +2107,7 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             ):
                 value = data.get(nullable_field)
                 if isinstance(value, str) and value.strip() == '':
-                    if nullable_field in ('procedure_template', 'assigned_to', 'completed_date', 'custom_days'):
+                    if nullable_field in ('procedure_template', 'assigned_to', 'custom_days'):
                         data[nullable_field] = None
                     else:
                         data.pop(nullable_field, None)
@@ -2117,6 +2141,36 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                 elif isinstance(data, dict):
                     # Regular dict - remove the key
                     data = {k: v for k, v in data.items() if k != 'after_image' or hasattr(v, 'read')}
+
+        # A datetime-local value has no offset. Interpret that wall time in the
+        # active property's tenant timezone before DRF applies the process-wide
+        # default timezone. Offset-aware timestamps are left untouched.
+        if isinstance(data, dict):
+            property_obj = None
+            property_ref = data.get('property_id')
+            if property_ref:
+                try:
+                    property_obj = resolve_external_property_reference(property_ref)
+                except ValidationError:
+                    # Leave identity validation to validate(), which returns the
+                    # canonical field error without leaking property data.
+                    property_obj = None
+            elif self.instance is not None:
+                property_obj = get_pm_property(self.instance)
+
+            if property_obj is not None:
+                from django.utils.dateparse import parse_datetime
+
+                for field_name in ('scheduled_date', 'completed_date'):
+                    raw_value = data.get(field_name)
+                    if not isinstance(raw_value, str) or not raw_value.strip():
+                        continue
+                    parsed_value = parse_datetime(raw_value.strip())
+                    if parsed_value is not None and timezone.is_naive(parsed_value):
+                        data[field_name] = timezone.make_aware(
+                            parsed_value,
+                            object_timezone(property_obj),
+                        ).isoformat()
         
         result = super().to_internal_value(data)
         
@@ -2150,159 +2204,44 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(obj.after_image.url)
         return None
 
-    def get_property_id(self, obj):
-        return get_pm_property_external_id(obj)
-
+    @transaction.atomic
     def create(self, validated_data):
-        
-        # CRITICAL: Pop topic_ids and machine_ids ONCE at the beginning
-        # These are ManyToMany relationships that need to be set after instance creation
         topic_ids = validated_data.pop('topic_ids', [])
-        machine_ids = validated_data.pop('machine_ids', [])
-        
-        # Ensure machine_ids is a list (handle case where it might be a string or single value)
-        if machine_ids and not isinstance(machine_ids, list):
-            machine_ids = [machine_ids] if machine_ids else []
-        # Filter out empty strings and None values
-        if isinstance(machine_ids, list):
-            machine_ids = [str(mid).strip() for mid in machine_ids if mid and str(mid).strip()]
-        else:
-            machine_ids = []
-        
-        # Ensure topic_ids is a list
-        if topic_ids and not isinstance(topic_ids, list):
-            topic_ids = [topic_ids] if topic_ids else []
-        # Filter out None values and ensure integers
-        if isinstance(topic_ids, list):
-            topic_ids = [int(tid) for tid in topic_ids if tid is not None]
-        
-        # Auto-calculate scheduled_date based on frequency if procedure_template is provided
+        validated_data.pop('machine_ids', [])
+        validated_data.pop('property_id', None)
+        validated_data.pop('job_id', None)
+        if self._validated_job is not None:
+            validated_data['job'] = self._validated_job
+
         procedure_template = validated_data.get('procedure_template')
-        scheduled_date = validated_data.get('scheduled_date')
         frequency = validated_data.get('frequency')
-        
-        # Ensure frequency is set (default to 'monthly' if not provided)
         if not frequency:
             frequency = 'monthly'
             validated_data['frequency'] = frequency
-        
-        # If procedure_template is provided, use its frequency
         if procedure_template:
             template_frequency = getattr(procedure_template, 'frequency', None)
             if template_frequency:
-                # Use template frequency (prefer template frequency over form frequency)
-                frequency = template_frequency
-                validated_data['frequency'] = frequency
+                validated_data['frequency'] = template_frequency
             template_custom_days = getattr(procedure_template, 'custom_days', None)
-            if frequency == 'custom' and template_custom_days and not validated_data.get('custom_days'):
+            if validated_data['frequency'] == 'custom' and template_custom_days and not validated_data.get('custom_days'):
                 validated_data['custom_days'] = template_custom_days
-            
-            # Calculate next schedule based on frequency if scheduled_date is not provided or invalid
-            # Check if scheduled_date is None, empty string, or not a valid datetime
-            needs_scheduled_date = False
-            if not scheduled_date:
-                needs_scheduled_date = True
-            elif isinstance(scheduled_date, str) and not scheduled_date.strip():
-                needs_scheduled_date = True
-            
-            if needs_scheduled_date and frequency:
-                now = timezone.now()
-                if frequency == 'daily':
-                    next_schedule = now + timedelta(days=1)
-                elif frequency == 'weekly':
-                    next_schedule = now + timedelta(weeks=1)
-                elif frequency == 'monthly':
-                    # Add one month
-                    month = now.month + 1
-                    year = now.year
-                    if month > 12:
-                        month = 1
-                        year += 1
-                    # Handle different month lengths
-                    day = min(now.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 
-                                         31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month-1])
-                    next_schedule = now.replace(year=year, month=month, day=day)
-                elif frequency == 'quarterly':
-                    # Add three months
-                    month = now.month + 3
-                    year = now.year
-                    if month > 12:
-                        month -= 12
-                        year += 1
-                    day = min(now.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 
-                                         31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month-1])
-                    next_schedule = now.replace(year=year, month=month, day=day)
-                elif frequency == 'semi_annual':
-                    # Add six months
-                    month = now.month + 6
-                    year = now.year
-                    if month > 12:
-                        month -= 12
-                        year += 1
-                    day = min(now.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 
-                                         31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month-1])
-                    next_schedule = now.replace(year=year, month=month, day=day)
-                elif frequency == 'annual':
-                    # Add one year
-                    next_schedule = now.replace(year=now.year + 1)
-                elif frequency == 'custom' and procedure_template.custom_days:
-                    next_schedule = now + timedelta(days=procedure_template.custom_days)
-                else:
-                    # Default to monthly if frequency is not recognized
-                    month = now.month + 1
-                    year = now.year
-                    if month > 12:
-                        month = 1
-                        year += 1
-                    day = min(now.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 
-                                         31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month-1])
-                    next_schedule = now.replace(year=year, month=month, day=day)
-                
-                validated_data['scheduled_date'] = next_schedule
-        
+
         instance = super().create(validated_data)
-        
-        # Set ManyToMany relationships after instance creation
-        
-        if topic_ids:
-            instance.topics.set(topic_ids)
-
-        has_machines = machine_ids and len(machine_ids) > 0 if isinstance(machine_ids, list) else bool(machine_ids)
-        
-        if has_machines:
-            logger.info(f"[PreventiveMaintenanceCreateUpdateSerializer] Setting {len(machine_ids)} machines: {machine_ids}")
-            
-            # Query machines by machine_id
-            machines = Machine.objects.filter(machine_id__in=machine_ids)
-            found_count = machines.count()
-            found_ids = list(machines.values_list('machine_id', flat=True))
-            
-            logger.info(f"[PreventiveMaintenanceCreateUpdateSerializer] Found {found_count} machines: {found_ids}")
-            
-            if found_count == 0:
-                logger.warning(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ No machines found for IDs: {machine_ids}")
-            
-            # Set the machines relationship
-            instance.machines.set(machines)
-            
-            # Refresh instance to ensure machines are loaded
-            instance.refresh_from_db()
-            
-            # Verify machines were set
-            final_machine_count = instance.machines.count()
-            final_machine_ids = list(instance.machines.values_list('machine_id', flat=True))
-            
-            logger.info(f"[PreventiveMaintenanceCreateUpdateSerializer] ✅ Machines set. Count: {final_machine_count}, IDs: {final_machine_ids}")
-            
-            if final_machine_count == 0 and found_count > 0:
-                logger.error(f"[PreventiveMaintenanceCreateUpdateSerializer] ⚠️ ERROR: Machines found but not set!")
-
+        self._set_m2m_relations(instance, topic_ids, self._validated_machines)
         return instance
 
+    def _set_m2m_relations(self, instance, topic_ids, machines):
+        instance.topics.set(topic_ids)
+        instance.machines.set(machines)
+
+    @transaction.atomic
     def update(self, instance, validated_data):
-        
         topic_ids = validated_data.pop('topic_ids', None)
         machine_ids = validated_data.pop('machine_ids', None)
+        validated_data.pop('property_id', None)
+        job_id = validated_data.pop('job_id', None)
+        if job_id is not None:
+            validated_data['job'] = self._validated_job
         procedure_template = validated_data.get('procedure_template')
         if procedure_template:
             template_frequency = getattr(procedure_template, 'frequency', None)
@@ -2316,14 +2255,11 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         if topic_ids is not None:
             instance.topics.set(topic_ids)
         if machine_ids is not None:
-            instance.machines.set(Machine.objects.filter(machine_id__in=machine_ids))
+            instance.machines.set(self._validated_machines)
         return instance
 
-    def validate_assigned_to(self, value):
-        """Custom validation for assigned_to field"""
-        return value
-
     def validate(self, data):
+        creating = self.instance is None
         frequency = data.get('frequency')
         custom_days = data.get('custom_days')
         procedure_template = data.get('procedure_template')
@@ -2343,8 +2279,20 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                 'custom_days': 'Custom days value is required when frequency is set to Custom'
             })
 
+        if creating and not str(data.get('pmtitle') or '').strip():
+            raise serializers.ValidationError({'pmtitle': 'Maintenance title is required.'})
+
         scheduled_date = data.get('scheduled_date')
         completed_date = data.get('completed_date')
+
+        if creating and completed_date is not None:
+            raise serializers.ValidationError({
+                'completed_date': 'A new maintenance record must start pending and cannot have a completion date.'
+            })
+        if creating and (data.get('before_image') or data.get('after_image')):
+            raise serializers.ValidationError({
+                'images': 'Create the maintenance record first, then upload evidence through the PM image endpoint.'
+            })
 
         # Only validate completed_date if it's actually provided (not None/empty)
         # For new records, completed_date should be None/not provided
@@ -2358,7 +2306,9 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
                     'completed_date': 'Completion date cannot be earlier than scheduled date'
                 })
 
-        machine_ids = data.get('machine_ids', [])
+        machine_ids = data.get('machine_ids')
+        if machine_ids is None and not creating:
+            machine_ids = list(self.instance.machines.values_list('machine_id', flat=True))
         # Require at least one machine
         if not machine_ids or len(machine_ids) == 0:
             raise serializers.ValidationError({
@@ -2366,7 +2316,71 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
             })
         
         # Validate machine_ids exist and belong to the same property
-        _validate_machine_ids_in_request_scope(self, machine_ids)
+        machines = _validate_machine_ids_in_request_scope(self, machine_ids)
+        machine_property = machines[0].property
+
+        property_ref = data.get('property_id')
+        if creating and not property_ref:
+            raise serializers.ValidationError({'property_id': 'Active property is required.'})
+        if property_ref:
+            try:
+                request_property = resolve_external_property_reference(property_ref)
+            except ValidationError as exc:
+                raise serializers.ValidationError(
+                    getattr(exc, 'message_dict', {'property_id': ['Invalid property ID.']})
+                )
+        else:
+            request_property = get_pm_property(self.instance)
+
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if request_property is None:
+            raise serializers.ValidationError({'property_id': 'Unable to determine the active property.'})
+        if user is not None and not user.is_superuser:
+            if not get_accessible_properties(user).filter(pk=request_property.pk).exists():
+                raise serializers.ValidationError({'property_id': 'You do not have access to this property.'})
+            if not get_operable_properties(user).filter(pk=request_property.pk).exists():
+                raise serializers.ValidationError({'property_id': 'Your role cannot create maintenance for this property.'})
+        if machine_property.pk != request_property.pk:
+            raise serializers.ValidationError({
+                'machine_ids': 'All machines must belong to the active property.'
+            })
+
+        job_ref = data.get('job_id')
+        if job_ref:
+            job = Job.objects.select_related('property').filter(job_id=job_ref).first()
+            if job is None:
+                raise serializers.ValidationError({'job_id': 'Invalid job_id.'})
+            if job.property_id != request_property.pk:
+                raise serializers.ValidationError({
+                    'job_id': 'Job and machines must belong to the active property.'
+                })
+        elif not creating:
+            job = self.instance.job
+            if job is not None and job.property_id != request_property.pk:
+                raise serializers.ValidationError({
+                    'job_id': 'Existing Job and machines do not share one property.'
+                })
+        else:
+            job = None
+
+        topic_ids = data.get('topic_ids')
+        if topic_ids is not None:
+            if len(topic_ids) != len(set(topic_ids)):
+                raise serializers.ValidationError({'topic_ids': 'Duplicate topic_ids are not allowed.'})
+            if Topic.objects.filter(pk__in=topic_ids).count() != len(topic_ids):
+                raise serializers.ValidationError({'topic_ids': 'One or more topic_ids are invalid.'})
+
+        assigned_to = data.get('assigned_to')
+        if assigned_to is not None and not assigned_to.is_superuser:
+            if not get_operable_properties(assigned_to).filter(pk=request_property.pk).exists():
+                raise serializers.ValidationError({
+                    'assigned_to': 'Assignee must have an active operable membership for the selected property.'
+                })
+
+        self._validated_machines = machines
+        self._validated_property = request_property
+        self._validated_job = job
 
         return validate_and_optimize_legacy_pm_images(self.instance, data)
 

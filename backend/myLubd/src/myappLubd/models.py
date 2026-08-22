@@ -640,8 +640,15 @@ class PreventiveMaintenance(models.Model):
                                      31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month-1])
             self.next_due_date = base_date.replace(year=year, month=month, day=day)
         elif self.frequency == 'annual':
-            # Add one year
-            self.next_due_date = base_date.replace(year=base_date.year + 1)
+            # Preserve the calendar date; Feb 29 recurs on Feb 28 in a
+            # non-leap year, matching the master-plan recurrence service.
+            try:
+                self.next_due_date = base_date.replace(year=base_date.year + 1)
+            except ValueError:
+                self.next_due_date = base_date.replace(
+                    year=base_date.year + 1,
+                    day=28,
+                )
         elif self.frequency == 'custom' and self.custom_days:
             # Add custom number of days
             self.next_due_date = base_date + timezone.timedelta(days=self.custom_days)

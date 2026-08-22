@@ -14,7 +14,8 @@ import axios from "axios";
 
 export type CreatePreventiveMaintenanceData = {
   pmtitle: string;
-  // property_id is not sent to backend - it's determined by the machines assigned
+  // External Property.property_id used as request scope, never a PM ownership FK.
+  property_id: string;
   machine_ids: string[];
   scheduled_date: string;
   frequency: string;
@@ -27,6 +28,7 @@ export type CreatePreventiveMaintenanceData = {
   completed_date?: string;
   procedure_template?: number; // FK to MaintenanceProcedure task template
   assigned_to?: number; // User ID (pk value)
+  job_id?: string; // External Job.job_id; ordinary Create UI does not expose it.
   remarks?: string;
   status?: string;
   next_due_date?: string;
@@ -43,6 +45,7 @@ export interface CompletePreventiveMaintenanceData {
 
 export interface DashboardStats {
   can_operate?: boolean;
+  timezone?: string | null;
   avg_completion_times: Record<string, number>;
   counts: {
     total: number;
@@ -624,7 +627,7 @@ class PreventiveMaintenanceService {
   async createPreventiveMaintenance(
     data: CreatePreventiveMaintenanceData,
   ): Promise<ServiceResponse<PreventiveMaintenance>> {
-    // Validate machine_ids is an array (but allow empty array - machines are optional)
+    // Ordinary PM creation requires at least one canonical Machine ownership path.
     if (!Array.isArray(data.machine_ids)) {
       console.error("ERROR: machine_ids must be an array:", {
         machine_ids: data.machine_ids,
@@ -640,22 +643,11 @@ class PreventiveMaintenanceService {
       const formData = new FormData();
 
       // Add basic fields
+      formData.append("property_id", data.property_id);
       if (data.pmtitle?.trim()) {
         formData.append("pmtitle", data.pmtitle.trim());
       }
       formData.append("scheduled_date", data.scheduled_date);
-      // Only append completed_date if it's provided, not empty, and not undefined/null
-      // For new records (no pmId), completed_date should always be undefined and not sent
-      if (
-        data.completed_date !== undefined &&
-        data.completed_date !== null &&
-        data.completed_date !== "" &&
-        (typeof data.completed_date !== "string" ||
-          data.completed_date.trim() !== "")
-      ) {
-        formData.append("completed_date", data.completed_date);
-      } else {
-      }
       formData.append("frequency", data.frequency);
       if (data.custom_days != null) {
         formData.append("custom_days", String(data.custom_days));
@@ -675,6 +667,9 @@ class PreventiveMaintenanceService {
       }
       if (data.assigned_to !== undefined && data.assigned_to !== null) {
         formData.append("assigned_to", String(data.assigned_to));
+      }
+      if (data.job_id) {
+        formData.append("job_id", data.job_id);
       }
       if (data.remarks !== undefined) {
         formData.append("remarks", data.remarks?.trim() || "");
@@ -715,49 +710,9 @@ class PreventiveMaintenanceService {
         );
       }
 
-      // Note: property_id is not sent to backend - it's determined by the machines assigned
-      // if (data.property_id) formData.append('property_id', data.property_id);
-
-      // Add image files directly to the initial request
-      // CRITICAL: Only append if it's actually a File object with size > 0
-      // Do NOT append empty strings, null, undefined, or empty objects
-      // Backend will reject non-file data for these fields
-      if (data.before_image !== undefined && data.before_image !== null) {
-        if (data.before_image instanceof File && data.before_image.size > 0) {
-          formData.append("before_image", data.before_image);
-        } else {
-          console.warn("⚠️ Skipping before_image - not a valid file:", {
-            isFile: data.before_image instanceof File,
-            type: typeof data.before_image,
-            value: data.before_image,
-            isObject:
-              typeof data.before_image === "object" &&
-              data.before_image !== null,
-            isEmptyObject:
-              typeof data.before_image === "object" &&
-              Object.keys(data.before_image).length === 0,
-          });
-          // DO NOT append anything - backend will reject non-file data
-        }
-      }
-
-      if (data.after_image !== undefined && data.after_image !== null) {
-        if (data.after_image instanceof File && data.after_image.size > 0) {
-          formData.append("after_image", data.after_image);
-        } else {
-          console.warn("⚠️ Skipping after_image - not a valid file:", {
-            isFile: data.after_image instanceof File,
-            type: typeof data.after_image,
-            value: data.after_image,
-            isObject:
-              typeof data.after_image === "object" && data.after_image !== null,
-            isEmptyObject:
-              typeof data.after_image === "object" &&
-              Object.keys(data.after_image).length === 0,
-          });
-          // DO NOT append anything - backend will reject non-file data
-        }
-      }
+      // Initial create deliberately carries no completion/evidence fields.
+      // Evidence is uploaded after the canonical pm_id exists so the gallery
+      // endpoint can enforce authorization, optimization, type, and max-count.
       const formDataEntries: Array<[string, any]> = [];
       for (const [key, value] of formData.entries()) {
         const displayValue =

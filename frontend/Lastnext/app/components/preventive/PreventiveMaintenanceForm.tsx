@@ -7,7 +7,6 @@ import {
   Form,
   Field,
   FormikErrors,
-  useFormikContext,
   FormikHelpers,
 } from "formik";
 import Link from "next/link";
@@ -43,12 +42,6 @@ import { Loader } from "lucide-react";
 
 const MIN_LOADER_MS = 400; // Minimum time to show loader to avoid flash
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const STATUS_OPTIONS = [
-  { value: "pending", label: "Pending" },
-  { value: "completed", label: "Completed" },
-  { value: "overdue", label: "Overdue" },
-];
-
 interface PreventiveMaintenanceFormProps {
   pmId?: string | null;
   onSuccessAction: (data: PreventiveMaintenance) => void;
@@ -124,7 +117,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     useState<PreventiveMaintenance | null>(null);
   const actualInitialData = initialDataProp || fetchedInitialData;
 
-  const createdMaintenanceIdRef = useRef<string | null>(null);
   const loaderShownAtRef = useRef<number | null>(null);
 
   const clearLoadingAfterMinTime = useCallback(() => {
@@ -165,6 +157,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   const [loadingMachines, setLoadingMachines] = useState<boolean>(true);
   const [loadingMaintenanceTasks, setLoadingMaintenanceTasks] =
     useState<boolean>(true);
+  const [canOperate, setCanOperate] = useState<boolean | null>(null);
+  const [loadingCapability, setLoadingCapability] = useState(false);
+  const [propertyTimezone, setPropertyTimezone] = useState<string | null>(null);
+  const machineRequestRef = useRef(0);
 
   // Set access token on service when available
   React.useEffect(() => {
@@ -172,6 +168,40 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       setPreventiveMaintenanceServiceToken(accessToken);
     }
   }, [accessToken]);
+
+  useEffect(() => {
+    let active = true;
+    if (pmId || !selectedProperty || !accessToken) {
+      setCanOperate(pmId ? true : null);
+      setPropertyTimezone(null);
+      setLoadingCapability(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setLoadingCapability(true);
+    preventiveMaintenanceService
+      .getMaintenanceStatistics({ property_id: selectedProperty })
+      .then((response) => {
+        if (!active) return;
+        setCanOperate(response.data?.can_operate === true);
+        setPropertyTimezone(response.data?.timezone || null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setCanOperate(false);
+        setPropertyTimezone(null);
+        setError("Unable to verify create permission for this property.");
+      })
+      .finally(() => {
+        if (active) setLoadingCapability(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [accessToken, pmId, selectedProperty]);
 
   const formatDateForInput = useCallback((date: Date): string => {
     // Use local methods to match the user's timezone for datetime-local inputs
@@ -320,15 +350,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     }
   }, []);
 
-  // Helper function to validate ISO 8601 datetime format
-  const validateISO8601Format = useCallback((isoString: string): boolean => {
-    // Django expects: YYYY-MM-DDThh:mm[:ss[.uuuuuu]][+HH:MM|-HH:MM|Z]
-    // Our format: YYYY-MM-DDThh:mm (local time, no timezone, no seconds)
-    const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
-    const isValid = isoRegex.test(isoString);
-    return isValid;
-  }, []);
-
   // Helper function to ensure datetime-local input format
   const ensureDateTimeLocalFormat = useCallback(
     (dateString: string): string => {
@@ -451,16 +472,11 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       const customDays = Number(values.custom_days);
       if (!values.custom_days || Number.isNaN(customDays) || customDays < 1) {
         errors.custom_days = "Custom days must be at least 1";
-      } else if (customDays > 365) {
-        errors.custom_days = "Custom days cannot exceed 365";
       }
     }
     if (!values.property_id) errors.property_id = "Property is required";
-    if (values.procedure_template === "") {
-      errors.procedure_template = "Maintenance Task Template is required";
-    }
-    if (values.create_master_plan && values.selected_machine_ids.length === 0) {
-      errors.selected_machine_ids = "Select at least one machine for a PM master plan";
+    if (values.selected_machine_ids.length === 0) {
+      errors.selected_machine_ids = "Select at least one machine";
     }
     // assigned_to is optional - defaults to current user if not provided
     // if (!values.assigned_to) {
@@ -577,7 +593,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
       before_image_file: null,
       after_image_file: null,
       selected_topics: [],
-      selected_machine_ids: machineId ? [machineId] : [],
+      // Query-string machines are selected only after the active property's
+      // candidate response proves that the external machine_id is valid.
+      selected_machine_ids: [],
       property_id: selectedProperty,
       procedure: "",
       procedure_template: "",
@@ -631,6 +649,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   const fetchAvailableMachines = useCallback(
     async (propertyId: string | null | undefined) => {
+      const requestId = ++machineRequestRef.current;
       if (!propertyId) {
         setAvailableMachines([]);
         setLoadingMachines(false);
@@ -646,12 +665,14 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           propertyIdForApi,
           accessTokenForApi,
         );
+        if (requestId !== machineRequestRef.current) return;
         if (response.success && response.data) {
           setAvailableMachines(response.data);
         } else {
           throw new Error(response.message || "Failed to fetch machines");
         }
       } catch (err: any) {
+        if (requestId !== machineRequestRef.current) return;
         console.error("❌ Error fetching available machines:", err);
 
         // Provide more specific error messages
@@ -671,7 +692,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         setError(errorMessage);
         setAvailableMachines([]);
       } finally {
-        setLoadingMachines(false);
+        if (requestId === machineRequestRef.current) {
+          setLoadingMachines(false);
+        }
       }
     },
     [accessToken],
@@ -749,12 +772,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           });
 
           // Log all tasks to show their group_ids for debugging
-          const taskGroupIds = allTasks.map((t) => ({
-            id: t.id,
-            name: t.name,
-            group_id: t.group_id,
-          }));
-
           // Filter tasks based on:
           // 1. If machine has group_id, ONLY show tasks with matching group_id (strict match: machine.group_id === task.group_id)
           // 2. Otherwise, show tasks linked to the machine via maintenance_procedures
@@ -830,11 +847,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
   // Handle property ID changes and fetch machines
   useEffect(() => {
-    if (selectedProperty) {
-      fetchAvailableMachines(selectedProperty);
-    } else {
-      setAvailableMachines([]); // Clear machines if no property is selected
-    }
+    fetchAvailableMachines(selectedProperty);
   }, [selectedProperty, fetchAvailableMachines]);
 
   // Fetch maintenance tasks when machines are selected or on mount
@@ -1024,7 +1037,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     formikHelpers: FormikHelpers<FormValues>,
   ) => {
     const { setSubmitting, resetForm } = formikHelpers;
-    let isMounted = true;
+    const isMounted = true;
 
     clearError();
     setSubmitError(null);
@@ -1109,51 +1122,15 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           ? Number(assignedToValue)
           : undefined;
 
-      // Ensure machineId from prop is included if provided (defensive check)
-      let finalMachineIds =
+      const finalMachineIds =
         Array.isArray(values.selected_machine_ids) &&
         values.selected_machine_ids.length > 0
           ? values.selected_machine_ids.map((id) => String(id))
           : [];
 
-      // CRITICAL: If machineId prop was provided but not in selected_machine_ids, add it
-      // This ensures the machine is always included when creating from machine detail page
-      if (machineId && !pmId) {
-        const machineIdStr = String(machineId);
-        if (!finalMachineIds.includes(machineIdStr)) {
-          console.warn(
-            "[PreventiveMaintenanceForm] ⚠️ machineId prop not in selected_machine_ids, adding it:",
-            {
-              machineId,
-              machineIdStr,
-              currentSelected: values.selected_machine_ids,
-              finalMachineIdsBefore: finalMachineIds,
-            },
-          );
-          finalMachineIds = [machineIdStr, ...finalMachineIds];
-        } else {
-        }
-      }
-
-      const nextDueDate = (() => {
-        const baseDate = values.scheduled_date
-          ? new Date(values.scheduled_date)
-          : new Date();
-        const safeBaseDate = isNaN(baseDate.getTime()) ? new Date() : baseDate;
-        return calculateNextScheduledDate(
-          values.frequency,
-          values.frequency === "custom" && values.custom_days
-            ? Number(values.custom_days)
-            : undefined,
-          safeBaseDate,
-        );
-      })();
-
-      const nextDueDateFormatted = formatDateForInput(nextDueDate);
-      const nextDueDateISO = convertToISO8601(nextDueDateFormatted);
-
       const dataForService: CreatePreventiveMaintenanceData = {
-        pmtitle: values.pmtitle.trim() || "Untitled Maintenance",
+        pmtitle: values.pmtitle.trim(),
+        property_id: values.property_id || "",
         scheduled_date: scheduledDateISO,
         frequency: values.frequency,
         custom_days:
@@ -1161,7 +1138,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             ? Number(values.custom_days)
             : undefined,
         notes: values.notes?.trim() || "",
-        // Note: property_id is not sent to backend - it's determined by the machines assigned
         topic_ids:
           Array.isArray(values.selected_topics) &&
           values.selected_topics.length > 0
@@ -1169,17 +1145,17 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
             : [],
         // CRITICAL: Ensure machine_ids is always an array of strings
         machine_ids: finalMachineIds,
-        completed_date: completedDateISO,
+        completed_date: pmId ? completedDateISO : undefined,
         // CRITICAL: Only include images if they are actual File objects with size > 0
         // Do NOT send null, undefined, empty objects, or empty files
         // Backend will reject non-file data for ImageField
         before_image:
-          values.before_image_file instanceof File &&
+          pmId && values.before_image_file instanceof File &&
           values.before_image_file.size > 0
             ? values.before_image_file
             : undefined,
         after_image:
-          values.after_image_file instanceof File &&
+          pmId && values.after_image_file instanceof File &&
           values.after_image_file.size > 0
             ? values.after_image_file
             : undefined,
@@ -1191,9 +1167,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
         // Only send assigned_to if it's a valid numeric ID
         // If not provided, backend will automatically use created_by (from request.user)
         assigned_to: assignedToNumber,
-        status: values.status,
-        next_due_date:
-          values.status === "completed" ? nextDueDateISO : undefined,
       };
       // Additional validation before sending to backend
 
@@ -1222,21 +1195,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               dataForService as UpdatePreventiveMaintenanceData,
             );
         } else {
-          // FINAL CHECK: Ensure machineId is included if prop was provided
-          if (
-            machineId &&
-            !pmId &&
-            (!dataForService.machine_ids ||
-              dataForService.machine_ids.length === 0)
-          ) {
-            const machineIdStr = String(machineId);
-            console.error(
-              "[PreventiveMaintenanceForm] 🚨 CRITICAL: machineId prop provided but machine_ids is empty! Adding it now:",
-              machineIdStr,
-            );
-            dataForService.machine_ids = [machineIdStr];
-          }
-
           if (values.create_master_plan) {
             const masterPlanResponse =
               await preventiveMaintenanceService.createPMMasterPlan({
@@ -1407,7 +1365,10 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   return (
     <div className="bg-white shadow-md rounded-lg p-3 sm:p-4 md:p-6 pb-28 md:pb-6">
       {(error || submitError) && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4">
+        <div
+          className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4"
+          role="alert"
+        >
           <div className="flex justify-between items-start gap-2">
             <p className="whitespace-pre-wrap text-sm sm:text-base flex-1">
               {error || submitError}
@@ -1437,7 +1398,13 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
           return handleSubmit(values, formikHelpers);
         }}
       >
-        {({ values, errors, touched, isSubmitting, setFieldValue }) => {
+        {function FormContent({
+          values,
+          errors,
+          touched,
+          isSubmitting,
+          setFieldValue,
+        }) {
           // Debug form values changes
           React.useEffect(() => {}, [
             values.scheduled_date,
@@ -1491,43 +1458,14 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   setFieldValue("selected_machine_ids", newMachineIds, false);
                 } else {
                 }
-              } else {
-                // Machine doesn't exist in available machines - show warning
-                console.warn(
-                  "[PreventiveMaintenanceForm] ⚠️ Machine not found in available machines:",
-                  {
-                    machineId,
-                    machineIdStr,
-                    availableMachineIds: availableMachines.map(
-                      (m) => m.machine_id,
-                    ),
-                    selectedProperty: values.property_id,
-                    availableMachinesCount: availableMachines.length,
-                  },
-                );
-
-                // Still try to select it (might be valid but not loaded yet, or might be from different property)
-                if (!isAlreadySelected) {
-                  const newMachineIds = [
-                    machineIdStr,
-                    ...values.selected_machine_ids.filter(
-                      (id) => id !== machineIdStr,
-                    ),
-                  ];
-                  setFieldValue("selected_machine_ids", newMachineIds, false);
-                }
-              }
-            } else if (values.property_id) {
-              // Property is set but no machines loaded - might be loading or empty
-              // Still try to select the machine ID (will be validated on submit)
-              if (!isAlreadySelected) {
-                const newMachineIds = [
-                  machineIdStr,
-                  ...values.selected_machine_ids.filter(
+              } else if (isAlreadySelected) {
+                setFieldValue(
+                  "selected_machine_ids",
+                  values.selected_machine_ids.filter(
                     (id) => id !== machineIdStr,
                   ),
-                ];
-                setFieldValue("selected_machine_ids", newMachineIds, false);
+                  false,
+                );
               }
             }
           }, [
@@ -1559,9 +1497,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
 
           React.useEffect(() => {
             if (values.procedure_template === "") {
-              if (values.selected_machine_ids.length > 0 && !machineId) {
-                setFieldValue("selected_machine_ids", [], false);
-              }
               return;
             }
 
@@ -1663,6 +1598,36 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 </div>
               )}
 
+              {!pmId && values.property_id && (
+                <section
+                  className="rounded-lg border border-blue-200 bg-blue-50 p-4"
+                  aria-labelledby="pm-property-context"
+                >
+                  <h2
+                    id="pm-property-context"
+                    className="text-sm font-semibold text-blue-950"
+                  >
+                    Creating preventive maintenance for
+                  </h2>
+                  <p className="mt-1 text-lg font-bold text-blue-900">
+                    {getPropertyName(values.property_id)}
+                  </p>
+                  <p className="mt-1 text-xs text-blue-800">
+                    Property ID: {values.property_id}
+                    {propertyTimezone ? ` · Timezone: ${propertyTimezone}` : ""}
+                  </p>
+                  {loadingCapability ? (
+                    <p className="mt-2 text-sm text-blue-700" role="status">
+                      Checking create permission…
+                    </p>
+                  ) : canOperate === false ? (
+                    <p className="mt-2 font-medium text-red-700" role="alert">
+                      Your role cannot create maintenance for this property.
+                    </p>
+                  ) : null}
+                </section>
+              )}
+
               <Field type="hidden" name="property_id" />
 
               {/* Assigned User - Hidden, auto-assigned to current user */}
@@ -1674,8 +1639,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   htmlFor="procedure_template"
                   className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2"
                 >
-                  Maintenance Task Template{" "}
-                  <span className="text-red-500">*</span>
+                  Maintenance Task Template (Optional){" "}
                   {loadingMaintenanceTasks && (
                     <span className="text-xs text-gray-500 ml-2">
                       (Loading...)
@@ -1813,7 +1777,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                     ? "Loading available task templates..."
                     : availableMaintenanceTasks.length === 0
                       ? "No task templates available for the current selection."
-                      : "Select a task template first. Machine choices will appear after a template is selected."}
+                      : "Choose a shared template to prefill frequency and narrow compatible machines, or create without one."}
                 </p>
 
                 {errors.procedure_template && touched.procedure_template && (
@@ -1876,6 +1840,9 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       : "border-gray-300"
                   }`}
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  Entered as wall time in {propertyTimezone || "the selected property tenant timezone"}.
+                </p>
                 {errors.scheduled_date && touched.scheduled_date && (
                   <p className="mt-1 text-xs sm:text-sm text-red-500">
                     {errors.scheduled_date}
@@ -1919,55 +1886,16 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                 </div>
               )}
 
-              {/* Status */}
-              <div className="mb-4 sm:mb-6">
-                <label
-                  htmlFor="status"
-                  className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2"
-                >
-                  Status <span className="text-red-500">*</span>
-                </label>
-                <Field
-                  as="select"
-                  id="status"
-                  name="status"
-                  className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.status && touched.status
-                      ? "border-red-500"
-                      : "border-gray-300"
-                  }`}
-                >
-                  {STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Field>
-                {errors.status && touched.status && (
-                  <p className="mt-1 text-xs sm:text-sm text-red-500">
-                    {errors.status}
-                  </p>
-                )}
-                <div
-                  className={`mt-2 rounded-md border px-3 py-2 text-xs sm:text-sm ${
-                    values.status === "completed"
-                      ? "border-green-200 bg-green-50 text-green-700"
-                      : "border-amber-200 bg-amber-50 text-amber-800"
-                  }`}
-                >
-                  {values.status === "completed" ? (
-                    <p>
-                      Next due date will be created automatically:{" "}
-                      <span className="font-semibold">{nextDueLabel}</span>.
-                    </p>
-                  ) : (
-                    <p>
-                      Next due date will be set after completion. Expected next
-                      due: <span className="font-semibold">{nextDueLabel}</span>
-                      .
-                    </p>
-                  )}
-                </div>
+              <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 sm:mb-6">
+                <p className="text-sm font-medium text-slate-700">Status</p>
+                <p className="mt-1 text-sm capitalize text-slate-600">
+                  {pmId ? values.status.replaceAll("_", " ") : "Pending"}
+                  {" · "}State changes and completion are recorded through the
+                  maintenance workflow.
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Expected next due: {nextDueLabel}.
+                </p>
               </div>
 
               {/* Completed Date - Only show when editing existing records */}
@@ -2038,7 +1966,6 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                     id="custom_days"
                     name="custom_days"
                     min="1"
-                    max="365"
                     className={`w-full p-2 border rounded-md ${
                       errors.custom_days && touched.custom_days
                         ? "border-red-500"
@@ -2092,21 +2019,18 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               )}
 
               {/* Machines Selection */}
-              {values.procedure_template === "" ? (
-                <div className="mb-4 sm:mb-6 rounded-md border border-blue-200 bg-blue-50 p-3 sm:p-4 text-sm text-blue-800">
-                  Select a Maintenance Task Template first to see related
-                  machine concerns.
-                </div>
-              ) : (
                 <div className="mb-4 sm:mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Machine Concerns (Optional){" "}
+                    Machines <span className="text-red-500">*</span>{" "}
                     {loadingMachines && (
                       <span className="text-xs text-gray-500">
                         (Loading...)
                       </span>
                     )}
                   </label>
+                  <p className="mb-2 text-xs text-gray-500">
+                    {values.selected_machine_ids.length} selected
+                  </p>
                   <div
                     className={`border rounded-md p-3 sm:p-4 max-h-60 overflow-y-auto bg-white scroll-momentum ${
                       errors.selected_machine_ids &&
@@ -2290,9 +2214,55 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       </p>
                     )}
                 </div>
-              )}
+
+              <fieldset className="mb-4 rounded-md border border-gray-200 p-3 sm:mb-6 sm:p-4">
+                <legend className="px-1 text-sm font-medium text-gray-700">
+                  Topics (Optional)
+                </legend>
+                {loadingTopics ? (
+                  <p className="text-sm text-gray-500" role="status">
+                    Loading topics…
+                  </p>
+                ) : availableTopics.length === 0 ? (
+                  <p className="text-sm text-gray-500">No topics available.</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {availableTopics.map((topic) => (
+                      <label
+                        key={topic.id}
+                        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-gray-200 px-3 py-2"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-5 w-5 rounded border-gray-300 text-blue-600"
+                          checked={values.selected_topics.includes(topic.id)}
+                          onChange={(event) => {
+                            const nextTopics = event.target.checked
+                              ? [...values.selected_topics, topic.id]
+                              : values.selected_topics.filter(
+                                  (id) => id !== topic.id,
+                                );
+                            setFieldValue("selected_topics", nextTopics);
+                          }}
+                        />
+                        <span className="text-sm text-gray-700">{topic.title}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </fieldset>
+
+              <section className="mb-4 rounded-md border border-gray-200 p-3 sm:mb-6 sm:p-4">
+                <h2 className="text-sm font-medium text-gray-700">Assignment</h2>
+                <p className="mt-1 text-sm text-gray-600">
+                  Assigned to {user?.name || user?.email || "the current user"}.
+                  The server verifies an active operable TenantMembership for
+                  this property.
+                </p>
+              </section>
 
               {/* Image Uploads */}
+              {pmId ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
@@ -2369,6 +2339,15 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   )}
                 </div>
               </div>
+              ) : (
+                <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 sm:mb-6">
+                  <p className="font-medium text-slate-900">Evidence images</p>
+                  <p className="mt-1">
+                    Create the PM first, then add up to 10 before/after images
+                    from its detail page using the optimized evidence workflow.
+                  </p>
+                </div>
+              )}
 
               {/* Action Buttons — sticky to bottom on mobile so the primary CTA
                 is always reachable without scrolling through every section. */}
@@ -2402,7 +2381,14 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                         ? "bg-blue-400 cursor-not-allowed"
                         : "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/30"
                     } text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors touch-target`}
-                    disabled={isSubmitting || isLoading}
+                    disabled={
+                      isSubmitting ||
+                      isLoading ||
+                      (!pmId &&
+                        (!values.property_id ||
+                          loadingCapability ||
+                          canOperate !== true))
+                    }
                   >
                     {isSubmitting || isLoading ? (
                       <div className="flex items-center justify-center">

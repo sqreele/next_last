@@ -1980,6 +1980,15 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         """
         now = timezone.now()
         queryset = self.get_queryset()
+        property_ref = request.query_params.get('property_id')
+        stats_property = None
+        if property_ref:
+            stats_property = (
+                get_accessible_properties(request.user)
+                .select_related('tenant')
+                .filter(property_id=property_ref)
+                .first()
+            )
 
         total = queryset.count()
         completed = queryset.filter(completed_date__isnull=False).count()
@@ -2034,8 +2043,9 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
 
         response_data = {
             'can_operate': request.user.is_superuser or get_operable_properties(request.user).filter(
-                property_id=request.query_params.get('property_id')
+                property_id=property_ref
             ).exists(),
+            'timezone': str(property_timezone(stats_property)) if stats_property else None,
             'counts': {
                 'total': total,
                 'completed': completed,

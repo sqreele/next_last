@@ -43,11 +43,13 @@ export function getDefaultPropertyId(
   properties: readonly PropertyLike[] | null | undefined,
 ): string | null {
   if (!Array.isArray(properties)) return null;
-  for (const property of properties) {
-    const propertyId = getPropertyId(property);
-    if (propertyId) return propertyId;
-  }
-  return null;
+  const propertyIds = Array.from(
+    new Set(properties.map(getPropertyId).filter(Boolean)),
+  );
+  // A default is deterministic only when there is exactly one accessible
+  // property. Multi-property users must choose the active property in the
+  // global application context.
+  return propertyIds.length === 1 ? propertyIds[0] : null;
 }
 
 export function getDefaultAuthorizedPropertyId(userProfile: UserPropertyScope | null | undefined): string | null {
@@ -56,5 +58,8 @@ export function getDefaultAuthorizedPropertyId(userProfile: UserPropertyScope | 
 
 export function getAuthorizedDashboardPath(userProfile: UserPropertyScope | null | undefined): string {
   const propertyId = getDefaultAuthorizedPropertyId(userProfile);
-  return propertyId ? `/dashboard?property_id=${encodeURIComponent(propertyId)}` : '/dashboard/unauthorized';
+  if (propertyId) return `/dashboard?property_id=${encodeURIComponent(propertyId)}`;
+  return getAllowedUserProperties(userProfile).length > 1
+    ? '/dashboard'
+    : '/dashboard/unauthorized';
 }

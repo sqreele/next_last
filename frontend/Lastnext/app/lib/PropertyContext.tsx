@@ -37,7 +37,7 @@ export function PropertyProvider({ children }: { children: ReactNode }) {
     if (userProfile?.properties) {
       setStoreProperties(userProfile.properties);
       
-      // Auto-select first property if no property is currently selected
+      // Auto-select only a sole accessible property.
       if (!selectedProperty) {
         const propertyId = getDefaultPropertyId(userProfile.properties);
         if (propertyId) setStoreProperty(propertyId);

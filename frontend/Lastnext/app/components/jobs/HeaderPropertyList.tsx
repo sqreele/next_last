@@ -64,7 +64,7 @@ const HeaderPropertyList = React.memo(() => {
       }
     }
 
-    return safeProperties[0];
+    return null;
   }, [safeProperties, selectedProperty]);
 
   // Handle property selection - memoized with stable dependencies

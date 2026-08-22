@@ -217,7 +217,7 @@ const storeImplementation: StateCreator<MainStore, [], []> = (set, get) => ({
     const filteredProperties = filterPropertiesForUser(properties, state.userProfile);
     const selectedPropertyId = filteredProperties.some((property) => getPropertyId(property) === String(state.selectedPropertyId))
       ? state.selectedPropertyId
-      : (getDefaultAuthorizedPropertyId(state.userProfile) ?? (filteredProperties[0] ? getPropertyId(filteredProperties[0]) : null));
+      : getDefaultAuthorizedPropertyId(state.userProfile);
 
     set({ properties: filteredProperties, selectedPropertyId });
     try { useAuthStore.getState().setSelectedProperty(selectedPropertyId); } catch {}

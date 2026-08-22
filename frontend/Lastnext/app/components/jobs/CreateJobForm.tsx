@@ -52,7 +52,7 @@ import { Room, TopicFromAPI, Area, Property } from "@/app/lib/types";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/app/lib/stores/mainStore";
 import {
-  getDefaultPropertyId,
+  getAllowedUserProperties,
   getPropertyId,
 } from "@/app/lib/security/propertyAccess";
 
@@ -423,16 +423,6 @@ function LoadingSkeleton({ label }: { label: string }) {
   );
 }
 
-const propertyLabel = (property: Property | string | number) => {
-  if (typeof property === "string" || typeof property === "number")
-    return String(property);
-  return property.name || getPropertyId(property) || "Property";
-};
-
-const propertyValue = (property: Property | string | number) => {
-  return getPropertyId(property);
-};
-
 const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   onJobCreated,
 }) => {
@@ -442,6 +432,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const validationSchema = React.useMemo(() => createValidationSchema(t), [t]);
   const isSubmittingRef = React.useRef(false); // Prevent double submission
   const loaderShownAtRef = useRef<number | null>(null);
+  const dataRequestIdRef = useRef(0);
+  const roomRequestIdRef = useRef(0);
+  const floorRequestIdRef = useRef(0);
 
   const clearLoadingAfterMinTime = useCallback(() => {
     const shownAt = loaderShownAtRef.current;
@@ -461,7 +454,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
   const {
     selectedPropertyId: selectedProperty,
-    setSelectedPropertyId: setSelectedProperty,
     userProfile,
   } = useUser();
   const router = useRouter();
@@ -474,9 +466,26 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPropertyId, setCurrentPropertyId] = useState<string | null>(
-    null,
+
+  const accessibleProperties = React.useMemo(
+    () => getAllowedUserProperties(userProfile),
+    [userProfile],
   );
+  const activeProperty = React.useMemo<Property | null>(() => {
+    if (!selectedProperty) return null;
+    return (
+      accessibleProperties.find(
+        (property) => getPropertyId(property) === selectedProperty,
+      ) || null
+    );
+  }, [accessibleProperties, selectedProperty]);
+  const activePropertyId = activeProperty
+    ? getPropertyId(activeProperty)
+    : null;
+  const activePropertyNumericId = activeProperty
+    ? String(activeProperty.id)
+    : null;
+  const selectedPropertyLabel = activeProperty?.name || activePropertyId || "";
 
   const normalizeRoomsResponse = useCallback((data: unknown): Room[] => {
     if (Array.isArray(data)) return data as Room[];
@@ -489,6 +498,35 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     }
     return [];
   }, []);
+
+  const roomBelongsToActiveProperty = useCallback(
+    (room: Room): boolean => {
+      if (!activePropertyNumericId) return false;
+      if (room.property_id !== null && room.property_id !== undefined) {
+        return String(room.property_id) === activePropertyNumericId;
+      }
+      return Array.isArray(room.properties)
+        ? room.properties.some((property) => {
+            if (typeof property === "object" && property !== null) {
+              return String(property.id) === activePropertyNumericId;
+            }
+            return String(property) === activePropertyNumericId;
+          })
+        : false;
+    },
+    [activePropertyNumericId],
+  );
+
+  const areaBelongsToActiveProperty = useCallback(
+    (area: Area): boolean => {
+      if (!activePropertyId || !activePropertyNumericId) return false;
+      if (area.property_uuid) {
+        return area.property_uuid === activePropertyId;
+      }
+      return String(area.property) === activePropertyNumericId;
+    },
+    [activePropertyId, activePropertyNumericId],
+  );
 
   const getFloorFromRoomName = useCallback(
     (roomName: unknown): string | null => {
@@ -542,17 +580,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
       );
   }, []);
-
-  const selectedPropertyLabel = React.useMemo(() => {
-    const activeProperty = selectedProperty || currentPropertyId;
-    if (!activeProperty) return "";
-
-    const matchedProperty = userProfile?.properties?.find(
-      (property) => propertyValue(property) === activeProperty,
-    );
-
-    return matchedProperty ? propertyLabel(matchedProperty) : "";
-  }, [currentPropertyId, selectedProperty, userProfile?.properties]);
 
   const formatApiError = (error: unknown, fallbackMessage: string): string => {
     if (!axios.isAxiosError(error)) {
@@ -620,24 +647,6 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     [toast, t],
   );
 
-  // Check if user has properties
-  const hasProperties =
-    userProfile?.properties && userProfile.properties.length > 0;
-
-  // Preserve the existing first-accessible-property default through the
-  // canonical external property identity.
-  useEffect(() => {
-    if (!selectedProperty && hasProperties) {
-      const propertyId = getDefaultPropertyId(userProfile?.properties);
-      if (propertyId) {
-        setSelectedProperty(propertyId);
-        setCurrentPropertyId(propertyId);
-      }
-    } else if (selectedProperty) {
-      setCurrentPropertyId(selectedProperty);
-    }
-  }, [selectedProperty, hasProperties, userProfile, setSelectedProperty]);
-
   const validateFiles = (files: File[]) => {
     if (!files || files.length === 0) {
       return t("createJob.validation.imageRequired");
@@ -694,8 +703,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         return;
       }
 
-      if (!selectedProperty) {
-        const message = t("createJob.error.selectProperty");
+      if (!activePropertyId) {
+        const message = t("createJob.error.selectActiveProperty");
         setError(message);
         showErrorToast(message);
         isSubmittingRef.current = false;
@@ -712,6 +721,27 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         isSubmittingRef.current = false;
         setSubmitting(false);
         return;
+      }
+
+      if (values.room && !roomBelongsToActiveProperty(values.room)) {
+        const message = t("createJob.error.roomPropertyMismatch");
+        setError(message);
+        showErrorToast(message);
+        isSubmittingRef.current = false;
+        setSubmitting(false);
+        return;
+      }
+
+      if (values.area_id != null) {
+        const selectedArea = areas.find((area) => area.id === values.area_id);
+        if (!selectedArea || !areaBelongsToActiveProperty(selectedArea)) {
+          const message = t("createJob.error.areaPropertyMismatch");
+          setError(message);
+          showErrorToast(message);
+          isSubmittingRef.current = false;
+          setSubmitting(false);
+          return;
+        }
       }
 
       const fileError = validateFiles(values.files);
@@ -753,7 +783,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         formData.append("remarks", values.remarks.trim());
       }
       formData.append("user_id", session.user.id);
-      formData.append("property_id", selectedProperty);
+      formData.append("property_id", activePropertyId);
       formData.append("is_defective", values.is_defective ? "true" : "false");
       formData.append(
         "is_preventivemaintenance",
@@ -807,21 +837,31 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
   const fetchRooms = useCallback(
     async (areaId?: number | null, floor?: string | null) => {
-      if (!session?.user?.accessToken) return;
+      const requestId = ++roomRequestIdRef.current;
+      if (!session?.user?.accessToken || !activePropertyId) {
+        setRooms([]);
+        setIsRoomLoading(false);
+        return;
+      }
 
-      const propertyParam = selectedProperty || currentPropertyId || undefined;
       setIsRoomLoading(true);
       try {
         const response = await axios.get(`/api/rooms/`, {
           withCredentials: true,
           params: {
-            ...(propertyParam ? { property: propertyParam } : {}),
+            property: activePropertyId,
             ...(areaId ? { area_id: areaId } : {}),
             ...(floor ? { floor } : {}),
           },
         });
-        setRooms(normalizeRoomsResponse(response.data));
+        if (requestId !== roomRequestIdRef.current) return;
+        setRooms(
+          normalizeRoomsResponse(response.data).filter(
+            roomBelongsToActiveProperty,
+          ),
+        );
       } catch (error) {
+        if (requestId !== roomRequestIdRef.current) return;
         console.error("Error fetching rooms:", error);
         const errorMessage = formatApiError(
           error,
@@ -831,14 +871,16 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         showErrorToast(errorMessage);
         setRooms([]);
       } finally {
-        setIsRoomLoading(false);
+        if (requestId === roomRequestIdRef.current) {
+          setIsRoomLoading(false);
+        }
       }
     },
     [
       session?.user?.accessToken,
-      selectedProperty,
-      currentPropertyId,
+      activePropertyId,
       normalizeRoomsResponse,
+      roomBelongsToActiveProperty,
       showErrorToast,
       t,
     ],
@@ -846,9 +888,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
   const fetchFloorsForArea = useCallback(
     async (areaId: number | null) => {
-      const propertyParam = selectedProperty || currentPropertyId || undefined;
-      if (!session?.user?.accessToken || (!areaId && !propertyParam)) {
+      const requestId = ++floorRequestIdRef.current;
+      if (!session?.user?.accessToken || !activePropertyId) {
         setFloors([]);
+        setIsFloorLoading(false);
         return;
       }
       setIsFloorLoading(true);
@@ -858,14 +901,16 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
           params: {
             floors_only: "true",
             ...(areaId ? { area_id: areaId } : {}),
-            ...(propertyParam ? { property: propertyParam } : {}),
+            property: activePropertyId,
           },
         });
+        if (requestId !== floorRequestIdRef.current) return;
         const fetchedFloors = normalizeFloorsResponse(response.data);
         setFloors(
           fetchedFloors.length ? fetchedFloors : deriveFloorsFromRooms(rooms),
         );
       } catch (error) {
+        if (requestId !== floorRequestIdRef.current) return;
         console.error("Error fetching floors:", error);
         const errorMessage = formatApiError(
           error,
@@ -875,13 +920,14 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         showErrorToast(errorMessage);
         setFloors([]);
       } finally {
-        setIsFloorLoading(false);
+        if (requestId === floorRequestIdRef.current) {
+          setIsFloorLoading(false);
+        }
       }
     },
     [
       session?.user?.accessToken,
-      selectedProperty,
-      currentPropertyId,
+      activePropertyId,
       normalizeFloorsResponse,
       deriveFloorsFromRooms,
       rooms,
@@ -891,7 +937,14 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
   );
 
   const fetchData = useCallback(async () => {
-    if (!session?.user?.accessToken) {
+    const requestId = ++dataRequestIdRef.current;
+    if (!session?.user?.accessToken || !activePropertyId) {
+      setRooms([]);
+      setAreas([]);
+      setTopics([]);
+      setFloors([]);
+      loaderShownAtRef.current = null;
+      setIsLoading(false);
       return;
     }
 
@@ -901,34 +954,37 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
     setFloors([]);
 
     try {
-      const propertyParam = selectedProperty || currentPropertyId || undefined;
       const [roomsResponse, topicsResponse, areasResponse] = await Promise.all([
         axios.get(`/api/rooms/`, {
           withCredentials: true,
-          params: propertyParam ? { property: propertyParam } : undefined,
+          params: { property: activePropertyId },
         }),
         axios.get(`/api/topics/`, {
           withCredentials: true,
-          params: propertyParam ? { property: propertyParam } : undefined,
+          params: { property: activePropertyId },
         }),
         axios.get(`/api/areas/`, {
           withCredentials: true,
           params: {
             is_active: "true",
-            ...(propertyParam ? { property_id: propertyParam } : {}),
+            property_id: activePropertyId,
           },
         }),
       ]);
-      const initialRooms = normalizeRoomsResponse(roomsResponse.data);
+      if (requestId !== dataRequestIdRef.current) return;
+      const initialRooms = normalizeRoomsResponse(roomsResponse.data).filter(
+        roomBelongsToActiveProperty,
+      );
       setRooms(initialRooms);
       setTopics(topicsResponse.data);
       const areasData = areasResponse.data;
       const areasList: Area[] = Array.isArray(areasData)
         ? areasData
         : areasData?.results || [];
-      setAreas(areasList);
+      setAreas(areasList.filter(areaBelongsToActiveProperty));
       setFloors(deriveFloorsFromRooms(initialRooms));
     } catch (error) {
+      if (requestId !== dataRequestIdRef.current) return;
       console.error("Error fetching data:", error);
       const errorMessage = formatApiError(
         error,
@@ -937,24 +993,25 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
       setError(errorMessage);
       showErrorToast(errorMessage);
     } finally {
-      clearLoadingAfterMinTime();
+      if (requestId === dataRequestIdRef.current) {
+        clearLoadingAfterMinTime();
+      }
     }
   }, [
     session?.user?.accessToken,
-    selectedProperty,
-    currentPropertyId,
+    activePropertyId,
     clearLoadingAfterMinTime,
     normalizeRoomsResponse,
+    roomBelongsToActiveProperty,
+    areaBelongsToActiveProperty,
     deriveFloorsFromRooms,
     showErrorToast,
     t,
   ]);
 
   useEffect(() => {
-    if (session?.user?.accessToken) {
-      fetchData();
-    }
-  }, [fetchData, session?.user?.accessToken, selectedProperty]);
+    void fetchData();
+  }, [fetchData]);
 
   return (
     <div className={FORM_SHELL_CLASS}>
@@ -1001,6 +1058,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
         {/* Form - only show when not loading */}
         {!isLoading && (
           <Formik
+            key={activePropertyId || "no-active-property"}
             initialValues={initialValues}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -1295,58 +1353,17 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                               className="mt-0.5 h-4 w-4 shrink-0"
                               aria-hidden
                             />
-                            <span>{t("createJob.locationHint")}</span>
+                            <span>
+                              {activePropertyId
+                                ? formatMessage(
+                                    t("createJob.activePropertyContext"),
+                                    { property: selectedPropertyLabel },
+                                  )
+                                : t("createJob.error.selectActiveProperty")}
+                            </span>
                           </div>
 
                           <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
-                            <div className="space-y-2 md:col-span-2">
-                              <Label className="text-sm font-semibold text-[#2f3a3f]">
-                                {t("createJob.property")} <RequiredMark />
-                              </Label>
-                              <Select
-                                value={
-                                  selectedProperty || currentPropertyId || ""
-                                }
-                                onValueChange={(value) => {
-                                  setSelectedProperty(value);
-                                  setCurrentPropertyId(value);
-                                  setFieldValue("area_id", null);
-                                  setFieldValue("floor", null);
-                                  setFieldValue("room", null);
-                                  setFieldValue("topic", {
-                                    title: "",
-                                    description: "",
-                                  });
-                                  setFieldTouched("topic.title", false, false);
-                                  setFloors([]);
-                                  setRooms([]);
-                                }}
-                                disabled={isSubmitting || !hasProperties}
-                              >
-                                <SelectTrigger
-                                  className={`h-11 rounded-[4px] ${FIELD_BASE_CLASS}`}
-                                >
-                                  <SelectValue
-                                    placeholder={
-                                      hasProperties
-                                        ? t("createJob.selectProperty")
-                                        : t("createJob.noProperties")
-                                    }
-                                  />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {userProfile?.properties?.map((property) => (
-                                    <SelectItem
-                                      key={propertyValue(property)}
-                                      value={propertyValue(property)}
-                                    >
-                                      {propertyLabel(property)}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
                             {/* Area Selection - required if no room selected */}
                             <div className="space-y-2">
                               <Label className="text-sm font-semibold text-[#2f3a3f]">
@@ -1383,7 +1400,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     void fetchRooms(null, null);
                                   }
                                 }}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || !activePropertyId}
                               >
                                 <SelectTrigger
                                   className={`h-11 rounded-[4px] ${
@@ -1440,9 +1457,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             <div className="space-y-2">
                               <Label className="text-sm font-semibold text-[#2f3a3f]">
                                 {t("createJob.floor")}{" "}
-                                {!selectedProperty && (
+                                {!activePropertyId && (
                                   <span className="text-xs font-medium text-muted-foreground">
-                                    {t("createJob.selectProperty")}
+                                    {t("createJob.error.selectActiveProperty")}
                                   </span>
                                 )}
                               </Label>
@@ -1465,7 +1482,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 disabled={
                                   isSubmitting ||
                                   isFloorLoading ||
-                                  !selectedProperty
+                                  !activePropertyId
                                 }
                               >
                                 <SelectTrigger
@@ -1530,7 +1547,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   setFieldValue("room", selectedRoom);
                                   setFieldTouched("room", true, false);
                                 }}
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || !activePropertyId}
                                 loading={isRoomLoading}
                                 emptyText={
                                   values.area_id && values.floor
@@ -1851,7 +1868,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 </dt>
                                 <dd className="text-right font-semibold text-[#2f3a3f]">
                                   {selectedPropertyLabel ||
-                                    t("createJob.selectProperty")}
+                                    t("createJob.error.selectActiveProperty")}
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">

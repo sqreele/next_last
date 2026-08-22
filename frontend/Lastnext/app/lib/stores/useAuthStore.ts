@@ -49,7 +49,8 @@ export const useAuthStore = create<AuthState>()(
       setUserProfile: (profile) => {
         set({ userProfile: profile });
         
-        // Auto-select property if none selected
+        // Auto-select only a sole accessible property. Multi-property users
+        // must establish active context through the global selector.
         if (profile && profile.properties.length > 0 && !get().selectedProperty) {
           set({ selectedProperty: getDefaultPropertyId(profile.properties) });
         }

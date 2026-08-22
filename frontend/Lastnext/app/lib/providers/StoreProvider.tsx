@@ -66,7 +66,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           setProperties(sessionProperties);
         }
 
-        // Auto-select first authorized property if none selected.
+        // Auto-select only when the authorized property is unambiguous.
+        // Multi-property users choose their active context in the header.
         const currentSelectedProperty = useMainStore.getState().selectedPropertyId;
         if (!currentSelectedProperty) {
           setSelectedPropertyId(getDefaultPropertyId(sessionProperties));

@@ -4046,6 +4046,18 @@ body {
   }
 }
 
+/* Avoid rendering two copies of the same KPI summary. Phones/tablets use the
+   compact strip; desktop uses the expanded welcome + stat-card composition. */
+.sneat-dashboard__desktop-summary {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .sneat-dashboard__desktop-summary {
+    display: grid;
+  }
+}
+
 /* App polish overrides: keep Thai text and job media closer to native-app rhythm. */
 html {
   font-size: 16px;

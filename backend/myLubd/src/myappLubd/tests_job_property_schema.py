@@ -78,6 +78,7 @@ class JobPropertySchemaTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
+        self.assertEqual(response.data['property_id'], self.property.property_id)
         job = Job.objects.get(job_id=response.data['job_id'])
         self.assertEqual(job.property_id, self.property.id)
         self.assertIn(self.room, job.rooms.all())

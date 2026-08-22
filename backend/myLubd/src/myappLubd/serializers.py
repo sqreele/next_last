@@ -925,6 +925,10 @@ class JobSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        # Frontend/business identity is the canonical Property.property_id.
+        # Exposing it from Job.property avoids inferring job ownership from
+        # room/profile compatibility projections on read paths.
+        data['property_id'] = instance.property.property_id if instance.property_id else None
         data['rooms'] = data.get('rooms') if isinstance(data.get('rooms'), list) else []
         data['topics'] = data.get('topics') if isinstance(data.get('topics'), list) else []
         data['images'] = data.get('images') if isinstance(data.get('images'), list) else []

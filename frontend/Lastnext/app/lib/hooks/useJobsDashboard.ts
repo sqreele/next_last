@@ -103,13 +103,9 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   const { data: session } = useSession();
   const { toast } = useToast();
   const [state, setState] = useState<JobsDashboardState>(initialState);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const realTimeUnsubscribeRef = useRef<(() => void) | null>(null);
-  
-  // Rate limiting refs to prevent excessive calls
   const isLoadingRef = useRef(false);
-  const lastCallTimeRef = useRef<number>(0);
-  const MIN_CALL_INTERVAL = 2000; // Minimum 2 seconds between calls
+  const requestGenerationRef = useRef(0);
   
   // Refs to store current state values for use in callbacks without dependencies
   const stateRef = useRef(state);
@@ -135,27 +131,42 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   // Refresh jobs data with pagination
   const refreshJobs = useCallback(async (loadMore: boolean = false) => {
     if (!isAuthenticated || !accessToken) return;
-    
-    // Prevent concurrent calls
-    if (isLoadingRef.current) {
+
+    // Pagination must not overlap another request. A property/filter refresh
+    // may supersede an in-flight request and is guarded by the generation.
+    if (loadMore && isLoadingRef.current) {
       return;
     }
-    
-    // Prevent excessive calls (rate limiting)
-    const now = Date.now();
-    const timeSinceLastCall = now - lastCallTimeRef.current;
-    if (timeSinceLastCall < MIN_CALL_INTERVAL) {
+
+    const requestGeneration = ++requestGenerationRef.current;
+
+    // Dashboard metrics are property-specific. Do not retain old results or
+    // silently aggregate all accessible properties when none is selected.
+    if (!selectedPropertyId) {
+      isLoadingRef.current = false;
+      setState(prev => ({
+        ...prev,
+        jobs: [],
+        loading: false,
+        error: null,
+        stats: initialState.stats,
+        pagination: { ...prev.pagination, page: 1, total: 0 },
+      }));
       return;
     }
-    
+
     isLoadingRef.current = true;
-    lastCallTimeRef.current = now;
 
     try {
-      setState(prev => ({ 
-        ...prev, 
-        loading: !loadMore, 
-        error: null 
+      setState(prev => ({
+        ...prev,
+        jobs: loadMore ? prev.jobs : [],
+        stats: loadMore ? prev.stats : initialState.stats,
+        loading: true,
+        error: null,
+        pagination: loadMore
+          ? prev.pagination
+          : { ...prev.pagination, page: 1, total: 0 },
       }));
       
       // Use refs to get current values without dependencies
@@ -171,11 +182,14 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         jobsApi.invalidateCache('properties');
       }
 
-      // Include selected property in filters (use correct backend key: property_id)
+      // The global selection is the only property authority for this hook.
+      // Strip the legacy key so it cannot create a duplicate query parameter.
+      const filtersWithoutProperty = { ...currentFilters };
+      delete filtersWithoutProperty.property;
       const filtersWithProperty = {
-        ...currentFilters,
-        property_id: selectedPropertyId || (currentFilters as any).property_id
-      } as typeof currentFilters & { property_id?: string | null };
+        ...filtersWithoutProperty,
+        property_id: selectedPropertyId,
+      } as Omit<typeof currentFilters, 'property'> & { property_id: string };
 
       const [jobsResponse, properties, stats] = await Promise.all([
         jobsApi.getJobs(accessToken, filtersWithProperty, pageToLoad, currentPagination.pageSize),
@@ -183,6 +197,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         jobsApi.getJobStats(accessToken, filtersWithProperty)
       ]);
 
+      if (requestGeneration !== requestGenerationRef.current) return;
 
       setState(prev => ({
         ...prev,
@@ -199,6 +214,7 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
       }));
       
     } catch (error) {
+      if (requestGeneration !== requestGenerationRef.current) return;
       console.error('Error refreshing jobs:', error);
       
       if (error instanceof JobsApiError) {
@@ -215,7 +231,9 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
         }));
       }
     } finally {
-      isLoadingRef.current = false;
+      if (requestGeneration === requestGenerationRef.current) {
+        isLoadingRef.current = false;
+      }
     }
   }, [isAuthenticated, accessToken, selectedPropertyId]);
 
@@ -490,28 +508,18 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
   );
 
 
-  // Effects - use refs to prevent dependency loops
-  useEffect(() => {
-    if (isAuthenticated && !isLoadingRef.current) {
-      const timeoutId = setTimeout(() => {
-        refreshJobsRef.current(false);
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isAuthenticated]);
-
-  // Debounce filter changes to prevent excessive calls
+  // One effect owns authenticated property/filter refreshes. Keeping these
+  // dependencies together avoids duplicate mount requests while ensuring a
+  // property switch immediately supersedes any older generation.
   useEffect(() => {
     if (!isAuthenticated) return;
-    
+
     const timeoutId = setTimeout(() => {
-      if (!isLoadingRef.current) {
-        refreshJobsRef.current(false);
-      }
-    }, 300); // 300ms debounce for filter changes
-    
+      refreshJobsRef.current(false);
+    }, 150);
+
     return () => clearTimeout(timeoutId);
-  }, [isAuthenticated, state.filters]);
+  }, [isAuthenticated, selectedPropertyId, state.filters]);
   
   // Apply server-side filters when selected tab changes to ensure we load
   // the correct status from the backend (rather than filtering only the
@@ -528,9 +536,10 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     // Map selectedTab to backend filters
     const nextFilters: Partial<JobsDashboardState['filters']> = { ...currentFilters };
 
-    // Reset tab-related filters
-    delete (nextFilters as any).status;
-    delete (nextFilters as any).is_preventivemaintenance;
+    // Reset tab-related filters explicitly. updateFilters merges partial state,
+    // so deleting these keys would leave the previous server filter behind.
+    (nextFilters as any).status = undefined;
+    (nextFilters as any).is_preventivemaintenance = undefined;
 
     switch (state.selectedTab) {
       case 'pending':
@@ -566,32 +575,12 @@ export function useJobsDashboard(): UseJobsDashboardReturn {
     if (filtersChanged) {
       updateFilters(nextFilters);
     }
-    // If filters didn't change (e.g., re-clicking same tab), still ensure we refresh
-    // to avoid cases where the list is stale after updates.
-    if (!filtersChanged && !isLoadingRef.current) {
-      const timeoutId = setTimeout(() => {
-        refreshJobsRef.current(false);
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    }
   }, [isAuthenticated, state.selectedTab, updateFilters]);
-  
-  // Refresh when selected property changes
-  useEffect(() => {
-    if (isAuthenticated && selectedPropertyId !== undefined && !isLoadingRef.current) {
-      const timeoutId = setTimeout(() => {
-        refreshJobsRef.current(false);
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isAuthenticated, selectedPropertyId]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      requestGenerationRef.current += 1;
       if (realTimeUnsubscribeRef.current) {
         realTimeUnsubscribeRef.current();
       }

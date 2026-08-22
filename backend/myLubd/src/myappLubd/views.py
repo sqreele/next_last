@@ -3793,6 +3793,11 @@ class JobViewSet(viewsets.ModelViewSet):
         filter_kwargs = {self.lookup_field: self.kwargs[self.lookup_field]}
         obj = get_object_or_404(queryset, **filter_kwargs)
         self.check_object_permissions(self.request, obj)
+        # Reads retain the broader accessible-Property scope. Every detail
+        # mutation, including custom actions, must additionally pass through
+        # the canonical operable-Property write gate.
+        if self.request.method not in ('GET', 'HEAD', 'OPTIONS'):
+            _ensure_user_can_operate_property(self.request.user, obj.property)
         return obj
 
     @action(detail=True, methods=['patch'])
@@ -3852,6 +3857,9 @@ class JobViewSet(viewsets.ModelViewSet):
         ).prefetch_related(
             'rooms', 'rooms__property', 'topics', 'job_images', 'job_images__uploaded_by'
         ).order_by('-created_at')
+        if not user.is_superuser:
+            accessible_property_ids = get_accessible_properties(user).values_list('pk', flat=True)
+            jobs = jobs.filter(property_id__in=accessible_property_ids)
         
         initial_count = jobs.count()
         logger.info(f"Initial job count for user {target_user.username}: {initial_count}")
@@ -3945,71 +3953,48 @@ class JobViewSet(viewsets.ModelViewSet):
         logger.info(f"Returning {len(serializer.data)} jobs to user {user.username} (no pagination)")
         return Response(response_data, status=status.HTTP_200_OK)
 
-    def _accessible_property_ids(self):
-        """Property PKs the current user can write against."""
+    def _operable_property_ids(self):
+        """Canonical Property PKs the current user may mutate."""
         user = self.request.user
         if not user.is_authenticated:
             return set()
-        return accessible_property_ids(user)
+        if user.is_superuser:
+            return None
+        return set(get_operable_properties(user).values_list('pk', flat=True))
 
-    def _validate_tenant_scope(self, serializer):
-        """Reject writes that point at rooms or areas outside the user's tenant.
+    def _validate_operable_scope(self, serializer):
+        """Validate canonical write authority and Job location integrity.
 
-        Multi-tenant guarding for reads is already handled in `get_queryset`;
-        this complements that on the write path so a forged room_id in the
-        request body can't cross-tenant.
+        Job.property is the authorization boundary. Room and Area are location
+        details and may never widen or substitute for that boundary.
         """
-        accessible = self._accessible_property_ids()
-        if accessible is None:
-            return  # staff/superuser bypass
-
-        room_instances = []
-
-        # Rooms can arrive as model instances for endpoints that write the M2M
-        # field directly, or as the Create Job form's `room_id` helper field.
-        rooms = serializer.validated_data.get('rooms')
-        if rooms:
-            room_instances.extend(list(rooms))
-
-        room_id = serializer.validated_data.get('room_id')
-        if room_id:
-            room = Room.objects.select_related('property').filter(room_id=room_id).first()
-            if room is None:
-                raise ValidationError({'room_id': 'Invalid room ID'})
-            room_instances.append(room)
-
-        room_instances.extend(serializer.validated_data.get('room_ids') or [])
+        operable = self._operable_property_ids()
 
         resolved_property = serializer.validated_data.get('_resolved_property')
-        if resolved_property is not None and resolved_property.id not in accessible:
-            raise PermissionDenied("You don't have access to the selected property.")
+        if resolved_property is None:
+            raise ValidationError({'property_id': 'A canonical property is required.'})
+        if operable is not None and resolved_property.pk not in operable:
+            raise PermissionDenied("Your role cannot modify data for this property.")
 
-        selected_room_property_ids = set()
+        room_instances = serializer.validated_data.get('_resolved_rooms')
+        if room_instances is None:
+            room_instances = serializer.instance.rooms.all() if serializer.instance is not None else ()
         for room in room_instances:
-            room_property_ids = {room.property_id} if room.property_id else set()
-            if not room_property_ids & accessible:
-                raise PermissionDenied(
-                    f"You don't have access to a property containing room '{room.name}'."
-                )
-            selected_room_property_ids.update(room_property_ids)
-
-        if len(selected_room_property_ids) > 1:
-            raise ValidationError({'rooms': 'All selected rooms must belong to the same property.'})
+            if room.property_id != resolved_property.pk:
+                raise ValidationError({
+                    'rooms': 'All selected rooms must belong to the Job property.'
+                })
 
         area = serializer.validated_data.get('area', getattr(serializer.instance, 'area', None))
         if area is not None and getattr(area, 'property_id', None) is not None:
-            if area.property_id not in accessible:
-                raise PermissionDenied(
-                    "You don't have access to that area's property."
-                )
-            if selected_room_property_ids and area.property_id not in selected_room_property_ids:
+            if area.property_id != resolved_property.pk:
                 raise ValidationError({
-                    'area_id': 'Selected area must belong to the same property as the selected room.'
+                    'area_id': 'Selected area must belong to the Job property.'
                 })
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
-            self._validate_tenant_scope(serializer)
+            self._validate_operable_scope(serializer)
             serializer.save(user=self.request.user, updated_by=self.request.user)
         else:
             serializer.save()
@@ -4019,8 +4004,8 @@ class JobViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         if self.request.user.is_authenticated:
-            self._validate_tenant_scope(serializer)
-            instance = self.get_object()
+            self._validate_operable_scope(serializer)
+            instance = serializer.instance
             data = serializer.validated_data
             if instance.status == 'completed' and 'status' in data and data['status'] != 'completed':
                 raise ValidationError("Completed jobs cannot have their status changed.")

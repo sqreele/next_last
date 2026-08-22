@@ -61,7 +61,7 @@ class JobPropertySchemaTests(APITestCase):
         self.assertFalse(job.rooms.exists())
         self.assertIsNone(job.area_id)
 
-    def test_existing_api_create_path_populates_property_from_room(self):
+    def test_api_create_path_uses_explicit_property_and_validates_room(self):
         self.client.force_authenticate(self.user)
 
         response = self.client.post(
@@ -71,6 +71,7 @@ class JobPropertySchemaTests(APITestCase):
                 'remarks': 'Existing API behavior',
                 'status': 'pending',
                 'priority': 'medium',
+                'property_id': self.property.property_id,
                 'room_id': self.room.room_id,
                 'topic_data': {'title': 'Job property schema topic'},
             },

@@ -786,6 +786,10 @@ class JobSerializer(serializers.ModelSerializer):
         )
         future_area = data.get('area') if 'area' in data else (instance.area if instance is not None else None)
         explicit_input = data.get('property_id')
+        if instance is None and not str(explicit_input or '').strip():
+            raise serializers.ValidationError({
+                'property_id': 'An active property is required.'
+            })
         try:
             explicit_property = (
                 resolve_external_property_reference(explicit_input)

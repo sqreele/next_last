@@ -67,11 +67,17 @@ class JobPropertyWriteApiTests(APITestCase):
         job = self.create_job(property_id=self.chinatown.property_id)
         self.assertEqual(job.property_id, self.chinatown.id)
 
-    def test_create_area_only_and_rooms_only(self):
-        area_job = self.create_job(area_id=self.chinatown_area.id)
-        room_job = self.create_job(room_id=self.chinatown_room.room_id)
-        self.assertEqual(area_job.property_id, self.chinatown.id)
-        self.assertEqual(room_job.property_id, self.chinatown.id)
+    def test_create_requires_explicit_property_even_with_area_or_room(self):
+        for location in (
+            {'area_id': self.chinatown_area.id},
+            {'room_id': self.chinatown_room.room_id},
+        ):
+            with self.subTest(location=location):
+                response = self.client.post(
+                    '/api/v1/jobs/', self.payload(**location), format='json'
+                )
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
+                self.assertIn('property_id', response.data)
 
     def test_create_matching_property_area_and_room(self):
         job = self.create_job(
@@ -175,7 +181,11 @@ class JobPropertyWriteApiTests(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, response.content)
 
     def test_updates_preserve_immutable_property_and_reject_foreign_locations(self):
-        job = self.create_job(area_id=self.chinatown_area.id, room_id=self.chinatown_room.room_id)
+        job = self.create_job(
+            property_id=self.chinatown.property_id,
+            area_id=self.chinatown_area.id,
+            room_id=self.chinatown_room.room_id,
+        )
 
         response = self.client.patch(
             f'/api/v1/jobs/{job.job_id}/', {'area_id': self.chinatown_area_2.id}, format='json'

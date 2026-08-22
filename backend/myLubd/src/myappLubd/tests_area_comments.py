@@ -95,6 +95,7 @@ class JobWithAreaTests(APITestCase):
             'remarks': 'Test job',
             'priority': 'medium',
             'status': 'pending',
+            'property_id': self.prop.property_id,
             'room_id': self.room.room_id,
             'topic_data': {'title': self.topic.title},
             'area_id': self.area.id,
@@ -117,6 +118,7 @@ class JobWithAreaTests(APITestCase):
             'remarks': 'Test job',
             'priority': 'medium',
             'status': 'pending',
+            'property_id': self.prop.property_id,
             'topic_data': {'title': self.topic.title},
             'area_id': self.area.id,
         }, format='json')
@@ -142,6 +144,7 @@ class JobWithAreaTests(APITestCase):
             'remarks': 'Test job',
             'priority': 'medium',
             'status': 'pending',
+            'property_id': self.prop.property_id,
             'room_id': other_room.room_id,
             'topic_data': {'title': self.topic.title},
             'area_id': self.area.id,
@@ -163,11 +166,12 @@ class JobWithAreaTests(APITestCase):
             'remarks': 'Test job',
             'priority': 'medium',
             'status': 'pending',
+            'property_id': self.prop.property_id,
             'room_id': other_room.room_id,
             'topic_data': {'title': self.topic.title},
         }, format='json')
 
-        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, resp.content)
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST, resp.content)
         self.assertFalse(Job.objects.filter(description='Cross tenant room').exists())
 
 
@@ -193,6 +197,7 @@ class JobCommentTests(APITestCase):
             'remarks': 'Test job',
             'priority': 'low',
             'status': 'pending',
+            'property_id': self.prop.property_id,
             'room_id': self.room.room_id,
             'topic_data': {'title': self.topic.title},
         }, format='json')

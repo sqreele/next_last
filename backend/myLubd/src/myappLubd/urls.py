@@ -46,6 +46,11 @@ urlpatterns = [
     path('api/v1/preventive-maintenance/rooms/', views.get_preventive_maintenance_rooms, name='preventive_maintenance_rooms'),
     path('api/v1/preventive-maintenance/topics/', views.get_preventive_maintenance_topics, name='preventive_maintenance_topics'),
     path('api/v1/preventive-maintenance/<str:pm_id>/upload-images/', PreventiveMaintenanceImageUploadView.as_view(), name='upload_pm_images'),
+    path(
+        'api/v1/preventive-maintenance/<str:pm_id>/images/<str:image_id>/',
+        views.PreventiveMaintenanceImageDeleteView.as_view(),
+        name='delete_pm_image',
+    ),
     
     # API routes under 'api/v1/' (router must come after specific paths)
     path('api/v1/', include(router.urls)),

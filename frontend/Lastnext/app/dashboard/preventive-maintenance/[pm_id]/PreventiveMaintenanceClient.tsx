@@ -5,7 +5,7 @@ import {
   preventiveMaintenanceService,
   setPreventiveMaintenanceServiceToken,
 } from "@/app/lib/PreventiveMaintenanceService";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/app/lib/session.client";
@@ -30,22 +30,28 @@ import {
   CheckCircle,
   Clock,
   User,
+  ImagePlus,
+  Trash2,
+  Upload,
 } from "lucide-react";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
 import { fetchImageAsDataURL } from "@/app/lib/imageUtils";
 import { MaintenanceImage } from "@/app/components/ui/UniversalImage";
 import { getDisplayName, getUserEmail } from "@/app/lib/utils/display-name";
 import { StatusBadge } from "@/app/components/StatusBadge";
+import { useMainStore } from "@/app/lib/stores/mainStore";
 
 interface PreventiveMaintenanceClientProps {
   maintenanceData: PreventiveMaintenance;
 }
 
 export default function PreventiveMaintenanceClient({
-  maintenanceData,
+  maintenanceData: initialMaintenanceData,
 }: PreventiveMaintenanceClientProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
+  const [maintenanceData, setMaintenanceData] = useState(initialMaintenanceData);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
@@ -53,6 +59,17 @@ export default function PreventiveMaintenanceClient({
   const [currentImageAlt, setCurrentImageAlt] = useState<string>("");
   const [isCompleting, setIsCompleting] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [uploadType, setUploadType] = useState<"before" | "after">("before");
+  const [selectedImages, setSelectedImages] = useState<
+    Array<{ file: File; previewUrl: string; key: string }>
+  >([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [deletingImageId, setDeletingImageId] = useState<number | string | null>(null);
+  const [imageMessage, setImageMessage] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const previewUrlsRef = useRef<string[]>([]);
+  const imageModalCloseRef = useRef<HTMLButtonElement>(null);
+  const imageModalTriggerRef = useRef<HTMLElement | null>(null);
   const [pdfImageDataUrls, setPdfImageDataUrls] = useState<
     Record<string, string>
   >({});
@@ -60,11 +77,62 @@ export default function PreventiveMaintenanceClient({
     useMinLoaderTime(setIsLoading);
 
   useEffect(() => {
+    setMaintenanceData(initialMaintenanceData);
+  }, [initialMaintenanceData]);
+
+  useEffect(() => () => {
+    previewUrlsRef.current.forEach((previewUrl) => URL.revokeObjectURL(previewUrl));
+  }, []);
+
+  useEffect(() => {
     const accessToken = session?.user?.accessToken;
     if (accessToken) {
       setPreventiveMaintenanceServiceToken(accessToken);
     }
   }, [session?.user?.accessToken]);
+
+  const evidenceImages = useMemo(() => {
+    if (maintenanceData.images?.length) {
+      return maintenanceData.images
+        .filter((image) => image.id !== undefined && image.image_type && image.image_url)
+        .map((image) => ({ ...image, image_url: fixImageUrl(image.image_url!) }));
+    }
+
+    return [
+      maintenanceData.before_image_url
+        ? {
+            id: "legacy-before",
+            pm_id: maintenanceData.pm_id,
+            image_type: "before" as const,
+            image_url: fixImageUrl(maintenanceData.before_image_url),
+            is_legacy: true,
+          }
+        : null,
+      maintenanceData.after_image_url
+        ? {
+            id: "legacy-after",
+            pm_id: maintenanceData.pm_id,
+            image_type: "after" as const,
+            image_url: fixImageUrl(maintenanceData.after_image_url),
+            is_legacy: true,
+          }
+        : null,
+    ].filter((image): image is NonNullable<typeof image> => Boolean(image));
+  }, [maintenanceData]);
+
+  const beforeImages = evidenceImages.filter((image) => image.image_type === "before");
+  const afterImages = evidenceImages.filter((image) => image.image_type === "after");
+  const imageCounts = maintenanceData.image_counts || {
+    before: beforeImages.length,
+    after: afterImages.length,
+    total: evidenceImages.length,
+    remaining: Math.max(0, 10 - evidenceImages.length),
+    limit: 10,
+  };
+  const canOperate = (
+    maintenanceData.can_operate === true
+    && maintenanceData.property_id === selectedPropertyId
+  );
 
   // ฟังก์ชันสำหรับการยืนยันการลบ
   const handleDelete = async () => {
@@ -191,24 +259,17 @@ export default function PreventiveMaintenanceClient({
 
   // Image URL functions
   const getBeforeImageUrl = (): string | null => {
-    if (maintenanceData.before_image_url) {
-      const fixedUrl = fixImageUrl(maintenanceData.before_image_url);
-      return fixedUrl;
-    }
-    return null;
+    return beforeImages[0]?.image_url || null;
   };
 
   const getAfterImageUrl = (): string | null => {
-    if (maintenanceData.after_image_url) {
-      const fixedUrl = fixImageUrl(maintenanceData.after_image_url);
-      return fixedUrl;
-    }
-    return null;
+    return afterImages[0]?.image_url || null;
   };
 
   // Open image in modal
   const openImageModal = (imageUrl: string | null, altText: string) => {
     if (!imageUrl) return;
+    imageModalTriggerRef.current = document.activeElement as HTMLElement | null;
     setCurrentImage(imageUrl);
     setCurrentImageAlt(altText);
     setIsImageModalOpen(true);
@@ -217,6 +278,116 @@ export default function PreventiveMaintenanceClient({
   const closeImageModal = () => {
     setIsImageModalOpen(false);
     setCurrentImage(null);
+    requestAnimationFrame(() => imageModalTriggerRef.current?.focus());
+  };
+
+  useEffect(() => {
+    if (!isImageModalOpen) return;
+    imageModalCloseRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Tab") {
+        event.preventDefault();
+        imageModalCloseRef.current?.focus();
+        return;
+      }
+      if (event.key === "Escape") {
+        setIsImageModalOpen(false);
+        setCurrentImage(null);
+        requestAnimationFrame(() => imageModalTriggerRef.current?.focus());
+      }
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [isImageModalOpen]);
+
+  const clearSelectedImages = () => {
+    selectedImages.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl));
+    previewUrlsRef.current = [];
+    setSelectedImages([]);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
+
+  const handleImageSelection = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setImageMessage(null);
+    if (files.length === 0) return;
+    if (selectedImages.length + files.length > imageCounts.remaining) {
+      setImageMessage(`You can select up to ${imageCounts.remaining} more image${imageCounts.remaining === 1 ? "" : "s"}.`);
+      event.target.value = "";
+      return;
+    }
+
+    const existingKeys = new Set(selectedImages.map(({ key }) => key));
+    const additions = files.flatMap((file) => {
+      const key = `${file.name}-${file.size}-${file.lastModified}`;
+      if (existingKeys.has(key)) return [];
+      existingKeys.add(key);
+      const previewUrl = URL.createObjectURL(file);
+      previewUrlsRef.current.push(previewUrl);
+      return [{ file, previewUrl, key }];
+    });
+    setSelectedImages((current) => [...current, ...additions]);
+    event.target.value = "";
+  };
+
+  const removeSelectedImage = (key: string) => {
+    setSelectedImages((current) => {
+      const removed = current.find((item) => item.key === key);
+      if (removed) {
+        URL.revokeObjectURL(removed.previewUrl);
+        previewUrlsRef.current = previewUrlsRef.current.filter((url) => url !== removed.previewUrl);
+      }
+      return current.filter((item) => item.key !== key);
+    });
+  };
+
+  const handleUploadImages = async () => {
+    const propertyId = selectedPropertyId;
+    if (!canOperate || !propertyId || selectedImages.length === 0) return;
+    setIsUploadingImages(true);
+    setImageMessage(null);
+    try {
+      const response = await preventiveMaintenanceService.uploadMaintenanceImages(
+        maintenanceData.pm_id,
+        { images: selectedImages.map(({ file }) => file), image_type: uploadType },
+        propertyId,
+      );
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Unable to upload images.");
+      }
+      if (useMainStore.getState().selectedPropertyId !== propertyId) return;
+      setMaintenanceData(response.data);
+      clearSelectedImages();
+      setImageMessage("Images uploaded and optimized successfully.");
+    } catch (uploadError: unknown) {
+      setImageMessage(uploadError instanceof Error ? uploadError.message : "Unable to upload images.");
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
+  const handleDeleteImage = async (imageId: number | string) => {
+    const propertyId = selectedPropertyId;
+    if (!canOperate || !propertyId || !window.confirm("Delete this maintenance image?")) return;
+    setDeletingImageId(imageId);
+    setImageMessage(null);
+    try {
+      const response = await preventiveMaintenanceService.deleteMaintenanceImage(
+        maintenanceData.pm_id,
+        imageId,
+        propertyId,
+      );
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Unable to delete this image.");
+      }
+      if (useMainStore.getState().selectedPropertyId !== propertyId) return;
+      setMaintenanceData(response.data);
+      setImageMessage("Image deleted.");
+    } catch (deleteError: unknown) {
+      setImageMessage(deleteError instanceof Error ? deleteError.message : "Unable to delete this image.");
+    } finally {
+      setDeletingImageId(null);
+    }
   };
 
   const waitForPdfImages = async (root: HTMLElement) => {
@@ -570,9 +741,7 @@ export default function PreventiveMaintenanceClient({
 
   // Status functions - use useState/useEffect to avoid hydration issues with Date.now()
   // Initialize with a safe default that won't cause hydration mismatch
-  const [taskStatus, setTaskStatus] = useState<
-    "completed" | "pending" | "overdue"
-  >("pending");
+  const [taskStatus, setTaskStatus] = useState("pending");
 
   // Calculate status only on client side to avoid hydration issues
   useEffect(() => {
@@ -581,16 +750,7 @@ export default function PreventiveMaintenanceClient({
       return;
     }
 
-    const scheduledDate = new Date(maintenanceData.scheduled_date);
-    const now = new Date();
-    const overdue = scheduledDate < now;
-
-    if (determinePMStatus) {
-      const status = determinePMStatus(maintenanceData);
-      setTaskStatus(status as "completed" | "pending" | "overdue");
-    } else {
-      setTaskStatus(overdue ? "overdue" : "pending");
-    }
+    setTaskStatus(determinePMStatus(maintenanceData));
   }, [
     maintenanceData.completed_date,
     maintenanceData.scheduled_date,
@@ -775,13 +935,15 @@ export default function PreventiveMaintenanceClient({
             PM List
           </Link>
 
-          <Link
-            href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
-          >
-            <Settings className="h-4 w-4" aria-hidden="true" />
-            Edit
-          </Link>
+          {canOperate && (
+            <Link
+              href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+              Edit
+            </Link>
+          )}
 
           <button
             type="button"
@@ -793,7 +955,7 @@ export default function PreventiveMaintenanceClient({
             {isExportingPdf ? "Generating..." : "PDF"}
           </button>
 
-          {!maintenanceData.completed_date && (
+          {canOperate && !maintenanceData.completed_date && maintenanceData.status !== "cancelled" && (
             <button
               type="button"
               onClick={handleMarkComplete}
@@ -816,9 +978,9 @@ export default function PreventiveMaintenanceClient({
                 <Wrench className="h-6 w-6 text-blue-600 sm:h-8 sm:w-8" />
               </div>
               <div className="min-w-0">
-                <h2 className="text-xl font-bold leading-tight text-foreground sm:text-2xl">
-                  Preventive Maintenance
-                </h2>
+                <h1 className="break-words text-xl font-bold leading-tight text-foreground sm:text-2xl">
+                  {maintenanceData.pmtitle || "Preventive Maintenance"}
+                </h1>
                 <p className="mt-1 break-all font-mono text-xs text-muted-foreground sm:text-sm">
                   ID: {maintenanceData.pm_id}
                 </p>
@@ -1079,135 +1241,157 @@ export default function PreventiveMaintenanceClient({
           </div>
         </div>
 
-        {/* Modern Images Section */}
-        <div className="border-t border-border px-4 py-4 sm:px-8 sm:py-6">
+        {/* PM evidence gallery */}
+        <section className="border-t border-border px-4 py-4 sm:px-8 sm:py-6" aria-labelledby="pm-images-title">
           <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] sm:p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <Camera className="h-6 w-6 text-amber-600" />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-amber-100 p-2">
+                  <Camera className="h-6 w-6 text-amber-700" aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 id="pm-images-title" className="text-xl font-semibold text-foreground">Work evidence</h2>
+                  <p className="text-sm text-muted-foreground">Before: {imageCounts.before} · After: {imageCounts.after}</p>
+                </div>
               </div>
-              <h3 className="text-xl font-semibold text-foreground">
-                Maintenance Images
-              </h3>
+              <p className="rounded-full bg-muted px-3 py-1.5 text-sm font-semibold text-foreground" aria-label={`${imageCounts.total} of ${imageCounts.limit} images used`}>
+                {imageCounts.total} / {imageCounts.limit} images
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {beforeImageUrl ? (
-                <div className="bg-card/80 p-4 rounded-xl">
-                  <div className="text-muted-foreground font-medium mb-3 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    Before Maintenance
+            <div className="mt-6 grid gap-6 lg:grid-cols-2">
+              {([
+                { type: "before" as const, title: "Before Work", images: beforeImages, accent: "bg-blue-500" },
+                { type: "after" as const, title: "After Work", images: afterImages, accent: "bg-green-500" },
+              ]).map((group) => (
+                <div key={group.type} className="rounded-xl border border-border bg-muted/30 p-3 sm:p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="flex items-center gap-2 font-semibold text-foreground">
+                      <span className={`h-2.5 w-2.5 rounded-full ${group.accent}`} aria-hidden="true" />
+                      {group.title}
+                    </h3>
+                    <span className="text-sm text-muted-foreground">{group.images.length}</span>
                   </div>
-                  <div
-                    className="relative w-full h-56 bg-muted rounded-xl overflow-hidden cursor-pointer group shadow-card hover:shadow-card transition-all duration-300"
-                    onClick={() =>
-                      openImageModal(beforeImageUrl, "Before Maintenance")
-                    }
-                  >
-                    <img
-                      loading="lazy"
-                      decoding="async"
-                      src={beforeImageUrl || ""}
-                      alt="Before Maintenance"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      style={{ width: "100%", height: "100%" }}
-                      onLoad={() => {
-                        if (process.env.NODE_ENV === "development") {
-                        }
-                      }}
-                      onError={(e) => {
-                        console.error("❌ Before image failed to load");
-                        console.error("   URL:", beforeImageUrl);
-                        console.error(
-                          "   Original URL:",
-                          maintenanceData.before_image_url,
+                  {group.images.length ? (
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+                      {group.images.map((image, index) => {
+                        const alt = `${group.type === "before" ? "Before" : "After"} maintenance image ${index + 1}`;
+                        return (
+                          <div key={String(image.id)} className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted">
+                            <button
+                              type="button"
+                              onClick={() => openImageModal(image.image_url || null, alt)}
+                              className="h-full w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-inset"
+                              aria-label={`Open ${alt.toLowerCase()}`}
+                            >
+                              <img loading="lazy" decoding="async" src={image.image_url || ""} alt={alt} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                              <span className="absolute inset-0 grid place-items-center bg-black/0 opacity-0 transition group-hover:bg-black/20 group-hover:opacity-100" aria-hidden="true">
+                                <ZoomIn className="h-6 w-6 text-white" />
+                              </span>
+                            </button>
+                            {canOperate && (
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteImage(image.id!)}
+                                disabled={deletingImageId === image.id}
+                                className="absolute right-1.5 top-1.5 grid h-11 w-11 place-items-center rounded-full bg-red-700 text-white shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-60"
+                                aria-label={`Delete ${alt.toLowerCase()}`}
+                              >
+                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              </button>
+                            )}
+                          </div>
                         );
-                        console.error("   Error event:", e);
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
-                      <div className="opacity-0 group-hover:opacity-100 bg-card bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">
-                        <ZoomIn className="h-6 w-6 text-foreground" />
+                      })}
+                    </div>
+                  ) : (
+                    <div className="grid min-h-36 place-items-center rounded-lg border-2 border-dashed border-border bg-card px-4 text-center">
+                      <div>
+                        <ImagePlus className="mx-auto h-8 w-8 text-muted-foreground" aria-hidden="true" />
+                        <p className="mt-2 text-sm font-medium text-muted-foreground">No {group.type} images yet</p>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-              ) : (
-                <div className="bg-card/80 p-4 rounded-xl">
-                  <div className="text-muted-foreground font-medium mb-3 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    Before Maintenance
-                  </div>
-                  <div className="flex items-center justify-center w-full h-56 bg-muted rounded-xl border-2 border-dashed border-border">
-                    <div className="text-center">
-                      <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-muted-foreground font-medium">
-                        No before image
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {afterImageUrl ? (
-                <div className="bg-card/80 p-4 rounded-xl">
-                  <div className="text-muted-foreground font-medium mb-3 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    After Maintenance
-                  </div>
-                  <div
-                    className="relative w-full h-56 bg-muted rounded-xl overflow-hidden cursor-pointer group shadow-card hover:shadow-card transition-all duration-300"
-                    onClick={() =>
-                      openImageModal(afterImageUrl, "After Maintenance")
-                    }
-                  >
-                    <img
-                      loading="lazy"
-                      decoding="async"
-                      src={afterImageUrl || ""}
-                      alt="After Maintenance"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      style={{ width: "100%", height: "100%" }}
-                      onLoad={() => {
-                        if (process.env.NODE_ENV === "development") {
-                        }
-                      }}
-                      onError={(e) => {
-                        console.error("❌ After image failed to load");
-                        console.error("   URL:", afterImageUrl);
-                        console.error(
-                          "   Original URL:",
-                          maintenanceData.after_image_url,
-                        );
-                        console.error("   Error event:", e);
-                      }}
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 flex items-center justify-center transition-all duration-300">
-                      <div className="opacity-0 group-hover:opacity-100 bg-card bg-opacity-90 rounded-full p-3 transition-opacity transform translate-y-2 group-hover:translate-y-0">
-                        <ZoomIn className="h-6 w-6 text-foreground" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-card/80 p-4 rounded-xl">
-                  <div className="text-muted-foreground font-medium mb-3 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    After Maintenance
-                  </div>
-                  <div className="flex items-center justify-center w-full h-56 bg-muted rounded-xl border-2 border-dashed border-border">
-                    <div className="text-center">
-                      <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-muted-foreground font-medium">
-                        No after image
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+              ))}
             </div>
+
+            {canOperate && (
+              <div className="mt-6 rounded-xl border border-border bg-muted/40 p-4 sm:p-5">
+                <div className="flex items-start gap-3">
+                  <Upload className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" aria-hidden="true" />
+                  <div>
+                    <h3 className="font-semibold text-foreground">Add work images</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Choose Before or After. Images are automatically optimized before storage.</p>
+                  </div>
+                </div>
+
+                {imageCounts.remaining > 0 ? (
+                  <>
+                    <fieldset className="mt-4">
+                      <legend className="text-sm font-semibold text-foreground">Image type</legend>
+                      <div className="mt-2 grid grid-cols-2 gap-2 sm:max-w-sm">
+                        {(["before", "after"] as const).map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => setUploadType(type)}
+                            aria-pressed={uploadType === type}
+                            className={`min-h-11 rounded-lg border px-4 py-2 text-sm font-semibold capitalize focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${uploadType === type ? "border-blue-700 bg-blue-700 text-white" : "border-border bg-card text-foreground"}`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                    </fieldset>
+                    <label className="mt-4 block text-sm font-semibold text-foreground" htmlFor="pm-evidence-images">
+                      Select images <span className="font-normal text-muted-foreground">({imageCounts.remaining} remaining)</span>
+                    </label>
+                    <input
+                      ref={imageInputRef}
+                      id="pm-evidence-images"
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      multiple
+                      onChange={handleImageSelection}
+                      disabled={isUploadingImages}
+                      className="mt-2 block min-h-11 w-full rounded-lg border border-border bg-card p-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-100 file:px-3 file:py-2 file:font-semibold file:text-blue-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    />
+                  </>
+                ) : (
+                  <p className="mt-4 rounded-lg bg-amber-100 px-4 py-3 text-sm font-medium text-amber-950">The 10-image limit has been reached. Delete an image to add another.</p>
+                )}
+
+                {selectedImages.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-sm font-semibold text-foreground">Selected: {selectedImages.length}</p>
+                    <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
+                      {selectedImages.map(({ file, previewUrl, key }, index) => (
+                        <div key={key} className="relative aspect-square overflow-hidden rounded-lg border border-border bg-muted">
+                          <img src={previewUrl} alt={`Selected image ${index + 1}: ${file.name}`} className="h-full w-full object-cover" />
+                          <button type="button" onClick={() => removeSelectedImage(key)} className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full bg-black/75 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={`Remove ${file.name} from upload`}>
+                            <X className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handleUploadImages()}
+                      disabled={isUploadingImages}
+                      className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                    >
+                      <Upload className="h-4 w-4" aria-hidden="true" />
+                      {isUploadingImages ? "Uploading and optimizing…" : `Upload ${selectedImages.length} ${uploadType} image${selectedImages.length === 1 ? "" : "s"}`}
+                    </button>
+                  </div>
+                )}
+
+                {imageMessage && <p className="mt-3 text-sm font-medium text-foreground" role="status" aria-live="polite">{imageMessage}</p>}
+              </div>
+            )}
           </div>
-        </div>
+        </section>
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-center">
@@ -1239,7 +1423,7 @@ export default function PreventiveMaintenanceClient({
                 {isExportingPdf ? "Generating PDF report..." : "Generate PDF"}
               </button>
 
-              {!maintenanceData.completed_date && (
+              {canOperate && !maintenanceData.completed_date && maintenanceData.status !== "cancelled" && (
                 <button
                   onClick={handleMarkComplete}
                   disabled={isCompleting}
@@ -1252,24 +1436,28 @@ export default function PreventiveMaintenanceClient({
                 </button>
               )}
 
-              <Link
-                href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
-                className="pcms-btn pcms-btn-primary flex items-center justify-center gap-2 px-6 py-3 text-center font-medium"
-              >
-                <Settings className="h-4 w-4" />
-                Edit
-              </Link>
+              {canOperate && (
+                <Link
+                  href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
+                  className="pcms-btn pcms-btn-primary flex items-center justify-center gap-2 px-6 py-3 text-center font-medium"
+                >
+                  <Settings className="h-4 w-4" />
+                  Edit
+                </Link>
+              )}
 
-              <button
-                onClick={handleDelete}
-                disabled={isLoading}
-                className={`pcms-btn pcms-btn-danger flex items-center justify-center gap-2 px-6 py-3 font-medium ${
-                  isLoading ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-              >
-                <X className="h-4 w-4" />
-                {isLoading ? "Deleting..." : "Delete"}
-              </button>
+              {canOperate && (
+                <button
+                  onClick={handleDelete}
+                  disabled={isLoading}
+                  className={`pcms-btn pcms-btn-danger flex items-center justify-center gap-2 px-6 py-3 font-medium ${
+                    isLoading ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <X className="h-4 w-4" />
+                  {isLoading ? "Deleting..." : "Delete"}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1524,15 +1712,19 @@ export default function PreventiveMaintenanceClient({
         <div
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
           onClick={closeImageModal}
+          role="dialog"
+          aria-modal="true"
+          aria-label={currentImageAlt || "Maintenance image preview"}
         >
           <div className="relative max-w-4xl max-h-screen w-full h-full flex items-center justify-center">
             <button
-              className="absolute top-4 right-4 bg-card rounded-full p-2 z-10 flex items-center justify-center"
+              ref={imageModalCloseRef}
+              className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-card focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
               onClick={(e) => {
                 e.stopPropagation();
                 closeImageModal();
               }}
-              aria-label="Close"
+              aria-label="Close image preview"
             >
               <X className="h-5 w-5" />
             </button>

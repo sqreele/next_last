@@ -135,6 +135,8 @@ export type CreatePMMasterPlanData = {
 };
 
 export interface UploadImagesData {
+  images?: File[];
+  image_type?: "before" | "after";
   before_image?: File;
   after_image?: File;
 }
@@ -823,34 +825,41 @@ class PreventiveMaintenanceService {
   async uploadMaintenanceImages(
     pmId: string,
     data: UploadImagesData,
-  ): Promise<ServiceResponse<null>> {
+    propertyId: string,
+  ): Promise<ServiceResponse<PreventiveMaintenance>> {
     if (!pmId) {
       console.error("Cannot upload images: PM ID is undefined or empty");
       return { success: false, message: "PM ID is required for image upload" };
     }
 
+    const selectedImages = data.images?.filter((image) => image instanceof File) || [];
     const hasBefore = data.before_image instanceof File;
     const hasAfter = data.after_image instanceof File;
 
-    if (!hasBefore && !hasAfter) {
-      return { success: true, data: null, message: "No images provided" };
+    if (selectedImages.length === 0 && !hasBefore && !hasAfter) {
+      return { success: false, message: "Select at least one image" };
     }
 
     try {
       const imageFormData = new FormData();
+      if (selectedImages.length > 0) {
+        if (!data.image_type) {
+          return { success: false, message: "Choose Before or After" };
+        }
+        imageFormData.append("image_type", data.image_type);
+        selectedImages.forEach((image) => imageFormData.append("images", image));
+      }
       if (hasBefore) {
         imageFormData.append("before_image", data.before_image!);
       }
       if (hasAfter) {
         imageFormData.append("after_image", data.after_image!);
       }
-      for (const [key, value] of imageFormData.entries()) {
-      }
-
-      await apiClient.post(
+      const response = await apiClient.post<PreventiveMaintenance>(
         `${this.baseUrl}/${pmId}/upload-images/`,
         imageFormData,
         {
+          params: { property_id: propertyId },
           headers: {
             "Content-Type": "multipart/form-data",
             ...this.getAuthHeaders(),
@@ -859,11 +868,35 @@ class PreventiveMaintenanceService {
       );
       return {
         success: true,
-        data: null,
+        data: response.data,
         message: "Images uploaded successfully",
       };
     } catch (error: any) {
       console.error(`Service error uploading images for PM ${pmId}:`, error);
+      throw handleApiError(error);
+    }
+  }
+
+  async deleteMaintenanceImage(
+    pmId: string,
+    imageId: number | string,
+    propertyId: string,
+  ): Promise<ServiceResponse<PreventiveMaintenance>> {
+    try {
+      const response = await apiClient.delete<PreventiveMaintenance>(
+        `${this.baseUrl}/${pmId}/images/${encodeURIComponent(String(imageId))}/`,
+        {
+          params: { property_id: propertyId },
+          headers: this.getAuthHeaders(),
+        },
+      );
+      return {
+        success: true,
+        data: response.data,
+        message: "Image deleted successfully",
+      };
+    } catch (error: any) {
+      console.error(`Service error deleting image for PM ${pmId}:`, error);
       throw handleApiError(error);
     }
   }
@@ -949,9 +982,6 @@ class PreventiveMaintenanceService {
       if (data.after_image instanceof File) {
         formData.append("after_image", data.after_image);
       }
-      for (const [key, value] of formData.entries()) {
-      }
-
       const response = await apiClient.put<PreventiveMaintenance>(
         `${this.baseUrl}/${id}/`,
         formData,
@@ -1001,9 +1031,6 @@ class PreventiveMaintenanceService {
       if (data.after_image instanceof File) {
         formData.append("after_image", data.after_image);
       }
-      for (const [key, value] of formData.entries()) {
-      }
-
       const response = await apiClient.post<PreventiveMaintenance>(
         `${this.baseUrl}/${id}/complete/`,
         formData,
@@ -1028,6 +1055,7 @@ class PreventiveMaintenanceService {
 
   async getPreventiveMaintenanceById(
     id: string,
+    propertyId?: string,
   ): Promise<ServiceResponse<PreventiveMaintenance>> {
     if (!id) {
       console.error("Cannot fetch: PM ID is undefined or empty");
@@ -1038,6 +1066,7 @@ class PreventiveMaintenanceService {
       const response = await apiClient.get<PreventiveMaintenance>(
         `${this.baseUrl}/${id}/`,
         {
+          params: propertyId ? { property_id: propertyId } : undefined,
           headers: this.getAuthHeaders(),
         },
       );

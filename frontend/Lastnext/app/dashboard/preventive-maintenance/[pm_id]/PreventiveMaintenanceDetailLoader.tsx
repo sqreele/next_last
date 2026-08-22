@@ -8,7 +8,6 @@ import { Button } from '@/app/components/ui/button';
 import { PageLoader } from '@/app/components/ui/loading';
 import { useSession } from '@/app/lib/session.client';
 import {
-  preventiveMaintenanceService,
   setPreventiveMaintenanceServiceToken,
   createPreventiveMaintenanceService,
   type PMMasterPlan,
@@ -44,7 +43,7 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     const accessToken = session?.user?.accessToken;
     if (status !== 'authenticated' || !accessToken) return;
 
-    if (isMasterPlanId && !selectedPropertyId) {
+    if (!selectedPropertyId) {
       setMaintenance(null);
       setMasterPlan(null);
       setCanOperate(false);
@@ -57,15 +56,12 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     setLoading(true);
     setError(null);
     setCanOperate(false);
-    if (isMasterPlanId) {
-      setMasterPlan(null);
-    } else {
-      setMaintenance(null);
-    }
+    setMasterPlan(null);
+    setMaintenance(null);
     const service = createPreventiveMaintenanceService(accessToken);
     const detailRequest = isMasterPlanId
       ? service.getPMMasterPlan(pmId, selectedPropertyId!)
-      : preventiveMaintenanceService.getPreventiveMaintenanceById(pmId);
+      : service.getPreventiveMaintenanceById(pmId, selectedPropertyId!);
 
     detailRequest
       .then((response) => {
@@ -78,7 +74,11 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
           setCanOperate(plan.can_operate === true);
           setMasterPlan(plan);
         } else {
-          setMaintenance(response.data as PreventiveMaintenance);
+          const record = response.data as PreventiveMaintenance;
+          if (record.property_id !== selectedPropertyId) {
+            throw new Error('This maintenance record is not available for the active property.');
+          }
+          setMaintenance(record);
         }
       })
       .catch((requestError: unknown) => {
@@ -122,11 +122,11 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     return <PageLoader />;
   }
 
-  if (isMasterPlanId && !selectedPropertyId) {
+  if (!selectedPropertyId) {
     return (
       <div className="mx-auto max-w-xl px-4 py-16 text-center">
         <h1 className="text-2xl font-bold">Select a property</h1>
-        <p className="mt-2 text-muted-foreground">Select a property to view PM master plans.</p>
+        <p className="mt-2 text-muted-foreground">Select a property to view preventive maintenance details.</p>
       </div>
     );
   }

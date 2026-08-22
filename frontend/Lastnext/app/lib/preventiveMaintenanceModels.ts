@@ -20,8 +20,13 @@ export interface SimpleUser {
 
 // Image definition
 export interface MaintenanceImage {
-  id?: number;
+  id?: number | string;
+  pm_id?: string;
+  image_type?: 'before' | 'after';
   image_url?: string;
+  uploaded_at?: string | null;
+  uploaded_by?: SimpleUser | null;
+  is_legacy?: boolean;
 }
 
 // Frequency options - Must match backend FREQUENCY_CHOICES exactly
@@ -89,6 +94,15 @@ export interface PreventiveMaintenance {
   notes?: string | null;
   before_image_url?: string | null;
   after_image_url?: string | null;
+  images?: MaintenanceImage[];
+  image_counts?: {
+    before: number;
+    after: number;
+    total: number;
+    remaining: number;
+    limit: number;
+  };
+  can_operate?: boolean;
   created_by?: number | SimpleUser | null;
   created_by_details?: SimpleUser | null;
   created_by_name?: string | null;
@@ -170,31 +184,22 @@ export interface PaginatedResponse<T> {
 
 // Helper to determine PM status
 export function determinePMStatus(item: PreventiveMaintenance): string {
-  // If status is already set, return it
-  if (item.status) {
-      const normalizedStatus = item.status.toLowerCase();
-      return normalizedStatus === 'complete' ? 'completed' : normalizedStatus;
-  }
-  
-  // Get current date
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
-  // Check if completed
   if (item.completed_date) {
       return 'completed';
   }
-  
-  // Check if scheduled date is in the past
+
+  const normalizedStatus = item.status?.toLowerCase();
+  if (normalizedStatus === 'complete' || normalizedStatus === 'completed') return 'completed';
+  if (normalizedStatus === 'cancelled') return 'cancelled';
+
   if (item.scheduled_date) {
       const scheduledDate = new Date(item.scheduled_date);
-      if (scheduledDate < today) {
+      if (scheduledDate < new Date()) {
           return 'overdue';
       }
   }
-  
-  // Default to pending
-  return 'pending';
+
+  return normalizedStatus || 'pending';
 }
 
 // Enhanced helper to get image URL from various formats

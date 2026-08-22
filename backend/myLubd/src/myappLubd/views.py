@@ -17,8 +17,9 @@ from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When,
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import models, transaction
 from .models import (
-    UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance, PMMasterPlan,
-    JobImage, Machine, MaintenanceProcedure, UtilityConsumption, Inventory,
+    UserProfile, Property, Room, Topic, Job, Session, PreventiveMaintenance,
+    PreventiveMaintenanceImage, PMMasterPlan, JobImage, Machine,
+    MaintenanceProcedure, UtilityConsumption, Inventory,
     Area, JobComment, PushSubscription, Tenant,
     TenantMembership, SubscriptionPlan, TenantSubscription, UsageMetric,
     InventoryUsage, MaintenanceChecklist, MaintenanceHistory,
@@ -40,8 +41,6 @@ from .serializers import (
     TenantSubscriptionSerializer, UsageMetricSerializer,
 )
 from .job_property import resolve_job_property
-from PIL import Image
-from io import BytesIO
 from django.core.files.base import ContentFile
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
@@ -1607,6 +1606,69 @@ class MaintenancePagination(PageNumberPagination):
             'results': data,
         })
 
+def canonical_pm_queryset(user, property_filter=None):
+    """Return PM rows with one canonical property and TenantMembership scope."""
+    job_machine_conflict = Machine.objects.filter(
+        preventive_maintenances=OuterRef('pk')
+    ).exclude(property_id=OuterRef('job__property_id'))
+
+    queryset = PreventiveMaintenance.objects.select_related(
+        'job__property',
+        'created_by',
+        'completed_by',
+        'verified_by',
+        'assigned_to',
+        'procedure_template',
+    ).prefetch_related(
+        'topics',
+        'machines',
+        'machines__property',
+        'job__rooms',
+        'images__uploaded_by',
+    ).annotate(
+        machine_property_count=Count('machines__property_id', distinct=True),
+        has_job_machine_conflict=Exists(job_machine_conflict),
+    ).filter(
+        machine_property_count__lte=1,
+    ).filter(
+        Q(job__isnull=True) | Q(has_job_machine_conflict=False),
+    ).filter(
+        Q(job__property__isnull=False) | Q(machine_property_count=1),
+    )
+
+    if not user.is_superuser:
+        property_ids = accessible_property_ids(user)
+        inaccessible_machines = Machine.objects.filter(
+            preventive_maintenances=OuterRef('pk')
+        ).exclude(property_id__in=property_ids)
+        queryset = queryset.annotate(
+            has_inaccessible_machine=Exists(inaccessible_machines)
+        ).filter(
+            has_inaccessible_machine=False,
+        ).filter(
+            Q(job__isnull=True) | Q(job__property_id__in=property_ids)
+        ).filter(
+            Q(job__property_id__in=property_ids) | Q(machines__property_id__in=property_ids)
+        )
+
+    if property_filter:
+        machines_outside_property = Machine.objects.filter(
+            preventive_maintenances=OuterRef('pk')
+        ).exclude(property__property_id=property_filter)
+        queryset = queryset.annotate(
+            has_machine_outside_property=Exists(machines_outside_property)
+        ).filter(
+            has_machine_outside_property=False,
+        ).filter(
+            Q(job__isnull=True) | Q(job__property__property_id=property_filter)
+        ).filter(
+            Q(job__property__property_id=property_filter)
+            | Q(machines__property__property_id=property_filter)
+        )
+
+    return queryset.distinct()
+
+
 # Preventive Maintenance ViewSet
 class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
     """
@@ -1758,63 +1820,9 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
 
     def _get_base_queryset(self):
         """Return PMs scoped to the authenticated user's accessible properties."""
-        # ✅ PERFORMANCE: Optimize query with select_related and prefetch_related
-        queryset = PreventiveMaintenance.objects.select_related(
-            'job__property',  # Canonical job ownership
-            'created_by',  # Foreign key
-            'completed_by',  # Foreign key
-            'verified_by',  # Foreign key
-            'assigned_to',  # Foreign key
-            'procedure_template',  # Foreign key
-        ).prefetch_related(
-            'topics',  # Many-to-many
-            'machines',  # Many-to-many
-            'machines__property',  # Related property through machines
-            'job__rooms',  # Physical location detail only
-        )
-
         property_filter = self.request.query_params.get('property_id')
         machine_filter = self.request.query_params.get('machine_id')
-
-        logger.info(f"[PM Filter] User: {self.request.user.username}, property_filter: {property_filter}, machine_filter: {machine_filter}")
-
-        # Restrict by canonical property scope; only platform superusers bypass.
-        user = self.request.user
-        if not user.is_superuser:
-            property_ids = accessible_property_ids(user)
-            logger.info(f"[PM Filter] Non-admin user - accessible properties: {sorted(property_ids)}")
-            inaccessible_machines = Machine.objects.filter(
-                preventive_maintenances=OuterRef('pk')
-            ).exclude(property_id__in=property_ids)
-            queryset = queryset.annotate(
-                has_inaccessible_machine=Exists(inaccessible_machines)
-            ).filter(
-                has_inaccessible_machine=False,
-            ).filter(
-                Q(job__isnull=True) | Q(job__property_id__in=property_ids)
-            ).filter(
-                Q(job__property_id__in=property_ids) | Q(machines__property_id__in=property_ids)
-            )
-            logger.info(f"[PM Filter] After permission filter: {queryset.count()} records")
-
-        if property_filter:
-            logger.info(f"[PM Filter] Applying property filter: {property_filter}")
-            before_count = queryset.count()
-            machines_outside_property = Machine.objects.filter(
-                preventive_maintenances=OuterRef('pk')
-            ).exclude(property__property_id=property_filter)
-            queryset = queryset.annotate(
-                has_machine_outside_property=Exists(machines_outside_property)
-            ).filter(
-                has_machine_outside_property=False,
-            ).filter(
-                Q(job__isnull=True) | Q(job__property__property_id=property_filter)
-            ).filter(
-                Q(job__property__property_id=property_filter) |
-                Q(machines__property__property_id=property_filter)
-            )
-            after_count = queryset.count()
-            logger.info(f"[PM Filter] Property filter result: {before_count} -> {after_count} records")
+        queryset = canonical_pm_queryset(self.request.user, property_filter)
 
         if machine_filter:
             queryset = queryset.filter(machines__machine_id=machine_filter)
@@ -1946,6 +1954,24 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         instance = serializer.save(updated_by=self.request.user)
         self._log_machine_id_state(action="update_complete", instance=instance)
         return instance
+
+    def update(self, request, *args, **kwargs):
+        """Lock the PM so legacy image updates share the global image cap safely."""
+        partial = kwargs.pop('partial', False)
+        scoped_instance = self.get_object()
+        with transaction.atomic():
+            instance = PreventiveMaintenance.objects.select_for_update().get(
+                pk=scoped_instance.pk,
+            )
+            self.check_object_permissions(request, instance)
+            serializer = self.get_serializer(
+                instance,
+                data=request.data,
+                partial=partial,
+            )
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def stats(self, request):
@@ -2395,12 +2421,22 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         """
         Mark a preventive maintenance task as completed
         """
-        instance = self.get_object()
-        if instance.completed_date:
-            return Response(
-                {'detail': 'This maintenance task is already completed.'},
-                status=status.HTTP_400_BAD_REQUEST
+        scoped_instance = self.get_object()
+
+        prepared_after_image = None
+        if 'after_image' in request.FILES:
+            from .job_image_processing import (
+                PMImageValidationError,
+                validate_and_optimize_pm_image,
             )
+
+            try:
+                payload, checksum = validate_and_optimize_pm_image(
+                    request.FILES['after_image'],
+                )
+            except PMImageValidationError as exc:
+                raise ValidationError({'after_image': str(exc)}) from exc
+            prepared_after_image = {'payload': payload, 'checksum': checksum}
 
         completed_date = request.data.get('completed_date')
         if completed_date:
@@ -2413,63 +2449,106 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
         checklist_updates = request.data.get('checklist_items') or request.data.get('checklist') or []
         inventory_usage = request.data.get('inventory_usage') or request.data.get('parts_used') or []
 
-        with transaction.atomic():
-            update_fields = []
-            if 'after_image' in request.FILES:
-                instance.after_image = request.FILES['after_image']
-                update_fields.append('after_image')
+        created_file = None
+        try:
+            with transaction.atomic():
+                instance = PreventiveMaintenance.objects.select_for_update().get(
+                    pk=scoped_instance.pk,
+                )
+                self.check_object_permissions(request, instance)
+                if instance.completed_date:
+                    raise ValidationError({'detail': 'This maintenance task is already completed.'})
 
-            for raw_item in checklist_updates:
-                item_text = (raw_item.get('item') or raw_item.get('title') or '').strip()
-                if not item_text:
-                    continue
-                checklist_item = None
-                item_id = raw_item.get('id')
-                if item_id:
-                    checklist_item = instance.checklists.filter(id=item_id).first()
-                if checklist_item is None:
-                    checklist_item = instance.checklists.filter(item__iexact=item_text).first()
-                if checklist_item is None:
-                    checklist_item = MaintenanceChecklist.objects.create(
-                        maintenance=instance,
-                        item=item_text[:200],
-                        description=raw_item.get('description') or '',
-                        order=raw_item.get('order') or instance.checklists.count() + 1,
+                if prepared_after_image:
+                    existing_count = (
+                        instance.images.count()
+                        + int(bool(instance.before_image))
+                        + int(bool(instance.after_image))
                     )
+                    if existing_count >= 10:
+                        raise ValidationError({
+                            'images': 'A preventive maintenance record can contain a maximum of 10 images.'
+                        })
+                    if instance.images.filter(
+                        checksum=prepared_after_image['checksum'],
+                    ).exists():
+                        raise ValidationError({'after_image': 'Duplicate images are not allowed.'})
 
-                is_completed = bool(raw_item.get('is_completed', raw_item.get('completed', True)))
-                checklist_item.is_completed = is_completed
-                if is_completed:
-                    checklist_item.completed_by = request.user
-                    checklist_item.completed_at = timezone.now()
-                checklist_item.save(update_fields=['is_completed', 'completed_by', 'completed_at'])
+                for raw_item in checklist_updates:
+                    item_text = (raw_item.get('item') or raw_item.get('title') or '').strip()
+                    if not item_text:
+                        continue
+                    checklist_item = None
+                    item_id = raw_item.get('id')
+                    if item_id:
+                        checklist_item = instance.checklists.filter(id=item_id).first()
+                    if checklist_item is None:
+                        checklist_item = instance.checklists.filter(item__iexact=item_text).first()
+                    if checklist_item is None:
+                        checklist_item = MaintenanceChecklist.objects.create(
+                            maintenance=instance,
+                            item=item_text[:200],
+                            description=raw_item.get('description') or '',
+                            order=raw_item.get('order') or instance.checklists.count() + 1,
+                        )
 
-            usage_records = consume_inventory_items(
-                user=request.user,
-                items=inventory_usage,
-                preventive_maintenance=instance,
-                source='preventive_maintenance',
-            )
+                    is_completed = bool(raw_item.get('is_completed', raw_item.get('completed', True)))
+                    checklist_item.is_completed = is_completed
+                    if is_completed:
+                        checklist_item.completed_by = request.user
+                        checklist_item.completed_at = timezone.now()
+                    checklist_item.save(update_fields=['is_completed', 'completed_by', 'completed_at'])
 
-            result = PreventiveMaintenanceService.update_status(
-                maintenance=instance,
-                new_status='completed',
-                user=request.user,
-                completed_date=completed_date,
-            )
+                usage_records = consume_inventory_items(
+                    user=request.user,
+                    items=inventory_usage,
+                    preventive_maintenance=instance,
+                    source='preventive_maintenance',
+                )
 
-            if update_fields:
-                result['current'].save(update_fields=update_fields)
+                result = PreventiveMaintenanceService.update_status(
+                    maintenance=instance,
+                    new_status='completed',
+                    user=request.user,
+                    completed_date=completed_date,
+                )
 
-            if instance.machines.exists():
-                instance.machines.update(last_maintenance_date=result['current'].completed_date or timezone.now())
+                if prepared_after_image:
+                    evidence = PreventiveMaintenanceImage(
+                        preventive_maintenance=result['current'],
+                        image_type='after',
+                        checksum=prepared_after_image['checksum'],
+                        uploaded_by=request.user,
+                    )
+                    evidence.image = ContentFile(
+                        prepared_after_image['payload'],
+                        name=f'pm-image-{uuid.uuid4().hex}.jpg',
+                    )
+                    evidence._image_preoptimized = True
+                    try:
+                        evidence.save()
+                    except Exception:
+                        if evidence.image and evidence.image.name:
+                            created_file = (evidence.image.storage, evidence.image.name)
+                        raise
+                    created_file = (evidence.image.storage, evidence.image.name)
 
-            MaintenanceHistory.objects.create(
-                maintenance=result['current'],
-                action='completed',
-                notes=request.data.get('completion_notes') or request.data.get('notes') or '',
-                performed_by=request.user,
-            )
+                if instance.machines.exists():
+                    instance.machines.update(last_maintenance_date=result['current'].completed_date or timezone.now())
+
+                MaintenanceHistory.objects.create(
+                    maintenance=result['current'],
+                    action='completed',
+                    notes=request.data.get('completion_notes') or request.data.get('notes') or '',
+                    performed_by=request.user,
+                )
+        except Exception:
+            if created_file:
+                try:
+                    created_file[0].delete(created_file[1])
+                except Exception:
+                    logger.exception('Unable to clean failed PM completion image %s', created_file[1])
+            raise
 
         response_data = PreventiveMaintenanceDetailSerializer(
             result['current'],
@@ -2632,30 +2711,12 @@ class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def upload_images(self, request, pm_id=None):
-        """
-        Upload images for a preventive maintenance task
-        """
+        """Compatibility route using the canonical, locked evidence pipeline."""
         instance = self.get_object()
-        updated = False
-
-        if 'before_image' in request.FILES:
-            instance.before_image = request.FILES['before_image']
-            updated = True
-
-        if 'after_image' in request.FILES:
-            instance.after_image = request.FILES['after_image']
-            updated = True
-
-        if not updated:
-            return Response(
-                {'detail': 'No images provided. Use "before_image" or "after_image" fields.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        instance.updated_by = request.user
-        instance.save()
-        serializer = PreventiveMaintenanceDetailSerializer(instance, context={'request': request})
-        return Response(serializer.data)
+        return PreventiveMaintenanceImageUploadView().post(
+            request,
+            pm_id=instance.pm_id,
+        )
 
     @action(detail=True, methods=['post'])
     def reschedule(self, request, pm_id=None):
@@ -4864,38 +4925,174 @@ class PreventiveMaintenanceImageUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, pm_id):
+    MAX_IMAGES_PER_PM = 10
+
+    def _prepare_image(self, image_file):
+        from .job_image_processing import PMImageValidationError, validate_and_optimize_pm_image
         try:
-            accessible = get_accessible_properties(request.user)
-            pm = get_object_or_404(
-                PreventiveMaintenance.objects.filter(
-                    Q(machines__property__in=accessible) | Q(job__property__in=accessible)
-                ).distinct(),
-                pm_id=pm_id,
+            payload, checksum = validate_and_optimize_pm_image(image_file)
+        except PMImageValidationError as exc:
+            raise ValidationError({'images': str(exc)}) from exc
+        return {
+            'payload': payload,
+            'checksum': checksum,
+        }
+
+    def _requested_images(self, request):
+        requested = []
+        general_files = request.FILES.getlist('images')
+        if general_files:
+            image_type = str(request.data.get('image_type') or '').strip().lower()
+            if image_type not in {'before', 'after'}:
+                raise ValidationError({'image_type': 'Image type must be before or after.'})
+            requested.extend((image_type, image_file) for image_file in general_files)
+
+        # Backward-compatible scalar fields still use the same authoritative
+        # validation, capacity, optimization, and persistence pipeline.
+        for image_type, field_name in (('before', 'before_image'), ('after', 'after_image')):
+            requested.extend(
+                (image_type, image_file)
+                for image_file in request.FILES.getlist(field_name)
             )
 
-            before_image = request.FILES.get('before_image')
-            after_image = request.FILES.get('after_image')
+        if not requested:
+            raise ValidationError({'images': 'Select at least one image to upload.'})
+        return requested
 
-            def process_image(image_file, filename_prefix):
-                img = Image.open(image_file)
-                img = img.convert('RGB')
-                img.thumbnail((800, 800))
-                buffer = BytesIO()
-                img.save(buffer, format='JPEG', quality=85)
-                buffer.seek(0)
-                return ContentFile(buffer.read(), name=f"{filename_prefix}.jpg")
+    def _serialize_pm(self, request, pm):
+        refreshed = canonical_pm_queryset(
+            request.user,
+            request.query_params.get('property_id'),
+        ).get(pk=pm.pk)
+        return PreventiveMaintenanceDetailSerializer(
+            refreshed,
+            context={'request': request},
+        ).data
 
-            if before_image:
-                pm.before_image = process_image(before_image, "before_image")
+    def _lock_scoped_pm(self, request, pm_id, property_id):
+        scoped_queryset = canonical_pm_queryset(request.user, property_id)
+        scoped_pm = get_object_or_404(scoped_queryset, pm_id__iexact=pm_id)
+        pm = PreventiveMaintenance.objects.select_for_update().get(pk=scoped_pm.pk)
+        if not scoped_queryset.filter(pk=pm.pk).exists():
+            raise Http404('Preventive maintenance record not found.')
+        return pm
 
-            if after_image:
-                pm.after_image = process_image(after_image, "after_image")
+    def post(self, request, pm_id):
+        property_id = str(request.query_params.get('property_id') or '').strip()
+        if not property_id:
+            raise ValidationError({'property_id': 'An active property is required.'})
+        if not request.user.is_superuser and not get_operable_properties(request.user).filter(
+            property_id=property_id
+        ).exists():
+            raise PermissionDenied('Your role cannot upload PM images for this property.')
 
-            pm.save()
-            return Response({'message': 'Images uploaded and processed successfully'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        prepared = []
+        batch_checksums = set()
+        for image_type, image_file in self._requested_images(request):
+            item = self._prepare_image(image_file)
+            if item['checksum'] in batch_checksums:
+                raise ValidationError({'images': 'Duplicate images are not allowed.'})
+            batch_checksums.add(item['checksum'])
+            item['image_type'] = image_type
+            prepared.append(item)
+
+        created_files = []
+        try:
+            with transaction.atomic():
+                pm = self._lock_scoped_pm(request, pm_id, property_id)
+                existing_count = (
+                    pm.images.count()
+                    + int(bool(pm.before_image))
+                    + int(bool(pm.after_image))
+                )
+                if existing_count + len(prepared) > self.MAX_IMAGES_PER_PM:
+                    raise ValidationError({
+                        'images': 'A preventive maintenance record can contain a maximum of 10 images.'
+                    })
+
+                existing_checksums = set(pm.images.values_list('checksum', flat=True))
+                if existing_checksums.intersection(batch_checksums):
+                    raise ValidationError({'images': 'Duplicate images are not allowed.'})
+
+                for item in prepared:
+                    image = PreventiveMaintenanceImage(
+                        preventive_maintenance=pm,
+                        image_type=item['image_type'],
+                        checksum=item['checksum'],
+                        uploaded_by=request.user,
+                    )
+                    image.image = ContentFile(
+                        item['payload'],
+                        name=f'pm-image-{uuid.uuid4().hex}.jpg',
+                    )
+                    image._image_preoptimized = True
+                    try:
+                        image.save()
+                    except Exception:
+                        if image.image and image.image.name:
+                            created_files.append((image.image.storage, image.image.name))
+                        raise
+                    created_files.append((image.image.storage, image.image.name))
+        except Exception:
+            for storage_backend, image_name in created_files:
+                try:
+                    storage_backend.delete(image_name)
+                except Exception:
+                    logger.exception('Unable to clean failed PM image upload %s', image_name)
+            raise
+
+        return Response(self._serialize_pm(request, pm), status=status.HTTP_201_CREATED)
+
+
+class PreventiveMaintenanceImageDeleteView(PreventiveMaintenanceImageUploadView):
+    def delete(self, request, pm_id, image_id):
+        property_id = str(request.query_params.get('property_id') or '').strip()
+        if not property_id:
+            raise ValidationError({'property_id': 'An active property is required.'})
+        if not request.user.is_superuser and not get_operable_properties(request.user).filter(
+            property_id=property_id
+        ).exists():
+            raise PermissionDenied('Your role cannot delete PM images for this property.')
+
+        with transaction.atomic():
+            pm = self._lock_scoped_pm(request, pm_id, property_id)
+            if image_id in {'legacy-before', 'legacy-after'}:
+                image_type = image_id.removeprefix('legacy-')
+                field_name = f'{image_type}_image'
+                jpeg_field_name = f'{image_type}_image_jpeg_path'
+                field_file = getattr(pm, field_name)
+                if not field_file:
+                    raise Http404('PM image not found.')
+                storage_backend = field_file.storage
+                image_name = field_file.name
+                jpeg_name = getattr(pm, jpeg_field_name)
+                setattr(pm, field_name, None)
+                setattr(pm, jpeg_field_name, None)
+                pm.save(update_fields=[field_name, jpeg_field_name, 'updated_at'])
+
+                def delete_legacy_files():
+                    try:
+                        storage_backend.delete(image_name)
+                        if jpeg_name and jpeg_name != image_name:
+                            default_storage.delete(jpeg_name)
+                    except Exception:
+                        logger.exception(
+                            'Unable to delete legacy PM image files for %s',
+                            pm.pm_id,
+                        )
+
+                transaction.on_commit(delete_legacy_files)
+            else:
+                if not str(image_id).isdigit():
+                    raise Http404('PM image not found.')
+                image = get_object_or_404(
+                    PreventiveMaintenanceImage,
+                    pk=int(image_id),
+                    preventive_maintenance=pm,
+                )
+                image.delete()
+
+        return Response(self._serialize_pm(request, pm), status=status.HTTP_200_OK)
 
 # Authentication Views
 class LoginView(APIView):

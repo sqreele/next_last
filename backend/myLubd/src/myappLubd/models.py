@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from django.utils.crypto import get_random_string
@@ -13,7 +13,7 @@ import requests
 import builtins
 from django.core.files.base import ContentFile
 from pathlib import Path
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.conf import settings
 import logging
@@ -715,6 +715,103 @@ class PreventiveMaintenance(models.Model):
                 os.remove(after_image_path)
             except OSError:
                 pass  # File may have already been deleted
+
+
+class PreventiveMaintenanceImage(models.Model):
+    """Optimized before/after evidence attached to one actual PM work record."""
+
+    IMAGE_TYPE_CHOICES = [
+        ('before', 'Before'),
+        ('after', 'After'),
+    ]
+    MAX_SIZE = (1600, 1600)
+    JPEG_QUALITY = 82
+
+    id = models.AutoField(primary_key=True)
+    preventive_maintenance = models.ForeignKey(
+        PreventiveMaintenance,
+        on_delete=models.CASCADE,
+        related_name='images',
+    )
+    image_type = models.CharField(max_length=10, choices=IMAGE_TYPE_CHOICES)
+    image = models.ImageField(
+        upload_to='maintenance_pm_images/%Y/%m/',
+        validators=[FileExtensionValidator(['png', 'jpg', 'jpeg', 'gif', 'webp'])],
+    )
+    checksum = models.CharField(max_length=64, editable=False)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='uploaded_pm_images',
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['uploaded_at', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['preventive_maintenance', 'checksum'],
+                name='uniq_pm_image_checksum',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=['preventive_maintenance', 'image_type'],
+                name='pm_image_type_idx',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.preventive_maintenance.pm_id} - {self.image_type} image {self.pk or 'new'}"
+
+    def save(self, *args, **kwargs):
+        should_process = (
+            bool(self.image)
+            and not getattr(self.image, '_committed', True)
+            and not getattr(self, '_image_preoptimized', False)
+        )
+        if should_process:
+            import hashlib
+            from uuid import uuid4
+            from django.utils.text import slugify
+            from .job_image_processing import optimize_job_image
+
+            try:
+                optimized = optimize_job_image(
+                    self.image,
+                    max_size=self.MAX_SIZE,
+                    quality=self.JPEG_QUALITY,
+                )
+            except Exception as exc:
+                raise ValidationError({'image': str(exc)}) from exc
+
+            payload = optimized.getvalue()
+            self.checksum = hashlib.sha256(payload).hexdigest()
+            stem = slugify(Path(getattr(self.image, 'name', '')).stem)[:60] or 'pm-image'
+            self.image = ContentFile(payload, name=f'{stem}-{uuid4().hex}.jpg')
+            if kwargs.get('update_fields') is not None:
+                kwargs['update_fields'] = set(kwargs['update_fields']) | {'image', 'checksum'}
+
+        super().save(*args, **kwargs)
+
+
+@receiver(post_delete, sender=PreventiveMaintenanceImage)
+def delete_preventive_maintenance_image_file(sender, instance, **kwargs):
+    """Delete evidence bytes only after the database deletion commits."""
+    if not instance.image:
+        return
+    storage = instance.image.storage
+    image_name = instance.image.name
+
+    def delete_file_safely():
+        try:
+            storage.delete(image_name)
+        except Exception:
+            logger.exception('Unable to delete PM image file %s', image_name)
+
+    transaction.on_commit(delete_file_safely)
 
 
 def get_upload_path(instance, filename):

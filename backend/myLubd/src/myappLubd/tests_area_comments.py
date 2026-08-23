@@ -180,6 +180,10 @@ class JobCommentTests(APITestCase):
         self.client = APIClient()
         self.owner = User.objects.create_user(username='owner', password='pw12345!')
         self.intruder = User.objects.create_user(username='intruder', password='pw12345!')
+        self.read_only_users = [
+            User.objects.create_user(username='comment-viewer'),
+            User.objects.create_user(username='comment-billing'),
+        ]
 
         tenant = Tenant.objects.create(name='Comment Tenant')
         other_tenant = Tenant.objects.create(name='Other Comment Tenant')
@@ -187,6 +191,8 @@ class JobCommentTests(APITestCase):
         self.other_prop = Property.objects.create(name='Hotel Z', tenant=other_tenant)
         TenantMembership.objects.create(user=self.owner, tenant=tenant, role='technician').properties.add(self.prop)
         TenantMembership.objects.create(user=self.intruder, tenant=other_tenant, role='technician').properties.add(self.other_prop)
+        for user, role in zip(self.read_only_users, ('viewer', 'billing')):
+            TenantMembership.objects.create(user=user, tenant=tenant, role=role).properties.add(self.prop)
 
         self.room = Room.objects.create(name='202', room_type='Suite', property=self.prop)
         self.topic = Topic.objects.create(title='Electrical')
@@ -203,14 +209,18 @@ class JobCommentTests(APITestCase):
         }, format='json')
         assert resp.status_code == status.HTTP_201_CREATED, resp.content
         self.job_id = resp.data['job_id']
+        self.comments_url = (
+            f'/api/v1/jobs/{self.job_id}/comments/'
+            f'?property_id={self.prop.property_id}'
+        )
 
     def test_create_and_list_comments_chronologically(self):
         _login(self.client, self.owner)
         for text in ['First', 'Second', 'Third']:
-            r = self.client.post(f'/api/v1/jobs/{self.job_id}/comments/', {'comment': text}, format='json')
+            r = self.client.post(self.comments_url, {'comment': text}, format='json')
             self.assertEqual(r.status_code, status.HTTP_201_CREATED, r.content)
 
-        r = self.client.get(f'/api/v1/jobs/{self.job_id}/comments/')
+        r = self.client.get(self.comments_url)
         self.assertEqual(r.status_code, status.HTTP_200_OK)
         comments = r.data['results']
         self.assertEqual([c['comment'] for c in comments], ['First', 'Second', 'Third'])
@@ -218,20 +228,101 @@ class JobCommentTests(APITestCase):
 
     def test_empty_comment_rejected(self):
         _login(self.client, self.owner)
-        r = self.client.post(f'/api/v1/jobs/{self.job_id}/comments/', {'comment': '   '}, format='json')
+        r = self.client.post(self.comments_url, {'comment': '   '}, format='json')
         self.assertEqual(r.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_cross_tenant_user_cannot_see_or_comment(self):
         # owner posts a comment
         _login(self.client, self.owner)
-        self.client.post(f'/api/v1/jobs/{self.job_id}/comments/', {'comment': 'private'}, format='json')
+        self.client.post(self.comments_url, {'comment': 'private'}, format='json')
 
         # intruder from different property must not access
         _login(self.client, self.intruder)
-        r = self.client.get(f'/api/v1/jobs/{self.job_id}/comments/')
+        r = self.client.get(self.comments_url)
         self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
 
-        r = self.client.post(f'/api/v1/jobs/{self.job_id}/comments/', {'comment': 'hack'}, format='json')
+        r = self.client.post(self.comments_url, {'comment': 'hack'}, format='json')
         self.assertEqual(r.status_code, status.HTTP_404_NOT_FOUND)
         # Confirm DB unchanged
         self.assertEqual(JobComment.objects.filter(comment='hack').count(), 0)
+
+    def test_comments_require_matching_external_property_identity(self):
+        _login(self.client, self.owner)
+
+        missing = self.client.get(f'/api/v1/jobs/{self.job_id}/comments/')
+        numeric = self.client.get(
+            f'/api/v1/jobs/{self.job_id}/comments/?property_id={self.prop.pk}'
+        )
+        wrong_property = self.client.get(
+            f'/api/v1/jobs/{self.job_id}/comments/?property_id={self.other_prop.property_id}'
+        )
+        wrong_property_write = self.client.post(
+            f'/api/v1/jobs/{self.job_id}/comments/?property_id={self.other_prop.property_id}',
+            {'comment': 'Wrong Property write'},
+            format='json',
+        )
+
+        self.assertEqual(missing.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(numeric.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(wrong_property.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(wrong_property_write.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(JobComment.objects.filter(comment='Wrong Property write').exists())
+
+    def test_author_is_server_owned_and_response_has_display_fields(self):
+        _login(self.client, self.owner)
+        response = self.client.post(
+            self.comments_url,
+            {
+                'comment': 'Server-owned author',
+                'author_id': self.intruder.pk,
+                'job': 999999,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
+        self.assertEqual(response.data['author_id'], self.owner.pk)
+        self.assertEqual(response.data['author_username'], self.owner.username)
+        self.assertTrue(response.data['author_name'])
+        self.assertEqual(response.data['comment'], 'Server-owned author')
+        self.assertIn('created_at', response.data)
+        self.assertIn('updated_at', response.data)
+
+    def test_read_only_roles_can_read_but_cannot_create(self):
+        _login(self.client, self.owner)
+        self.client.post(self.comments_url, {'comment': 'Readable update'}, format='json')
+
+        for user in self.read_only_users:
+            with self.subTest(role=user.username):
+                _login(self.client, user)
+                read_response = self.client.get(self.comments_url)
+                write_response = self.client.post(
+                    self.comments_url,
+                    {'comment': 'Forbidden update'},
+                    format='json',
+                )
+                self.assertEqual(read_response.status_code, status.HTTP_200_OK)
+                self.assertEqual(read_response.data['count'], 1)
+                self.assertEqual(write_response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_comment_list_is_limited_to_requested_job(self):
+        second_job = Job.objects.create(
+            property=self.prop,
+            user=self.owner,
+            updated_by=self.owner,
+            description='Second comment job',
+            remarks='Isolation test',
+        )
+        JobComment.objects.create(job=second_job, author=self.owner, comment='Other job')
+        JobComment.objects.create(
+            job=Job.objects.get(job_id=self.job_id),
+            author=self.owner,
+            comment='Requested job',
+        )
+
+        _login(self.client, self.owner)
+        response = self.client.get(self.comments_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['comment'], 'Requested job')

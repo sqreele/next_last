@@ -4078,9 +4078,17 @@ class JobViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get', 'post'], url_path='comments')
     def comments(self, request, job_id=None):
-        """List or create comments on a job. Tenant isolation is enforced via
-        the existing get_queryset(): the job must be reachable to the user.
-        """
+        """List or create comments inside one active external Property scope."""
+        property_filter = str(request.query_params.get('property_id') or '').strip()
+        if not property_filter:
+            return Response(
+                {'detail': 'A property_id is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # get_object() resolves the external job_id through get_queryset(). The
+        # property_id query filter is the active-Property boundary; writes also
+        # pass through the canonical operable-Property gate in get_object().
         job = self.get_object()
 
         if request.method.lower() == 'get':

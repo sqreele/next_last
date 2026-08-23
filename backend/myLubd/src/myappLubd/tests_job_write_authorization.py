@@ -85,7 +85,7 @@ class JobWriteAuthorizationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
 
         response = self.client.post(
-            f'/api/v1/jobs/{job.job_id}/comments/',
+            f'/api/v1/jobs/{job.job_id}/comments/?property_id={job.property.property_id}',
             {'comment': f'{role} comment'},
             format='json',
         )
@@ -138,7 +138,7 @@ class JobWriteAuthorizationTests(APITestCase):
         )
         self.assertEqual(
             self.client.post(
-                f'/api/v1/jobs/{job.job_id}/comments/',
+                f'/api/v1/jobs/{job.job_id}/comments/?property_id={job.property.property_id}',
                 {'comment': 'forged'},
                 format='json',
             ).status_code,
@@ -172,7 +172,7 @@ class JobWriteAuthorizationTests(APITestCase):
                 format='json',
             ),
             self.client.post(
-                f'/api/v1/jobs/{job.job_id}/comments/',
+                f'/api/v1/jobs/{job.job_id}/comments/?property_id={job.property.property_id}',
                 {'comment': 'forged'},
                 format='json',
             ),

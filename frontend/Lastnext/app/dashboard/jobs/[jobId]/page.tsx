@@ -464,7 +464,11 @@ export default async function JobPage({ params }: Props) {
         <JobAuditTimeline jobId={job.job_id} />
 
         {/* Comments */}
-        <JobCommentsSection jobId={job.job_id} />
+        <JobCommentsSection
+          jobId={job.job_id}
+          propertyId={job.property_id ? String(job.property_id) : ""}
+          canComment={job.can_operate === true}
+        />
       </div>
     );
   } catch (error) {

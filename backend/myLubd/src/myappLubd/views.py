@@ -159,6 +159,22 @@ def _resolve_property(property_name=None):
     }
 
 
+def _ai_scoped_properties():
+    """Return the provider-visible Property scope for the current AI request."""
+    ai_scope = _ai_accessible_properties.get()
+    return ai_scope if ai_scope is not None else Property.objects.all()
+
+
+def _resolve_explicit_ai_property(property_reference):
+    """Resolve explicit client context exactly inside the authorized scope."""
+    reference = str(property_reference or '').strip()
+    if not reference:
+        return None
+    return _ai_scoped_properties().filter(
+        Q(property_id__iexact=reference) | Q(name__iexact=reference)
+    ).first()
+
+
 def _resolve_room(room_name=None, property_obj=None):
     search = str(room_name or '').strip()
     if not search:
@@ -167,6 +183,10 @@ def _resolve_room(room_name=None, property_obj=None):
     rooms = Room.objects.select_related('property')
     if property_obj:
         rooms = rooms.filter(property=property_obj)
+    else:
+        ai_scope = _ai_accessible_properties.get()
+        if ai_scope is not None:
+            rooms = rooms.filter(property__in=ai_scope)
     rooms = list(rooms)
     normalized_search = _normalize_search_text(search)
 
@@ -271,10 +291,7 @@ def _serialize_user(user):
     display_name = user.get_full_name().strip() if hasattr(user, 'get_full_name') else ''
     display_name = display_name or getattr(user, 'email', '') or getattr(user, 'username', '') or 'Unknown'
     return {
-        'user_id': getattr(user, 'id', None),
-        'username': getattr(user, 'username', None),
         'name': display_name,
-        'email': getattr(user, 'email', None),
     }
 
 
@@ -473,7 +490,7 @@ def _extract_property_name_from_message(message):
     if not normalized_text:
         return ''
 
-    properties = list(Property.objects.all())
+    properties = list(_ai_scoped_properties())
     for prop in properties:
         candidates = [prop.name, prop.property_id]
         for candidate in candidates:
@@ -489,7 +506,9 @@ def _extract_property_name_from_message(message):
 
 
 def _property_required_reply():
-    properties = list(Property.objects.order_by('name').values('property_id', 'name')[:20])
+    properties = list(
+        _ai_scoped_properties().order_by('name').values('property_id', 'name')[:20]
+    )
     if properties:
         property_list = ', '.join(
             f"{prop['name']} ({prop['property_id']})" if prop.get('property_id') else prop['name']
@@ -688,10 +707,7 @@ def get_maintenance_summary(property_name: str = "", room_name: str = "", catego
             'year': row['year'],
             'month': row['month'],
             'reporter': {
-                'user_id': row['user_id'],
-                'username': row.get('user__username'),
                 'name': display_name,
-                'email': row.get('user__email'),
             },
             'jobs': row['job_count'],
         })
@@ -704,10 +720,7 @@ def get_maintenance_summary(property_name: str = "", room_name: str = "", catego
     top_technicians = []
     for row in technician_rows:
         top_technicians.append({
-            'user_id': row['user_id'],
-            'username': row.get('user__username'),
             'name': _display_user_name_from_values(row),
-            'email': row.get('user__email'),
             'jobs': row['job_count'],
             'note': 'นับจาก Job.user ซึ่งโปรเจกต์ใช้เป็น technician/ผู้รับผิดชอบงาน',
         })
@@ -739,10 +752,7 @@ def get_maintenance_summary(property_name: str = "", room_name: str = "", catego
             .order_by('-job_count', 'user__username')[:3]
         ):
             month_top_reporters.append({
-                'user_id': reporter_row['user_id'],
-                'username': reporter_row.get('user__username'),
                 'name': _display_user_name_from_values(reporter_row),
-                'email': reporter_row.get('user__email'),
                 'jobs': reporter_row['job_count'],
             })
         month_top_rooms = list(
@@ -1301,20 +1311,38 @@ def chat_with_gemini(request):
         )
 
     try:
-        client = _build_gemini_client()
-        _, types = _genai_modules()
-        config = _gemini_config(include_tools=True)
-
         request_property_name = str(
             request.data.get('property_name')
             or request.data.get('property_id')
             or request.data.get('branch_name')
             or ''
         ).strip()
-        inferred_property_name = _extract_property_name_from_message(message) or request_property_name
+        request_property = _resolve_explicit_ai_property(request_property_name)
+        if request_property_name and request_property is None:
+            # Do not reveal whether the identifier exists outside this user's
+            # canonical TenantMembership-derived scope.
+            return Response(
+                {'detail': 'ไม่พบ property ที่ได้รับอนุญาต'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        canonical_request_property = (
+            request_property.property_id if request_property is not None else ''
+        )
+        inferred_property_name = (
+            canonical_request_property
+            or _extract_property_name_from_message(message)
+        )
         model_message = message
-        if request_property_name and not _extract_property_name_from_message(message):
-            model_message = f"Property context: {request_property_name}\nUser message: {message}"
+        if canonical_request_property:
+            model_message = (
+                f"Property context: {canonical_request_property}\n"
+                f"User message: {message}"
+            )
+
+        client = _build_gemini_client()
+        _, types = _genai_modules()
+        config = _gemini_config(include_tools=True)
 
         first_response = client.models.generate_content(
             model=GEMINI_CHAT_MODEL,
@@ -1413,22 +1441,28 @@ def chat_with_gemini(request):
         tool_parts = []
         for function_call in function_calls:
             function_args = getattr(function_call, 'args', None) or {}
+            tool_property_name = (
+                canonical_request_property
+                or function_args.get('property_name')
+                or function_args.get('branch_name')
+                or inferred_property_name
+            )
             if function_call.name == 'get_maintenance_summary':
                 tool_result = get_maintenance_summary(
-                    property_name=function_args.get('property_name') or function_args.get('branch_name') or inferred_property_name,
+                    property_name=tool_property_name,
                     room_name=function_args.get('room_name') or function_args.get('room') or '',
                     category_name=function_args.get('category_name') or function_args.get('category') or function_args.get('topic') or '',
                 )
             elif function_call.name == 'get_recurring_maintenance_tasks':
                 tool_result = get_recurring_maintenance_tasks(
-                    property_name=function_args.get('property_name') or function_args.get('branch_name') or inferred_property_name,
+                    property_name=tool_property_name,
                     frequency=function_args.get('frequency') or '',
                     year=function_args.get('year'),
                     month=function_args.get('month'),
                 )
             elif function_call.name == 'get_today_maintenance_jobs':
                 tool_result = get_today_maintenance_jobs(
-                    property_name=function_args.get('property_name') or function_args.get('branch_name') or inferred_property_name,
+                    property_name=tool_property_name,
                 )
             else:
                 tool_result = {'error': f'ไม่รองรับ Tool: {function_call.name}'}
@@ -1456,11 +1490,14 @@ def chat_with_gemini(request):
         })
     except ValueError as exc:
         logger.warning('Gemini chatbot configuration error: %s', exc)
-        return Response({'detail': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(
+            {'detail': 'ระบบ AI ยังไม่พร้อมใช้งานในขณะนี้'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
     except Exception as exc:
         logger.exception('Gemini chatbot request failed')
         return Response(
-            {'detail': 'ไม่สามารถเชื่อมต่อ Gemini ได้ในขณะนี้', 'error': str(exc)},
+            {'detail': 'ไม่สามารถเชื่อมต่อ Gemini ได้ในขณะนี้'},
             status=status.HTTP_502_BAD_GATEWAY,
         )
     finally:

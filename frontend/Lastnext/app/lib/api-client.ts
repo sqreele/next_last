@@ -196,6 +196,7 @@ apiClient.interceptors.response.use(
     }
 
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: number };
+    const allowsAutomaticRetry = !originalRequest.url?.includes('/api/v1/ai/chat/');
     
     // Initialize retry counter if not present
     if (originalRequest._retry === undefined) {
@@ -213,12 +214,11 @@ apiClient.interceptors.response.use(
         url: fullUrl,
         method: originalRequest?.method,
         retry: originalRequest._retry,
-        config: originalRequest
       });
     }
     
     // Check for timeout errors specifically
-    if (error.code === 'ECONNABORTED' && originalRequest._retry < MAX_RETRIES) {
+    if (allowsAutomaticRetry && error.code === 'ECONNABORTED' && originalRequest._retry < MAX_RETRIES) {
       originalRequest._retry++;
       
       // Add an increasing delay between retries
@@ -259,7 +259,7 @@ apiClient.interceptors.response.use(
     
     // Network errors - retry with backoff for non-401 responses
     // Only retry if we got a response (not a network error without response)
-    if (error.response && [502, 503, 504].includes(error.response.status) && originalRequest._retry < MAX_RETRIES) {
+    if (allowsAutomaticRetry && error.response && [502, 503, 504].includes(error.response.status) && originalRequest._retry < MAX_RETRIES) {
       originalRequest._retry++;
       
       // Add an increasing delay between retries
@@ -268,7 +268,14 @@ apiClient.interceptors.response.use(
     }
 
     // For all other errors, normalize and reject
-    console.error("[ResponseInterceptor] Unhandled error or retry failed:", error);
+    console.error("[ResponseInterceptor] Unhandled error or retry failed:", {
+      code: error.code,
+      message: error.message,
+      status: error.response?.status,
+      url: originalRequest?.url,
+      method: originalRequest?.method,
+      retry: originalRequest?._retry,
+    });
     return Promise.reject(handleApiError(error));
   }
 );
@@ -312,8 +319,6 @@ export const handleApiError = (error: unknown): ApiError => {
         code: axiosError.code,
         message: axiosError.message,
         url: fullUrl,
-        config: axiosError.config,
-        originalError: error
       });
       
       return new ApiError(message, undefined, { 
@@ -347,7 +352,7 @@ export const handleApiError = (error: unknown): ApiError => {
         }
     }
 
-    console.error(`[handleApiError] Axios Error: Status=${status}, Message=${message}`, "Details:", details, "Original Error:", error);
+    console.error(`[handleApiError] Axios Error: Status=${status}, Message=${message}`, "Details:", details);
     return new ApiError(message, status, details);
 
   } else if (error instanceof ApiError) {

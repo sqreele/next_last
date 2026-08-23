@@ -21,7 +21,7 @@ export default function AiChatMobileMenu() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-border bg-card/95 shadow-soft backdrop-blur md:hidden">
+      <header className="sticky top-0 z-50 border-b border-border bg-card/95 shadow-soft backdrop-blur desktop:hidden">
         <div className="flex h-14 items-center justify-between px-3">
           <div className="flex items-center gap-2">
             <Sheet open={open} onOpenChange={setOpen}>
@@ -122,7 +122,7 @@ export default function AiChatMobileMenu() {
           </div>
         </div>
       </header>
-      <BottomNav />
+      <BottomNav className="md:!block desktop:!hidden" />
     </>
   );
 }

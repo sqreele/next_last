@@ -140,6 +140,7 @@ const UpdateStatusButton: React.FC<UpdateStatusButtonProps> = ({
       // Create a minimal update payload that preserves all required fields
       const updateData = {
         status: selectedStatus,
+        property_id: job.property_id,
         // Include other fields from the original job that the API requires
         // NOTE: This is the key fix - including required fields
         room_id: job.rooms?.[0]?.room_id,

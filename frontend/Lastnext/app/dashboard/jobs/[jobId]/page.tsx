@@ -25,6 +25,7 @@ import JobCommentsSection from "@/app/components/jobs/JobCommentsSection";
 import { BeforeAfterCompare } from "@/app/components/jobs/BeforeAfterCompare";
 import { JobAuditTimeline } from "@/app/components/jobs/JobAuditTimeline";
 import { ReassignJobButton } from "@/app/components/jobs/ReassignJobButton";
+import { JobDetailPropertyBoundary } from "@/app/components/jobs/JobDetailPropertyBoundary";
 import Link from "next/link";
 
 const getPropertyKey = (value: unknown): string | null => {
@@ -113,20 +114,28 @@ const getPropertyFilteredImageUrls = (job: Job): string[] => {
     : job.image_urls || [];
 };
 
+const getRequestedPropertyId = (searchParams: {
+  [key: string]: string | string[] | undefined;
+}): string | undefined => {
+  const value = searchParams.property_id;
+  return Array.isArray(value) ? value[0] : value;
+};
+
 type Props = {
   params: Promise<{ jobId: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export async function generateMetadata(
-  { params }: Props,
+  { params, searchParams }: Props,
   parent: ResolvingMetadata,
 ): Promise<Metadata> {
   try {
     const { jobId } = await params;
     const session = await getServerSession();
     const accessToken = session?.user?.accessToken;
-    const job = await fetchJob(jobId, accessToken);
+    const requestedPropertyId = getRequestedPropertyId(await searchParams);
+    const job = await fetchJob(jobId, accessToken, requestedPropertyId);
 
     if (!job) {
       return {
@@ -152,14 +161,15 @@ export async function generateMetadata(
   }
 }
 
-export default async function JobPage({ params }: Props) {
+export default async function JobPage({ params, searchParams }: Props) {
   try {
     const { jobId } = await params;
     const session = await getServerSession();
     const accessToken = session?.user?.accessToken;
+    const requestedPropertyId = getRequestedPropertyId(await searchParams);
 
     // Fetch job and properties
-    const job = await fetchJob(jobId, accessToken);
+    const job = await fetchJob(jobId, accessToken, requestedPropertyId);
     const properties = await fetchProperties(accessToken);
 
     if (!job) {
@@ -179,7 +189,8 @@ export default async function JobPage({ params }: Props) {
     };
 
     return (
-      <div className="w-full max-w-none space-y-5 px-3 py-4 sm:px-0 sm:py-0 lg:mx-auto lg:max-w-4xl">
+      <JobDetailPropertyBoundary jobPropertyId={job.property_id}>
+        <div className="w-full max-w-none space-y-5 px-3 py-4 sm:px-0 sm:py-0 lg:mx-auto lg:max-w-4xl">
         <div className="pcms-page-header">
           <div className="min-w-0">
             <p className="pcms-eyebrow">Maintenance Job</p>
@@ -427,7 +438,8 @@ export default async function JobPage({ params }: Props) {
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         unoptimized={
                           finalImageUrl.startsWith("http") ||
-                          finalImageUrl.includes("/media/")
+                          finalImageUrl.includes("/media/") ||
+                          finalImageUrl.includes("/api/protected-media/")
                         }
                         placeholder="blur"
                         blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
@@ -469,7 +481,8 @@ export default async function JobPage({ params }: Props) {
           propertyId={job.property_id ? String(job.property_id) : ""}
           canComment={job.can_operate === true}
         />
-      </div>
+        </div>
+      </JobDetailPropertyBoundary>
     );
   } catch (error) {
     console.error(

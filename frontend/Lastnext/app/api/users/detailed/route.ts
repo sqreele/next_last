@@ -42,7 +42,9 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('API Route: Backend error response:', errorText);
+      if (response.status !== 401 && response.status !== 403) {
+        console.error('API Route: Backend error response:', errorText);
+      }
       return NextResponse.json(
         { error: `Backend error: ${response.status} ${response.statusText}` }, 
         { status: response.status }

@@ -118,6 +118,8 @@ export interface Job {
   area_id?: number | null;
   area_name?: string | null;
   comments_count?: number;
+  can_operate?: boolean;
+  can_assign?: boolean;
 }
 
 export interface Property {

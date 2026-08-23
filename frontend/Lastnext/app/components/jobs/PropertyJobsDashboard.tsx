@@ -26,10 +26,7 @@ import { getRoomPropertyId } from "@/app/lib/utils/property-filter";
 import { useUser, useProperties, useJobs } from "@/app/lib/stores/mainStore";
 import { useSession } from "@/app/lib/session.client";
 import { appSignOut } from "@/app/lib/logout";
-import {
-  useDetailedUsers,
-  DetailedUser,
-} from "@/app/lib/hooks/useDetailedUsers";
+import { useDetailedUsers } from "@/app/lib/hooks/useDetailedUsers";
 import { User, Property } from "@/app/lib/types";
 import { logger } from "@/app/lib/utils/logger";
 import { getDisplayName } from "@/app/lib/utils/display-name";
@@ -128,7 +125,9 @@ const PropertyJobsDashboard = ({
   const { properties: userProperties } = useProperties();
   const { data: session, status, refresh } = useSession();
   const { jobs, setJobs } = useJobs();
-  const { users: detailedUsers, loading: usersLoading } = useDetailedUsers();
+  const { users: detailedUsers } = useDetailedUsers({
+    optional: true,
+  });
 
   // Basic mobile breakpoint detection for responsive chart tuning
   const [isMobile, setIsMobile] = useState(false);

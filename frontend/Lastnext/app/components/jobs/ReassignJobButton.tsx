@@ -1,8 +1,7 @@
 "use client";
 
-import { getRoomPropertyId } from '@/app/lib/utils/property-filter';
-
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { UserPlus, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
@@ -16,14 +15,12 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Textarea } from "@/app/components/ui/textarea";
 import { useSession } from "@/app/lib/session.client";
-import {
-  useDetailedUsers,
-  type DetailedUser,
-} from "@/app/lib/hooks/useDetailedUsers";
 import { fetchWithToken } from "@/app/lib/data.server";
 import { Job } from "@/app/lib/types";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import { cn } from "@/app/lib/utils/cn";
+import { logger } from "@/app/lib/utils/logger";
+import { useMainStore } from "@/app/lib/stores/mainStore";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
@@ -37,63 +34,110 @@ interface ReassignJobButtonProps {
   className?: string;
 }
 
+interface AssignmentCandidate {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  display_name: string;
+}
+
+type CandidateStatus = "idle" | "loading" | "ready" | "unavailable" | "error";
+
 export function ReassignJobButton({
   job,
   onComplete,
   className,
 }: ReassignJobButtonProps) {
   const { data: session } = useSession();
-  const { users, loading: usersLoading } = useDetailedUsers();
+  const router = useRouter();
+  const selectedPropertyId = useMainStore((state) => state.selectedPropertyId);
   const [open, setOpen] = useState(false);
+  const [users, setUsers] = useState<AssignmentCandidate[]>([]);
+  const [candidateStatus, setCandidateStatus] = useState<CandidateStatus>("idle");
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<DetailedUser | null>(null);
+  const [selected, setSelected] = useState<AssignmentCandidate | null>(null);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const candidateRequestId = useRef(0);
 
-  // Limit choices to users that share at least one of the job's properties
-  // when we can determine them — falls through to the full list when the
-  // job's property data is opaque so the dispatcher isn't blocked.
-  const jobPropertyIds = useMemo(() => {
-    const ids = new Set<string>();
-    const addProperty = (value: unknown) => {
-      if (value === null || value === undefined) return;
-      if (typeof value === "string" || typeof value === "number") {
-        ids.add(String(value));
-        return;
-      }
-      if (typeof value === "object") {
-        const obj = value as {
-          property_id?: string | number;
-          id?: string | number;
-        };
-        if (obj.property_id != null) ids.add(String(obj.property_id));
-        if (obj.id != null) ids.add(String(obj.id));
-      }
-    };
-    if (job.property_id != null) ids.add(String(job.property_id));
-    (job.properties || []).forEach(addProperty);
-    (job.rooms || []).forEach((room) => {
-      const roomPropertyId = getRoomPropertyId(room);
-      if (roomPropertyId != null) addProperty(roomPropertyId);
-    });
-    return ids;
-  }, [job]);
+  const jobPropertyId = job.property_id == null ? null : String(job.property_id);
+  const propertyMatches = Boolean(
+    selectedPropertyId && jobPropertyId && selectedPropertyId === jobPropertyId,
+  );
+  const canAssign = job.can_assign === true;
+
+  useEffect(() => {
+    const requestId = ++candidateRequestId.current;
+    const controller = new AbortController();
+    setUsers([]);
+    setSelected(null);
+
+    if (!open || !canAssign || !propertyMatches || !selectedPropertyId) {
+      setCandidateStatus("idle");
+      return () => controller.abort();
+    }
+
+    setCandidateStatus("loading");
+    setError(null);
+    const url =
+      `/api/jobs/${encodeURIComponent(job.job_id)}/assignment-candidates/` +
+      `?property_id=${encodeURIComponent(selectedPropertyId)}`;
+
+    void fetch(url, { signal: controller.signal, cache: "no-store" })
+      .then(async (response) => {
+        if (response.status === 401 || response.status === 403) {
+          if (requestId === candidateRequestId.current && !controller.signal.aborted) {
+            setCandidateStatus("unavailable");
+          }
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(
+            `Failed to load assignment candidates: ${response.status} ${response.statusText}`,
+          );
+        }
+        const data: unknown = await response.json();
+        if (!Array.isArray(data)) {
+          throw new Error("Assignment candidates response is not an array.");
+        }
+        if (
+          requestId !== candidateRequestId.current ||
+          controller.signal.aborted ||
+          useMainStore.getState().selectedPropertyId !== selectedPropertyId
+        ) {
+          return;
+        }
+        setUsers(data as AssignmentCandidate[]);
+        setCandidateStatus("ready");
+      })
+      .catch((requestError: unknown) => {
+        if (
+          controller.signal.aborted ||
+          (requestError instanceof Error && requestError.name === "AbortError") ||
+          requestId !== candidateRequestId.current
+        ) {
+          return;
+        }
+        logger.error("Error fetching job assignment candidates", requestError);
+        setCandidateStatus("error");
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Could not load assignment candidates.",
+        );
+      });
+
+    return () => controller.abort();
+  }, [canAssign, job.job_id, open, propertyMatches, selectedPropertyId]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const scope = jobPropertyIds.size
-      ? users.filter((user) =>
-          (user.properties || []).some(
-            (p) =>
-              jobPropertyIds.has(String(p.property_id)) ||
-              jobPropertyIds.has(String((p as { id?: string }).id)),
-          ),
-        )
-      : users;
-    const list = scope.length ? scope : users;
-    if (!term) return list.slice(0, 25);
-    return list
+    if (!term) return users.slice(0, 25);
+    return users
       .filter((user) => {
         const haystack = [
           user.username,
@@ -108,7 +152,7 @@ export function ReassignJobButton({
         return haystack.includes(term);
       })
       .slice(0, 25);
-  }, [search, users, jobPropertyIds]);
+  }, [search, users]);
 
   const currentAssignee =
     typeof job.user === "object" && job.user
@@ -126,6 +170,14 @@ export function ReassignJobButton({
       setError("Session expired — please sign in again.");
       return;
     }
+    if (
+      !selectedPropertyId ||
+      selectedPropertyId !== jobPropertyId ||
+      useMainStore.getState().selectedPropertyId !== selectedPropertyId
+    ) {
+      setError("The active property changed. Reopen this job from the active property.");
+      return;
+    }
     setSubmitting(true);
     try {
       await fetchWithToken(
@@ -134,6 +186,7 @@ export function ReassignJobButton({
         "POST",
         {
           user_id: selected.id,
+          property_id: selectedPropertyId,
           note: note.trim() || undefined,
         },
       );
@@ -141,12 +194,19 @@ export function ReassignJobButton({
       setSelected(null);
       setNote("");
       onComplete?.();
-    } catch (err: any) {
-      setError(err?.message || "Could not reassign the job.");
+      router.refresh();
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "Could not reassign the job.",
+      );
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (!canAssign || !propertyMatches) {
+    return null;
+  }
 
   return (
     <Dialog
@@ -200,12 +260,20 @@ export function ReassignJobButton({
           </div>
 
           <div className="max-h-[40vh] space-y-1.5 overflow-y-auto rounded-xl border-2 border-border bg-card p-1">
-            {usersLoading && !users.length ? (
+            {candidateStatus === "loading" ? (
               <div className="flex items-center gap-2 px-3 py-6 text-sm font-medium text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading
                 teammates...
               </div>
-            ) : filtered.length === 0 ? (
+            ) : candidateStatus === "unavailable" ? (
+              <p className="px-3 py-6 text-center text-sm font-semibold text-amber-700">
+                Assignment candidates are unavailable for your role or active property.
+              </p>
+            ) : candidateStatus === "error" ? (
+              <p className="px-3 py-6 text-center text-sm font-semibold text-rose-700">
+                Could not load assignment candidates. Try again later.
+              </p>
+            ) : candidateStatus === "ready" && filtered.length === 0 ? (
               <p className="px-3 py-6 text-center text-sm font-medium text-muted-foreground">
                 No teammates match. Try a different search.
               </p>
@@ -237,7 +305,7 @@ export function ReassignJobButton({
                         {displayName}
                       </p>
                       <p className="text-xs font-medium text-muted-foreground line-clamp-1">
-                        {user.positions || user.email || `User #${user.id}`}
+                        {user.email || user.display_name || `User #${user.id}`}
                       </p>
                     </div>
                     {active && (

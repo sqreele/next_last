@@ -29,6 +29,7 @@ from .models import (
 from django.urls import reverse
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .serializers import (
+    CurrentUserProfileSerializer, CurrentUserProfileUpdateSerializer,
     UserProfileSerializer, PropertySerializer, RoomSerializer, TopicSerializer, JobSerializer,
     UserSerializer, PreventiveMaintenanceSerializer, PreventiveMaintenanceCreateUpdateSerializer,
     PreventiveMaintenanceCompleteSerializer, PreventiveMaintenanceListSerializer,
@@ -4789,10 +4790,32 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             # For other actions, return only the current user's profile
             return UserProfile.objects.filter(user=self.request.user)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'patch'])
     def me(self, request):
-        profile = get_object_or_404(UserProfile, user=request.user)
-        serializer = self.get_serializer(profile)
+        profile, _ = UserProfile.objects.select_related('user').get_or_create(
+            user=request.user,
+        )
+        if request.method == 'PATCH':
+            allowed_fields = {'first_name', 'last_name', 'positions'}
+            rejected_fields = sorted(set(request.data.keys()) - allowed_fields)
+            if rejected_fields:
+                raise ValidationError({
+                    field: ['This field is read-only on the current-user profile.']
+                    for field in rejected_fields
+                })
+            update_serializer = CurrentUserProfileUpdateSerializer(
+                profile,
+                data=request.data,
+                partial=True,
+                context=self.get_serializer_context(),
+            )
+            update_serializer.is_valid(raise_exception=True)
+            profile = update_serializer.save()
+
+        serializer = CurrentUserProfileSerializer(
+            profile,
+            context=self.get_serializer_context(),
+        )
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
@@ -6335,92 +6358,48 @@ def generate_maintenance_pdf_report(request):
 @permission_classes([IsAuthenticated])
 def update_user_profile(request):
     """
-    Update user profile with Auth0 profile information.
-    This endpoint is called by the frontend after successful Auth0 authentication.
+    Backward-compatible profile metadata update.
+
+    The request body is not a verified identity-provider assertion, so identity
+    fields such as email are intentionally ignored. New clients use the
+    current-user ``user-profiles/me`` PATCH contract instead.
     """
     try:
         user = request.user
         auth0_profile = request.data.get('auth0_profile', {})
-        
-        logger.info(f"🔍 Profile update requested for user: {user.username}")
-        logger.info(f"📝 Auth0 profile data received: {auth0_profile}")
-        
-        if not auth0_profile:
-            logger.warning(f"❌ No Auth0 profile data provided for user: {user.username}")
+
+        if not isinstance(auth0_profile, dict) or not auth0_profile:
             return Response(
                 {'error': 'No Auth0 profile data provided'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        # Track what fields were updated
-        updated_fields = []
-        
-        # Update email if available and different
-        if auth0_profile.get('email') and user.email != auth0_profile['email']:
-            old_email = user.email
-            user.email = auth0_profile['email']
-            updated_fields.append('email')
-            logger.info(f"📧 Updated email for {user.username}: {old_email} -> {user.email}")
-        
-        # Update first name if available and different
-        if auth0_profile.get('given_name') and user.first_name != auth0_profile['given_name']:
-            old_first_name = user.first_name
-            user.first_name = auth0_profile['given_name'][:30]
-            updated_fields.append('first_name')
-            logger.info(f"👤 Updated first_name for {user.username}: {old_first_name} -> {user.first_name}")
-        
-        # Update last name if available and different
-        if auth0_profile.get('family_name') and user.last_name != auth0_profile['family_name']:
-            old_last_name = user.last_name
-            user.last_name = auth0_profile['family_name'][:150]
-            updated_fields.append('last_name')
-            logger.info(f"👤 Updated last_name for {user.username}: {old_last_name} -> {user.last_name}")
-        
-        # If no given_name/family_name but we have name, split it
-        if (not user.first_name and not user.last_name) and auth0_profile.get('name'):
-            name_parts = auth0_profile['name'].split(' ', 1)
-            if len(name_parts) >= 2:
-                user.first_name = name_parts[0][:30]
-                user.last_name = name_parts[1][:150]
-                updated_fields.extend(['first_name', 'last_name'])
-                logger.info(f"👤 Split name for {user.username}: {auth0_profile['name']} -> first: {user.first_name}, last: {user.last_name}")
-            elif len(name_parts) == 1:
-                user.first_name = name_parts[0][:30]
-                updated_fields.append('first_name')
-                logger.info(f"👤 Single name for {user.username}: {auth0_profile['name']} -> first: {user.first_name}")
-        
-        # Use nickname if no first name is available
-        if not user.first_name and auth0_profile.get('nickname'):
-            user.first_name = auth0_profile['nickname'][:30]
-            updated_fields.append('first_name')
-            logger.info(f"👤 Used nickname for {user.username}: {auth0_profile['nickname']} -> first: {user.first_name}")
-        
-        # Save the user if any fields were updated
-        if updated_fields:
-            user.save(update_fields=updated_fields)
-            logger.info(f"✅ Updated user {user.username} profile fields: {updated_fields}")
-        else:
-            logger.info(f"ℹ️ No profile updates needed for user {user.username}")
-        
-        # Return the updated user profile
+
+        profile, _ = UserProfile.objects.select_related('user').get_or_create(user=user)
+        update_data = {}
+        if 'given_name' in auth0_profile:
+            update_data['first_name'] = auth0_profile['given_name']
+        if 'family_name' in auth0_profile:
+            update_data['last_name'] = auth0_profile['family_name']
+
+        serializer = CurrentUserProfileUpdateSerializer(
+            profile,
+            data=update_data,
+            partial=True,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        profile = serializer.save()
         response_data = {
             'message': 'Profile updated successfully',
-            'updated_fields': updated_fields,
-            'user': {
-                'id': user.id,
-                'username': display_name_from_user(user, fallback=user.email or 'User'),
-                'display_name': display_name_from_user(user, fallback=user.email or 'User'),
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'date_joined': user.date_joined,
-                'last_login': user.last_login
-            }
+            'updated_fields': sorted(update_data.keys()),
+            'profile': CurrentUserProfileSerializer(
+                profile,
+                context={'request': request},
+            ).data,
         }
-        
-        logger.info(f"📤 Returning profile update response for {user.username}: {response_data}")
         return Response(response_data, status=status.HTTP_200_OK)
-        
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"❌ Error updating user profile for {request.user.username if request.user else 'unknown'}: {e}", exc_info=True)
         return Response(

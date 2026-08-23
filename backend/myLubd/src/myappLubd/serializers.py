@@ -27,7 +27,12 @@ from pathlib import Path
 import math
 
 from .timezones import is_valid_timezone, object_timezone
-from .tenancy import get_accessible_properties, get_operable_properties
+from .tenancy import (
+    TENANT_WIDE_PROPERTY_ROLES,
+    get_accessible_properties,
+    get_operable_properties,
+    get_user_tenant_memberships,
+)
 from .job_property import (
     resolve_external_property_reference,
     resolve_job_property,
@@ -477,6 +482,118 @@ class UserProfileSerializer(serializers.ModelSerializer):
             read_only=True,
             context=self.context,
         ).data
+
+
+class CurrentUserProfileSerializer(serializers.ModelSerializer):
+    """Minimal current-user profile DTO.
+
+    Account identity and TenantMembership authorization are projections only.
+    The companion update serializer owns the deliberately small write contract.
+    """
+
+    username = serializers.SerializerMethodField()
+    email = serializers.EmailField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    display_name = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(source='user.date_joined', read_only=True)
+    properties = serializers.SerializerMethodField()
+    memberships = serializers.SerializerMethodField()
+    is_platform_superuser = serializers.BooleanField(source='user.is_superuser', read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = [
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'display_name',
+            'profile_image',
+            'positions',
+            'created_at',
+            'email_notifications_enabled',
+            'properties',
+            'memberships',
+            'is_platform_superuser',
+        ]
+        read_only_fields = fields
+
+    def get_username(self, obj):
+        return get_user_public_username(obj.user)
+
+    def get_display_name(self, obj):
+        return get_user_display_name(obj.user)
+
+    @staticmethod
+    def _property_summary(properties):
+        return [
+            {
+                'property_id': property_obj.property_id,
+                'name': property_obj.name,
+            }
+            for property_obj in properties
+        ]
+
+    def get_properties(self, obj):
+        return self._property_summary(get_accessible_properties(obj.user).order_by('name'))
+
+    def get_memberships(self, obj):
+        memberships = get_user_tenant_memberships(obj.user).prefetch_related(
+            'tenant__properties',
+        ).order_by('tenant__name')
+        result = []
+        for membership in memberships:
+            if membership.role in TENANT_WIDE_PROPERTY_ROLES:
+                properties = sorted(membership.tenant.properties.all(), key=lambda item: item.name)
+                access_scope = 'tenant_wide'
+            else:
+                properties = sorted(
+                    (
+                        property_obj
+                        for property_obj in membership.properties.all()
+                        if property_obj.tenant_id == membership.tenant_id
+                    ),
+                    key=lambda item: item.name,
+                )
+                access_scope = 'granted'
+            result.append({
+                'tenant_id': membership.tenant.tenant_id,
+                'tenant_name': membership.tenant.name,
+                'role': membership.role,
+                'access_scope': access_scope,
+                'properties': self._property_summary(properties),
+            })
+        return result
+
+
+class CurrentUserProfileUpdateSerializer(serializers.Serializer):
+    """Write allowlist for user-controlled, non-authorization metadata."""
+
+    first_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    last_name = serializers.CharField(required=False, allow_blank=True, max_length=150)
+    positions = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+
+    def update(self, instance, validated_data):
+        with transaction.atomic():
+            user = instance.user
+            user_fields = []
+            for field in ('first_name', 'last_name'):
+                if field in validated_data and getattr(user, field) != validated_data[field]:
+                    setattr(user, field, validated_data[field])
+                    user_fields.append(field)
+            if user_fields:
+                user.save(update_fields=user_fields)
+
+            if 'positions' in validated_data and instance.positions != validated_data['positions']:
+                instance.positions = validated_data['positions']
+                # UserProfile.save() performs image conversion whenever an avatar is
+                # present. A metadata-only update must not rewrite or orphan it.
+                UserProfile.objects.filter(pk=instance.pk).update(positions=instance.positions)
+        return instance
+
+    def create(self, validated_data):
+        raise NotImplementedError('Current-user profiles are created with their User record.')
 
 def _build_media_absolute_uri(request, media_path):
     """Build a stable media URL from paths stored by FileField or helper fields.

@@ -614,9 +614,19 @@ export async function fetchAllMyJobs(accessToken?: string, additionalParams?: st
   return fixJobsImageUrls(sanitizedJobs);
 }
 
-export async function fetchJob(jobId: string, accessToken?: string): Promise<Job | null> {
+export async function fetchJob(
+  jobId: string,
+  accessToken?: string,
+  propertyId?: string,
+): Promise<Job | null> {
   try {
-    const job = await fetchWithToken<Job>(`/api/v1/jobs/${jobId}/`, accessToken);
+    const propertyQuery = propertyId
+      ? `?property_id=${encodeURIComponent(propertyId)}`
+      : '';
+    const job = await fetchWithToken<Job>(
+      `/api/v1/jobs/${jobId}/${propertyQuery}`,
+      accessToken,
+    );
     const sanitizedJob = sanitizeJobData(job);
     return fixJobImageUrls(sanitizedJob);
   } catch (error) {
@@ -633,8 +643,19 @@ export async function updateJob(
   return fetchWithToken<Job>(`/api/v1/jobs/${jobId}/`, accessToken, "PATCH", jobData);
 }
 
-export async function deleteJob(jobId: string, accessToken?: string): Promise<void> {
-  await fetchWithToken<void>(`/api/v1/jobs/${jobId}/`, accessToken, "DELETE");
+export async function deleteJob(
+  jobId: string,
+  accessToken?: string,
+  propertyId?: string,
+): Promise<void> {
+  const propertyQuery = propertyId
+    ? `?property_id=${encodeURIComponent(propertyId)}`
+    : "";
+  await fetchWithToken<void>(
+    `/api/v1/jobs/${jobId}/${propertyQuery}`,
+    accessToken,
+    "DELETE",
+  );
 }
 
 export async function updateJobStatus(

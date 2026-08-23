@@ -1,79 +1,103 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSession } from '@/app/lib/session.client';
-import { Property } from '@/app/lib/types';
 import { logger } from '@/app/lib/utils/logger';
+import {
+  isDetailedUsersAbortError,
+  requestDetailedUsers,
+  type DetailedUser,
+} from '@/app/lib/hooks/detailed-users-request';
 
-export interface DetailedUser {
-  id: number;
-  username: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  full_name: string;
-  positions: string;
-  profile_image: string | null;
-  properties: Property[];
-  created_at: string;
+export type { DetailedUser } from '@/app/lib/hooks/detailed-users-request';
+
+export type DetailedUsersAvailability =
+  | 'idle'
+  | 'loading'
+  | 'available'
+  | 'unavailable'
+  | 'error';
+
+interface UseDetailedUsersOptions {
+  enabled?: boolean;
+  optional?: boolean;
 }
 
-export function useDetailedUsers() {
+export function useDetailedUsers({
+  enabled = true,
+  optional = false,
+}: UseDetailedUsersOptions = {}) {
   const [users, setUsers] = useState<DetailedUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<DetailedUsersAvailability>('idle');
+  const requestIdRef = useRef(0);
   const { data: session } = useSession();
+  const accessToken = session?.user?.accessToken;
 
-  const fetchUsers = async () => {
-    if (!session?.user?.accessToken) {
+  const fetchUsers = useCallback(async (signal?: AbortSignal) => {
+    const requestId = ++requestIdRef.current;
+    if (!enabled || !accessToken) {
       setUsers([]);
+      setError(null);
+      setLoading(false);
+      setAvailability('idle');
       return;
     }
 
     setLoading(true);
     setError(null);
+    setAvailability('loading');
 
     try {
       logger.debug('Fetching detailed users from /api/users/detailed/', {
-        hasToken: !!session.user.accessToken
-      });
-      
-      const response = await fetch('/api/users/detailed/', {
-        headers: {
-          'Authorization': `Bearer ${session.user.accessToken}`,
-          'Content-Type': 'application/json',
-        },
+        hasToken: true,
       });
 
-      logger.api('GET', '/api/users/detailed/', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('Error fetching users', new Error(errorText), {
-          status: response.status,
-          statusText: response.statusText
-        });
-        throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`);
+      const result = await requestDetailedUsers({
+        accessToken,
+        optional,
+        signal,
+      });
+      if (result.availability === 'unavailable') {
+        if (requestId !== requestIdRef.current || signal?.aborted) return;
+        setUsers([]);
+        setError(null);
+        setAvailability('unavailable');
+        return;
       }
-
-      const data = await response.json();
-      logger.debug('Received users data', { count: data.length });
-      setUsers(data);
+      if (requestId !== requestIdRef.current || signal?.aborted) return;
+      logger.debug('Received users data', { count: result.users.length });
+      setUsers(result.users);
+      setAvailability('available');
     } catch (err) {
+      if (
+        isDetailedUsersAbortError(err) ||
+        signal?.aborted ||
+        requestId !== requestIdRef.current
+      ) {
+        return;
+      }
       logger.error('Error fetching detailed users', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch users');
       setUsers([]);
+      setAvailability('error');
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current && !signal?.aborted) {
+        setLoading(false);
+      }
     }
-  };
+  }, [accessToken, enabled, optional]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [session?.user?.accessToken]);
+    const controller = new AbortController();
+    void fetchUsers(controller.signal);
+    return () => controller.abort();
+  }, [fetchUsers]);
 
   return {
     users,
     loading,
     error,
-    refetch: fetchUsers
+    availability,
+    refetch: () => fetchUsers(),
   };
 }

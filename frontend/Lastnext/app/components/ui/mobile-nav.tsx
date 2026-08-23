@@ -10,6 +10,10 @@ import {
   mobileSecondaryNavigation,
 } from "@/app/design-system/navigation-config";
 import { cn } from "@/app/lib/utils/cn";
+import {
+  getActiveNavigationItem,
+  isNavigationItemActive,
+} from "@/app/lib/navigation-active.mjs";
 import { triggerHaptic } from "@/app/lib/hooks/useHaptic";
 import { useT } from "@/app/lib/i18n/LocaleProvider";
 import type { DictKey } from "@/app/lib/i18n/dictionary";
@@ -46,6 +50,9 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
   const pathname = usePathname();
   const t = useT();
   const [moreOpen, setMoreOpen] = React.useState(false);
+  const hasActiveSecondaryItem = Boolean(
+    getActiveNavigationItem(pathname, mobileSecondaryNavigation),
+  );
 
   return (
     <nav
@@ -60,8 +67,11 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
     >
       <div className="flex items-center justify-around gap-1 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
         {mobilePrimaryNavigation.map((item) => {
-          const isActive =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isActive = isNavigationItemActive(
+            pathname,
+            item,
+            mobilePrimaryNavigation,
+          );
           const Icon = item.icon;
 
           return (
@@ -83,24 +93,29 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
                     ? "bg-primary text-primary-foreground shadow-soft"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted",
                   item.name === "Create Job" &&
-                    "bg-primary text-primary-foreground",
+                    !isActive &&
+                    "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20",
                 )}
               >
                 <Icon
                   className={cn(
                     "h-6 w-6 transition-colors",
-                    isActive || item.name === "Create Job"
+                    isActive
                       ? "text-primary-foreground"
-                      : "text-muted-foreground",
+                      : item.name === "Create Job"
+                        ? "text-primary"
+                        : "text-muted-foreground",
                   )}
                   aria-hidden={true}
                 />
                 <span
                   className={cn(
                     "text-xs font-semibold leading-none",
-                    isActive || item.name === "Create Job"
+                    isActive
                       ? "text-primary-foreground"
-                      : "text-muted-foreground",
+                      : item.name === "Create Job"
+                        ? "text-primary"
+                        : "text-muted-foreground",
                   )}
                 >
                   {NAV_I18N[item.name] ? t(NAV_I18N[item.name]) : item.shortName}
@@ -116,8 +131,14 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
               className={cn(
                 "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-muted-foreground transition-colors",
                 "hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                hasActiveSecondaryItem &&
+                  "bg-primary text-primary-foreground shadow-soft",
               )}
-              aria-label="Open more navigation"
+              aria-label={
+                hasActiveSecondaryItem
+                  ? "Open more navigation; current page is in this menu"
+                  : "Open more navigation"
+              }
             >
               <Grid2X2 className="h-6 w-6" aria-hidden="true" />
               <span className="text-xs font-semibold leading-none">More</span>
@@ -133,8 +154,11 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
             <div className="mt-4 grid grid-cols-2 gap-2 overflow-y-auto">
               {mobileSecondaryNavigation.map((item) => {
                 const Icon = item.icon;
-                const isActive =
-                  pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const isActive = isNavigationItemActive(
+                  pathname,
+                  item,
+                  mobileSecondaryNavigation,
+                );
                 return (
                   <Link
                     key={item.href}

@@ -30,23 +30,15 @@ import { MobileNav as BottomNav } from "@/app/components/ui/mobile-nav";
 import { PageTransition } from "@/app/components/ui/page-transition";
 import { PullToRefresh } from "@/app/components/ui/pull-to-refresh";
 import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
-import { navigationGroups } from "@/app/design-system/navigation-config";
+import {
+  navigationGroups,
+  navigationItems,
+} from "@/app/design-system/navigation-config";
+import { isNavigationItemActive } from "@/app/lib/navigation-active.mjs";
 import { useScrollDirection } from "@/app/lib/hooks/useScrollDirection";
 import { NotificationBell } from "@/app/components/notifications/NotificationBell";
 import { ThemeToggle } from "@/app/components/theme/ThemeToggle";
 import { LocaleToggle } from "@/app/components/i18n/LocaleToggle";
-
-function isNavItemActive(pathname: string, href: string) {
-  const bestMatch = navigationGroups
-    .flatMap((group) => group.items)
-    .filter(
-      (item) =>
-        pathname === item.href || pathname.startsWith(`${item.href}/`),
-    )
-    .sort((a, b) => b.href.length - a.href.length)[0];
-
-  return bestMatch?.href === href;
-}
 
 export default function DashboardLayout({
   children,
@@ -176,7 +168,11 @@ function DesktopNav({
               ) : null}
               <div className="grid gap-1">
                 {group.items.map((item) => {
-                  const isActive = isNavItemActive(pathname, item.href);
+                  const isActive = isNavigationItemActive(
+                    pathname,
+                    item,
+                    navigationItems,
+                  );
                   return (
                     <Link
                       key={item.name}
@@ -384,7 +380,11 @@ function MobileNav() {
             {navigationGroups
               .flatMap((group) => group.items)
               .map((item) => {
-                const isActive = isNavItemActive(pathname, item.href);
+                const isActive = isNavigationItemActive(
+                  pathname,
+                  item,
+                  navigationItems,
+                );
                 return (
                   <Link
                     key={item.name}

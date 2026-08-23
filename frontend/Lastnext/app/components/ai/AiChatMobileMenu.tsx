@@ -9,10 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/app/components/ui/sheet";
 import { MobileNav as BottomNav } from "@/app/components/ui/mobile-nav";
 import { dashboardNavigationItems } from "@/app/lib/navigation";
 import { cn } from "@/app/lib/utils/cn";
-
-function isNavItemActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+import { isNavigationItemActive } from "@/app/lib/navigation-active.mjs";
 
 export default function AiChatMobileMenu() {
   const pathname = usePathname();
@@ -69,7 +66,11 @@ export default function AiChatMobileMenu() {
                     aria-label="AI chat mobile menu links"
                   >
                     {dashboardNavigationItems.map((item) => {
-                      const isActive = isNavItemActive(pathname, item.href);
+                      const isActive = isNavigationItemActive(
+                        pathname,
+                        item,
+                        dashboardNavigationItems,
+                      );
                       return (
                         <Link
                           key={item.name}

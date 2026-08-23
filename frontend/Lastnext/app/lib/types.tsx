@@ -124,6 +124,7 @@ export interface Property {
   id: string | number;
   property_id: string;
   name: string;
+  timezone?: string;
   description?: string | null | undefined;
   created_at?: string;
   rooms?: Room[];

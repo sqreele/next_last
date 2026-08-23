@@ -381,6 +381,7 @@ class PropertySerializer(serializers.ModelSerializer):
     rooms = serializers.SerializerMethodField()
     is_preventivemaintenance = serializers.SerializerMethodField()
     tenant_name = serializers.CharField(source='tenant.name', read_only=True)
+    timezone = serializers.CharField(source='tenant.timezone', read_only=True)
 
     class Meta:
         model = Property
@@ -388,6 +389,7 @@ class PropertySerializer(serializers.ModelSerializer):
             'id',
             'tenant',
             'tenant_name',
+            'timezone',
             'property_id',
             'name',
             'description',

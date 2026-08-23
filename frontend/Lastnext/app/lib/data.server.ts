@@ -59,7 +59,8 @@ export async function fetchWithToken<T>(
   method: string = "GET",
   body?: any,
   retries: number = MAX_RETRIES,
-  timeoutMs: number = REQUEST_TIMEOUT
+  timeoutMs: number = REQUEST_TIMEOUT,
+  signal?: AbortSignal,
 ): Promise<T> {
   // Production mode: Always make real API calls
 
@@ -110,6 +111,9 @@ export async function fetchWithToken<T>(
 
   // Create AbortController for timeout
   const controller = new AbortController();
+  const abortFromCaller = () => controller.abort();
+  signal?.addEventListener('abort', abortFromCaller, { once: true });
+  if (signal?.aborted) controller.abort();
   const timeoutId = setTimeout(() => {
     controller.abort();
   }, timeoutMs);
@@ -126,6 +130,7 @@ export async function fetchWithToken<T>(
         });
     
     clearTimeout(timeoutId);
+    signal?.removeEventListener('abort', abortFromCaller);
     const responseText = await response.text();
 
     logger.debug('API Response', {
@@ -162,7 +167,7 @@ export async function fetchWithToken<T>(
       if (isRetryableError(null, response.status) && retries > 0) {
         logger.warn(`Retrying request due to ${response.status} error (${retries} attempts left)`);
         await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
-        return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs);
+        return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs, signal);
       }
       
       throw new ServerApiError(errorMessage, response.status, errorData);
@@ -186,13 +191,16 @@ export async function fetchWithToken<T>(
     }
   } catch (error) {
     clearTimeout(timeoutId);
+    signal?.removeEventListener('abort', abortFromCaller);
+
+    if (signal?.aborted) throw error;
     
     // Handle timeout errors
     if (error instanceof Error && error.name === 'AbortError') {
       if (retries > 0) {
         logger.warn(`Request timeout, retrying (${retries} attempts left)`);
         await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
-        return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs);
+        return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs, signal);
       }
       throw new ServerApiError("Request timeout", 408);
     }
@@ -201,7 +209,7 @@ export async function fetchWithToken<T>(
     if (isRetryableError(error) && retries > 0) {
       logger.warn(`Network error, retrying (${retries} attempts left):`, error instanceof Error ? error.message : String(error));
       await delay(RETRY_DELAY * (MAX_RETRIES - retries + 1)); // Exponential backoff
-      return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs);
+      return fetchWithToken<T>(url, token, method, body, retries - 1, timeoutMs, signal);
     }
     
     logger.error(`Error during ${method} request to ${absoluteUrl}`, error);
@@ -490,7 +498,8 @@ export async function fetchAllJobs(accessToken?: string, additionalParams?: stri
 export async function fetchAllJobsForProperty(
   propertyId: string,
   accessToken?: string,
-  additionalParams?: string
+  additionalParams?: string,
+  signal?: AbortSignal,
 ): Promise<Job[]> {
   // First, try the unpaginated export endpoint
   try {
@@ -502,7 +511,8 @@ export async function fetchAllJobsForProperty(
       'GET',
       undefined,
       MAX_RETRIES,
-      JOBS_ALL_REQUEST_TIMEOUT_MS
+      JOBS_ALL_REQUEST_TIMEOUT_MS,
+      signal,
     );
     let jobs: Job[] = [];
     if (Array.isArray(allResponse)) {
@@ -527,7 +537,15 @@ export async function fetchAllJobsForProperty(
   while (true) {
     const base = `/api/v1/jobs/?property_id=${encodeURIComponent(propertyId)}&page=${currentPage}&page_size=${REQUEST_PAGE_SIZE}`;
     const url = additionalParams ? `${base}&${additionalParams}` : base;
-    const response = await fetchWithToken<any>(url, accessToken);
+    const response = await fetchWithToken<any>(
+      url,
+      accessToken,
+      'GET',
+      undefined,
+      MAX_RETRIES,
+      REQUEST_TIMEOUT,
+      signal,
+    );
 
     if (!response || typeof response !== 'object') {
       console.error('fetchAllJobsForProperty: Invalid response:', response);

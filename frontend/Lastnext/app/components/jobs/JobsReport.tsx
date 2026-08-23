@@ -1,7 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { getRoomPropertyId } from "@/app/lib/utils/property-filter";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import Link from "next/link";
 import { Button } from "@/app/components/ui/button";
 import { PageLoader } from "@/app/components/ui/loading";
 import {
@@ -23,6 +28,7 @@ import {
   FileSpreadsheet,
   Wrench,
   ClipboardList,
+  Search,
 } from "lucide-react";
 import {
   Bar,
@@ -38,12 +44,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useUser, useProperties } from "@/app/lib/stores/mainStore";
-import { useSession } from "@/app/lib/session.client";
 import {
-  useDetailedUsers,
-  type DetailedUser,
-} from "@/app/lib/hooks/useDetailedUsers";
+  useMainStore,
+  useProperties,
+  useUser,
+} from "@/app/lib/stores/mainStore";
+import { useSession } from "@/app/lib/session.client";
 import {
   Job,
   TabValue,
@@ -52,13 +58,20 @@ import {
   STATUS_COLORS,
 } from "@/app/lib/types";
 import { fetchAllJobsForProperty } from "@/app/lib/data.server";
-import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
-import { endOfDay, format, startOfDay } from "date-fns";
-import { jobsToCSV, downloadCSV } from "@/app/lib/utils/csv-export";
+import { format } from "date-fns";
 import { exportJobsToExcel } from "@/app/lib/utils/excel-export";
 import { exportJobsReportToPdf } from "@/app/lib/utils/pdf-export";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import type { UtilityConsumptionRow } from "@/app/dashboard/utility-consumption/types";
+import {
+  assertJobsReportPropertyBoundary,
+  buildJobsReportCsvUrl,
+  canExportJobsReport,
+  getCsvFilename,
+  getJobsReportDetailHref,
+  isCurrentJobsReportRequest,
+  type JobsReportFilters,
+} from "@/app/lib/jobs-report.mjs";
 
 const STATUS_FILTER_OPTIONS: Array<{
   value: JobStatus | "all";
@@ -117,7 +130,6 @@ function getJobUserKey(user: Job["user"] | undefined | null): string | null {
 
 function getReportUserLabel(
   user: Job["user"] | undefined | null,
-  detailedUsers: DetailedUser[],
   sessionUser:
     | {
         id?: string;
@@ -130,20 +142,11 @@ function getReportUserLabel(
   if (user === undefined || user === null) return "Unknown Technician";
 
   if (typeof user === "object" && user && "username" in user) {
-    const detailed = detailedUsers.find((u) => u.username === user.username);
-    return getDisplayName(detailed || user, "Unknown Technician");
+    return getDisplayName(user, "Unknown Technician");
   }
 
   if (typeof user === "string" || typeof user === "number") {
     const userStr = String(user);
-    const detailed = detailedUsers.find(
-      (u) =>
-        u.id.toString() === userStr ||
-        u.username === userStr ||
-        u.email === userStr,
-    );
-    if (detailed) return getDisplayName(detailed, "Unknown Technician");
-
     if (sessionUser?.id) {
       const sid = String(sessionUser.id).trim();
       if (userStr === sid || userStr.toLowerCase() === sid.toLowerCase()) {
@@ -210,19 +213,30 @@ function getJobRoomEntries(
   return [];
 }
 
-function parseLocalDateYmd(ymd: string): Date | null {
-  const parts = ymd.trim().split("-").map(Number);
-  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
-  const [y, m, d] = parts;
-  if (!y || m < 1 || m > 12 || d < 1 || d > 31) return null;
-  return new Date(y, m - 1, d);
-}
-
 /** `all` = any topic; `none` = jobs with no topics; otherwise numeric topic id as string. */
 type TopicFilterValue = "all" | "none" | string;
 
 /** `all` = any user; `none` = no assignee; otherwise key from {@link getJobUserKey}. */
 type UserFilterValue = "all" | "none" | string;
+
+const DEFAULT_REPORT_TIMEZONE = "Asia/Bangkok";
+
+function getReportDateParts(value: string, reportTimezone: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: reportTimezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((entry) => entry.type === type)?.value || "";
+  const year = part("year");
+  const month = part("month");
+  const day = part("day");
+  return { year, month, ymd: `${year}-${month}-${day}` };
+}
 
 function filterJobsForReport(
   jobs: Job[],
@@ -235,8 +249,27 @@ function filterJobsForReport(
   yearFilter: "all" | string,
   createdFrom: string,
   createdTo: string,
+  search: string,
+  reportTimezone: string,
 ): Job[] {
   return jobs.filter((job) => {
+    const normalizedSearch = search.trim().toLocaleLowerCase();
+    if (normalizedSearch) {
+      const searchable = [
+        job.job_id,
+        job.description,
+        job.remarks,
+        job.area?.name,
+        job.area_name,
+        getDisplayName(job.user, ""),
+        ...(job.rooms?.map((room) => room.name) || []),
+        ...(job.topics?.map((topic) => topic.title) || []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase();
+      if (!searchable.includes(normalizedSearch)) return false;
+    }
     if (statusFilter !== "all" && job.status !== statusFilter) return false;
     if (priorityFilter !== "all" && job.priority !== priorityFilter)
       return false;
@@ -251,19 +284,13 @@ function filterJobsForReport(
       if (userKey !== userFilter) return false;
     }
 
-    const createdDate = new Date(job.created_at);
+    const createdDate = getReportDateParts(job.created_at, reportTimezone);
+    if (!createdDate) return false;
     if (monthFilter !== "all") {
-      const wantedMonth = Number(monthFilter);
-      if (
-        Number.isNaN(wantedMonth) ||
-        createdDate.getMonth() + 1 !== wantedMonth
-      )
-        return false;
+      if (createdDate.month !== monthFilter.padStart(2, "0")) return false;
     }
     if (yearFilter !== "all") {
-      const wantedYear = Number(yearFilter);
-      if (Number.isNaN(wantedYear) || createdDate.getFullYear() !== wantedYear)
-        return false;
+      if (createdDate.year !== yearFilter) return false;
     }
 
     const topics = job.topics;
@@ -276,21 +303,8 @@ function filterJobsForReport(
       if (!topics?.some((t) => Number(t.id) === wantId)) return false;
     }
 
-    const created = createdDate.getTime();
-    if (createdFrom.trim()) {
-      const day = parseLocalDateYmd(createdFrom);
-      if (day) {
-        const from = startOfDay(day).getTime();
-        if (created < from) return false;
-      }
-    }
-    if (createdTo.trim()) {
-      const day = parseLocalDateYmd(createdTo);
-      if (day) {
-        const to = endOfDay(day).getTime();
-        if (created > to) return false;
-      }
-    }
+    if (createdFrom.trim() && createdDate.ymd < createdFrom) return false;
+    if (createdTo.trim() && createdDate.ymd > createdTo) return false;
     return true;
   });
 }
@@ -513,24 +527,30 @@ function RoomsStackEndLabel(
   );
 }
 
+const EMPTY_JOBS: Job[] = [];
+
 export default function JobsReport({
-  jobs = [],
+  jobs = EMPTY_JOBS,
   filter = "all",
-  onRefresh,
 }: JobsReportProps) {
-  const { data: session } = useSession();
-  const { userProfile, selectedPropertyId: selectedProperty } = useUser();
+  const { data: session, status: sessionStatus } = useSession();
+  const { selectedPropertyId: selectedProperty } = useUser();
   const { properties: userProperties } = useProperties();
-  const { users: detailedUsers } = useDetailedUsers();
 
   const [isGeneratingCsv, setIsGeneratingCsv] = useState(false);
   const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [reportJobs, setReportJobs] = useState<Job[]>([]);
+  const [loadedPropertyId, setLoadedPropertyId] = useState<string | null>(null);
   const [utilityRows, setUtilityRows] = useState<UtilityConsumptionRow[]>([]);
   const [utilityLoading, setUtilityLoading] = useState(false);
   const [utilityError, setUtilityError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [searchFilter, setSearchFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<JobStatus | "all">("all");
   const [priorityFilter, setPriorityFilter] = useState<JobPriority | "all">(
     "all",
@@ -542,12 +562,25 @@ export default function JobsReport({
   const [userFilter, setUserFilter] = useState<UserFilterValue>("all");
   const [monthFilter, setMonthFilter] = useState<"all" | string>("all");
   const [yearFilter, setYearFilter] = useState<"all" | string>("all");
-  const { recordLoaderShown, clearLoadingAfterMinTime } =
-    useMinLoaderTime(setLoading);
+  const reportRequestIdRef = useRef(0);
+  const reportControllerRef = useRef<AbortController | null>(null);
+  const exportControllerRef = useRef<AbortController | null>(null);
+  const exportInFlightRef = useRef(false);
+  const currentProperty = useMemo(() => {
+    if (!selectedProperty) return null;
+    return (
+      userProperties.find((p) => p.property_id === selectedProperty) || null
+    );
+  }, [selectedProperty, userProperties]);
+  const reportTimezone = currentProperty?.timezone || DEFAULT_REPORT_TIMEZONE;
+  const visibleReportJobs = useMemo(
+    () => (loadedPropertyId === selectedProperty ? reportJobs : []),
+    [loadedPropertyId, reportJobs, selectedProperty],
+  );
 
   const topicFilterOptions = useMemo(() => {
     const byId = new Map<number, { id: number; title: string }>();
-    reportJobs.forEach((job) => {
+    visibleReportJobs.forEach((job) => {
       job.topics?.forEach((t) => {
         if (t == null || t.id == null) return;
         const id = Number(t.id);
@@ -559,26 +592,26 @@ export default function JobsReport({
     return Array.from(byId.values()).sort((a, b) =>
       a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
     );
-  }, [reportJobs]);
+  }, [visibleReportJobs]);
 
   const jobsWithNoTopicCount = useMemo(
-    () => reportJobs.filter((j) => !j.topics?.length).length,
-    [reportJobs],
+    () => visibleReportJobs.filter((j) => !j.topics?.length).length,
+    [visibleReportJobs],
   );
 
   const jobsWithNoUserCount = useMemo(
-    () => reportJobs.filter((j) => getJobUserKey(j.user) === null).length,
-    [reportJobs],
+    () => visibleReportJobs.filter((j) => getJobUserKey(j.user) === null).length,
+    [visibleReportJobs],
   );
 
   const userFilterOptions = useMemo(() => {
     const byKey = new Map<string, string>();
-    reportJobs.forEach((job) => {
+    visibleReportJobs.forEach((job) => {
       const key = getJobUserKey(job.user);
       if (!key || byKey.has(key)) return;
       byKey.set(
         key,
-        getReportUserLabel(job.user, detailedUsers, session?.user),
+        getReportUserLabel(job.user, session?.user),
       );
     });
     return Array.from(byKey.entries())
@@ -586,37 +619,14 @@ export default function JobsReport({
       .sort((a, b) =>
         a.label.localeCompare(b.label, undefined, { sensitivity: "base" }),
       );
-  }, [reportJobs, detailedUsers, session?.user]);
+  }, [visibleReportJobs, session?.user]);
 
-  /**
-   * Keep provided jobs reactive even when length stays the same, while avoiding
-   * fetch loops from default `jobs = []` creating a new array every render.
-   */
-  const providedJobsFingerprint = useMemo(
-    () =>
-      jobs
-        .map((job) =>
-          [
-            String((job as { job_id?: string }).job_id ?? ""),
-            String(job.created_at ?? ""),
-            String(job.status ?? ""),
-            String(job.priority ?? ""),
-            String(job.completed_at ?? ""),
-            String(job.topics?.length ?? 0),
-            String(job.rooms?.length ?? 0),
-            String(jobIsPm(job)),
-          ].join("|"),
-        )
-        .join("||"),
-    [jobs],
-  );
-
-  const stableProvidedJobs = useMemo(() => jobs, [providedJobsFingerprint]);
+  const stableProvidedJobs = jobs;
 
   const filteredReportJobs = useMemo(
     () =>
       filterJobsForReport(
-        reportJobs,
+        visibleReportJobs,
         statusFilter,
         priorityFilter,
         pmFilter,
@@ -626,9 +636,11 @@ export default function JobsReport({
         yearFilter,
         createdFrom,
         createdTo,
+        searchFilter,
+        reportTimezone,
       ),
     [
-      reportJobs,
+      visibleReportJobs,
       statusFilter,
       priorityFilter,
       pmFilter,
@@ -638,17 +650,43 @@ export default function JobsReport({
       yearFilter,
       createdFrom,
       createdTo,
+      searchFilter,
+      reportTimezone,
     ],
   );
 
+  const pageSize = 25;
+  const totalPages = Math.max(1, Math.ceil(filteredReportJobs.length / pageSize));
+  const paginatedReportJobs = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredReportJobs.slice(start, start + pageSize);
+  }, [currentPage, filteredReportJobs]);
+
+  const dateRangeInvalid = Boolean(
+    createdFrom && createdTo && createdFrom > createdTo,
+  );
+
+  const activeFilters: JobsReportFilters = {
+    status: statusFilter,
+    priority: priorityFilter,
+    pm: pmFilter,
+    topic: topicFilter,
+    user: userFilter,
+    month: monthFilter,
+    year: yearFilter,
+    createdFrom,
+    createdTo,
+    search: searchFilter,
+  };
+
   const yearFilterOptions = useMemo(() => {
     const years = new Set<number>();
-    reportJobs.forEach((job) => {
-      const d = new Date(job.created_at);
-      if (!Number.isNaN(d.getTime())) years.add(d.getFullYear());
+    visibleReportJobs.forEach((job) => {
+      const date = getReportDateParts(job.created_at, reportTimezone);
+      if (date) years.add(Number(date.year));
     });
     return Array.from(years).sort((a, b) => b - a);
-  }, [reportJobs]);
+  }, [reportTimezone, visibleReportJobs]);
 
   const monthFilterOptions = useMemo(
     () =>
@@ -685,7 +723,12 @@ export default function JobsReport({
           throw new Error("Unable to load utility consumption for comparison.");
         }
         const payload: UtilityConsumptionRow[] = await res.json();
-        setUtilityRows(Array.isArray(payload) ? payload : []);
+        if (
+          !controller.signal.aborted &&
+          useMainStore.getState().selectedPropertyId === selectedProperty
+        ) {
+          setUtilityRows(Array.isArray(payload) ? payload : []);
+        }
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") return;
         setUtilityRows([]);
@@ -695,7 +738,7 @@ export default function JobsReport({
             : "Unable to load utility consumption.",
         );
       } finally {
-        setUtilityLoading(false);
+        if (!controller.signal.aborted) setUtilityLoading(false);
       }
     }
 
@@ -990,65 +1033,6 @@ export default function JobsReport({
     };
   }, [filteredReportJobs, utilityRows]);
 
-  // Get current property information
-  const currentProperty = useMemo(() => {
-    if (!selectedProperty) return null;
-    return (
-      userProperties.find((p) => p.property_id === selectedProperty) || null
-    );
-  }, [selectedProperty, userProperties]);
-
-  // Filter jobs by selected property - memoized to prevent infinite loops
-  const filteredJobs = useMemo(() => {
-    if (!selectedProperty || !jobs.length) return jobs;
-
-    return jobs.filter((job) => {
-      // Check direct property_id match
-      if (job.property_id === selectedProperty) return true;
-
-      // Check properties array
-      if (job.properties && Array.isArray(job.properties)) {
-        return job.properties.some((prop) => {
-          if (typeof prop === "string" || typeof prop === "number") {
-            return String(prop) === String(selectedProperty);
-          }
-          if (typeof prop === "object" && prop !== null) {
-            return (
-              String(prop.property_id || prop.id) === String(selectedProperty)
-            );
-          }
-          return false;
-        });
-      }
-
-      // Check profile_image.properties
-      if (
-        job.profile_image?.properties &&
-        Array.isArray(job.profile_image.properties)
-      ) {
-        return job.profile_image.properties.some((prop) => {
-          if (typeof prop === "string" || typeof prop === "number") {
-            return String(prop) === String(selectedProperty);
-          }
-          if (typeof prop === "object" && prop !== null) {
-            return (
-              String(prop.property_id || prop.id) === String(selectedProperty)
-            );
-          }
-          return false;
-        });
-      }
-
-      if (job.rooms && Array.isArray(job.rooms)) {
-        return job.rooms.some(
-          (room) => String(getRoomPropertyId(room)) === String(selectedProperty),
-        );
-      }
-
-      return false;
-    });
-  }, [jobs, selectedProperty]);
-
   // Calculate comprehensive statistics (respects export filters)
   const statistics: ReportStatistics = useMemo(() => {
     const total = filteredReportJobs.length;
@@ -1180,59 +1164,114 @@ export default function JobsReport({
     ],
   );
 
-  // Load jobs for the selected property if external jobs were not provided.
   useEffect(() => {
-    if (selectedProperty && stableProvidedJobs.length === 0) {
-      const loadPropertyJobs = async () => {
-        recordLoaderShown();
-        setLoading(true);
-        try {
-          // Try to get access token from session, or use a fallback
-          let accessToken = session?.user?.accessToken;
+    reportControllerRef.current?.abort();
+    exportControllerRef.current?.abort();
+    reportRequestIdRef.current += 1;
+    setReportJobs([]);
+    setLoadedPropertyId(null);
+    setReportError(null);
+    setExportError(null);
+    setCurrentPage(1);
+    setSearchFilter("");
+    setStatusFilter("all");
+    setPriorityFilter("all");
+    setPmFilter("all");
+    setTopicFilter("all");
+    setUserFilter("all");
+    setMonthFilter("all");
+    setYearFilter("all");
+    setCreatedFrom("");
+    setCreatedTo("");
+  }, [selectedProperty]);
 
-          // If no access token in session, try to get it from the session endpoint
-          if (!accessToken) {
-            try {
-              const sessionResponse = await fetch("/api/auth/session-compat");
-              if (sessionResponse.ok) {
-                const sessionData = await sessionResponse.json();
-                accessToken = sessionData?.user?.accessToken;
-              }
-            } catch (sessionError) {
-              console.error(
-                "❌ JobsReport: Error fetching session:",
-                sessionError,
-              );
-            }
-          }
-
-          if (!accessToken) {
-            console.error("❌ JobsReport: No access token available");
-            throw new Error("No access token available");
-          }
-
-          const propertyJobs = await fetchAllJobsForProperty(
-            selectedProperty,
-            accessToken,
-          );
-          setReportJobs(propertyJobs);
-        } catch (error) {
-          console.error("Error loading property jobs:", error);
-        } finally {
-          clearLoadingAfterMinTime();
-        }
-      };
-
-      loadPropertyJobs();
-    } else if (stableProvidedJobs.length > 0) {
-      setReportJobs(stableProvidedJobs);
-    }
+  useEffect(() => {
+    setCurrentPage(1);
   }, [
+    statusFilter,
+    priorityFilter,
+    pmFilter,
+    topicFilter,
+    userFilter,
+    monthFilter,
+    yearFilter,
+    createdFrom,
+    createdTo,
+    searchFilter,
+  ]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  // Load the complete authorized Property projection once for analytics.
+  useEffect(() => {
+    const accessToken = session?.user?.accessToken;
+    if (!selectedProperty || sessionStatus === "loading") return;
+    if (!accessToken) {
+      setLoading(false);
+      setReportError("Authentication is required to load this report.");
+      return;
+    }
+
+    const requestPropertyId = selectedProperty;
+    const requestId = ++reportRequestIdRef.current;
+    const controller = new AbortController();
+    reportControllerRef.current?.abort();
+    reportControllerRef.current = controller;
+    setReportJobs([]);
+    setLoadedPropertyId(null);
+    setReportError(null);
+    setLoading(true);
+
+    const loadPropertyJobs = async () => {
+      try {
+        const propertyJobs =
+          stableProvidedJobs.length > 0
+            ? stableProvidedJobs
+            : await fetchAllJobsForProperty(
+                requestPropertyId,
+                accessToken,
+                undefined,
+                controller.signal,
+              );
+        const scopedJobs = assertJobsReportPropertyBoundary(
+          propertyJobs,
+          requestPropertyId,
+        );
+        const isCurrent = isCurrentJobsReportRequest({
+          requestId,
+          currentRequestId: reportRequestIdRef.current,
+          requestPropertyId,
+          currentPropertyId: useMainStore.getState().selectedPropertyId,
+        });
+        if (!controller.signal.aborted && isCurrent) {
+          setReportJobs(scopedJobs);
+          setLoadedPropertyId(requestPropertyId);
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        if (requestId !== reportRequestIdRef.current) return;
+        setReportJobs([]);
+        setLoadedPropertyId(null);
+        setReportError(
+          error instanceof Error ? error.message : "Unable to load report.",
+        );
+      } finally {
+        if (!controller.signal.aborted && requestId === reportRequestIdRef.current) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadPropertyJobs();
+    return () => controller.abort();
+  }, [
+    reloadKey,
     selectedProperty,
+    sessionStatus,
     stableProvidedJobs,
     session?.user?.accessToken,
-    recordLoaderShown,
-    clearLoadingAfterMinTime,
   ]);
 
   // Shared filename + filter-description helpers used by all exports.
@@ -1280,33 +1319,75 @@ export default function JobsReport({
     if (yearFilter !== "all") parts.push(`year=${yearFilter}`);
     if (createdFrom.trim()) parts.push(`from=${createdFrom}`);
     if (createdTo.trim()) parts.push(`to=${createdTo}`);
+    if (searchFilter.trim()) parts.push(`search=${searchFilter.trim()}`);
     return parts.length ? parts.join("; ") : "no filters applied";
   };
 
-  // Generate CSV export
+  // CSV is generated from a fresh, server-authorized copy of the same filters.
   const handleGenerateCSV = async () => {
-    if (!filteredReportJobs.length) {
-      alert(
-        "No jobs match the current filters. Adjust filters or clear them to export.",
-      );
-      return;
-    }
+    if (
+      exportInFlightRef.current ||
+      dateRangeInvalid ||
+      !canExportJobsReport({
+        propertyId: selectedProperty,
+        rowCount: filteredReportJobs.length,
+        exporting: isGeneratingCsv,
+      })
+    ) return;
 
+    const exportPropertyId = selectedProperty;
+    const exportUrl = buildJobsReportCsvUrl({
+      propertyId: exportPropertyId,
+      filters: activeFilters,
+    });
+    if (!exportUrl || !exportPropertyId) return;
+
+    const controller = new AbortController();
+    exportControllerRef.current?.abort();
+    exportControllerRef.current = controller;
+    exportInFlightRef.current = true;
+    setExportError(null);
+    setIsGeneratingCsv(true);
     try {
-      setIsGeneratingCsv(true);
-      const csvContent = jobsToCSV(filteredReportJobs, userProperties, {
-        includeImages: true,
-        maxImageColumns: 3,
-        includeUserDetails: true,
-        includeRoomDetails: true,
-        includePropertyDetails: true,
-        dateFormat: "readable",
+      const response = await fetch(exportUrl, {
+        signal: controller.signal,
+        cache: "no-store",
       });
-      downloadCSV(csvContent, buildExportFilename("csv"));
-    } catch (error: any) {
-      console.error("Error generating CSV:", error);
-      alert(`Failed to generate CSV: ${error.message || "Unknown error"}`);
+      if (!response.ok) {
+        let message = "Unable to export CSV.";
+        try {
+          const payload = (await response.json()) as { detail?: unknown };
+          if (payload.detail) message = String(payload.detail);
+        } catch {
+          // Preserve the stable user-facing fallback.
+        }
+        throw new Error(message);
+      }
+      if (
+        controller.signal.aborted ||
+        useMainStore.getState().selectedPropertyId !== exportPropertyId
+      ) return;
+
+      const blob = await response.blob();
+      const filename = getCsvFilename(
+        response.headers.get("content-disposition"),
+        `jobs-report-${exportPropertyId}-${format(new Date(), "yyyy-MM-dd")}.csv`,
+      );
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setExportError(
+        error instanceof Error ? error.message : "Unable to export CSV.",
+      );
     } finally {
+      exportInFlightRef.current = false;
       setIsGeneratingCsv(false);
     }
   };
@@ -1336,9 +1417,10 @@ export default function JobsReport({
         includePropertyDetails: true,
         dateFormat: "readable",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating Excel:", error);
-      alert(`Failed to generate Excel: ${error.message || "Unknown error"}`);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      alert(`Failed to generate Excel: ${message}`);
     } finally {
       setIsGeneratingExcel(false);
     }
@@ -1364,16 +1446,17 @@ export default function JobsReport({
         includeImages: true,
         maxImageColumns: 3,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating PDF:", error);
-      alert(`Failed to generate PDF: ${error.message || "Unknown error"}`);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      alert(`Failed to generate PDF: ${message}`);
     } finally {
       setIsGeneratingPdf(false);
     }
   };
 
   // Check if session is still loading
-  if (!session) {
+  if (sessionStatus === "loading") {
     return (
       <Card className="w-full">
         <CardHeader>
@@ -1395,7 +1478,7 @@ export default function JobsReport({
   }
 
   // Check if user is authenticated
-  if (!session?.user?.accessToken) {
+  if (sessionStatus === "unauthenticated" || !session?.user?.accessToken) {
     return (
       <Card className="w-full">
         <CardHeader>
@@ -1429,19 +1512,43 @@ export default function JobsReport({
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
             <Building2 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>Please select a property to view the jobs report.</p>
+            <p>
+              {userProperties.length
+                ? "Select a property to view reports."
+                : "You do not have an accessible Property for reporting."}
+            </p>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  if (loading) {
+  if (loading || (loadedPropertyId !== selectedProperty && !reportError)) {
     return (
       <PageLoader
         label="Loading jobs report"
         description={`Loading report rows${currentProperty?.name ? ` for ${currentProperty.name}` : ""}.`}
       />
+    );
+  }
+
+  if (reportError) {
+    return (
+      <Card className="w-full" role="alert">
+        <CardHeader>
+          <CardTitle>Unable to load report</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-destructive">{reportError}</p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setReloadKey((value) => value + 1)}
+          >
+            Retry report
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -1466,7 +1573,7 @@ export default function JobsReport({
             <div className="flex w-full flex-col items-stretch gap-2 lg:w-auto lg:items-end">
               <p className="text-xs text-muted-foreground">
                 Export uses filtered rows ({filteredReportJobs.length}/
-                {reportJobs.length})
+                {visibleReportJobs.length})
               </p>
               <div className="grid w-full grid-cols-3 gap-2 lg:w-auto">
                 <Button
@@ -1498,9 +1605,16 @@ export default function JobsReport({
                 </Button>
                 <Button
                   onClick={handleGenerateCSV}
-                  disabled={isGeneratingCsv || filteredReportJobs.length === 0}
+                  disabled={
+                    dateRangeInvalid ||
+                    !canExportJobsReport({
+                      propertyId: selectedProperty,
+                      rowCount: filteredReportJobs.length,
+                      exporting: isGeneratingCsv,
+                    })
+                  }
                   isLoading={isGeneratingCsv}
-                  loadingText="Downloading..."
+                  loadingText="Exporting CSV..."
                   variant="outline"
                   className="min-w-0 items-center justify-center gap-1 px-2 sm:gap-2 sm:px-4"
                 >
@@ -1508,6 +1622,11 @@ export default function JobsReport({
                   CSV
                 </Button>
               </div>
+              {exportError ? (
+                <p className="text-sm font-medium text-destructive" role="alert">
+                  Unable to export CSV. {exportError}
+                </p>
+              ) : null}
             </div>
           </div>
         </CardHeader>
@@ -1523,7 +1642,29 @@ export default function JobsReport({
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 [&_input]:min-h-11 [&_select]:min-h-11 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-9">
+          <div className="grid grid-cols-1 gap-4 [&_input]:min-h-11 [&_select]:min-h-11 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div className="space-y-1.5 sm:col-span-2">
+              <label
+                htmlFor="jobs-report-search"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                Search report
+              </label>
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <input
+                  id="jobs-report-search"
+                  type="search"
+                  value={searchFilter}
+                  onChange={(event) => setSearchFilter(event.target.value)}
+                  placeholder="Job ID, description, room, area, topic, or assignee"
+                  className="w-full rounded-md border border-border bg-card py-2 pl-9 pr-3 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
             <div className="space-y-1.5">
               <label
                 htmlFor="jobs-report-status"
@@ -1657,6 +1798,7 @@ export default function JobsReport({
                 className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={createdFrom}
                 onChange={(e) => setCreatedFrom(e.target.value)}
+                max={createdTo || undefined}
               />
             </div>
             <div className="space-y-1.5">
@@ -1672,6 +1814,7 @@ export default function JobsReport({
                 className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm shadow-soft focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={createdTo}
                 onChange={(e) => setCreatedTo(e.target.value)}
+                min={createdFrom || undefined}
               />
             </div>
             <div className="space-y-1.5">
@@ -1737,16 +1880,216 @@ export default function JobsReport({
                 setYearFilter("all");
                 setCreatedFrom("");
                 setCreatedTo("");
+                setSearchFilter("");
+                setExportError(null);
+                setCurrentPage(1);
               }}
             >
               Clear filters
             </Button>
-            {filteredReportJobs.length === 0 && reportJobs.length > 0 ? (
+            {filteredReportJobs.length === 0 && visibleReportJobs.length > 0 ? (
               <span className="text-xs text-amber-700">
                 No jobs match — loosen filters to see data.
               </span>
             ) : null}
+            {dateRangeInvalid ? (
+              <span className="text-xs font-medium text-destructive" role="alert">
+                Created-to must be on or after Created-from.
+              </span>
+            ) : null}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <CardTitle className="text-base">Filtered job rows</CardTitle>
+              <p className="text-sm font-normal text-muted-foreground">
+                CSV exports all {filteredReportJobs.length} matching rows, not only this page.
+              </p>
+            </div>
+            <p className="text-sm text-muted-foreground" aria-live="polite">
+              {filteredReportJobs.length
+                ? `Showing ${(currentPage - 1) * pageSize + 1}-${Math.min(
+                    currentPage * pageSize,
+                    filteredReportJobs.length,
+                  )} of ${filteredReportJobs.length}`
+                : "0 matching jobs"}
+            </p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {visibleReportJobs.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">
+              <p className="font-semibold text-foreground">No jobs in this Property</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Jobs created for this Property will appear in the report.
+              </p>
+            </div>
+          ) : filteredReportJobs.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">
+              <p className="font-semibold text-foreground">
+                No jobs match the selected report filters
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Clear or adjust filters to see report rows.
+              </p>
+            </div>
+          ) : (
+            <>
+              <ol className="space-y-3 md:hidden" aria-label="Filtered job rows">
+                {paginatedReportJobs.map((job) => {
+                  const detailHref = getJobsReportDetailHref(
+                    job.job_id,
+                    selectedProperty,
+                  );
+                  const location =
+                    job.rooms?.map((room) => room.name).filter(Boolean).join(", ") ||
+                    job.area?.name ||
+                    job.area_name ||
+                    "No location";
+                  return (
+                    <li key={job.job_id} className="rounded-xl border border-border p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="break-all text-sm font-bold text-foreground">
+                            #{job.job_id}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-sm text-foreground/80">
+                            {job.description || job.topics?.[0]?.title || "Untitled job"}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-full border border-border px-2 py-1 text-xs font-semibold capitalize">
+                          {String(job.status).replaceAll("_", " ")}
+                        </span>
+                      </div>
+                      <dl className="mt-3 grid gap-2 text-sm text-muted-foreground">
+                        <div className="flex justify-between gap-3">
+                          <dt>Priority</dt>
+                          <dd className="font-medium capitalize text-foreground">{job.priority}</dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <dt>Location</dt>
+                          <dd className="min-w-0 break-words text-right text-foreground">{location}</dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <dt>Assigned to</dt>
+                          <dd className="min-w-0 break-words text-right text-foreground">
+                            {getReportUserLabel(job.user, session?.user)}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <dt>Created</dt>
+                          <dd className="text-right text-foreground">
+                            {format(new Date(job.created_at), "PP")}
+                          </dd>
+                        </div>
+                      </dl>
+                      {detailHref ? (
+                        <Link
+                          href={detailHref}
+                          className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-border px-3 text-sm font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          View job detail
+                        </Link>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ol>
+
+              <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
+                <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+                  <thead className="sticky top-0 bg-muted/90 text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th scope="col" className="px-3 py-3">Job ID</th>
+                      <th scope="col" className="px-3 py-3">Created</th>
+                      <th scope="col" className="px-3 py-3">Status</th>
+                      <th scope="col" className="px-3 py-3">Priority</th>
+                      <th scope="col" className="px-3 py-3">Description</th>
+                      <th scope="col" className="px-3 py-3">Location</th>
+                      <th scope="col" className="px-3 py-3">Assigned to</th>
+                      <th scope="col" className="px-3 py-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {paginatedReportJobs.map((job) => {
+                      const detailHref = getJobsReportDetailHref(job.job_id, selectedProperty);
+                      const location =
+                        job.rooms?.map((room) => room.name).filter(Boolean).join(", ") ||
+                        job.area?.name ||
+                        job.area_name ||
+                        "—";
+                      return (
+                        <tr key={job.job_id} className="align-top hover:bg-muted/40">
+                          <td className="whitespace-nowrap px-3 py-3 font-semibold">#{job.job_id}</td>
+                          <td className="whitespace-nowrap px-3 py-3 text-muted-foreground">
+                            {format(new Date(job.created_at), "PP")}
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="rounded-full border border-border px-2 py-1 text-xs font-semibold capitalize">
+                              {String(job.status).replaceAll("_", " ")}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 capitalize">{job.priority}</td>
+                          <td className="max-w-xs px-3 py-3">
+                            <span className="line-clamp-2" title={job.description || ""}>
+                              {job.description || job.topics?.[0]?.title || "Untitled job"}
+                            </span>
+                          </td>
+                          <td className="max-w-48 break-words px-3 py-3">{location}</td>
+                          <td className="max-w-48 break-words px-3 py-3">
+                            {getReportUserLabel(job.user, session?.user)}
+                          </td>
+                          <td className="px-3 py-3 text-right">
+                            {detailHref ? (
+                              <Link
+                                href={detailHref}
+                                className="inline-flex min-h-9 items-center rounded-md px-3 font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                View
+                              </Link>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {totalPages > 1 ? (
+                <nav
+                  className="mt-4 flex flex-col items-center justify-between gap-3 sm:flex-row"
+                  aria-label="Jobs Report pages"
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 w-full sm:w-auto"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 w-full sm:w-auto"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  >
+                    Next
+                  </Button>
+                </nav>
+              ) : null}
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -1870,7 +2213,7 @@ export default function JobsReport({
                     />
                     <Tooltip />
                     <Bar dataKey="count" radius={[6, 6, 0, 0]} name="Jobs">
-                      {statistics.jobsByStatus.map((entry, index) => (
+                      {statistics.jobsByStatus.map((entry) => (
                         <Cell key={`cell-${entry.status}`} fill={entry.color} />
                       ))}
                       <LabelList
@@ -2501,7 +2844,7 @@ export default function JobsReport({
               • PM jobs: {statistics.pmJobs} · Non-PM: {statistics.nonPmJobs}
             </p>
             <p>• Distinct rooms in chart data: {roomsJobsSummary.length}</p>
-            <p>• Jobs loaded for property: {reportJobs.length}</p>
+            <p>• Jobs loaded for property: {visibleReportJobs.length}</p>
             <p>• Completion rate: {statistics.completionRate}%</p>
             <p>
               • Average response time: {statistics.averageResponseTime} days

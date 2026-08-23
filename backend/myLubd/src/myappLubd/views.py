@@ -12,7 +12,9 @@ from google.oauth2 import id_token
 from google.auth.transport import requests
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 import math
+import csv
 from django.db.models import Count, Q, F, ExpressionWrapper, fields, Case, When, Value, Avg, Exists, OuterRef
 from django.db.models.functions import ExtractMonth, ExtractYear
 from django.db import models, transaction
@@ -51,10 +53,10 @@ import json
 import uuid
 import re
 from difflib import SequenceMatcher
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from calendar import monthrange
 from contextvars import ContextVar
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, StreamingHttpResponse
 import os
 from django.http import HttpResponse, Http404
 from django.conf import settings
@@ -3787,6 +3789,195 @@ class JobViewSet(viewsets.ModelViewSet):
             'count': len(data),
             'results': data
         }, status=status.HTTP_200_OK)
+
+    def _jobs_report_queryset(self, request):
+        """Return one authorized Property's Jobs with validated report filters."""
+        property_id = str(request.query_params.get('property_id') or '').strip()
+        if not property_id:
+            raise ValidationError({'property_id': 'Select a property to export this report.'})
+
+        property_scope = (
+            Property.objects.all()
+            if request.user.is_superuser
+            else get_accessible_properties(request.user)
+        )
+        property_obj = property_scope.filter(property_id=property_id).first()
+        if property_obj is None:
+            raise PermissionDenied('You do not have access to this property.')
+
+        jobs = Job.objects.filter(property=property_obj).select_related(
+            'property', 'user', 'area'
+        ).prefetch_related('rooms', 'topics')
+
+        status_filter = str(request.query_params.get('status') or '').strip()
+        priority_filter = str(request.query_params.get('priority') or '').strip()
+        pm_filter = str(request.query_params.get('pm') or '').strip()
+        topic_filter = str(request.query_params.get('topic') or '').strip()
+        user_filter = str(request.query_params.get('user') or '').strip()
+        month_filter = str(request.query_params.get('month') or '').strip()
+        year_filter = str(request.query_params.get('year') or '').strip()
+        created_from_raw = str(request.query_params.get('created_from') or '').strip()
+        created_to_raw = str(request.query_params.get('created_to') or '').strip()
+        search_term = str(request.query_params.get('search') or '').strip()
+
+        if status_filter and status_filter != 'all':
+            if status_filter not in dict(Job.STATUS_CHOICES):
+                raise ValidationError({'status': 'Invalid status filter.'})
+            jobs = jobs.filter(status=status_filter)
+
+        if priority_filter and priority_filter != 'all':
+            if priority_filter not in dict(Job.PRIORITY_CHOICES):
+                raise ValidationError({'priority': 'Invalid priority filter.'})
+            jobs = jobs.filter(priority=priority_filter)
+
+        if pm_filter and pm_filter != 'all':
+            if pm_filter not in {'pm', 'non_pm'}:
+                raise ValidationError({'pm': 'Invalid PM filter.'})
+            jobs = jobs.filter(is_preventivemaintenance=pm_filter == 'pm')
+
+        if topic_filter and topic_filter != 'all':
+            if topic_filter == 'none':
+                jobs = jobs.filter(topics__isnull=True)
+            elif topic_filter.isdigit():
+                jobs = jobs.filter(topics__id=int(topic_filter))
+            else:
+                raise ValidationError({'topic': 'Invalid topic filter.'})
+
+        if user_filter and user_filter != 'all':
+            if user_filter == 'none':
+                jobs = jobs.filter(user__isnull=True)
+            elif user_filter.startswith('username:'):
+                username = user_filter.removeprefix('username:').strip()
+                if not username:
+                    raise ValidationError({'user': 'Invalid user filter.'})
+                jobs = jobs.filter(user__username=username)
+            elif user_filter.isdigit():
+                jobs = jobs.filter(user_id=int(user_filter))
+            else:
+                raise ValidationError({'user': 'Invalid user filter.'})
+
+        if month_filter and month_filter != 'all':
+            if not month_filter.isdigit() or not 1 <= int(month_filter) <= 12:
+                raise ValidationError({'month': 'Invalid month filter.'})
+            jobs = jobs.filter(created_at__month=int(month_filter))
+
+        if year_filter and year_filter != 'all':
+            if not year_filter.isdigit() or len(year_filter) != 4:
+                raise ValidationError({'year': 'Invalid year filter.'})
+            jobs = jobs.filter(created_at__year=int(year_filter))
+
+        created_from = parse_date(created_from_raw) if created_from_raw else None
+        created_to = parse_date(created_to_raw) if created_to_raw else None
+        if created_from_raw and created_from is None:
+            raise ValidationError({'created_from': 'Invalid created-from date.'})
+        if created_to_raw and created_to is None:
+            raise ValidationError({'created_to': 'Invalid created-to date.'})
+        if created_from and created_to and created_from > created_to:
+            raise ValidationError({'created_to': 'Created-to must be on or after created-from.'})
+        report_timezone = property_timezone(property_obj)
+        if created_from:
+            created_from_at = timezone.make_aware(
+                datetime.combine(created_from, time.min),
+                report_timezone,
+            )
+            jobs = jobs.filter(created_at__gte=created_from_at)
+        if created_to:
+            created_to_at = timezone.make_aware(
+                datetime.combine(created_to + timedelta(days=1), time.min),
+                report_timezone,
+            )
+            jobs = jobs.filter(created_at__lt=created_to_at)
+
+        if search_term:
+            jobs = jobs.filter(
+                Q(job_id__icontains=search_term)
+                | Q(description__icontains=search_term)
+                | Q(remarks__icontains=search_term)
+                | Q(rooms__name__icontains=search_term)
+                | Q(area__name__icontains=search_term)
+                | Q(topics__title__icontains=search_term)
+                | Q(user__username__icontains=search_term)
+                | Q(user__first_name__icontains=search_term)
+                | Q(user__last_name__icontains=search_term)
+            )
+
+        return property_obj, jobs.distinct().order_by('-created_at', '-id')
+
+    @action(detail=False, methods=['get'], url_path='report-csv')
+    def report_csv(self, request):
+        """Stream every authorized Job matching the Jobs Report filters."""
+        property_obj, jobs = self._jobs_report_queryset(request)
+
+        class Echo:
+            def write(self, value):
+                return value
+
+        writer = csv.writer(Echo(), lineterminator='\r\n')
+        headers = [
+            'Job ID',
+            'Property',
+            'Status',
+            'Priority',
+            'Description',
+            'Topics',
+            'Rooms',
+            'Area',
+            'Assigned To',
+            'Created',
+            'Updated',
+            'Completed',
+            'Preventive Maintenance',
+            'Defective',
+        ]
+
+        def safe_text(value):
+            text = str(value or '')
+            if text.lstrip().startswith(('=', '+', '-', '@')):
+                return "'" + text
+            return text
+
+        def format_timestamp(value):
+            if not value:
+                return ''
+            return timezone.localtime(
+                value,
+                property_timezone(property_obj),
+            ).strftime('%Y-%m-%d %H:%M:%S')
+
+        def stream_rows():
+            # UTF-8 BOM keeps Thai and other Unicode text readable in Excel.
+            yield '\ufeff'
+            yield writer.writerow(headers)
+            for job in jobs.iterator(chunk_size=500):
+                yield writer.writerow([
+                    safe_text(job.job_id),
+                    safe_text(property_obj.name),
+                    safe_text(job.status),
+                    safe_text(job.priority),
+                    safe_text(job.description),
+                    safe_text('; '.join(topic.title for topic in job.topics.all())),
+                    safe_text('; '.join(room.name for room in job.rooms.all())),
+                    safe_text(job.area.name if job.area else ''),
+                    safe_text(display_name_from_user(job.user, fallback='Unassigned')),
+                    format_timestamp(job.created_at),
+                    format_timestamp(job.updated_at),
+                    format_timestamp(job.completed_at),
+                    'Yes' if job.is_preventivemaintenance else 'No',
+                    'Yes' if job.is_defective else 'No',
+                ])
+
+        report_date = timezone.localtime(
+            timezone.now(),
+            property_timezone(property_obj),
+        ).date()
+        filename = f'jobs-report-{property_obj.property_id}-{report_date.isoformat()}.csv'
+        response = StreamingHttpResponse(
+            stream_rows(),
+            content_type='text/csv; charset=utf-8',
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['X-Content-Type-Options'] = 'nosniff'
+        return response
 
     def get_object(self):
         queryset = self.get_queryset()

@@ -10,6 +10,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "echo \"No automated tests configured yet\"",
+    "test:jobs-dashboard": "node --test tests/jobs-dashboard-request.test.mjs",
     "test:pm-pdf": "node --test tests/pm-pdf-evidence.test.cjs"
   },
   "dependencies": {

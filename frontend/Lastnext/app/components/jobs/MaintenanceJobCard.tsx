@@ -161,7 +161,9 @@ export default function MaintenanceJobCard({
   job,
   viewMode = "grid",
 }: MaintenanceJobCardProps) {
-  const detailHref = `/dashboard/jobs/${job.job_id}`;
+  const detailHref = job.property_id
+    ? `/dashboard/jobs/${encodeURIComponent(job.job_id)}?property_id=${encodeURIComponent(String(job.property_id))}`
+    : `/dashboard/jobs/${encodeURIComponent(job.job_id)}`;
   const imageUrl = useMemo(() => getJobImageUrl(job), [job]);
   const [imageFailed, setImageFailed] = useState(false);
   const { icon: JobTypeIcon, label: jobTypeLabel } = getTopicIcon(job);
@@ -239,8 +241,18 @@ export default function MaintenanceJobCard({
             {getProblemSummary(job)}
           </h2>
 
-          <div className="job-card-status mt-3">
+          <div className="job-card-status mt-3 flex flex-wrap items-center gap-2">
             <StatusBadge status={job.status} size="sm" />
+            <span
+              className={cn(
+                "inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide sm:text-xs",
+                job.priority === "high" && "border-red-200 bg-red-50 text-red-800",
+                job.priority === "medium" && "border-amber-200 bg-amber-50 text-amber-800",
+                job.priority === "low" && "border-emerald-200 bg-emerald-50 text-emerald-800",
+              )}
+            >
+              {job.priority} priority
+            </span>
           </div>
 
           <dl className="job-card-meta mt-3 grid grid-cols-1 gap-1.5 text-[11px] text-foreground sm:mt-4 sm:gap-2 sm:text-sm">

@@ -31,6 +31,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .serializers import (
     CurrentUserProfileSerializer, CurrentUserProfileUpdateSerializer,
     UserProfileSerializer, PropertySerializer, RoomSerializer, TopicSerializer, JobSerializer,
+    JobDashboardSerializer,
     UserSerializer, PreventiveMaintenanceSerializer, PreventiveMaintenanceCreateUpdateSerializer,
     PreventiveMaintenanceCompleteSerializer, PreventiveMaintenanceListSerializer,
     PreventiveMaintenanceDetailSerializer, PropertyPMStatusSerializer, PMMasterPlanSerializer,
@@ -3707,6 +3708,122 @@ class JobViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(user__username=str(user_filter))
 
         return queryset.distinct()
+
+    @action(detail=False, methods=['get'], url_path='dashboard')
+    def dashboard(self, request):
+        """Return one authorized Property's Jobs for the interactive dashboard."""
+        property_id = str(request.query_params.get('property_id') or '').strip()
+        if not property_id:
+            return Response(
+                {'detail': 'Select a property to view jobs.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        property_scope = (
+            Property.objects.all()
+            if request.user.is_superuser
+            else get_accessible_properties(request.user)
+        )
+        active_property = property_scope.filter(property_id=property_id).first()
+        if active_property is None:
+            return Response(
+                {'detail': 'You do not have access to this property.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        jobs = Job.objects.filter(property=active_property).select_related(
+            'user', 'property', 'area', 'area__property'
+        ).prefetch_related('rooms', 'rooms__property', 'topics', 'job_images')
+
+        search_term = str(request.query_params.get('search') or '').strip()
+        priority_filter = str(request.query_params.get('priority') or '').strip()
+        date_filter = str(request.query_params.get('date') or '').strip()
+        status_filter = str(request.query_params.get('status') or '').strip()
+        ordering = str(request.query_params.get('ordering') or '-created_at').strip()
+
+        if priority_filter and priority_filter != 'all':
+            if priority_filter not in dict(Job.PRIORITY_CHOICES):
+                raise ValidationError({'priority': 'Invalid priority filter.'})
+            jobs = jobs.filter(priority=priority_filter)
+        if date_filter and date_filter != 'all':
+            if date_filter not in {'today', 'week', 'month'}:
+                raise ValidationError({'date': 'Invalid date filter.'})
+            now = timezone.now()
+            created_after = (
+                now.replace(hour=0, minute=0, second=0, microsecond=0)
+                if date_filter == 'today'
+                else now - timedelta(days=7 if date_filter == 'week' else 30)
+            )
+            jobs = jobs.filter(created_at__gte=created_after)
+        if search_term:
+            jobs = jobs.filter(
+                Q(job_id__icontains=search_term)
+                | Q(description__icontains=search_term)
+                | Q(remarks__icontains=search_term)
+                | Q(rooms__name__icontains=search_term)
+                | Q(area__name__icontains=search_term)
+                | Q(topics__title__icontains=search_term)
+                | Q(user__username__icontains=search_term)
+                | Q(user__first_name__icontains=search_term)
+                | Q(user__last_name__icontains=search_term)
+            )
+
+        jobs = jobs.distinct()
+        status_counts = jobs.aggregate(
+            total=Count('id', distinct=True),
+            pending=Count('id', filter=Q(status='pending'), distinct=True),
+            in_progress=Count('id', filter=Q(status='in_progress'), distinct=True),
+            waiting_sparepart=Count(
+                'id', filter=Q(status='waiting_sparepart'), distinct=True
+            ),
+            completed=Count('id', filter=Q(status='completed'), distinct=True),
+            cancelled=Count('id', filter=Q(status='cancelled'), distinct=True),
+            defect=Count('id', filter=Q(is_defective=True), distinct=True),
+            preventive_maintenance=Count(
+                'id', filter=Q(is_preventivemaintenance=True), distinct=True
+            ),
+        )
+
+        if status_filter and status_filter != 'all':
+            if status_filter == 'defect':
+                jobs = jobs.filter(is_defective=True)
+            elif status_filter == 'preventive_maintenance':
+                jobs = jobs.filter(is_preventivemaintenance=True)
+            elif status_filter in dict(Job.STATUS_CHOICES):
+                jobs = jobs.filter(status=status_filter)
+            else:
+                raise ValidationError({'status': 'Invalid status filter.'})
+
+        allowed_ordering = {
+            'created_at', '-created_at', 'updated_at', '-updated_at',
+            'priority', '-priority', 'status', '-status',
+        }
+        if ordering not in allowed_ordering:
+            raise ValidationError({'ordering': 'Invalid ordering.'})
+        jobs = jobs.order_by(ordering, '-id')
+
+        page = self.paginate_queryset(jobs)
+        serializer = JobDashboardSerializer(
+            page if page is not None else jobs,
+            many=True,
+            context=self.get_serializer_context(),
+        )
+        can_operate = bool(
+            request.user.is_superuser
+            or get_operable_properties(request.user).filter(pk=active_property.pk).exists()
+        )
+        context = {
+            'property_id': property_id,
+            'property_name': active_property.name,
+            'can_operate': can_operate,
+            'can_assign': can_operate,
+            'status_counts': status_counts,
+        }
+        if page is not None:
+            response = self.get_paginated_response(serializer.data)
+            response.data.update(context)
+            return response
+        return Response({'count': len(serializer.data), 'results': serializer.data, **context})
 
     @action(detail=False, methods=['get'])
     def stats(self, request):

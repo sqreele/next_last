@@ -775,6 +775,63 @@ class JobCommentSerializer(serializers.ModelSerializer):
         return text
 
 
+# Purpose-built read serializer for the Property-scoped Jobs dashboard.  Keep
+# assignee contact details and database Job/User identities out of this list
+# projection; detail and write endpoints continue to use JobSerializer.
+class JobDashboardImageSerializer(JobImageSerializer):
+    class Meta(JobImageSerializer.Meta):
+        fields = ['image_url', 'jpeg_url', 'uploaded_at']
+
+
+class JobDashboardSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    technician_name = serializers.SerializerMethodField()
+    images = JobDashboardImageSerializer(source='job_images', many=True, read_only=True)
+    topics = TopicSerializer(many=True, read_only=True)
+    rooms = RoomSummarySerializer(many=True, read_only=True)
+    property_id = serializers.CharField(source='property.property_id', read_only=True)
+    area = AreaSummarySerializer(read_only=True)
+    area_name = serializers.CharField(source='area.name', read_only=True)
+    can_operate = serializers.SerializerMethodField()
+    can_assign = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Job
+        fields = [
+            'job_id', 'description', 'status', 'priority', 'remarks',
+            'created_at', 'updated_at', 'completed_at', 'is_defective',
+            'is_preventivemaintenance', 'property_id', 'rooms', 'topics',
+            'images', 'area', 'area_name', 'user_name', 'technician_name',
+            'can_operate', 'can_assign',
+        ]
+        read_only_fields = fields
+
+    def _can_operate(self, obj):
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user or not getattr(user, 'is_authenticated', False):
+            return False
+        if user.is_superuser:
+            return True
+        if not hasattr(self, '_operable_property_ids'):
+            self._operable_property_ids = set(
+                get_operable_properties(user).values_list('pk', flat=True)
+            )
+        return obj.property_id in self._operable_property_ids
+
+    def get_user_name(self, obj):
+        return get_user_display_name(getattr(obj, 'user', None)) or 'Unassigned technician'
+
+    def get_technician_name(self, obj):
+        return self.get_user_name(obj)
+
+    def get_can_operate(self, obj):
+        return self._can_operate(obj)
+
+    def get_can_assign(self, obj):
+        return self._can_operate(obj)
+
+
 # Job serializer
 class JobSerializer(serializers.ModelSerializer):
     updated_by = serializers.SlugRelatedField(

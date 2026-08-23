@@ -15,6 +15,8 @@ import os
 from datetime import timedelta
 from typing import Optional
 
+from django.core.exceptions import ImproperlyConfigured
+
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 # Load environment variables from a .env file for local development
@@ -24,9 +26,37 @@ try:
 except Exception:
     pass
 
-# Security
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'your-default-secret-key')
 DEBUG = os.getenv('DEBUG', 'False') in ('True', '1', 'true', 'yes')
+
+# A local-only fallback keeps the development Compose environment easy to use.
+# Production must provide its own strong value and fails before Django starts if
+# it is absent or resembles a development key.
+_DEVELOPMENT_SECRET_KEY = 'your-default-secret-key'
+_KNOWN_INSECURE_SECRET_KEYS = {
+    _DEVELOPMENT_SECRET_KEY,
+    'development-secret',
+    'django-insecure-change-me',
+}
+_configured_secret_key = os.getenv('DJANGO_SECRET_KEY')
+
+if DEBUG:
+    SECRET_KEY = _configured_secret_key or _DEVELOPMENT_SECRET_KEY
+else:
+    if not _configured_secret_key:
+        raise ImproperlyConfigured(
+            'DJANGO_SECRET_KEY must be configured in production.'
+        )
+    if (
+        _configured_secret_key in _KNOWN_INSECURE_SECRET_KEYS
+        or len(_configured_secret_key) < 50
+    ):
+        raise ImproperlyConfigured(
+            'DJANGO_SECRET_KEY must be at least 50 characters and must not use a development fallback.'
+        )
+    SECRET_KEY = _configured_secret_key
+
+# The production Nginx TLS vhost overwrites X-Forwarded-Proto before proxying
+# requests, so clients cannot forge the header Django trusts here.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Production Security Settings
@@ -35,7 +65,9 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
+    # Preload is irreversible at deployment timescales and requires every
+    # current and future subdomain to be HTTPS-ready.
+    SECURE_HSTS_PRELOAD = False
     
     # Cookie Security
     SESSION_COOKIE_SECURE = True
@@ -43,7 +75,8 @@ if not DEBUG:
     
     # Content Security
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+    SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
     X_FRAME_OPTIONS = 'DENY'
 else:
     # Development settings
@@ -53,37 +86,27 @@ else:
     CSRF_COOKIE_SECURE = False
 
 # Hosts and Security Settings
-_default_allowed_hosts = [
+_development_allowed_hosts = [
     'localhost',
     '127.0.0.1',
     '[::1]',
-    'pcms.live',
-    'www.pcms.live',
     'django-backend',
     'backend',
-    # Include with port for internal Docker communication
-    'backend:8000',
-    'django-backend:8000',
-    'localhost:8000',
-    '127.0.0.1:8000',
 ]
 _env_allowed_hosts = os.getenv('DJANGO_ALLOWED_HOSTS')
 if _env_allowed_hosts:
-    # Parse ALLOWED_HOSTS from environment variable
-    # Support both comma and space separated values
     ALLOWED_HOSTS = [h.strip() for h in _env_allowed_hosts.replace(',', ' ').split() if h.strip()]
-    # Always include essential hosts (with and without port)
-    essential_hosts = ['backend', 'django-backend', 'localhost', '127.0.0.1']
-    # Also add with common ports
-    for host in essential_hosts:
-        if host not in ALLOWED_HOSTS:
-            ALLOWED_HOSTS.append(host)
-        # Add with port 8000 for internal Docker communication
-        host_with_port = f"{host}:8000"
-        if host_with_port not in ALLOWED_HOSTS:
-            ALLOWED_HOSTS.append(host_with_port)
+elif DEBUG:
+    ALLOWED_HOSTS = _development_allowed_hosts
 else:
-    ALLOWED_HOSTS = _default_allowed_hosts
+    raise ImproperlyConfigured(
+        'DJANGO_ALLOWED_HOSTS must explicitly list production hosts.'
+    )
+
+if not DEBUG and '*' in ALLOWED_HOSTS:
+    raise ImproperlyConfigured(
+        'DJANGO_ALLOWED_HOSTS cannot contain a wildcard in production.'
+    )
 
 # Log the final ALLOWED_HOSTS for debugging
 import logging
@@ -364,6 +387,11 @@ STATIC_ROOT = '/app/static'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/app/media'
+# Production sends an authorized internal redirect to the Nginx container,
+# which mounts the same media volume. Tests/development stream through Django.
+PROTECTED_MEDIA_USE_X_ACCEL = os.getenv(
+    'PROTECTED_MEDIA_USE_X_ACCEL', 'true' if not DEBUG else 'false'
+).lower() in ('true', '1', 'yes')
 # Logging
 LOGGING = {
     'version': 1,
@@ -446,20 +474,32 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
 _env_cors_origins = os.getenv('DJANGO_CORS_ORIGINS')
 if _env_cors_origins:
     CORS_ALLOWED_ORIGINS = [o.strip() for o in _env_cors_origins.replace(',', ' ').split() if o.strip()]
-else:
+elif DEBUG:
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:3000",
-        "https://pcms.live",
-        "https://www.pcms.live",
         "http://nextjs-frontend:3000",
     ]
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-      "https://pcms.live",
-    "https://www.pcms.live",
-    "http://nextjs-frontend:3000",
-     
-]
+else:
+    raise ImproperlyConfigured(
+        'DJANGO_CORS_ORIGINS must explicitly list production origins.'
+    )
+
+_env_csrf_trusted_origins = os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS')
+if _env_csrf_trusted_origins:
+    CSRF_TRUSTED_ORIGINS = [
+        origin.strip()
+        for origin in _env_csrf_trusted_origins.replace(',', ' ').split()
+        if origin.strip()
+    ]
+elif DEBUG:
+    CSRF_TRUSTED_ORIGINS = [
+        "http://localhost:3000",
+        "http://nextjs-frontend:3000",
+    ]
+else:
+    raise ImproperlyConfigured(
+        'DJANGO_CSRF_TRUSTED_ORIGINS must explicitly list production origins.'
+    )
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']
 

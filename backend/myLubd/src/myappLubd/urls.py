@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views
+from .protected_media import ProtectedMediaView
 from .views import (
     RoomViewSet, TopicViewSet, JobViewSet, PropertyViewSet,
     UserProfileViewSet, UserViewSet, MachineViewSet,
@@ -38,6 +39,11 @@ router.register(r'usage-metrics', UsageMetricViewSet, basename='usage-metric')
 
 # Define the URL patterns
 urlpatterns = [
+    path(
+        'api/v1/protected-media/<str:media_type>/<int:object_id>/<str:variant>/',
+        ProtectedMediaView.as_view(),
+        name='protected-media',
+    ),
     # Static file serving (fallback when Django's built-in serving fails)
     path('static/<path:file_path>', views.serve_static_file, name='serve_static_file'),
     

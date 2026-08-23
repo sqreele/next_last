@@ -45,6 +45,7 @@ from .serializers import (
     TenantSubscriptionSerializer, UsageMetricSerializer,
 )
 from .job_property import resolve_job_property
+from .protected_media import protected_media_url
 from django.core.files.base import ContentFile
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
@@ -68,12 +69,17 @@ from .cache import cache_result, CacheManager
 from .services import NotificationService, PreventiveMaintenanceService
 from .tenancy import (
     accessible_property_ids,
+    can_manage_membership_property_grants,
+    can_manage_property_master_data,
+    can_manage_room_master_data,
+    can_manage_tenant_master_data,
     enforce_subscription_limit,
     ensure_tenant_for_property,
     ensure_tenant_for_user,
     get_accessible_properties,
     get_operable_properties,
     get_property_summary_recipients,
+    get_room_manageable_properties,
     get_user_tenants,
     TENANT_OPERATOR_ROLES,
     TENANT_WIDE_PROPERTY_ROLES,
@@ -3312,6 +3318,23 @@ class RoomViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = RoomSerializer
 
+    def perform_create(self, serializer):
+        property_obj = serializer.validated_data.get('_canonical_room_property')
+        if not can_manage_room_master_data(self.request.user, property_obj):
+            raise PermissionDenied("You do not have permission to create rooms for this property.")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        room = serializer.instance
+        if not can_manage_room_master_data(self.request.user, room.property):
+            raise PermissionDenied("You do not have permission to update rooms for this property.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if not can_manage_room_master_data(self.request.user, instance.property):
+            raise PermissionDenied("You do not have permission to delete rooms for this property.")
+        instance.delete()
+
     @staticmethod
     def _floor_from_room_name(room_name):
         room_name = str(room_name or '').strip()
@@ -3471,14 +3494,14 @@ class RoomViewSet(viewsets.ModelViewSet):
         if reader.fieldnames is None:
             return Response({'error': 'CSV is empty.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        accessible_props = list(get_accessible_properties(request.user))
-        if not accessible_props:
+        manageable_props = list(get_room_manageable_properties(request.user))
+        if not manageable_props:
             return Response(
-                {'error': 'You have no property access — cannot import rooms.'},
+                {'error': 'You do not have permission to administer rooms.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
         prop_lookup = {}
-        for prop in accessible_props:
+        for prop in manageable_props:
             prop_lookup[str(prop.id)] = prop
             if prop.property_id:
                 prop_lookup[str(prop.property_id)] = prop
@@ -3557,6 +3580,21 @@ class TopicViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Topic.objects.all()
     serializer_class = TopicSerializer
+
+    def perform_create(self, serializer):
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only a platform superuser can create global topics.")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only a platform superuser can update global topics.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("Only a platform superuser can delete global topics.")
+        instance.delete()
 
     def _selected_property_queryset(self):
         property_filter = (
@@ -4490,12 +4528,7 @@ class JobViewSet(viewsets.ModelViewSet):
         # Image uploads — JobImage has uploaded_at and uploaded_by
         for image in job.job_images.all().order_by('uploaded_at'):
             uploaded_by = display_name_from_user(image.uploaded_by, fallback='unknown') if image.uploaded_by else None
-            image_url = None
-            if image.image:
-                try:
-                    image_url = request.build_absolute_uri(image.image.url)
-                except Exception:
-                    image_url = image.image.url
+            image_url = protected_media_url('job-image', image.pk) if image.image else None
             events.append({
                 'kind': 'photo_uploaded',
                 'at': image.uploaded_at.isoformat() if image.uploaded_at else None,
@@ -4702,6 +4735,18 @@ class TenantViewSet(viewsets.ModelViewSet):
                 status='trialing',
             )
 
+    def perform_update(self, serializer):
+        tenant = serializer.instance
+        if not can_manage_tenant_master_data(self.request.user, tenant):
+            raise PermissionDenied("You do not have permission to update this tenant.")
+        serializer.save()
+
+    def destroy(self, request, *args, **kwargs):
+        return Response(
+            {'detail': 'Generic tenant deletion is disabled.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
+
     @action(detail=True, methods=['get'])
     def usage(self, request, pk=None):
         tenant = self.get_object()
@@ -4764,34 +4809,55 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
 
     def _validate_membership_properties(self, tenant, serializer):
         properties = serializer.validated_data.get('properties') or []
-        invalid = [prop.name for prop in properties if prop.tenant_id and prop.tenant_id != tenant.id]
+        invalid = [prop.name for prop in properties if prop.tenant_id != tenant.id]
         if invalid:
             raise ValidationError({
                 'properties': f"Properties must belong to tenant {tenant.name}: {', '.join(invalid)}"
+            })
+
+    def _validate_active_grant_target(self, serializer, instance=None):
+        if 'properties' not in serializer.validated_data:
+            return
+        is_active = serializer.validated_data.get(
+            'is_active',
+            instance.is_active if instance is not None else True,
+        )
+        if not is_active:
+            raise ValidationError({
+                'properties': 'Property grants cannot be assigned to an inactive membership.'
             })
 
     def perform_create(self, serializer):
         tenant = self._get_tenant_from_request(serializer)
         if not user_can_manage_tenant(self.request.user, tenant):
             raise PermissionDenied("You do not have permission to manage this tenant.")
+        if (
+            'properties' in serializer.validated_data
+            and not can_manage_membership_property_grants(self.request.user, tenant)
+        ):
+            raise PermissionDenied("You do not have permission to manage membership property grants.")
         enforce_subscription_limit(tenant, 'max_users')
+        self._validate_active_grant_target(serializer)
         self._validate_membership_properties(tenant, serializer)
-        membership = serializer.save(invited_by=self.request.user)
-        for prop in membership.properties.all():
-            if prop.tenant_id is None:
-                prop.tenant = membership.tenant
-                prop.save(update_fields=['tenant'])
+        serializer.save(invited_by=self.request.user)
 
     def perform_update(self, serializer):
         instance = self.get_object()
         if not user_can_manage_tenant(self.request.user, instance.tenant):
             raise PermissionDenied("You do not have permission to manage this tenant.")
+        requested_tenant = serializer.validated_data.get('tenant', instance.tenant)
+        if requested_tenant.pk != instance.tenant_id:
+            raise ValidationError({
+                'tenant': 'A membership cannot be moved to another tenant.'
+            })
+        if (
+            'properties' in serializer.validated_data
+            and not can_manage_membership_property_grants(self.request.user, instance.tenant)
+        ):
+            raise PermissionDenied("You do not have permission to manage membership property grants.")
+        self._validate_active_grant_target(serializer, instance)
         self._validate_membership_properties(instance.tenant, serializer)
-        membership = serializer.save()
-        for prop in membership.properties.all():
-            if prop.tenant_id is None:
-                prop.tenant = membership.tenant
-                prop.save(update_fields=['tenant'])
+        serializer.save()
 
     def perform_destroy(self, instance):
         if not user_can_manage_tenant(self.request.user, instance.tenant):
@@ -5017,7 +5083,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         tenant = serializer.validated_data.get('tenant')
         if tenant is None:
             tenant = ensure_tenant_for_user(self.request.user)
-        if not user_can_manage_tenant(self.request.user, tenant):
+        if not can_manage_property_master_data(self.request.user, tenant):
             raise PermissionDenied("You do not have permission to add properties to this tenant.")
         enforce_subscription_limit(tenant, 'max_properties')
         prop = serializer.save(tenant=tenant)
@@ -5027,6 +5093,17 @@ class PropertyViewSet(viewsets.ModelViewSet):
             defaults={'role': 'owner'},
         )
         membership.properties.add(prop)
+
+    def perform_update(self, serializer):
+        property_obj = serializer.instance
+        if not can_manage_property_master_data(self.request.user, property_obj.tenant):
+            raise PermissionDenied("You do not have permission to update this property.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if not can_manage_property_master_data(self.request.user, instance.tenant):
+            raise PermissionDenied("You do not have permission to delete this property.")
+        instance.delete()
 
     def get_object(self):
         property_id = self.kwargs.get('property_id')
@@ -5088,108 +5165,17 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def add_user(self, request, property_id=None):
-        property_obj = get_object_or_404(Property, property_id=property_id)
-        membership = TenantMembership.objects.filter(
-            user=request.user, tenant=property_obj.tenant, is_active=True
-        ).first()
-        if property_obj.tenant_id is None or membership is None:
-            raise ValidationError({
-                'detail': 'User must have an active TenantMembership before property access can be assigned.'
-            })
-        if membership.role not in TENANT_WIDE_PROPERTY_ROLES:
-            membership.properties.add(property_obj)
-        return Response({
-            'success': True,
-            'property_id': property_obj.property_id,
-            'property_name': property_obj.name,
-        })
+        raise PermissionDenied(
+            "This compatibility endpoint is retired; administrators must manage "
+            "property grants through TenantMembership."
+        )
 
     @action(detail=False, methods=['post'])
     def assign_properties(self, request):
-        """
-        Assign multiple properties to the current user.
-        Used during onboarding for new users.
-        
-        Expected payload: { "property_ids": [1, 2, 3] }
-        """
-        logger.info(f"assign_properties called by user: {request.user.username}")
-        membership = TenantMembership.objects.filter(user=request.user, is_active=True).first()
-        if membership is None:
-            raise ValidationError({'detail': 'User must have an active TenantMembership before property access can be assigned.'})
-        property_ids = request.data.get('property_ids', [])
-        
-        if not property_ids:
-            return Response(
-                {"error": "property_ids is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        assigned = []
-        errors = []
-        resolved_properties = []
-        
-        for prop_id in property_ids:
-            try:
-                # Try to find property by id (integer) or property_id (string)
-                if isinstance(prop_id, int):
-                    property_obj = Property.objects.get(id=prop_id)
-                else:
-                    property_obj = Property.objects.get(property_id=prop_id)
-                if property_obj.tenant_id != membership.tenant_id:
-                    raise ValidationError({'property_ids': 'Every property must belong to your membership tenant.'})
-                resolved_properties.append(property_obj)
-                
-                assigned.append({
-                    'id': property_obj.id,
-                    'property_id': property_obj.property_id,
-                    'name': property_obj.name
-                })
-            except Property.DoesNotExist:
-                errors.append({'id': prop_id, 'error': 'Property not found'})
-            except Exception as e:
-                errors.append({'id': prop_id, 'error': str(e)})
-        
-        if errors:
-            return Response({'success': False, 'assigned': [], 'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
-        if membership.role not in TENANT_WIDE_PROPERTY_ROLES:
-            membership.properties.set(resolved_properties)
-        logger.info(f"assign_properties result: {len(assigned)} assigned, {len(errors)} errors")
-        
-        # Send welcome email to new user if properties were assigned successfully
-        if assigned and request.user.email:
-            try:
-                from .email_utils import send_welcome_email, send_new_user_notification_to_admin
-                
-                # Send welcome email to the new user
-                email_sent = send_welcome_email(
-                    user_email=request.user.email,
-                    username=request.user.get_full_name() or request.user.username,
-                    properties=assigned
-                )
-                
-                if email_sent:
-                    logger.info(f"Welcome email sent to new user: {request.user.email}")
-                else:
-                    logger.warning(f"Failed to send welcome email to: {request.user.email}")
-                
-                # Also notify admins about the new user
-                send_new_user_notification_to_admin(
-                    new_user_email=request.user.email,
-                    new_username=request.user.get_full_name() or request.user.username,
-                    properties=assigned
-                )
-                
-            except Exception as email_error:
-                logger.error(f"Error sending welcome email: {email_error}")
-                # Don't fail the request if email fails
-        
-        return Response({
-            'success': len(errors) == 0,
-            'assigned': assigned,
-            'errors': errors,
-            'message': f'Assigned {len(assigned)} properties to user {request.user.username}',
-            'email_sent': bool(assigned and request.user.email)
-        })
+        raise PermissionDenied(
+            "This compatibility endpoint is retired; administrators must manage "
+            "property grants through TenantMembership."
+        )
 
     @action(detail=False, methods=['get'])
     def all(self, request):
@@ -5320,7 +5306,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
             )
 
         tenant = ensure_tenant_for_user(request.user)
-        if not user_can_manage_tenant(request.user, tenant):
+        if not can_manage_property_master_data(request.user, tenant):
             return Response(
                 {'error': 'You do not have permission to import properties for this tenant.'},
                 status=status.HTTP_403_FORBIDDEN,
@@ -5348,7 +5334,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
                 if existing is not None:
                     if existing.tenant_id is None:
                         ensure_tenant_for_property(existing, request.user)
-                    elif not user_can_manage_tenant(request.user, existing.tenant):
+                    elif not can_manage_property_master_data(request.user, existing.tenant):
                         errors.append({'row': row_index, 'error': 'You cannot attach this property.'})
                         continue
                     attached.append({
@@ -5909,7 +5895,10 @@ def google_auth(request):
                 'username': display_name_from_user(user, fallback=user.email or 'User'),
                 'display_name': display_name_from_user(user, fallback=user.email or 'User'),
                 'email': user.email,
-                'profile_image': userprofile.profile_image.url if userprofile.profile_image else None,
+                'profile_image': (
+                    protected_media_url('profile', userprofile.pk)
+                    if userprofile.profile_image else None
+                ),
                 'positions': userprofile.positions,
                 'properties': list(get_accessible_properties(user).values('id', 'name', 'property_id')),
             }

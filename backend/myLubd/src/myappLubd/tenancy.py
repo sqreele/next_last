@@ -20,6 +20,10 @@ from .models import (
 
 TENANT_ADMIN_ROLES = {'owner', 'admin', 'billing'}
 TENANT_OPERATOR_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'technician'}
+MEMBERSHIP_PROPERTY_GRANT_ADMIN_ROLES = {'owner', 'admin'}
+TENANT_MASTER_DATA_ADMIN_ROLES = {'owner', 'admin'}
+PROPERTY_MASTER_DATA_ADMIN_ROLES = {'owner', 'admin'}
+ROOM_MASTER_DATA_ADMIN_ROLES = {'owner', 'admin', 'manager', 'supervisor'}
 # These are the existing roles which intentionally see every property in a
 # tenant.  Keep this decision here rather than duplicating role checks in API
 # views.
@@ -83,6 +87,74 @@ def user_can_manage_tenant(user, tenant):
         is_active=True,
         role__in=TENANT_ADMIN_ROLES,
     ).exists()
+
+
+def can_manage_membership_property_grants(user, tenant):
+    """Return whether ``user`` may change explicit grants in ``tenant``.
+
+    Property-grant administration is intentionally narrower than general
+    tenant administration: billing members manage billing concerns, while
+    managers have tenant-wide operational access but do not administer
+    memberships. Platform superusers retain the documented break-glass path.
+    """
+    if not getattr(user, 'is_authenticated', False) or tenant is None:
+        return False
+    if user.is_superuser:
+        return True
+    return TenantMembership.objects.filter(
+        tenant=tenant,
+        user=user,
+        is_active=True,
+        role__in=MEMBERSHIP_PROPERTY_GRANT_ADMIN_ROLES,
+    ).exists()
+
+
+def can_manage_tenant_master_data(user, tenant):
+    """Return whether ``user`` may update tenant master data."""
+    if not getattr(user, 'is_authenticated', False) or tenant is None:
+        return False
+    if user.is_superuser:
+        return True
+    return TenantMembership.objects.filter(
+        tenant=tenant,
+        user=user,
+        is_active=True,
+        role__in=TENANT_MASTER_DATA_ADMIN_ROLES,
+    ).exists()
+
+
+def can_manage_property_master_data(user, tenant):
+    """Return whether ``user`` may create, update, or delete Properties."""
+    if not getattr(user, 'is_authenticated', False) or tenant is None:
+        return False
+    if user.is_superuser:
+        return True
+    return TenantMembership.objects.filter(
+        tenant=tenant,
+        user=user,
+        is_active=True,
+        role__in=PROPERTY_MASTER_DATA_ADMIN_ROLES,
+    ).exists()
+
+
+def get_room_manageable_properties(user):
+    """Properties where ``user`` may administer Room master data."""
+    if not getattr(user, 'is_authenticated', False):
+        return Property.objects.none()
+    if user.is_superuser:
+        return Property.objects.all()
+    return get_operable_properties(user).filter(
+        tenant__memberships__user=user,
+        tenant__memberships__is_active=True,
+        tenant__memberships__role__in=ROOM_MASTER_DATA_ADMIN_ROLES,
+    ).distinct()
+
+
+def can_manage_room_master_data(user, property_obj):
+    """Return whether ``user`` may mutate Rooms in ``property_obj``."""
+    if property_obj is None:
+        return False
+    return get_room_manageable_properties(user).filter(pk=property_obj.pk).exists()
 
 
 def get_accessible_properties(user, tenant=None):
@@ -150,6 +222,7 @@ def get_property_summary_recipients(property_obj):
     return user_model.objects.filter(
         Q(
             tenant_memberships__is_active=True,
+            tenant_memberships__tenant_id=property_obj.tenant_id,
             tenant_memberships__properties=property_obj,
         )
         | Q(

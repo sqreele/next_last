@@ -4,6 +4,7 @@ from django.test import RequestFactory, TestCase
 
 from .admin import IsDefectFilter, JobAdmin, _excel_image_for_export
 from .models import Job, Property, Room
+from .protected_media import protected_media_api_url
 
 
 User = get_user_model()
@@ -127,7 +128,9 @@ class JobAdminCsvExportTests(TestCase):
         response = self.admin.export_jobs_csv(self.request, Job.objects.filter(pk=self.job.pk))
         rows = list(DictReader(StringIO(response.content.decode())))
 
-        expected_url = self.request.build_absolute_uri(image.image.url)
+        expected_url = self.request.build_absolute_uri(
+            protected_media_api_url('job-image', image.pk)
+        )
         self.assertEqual(rows[0]['Image URLs'], expected_url)
         self.assertEqual(
             rows[0]['Image Formulas (Excel/Google Sheets)'],
@@ -146,7 +149,9 @@ class JobAdminCsvExportTests(TestCase):
         response = self.admin.export_jobs_google_sheets_csv(self.request, Job.objects.filter(pk=self.job.pk))
         rows = list(DictReader(StringIO(response.content.decode())))
 
-        expected_url = self.request.build_absolute_uri(image.image.url)
+        expected_url = self.request.build_absolute_uri(
+            protected_media_api_url('job-image', image.pk)
+        )
         self.assertIn('jobs_google_sheets_', response['Content-Disposition'])
         self.assertEqual(rows[0]['Image URLs'], expected_url)
         self.assertEqual(
@@ -175,7 +180,10 @@ class JobAdminCsvExportTests(TestCase):
         workbook = load_workbook(BytesIO(response.content))
         row = next(workbook.active.iter_rows(min_row=2, max_row=2, values_only=True))
         self.assertEqual(row[16], 'Image URL only (unsupported Excel preview)')
-        self.assertEqual(row[17], self.request.build_absolute_uri(image.image.url))
+        self.assertEqual(
+            row[17],
+            self.request.build_absolute_uri(protected_media_api_url('job-image', image.pk)),
+        )
 
     def test_excel_image_conversion_opens_mpo_to_classify_it(self):
         from pathlib import Path
@@ -254,4 +262,7 @@ class JobAdminCsvExportTests(TestCase):
         workbook = load_workbook(BytesIO(response.content))
         row = next(workbook.active.iter_rows(min_row=2, max_row=2, values_only=True))
         self.assertEqual(row[16], 'Embedded')
-        self.assertEqual(row[17], self.request.build_absolute_uri(image.image.url))
+        self.assertEqual(
+            row[17],
+            self.request.build_absolute_uri(protected_media_api_url('job-image', image.pk)),
+        )

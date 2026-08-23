@@ -33,7 +33,7 @@ class RoomBulkImportTests(TestCase):
         self.user = User.objects.create_user(username='alice', password='pw12345!')
         tenant = Tenant.objects.create(name='Room Import Tenant')
         self.prop = Property.objects.create(name='Hotel A', tenant=tenant)
-        TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.prop)
+        TenantMembership.objects.create(user=self.user, tenant=tenant, role='supervisor').properties.add(self.prop)
         self.client.force_authenticate(user=self.user)
 
     def _post(self, payload, **extra):

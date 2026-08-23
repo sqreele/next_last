@@ -78,16 +78,14 @@ from .models import (
     InventoryUsage,
 )
 from .tenancy import get_accessible_properties, get_property_summary_recipients
+from .protected_media import protected_media_api_url
 
 
 
-def _absolute_file_url(request, file_field):
-    """Return an absolute URL for a file field so CSV exports can link images."""
-    if not file_field or not hasattr(file_field, 'url'):
-        return ''
-    try:
-        url = file_field.url
-    except ValueError:
+def _absolute_media_url(request, media_type, object_id, variant='image'):
+    """Return an authenticated media URL for admin exports and previews."""
+    url = protected_media_api_url(media_type, object_id, variant)
+    if not url:
         return ''
     if request is not None:
         return request.build_absolute_uri(url)
@@ -106,15 +104,15 @@ def _image_export_note(image_count):
     """Explain how image data appears in CSV exports.
 
     CSV files are plain text and cannot contain embedded image binaries. The
-    export includes both direct URLs and optional spreadsheet formulas instead,
-    so users can either click the links or render the images in spreadsheet apps
-    that support IMAGE formulas.
+    export includes authenticated links and optional spreadsheet formulas.
+    Links require a signed-in application session; server-side spreadsheet
+    renderers that cannot authenticate may not render the formula image.
     """
     if image_count <= 0:
         return 'No images attached to this record.'
     if image_count == 1:
-        return 'CSV cannot embed images; open the Image URL or use the IMAGE formula in a supported spreadsheet.'
-    return f'CSV cannot embed images; {image_count} image URLs/formulas are separated by new lines.'
+        return 'CSV cannot embed images; open the authenticated Image URL in a signed-in browser.'
+    return f'CSV cannot embed images; {image_count} authenticated image URLs/formulas are separated by new lines.'
 
 
 
@@ -688,7 +686,7 @@ class MachineAdmin(admin.ModelAdmin):
                 '<div style="padding: 10px;">'
                 '<img src="{}" style="max-width: 300px; max-height: 300px; border: 2px solid #ddd; border-radius: 4px;" />'
                 '</div>',
-                obj.image.url
+                protected_media_api_url('machine', obj.pk)
             )
         return format_html('<span style="color: #999;">No image uploaded</span>')
     image_preview.short_description = 'Image Preview'
@@ -698,7 +696,7 @@ class MachineAdmin(admin.ModelAdmin):
         if obj and obj.image:
             return format_html(
                 '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #ddd;" />',
-                obj.image.url
+                protected_media_api_url('machine', obj.pk)
             )
         return format_html('<span style="color: #ccc; font-size: 11px;">No image</span>')
     image_thumbnail.short_description = 'Image'
@@ -995,7 +993,7 @@ class JobImageInline(admin.TabularInline):
 
     def image_preview(self, obj):
         if obj.image and hasattr(obj.image, 'url'):
-            return format_html('<img src="{}" style="max-width: 100px; max-height: 100px;" />', obj.image.url)
+            return format_html('<img src="{}" style="max-width: 100px; max-height: 100px;" />', protected_media_api_url('job-image', obj.pk))
         return "No Image"
     image_preview.short_description = 'Image Preview'
 
@@ -1328,8 +1326,8 @@ class JobAdmin(admin.ModelAdmin):
                         '</a>'
                         '</div>',
                         label,
-                        image.url,
-                        image.url,
+                        protected_media_api_url('pm', preventive_maintenance.pk, label.lower()),
+                        protected_media_api_url('pm', preventive_maintenance.pk, label.lower()),
                     ))
                 else:
                     image_cells.append(format_html(
@@ -2301,7 +2299,7 @@ class JobAdmin(admin.ModelAdmin):
             # CSV files cannot embed binary images, so include absolute image URLs
             # plus IMAGE formulas for spreadsheet apps that support rendering them.
             image_urls = [
-                _absolute_file_url(request, image.image)
+                _absolute_media_url(request, 'job-image', image.pk)
                 for image in job.job_images.all()
                 if image.image
             ]
@@ -2409,7 +2407,7 @@ class JobAdmin(admin.ModelAdmin):
             priority = job.get_priority_display() if hasattr(job, 'get_priority_display') else job.priority
 
             images = [image for image in job.job_images.all() if image.image]
-            image_urls = [_absolute_file_url(request, image.image) for image in images]
+            image_urls = [_absolute_media_url(request, 'job-image', image.pk) for image in images]
             image_urls = [url for url in image_urls if url]
 
             image_preview_values = ['Embedded' if image_index < len(images) else '' for image_index in range(len(image_preview_headers))]
@@ -2484,7 +2482,7 @@ class JobImageAdmin(admin.ModelAdmin):
 
     def image_preview(self, obj):
         if obj.image and hasattr(obj.image, 'url'):
-            return format_html('<img src="{}" style="max-width: 100px; max-height: 100px;" />', obj.image.url)
+            return format_html('<img src="{}" style="max-width: 100px; max-height: 100px;" />', protected_media_api_url('job-image', obj.pk))
         return "No Image"
     image_preview.short_description = 'Image Preview'
 
@@ -2529,9 +2527,9 @@ class JobImageAdmin(admin.ModelAdmin):
             writer.writerow([
                 img.id,
                 img.job.job_id if img.job else '',
-                _absolute_file_url(request, img.image),
-                _spreadsheet_image_formula(_absolute_file_url(request, img.image)),
-                _image_export_note(1 if _absolute_file_url(request, img.image) else 0),
+                _absolute_media_url(request, 'job-image', img.pk),
+                _spreadsheet_image_formula(_absolute_media_url(request, 'job-image', img.pk)),
+                _image_export_note(1 if _absolute_media_url(request, 'job-image', img.pk) else 0),
                 img.uploaded_by.username if img.uploaded_by else '',
                 img.uploaded_by.email if img.uploaded_by else '',
                 img.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') if img.uploaded_at else '',
@@ -2773,7 +2771,7 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     def profile_image_preview(self, obj):
         if obj.profile_image and hasattr(obj.profile_image, 'url'):
-            return format_html('<img src="{}" style="max-width: 100px; max-height: 100px; border-radius: 50%;" />', obj.profile_image.url)
+            return format_html('<img src="{}" style="max-width: 100px; max-height: 100px; border-radius: 50%;" />', protected_media_api_url('profile', obj.pk))
         return "No Image"
     profile_image_preview.short_description = 'Profile Image'
     
@@ -3294,13 +3292,13 @@ class PreventiveMaintenanceAdmin(admin.ModelAdmin):
 
     def before_image_preview(self, obj):
         if obj.before_image and hasattr(obj.before_image, 'url'):
-            return format_html('<img src="{}" style="max-width: 100px; max-height: 100px;" />', obj.before_image.url)
+            return format_html('<img src="{}" style="max-width: 100px; max-height: 100px;" />', protected_media_api_url('pm', obj.pk, 'before'))
         return "No Before Image"
     before_image_preview.short_description = 'Before Image Preview'
 
     def after_image_preview(self, obj):
         if obj.after_image and hasattr(obj.after_image, 'url'):
-            return format_html('<img src="{}" style="max-width: 100px; max-height: 100px;" />', obj.after_image.url)
+            return format_html('<img src="{}" style="max-width: 100px; max-height: 100px;" />', protected_media_api_url('pm', obj.pk, 'after'))
         return "No After Image"
     after_image_preview.short_description = 'After Image Preview'
     def get_machines_display(self, obj):
@@ -3643,7 +3641,7 @@ class MaintenanceTaskImageAdmin(admin.ModelAdmin):
         if obj.image_url:
             return format_html(
                 '<img src="{}" style="max-width: 100px; max-height: 100px; border-radius: 4px;" />',
-                obj.image_url.url
+                protected_media_api_url('task-image', obj.pk)
             )
         return "No image"
     image_preview.short_description = 'Preview'
@@ -3653,7 +3651,7 @@ class MaintenanceTaskImageAdmin(admin.ModelAdmin):
         if obj.image_url:
             return format_html(
                 '<img src="{}" style="max-width: 400px; max-height: 400px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />',
-                obj.image_url.url
+                protected_media_api_url('task-image', obj.pk)
             )
         return "No image"
     image_preview_large.short_description = 'Image Preview'
@@ -3688,7 +3686,7 @@ class MaintenanceTaskImageAdmin(admin.ModelAdmin):
                 str(img.task) if img.task else '',
                 img.task.name if img.task else '',
                 img.image_type or '',
-                img.image_url.url if img.image_url and hasattr(img.image_url, 'url') else '',
+                _absolute_media_url(request, 'task-image', img.pk) if img.image_url else '',
                 img.jpeg_path or '',
                 img.uploaded_by.username if img.uploaded_by else '',
                 img.uploaded_by.email if img.uploaded_by else '',
@@ -4107,7 +4105,7 @@ class InventoryAdmin(admin.ModelAdmin):
         if obj.image and hasattr(obj.image, 'url'):
             return format_html(
                 '<img src="{}" style="max-width: 50px; max-height: 50px; object-fit: cover; border-radius: 4px;" />',
-                obj.image.url
+                protected_media_api_url('inventory', obj.pk)
             )
         return format_html('<span style="color: #999;">No Image</span>')
     image_preview.short_description = 'Image'
@@ -4117,7 +4115,7 @@ class InventoryAdmin(admin.ModelAdmin):
         if obj.image and hasattr(obj.image, 'url'):
             return format_html(
                 '<img src="{}" style="max-width: 400px; max-height: 400px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />',
-                obj.image.url
+                protected_media_api_url('inventory', obj.pk)
             )
         return format_html('<p style="color: #999;">No image uploaded</p>')
     image_preview_large.short_description = 'Image Preview'
@@ -5251,7 +5249,7 @@ class WorkspaceReportAdmin(admin.ModelAdmin):
         if image and hasattr(image, 'url'):
             return format_html(
                 '<img src="{}" style="max-width: 150px; max-height: 150px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />',
-                image.url
+                protected_media_api_url('workspace-report', obj.pk, f'image-{image_num}')
             )
         return format_html('<span style="color: #999;">No image</span>')
     

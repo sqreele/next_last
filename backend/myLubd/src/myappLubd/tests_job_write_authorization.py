@@ -244,11 +244,108 @@ class JobWriteAuthorizationTests(APITestCase):
         )
         self.login(viewer)
 
-        response = self.client.get('/api/v1/jobs/my_jobs/')
+        response = self.client.get(
+            f'/api/v1/jobs/my_jobs/?property_id={self.property.property_id}'
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(response.data['property_id'], self.property.property_id)
+        self.assertFalse(response.data['can_operate'])
         job_ids = {row['job_id'] for row in response.data['results']}
         self.assertIn(visible.job_id, job_ids)
         self.assertNotIn(hidden.job_id, job_ids)
+
+    def test_my_jobs_requires_an_accessible_external_property(self):
+        viewer = self.users['viewer']
+        foreign_tenant = Tenant.objects.create(name='Foreign My Jobs tenant')
+        foreign_property = Property.objects.create(
+            name='Foreign My Jobs hotel',
+            tenant=foreign_tenant,
+        )
+        Job.objects.create(
+            user=viewer,
+            updated_by=viewer,
+            property=foreign_property,
+            description='Cross-tenant assigned job',
+            remarks='Must remain hidden',
+        )
+        self.login(viewer)
+
+        missing = self.client.get('/api/v1/jobs/my_jobs/')
+        inaccessible = self.client.get(
+            f'/api/v1/jobs/my_jobs/?property_id={self.other_property.property_id}'
+        )
+        numeric_fallback = self.client.get(
+            f'/api/v1/jobs/my_jobs/?property_id={self.property.pk}'
+        )
+        cross_tenant = self.client.get(
+            f'/api/v1/jobs/my_jobs/?property_id={foreign_property.property_id}'
+        )
+
+        self.assertEqual(missing.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(inaccessible.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(numeric_fallback.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(cross_tenant.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_my_jobs_filters_counts_and_pagination_remain_property_scoped(self):
+        technician = self.users['technician']
+        for index, job_status in enumerate(('pending', 'in_progress', 'completed')):
+            Job.objects.create(
+                user=technician,
+                updated_by=technician,
+                property=self.property,
+                description=f'Scoped pump job {index}',
+                remarks='Visible',
+                status=job_status,
+                priority='high',
+            )
+        Job.objects.create(
+            user=technician,
+            updated_by=technician,
+            property=self.other_property,
+            description='Scoped pump job outside grant',
+            remarks='Hidden',
+            status='pending',
+            priority='high',
+        )
+        self.login(technician)
+
+        response = self.client.get(
+            '/api/v1/jobs/my_jobs/',
+            {
+                'property_id': self.property.property_id,
+                'search': 'pump',
+                'priority': 'high',
+                'status': 'pending',
+                'page': 1,
+                'page_size': 1,
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['total_pages'], 1)
+        self.assertEqual(response.data['status_counts']['total'], 3)
+        self.assertEqual(response.data['status_counts']['pending'], 1)
+        self.assertTrue(response.data['can_operate'])
+        self.assertTrue(
+            all(
+                row['property_id'] == self.property.property_id
+                for row in response.data['results']
+            )
+        )
+
+    def test_my_jobs_rejects_invalid_filters(self):
+        self.login(self.users['technician'])
+        base = f'/api/v1/jobs/my_jobs/?property_id={self.property.property_id}'
+
+        for query in ('status=overdue', 'priority=critical', 'date=quarter'):
+            with self.subTest(query=query):
+                response = self.client.get(f'{base}&{query}')
+                self.assertEqual(
+                    response.status_code,
+                    status.HTTP_400_BAD_REQUEST,
+                    response.content,
+                )
 
     def test_standard_update_cannot_change_assignee(self):
         job = self.create_as(self.users['manager'], description='Immutable assignee job')

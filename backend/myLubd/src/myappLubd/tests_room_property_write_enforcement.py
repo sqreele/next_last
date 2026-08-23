@@ -19,7 +19,7 @@ class RoomPropertyWriteEnforcementTests(APITestCase):
         tenant, _ = Tenant.objects.get_or_create(name='Room Write Tenant')
         self.chinatown = Property.objects.create(name='Room Write Chinatown', tenant=tenant)
         self.siam = Property.objects.create(name='Room Write Siam', tenant=tenant)
-        TenantMembership.objects.create(user=self.user, tenant=tenant, role='technician').properties.add(self.chinatown)
+        TenantMembership.objects.create(user=self.user, tenant=tenant, role='supervisor').properties.add(self.chinatown)
         self.client.force_authenticate(self.user)
 
     def create_room(self, name='RW-101', **payload):

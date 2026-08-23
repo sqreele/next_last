@@ -1,10 +1,8 @@
 import logging
-import os
 from datetime import timedelta
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from django.conf import settings
 from django.template.loader import render_to_string
 from django.db.models import Q, Prefetch
 
@@ -128,34 +126,9 @@ class Command(BaseCommand):
                 rooms__jobs=job
             ).distinct().values_list('name', flat=True)
             
-            # Get images
+            # Email clients cannot carry the application's Auth0 session.
+            # Never embed unauthenticated customer-media URLs in email.
             images = []
-            if include_images:
-                job_images = job.job_images.all()[:max_images]
-                for img in job_images:
-                    image_url = None
-                    if img.image:
-                        try:
-                            # Build full URL for the image
-                            media_url = getattr(settings, 'MEDIA_URL', '/media/')
-                            base_url = getattr(settings, 'FRONTEND_BASE_URL', 'https://hotelcarepro.com')
-                            # Remove trailing slash from base_url if present
-                            base_url = base_url.rstrip('/')
-                            
-                            # Build image URL
-                            if media_url.startswith('http'):
-                                image_url = f"{media_url}{img.image.name}"
-                            else:
-                                # Replace frontend URL with backend API URL for media
-                                backend_url = os.getenv('BACKEND_URL', base_url.replace(':3000', ':8000'))
-                                image_url = f"{backend_url}{media_url}{img.image.name}"
-                            
-                            images.append({
-                                'url': image_url,
-                                'uploaded_at': img.uploaded_at,
-                            })
-                        except Exception as e:
-                            logger.warning(f"Could not process image for job {job.job_id}: {e}")
             
             # Get status display with color info
             status_colors = {

@@ -514,6 +514,7 @@ class PreventiveMaintenanceCreateTests(APITestCase):
         resp = self.client.post(
             '/api/v1/preventive-maintenance/',
             {
+                'property_id': self.prop.property_id,
                 'pmtitle': 'Inspect laundry extractor',
                 'scheduled_date': timezone.now().isoformat(),
                 'frequency': 'monthly',
@@ -570,6 +571,39 @@ class PMMasterPlanWorkflowTests(APITestCase):
         self.assertEqual(projected['occurrence_type'], 'projected')
         self.assertIsNone(projected['pm_id'])
         self.assertFalse(PreventiveMaintenance.objects.filter(master_plan=plan).exists())
+
+    def test_materialized_master_plan_pm_appears_once_without_projection_duplicate(self):
+        plan = PMMasterPlan.objects.create(
+            title='Materialized pump service',
+            start_date=timezone.now() + timedelta(days=2),
+            frequency='custom',
+            custom_days=30,
+            lead_time_days=7,
+            created_by=self.user,
+            assigned_to=self.user,
+        )
+        plan.machines.set([self.machine])
+
+        from .services import PreventiveMaintenanceService
+
+        result = PreventiveMaintenanceService.materialize_master_plan_occurrences(
+            cutoff=timezone.now(),
+            user=self.user,
+            property_id=self.prop.property_id,
+        )
+        self.assertEqual(result['created_count'], 1)
+        generated = PreventiveMaintenance.objects.get(master_plan=plan)
+        _login(self.client, self.user)
+
+        response = self.client.get(
+            f'/api/v1/preventive-maintenance/schedule/?days=30&status=open&property_id={self.prop.property_id}'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        items = [item for bucket in response.data['days'] for item in bucket['items']]
+        matching = [item for item in items if item.get('pm_id') == generated.pm_id]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0]['occurrence_type'], 'scheduled')
 
     def test_materialize_master_plan_is_idempotent_and_completion_based(self):
         plan = PMMasterPlan.objects.create(

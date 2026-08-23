@@ -91,9 +91,11 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: myLubd.settings
       PYTHONPATH: /app
-      DEBUG: 1
+      DEBUG: 0
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set a strong DJANGO_SECRET_KEY of at least 50 characters}
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1 [::1] ${DOMAIN} www.${DOMAIN} django-backend backend
-      DJANGO_CORS_ORIGINS: https://${DOMAIN}
+      DJANGO_CORS_ORIGINS: https://${DOMAIN} https://www.${DOMAIN}
+      DJANGO_CSRF_TRUSTED_ORIGINS: https://${DOMAIN} https://www.${DOMAIN}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN}
       AUTH0_ISSUER: ${AUTH0_ISSUER}
       AUTH0_ISSUER_BASE_URL: ${AUTH0_ISSUER_BASE_URL}

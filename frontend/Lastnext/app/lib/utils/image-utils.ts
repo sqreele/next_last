@@ -1,3 +1,5 @@
+import { getProtectedMediaPath } from '@/app/lib/protected-media-url.mjs';
+
 /**
  * Get the base media URL for the current environment
  */
@@ -18,6 +20,11 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
   }
   
   const normalizedInput = imageUrl.trim().replace(/\\/g, '/');
+
+  const protectedMediaPath = getProtectedMediaPath(normalizedInput);
+  if (protectedMediaPath) {
+    return encodeURI(protectedMediaPath);
+  }
 
   const mediaIndex = normalizedInput.indexOf('/media/');
 

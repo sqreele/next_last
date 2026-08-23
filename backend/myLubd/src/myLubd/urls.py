@@ -36,6 +36,6 @@ if settings.DEBUG:
     except ImportError:
         pass
 
-# Serve media files always, even if DEBUG=False (handled by NGINX in production)
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Customer media is never served by Django's anonymous static helper, including
+# in development. Use the protected endpoint (FileResponse locally) instead.
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

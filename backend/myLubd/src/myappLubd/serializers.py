@@ -39,9 +39,25 @@ from .job_property import (
     resolve_property_reference,
 )
 from .room_property import resolve_room_property
+from .protected_media import protected_media_url
 
 
 RAW_AUTH_PREFIXES = ('google-oauth2_', 'auth0_', 'auth0|')
+
+
+class ProtectedImageField(serializers.ImageField):
+    """Keep ImageField uploads while replacing raw storage URLs on output."""
+
+    def __init__(self, *args, media_type, variant='image', **kwargs):
+        self.media_type = media_type
+        self.variant = variant
+        super().__init__(*args, **kwargs)
+
+    def to_representation(self, value):
+        if not value:
+            return None
+        instance = getattr(value, 'instance', None)
+        return protected_media_url(self.media_type, getattr(instance, 'pk', None), self.variant)
 
 
 def _validate_request_property_access(serializer, property_obj, field='property'):
@@ -256,6 +272,13 @@ class TenantSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'tenant_id', 'slug', 'owner', 'created_at', 'updated_at']
 
+    def validate(self, attrs):
+        if 'owner' in self.initial_data:
+            raise serializers.ValidationError({
+                'owner': 'Tenant.owner cannot be changed through the generic Tenant API.',
+            })
+        return attrs
+
     def validate_timezone(self, value):
         if not is_valid_timezone(value):
             raise serializers.ValidationError(
@@ -294,6 +317,10 @@ class RoomSerializer(serializers.ModelSerializer):
         if 'properties' in self.initial_data:
             raise serializers.ValidationError({
                 'properties': 'properties is read-only; use property_id.',
+            })
+        if 'property' in self.initial_data:
+            raise serializers.ValidationError({
+                'property': 'property is not accepted; use property_id.',
             })
         explicit_value = attrs.pop('property_id', serializers.empty)
 
@@ -403,6 +430,25 @@ class PropertySerializer(serializers.ModelSerializer):
             'is_preventivemaintenance',
         ]
         read_only_fields = ['created_at', 'is_preventivemaintenance']
+
+    def validate(self, attrs):
+        if 'tenant_id' in self.initial_data:
+            raise serializers.ValidationError({
+                'tenant_id': 'tenant_id is not accepted; use tenant.',
+            })
+        requested_tenant = attrs.get('tenant')
+        if (
+            self.instance is not None
+            and 'tenant' in attrs
+            and (
+                requested_tenant is None
+                or requested_tenant.pk != self.instance.tenant_id
+            )
+        ):
+            raise serializers.ValidationError({
+                'tenant': 'Property.tenant is immutable after creation.',
+            })
+        return attrs
     
     def get_rooms(self, obj):
         """Get rooms for this property.
@@ -433,6 +479,7 @@ class PropertySerializer(serializers.ModelSerializer):
 
 # User profile serializer
 class UserProfileSerializer(serializers.ModelSerializer):
+    profile_image = ProtectedImageField(media_type='profile', required=False, allow_null=True)
     properties = serializers.SerializerMethodField()
     username = serializers.SerializerMethodField()
     email = serializers.EmailField(source='user.email', read_only=True)
@@ -500,6 +547,7 @@ class CurrentUserProfileSerializer(serializers.ModelSerializer):
     properties = serializers.SerializerMethodField()
     memberships = serializers.SerializerMethodField()
     is_platform_superuser = serializers.BooleanField(source='user.is_superuser', read_only=True)
+    profile_image = ProtectedImageField(media_type='profile', read_only=True)
 
     class Meta:
         model = UserProfile
@@ -595,47 +643,6 @@ class CurrentUserProfileUpdateSerializer(serializers.Serializer):
     def create(self, validated_data):
         raise NotImplementedError('Current-user profiles are created with their User record.')
 
-def _build_media_absolute_uri(request, media_path):
-    """Build a stable media URL from paths stored by FileField or helper fields.
-
-    Admin-created records and older conversion jobs can store a mix of values:
-    FileField names, /media/ URLs, absolute backend URLs, or absolute filesystem
-    paths. Normalize those values before exposing them to the frontend.
-    """
-    if not media_path:
-        return None
-
-    value = str(media_path).strip()
-    if not value:
-        return None
-
-    if value.startswith(('http://', 'https://')):
-        return value
-
-    media_url = getattr(settings, 'MEDIA_URL', '/media/') or '/media/'
-    if not media_url.startswith('/'):
-        media_url = f'/{media_url}'
-    if not media_url.endswith('/'):
-        media_url = f'{media_url}/'
-
-    media_root = str(getattr(settings, 'MEDIA_ROOT', '') or '')
-    if media_root and value.startswith(media_root):
-        value = value[len(media_root):].lstrip('/\\')
-
-    # Collapse common bad persisted forms such as /media/media/foo.jpg.
-    while value.startswith(media_url):
-        value = value[len(media_url):]
-    value = value.lstrip('/\\')
-
-    url_path = f'{media_url}{value}'
-    if request:
-        try:
-            return request.build_absolute_uri(url_path)
-        except Exception:
-            return url_path
-    return url_path
-
-
 # Job image serializer
 class JobImageSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
@@ -648,8 +655,7 @@ class JobImageSerializer(serializers.ModelSerializer):
     def get_image_url(self, obj):
         """Return the URL for the original uploaded image."""
         if obj.image:
-            request = self.context.get('request')
-            return _build_media_absolute_uri(request, getattr(obj.image, 'url', obj.image.name))
+            return protected_media_url('job-image', obj.pk)
         return None
 
     def get_jpeg_url(self, obj):
@@ -684,8 +690,7 @@ class JobImageSerializer(serializers.ModelSerializer):
             # Remote/custom storage may not support an existence check.
             pass
 
-        request = self.context.get('request')
-        return _build_media_absolute_uri(request, normalized_path)
+        return protected_media_url('job-image', obj.pk, 'jpeg')
 
 # Topic serializer
 class TopicSerializer(serializers.ModelSerializer):
@@ -921,6 +926,9 @@ class JobSerializer(serializers.ModelSerializer):
         return self._can_operate(obj)
 
     def get_comments_count(self, obj):
+        annotated_count = getattr(obj, '_comments_count', None)
+        if annotated_count is not None:
+            return annotated_count
         try:
             return obj.comments.count()
         except Exception:
@@ -1038,12 +1046,9 @@ class JobSerializer(serializers.ModelSerializer):
         if not userprofile:
             return None
 
-        request = self.context.get('request')
         image_url = None
-        if userprofile.profile_image and request:
-            image_url = request.build_absolute_uri(userprofile.profile_image.url)
-        elif userprofile.profile_image:
-            image_url = userprofile.profile_image.url
+        if userprofile.profile_image:
+            image_url = protected_media_url('profile', userprofile.pk)
 
         properties_qs = get_accessible_properties(user).values('property_id', 'name')
         properties = list(properties_qs)
@@ -1055,7 +1060,6 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_image_urls(self, obj):
         """Return normalized URLs for all images associated with the job."""
-        request = self.context.get('request')
         urls = []
         seen = set()
         try:
@@ -1066,13 +1070,13 @@ class JobSerializer(serializers.ModelSerializer):
                     jpeg_name = str(jpeg_path).lstrip('/\\')
                     try:
                         if '%' not in jpeg_name and default_storage.exists(jpeg_name):
-                            candidates.append(jpeg_name)
+                            candidates.append(('jpeg', jpeg_name))
                     except Exception:
-                        candidates.append(jpeg_name)
+                        candidates.append(('jpeg', jpeg_name))
                 if getattr(image, 'image', None):
-                    candidates.append(getattr(image.image, 'url', image.image.name))
-                for candidate in candidates:
-                    url = _build_media_absolute_uri(request, candidate)
+                    candidates.append(('image', image.image.name))
+                for variant, candidate in candidates:
+                    url = protected_media_url('job-image', image.pk, variant)
                     if url and url not in seen:
                         urls.append(url)
                         seen.add(url)
@@ -1271,6 +1275,7 @@ class MachineSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     lifecycle_state = serializers.CharField(read_only=True)
     is_under_warranty = serializers.BooleanField(read_only=True)
+    image = ProtectedImageField(media_type='machine', required=False, allow_null=True)
 
     class Meta:
         model = Machine
@@ -1287,12 +1292,7 @@ class MachineSerializer(serializers.ModelSerializer):
     
     def get_image_url(self, obj):
         """Get the absolute URL for the machine image"""
-        request = self.context.get('request')
-        if obj.image and request:
-            return request.build_absolute_uri(obj.image.url)
-        elif obj.image:
-            return obj.image.url
-        return None
+        return protected_media_url('machine', obj.pk) if obj.image else None
     
     def get_task_count(self, obj):
         """Get count of maintenance tasks for this equipment"""
@@ -1343,12 +1343,7 @@ class MachineListSerializer(serializers.ModelSerializer):
     
     def get_image_url(self, obj):
         """Get the absolute URL for the machine image"""
-        request = self.context.get('request')
-        if obj.image and request:
-            return request.build_absolute_uri(obj.image.url)
-        elif obj.image:
-            return obj.image.url
-        return None
+        return protected_media_url('machine', obj.pk) if obj.image else None
 
 
 def get_pm_property_external_id(obj):
@@ -1441,16 +1436,10 @@ class PreventiveMaintenanceListSerializer(serializers.ModelSerializer):
         return obj.procedure
 
     def get_before_image_url(self, obj):
-        request = self.context.get('request')
-        if obj.before_image and request:
-            return request.build_absolute_uri(obj.before_image.url)
-        return None
+        return protected_media_url('pm', obj.pk, 'before') if obj.before_image else None
 
     def get_after_image_url(self, obj):
-        request = self.context.get('request')
-        if obj.after_image and request:
-            return request.build_absolute_uri(obj.after_image.url)
-        return None
+        return protected_media_url('pm', obj.pk, 'after') if obj.after_image else None
 
 class MachineDetailSerializer(serializers.ModelSerializer):
     """Detailed serializer for equipment details view following ER diagram"""
@@ -1468,6 +1457,7 @@ class MachineDetailSerializer(serializers.ModelSerializer):
     image_url = serializers.SerializerMethodField()
     lifecycle_state = serializers.CharField(read_only=True)
     is_under_warranty = serializers.BooleanField(read_only=True)
+    image = ProtectedImageField(media_type='machine', required=False, allow_null=True)
     
     class Meta:
         model = Machine
@@ -1487,12 +1477,7 @@ class MachineDetailSerializer(serializers.ModelSerializer):
     
     def get_image_url(self, obj):
         """Get the absolute URL for the machine image"""
-        request = self.context.get('request')
-        if obj.image and request:
-            return request.build_absolute_uri(obj.image.url)
-        elif obj.image:
-            return obj.image.url
-        return None
+        return protected_media_url('machine', obj.pk) if obj.image else None
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1565,6 +1550,7 @@ class MachineCreateSerializer(serializers.ModelSerializer):
     property_id = serializers.SlugRelatedField(
         source='property', slug_field='property_id', queryset=Property.objects.all()
     )
+    image = ProtectedImageField(media_type='machine', required=False, allow_null=True)
 
     class Meta:
         model = Machine
@@ -1595,6 +1581,7 @@ class MachineUpdateSerializer(serializers.ModelSerializer):
     property_id = serializers.SlugRelatedField(
         source='property', slug_field='property_id', queryset=Property.objects.all(), required=False
     )
+    image = ProtectedImageField(media_type='machine', required=False, allow_null=True)
 
     class Meta:
         model = Machine
@@ -1849,15 +1836,6 @@ class PMMasterPlanSerializer(serializers.ModelSerializer):
 PM_IMAGE_LIMIT = 10
 
 
-def _pm_image_url(request, field_file):
-    if not field_file:
-        return None
-    try:
-        return request.build_absolute_uri(field_file.url) if request else field_file.url
-    except (ValueError, AttributeError):
-        return None
-
-
 def serialize_pm_images(obj, request=None):
     """Return canonical related evidence plus explicitly marked legacy fields."""
     rows = []
@@ -1866,7 +1844,7 @@ def serialize_pm_images(obj, request=None):
             'id': image.pk,
             'pm_id': obj.pm_id,
             'image_type': image.image_type,
-            'image_url': _pm_image_url(request, image.image),
+            'image_url': protected_media_url('pm-image', image.pk) if image.image else None,
             'uploaded_at': image.uploaded_at,
             'uploaded_by': (
                 UserSummarySerializer(image.uploaded_by).data
@@ -1883,7 +1861,7 @@ def serialize_pm_images(obj, request=None):
                 'id': f'legacy-{image_type}',
                 'pm_id': obj.pm_id,
                 'image_type': image_type,
-                'image_url': _pm_image_url(request, field_file),
+                'image_url': protected_media_url('pm', obj.pk, image_type),
                 'uploaded_at': None,
                 'uploaded_by': None,
                 'is_legacy': True,
@@ -2008,12 +1986,14 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
     image_counts = serializers.SerializerMethodField()
     can_operate = serializers.SerializerMethodField()
     
-    before_image = serializers.ImageField(
+    before_image = ProtectedImageField(
+        media_type='pm', variant='before',
         required=False,
         allow_null=True,
         validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])]
     )
-    after_image = serializers.ImageField(
+    after_image = ProtectedImageField(
+        media_type='pm', variant='after',
         required=False,
         allow_null=True,
         validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png'])]
@@ -2074,21 +2054,11 @@ class PreventiveMaintenanceDetailSerializer(serializers.ModelSerializer):
     
     def get_before_image_url(self, obj):
         """Get the full URL for the before image"""
-        if obj.before_image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.before_image.url)
-            return obj.before_image.url
-        return None
+        return protected_media_url('pm', obj.pk, 'before') if obj.before_image else None
     
     def get_after_image_url(self, obj):
         """Get the full URL for the after image"""
-        if obj.after_image:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.after_image.url)
-            return obj.after_image.url
-        return None
+        return protected_media_url('pm', obj.pk, 'after') if obj.after_image else None
     
     def get_is_overdue(self, obj):
         """Check if maintenance is overdue"""
@@ -2250,6 +2220,8 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
     job_id = serializers.CharField(write_only=True, required=False, allow_blank=False)
     before_image_url = serializers.SerializerMethodField()
     after_image_url = serializers.SerializerMethodField()
+    before_image = ProtectedImageField(media_type='pm', variant='before', required=False, allow_null=True)
+    after_image = ProtectedImageField(media_type='pm', variant='after', required=False, allow_null=True)
     # Request scope only. PreventiveMaintenance ownership remains derived from
     # its canonical Machine/Job relations; this is not a model FK.
     property_id = serializers.CharField(write_only=True, required=False, allow_blank=False)
@@ -2443,16 +2415,10 @@ class PreventiveMaintenanceCreateUpdateSerializer(serializers.ModelSerializer):
         return result
 
     def get_before_image_url(self, obj):
-        request = self.context.get('request')
-        if obj.before_image and request:
-            return request.build_absolute_uri(obj.before_image.url)
-        return None
+        return protected_media_url('pm', obj.pk, 'before') if obj.before_image else None
 
     def get_after_image_url(self, obj):
-        request = self.context.get('request')
-        if obj.after_image and request:
-            return request.build_absolute_uri(obj.after_image.url)
-        return None
+        return protected_media_url('pm', obj.pk, 'after') if obj.after_image else None
 
     @transaction.atomic
     def create(self, validated_data):
@@ -2643,6 +2609,7 @@ class PreventiveMaintenanceCompleteSerializer(serializers.ModelSerializer):
         allow_empty=True
     )
     property_id = serializers.SerializerMethodField()
+    after_image = ProtectedImageField(media_type='pm', variant='after', required=False, allow_null=True)
 
     class Meta:
         model = PreventiveMaintenance
@@ -2744,6 +2711,8 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
     assigned_to_name = serializers.SerializerMethodField()
     technician_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
+    before_image = ProtectedImageField(media_type='pm', variant='before', required=False, allow_null=True)
+    after_image = ProtectedImageField(media_type='pm', variant='after', required=False, allow_null=True)
 
     class Meta:
         model = PreventiveMaintenance
@@ -2779,16 +2748,10 @@ class PreventiveMaintenanceSerializer(serializers.ModelSerializer):
         return get_user_display_name(obj.created_by)
 
     def get_before_image_url(self, obj):
-        request = self.context.get('request')
-        if obj.before_image and request:
-            return request.build_absolute_uri(obj.before_image.url)
-        return None
+        return protected_media_url('pm', obj.pk, 'before') if obj.before_image else None
 
     def get_after_image_url(self, obj):
-        request = self.context.get('request')
-        if obj.after_image and request:
-            return request.build_absolute_uri(obj.after_image.url)
-        return None
+        return protected_media_url('pm', obj.pk, 'after') if obj.after_image else None
 
     def create(self, validated_data):
         topic_ids = validated_data.pop('topic_ids', [])
@@ -2962,6 +2925,8 @@ class MaintenanceTaskImageSerializer(serializers.ModelSerializer):
     uploaded_by_username = serializers.SerializerMethodField()
     uploaded_by_name = serializers.SerializerMethodField()
     image_url_full = serializers.SerializerMethodField()
+    image_url = ProtectedImageField(media_type='task-image')
+    jpeg_path = serializers.SerializerMethodField()
     
     class Meta:
         model = MaintenanceTaskImage
@@ -2980,10 +2945,10 @@ class MaintenanceTaskImageSerializer(serializers.ModelSerializer):
     
     def get_image_url_full(self, obj):
         """Get full URL for the image"""
-        request = self.context.get('request')
-        if obj.image_url and request:
-            return request.build_absolute_uri(obj.image_url.url)
-        return None
+        return protected_media_url('task-image', obj.pk) if obj.image_url else None
+
+    def get_jpeg_path(self, obj):
+        return protected_media_url('task-image', obj.pk, 'jpeg') if obj.jpeg_path else None
 
 
 class MaintenanceTaskImageListSerializer(serializers.ModelSerializer):
@@ -3000,10 +2965,7 @@ class MaintenanceTaskImageListSerializer(serializers.ModelSerializer):
     
     def get_image_url_full(self, obj):
         """Get full URL for the image"""
-        request = self.context.get('request')
-        if obj.image_url and request:
-            return request.build_absolute_uri(obj.image_url.url)
-        return None
+        return protected_media_url('task-image', obj.pk) if obj.image_url else None
 
 # Utility Consumption Serializers
 # JSON numbers for dashboard clients (avoid string Decimals from COERCE_DECIMAL_TO_STRING).
@@ -3171,6 +3133,7 @@ class InventorySerializer(serializers.ModelSerializer):
     jobs_detail = serializers.SerializerMethodField()
     preventive_maintenances_detail = serializers.SerializerMethodField()
     usage_records = InventoryUsageSerializer(many=True, read_only=True)
+    image = ProtectedImageField(media_type='inventory', required=False, allow_null=True)
     
     class Meta:
         model = Inventory
@@ -3220,12 +3183,7 @@ class InventorySerializer(serializers.ModelSerializer):
     
     def get_image_url(self, obj):
         """Get the image URL"""
-        if obj.image and hasattr(obj.image, 'url'):
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
-        return None
+        return protected_media_url('inventory', obj.pk) if obj.image else None
     
     def get_job_ids(self, obj):
         """Return all related job IDs"""
@@ -3351,12 +3309,7 @@ class InventoryListSerializer(serializers.ModelSerializer):
     
     def get_image_url(self, obj):
         """Get the image URL"""
-        if obj.image and hasattr(obj.image, 'url'):
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.image.url)
-            return obj.image.url
-        return None
+        return protected_media_url('inventory', obj.pk) if obj.image else None
     
     def _get_jobs(self, obj):
         if not hasattr(obj, '_inventory_list_jobs'):

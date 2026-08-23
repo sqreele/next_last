@@ -4,9 +4,9 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   Briefcase,
+  Building2,
   Calendar,
   CheckCircle2,
-  Clock3,
   Home,
   Loader,
   MapPin,
@@ -14,7 +14,6 @@ import {
   Pencil,
   RefreshCcw,
   Search,
-  TimerReset,
   Trash2,
   UserRound,
   Wrench,
@@ -57,17 +56,29 @@ import CreateJobButton from "@/app/components/jobs/CreateJobButton";
 import Pagination from "@/app/components/jobs/Pagination";
 import UpdateStatusButton from "@/app/components/jobs/UpdateStatusButton";
 import { StatusBadge } from "@/app/components/StatusBadge";
-import { FloatingActionButton } from "@/app/components/pcms-ui";
 import { FeedbackState } from "@/app/components/feedback/FeedbackState";
 import { PageContainer } from "@/app/components/layout/PageContainer";
 import { PageHeader, SectionHeader } from "@/app/components/layout/PageHeader";
 import { useSession } from "@/app/lib/session.client";
-import { fetchTopics, deleteJob as deleteJobApi } from "@/app/lib/data.server";
+import {
+  deleteJob as deleteJobApi,
+  updateJob as updateJobApi,
+} from "@/app/lib/data.server";
 import { useJobsData } from "@/app/lib/hooks/useJobsData";
-import { useJobs, useUser } from "@/app/lib/stores/mainStore";
+import {
+  canMutateMyJob,
+  getMyJobDetailHref,
+  type MyJobsStatusCounts,
+} from "@/app/lib/hooks/my-jobs-request.mjs";
+import {
+  useJobs,
+  useMainStore,
+  useProperties,
+  useUser,
+} from "@/app/lib/stores/mainStore";
 import { cn } from "@/app/lib/utils/cn";
 import { getDisplayName } from "@/app/lib/utils/display-name";
-import type { Job, JobPriority, JobStatus, Topic } from "@/app/lib/types";
+import type { Job, JobPriority, JobStatus } from "@/app/lib/types";
 
 const ITEMS_PER_PAGE = 24;
 
@@ -75,7 +86,7 @@ type DateFilter = "all" | "today" | "week" | "month";
 
 interface FilterState {
   search: string;
-  status: JobStatus | "all" | "overdue";
+  status: JobStatus | "all";
   priority: JobPriority | "all";
   date: DateFilter;
   room: string;
@@ -83,6 +94,8 @@ interface FilterState {
 
 interface JobActionProps {
   job: Job;
+  activePropertyId: string;
+  propertyName: string;
   onEdit: (job: Job) => void;
   onDelete: (job: Job) => void;
   onStatusUpdated: (updatedJob: Job) => void;
@@ -94,9 +107,6 @@ interface EditDialogProps {
   job: Job | null;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
   isSubmitting: boolean;
-  availableTopics: Topic[];
-  selectedTopics: Topic[];
-  onTopicsChange: (topics: Topic[]) => void;
 }
 
 interface DeleteDialogProps {
@@ -150,50 +160,6 @@ function getTechnician(job: Job) {
   return "Assigned technician";
 }
 
-function isOverdue(job: Job) {
-  if (
-    job.completed_at ||
-    job.status === "completed" ||
-    job.status === "cancelled"
-  )
-    return false;
-  const createdAt = new Date(job.created_at).getTime();
-  if (Number.isNaN(createdAt)) return false;
-  const ageInDays = (Date.now() - createdAt) / (1000 * 60 * 60 * 24);
-  return ageInDays >= 3;
-}
-
-function matchesDate(job: Job, dateFilter: DateFilter) {
-  if (dateFilter === "all") return true;
-  const createdAt = new Date(job.created_at);
-  if (Number.isNaN(createdAt.getTime())) return false;
-
-  const now = new Date();
-  const startOfToday = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  );
-  const startOfJobDay = new Date(
-    createdAt.getFullYear(),
-    createdAt.getMonth(),
-    createdAt.getDate(),
-  );
-
-  if (dateFilter === "today")
-    return startOfJobDay.getTime() === startOfToday.getTime();
-
-  const daysOld =
-    (startOfToday.getTime() - startOfJobDay.getTime()) / (1000 * 60 * 60 * 24);
-  if (dateFilter === "week") return daysOld >= 0 && daysOld <= 7;
-  if (dateFilter === "month") return daysOld >= 0 && daysOld <= 30;
-  return true;
-}
-
-function countByStatus(jobs: Job[], status: JobStatus) {
-  return jobs.filter((job) => job.status === status).length;
-}
-
 function MyJobsSkeleton() {
   return (
     <div className="min-h-screen w-full px-3 py-4 sm:px-6 lg:px-8">
@@ -218,56 +184,83 @@ function MyJobsSkeleton() {
   );
 }
 
+function MyJobsResultsSkeleton() {
+  return (
+    <section
+      className="space-y-4"
+      aria-label="Loading assigned jobs"
+      aria-busy="true"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-5 w-28" />
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className="h-64 rounded-xl" />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function JobStatusSummary({
-  jobs,
+  counts,
   activeStatus,
   onStatusChange,
 }: {
-  jobs: Job[];
+  counts: MyJobsStatusCounts;
   activeStatus: FilterState["status"];
   onStatusChange: (status: FilterState["status"]) => void;
 }) {
   const metrics = [
     {
       label: "Total Jobs",
-      value: jobs.length,
+      value: counts.total,
       tone: "text-foreground",
       icon: Briefcase,
       status: "all" as const,
     },
     {
+      label: "Pending / New",
+      value: counts.pending,
+      tone: "text-blue-600 dark:text-blue-300",
+      icon: Briefcase,
+      status: "pending" as const,
+    },
+    {
       label: "In Progress",
-      value: countByStatus(jobs, "in_progress"),
+      value: counts.in_progress,
       tone: "text-warning",
       icon: Wrench,
       status: "in_progress" as const,
     },
     {
       label: "Waiting",
-      value: countByStatus(jobs, "waiting_sparepart"),
+      value: counts.waiting_sparepart,
       tone: "text-violet-600 dark:text-violet-300",
-      icon: Clock3,
+      icon: Wrench,
       status: "waiting_sparepart" as const,
     },
     {
       label: "Completed",
-      value: countByStatus(jobs, "completed"),
+      value: counts.completed,
       tone: "text-success",
       icon: CheckCircle2,
       status: "completed" as const,
     },
     {
-      label: "Overdue",
-      value: jobs.filter(isOverdue).length,
+      label: "Cancelled",
+      value: counts.cancelled,
       tone: "text-destructive",
-      icon: TimerReset,
-      status: "overdue" as const,
+      icon: X,
+      status: "cancelled" as const,
     },
   ];
 
   return (
     <section
-      className="grid grid-cols-2 gap-3 lg:grid-cols-5"
+      className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6"
       aria-label="Job status summary"
     >
       {metrics.map((metric) => {
@@ -289,7 +282,7 @@ function JobStatusSummary({
               activeStatus === metric.status
                 ? "border-blue-500 bg-blue-50/70 ring-1 ring-blue-500 dark:bg-blue-950/30"
                 : "border-border",
-              metric.label === "Overdue" && "col-span-2 lg:col-span-1",
+              metric.label === "Cancelled" && "col-span-2 md:col-span-1",
             )}
           >
             <div className="flex items-center justify-between gap-2">
@@ -382,7 +375,6 @@ function FilterBar({
               <SelectItem value="waiting_sparepart">Waiting</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
             </SelectContent>
           </Select>
         </label>
@@ -452,56 +444,62 @@ function FilterBar({
   );
 }
 
-function JobCard({ job, onEdit, onDelete, onStatusUpdated }: JobActionProps) {
+function JobCard({
+  job,
+  activePropertyId,
+  propertyName,
+  onEdit,
+  onDelete,
+  onStatusUpdated,
+}: JobActionProps) {
   const router = useRouter();
   const description = job.description || "No description provided.";
   const location = getJobLocation(job);
   const technician = getTechnician(job);
-  const overdue = isOverdue(job);
+  const canOperate = canMutateMyJob(job, activePropertyId);
+  const detailHref = getMyJobDetailHref(job.job_id, activePropertyId);
 
-  const openDetail = () => router.push(`/dashboard/jobs/${job.job_id}`);
+  const openDetail = () => {
+    if (detailHref) router.push(detailHref);
+  };
 
   return (
-    <article
-      role="button"
-      tabIndex={0}
-      onClick={openDetail}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          openDetail();
-        }
-      }}
-      className="group flex w-full cursor-pointer flex-col rounded-xl border border-border bg-card p-4 shadow-soft transition-colors hover:border-foreground/25 motion-reduce:transition-none md:p-5"
-      aria-label={`Open job ${job.job_id}`}
-    >
+    <article className="group flex w-full flex-col rounded-xl border border-border bg-card p-4 shadow-soft transition-colors hover:border-foreground/25 motion-reduce:transition-none md:p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
-            <Home
-              className="h-4 w-4 shrink-0 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <span className="truncate">{location}</span>
+          <p className="flex min-w-0 items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
+            <Building2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">{propertyName}</span>
           </p>
-          <h3 className="mt-2 line-clamp-2 text-base font-semibold leading-6 text-card-foreground">
+          <button
+            type="button"
+            onClick={openDetail}
+            className="mt-2 line-clamp-2 text-left text-base font-semibold leading-6 text-card-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
             {getJobTitle(job)}
-          </h3>
+          </button>
           <p className="mt-1 text-xs text-muted-foreground">#{job.job_id}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <StatusBadge status={overdue ? "overdue" : job.status} />
+          <StatusBadge status={job.status} />
+          <Badge variant="outline" className="capitalize">
+            {job.priority} priority
+          </Badge>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Home className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="truncate">{location}</span>
+        </div>
         <div className="flex min-w-0 items-center gap-2">
           <UserRound className="h-4 w-4 shrink-0" />
           <span className="truncate">{technician}</span>
         </div>
         <div className="flex min-w-0 items-center gap-2">
           <Calendar className="h-4 w-4 shrink-0" />
-          <span>Created {formatDate(job.created_at)}</span>
+          <span>Updated {formatDate(job.updated_at)}</span>
         </div>
       </div>
 
@@ -509,10 +507,7 @@ function JobCard({ job, onEdit, onDelete, onStatusUpdated }: JobActionProps) {
         {description}
       </p>
 
-      <div
-        className="mt-5 grid grid-cols-2 gap-2 border-t border-border pt-4 sm:flex sm:items-center"
-        onClick={(event) => event.stopPropagation()}
-      >
+      <div className="mt-5 grid grid-cols-2 gap-2 border-t border-border pt-4 sm:flex sm:items-center">
         <Button
           type="button"
           onClick={openDetail}
@@ -520,40 +515,44 @@ function JobCard({ job, onEdit, onDelete, onStatusUpdated }: JobActionProps) {
         >
           View Detail
         </Button>
-        <UpdateStatusButton
-          job={job}
-          onStatusUpdated={onStatusUpdated}
-          variant="outline"
-          size="sm"
-          className="h-11 w-full sm:w-auto"
-          buttonText="Update Status"
-        />
-        <details className="relative col-span-2 sm:ml-auto">
-          <summary className="flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-muted-foreground hover:bg-muted sm:border-0">
-            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-            More
-          </summary>
-          <div className="mt-2 grid gap-1 rounded-lg border border-border bg-popover p-1 shadow-card sm:absolute sm:bottom-full sm:right-0 sm:z-20 sm:mb-2 sm:mt-0 sm:w-40">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onEdit(job)}
-              className="justify-start"
-            >
-              <Pencil className="h-4 w-4" />
-              Edit
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onDelete(job)}
-              className="justify-start text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </Button>
-          </div>
-        </details>
+        {canOperate ? (
+          <UpdateStatusButton
+            job={job}
+            onStatusUpdated={onStatusUpdated}
+            variant="outline"
+            size="sm"
+            className="h-11 w-full sm:w-auto"
+            buttonText="Update Status"
+          />
+        ) : null}
+        {canOperate ? (
+          <details className="relative col-span-2 sm:ml-auto">
+            <summary className="flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:border-0">
+              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+              More
+            </summary>
+            <div className="mt-2 grid gap-1 rounded-lg border border-border bg-popover p-1 shadow-card sm:absolute sm:bottom-full sm:right-0 sm:z-20 sm:mb-2 sm:mt-0 sm:w-40">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onEdit(job)}
+                className="justify-start"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onDelete(job)}
+                className="justify-start text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </div>
+          </details>
+        ) : null}
       </div>
     </article>
   );
@@ -565,31 +564,7 @@ const EditDialog: React.FC<EditDialogProps> = ({
   job,
   onSubmit,
   isSubmitting,
-  availableTopics,
-  selectedTopics,
-  onTopicsChange,
-}) => {
-  const [newTopicId, setNewTopicId] = React.useState("");
-
-  const handleAddTopic = () => {
-    if (!newTopicId) return;
-    const topicToAdd = availableTopics.find(
-      (topic) => topic.id.toString() === newTopicId,
-    );
-    if (
-      topicToAdd &&
-      !selectedTopics.find((topic) => topic.id === topicToAdd.id)
-    ) {
-      onTopicsChange([...selectedTopics, topicToAdd]);
-      setNewTopicId("");
-    }
-  };
-
-  const availableTopicsForSelection = availableTopics.filter(
-    (topic) => !selectedTopics.find((selected) => selected.id === topic.id),
-  );
-
-  return (
+}) => (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100%-1rem)] overflow-hidden rounded-2xl p-0 sm:max-h-[90vh] sm:max-w-[520px]">
         <form
@@ -633,69 +608,6 @@ const EditDialog: React.FC<EditDialogProps> = ({
                 </SelectContent>
               </Select>
             </label>
-
-            <div className="space-y-2">
-              <span className="text-sm font-medium text-muted-foreground">
-                Topics
-              </span>
-              {selectedTopics.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {selectedTopics.map((topic) => (
-                    <Badge
-                      key={topic.id}
-                      variant="secondary"
-                      className="max-w-full gap-1 pr-1"
-                    >
-                      <span className="min-w-0 truncate">{topic.title}</span>
-                      <button
-                        type="button"
-                        className="rounded-full p-0.5 hover:bg-slate-300"
-                        onClick={() =>
-                          onTopicsChange(
-                            selectedTopics.filter(
-                              (item) => item.id !== topic.id,
-                            ),
-                          )
-                        }
-                        aria-label={`Remove ${topic.title}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No topics selected
-                </p>
-              )}
-
-              {availableTopicsForSelection.length ? (
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                  <Select value={newTopicId} onValueChange={setNewTopicId}>
-                    <SelectTrigger className="h-11 min-w-0">
-                      <SelectValue placeholder="Add topic" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableTopicsForSelection.map((topic) => (
-                        <SelectItem key={topic.id} value={topic.id.toString()}>
-                          {topic.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleAddTopic}
-                    disabled={!newTopicId}
-                    className="h-11"
-                  >
-                    Add
-                  </Button>
-                </div>
-              ) : null}
-            </div>
 
             <label className="space-y-2">
               <span className="text-sm font-medium text-muted-foreground">
@@ -752,8 +664,7 @@ const EditDialog: React.FC<EditDialogProps> = ({
         </form>
       </DialogContent>
     </Dialog>
-  );
-};
+);
 
 const DeleteDialog: React.FC<DeleteDialogProps> = ({
   isOpen,
@@ -795,83 +706,93 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
   </AlertDialog>
 );
 
-const MyJobs: React.FC<{ activePropertyId?: string }> = ({
-  activePropertyId,
-}) => {
+const MyJobs: React.FC = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { data: session, status: sessionStatus } = useSession();
   const { userProfile, selectedPropertyId: selectedProperty } = useUser();
+  const { properties, propertyLoading } = useProperties();
   const { updateJob: storeUpdateJob, deleteJob: storeDeleteJob } = useJobs();
 
   const [filters, setFilters] = React.useState<FilterState>(defaultFilters);
+  const [debouncedSearch, setDebouncedSearch] = React.useState("");
+  const [debouncedRoom, setDebouncedRoom] = React.useState("");
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [queryPropertyId, setQueryPropertyId] = React.useState(selectedProperty);
   const [selectedJob, setSelectedJob] = React.useState<Job | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [availableTopics, setAvailableTopics] = React.useState<Topic[]>([]);
-  const [selectedTopics, setSelectedTopics] = React.useState<Topic[]>([]);
-
-  const { jobs, isLoading, error, refreshJobs, updateJob, removeJob } =
-    useJobsData({
-      propertyId: null,
-      filters: {
-        search: filters.search,
-        status: filters.status === "overdue" ? "all" : filters.status,
-        room_name: filters.room || null,
-        property_id: selectedProperty ?? null,
-      },
-    });
-
-  const filteredJobs = React.useMemo(() => {
-    const search = filters.search.trim().toLowerCase();
-    const room = filters.room.trim().toLowerCase();
-
-    return jobs.filter((job) => {
-      const title = getJobTitle(job).toLowerCase();
-      const location = getJobLocation(job).toLowerCase();
-      const description = job.description?.toLowerCase() || "";
-      const jobId = String(job.job_id).toLowerCase();
-      const topics =
-        job.topics
-          ?.map((topic) => topic.title)
-          .join(" ")
-          .toLowerCase() || "";
-
-      const matchesSearch =
-        !search ||
-        [title, description, jobId, topics, location].some((value) =>
-          value.includes(search),
-        );
-      const matchesStatus =
-        filters.status === "all" ||
-        (filters.status === "overdue"
-          ? isOverdue(job)
-          : job.status === filters.status);
-      const matchesPriority =
-        filters.priority === "all" || job.priority === filters.priority;
-      const matchesRoom = !room || location.includes(room);
-      const matchesCreatedDate = matchesDate(job, filters.date);
-
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesPriority &&
-        matchesRoom &&
-        matchesCreatedDate
-      );
-    });
-  }, [jobs, filters]);
-
-  const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, filteredJobs.length);
-  const currentJobs = filteredJobs.slice(startIndex, endIndex);
+  const activeProperty = React.useMemo(
+    () =>
+      properties.find(
+        (property) => property.property_id === selectedProperty,
+      ) || null,
+    [properties, selectedProperty],
+  );
+  const propertyName = activeProperty?.name || selectedProperty || "";
 
   React.useEffect(() => {
+    const timeoutId = window.setTimeout(
+      () => setDebouncedSearch(filters.search.trim()),
+      300,
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [filters.search]);
+
+  React.useEffect(() => {
+    const timeoutId = window.setTimeout(
+      () => setDebouncedRoom(filters.room.trim()),
+      300,
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [filters.room]);
+
+  const isPropertyQueryReady = queryPropertyId === selectedProperty;
+
+  const {
+    jobs,
+    isLoading,
+    error,
+    refreshJobs,
+    updateJob,
+    removeJob,
+    totalCount,
+    totalPages,
+    canOperateProperty,
+    statusCounts,
+  } = useJobsData({
+    propertyId: isPropertyQueryReady ? selectedProperty : null,
+    page: currentPage,
+    pageSize: ITEMS_PER_PAGE,
+    filters: {
+      search: debouncedSearch,
+      status: filters.status,
+      priority: filters.priority,
+      date: filters.date,
+      room_name: debouncedRoom,
+    },
+  });
+
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = Math.min(startIndex + jobs.length, totalCount);
+  const hasFilters =
+    filters.search.trim() !== "" ||
+    filters.status !== "all" ||
+    filters.priority !== "all" ||
+    filters.date !== "all" ||
+    filters.room.trim() !== "";
+
+  React.useEffect(() => {
+    setFilters(defaultFilters);
+    setDebouncedSearch("");
+    setDebouncedRoom("");
     setCurrentPage(1);
-  }, [filters, activePropertyId, selectedProperty]);
+    setSelectedJob(null);
+    setIsEditDialogOpen(false);
+    setIsDeleteDialogOpen(false);
+    setQueryPropertyId(selectedProperty);
+  }, [selectedProperty]);
 
   React.useEffect(() => {
     if (sessionStatus === "unauthenticated") {
@@ -879,37 +800,12 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
     }
   }, [sessionStatus, router]);
 
-  React.useEffect(() => {
-    if (sessionStatus === "authenticated") {
-      refreshJobs();
-    }
-  }, [
-    selectedProperty,
-    sessionStatus,
-    refreshJobs,
-  ]);
+  const handleFiltersChange = (nextFilters: FilterState) => {
+    setFilters(nextFilters);
+    setCurrentPage(1);
+  };
 
-  React.useEffect(() => {
-    const loadTopics = async () => {
-      if (!isEditDialogOpen || !session?.user?.accessToken) return;
-      try {
-        setAvailableTopics(
-          await fetchTopics(session.user.accessToken, selectedProperty),
-        );
-      } catch (topicError) {
-        console.error("Failed to fetch topics:", topicError);
-        toast({
-          title: "Warning",
-          description: "Failed to load available topics.",
-          variant: "destructive",
-        });
-      }
-    };
-
-    loadTopics();
-  }, [isEditDialogOpen, selectedProperty, session?.user?.accessToken, toast]);
-
-  const handleResetFilters = () => setFilters(defaultFilters);
+  const handleResetFilters = () => handleFiltersChange(defaultFilters);
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -919,53 +815,60 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
   };
 
   const handleEdit = (job: Job) => {
+    if (!canMutateMyJob(job, selectedProperty)) return;
     setSelectedJob(job);
-    setSelectedTopics(job.topics || []);
     setIsEditDialogOpen(true);
   };
 
   const handleDelete = (job: Job) => {
+    if (!canMutateMyJob(job, selectedProperty)) return;
     setSelectedJob(job);
     setIsDeleteDialogOpen(true);
   };
 
   const handleEditSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selectedJob) return;
+    if (
+      !selectedJob ||
+      !selectedProperty ||
+      !canMutateMyJob(selectedJob, selectedProperty)
+    ) return;
 
     setIsSubmitting(true);
     try {
+      if (!session?.user?.accessToken) throw new Error("Not authenticated");
+      const mutationPropertyId = selectedProperty;
       const formData = new FormData(event.currentTarget);
       const updatedJobData: Partial<Job> = {
+        property_id: selectedProperty,
         description: formData.get("description") as string,
         priority: formData.get("priority") as JobPriority,
-        remarks: (formData.get("remarks") as string) || undefined,
+        remarks:
+          (formData.get("remarks") as string)?.trim() ||
+          selectedJob.remarks ||
+          undefined,
         is_defective: formData.get("is_defective") === "on",
         is_preventivemaintenance:
           formData.get("is_preventivemaintenance") === "on",
-        created_at:
-          (formData.get("created_at") as string) || selectedJob.created_at,
-        updated_at:
-          (formData.get("updated_at") as string) || selectedJob.updated_at,
-        completed_at:
-          (formData.get("completed_at") as string) || selectedJob.completed_at,
-        topics: selectedTopics,
       };
+      const updatedJob = await updateJobApi(
+        selectedJob.job_id,
+        updatedJobData,
+        session.user.accessToken,
+      );
+      if (
+        useMainStore.getState().selectedPropertyId !== mutationPropertyId ||
+        String(updatedJob.property_id || "") !== mutationPropertyId
+      ) return;
 
-      const apiRequestData = {
-        ...updatedJobData,
-        topic_data: selectedTopics,
-        room_id: selectedJob.rooms?.[0]?.room_id,
-      };
-
-      storeUpdateJob(selectedJob.id, apiRequestData);
-      updateJob({ ...selectedJob, ...apiRequestData });
+      storeUpdateJob(updatedJob.id, updatedJob);
+      updateJob(updatedJob);
+      await refreshJobs();
 
       toast({ title: "Success", description: "Job updated successfully." });
       setIsEditDialogOpen(false);
       setSelectedJob(null);
     } catch (editError) {
-      console.error("Failed to update job:", editError);
       toast({
         title: "Update Failed",
         description:
@@ -980,13 +883,23 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
   };
 
   const handleDeleteConfirm = async () => {
-    if (!selectedJob) return;
+    if (
+      !selectedJob ||
+      !selectedProperty ||
+      !canMutateMyJob(selectedJob, selectedProperty)
+    ) return;
 
     setIsSubmitting(true);
     try {
       if (!session?.user?.accessToken) throw new Error("Not authenticated");
+      const mutationPropertyId = selectedProperty;
 
-      await deleteJobApi(String(selectedJob.job_id), session.user.accessToken);
+      await deleteJobApi(
+        String(selectedJob.job_id),
+        session.user.accessToken,
+        mutationPropertyId,
+      );
+      if (useMainStore.getState().selectedPropertyId !== mutationPropertyId) return;
       storeDeleteJob(selectedJob.id);
       removeJob(selectedJob.job_id);
 
@@ -994,11 +907,12 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
       setIsDeleteDialogOpen(false);
       setSelectedJob(null);
 
-      if (currentJobs.length === 1 && currentPage > 1) {
+      if (jobs.length === 1 && currentPage > 1) {
         handlePageChange(currentPage - 1);
+      } else {
+        await refreshJobs();
       }
     } catch (deleteError) {
-      console.error("Failed to delete job:", deleteError);
       toast({
         title: "Deletion Failed",
         description:
@@ -1023,10 +937,23 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
     }
   };
 
-  if (
-    sessionStatus === "loading" ||
-    (isLoading && !error && jobs.length === 0)
-  ) {
+  const handleStatusUpdated = React.useCallback(
+    (updatedJob: Job) => {
+      const currentPropertyId = useMainStore.getState().selectedPropertyId;
+      if (
+        !selectedProperty ||
+        currentPropertyId !== selectedProperty ||
+        String(updatedJob.property_id || "") !== selectedProperty
+      ) {
+        return;
+      }
+      updateJob(updatedJob);
+      void refreshJobs();
+    },
+    [refreshJobs, selectedProperty, updateJob],
+  );
+
+  if (sessionStatus === "loading" || propertyLoading) {
     return <MyJobsSkeleton />;
   }
 
@@ -1038,20 +965,22 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
         <PageHeader
           title="My Jobs"
           description={
-            userProfile
-              ? `View and manage jobs assigned to ${getDisplayName(userProfile, "you")}.`
-              : "View and manage jobs assigned to you."
+            selectedProperty
+              ? `${propertyName} · Jobs assigned to ${
+                  userProfile ? getDisplayName(userProfile, "you") : "you"
+                }.`
+              : "Select a property to view jobs assigned to you."
           }
           eyebrow="Work orders"
           actions={
             <>
-              {selectedProperty ? (
+              {selectedProperty && canOperateProperty ? (
                 <CreateJobButton
                   propertyId={selectedProperty}
                   onJobCreated={handleJobCreated}
                 />
               ) : null}
-              <Button
+              {selectedProperty ? <Button
                 type="button"
                 variant="outline"
                 onClick={() => refreshJobs(true)}
@@ -1062,26 +991,44 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
                   className={cn("mr-2 h-4 w-4", isLoading && "animate-spin")}
                 />
                 Refresh
-              </Button>
+              </Button> : null}
             </>
           }
         />
 
-        <JobStatusSummary
-          jobs={jobs}
-          activeStatus={filters.status}
-          onStatusChange={(status) =>
-            setFilters((current) => ({ ...current, status }))
-          }
-        />
+        {!selectedProperty ? (
+          <FeedbackState
+            variant="empty"
+            title={properties.length ? "Select a property" : "No accessible properties"}
+            description={
+              properties.length
+                ? "Use the Property selector in the dashboard header to choose which operational queue to view."
+                : "Your active TenantMembership does not currently grant access to a Property."
+            }
+          />
+        ) : (
+          <>
+            <JobStatusSummary
+              counts={statusCounts}
+              activeStatus={filters.status}
+              onStatusChange={(status) =>
+                handleFiltersChange({ ...filters, status })
+              }
+            />
 
-        <FilterBar
-          filters={filters}
-          onChange={setFilters}
-          onReset={handleResetFilters}
-        />
+            <FilterBar
+              filters={filters}
+              onChange={handleFiltersChange}
+              onReset={handleResetFilters}
+            />
+          </>
+        )}
 
-        {error ? (
+        {selectedProperty && (isLoading || !isPropertyQueryReady) && !error ? (
+          <MyJobsResultsSkeleton />
+        ) : null}
+
+        {selectedProperty && isPropertyQueryReady && error ? (
           <FeedbackState
             variant="error"
             title="Unable to load jobs"
@@ -1100,25 +1047,31 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
           />
         ) : null}
 
-        {!error && filteredJobs.length > 0 ? (
+        {selectedProperty &&
+        isPropertyQueryReady &&
+        !isLoading &&
+        !error &&
+        jobs.length > 0 ? (
           <section className="space-y-4">
             <SectionHeader
               title="Assigned Jobs"
               action={
                 <p className="text-sm font-medium text-muted-foreground">
-                  Showing {startIndex + 1}-{endIndex} of {filteredJobs.length}
+                  Showing {startIndex + 1}-{endIndex} of {totalCount}
                 </p>
               }
             />
 
             <div className="grid gap-3 lg:grid-cols-2">
-              {currentJobs.map((job) => (
+              {jobs.map((job) => (
                 <JobCard
                   key={job.job_id}
                   job={job}
+                  activePropertyId={selectedProperty}
+                  propertyName={propertyName}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
-                  onStatusUpdated={updateJob}
+                  onStatusUpdated={handleStatusUpdated}
                 />
               ))}
             </div>
@@ -1135,22 +1088,22 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
           </section>
         ) : null}
 
-        {!error && filteredJobs.length === 0 ? (
+        {selectedProperty &&
+        isPropertyQueryReady &&
+        !isLoading &&
+        !error &&
+        jobs.length === 0 ? (
           <FeedbackState
-            variant={jobs.length === 0 ? "empty" : "no-results"}
-            title={
-              jobs.length === 0
-                ? "No jobs assigned to you"
-                : "No jobs match these filters"
-            }
+            variant={hasFilters ? "no-results" : "empty"}
+            title={hasFilters ? "No jobs match these filters" : "No jobs assigned to you"}
             description={
-              jobs.length === 0
-                ? "When a maintenance job is assigned to you, it will appear here."
-                : "Try resetting the filters or searching by a different room, area, status, or priority."
+              hasFilters
+                ? "Try resetting the filters or searching by a different room, area, status, or priority."
+                : `When a maintenance job is assigned to you at ${propertyName}, it will appear here.`
             }
             action={
               <div className="flex flex-col justify-center gap-2 sm:flex-row">
-                {jobs.length > 0 ? (
+                {hasFilters ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -1180,9 +1133,6 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
         job={selectedJob}
         onSubmit={handleEditSubmit}
         isSubmitting={isSubmitting}
-        availableTopics={availableTopics}
-        selectedTopics={selectedTopics}
-        onTopicsChange={setSelectedTopics}
       />
       <DeleteDialog
         isOpen={isDeleteDialogOpen}
@@ -1190,7 +1140,6 @@ const MyJobs: React.FC<{ activePropertyId?: string }> = ({
         onConfirm={handleDeleteConfirm}
         isSubmitting={isSubmitting}
       />
-      <FloatingActionButton label="Create Job" />
     </div>
   );
 };

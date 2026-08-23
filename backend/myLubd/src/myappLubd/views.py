@@ -3825,7 +3825,7 @@ class JobViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def my_jobs(self, request):
-        """Get jobs for the currently authenticated user"""
+        """Return Jobs assigned to the user for one active readable Property."""
         user = request.user
         
         logger.info(f"my_jobs endpoint called by user {user.username} (ID: {user.id})")
@@ -3851,107 +3851,159 @@ class JobViewSet(viewsets.ModelViewSet):
                         'detail': 'Not permitted to view other users\' jobs'
                     }, status=status.HTTP_403_FORBIDDEN)
 
-        # Get all jobs where the (possibly overridden) user is the owner/creator
-        jobs = Job.objects.filter(user=target_user).select_related(
-            'user', 'updated_by', 'area', 'area__property'
+        property_filter = str(request.query_params.get('property_id') or '').strip()
+        if not property_filter:
+            return Response(
+                {'detail': 'Select a property to view your jobs.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        property_scope = (
+            Property.objects.all()
+            if user.is_superuser
+            else get_accessible_properties(user)
+        )
+        active_property = property_scope.filter(property_id=property_filter).first()
+        if active_property is None:
+            return Response(
+                {'detail': 'You do not have access to this property.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Job.user is the current assignee relation. Job.property is the sole
+        # ownership and active-Property boundary for this projection.
+        jobs = Job.objects.filter(
+            user=target_user,
+            property=active_property,
+        ).select_related(
+            'user', 'updated_by', 'property', 'area', 'area__property'
         ).prefetch_related(
             'rooms', 'rooms__property', 'topics', 'job_images', 'job_images__uploaded_by'
-        ).order_by('-created_at')
-        if not user.is_superuser:
-            accessible_property_ids = get_accessible_properties(user).values_list('pk', flat=True)
-            jobs = jobs.filter(property_id__in=accessible_property_ids)
-        
-        initial_count = jobs.count()
-        logger.info(f"Initial job count for user {target_user.username}: {initial_count}")
-        
+        )
+
         # Apply additional filters if provided
-        property_filter = request.query_params.get('property_id')
         status_filter = request.query_params.get('status')
+        priority_filter = request.query_params.get('priority')
+        date_filter = request.query_params.get('date')
         is_pm_filter = request.query_params.get('is_preventivemaintenance')
         search_term = request.query_params.get('search')
         room_filter = request.query_params.get('room_id')
         room_name_filter = request.query_params.get('room_name')
-        
-        if property_filter:
-            property_q = Q(property__property_id=property_filter)
-            if str(property_filter).isdigit():
-                property_q |= Q(property_id=int(property_filter))
-            jobs = jobs.filter(property_q)
-            logger.info(f"Applied property filter: {property_filter}")
-        
-        if status_filter:
-            jobs = jobs.filter(status=status_filter)
-            logger.info(f"Applied status filter: {status_filter}")
-        
+
+        valid_statuses = dict(Job.STATUS_CHOICES)
+        valid_priorities = dict(Job.PRIORITY_CHOICES)
+        if status_filter and status_filter not in valid_statuses:
+            return Response(
+                {'detail': 'Invalid status filter.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if priority_filter and priority_filter not in valid_priorities:
+            return Response(
+                {'detail': 'Invalid priority filter.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if date_filter and date_filter not in {'today', 'week', 'month'}:
+            return Response(
+                {'detail': 'Invalid date filter.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        logger.info(f"Applied property filter: {property_filter}")
+
         if is_pm_filter is not None:
             val = str(is_pm_filter).lower() in ['1', 'true', 'yes']
             jobs = jobs.filter(is_preventivemaintenance=val)
             logger.info(f"Applied is_preventivemaintenance filter: {val}")
-        
+
+        if priority_filter:
+            jobs = jobs.filter(priority=priority_filter)
+
+        if date_filter:
+            now = timezone.now()
+            if date_filter == 'today':
+                created_after = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            elif date_filter == 'week':
+                created_after = now - timedelta(days=7)
+            else:
+                created_after = now - timedelta(days=30)
+            jobs = jobs.filter(created_at__gte=created_after)
+
         if room_filter:
             jobs = jobs.filter(rooms__room_id=room_filter)
             logger.info(f"Applied room_id filter: {room_filter}")
-        
+
         if room_name_filter:
-            jobs = jobs.filter(rooms__name__icontains=room_name_filter)
+            jobs = jobs.filter(
+                Q(rooms__name__icontains=room_name_filter)
+                | Q(area__name__icontains=room_name_filter)
+            )
             logger.info(f"Applied room_name filter: {room_name_filter}")
-        
+
         if search_term:
             jobs = jobs.filter(
                 Q(description__icontains=search_term) |
-                Q(job_id__icontains=search_term)
+                Q(job_id__icontains=search_term) |
+                Q(topics__title__icontains=search_term) |
+                Q(rooms__name__icontains=search_term) |
+                Q(area__name__icontains=search_term) |
+                Q(user__username__icontains=search_term) |
+                Q(user__first_name__icontains=search_term) |
+                Q(user__last_name__icontains=search_term)
             )
             logger.info(f"Applied search filter: {search_term}")
-        
-        final_count = jobs.count()
-        logger.info(f"Final job count after filters: {final_count}")
-        
-        # Use pagination if requested (frontend sends page and page_size)
-        page = request.query_params.get('page')
-        page_size = request.query_params.get('page_size')
-        
-        if page and page_size:
-            try:
-                page_num = int(page)
-                page_size_num = int(page_size)
-                # Use the paginator from the ViewSet
-                paginator = self.paginate_queryset(jobs)
-                if paginator is not None:
-                    serializer = self.get_serializer(paginator, many=True)
-                    response = self.get_paginated_response(serializer.data)
-                    # Add additional metadata
-                    user_display_name = display_name_from_user(user, fallback=user.email or 'User')
-                    target_display_name = display_name_from_user(target_user, fallback=target_user.email or 'User')
-                    response.data['user_id'] = user.id
-                    response.data['username'] = user_display_name
-                    response.data['display_name'] = user_display_name
-                    response.data['target_user_id'] = target_user.id
-                    response.data['target_username'] = target_display_name
-                    response.data['target_display_name'] = target_display_name
-                    logger.info(f"Returning paginated results: page {page_num}, {len(serializer.data)} jobs")
-                    return response
-            except (ValueError, TypeError) as e:
-                logger.warning(f"Invalid pagination parameters: page={page}, page_size={page_size}, error={e}")
-        
-        # If no pagination requested or pagination failed, return all results
-        serializer = self.get_serializer(jobs, many=True)
+
+        jobs = jobs.distinct()
+        status_counts = jobs.aggregate(
+            total=Count('id', distinct=True),
+            pending=Count('id', filter=Q(status='pending'), distinct=True),
+            in_progress=Count('id', filter=Q(status='in_progress'), distinct=True),
+            waiting_sparepart=Count(
+                'id', filter=Q(status='waiting_sparepart'), distinct=True
+            ),
+            completed=Count('id', filter=Q(status='completed'), distinct=True),
+            cancelled=Count('id', filter=Q(status='cancelled'), distinct=True),
+        )
+
+        if status_filter:
+            jobs = jobs.filter(status=status_filter)
+            logger.info(f"Applied status filter: {status_filter}")
+
+        jobs = jobs.annotate(
+            _comments_count=Count('comments', distinct=True)
+        ).order_by('-created_at')
+        page = self.paginate_queryset(jobs)
+        serializer = self.get_serializer(page if page is not None else jobs, many=True)
         user_display_name = display_name_from_user(user, fallback=user.email or 'User')
         target_display_name = display_name_from_user(target_user, fallback=target_user.email or 'User')
-        
-        response_data = {
+        can_operate = bool(
+            user.is_superuser
+            or get_operable_properties(user).filter(pk=active_property.pk).exists()
+        )
+
+        if page is not None:
+            response = self.get_paginated_response(serializer.data)
+            response.data.update({
+                'property_id': property_filter,
+                'can_operate': can_operate,
+                'status_counts': status_counts,
+                'user_id': user.id,
+                'display_name': user_display_name,
+                'target_user_id': target_user.id,
+                'target_display_name': target_display_name,
+            })
+            return response
+
+        return Response({
             'count': len(serializer.data),
             'results': serializer.data,
+            'property_id': property_filter,
+            'can_operate': can_operate,
+            'status_counts': status_counts,
             'user_id': user.id,
-            'username': user_display_name,
             'display_name': user_display_name,
             'target_user_id': target_user.id,
-            'target_username': target_display_name,
             'target_display_name': target_display_name,
-            'message': f'Found {len(serializer.data)} jobs for user {target_display_name}'
-        }
-        
-        logger.info(f"Returning {len(serializer.data)} jobs to user {user.username} (no pagination)")
-        return Response(response_data, status=status.HTTP_200_OK)
+        }, status=status.HTTP_200_OK)
 
     def _operable_property_ids(self):
         """Canonical Property PKs the current user may mutate."""

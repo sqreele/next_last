@@ -1,243 +1,201 @@
-// @/app/lib/hooks/useJobsData.js
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "@/app/lib/session.client";
-// Import specific functions needed from the updated data.server.ts
-import { fetchAllJobsForProperty, fetchAllMyJobs } from "@/app/lib/data.server";
-import { useUser } from "@/app/lib/stores/mainStore";
-import { Job } from "@/app/lib/types";
+import { useMainStore } from "@/app/lib/stores/mainStore";
+import type { Job } from "@/app/lib/types";
+import {
+  isCurrentMyJobsRequest,
+  isMyJobsAbortError,
+  requestMyJobsPage,
+  type MyJobsFilters,
+  type MyJobsStatusCounts,
+} from "@/app/lib/hooks/my-jobs-request.mjs";
 
 interface UseJobsDataOptions {
   propertyId?: string | null;
-  filters?: {
-    room_id?: string | null;
-    room_name?: string | null;
-    status?: string;
-    is_preventivemaintenance?: boolean | null;
-    search?: string;
-    user_id?: string | null;
-    property_id?: string | null; // allow filtering My Jobs by selected property
-  };
+  page?: number;
+  pageSize?: number;
+  filters?: MyJobsFilters;
 }
 
 interface UseJobsDataReturn {
   jobs: Job[];
   setJobs: React.Dispatch<React.SetStateAction<Job[]>>;
-  addJob: (newJob: Job) => void; // Kept for potential optimistic updates
-  updateJob: (updatedJob: Job) => void; // Kept for local state updates
-  removeJob: (jobId: string | number) => void; // Kept for local state updates
+  addJob: (newJob: Job) => void;
+  updateJob: (updatedJob: Job) => void;
+  removeJob: (jobId: string | number) => void;
   isLoading: boolean;
   error: string | null;
   activePropertyId: string | null;
   refreshJobs: (showToast?: boolean) => Promise<boolean>;
   lastRefreshed: Date | null;
+  totalCount: number;
+  totalPages: number;
+  canOperateProperty: boolean;
+  statusCounts: MyJobsStatusCounts;
 }
 
-const MIN_LOADER_MS = 400;
+const EMPTY_STATUS_COUNTS: MyJobsStatusCounts = {
+  total: 0,
+  pending: 0,
+  in_progress: 0,
+  waiting_sparepart: 0,
+  completed: 0,
+  cancelled: 0,
+};
 
 export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
-  const { data: session, status: sessionStatus } = useSession();
-  const { userProfile } = useUser();
+  const { status: sessionStatus } = useSession();
+  const activePropertyId = options?.propertyId || null;
+  const page = options?.page || 1;
+  const pageSize = options?.pageSize || 24;
+  const search = options?.filters?.search || "";
+  const status = options?.filters?.status || "all";
+  const priority = options?.filters?.priority || "all";
+  const date = options?.filters?.date || "all";
+  const roomName = options?.filters?.room_name || "";
+
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(sessionStatus === "loading");
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [canOperateProperty, setCanOperateProperty] = useState(false);
+  const [statusCounts, setStatusCounts] = useState<MyJobsStatusCounts>(
+    EMPTY_STATUS_COUNTS,
+  );
 
-  const loaderShownAtRef = useRef<number | null>(null);
-  const optionsRef = useRef(options);
-  optionsRef.current = options;
+  const requestIdRef = useRef(0);
+  const controllerRef = useRef<AbortController | null>(null);
 
-  const clearLoadingAfterMinTime = useCallback(() => {
-    const shownAt = loaderShownAtRef.current;
-    loaderShownAtRef.current = null;
-    if (shownAt == null) {
-      setIsLoading(false);
-      return;
-    }
-    const elapsed = Date.now() - shownAt;
-    const remaining = Math.max(0, MIN_LOADER_MS - elapsed);
-    if (remaining === 0) {
-      setIsLoading(false);
-    } else {
-      setTimeout(() => setIsLoading(false), remaining);
-    }
+  const clearResults = useCallback(() => {
+    setJobs([]);
+    setTotalCount(0);
+    setTotalPages(0);
+    setCanOperateProperty(false);
+    setStatusCounts(EMPTY_STATUS_COUNTS);
   }, []);
 
-  // Refs to prevent infinite loops and excessive calls
-  const isLoadingRef = useRef(false);
-  const lastCallTimeRef = useRef<number>(0);
-  const MIN_CALL_INTERVAL = 2000; // Minimum 2 seconds between calls
+  const refreshJobs = useCallback(async (): Promise<boolean> => {
+    controllerRef.current?.abort();
+    const requestId = ++requestIdRef.current;
 
-  const activePropertyId = options?.propertyId !== undefined ? options.propertyId : null;
-
-  const refreshJobs = useCallback(async (showToast = false): Promise<boolean> => {
-    // Prevent concurrent calls
-    if (isLoadingRef.current) {
+    if (sessionStatus === "loading") {
+      setIsLoading(true);
       return false;
     }
-    
-    // Prevent excessive calls (rate limiting)
-    const now = Date.now();
-    const timeSinceLastCall = now - lastCallTimeRef.current;
-    if (timeSinceLastCall < MIN_CALL_INTERVAL) {
-      return false;
-    }
-    
-    isLoadingRef.current = true;
-    lastCallTimeRef.current = now;
-    
-    if (sessionStatus === 'loading') {
-        setIsLoading(true);
-        isLoadingRef.current = false;
-        return false;
-    }
-    // Assuming api-client handles auth, we just need session to be loaded for user details
-    if (sessionStatus === 'unauthenticated') {
-      setJobs([]);
-      setError("Not authenticated. Please sign in.");
+    if (sessionStatus !== "authenticated") {
+      clearResults();
+      setError(
+        sessionStatus === "unauthenticated"
+          ? "Please sign in to view your jobs."
+          : null,
+      );
       setIsLoading(false);
-      isLoadingRef.current = false;
       return false;
     }
-    if (!session?.user?.accessToken) {
-      setJobs([]);
-      setError("Access token not available. Please sign in again.");
-      setIsLoading(false);
-      isLoadingRef.current = false;
-      return false;
-    }
-
-    loaderShownAtRef.current = Date.now();
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      let fetchedJobs: Job[] = [];
-      // *** CHOOSE FETCH FUNCTION BASED ON PROPERTY ID ***
-      if (activePropertyId) {
-        // Build query parameters for additional filtering
-        const queryParams = new URLSearchParams();
-        const filters = optionsRef.current?.filters;
-        if (filters) {
-          if (filters.room_id) queryParams.append('room_id', filters.room_id);
-          if (filters.room_name) queryParams.append('room_name', filters.room_name);
-          if (filters.status && filters.status !== 'all') queryParams.append('status', filters.status);
-          if (filters.is_preventivemaintenance !== null && filters.is_preventivemaintenance !== undefined) queryParams.append('is_preventivemaintenance', filters.is_preventivemaintenance.toString());
-          if (filters.search) queryParams.append('search', filters.search);
-          if (filters.user_id && filters.user_id !== 'all') queryParams.append('user_id', filters.user_id);
-        }
-        
-        const queryString = queryParams.toString();
-        fetchedJobs = await fetchAllJobsForProperty(activePropertyId, session.user.accessToken, queryString);
-      } else {
-        // Build query parameters for room filtering
-        const queryParams = new URLSearchParams();
-        const filters = optionsRef.current?.filters;
-        if (filters) {
-          if (filters.room_id) queryParams.append('room_id', filters.room_id);
-          if (filters.room_name) queryParams.append('room_name', filters.room_name);
-          if (filters.status && filters.status !== 'all') queryParams.append('status', filters.status);
-          if (filters.is_preventivemaintenance !== null && filters.is_preventivemaintenance !== undefined) queryParams.append('is_preventivemaintenance', filters.is_preventivemaintenance.toString());
-          if (filters.search) queryParams.append('search', filters.search);
-          if (filters.user_id && filters.user_id !== 'all') queryParams.append('user_id', filters.user_id);
-          // IMPORTANT: allow My Jobs to be filtered by selected property
-          if (filters.property_id) queryParams.append('property_id', filters.property_id);
-        }
-        
-        const queryString = queryParams.toString();
-        fetchedJobs = await fetchAllMyJobs(session.user.accessToken, queryString);
-      }
-
-      // *** NO NEED FOR CLIENT-SIDE USER FILTERING WHEN USING fetchMyJobs ***
-      // The backend now handles user filtering automatically
-      setJobs(fetchedJobs);
-      setLastRefreshed(new Date());
-      return true; // Success
-    } catch (err) {
-       // Error handling using the message from handleApiError (if thrown)
-       let errorMessage = "Failed to fetch jobs. Please try again.";
-       if (err instanceof Error) {
-           // Use the message directly, as handleApiError structures it
-           errorMessage = err.message;
-           // Optionally check err.status if needed
-           if ((err as any).status === 401) {
-                errorMessage = `Authentication failed: ${err.message}. Please sign in again.`;
-           }
-       }
-      console.error("Error refreshing jobs in useJobsData:", err);
-      setError(errorMessage);
-      setJobs([]); // Clear jobs on error
-      return false; // Failure
-    } finally {
-      clearLoadingAfterMinTime();
-      isLoadingRef.current = false;
-    }
-    // Dependencies: activePropertyId and user session details used for filtering
-    // Note: We intentionally exclude options?.filters from deps to prevent excessive re-renders
-    // Filters are accessed directly from options inside the function
-  }, [
-    activePropertyId,
-    session?.user?.accessToken,
-    sessionStatus,
-  ]);
-
-  // Store refreshJobs in a ref to avoid including it in dependencies
-  const refreshJobsRef = useRef(refreshJobs);
-  useEffect(() => {
-    refreshJobsRef.current = refreshJobs;
-  }, [refreshJobs]);
-
-  // Effect runs only when essential dependencies change, not on every filter change
-  useEffect(() => {
-    // Only fetch if authenticated and user data is available
-    if (sessionStatus === 'authenticated' && session?.user?.accessToken) {
-      // Use a small delay to batch rapid changes and prevent excessive calls
-      const timeoutId = setTimeout(() => {
-        refreshJobsRef.current();
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    } else if (sessionStatus === 'unauthenticated') {
-      setJobs([]);
+    if (!activePropertyId) {
+      clearResults();
       setError(null);
       setIsLoading(false);
+      return false;
     }
-    // Depend on stable values - refreshJobs is accessed via ref to prevent dependency loops
+
+    const requestPropertyId = activePropertyId;
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    clearResults();
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const response = await requestMyJobsPage({
+        propertyId: requestPropertyId,
+        page,
+        pageSize,
+        filters: { search, status, priority, date, room_name: roomName },
+        signal: controller.signal,
+      });
+      const isCurrent = isCurrentMyJobsRequest({
+        requestId,
+        currentRequestId: requestIdRef.current,
+        requestPropertyId,
+        currentPropertyId: useMainStore.getState().selectedPropertyId,
+      });
+      if (!response || !isCurrent) return false;
+
+      setJobs(response.results);
+      setTotalCount(response.count);
+      setTotalPages(response.total_pages);
+      setCanOperateProperty(response.can_operate === true);
+      setStatusCounts({ ...EMPTY_STATUS_COUNTS, ...response.status_counts });
+      setLastRefreshed(new Date());
+      return true;
+    } catch (requestError) {
+      if (controller.signal.aborted || isMyJobsAbortError(requestError)) {
+        return false;
+      }
+      if (requestId !== requestIdRef.current) return false;
+      clearResults();
+      const statusCode = (requestError as Error & { status?: number }).status;
+      if (statusCode === 403) {
+        setError("You do not have access to My Jobs for this property.");
+      } else if (statusCode === 401) {
+        setError("Your session expired. Please sign in again.");
+      } else {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to load My Jobs.",
+        );
+      }
+      return false;
+    } finally {
+      if (requestId === requestIdRef.current) setIsLoading(false);
+    }
   }, [
-    sessionStatus,
-    session?.user?.accessToken,
     activePropertyId,
+    clearResults,
+    date,
+    page,
+    pageSize,
+    priority,
+    roomName,
+    search,
+    sessionStatus,
+    status,
   ]);
 
-  // Local state modifiers (addJob, updateJob, removeJob) remain the same as your provided code
-  const addJob = useCallback((newJob: Job) => {
-     // Check if the job matches the current filters (user filter mainly now)
-     const userId = session?.user?.id;
-     const username = session?.user?.username;
-     const matchesUser = newJob.user && userId && username ? (String(newJob.user) === String(userId) || String(newJob.user) === username) : false;
-     // Also check property if activePropertyId is set
-     const matchesProperty = !activePropertyId || (newJob.property_id && String(newJob.property_id) === activePropertyId);
+  useEffect(() => {
+    void refreshJobs();
+    return () => controllerRef.current?.abort();
+  }, [refreshJobs]);
 
-     if (matchesProperty && matchesUser) {
-        setJobs(prevJobs => [newJob, ...prevJobs]);
-     } else {
-     }
-  }, [activePropertyId, session?.user?.id, session?.user?.username]);
+  const addJob = useCallback(
+    (newJob: Job) => {
+      if (String(newJob.property_id || "") === activePropertyId) {
+        setJobs((current) => [newJob, ...current]);
+      }
+    },
+    [activePropertyId],
+  );
 
   const updateJob = useCallback((updatedJob: Job) => {
-    setJobs(prevJobs =>
-      prevJobs.map(job =>
-        String(job.job_id) === String(updatedJob.job_id) ? updatedJob : job
-      )
+    setJobs((current) =>
+      current.map((job) =>
+        String(job.job_id) === String(updatedJob.job_id) ? updatedJob : job,
+      ),
     );
   }, []);
 
   const removeJob = useCallback((jobId: string | number) => {
-    setJobs(prevJobs =>
-      prevJobs.filter(job => String(job.job_id) !== String(jobId))
+    setJobs((current) =>
+      current.filter((job) => String(job.job_id) !== String(jobId)),
     );
+    setTotalCount((current) => Math.max(0, current - 1));
   }, []);
-
 
   return {
     jobs,
@@ -249,6 +207,10 @@ export function useJobsData(options?: UseJobsDataOptions): UseJobsDataReturn {
     error,
     activePropertyId,
     refreshJobs,
-    lastRefreshed
+    lastRefreshed,
+    totalCount,
+    totalPages,
+    canOperateProperty,
+    statusCounts,
   };
 }

@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from datetime import timedelta
 from typing import Optional
+from urllib.parse import quote
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -206,13 +207,41 @@ TEMPLATES = [
     },
 ]
 
-# Database (read from environment; falls back to sane defaults)
+# POSTGRES_PASSWORD is canonical for Compose so Django and PostgreSQL cannot
+# silently diverge. SQL_PASSWORD remains supported for direct Django runtimes.
+_INSECURE_DATABASE_PASSWORDS = {
+    'admin',
+    'changeme',
+    'default',
+    'mylubd_password',
+    'password',
+    'postgres',
+    'secret',
+}
+_configured_database_password = (
+    os.getenv('POSTGRES_PASSWORD') or os.getenv('SQL_PASSWORD')
+)
+
+if not _configured_database_password:
+    raise ImproperlyConfigured(
+        'POSTGRES_PASSWORD (or SQL_PASSWORD for direct Django execution) must be configured.'
+    )
+
+if (
+    _configured_database_password.strip().casefold()
+    in _INSECURE_DATABASE_PASSWORDS
+):
+    raise ImproperlyConfigured(
+        'The database password must not use a predictable default.'
+    )
+
+# Database (all environments require an explicit password)
 DATABASES = {
     'default': {
         'ENGINE': os.getenv('SQL_ENGINE', 'django.db.backends.postgresql'),
         'NAME': os.getenv('SQL_DATABASE', os.getenv('POSTGRES_DB', 'mylubd_db')),
         'USER': os.getenv('SQL_USER', os.getenv('POSTGRES_USER', 'mylubd_user')),
-        'PASSWORD': os.getenv('SQL_PASSWORD', os.getenv('POSTGRES_PASSWORD', '')),
+        'PASSWORD': _configured_database_password,
         'HOST': os.getenv('SQL_HOST', os.getenv('POSTGRES_HOST', 'db')),
         'PORT': os.getenv('SQL_PORT', os.getenv('POSTGRES_PORT', '5432')),
         # ✅ PERFORMANCE: Connection pooling
@@ -250,6 +279,43 @@ CACHES = {
 
 # Enable caching
 USE_CACHE = True
+
+# Redis is an internal authenticated service even though the primary cache
+# backend currently remains local-memory. This contract is shared by backend
+# maintenance utilities and prevents unauthenticated future consumers.
+_INSECURE_REDIS_PASSWORDS = {
+    'admin',
+    'changeme',
+    'default',
+    'password',
+    'redis',
+    'secret',
+}
+REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
+if not REDIS_PASSWORD:
+    raise ImproperlyConfigured('REDIS_PASSWORD must be configured.')
+if REDIS_PASSWORD.casefold() in _INSECURE_REDIS_PASSWORDS:
+    raise ImproperlyConfigured(
+        'REDIS_PASSWORD must not use a predictable value.'
+    )
+if len(REDIS_PASSWORD) < 16:
+    raise ImproperlyConfigured(
+        'REDIS_PASSWORD must contain at least 16 characters.'
+    )
+if not all(
+    (character.isascii() and character.isalnum()) or character in '._~-'
+    for character in REDIS_PASSWORD
+):
+    raise ImproperlyConfigured(
+        'REDIS_PASSWORD must contain only URL-safe characters.'
+    )
+REDIS_HOST = os.getenv('REDIS_HOST', 'localhost' if DEBUG else 'redis')
+REDIS_PORT = os.getenv('REDIS_PORT', '6379')
+REDIS_DB = os.getenv('REDIS_DB', '1')
+REDIS_URL = (
+    f"redis://:{quote(REDIS_PASSWORD, safe='')}@"
+    f'{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
+)
 
 # REST Framework Configuration
 REST_FRAMEWORK = {

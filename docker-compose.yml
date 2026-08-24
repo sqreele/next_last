@@ -61,19 +61,54 @@ services:
     image: redis:7-alpine
     container_name: redis-cache
     restart: unless-stopped
-    # Redis is only available inside the Docker network.
-    expose:
-      - "6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD to a strong URL-safe password}
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru ${REDIS_PASSWORD:+--requirepass ${REDIS_PASSWORD}}
+    # Generate a root/Redis-only config so the password is not placed in the
+    # Redis process arguments. URL-safe values also avoid config injection.
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        password="$${REDIS_PASSWORD}"
+        normalized="$$(printf '%s' "$${password}" | tr '[:upper:]' '[:lower:]')"
+        case "$${normalized}" in
+          redis|password|changeme|secret|default|admin)
+            echo "REDIS_PASSWORD must not use a predictable value" >&2
+            exit 1
+            ;;
+        esac
+        if [ "$${#password}" -lt 16 ]; then
+          echo "REDIS_PASSWORD must contain at least 16 characters" >&2
+          exit 1
+        fi
+        case "$${password}" in
+          *[!A-Za-z0-9._~-]*)
+            echo "REDIS_PASSWORD must contain only URL-safe characters" >&2
+            exit 1
+            ;;
+        esac
+        umask 077
+        config=/run/redis-hotelcarepro.conf
+        {
+          printf 'bind 0.0.0.0\n'
+          printf 'protected-mode yes\n'
+          printf 'appendonly yes\n'
+          printf 'maxmemory 256mb\n'
+          printf 'maxmemory-policy allkeys-lru\n'
+          printf 'requirepass %s\n' "$${password}"
+        } > "$${config}"
+        chown redis:redis "$${config}"
+        unset password normalized REDIS_PASSWORD
+        exec /usr/local/bin/docker-entrypoint.sh redis-server "$${config}"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping | grep -qx PONG"]
       interval: 30s
       timeout: 10s
       retries: 3
     networks:
-      - app-network
+      - redis-network
 
   backend:
     build: 
@@ -107,12 +142,13 @@ services:
       SQL_ENGINE: django.db.backends.postgresql
       SQL_DATABASE: ${SQL_DATABASE}
       SQL_USER: ${SQL_USER}
-      SQL_PASSWORD: ${SQL_PASSWORD}
+      # PostgreSQL and Django must consume the same explicitly supplied secret.
+      SQL_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to an explicit database password}
       SQL_HOST: ${SQL_HOST}
       SQL_PORT: ${SQL_PORT}
       POSTGRES_DB: ${POSTGRES_DB:-mylubd_db}
       POSTGRES_USER: ${POSTGRES_USER:-mylubd_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mylubd_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to an explicit database password}
       POSTGRES_HOST: ${POSTGRES_HOST:-db}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       EMAIL_HOST: ${EMAIL_HOST}
@@ -128,7 +164,10 @@ services:
       GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID}
       GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET}
       GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN}
-      REDIS_URL: redis://redis:6379/1
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD to a strong URL-safe password}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 1
     healthcheck:
       test: ["CMD", "python", "-c", "import http.client; conn = http.client.HTTPConnection('localhost:8000'); conn.request('GET', '/api/v1/health/', headers={'X-Forwarded-Proto': 'https'}); response = conn.getresponse(); exit(0 if response.status == 200 else 1)"]
       interval: 30s
@@ -137,13 +176,16 @@ services:
     expose:
       - "8000"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_started
+      redis:
+        condition: service_healthy
     networks:
       app-network:
         aliases:
           - backend
           - django-backend
+      redis-network:
 
   db:
     image: postgres:17-alpine
@@ -156,7 +198,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-mylubd_db}
       POSTGRES_USER: ${POSTGRES_USER:-mylubd_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mylubd_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD to an explicit database password}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -204,6 +246,9 @@ networks:
   app-network:
     name: pcms_network
     driver: bridge
+  redis-network:
+    driver: bridge
+    internal: true
 
 volumes:
   postgres_data_v17:

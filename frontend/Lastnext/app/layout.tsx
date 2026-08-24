@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { type Metadata, type Viewport } from 'next';
+import { headers } from 'next/headers';
 import localFont from 'next/font/local';
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from '@/app/providers';
@@ -106,7 +107,9 @@ interface RootLayoutProps {
   children: React.ReactNode;
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
+
   return (
     <html lang="th" suppressHydrationWarning>
       <head>
@@ -122,6 +125,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             wrong theme between SSR and ThemeProvider mount. Reads the same
             localStorage key the provider uses. */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var s=localStorage.getItem('pcms-theme');var m=window.matchMedia('(prefers-color-scheme: dark)').matches;var d=(s==='dark')||((s==='system'||!s)&&m);if(d){document.documentElement.classList.add('dark');}}catch(e){}})();`,
           }}

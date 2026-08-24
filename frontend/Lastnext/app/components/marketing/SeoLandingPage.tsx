@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import {
   ArrowRight,
   BarChart3,
@@ -18,7 +19,8 @@ import {
 
 const benefitIcons = [Clock3, ShieldCheck, BarChart3];
 
-export function SeoLandingPage({ page }: { page: MarketingPage }) {
+export async function SeoLandingPage({ page }: { page: MarketingPage }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const isThai = page.locale === "th";
   const path = `${isThai ? "/th/" : "/"}${page.slug}`;
   const faqSchema = {
@@ -34,6 +36,7 @@ export function SeoLandingPage({ page }: { page: MarketingPage }) {
   return (
     <div className="min-h-screen bg-[var(--pcms-app-bg)] text-foreground">
       <script
+        nonce={nonce}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />

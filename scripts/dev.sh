@@ -8,6 +8,10 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+dev_compose() {
+    docker-compose --env-file .env.local -f docker-compose.dev.yml "$@"
+}
+
 # Function to print colored output
 print_status() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -32,12 +36,17 @@ check_dev_compose() {
         print_status "Please create docker-compose.dev.yml file first."
         exit 1
     fi
+    if [ ! -f ".env.local" ]; then
+        print_error ".env.local not found!"
+        print_status "Create it from frontend/Lastnext/env.example and set POSTGRES_PASSWORD."
+        exit 1
+    fi
 }
 
 # Function to clean up existing containers
 cleanup() {
     print_status "Cleaning up existing development containers..."
-    docker-compose -f docker-compose.dev.yml down --remove-orphans 2>/dev/null || true
+    dev_compose down --remove-orphans 2>/dev/null || true
     
     # Remove any dangling containers with dev names
     docker rm -f nextjs-frontend-dev django-backend-dev db-dev 2>/dev/null || true
@@ -50,7 +59,7 @@ wait_for_db() {
     local attempt=1
     
     while [ $attempt -le $max_attempts ]; do
-        if docker-compose -f docker-compose.dev.yml exec -T db pg_isready -U "${POSTGRES_USER:-mylubd_user}" -d "${POSTGRES_DB:-mylubd_db}" >/dev/null 2>&1; then
+        if dev_compose exec -T db pg_isready -U "${POSTGRES_USER:-mylubd_user}" -d "${POSTGRES_DB:-mylubd_db}" >/dev/null 2>&1; then
             print_success "Database is ready!"
             return 0
         fi
@@ -67,12 +76,12 @@ wait_for_db() {
 # Function to run migrations
 run_migrations() {
     print_status "Syncing PostgreSQL sequences (avoids auth_permission duplicate-key errors)..."
-    docker-compose -f docker-compose.dev.yml exec -T backend sh -c '
+    dev_compose exec -T backend sh -c '
       SEQFIX=$(python manage.py sqlsequencereset auth admin contenttypes sessions myappLubd 2>/dev/null || true)
       if [ -n "$SEQFIX" ]; then echo "$SEQFIX" | python manage.py dbshell >/dev/null 2>&1 || true; fi
     ' 2>/dev/null || true
     print_status "Running database migrations..."
-    if docker-compose -f docker-compose.dev.yml exec -T backend python manage.py migrate; then
+    if dev_compose exec -T backend python manage.py migrate; then
         print_success "Migrations completed successfully!"
     else
         print_warning "Migrations failed, but continuing..."
@@ -82,7 +91,7 @@ run_migrations() {
 # Function to create superuser
 create_superuser() {
     print_status "Checking if superuser exists..."
-    docker-compose -f docker-compose.dev.yml exec -T backend python -c "
+    dev_compose exec -T backend python -c "
 import os
 import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'myLubd.settings')
@@ -104,21 +113,21 @@ check_services() {
     print_status "Checking service health..."
     
     # Check database
-    if docker-compose -f docker-compose.dev.yml ps | grep -q "db-dev.*Up"; then
+    if dev_compose ps | grep -q "db-dev.*Up"; then
         print_success "✓ Database is running"
     else
         print_warning "✗ Database might not be running properly"
     fi
     
     # Check backend
-    if docker-compose -f docker-compose.dev.yml ps | grep -q "django-backend-dev.*Up"; then
+    if dev_compose ps | grep -q "django-backend-dev.*Up"; then
         print_success "✓ Backend is running"
     else
         print_warning "✗ Backend might not be running properly"
     fi
     
     # Check frontend
-    if docker-compose -f docker-compose.dev.yml ps | grep -q "nextjs-frontend-dev.*Up"; then
+    if dev_compose ps | grep -q "nextjs-frontend-dev.*Up"; then
         print_success "✓ Frontend is running"
     else
         print_warning "✗ Frontend might not be running properly"
@@ -140,8 +149,8 @@ show_urls() {
     echo -e "Password: set DJANGO_SUPERUSER_PASSWORD before running for a custom password"
     echo ""
     echo -e "${YELLOW}Useful commands:${NC}"
-    echo -e "  View logs:     docker-compose -f docker-compose.dev.yml logs -f"
-    echo -e "  Stop:          docker-compose -f docker-compose.dev.yml down"
+    echo -e "  View logs:     docker-compose --env-file .env.local -f docker-compose.dev.yml logs -f"
+    echo -e "  Stop:          docker-compose --env-file .env.local -f docker-compose.dev.yml down"
     echo -e "  Restart:       ./scripts/dev.sh"
     echo ""
 }
@@ -150,7 +159,7 @@ show_urls() {
 cleanup_on_exit() {
     echo ""
     print_warning "Received interrupt signal. Stopping services..."
-    docker-compose -f docker-compose.dev.yml down
+    dev_compose down
     exit 0
 }
 
@@ -224,21 +233,21 @@ main() {
     # Build containers with extended timeouts
     if [ "$REBUILD" = true ]; then
         print_status "🔨 Force rebuilding containers with extended timeouts..."
-        DOCKER_CLIENT_TIMEOUT=600 COMPOSE_HTTP_TIMEOUT=600 docker-compose -f docker-compose.dev.yml build --no-cache
+        DOCKER_CLIENT_TIMEOUT=600 COMPOSE_HTTP_TIMEOUT=600 dev_compose build --no-cache
     else
         print_status "📦 Building containers with extended timeouts..."
-        DOCKER_CLIENT_TIMEOUT=600 COMPOSE_HTTP_TIMEOUT=600 docker-compose -f docker-compose.dev.yml build
+        DOCKER_CLIENT_TIMEOUT=600 COMPOSE_HTTP_TIMEOUT=600 dev_compose build
     fi
     
     # Start database first
     print_status "🗄️ Starting database..."
-    docker-compose -f docker-compose.dev.yml up -d db
+    dev_compose up -d db
     
     # Wait for database to be ready
     if wait_for_db; then
         # Start backend
         print_status "🚀 Starting backend..."
-        docker-compose -f docker-compose.dev.yml up -d backend
+        dev_compose up -d backend
         
         # Wait a bit for backend to initialize
         sleep 5
@@ -251,7 +260,7 @@ main() {
         
         # Start frontend
         print_status "📱 Starting frontend..."
-        docker-compose -f docker-compose.dev.yml up -d frontend
+        dev_compose up -d frontend
         
         # Wait for services to be ready
         sleep 10
@@ -265,14 +274,14 @@ main() {
         # Run in foreground or detached mode
         if [ "$DETACHED" = true ]; then
             print_success "Services running in detached mode"
-            print_status "Use 'docker-compose -f docker-compose.dev.yml logs -f' to view logs"
+            print_status "Use 'docker-compose --env-file .env.local -f docker-compose.dev.yml logs -f' to view logs"
         else
             print_status "Following logs... (Press Ctrl+C to stop)"
-            docker-compose -f docker-compose.dev.yml logs -f
+            dev_compose logs -f
         fi
     else
         print_error "Failed to start database. Stopping..."
-        docker-compose -f docker-compose.dev.yml down
+        dev_compose down
         exit 1
     fi
 }

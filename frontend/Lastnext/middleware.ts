@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  CSP_HEADER,
+  CSP_NONCE_HEADER,
+  createCspContext,
+} from "@/app/lib/security/csp.mjs";
 
 type MiddlewareSession = {
   user?: {
@@ -169,6 +174,27 @@ const protectedApiRoutes = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  const { nonce, policy } = createCspContext({
+    isDevelopment: process.env.NODE_ENV !== "production",
+  });
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(CSP_NONCE_HEADER, nonce);
+  // Next.js reads the request CSP to apply this nonce to framework-generated
+  // scripts and styles. The response copy is the browser enforcement policy.
+  requestHeaders.set(CSP_HEADER, policy);
+
+  const secureResponse = (response: NextResponse) => {
+    response.headers.set(CSP_HEADER, policy);
+    return response;
+  };
+
+  const continueRequest = () =>
+    secureResponse(
+      NextResponse.next({
+        request: { headers: requestHeaders },
+      }),
+    );
+
   // Skip middleware for static files and API routes that don't need auth
   if (
     pathname.startsWith("/_next") ||
@@ -180,7 +206,7 @@ export async function middleware(request: NextRequest) {
     pathname === "/manifest.json" ||
     PUBLIC_FILE.test(pathname)
   ) {
-    return NextResponse.next();
+    return continueRequest();
   }
 
   // Check if the route is protected
@@ -220,23 +246,25 @@ export async function middleware(request: NextRequest) {
 
       // For API routes, return 401 status
       if (isProtectedApiRoute) {
-        return new NextResponse(
-          JSON.stringify({
-            error: "Unauthorized",
-            message: "Authentication required",
-            code: "AUTH_REQUIRED",
-          }),
-          {
-            status: 401,
-            headers: {
-              "Content-Type": "application/json",
+        return secureResponse(
+          new NextResponse(
+            JSON.stringify({
+              error: "Unauthorized",
+              message: "Authentication required",
+              code: "AUTH_REQUIRED",
+            }),
+            {
+              status: 401,
+              headers: {
+                "Content-Type": "application/json",
+              },
             },
-          },
+          ),
         );
       }
 
       // For page routes, redirect to login
-      return NextResponse.redirect(loginUrl);
+      return secureResponse(NextResponse.redirect(loginUrl));
     }
   }
 
@@ -249,7 +277,9 @@ export async function middleware(request: NextRequest) {
       process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
       process.env.APP_BASE_URL ||
       "https://hotelcarepro.com";
-    return NextResponse.redirect(new URL(redirectUrl, baseUrl));
+    return secureResponse(
+      NextResponse.redirect(new URL(redirectUrl, baseUrl)),
+    );
   }
 
   // Handle root page - allow both authenticated and unauthenticated users
@@ -259,7 +289,7 @@ export async function middleware(request: NextRequest) {
     // They can stay on landing page or navigate to dashboard
   }
 
-  return NextResponse.next();
+  return continueRequest();
 }
 
 export const config = {

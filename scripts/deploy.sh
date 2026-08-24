@@ -8,6 +8,9 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
+# Production credentials must never be readable by group or other users.
+chmod 0600 .env
+
 # Fail before building if required variables or Compose syntax are invalid.
 docker compose -f docker-compose.yml config --quiet
 

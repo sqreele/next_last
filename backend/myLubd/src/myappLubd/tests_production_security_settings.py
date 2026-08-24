@@ -61,6 +61,8 @@ class ProductionSecuritySettingsTests(SimpleTestCase):
             'DJANGO_ALLOWED_HOSTS': 'hotelcarepro.com www.hotelcarepro.com backend localhost',
             'DJANGO_CORS_ORIGINS': 'https://hotelcarepro.com https://www.hotelcarepro.com',
             'DJANGO_CSRF_TRUSTED_ORIGINS': 'https://hotelcarepro.com https://www.hotelcarepro.com',
+            'POSTGRES_PASSWORD': 'production-settings-test-db-password',
+            'REDIS_PASSWORD': 'production-settings-test-redis-password',
         })
         if secret_marker == 'missing':
             env.pop('DJANGO_SECRET_KEY', None)

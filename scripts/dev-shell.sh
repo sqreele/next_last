@@ -3,15 +3,15 @@
 case "$1" in
     frontend|fe)
         echo "🖥️ Accessing frontend shell..."
-        docker-compose -f docker-compose.dev.yml exec frontend sh
+        docker-compose --env-file .env.local -f docker-compose.dev.yml exec frontend sh
         ;;
     backend|be)
         echo "🖥️ Accessing backend shell..."
-        docker-compose -f docker-compose.dev.yml exec backend bash
+        docker-compose --env-file .env.local -f docker-compose.dev.yml exec backend bash
         ;;
     db|database)
         echo "🗄️ Accessing database shell..."
-        docker-compose -f docker-compose.dev.yml exec db psql -U "${POSTGRES_USER:-mylubd_user}" -d "${POSTGRES_DB:-mylubd_db}"
+        docker-compose --env-file .env.local -f docker-compose.dev.yml exec db psql -U "${POSTGRES_USER:-mylubd_user}" -d "${POSTGRES_DB:-mylubd_db}"
         ;;
     *)
         echo "Usage: $0 [frontend|backend|db]"

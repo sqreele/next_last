@@ -15,6 +15,11 @@ optimize_job_images*.log
 *.swp
 before_merge_*.sql
 
+# Local backup/recovery drill output
+hotelcarepro-*.dump
+hotelcarepro-*.tar.gz
+.p1-backup-drill/
+
 # Playwright test artifacts
 frontend/Lastnext/.playwright/
 frontend/Lastnext/playwright-report/

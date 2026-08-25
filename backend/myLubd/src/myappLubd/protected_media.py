@@ -19,7 +19,9 @@ from .models import (
     UserProfile,
     WorkspaceReport,
 )
-from .tenancy import get_accessible_properties
+from .security_audit import audit_event
+from .throttles import ProtectedMediaProbeThrottle, ProtectedMediaUserThrottle
+from .tenancy import get_accessible_properties, get_user_tenants
 
 
 PROTECTED_MEDIA_BROWSER_PREFIX = '/api/protected-media'
@@ -148,6 +150,24 @@ def _safe_media_file(media_value):
 class ProtectedMediaView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_throttles(self):
+        user = getattr(self.request, 'user', None)
+        throttle_class = (
+            ProtectedMediaUserThrottle
+            if user is not None and getattr(user, 'is_authenticated', False)
+            else ProtectedMediaProbeThrottle
+        )
+        return [throttle_class()]
+
+    def check_permissions(self, request):
+        # DRF normally checks permissions before throttles. Count anonymous
+        # enumeration attempts before IsAuthenticated rejects them; below the
+        # threshold the existing 403 remains unchanged, and no target is
+        # resolved before a possible 429.
+        if not getattr(request.user, 'is_authenticated', False):
+            self.check_throttles(request)
+        return super().check_permissions(request)
+
     def get(self, request, media_type, object_id, variant):
         media_value, property_obj, profile = _resolve_media(media_type, object_id, variant)
         if not media_value:
@@ -162,6 +182,20 @@ class ProtectedMediaView(APIView):
                 and get_accessible_properties(request.user).filter(pk=property_obj.pk).exists()
             )
         if not authorized:
+            reason_code = 'target_not_found_or_hidden'
+            tenant = getattr(property_obj, 'tenant', None)
+            if property_obj is not None:
+                if request.user.is_superuser:
+                    reason_code = 'target_not_found_or_hidden'
+                else:
+                    same_tenant = get_user_tenants(request.user).filter(pk=property_obj.tenant_id).exists()
+                    reason_code = 'property_not_granted' if same_tenant else 'cross_tenant'
+            audit_event(
+                'security.protected_media.denied', 'denied', request=request,
+                reason_code=reason_code, tenant=tenant, property_obj=property_obj,
+                target_type=media_type, target_id=object_id,
+                target_user_id=getattr(profile, 'user_id', None),
+            )
             raise Http404
 
         path, relative_name = _safe_media_file(media_value)

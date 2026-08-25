@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import ipaddress
 import os
 from datetime import timedelta
 from typing import Optional
@@ -317,6 +318,50 @@ REDIS_URL = (
     f'{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
 )
 
+# Security throttles require one cache shared by every Gunicorn worker and
+# backend instance. Keep the application's existing local caches unchanged.
+# LocMem is permitted only for local development; production reuses Django's
+# pooled authenticated Redis client on a dedicated logical database.
+if DEBUG:
+    CACHES['throttle'] = {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'security-throttle-development',
+        'TIMEOUT': 300,
+    }
+else:
+    REDIS_THROTTLE_DB = os.getenv('REDIS_THROTTLE_DB', '2')
+    REDIS_THROTTLE_URL = (
+        f"redis://:{quote(REDIS_PASSWORD, safe='')}@"
+        f'{REDIS_HOST}:{REDIS_PORT}/{REDIS_THROTTLE_DB}'
+    )
+    CACHES['throttle'] = {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': REDIS_THROTTLE_URL,
+        'KEY_PREFIX': 'hotelcarepro-throttle',
+        'TIMEOUT': 300,
+    }
+
+THROTTLE_CACHE_ALIAS = 'throttle'
+
+# Nginx is the only production ingress and overwrites X-Real-IP after its
+# Cloudflare allowlist resolves the client address. Backend/frontend services
+# reach Django on private Docker networks, so only those proxy peers may supply
+# the header used for anonymous throttle identity. X-Forwarded-For is ignored.
+_default_throttle_proxy_cidrs = (
+    '127.0.0.0/8 ::1/128 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16'
+)
+THROTTLE_TRUSTED_PROXY_CIDRS = tuple(
+    os.getenv('THROTTLE_TRUSTED_PROXY_CIDRS', _default_throttle_proxy_cidrs)
+    .replace(',', ' ')
+    .split()
+)
+try:
+    tuple(ipaddress.ip_network(cidr) for cidr in THROTTLE_TRUSTED_PROXY_CIDRS)
+except ValueError as exc:
+    raise ImproperlyConfigured(
+        'THROTTLE_TRUSTED_PROXY_CIDRS must contain valid IP networks.'
+    ) from exc
+
 # REST Framework Configuration
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -337,6 +382,19 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.FormParser',
         'rest_framework.parsers.MultiPartParser',
     ],
+    'DEFAULT_THROTTLE_RATES': {
+        'auth_credential': '10/min',
+        'password_recovery': '5/min',
+        'membership_admin': '20/min',
+        'job_assignment': '30/min',
+        'protected_media_user': '120/min',
+        'protected_media_probe': '30/min',
+        'bulk_operation': '5/min',
+        'media_upload': '20/min',
+        'expensive_export': '10/min',
+        'privileged_admin': '10/min',
+        'public_job_request': '15/hour',
+    },
 }
 
 # Auth0 configuration (set via environment variables)
@@ -505,6 +563,13 @@ LOGGING = {
         'handlers': ['detailed_console'],
         'level': 'DEBUG' if DEBUG else 'INFO',
         'propagate': False,
+    },
+    'loggers': {
+        'security.audit': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
 

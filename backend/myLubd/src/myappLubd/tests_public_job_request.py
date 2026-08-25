@@ -8,9 +8,12 @@ verify are:
   - Description is required.
   - Per-IP throttle kicks in after the configured limit."""
 
+import json
+
 from django.contrib.auth import get_user_model
-from django.core.cache import cache
-from django.test import TestCase
+from django.conf import settings
+from django.core.cache import caches
+from django.test import TestCase, override_settings
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -18,12 +21,33 @@ from .models import Job, Property, Room, Tenant, TenantMembership
 
 
 User = get_user_model()
+TEST_REST_FRAMEWORK = {
+    **settings.REST_FRAMEWORK,
+    'DEFAULT_THROTTLE_RATES': {
+        **settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'],
+        'public_job_request': '2/hour',
+    },
+}
+TEST_CACHES = {
+    **settings.CACHES,
+    'throttle': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'public-job-request-focused-tests',
+        'TIMEOUT': 300,
+    },
+}
 
 
+@override_settings(
+    CACHES=TEST_CACHES,
+    REST_FRAMEWORK=TEST_REST_FRAMEWORK,
+    THROTTLE_CACHE_ALIAS='throttle',
+    SECURE_SSL_REDIRECT=False,
+)
 class PublicJobRequestTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        cache.clear()
+        caches['throttle'].clear()
         self.engineer = User.objects.create_user(username='eng', password='pw12345!')
         tenant = Tenant.objects.create(name='Public Request Tenant A')
         self.prop = Property.objects.create(name='Hotel A', tenant=tenant)
@@ -47,6 +71,10 @@ class PublicJobRequestTests(TestCase):
             payload,
             format='json',
         )
+
+    def tearDown(self):
+        caches['throttle'].clear()
+        super().tearDown()
 
     def test_successful_submission_creates_job(self):
         resp = self._post(
@@ -89,9 +117,8 @@ class PublicJobRequestTests(TestCase):
         self.assertFalse(Job.objects.exists())
 
     def test_rate_limit_kicks_in(self):
-        # Limit is 15/hour per IP. Submit 15 — all should succeed; the 16th
-        # should be rejected with 429.
-        for i in range(15):
+        # Production is 15/hour; this focused test overrides it to 2/hour.
+        for i in range(2):
             resp = self._post(
                 self.prop.property_id,
                 self.room.room_id,
@@ -101,6 +128,79 @@ class PublicJobRequestTests(TestCase):
 
         resp = self._post(self.prop.property_id, self.room.room_id, description='Over the limit')
         self.assertEqual(resp.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertGreaterEqual(int(resp['Retry-After']), 1)
+        self.assertNotIn('security-throttle', resp.content.decode())
+
+    def test_rotating_x_forwarded_for_cannot_bypass_limit(self):
+        statuses = []
+        for index, claimed_ip in enumerate(('1.1.1.1', '2.2.2.2', '3.3.3.3')):
+            response = self.client.post(
+                f'/api/v1/public/job-requests/{self.prop.property_id}/{self.room.room_id}/',
+                {'description': f'Forwarded spoof {index}'},
+                format='json',
+                REMOTE_ADDR='198.51.100.70',
+                HTTP_X_FORWARDED_FOR=claimed_ip,
+            )
+            statuses.append(response.status_code)
+        self.assertEqual(statuses, [201, 201, 429])
+
+    def test_untrusted_peer_cannot_select_bucket_with_x_real_ip(self):
+        for claimed_ip in ('203.0.113.1', '203.0.113.2'):
+            response = self.client.post(
+                f'/api/v1/public/job-requests/{self.prop.property_id}/{self.room.room_id}/',
+                {'description': 'Untrusted X-Real-IP'},
+                format='json',
+                REMOTE_ADDR='198.51.100.71',
+                HTTP_X_REAL_IP=claimed_ip,
+            )
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        denied = self.client.post(
+            f'/api/v1/public/job-requests/{self.prop.property_id}/{self.room.room_id}/',
+            {'description': 'Still the peer bucket'},
+            format='json',
+            REMOTE_ADDR='198.51.100.71',
+            HTTP_X_REAL_IP='203.0.113.3',
+        )
+        self.assertEqual(denied.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+
+    def test_trusted_proxy_uses_sanitized_x_real_ip_and_separates_clients(self):
+        url = f'/api/v1/public/job-requests/{self.prop.property_id}/{self.room.room_id}/'
+        for _ in range(2):
+            self.assertEqual(self.client.post(
+                url, {'description': 'Trusted client one'}, format='json',
+                REMOTE_ADDR='172.20.0.5', HTTP_X_REAL_IP='203.0.113.10',
+            ).status_code, status.HTTP_201_CREATED)
+        self.assertEqual(self.client.post(
+            url, {'description': 'Trusted client one limited'}, format='json',
+            REMOTE_ADDR='172.20.0.5', HTTP_X_REAL_IP='203.0.113.10',
+        ).status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(self.client.post(
+            url, {'description': 'Trusted client two'}, format='json',
+            REMOTE_ADDR='172.20.0.5', HTTP_X_REAL_IP='203.0.113.11',
+        ).status_code, status.HTTP_201_CREATED)
+
+    def test_rate_limit_denial_is_audited_without_headers_or_secrets(self):
+        url = f'/api/v1/public/job-requests/{self.prop.property_id}/{self.room.room_id}/'
+        secret = 'do-not-log-this-forwarded-secret'
+        for index in range(2):
+            self.client.post(
+                url, {'description': f'Audit setup {index}'}, format='json',
+                REMOTE_ADDR='198.51.100.72', HTTP_X_FORWARDED_FOR=secret,
+            )
+        with self.assertLogs('security.audit', level='INFO') as captured:
+            response = self.client.post(
+                url, {'description': 'Audit denial'}, format='json',
+                REMOTE_ADDR='198.51.100.72', HTTP_X_FORWARDED_FOR=secret,
+            )
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        event = json.loads(captured.records[-1].getMessage())
+        self.assertEqual(event['event'], 'security.rate_limit.exceeded')
+        self.assertEqual(event['outcome'], 'denied')
+        self.assertEqual(event['reason_code'], 'rate_limited')
+        self.assertEqual(event['throttle_scope'], 'public_job_request')
+        self.assertEqual(event['request_method'], 'POST')
+        self.assertEqual(event['request_path'], url)
+        self.assertNotIn(secret, '\n'.join(record.getMessage() for record in captured.records))
 
     def test_numeric_room_lookup(self):
         # The endpoint accepts numeric IDs too.

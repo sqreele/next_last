@@ -75,6 +75,9 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(request.headers.get('x-real-ip')
+            ? { 'X-Real-IP': request.headers.get('x-real-ip') as string }
+            : {}),
         },
         body: JSON.stringify({ refresh: refreshTokenValue }),
       }

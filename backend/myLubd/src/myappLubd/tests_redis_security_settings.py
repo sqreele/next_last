@@ -17,8 +17,16 @@ class RedisSecuritySettingsTests(SimpleTestCase):
 
         from django.conf import settings
 
+        throttle_cache = settings.CACHES.get('throttle', {})
+
         print(json.dumps({
             'redis_url': settings.REDIS_URL,
+            'throttle_backend': throttle_cache.get('BACKEND'),
+            'throttle_uses_authenticated_url': (
+                throttle_cache.get('LOCATION') == getattr(settings, 'REDIS_THROTTLE_URL', None)
+            ),
+            'throttle_db': getattr(settings, 'REDIS_THROTTLE_DB', None),
+            'default_cache_backend': settings.CACHES['default']['BACKEND'],
         }))
         """
     )
@@ -96,3 +104,19 @@ class RedisSecuritySettingsTests(SimpleTestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         values = json.loads(result.stdout.strip().splitlines()[-1])
         self.assertIn('@redis:6379/1', values['redis_url'])
+
+    def test_production_throttles_use_dedicated_authenticated_redis_cache(self):
+        result = self.run_settings_probe()
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        values = json.loads(result.stdout.strip().splitlines()[-1])
+        self.assertEqual(
+            values['throttle_backend'],
+            'django.core.cache.backends.redis.RedisCache',
+        )
+        self.assertTrue(values['throttle_uses_authenticated_url'])
+        self.assertEqual(values['throttle_db'], '2')
+        self.assertEqual(
+            values['default_cache_backend'],
+            'django.core.cache.backends.locmem.LocMemCache',
+        )

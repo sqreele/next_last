@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from rest_framework import status, viewsets, filters
-from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.decorators import api_view, permission_classes, action, throttle_classes
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -46,6 +46,20 @@ from .serializers import (
 )
 from .job_property import resolve_job_property
 from .protected_media import protected_media_url
+from .security_audit import audit_event
+from .throttles import (
+    ActionThrottleMixin,
+    AuthCredentialThrottle,
+    BulkOperationThrottle,
+    ExpensiveExportThrottle,
+    JobAssignmentThrottle,
+    MediaUploadThrottle,
+    MembershipAdminThrottle,
+    PasswordRecoveryThrottle,
+    PrivilegedAdminThrottle,
+    PublicJobRequestThrottle,
+    anonymous_source_ip,
+)
 from django.core.files.base import ContentFile
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.pagination import PageNumberPagination
@@ -1573,13 +1587,19 @@ def _ensure_user_can_use_property(user, property_obj):
         raise PermissionDenied("Your role cannot modify data for this property.")
 
 
-def _ensure_user_can_operate_property(user, property_obj):
+def _ensure_user_can_operate_property(user, property_obj, request=None, audit_name='security.authorization.denied', target_type=None, target_id=None):
     """Canonical write gate for Property-owned operational resources."""
     if property_obj is None:
         raise ValidationError({'property': 'Property must be provided.'})
     if user.is_superuser:
         return
     if not get_operable_properties(user).filter(pk=property_obj.pk).exists():
+        if request is not None:
+            audit_event(
+                audit_name, 'denied', request=request, reason_code='property_not_granted',
+                tenant=property_obj.tenant, property_obj=property_obj,
+                target_type=target_type, target_id=target_id,
+            )
         raise PermissionDenied("Your role cannot modify data for this property.")
 
 
@@ -1751,7 +1771,11 @@ def canonical_pm_queryset(user, property_filter=None):
 
 
 # Preventive Maintenance ViewSet
-class PreventiveMaintenanceViewSet(viewsets.ModelViewSet):
+class PreventiveMaintenanceViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
+    throttle_action_classes = {
+        'import_csv': [BulkOperationThrottle],
+        'upload_images': [MediaUploadThrottle],
+    }
     """
     ViewSet for PreventiveMaintenance model.
     Provides standard CRUD operations plus custom endpoints:
@@ -3314,7 +3338,8 @@ class MaintenanceProcedureViewSet(viewsets.ModelViewSet):
 
 
 # Other ViewSets and Views (unchanged)
-class RoomViewSet(viewsets.ModelViewSet):
+class RoomViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
+    throttle_action_classes = {'bulk_import': [BulkOperationThrottle]}
     permission_classes = [IsAuthenticated]
     serializer_class = RoomSerializer
 
@@ -3658,7 +3683,12 @@ class TopicViewSet(viewsets.ModelViewSet):
 
         return queryset
 
-class JobViewSet(viewsets.ModelViewSet):
+class JobViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
+    throttle_action_classes = {
+        'reassign': [JobAssignmentThrottle],
+        'assignment_candidates': [JobAssignmentThrottle],
+        'report_csv': [ExpensiveExportThrottle],
+    }
     permission_classes = [IsAuthenticated]
     queryset = Job.objects.all()
     serializer_class = JobSerializer
@@ -4181,7 +4211,15 @@ class JobViewSet(viewsets.ModelViewSet):
         # mutation, including custom actions, must additionally pass through
         # the canonical operable-Property write gate.
         if self.request.method not in ('GET', 'HEAD', 'OPTIONS'):
-            _ensure_user_can_operate_property(self.request.user, obj.property)
+            audit_name = (
+                'security.job.reassignment_denied'
+                if self.action == 'reassign'
+                else 'security.authorization.denied'
+            )
+            _ensure_user_can_operate_property(
+                self.request.user, obj.property, request=self.request,
+                audit_name=audit_name, target_type='job', target_id=obj.pk,
+            )
         return obj
 
     @action(detail=True, methods=['patch'])
@@ -4410,6 +4448,12 @@ class JobViewSet(viewsets.ModelViewSet):
         if resolved_property is None:
             raise ValidationError({'property_id': 'A canonical property is required.'})
         if operable is not None and resolved_property.pk not in operable:
+            audit_event(
+                'security.authorization.denied', 'denied', request=self.request,
+                reason_code='property_not_granted', tenant=resolved_property.tenant,
+                property_obj=resolved_property, target_type='job',
+                target_id=getattr(serializer.instance, 'pk', None),
+            )
             raise PermissionDenied("Your role cannot modify data for this property.")
 
         room_instances = serializer.validated_data.get('_resolved_rooms')
@@ -4591,7 +4635,11 @@ class JobViewSet(viewsets.ModelViewSet):
         already parses, so the timeline picks up the reassignment as a
         first-class event. Pushes both the new and previous assignee."""
         job = self.get_object()
-        _ensure_user_can_operate_property(request.user, job.property)
+        _ensure_user_can_operate_property(
+            request.user, job.property, request=request,
+            audit_name='security.job.reassignment_denied',
+            target_type='job', target_id=job.pk,
+        )
 
         active_property_id = str((request.data or {}).get('property_id') or '').strip()
         if not active_property_id:
@@ -4617,6 +4665,12 @@ class JobViewSet(viewsets.ModelViewSet):
         if target is None:
             target = candidates.filter(username__iexact=target_str).first()
         if target is None:
+            audit_event(
+                'security.job.reassignment_denied', 'denied', request=request,
+                reason_code='assignment_target_not_authorized', tenant=job.property.tenant,
+                property_obj=job.property, target_type='job', target_id=job.pk,
+                target_user_id=int(target_str) if target_str.isdigit() else None,
+            )
             return Response(
                 {'error': 'Target user is not eligible for this property.'},
                 status=status.HTTP_403_FORBIDDEN,
@@ -4644,6 +4698,13 @@ class JobViewSet(viewsets.ModelViewSet):
         job.updated_by = request.user if getattr(request.user, 'is_authenticated', False) else target
         job.remarks = f"{job.remarks}\n{log_line}" if job.remarks else log_line
         job.save(update_fields=['user', 'updated_by', 'remarks', 'updated_at'])
+        audit_event(
+            'security.job.reassigned', 'allowed', request=request,
+            tenant=job.property.tenant, property_obj=job.property,
+            target_type='job', target_id=job.pk, target_user_id=target.pk,
+            previous_user_id=previous.pk if previous else None,
+            new_user_id=target.pk,
+        )
 
         # Push to the new assignee; signal-driven push on Job.save() already
         # fires on changed status but not on assignment, so we send an
@@ -4686,7 +4747,10 @@ class JobViewSet(viewsets.ModelViewSet):
     def assignment_candidates(self, request, job_id=None):
         """Return the smallest same-Property set needed by reassignment UI."""
         job = self.get_object()
-        _ensure_user_can_operate_property(request.user, job.property)
+        _ensure_user_can_operate_property(
+            request.user, job.property, request=request,
+            target_type='job', target_id=job.pk,
+        )
 
         active_property_id = str(request.query_params.get('property_id') or '').strip()
         if not active_property_id:
@@ -4701,7 +4765,13 @@ class JobViewSet(viewsets.ModelViewSet):
         return Response(JobAssignmentCandidateSerializer(candidates, many=True).data)
 
 
-class TenantViewSet(viewsets.ModelViewSet):
+class TenantViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
+    throttle_action_classes = {
+        'create': [PrivilegedAdminThrottle],
+        'update': [PrivilegedAdminThrottle],
+        'partial_update': [PrivilegedAdminThrottle],
+        'destroy': [PrivilegedAdminThrottle],
+    }
     permission_classes = [IsAuthenticated]
     serializer_class = TenantSerializer
 
@@ -4715,6 +4785,19 @@ class TenantViewSet(viewsets.ModelViewSet):
                 distinct=True,
             ),
         )
+
+    def get_object(self):
+        try:
+            return super().get_object()
+        except Http404:
+            target = Tenant.objects.filter(pk=self.kwargs.get(self.lookup_field or 'pk')).first()
+            if target is not None:
+                audit_event(
+                    'security.authorization.denied', 'denied', request=self.request,
+                    reason_code='cross_tenant', tenant=target,
+                    target_type='tenant', target_id=target.pk,
+                )
+            raise
 
     def perform_create(self, serializer):
         if not self.request.user.is_superuser:
@@ -4738,6 +4821,11 @@ class TenantViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         tenant = serializer.instance
         if not can_manage_tenant_master_data(self.request.user, tenant):
+            audit_event(
+                'security.authorization.denied', 'denied', request=self.request,
+                reason_code='insufficient_role', tenant=tenant,
+                target_type='tenant', target_id=tenant.pk,
+            )
             raise PermissionDenied("You do not have permission to update this tenant.")
         serializer.save()
 
@@ -4757,7 +4845,13 @@ class TenantViewSet(viewsets.ModelViewSet):
         return Response(timezone_options())
 
 
-class SubscriptionPlanViewSet(viewsets.ModelViewSet):
+class SubscriptionPlanViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
+    throttle_action_classes = {
+        'create': [PrivilegedAdminThrottle],
+        'update': [PrivilegedAdminThrottle],
+        'partial_update': [PrivilegedAdminThrottle],
+        'destroy': [PrivilegedAdminThrottle],
+    }
     permission_classes = [IsAuthenticated]
     serializer_class = SubscriptionPlanSerializer
     queryset = SubscriptionPlan.objects.all()
@@ -4784,7 +4878,13 @@ class SubscriptionPlanViewSet(viewsets.ModelViewSet):
         instance.delete()
 
 
-class TenantMembershipViewSet(viewsets.ModelViewSet):
+class TenantMembershipViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
+    throttle_action_classes = {
+        'create': [MembershipAdminThrottle],
+        'update': [MembershipAdminThrottle],
+        'partial_update': [MembershipAdminThrottle],
+        'destroy': [MembershipAdminThrottle],
+    }
     permission_classes = [IsAuthenticated]
     serializer_class = TenantMembershipSerializer
 
@@ -4796,6 +4896,52 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
             .prefetch_related('properties')
             .filter(tenant__in=get_user_tenants(self.request.user))
         )
+
+    def get_object(self):
+        try:
+            return super().get_object()
+        except Http404:
+            if self.request.method in {'PUT', 'PATCH', 'DELETE'}:
+                lookup_value = self.kwargs.get(self.lookup_field or 'pk')
+                target = TenantMembership.objects.select_related('tenant', 'user').filter(
+                    pk=lookup_value,
+                ).first()
+                if target is not None:
+                    actor_membership = TenantMembership.objects.filter(
+                        user=self.request.user, tenant=target.tenant,
+                    ).first()
+                    if actor_membership is not None and not actor_membership.is_active:
+                        reason_code = 'inactive_membership'
+                    elif actor_membership is None and not self.request.user.is_superuser:
+                        reason_code = 'cross_tenant'
+                    else:
+                        reason_code = 'target_not_found_or_hidden'
+                    audit_event(
+                        'security.membership.mutation_denied', 'denied', request=self.request,
+                        reason_code=reason_code, tenant=target.tenant,
+                        target_type='tenant_membership', target_id=target.pk,
+                        target_user_id=target.user_id,
+                    )
+            raise
+
+    def _audit_denial(self, tenant, reason_code, instance=None):
+        audit_event(
+            'security.membership.mutation_denied', 'denied', request=self.request,
+            reason_code=reason_code, tenant=tenant,
+            target_type='tenant_membership',
+            target_id=getattr(instance, 'pk', None),
+            target_user_id=getattr(instance, 'user_id', None),
+        )
+
+    def _management_denial_reason(self, tenant):
+        membership = TenantMembership.objects.filter(
+            user=self.request.user, tenant=tenant,
+        ).first()
+        if membership is None:
+            return 'cross_tenant'
+        if not membership.is_active:
+            return 'inactive_membership'
+        return 'insufficient_role'
 
     def _get_tenant_from_request(self, serializer=None):
         tenant = None
@@ -4830,43 +4976,141 @@ class TenantMembershipViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         tenant = self._get_tenant_from_request(serializer)
         if not user_can_manage_tenant(self.request.user, tenant):
+            self._audit_denial(tenant, self._management_denial_reason(tenant))
             raise PermissionDenied("You do not have permission to manage this tenant.")
+        if (
+            'role' in serializer.validated_data
+            and not can_manage_membership_property_grants(self.request.user, tenant)
+        ):
+            self._audit_denial(tenant, 'insufficient_role')
+            raise PermissionDenied("You do not have permission to assign membership roles.")
         if (
             'properties' in serializer.validated_data
             and not can_manage_membership_property_grants(self.request.user, tenant)
         ):
+            self._audit_denial(tenant, 'insufficient_role')
             raise PermissionDenied("You do not have permission to manage membership property grants.")
         enforce_subscription_limit(tenant, 'max_users')
         self._validate_active_grant_target(serializer)
         self._validate_membership_properties(tenant, serializer)
-        serializer.save(invited_by=self.request.user)
+        instance = serializer.save(invited_by=self.request.user)
+        audit_event(
+            'security.membership.created', 'allowed', request=self.request,
+            tenant=tenant, target_type='tenant_membership', target_id=instance.pk,
+            target_user_id=instance.user_id, new_role=instance.role,
+            new_is_active=instance.is_active,
+        )
+        property_ids = sorted(instance.properties.values_list('pk', flat=True))
+        if property_ids:
+            audit_event(
+                'security.membership.property_grant_changed', 'allowed', request=self.request,
+                tenant=tenant, target_type='tenant_membership', target_id=instance.pk,
+                target_user_id=instance.user_id, added_property_ids=property_ids,
+                removed_property_ids=[],
+            )
 
     def perform_update(self, serializer):
         instance = self.get_object()
         if not user_can_manage_tenant(self.request.user, instance.tenant):
+            self._audit_denial(
+                instance.tenant, self._management_denial_reason(instance.tenant), instance,
+            )
             raise PermissionDenied("You do not have permission to manage this tenant.")
         requested_tenant = serializer.validated_data.get('tenant', instance.tenant)
         if requested_tenant.pk != instance.tenant_id:
+            self._audit_denial(instance.tenant, 'cross_tenant', instance)
             raise ValidationError({
                 'tenant': 'A membership cannot be moved to another tenant.'
             })
+        requested_role = serializer.validated_data.get('role', instance.role)
+        if (
+            requested_role != instance.role
+            and not can_manage_membership_property_grants(self.request.user, instance.tenant)
+        ):
+            reason_code = (
+                'self_promotion_denied'
+                if instance.user_id == self.request.user.pk
+                else 'insufficient_role'
+            )
+            self._audit_denial(instance.tenant, reason_code, instance)
+            raise PermissionDenied("You do not have permission to change membership roles.")
+        requested_is_active = serializer.validated_data.get('is_active', instance.is_active)
+        if (
+            requested_is_active != instance.is_active
+            and not can_manage_membership_property_grants(self.request.user, instance.tenant)
+        ):
+            self._audit_denial(instance.tenant, 'insufficient_role', instance)
+            raise PermissionDenied("You do not have permission to activate or deactivate memberships.")
         if (
             'properties' in serializer.validated_data
             and not can_manage_membership_property_grants(self.request.user, instance.tenant)
         ):
+            self._audit_denial(instance.tenant, 'insufficient_role', instance)
             raise PermissionDenied("You do not have permission to manage membership property grants.")
         self._validate_active_grant_target(serializer, instance)
         self._validate_membership_properties(instance.tenant, serializer)
-        serializer.save()
+        old_role = instance.role
+        old_is_active = instance.is_active
+        old_property_ids = set(instance.properties.values_list('pk', flat=True))
+        instance = serializer.save()
+        new_property_ids = set(instance.properties.values_list('pk', flat=True))
+        common = {
+            'request': self.request,
+            'tenant': instance.tenant,
+            'target_type': 'tenant_membership',
+            'target_id': instance.pk,
+            'target_user_id': instance.user_id,
+        }
+        if old_role != instance.role:
+            audit_event(
+                'security.membership.role_changed', 'allowed',
+                old_role=old_role, new_role=instance.role, **common,
+            )
+        if old_is_active != instance.is_active:
+            event = (
+                'security.membership.activated'
+                if instance.is_active
+                else 'security.membership.deactivated'
+            )
+            audit_event(
+                event, 'allowed', old_is_active=old_is_active,
+                new_is_active=instance.is_active, **common,
+            )
+        if old_property_ids != new_property_ids:
+            audit_event(
+                'security.membership.property_grant_changed', 'allowed',
+                added_property_ids=sorted(new_property_ids - old_property_ids),
+                removed_property_ids=sorted(old_property_ids - new_property_ids),
+                **common,
+            )
 
     def perform_destroy(self, instance):
         if not user_can_manage_tenant(self.request.user, instance.tenant):
+            self._audit_denial(
+                instance.tenant, self._management_denial_reason(instance.tenant), instance,
+            )
             raise PermissionDenied("You do not have permission to manage this tenant.")
+        if not can_manage_membership_property_grants(self.request.user, instance.tenant):
+            self._audit_denial(instance.tenant, 'insufficient_role', instance)
+            raise PermissionDenied("You do not have permission to deactivate memberships.")
+        old_is_active = instance.is_active
         instance.is_active = False
         instance.save(update_fields=['is_active', 'updated_at'])
+        audit_event(
+            'security.membership.deactivated', 'allowed', request=self.request,
+            tenant=instance.tenant, target_type='tenant_membership',
+            target_id=instance.pk, target_user_id=instance.user_id,
+            old_is_active=old_is_active, new_is_active=False,
+        )
 
 
-class TenantSubscriptionViewSet(viewsets.ModelViewSet):
+class TenantSubscriptionViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
+    throttle_action_classes = {
+        'create': [PrivilegedAdminThrottle],
+        'update': [PrivilegedAdminThrottle],
+        'partial_update': [PrivilegedAdminThrottle],
+        'destroy': [PrivilegedAdminThrottle],
+    }
     permission_classes = [IsAuthenticated]
     serializer_class = TenantSubscriptionSerializer
 
@@ -5053,7 +5297,15 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             'detail': 'Direct property grants are retired; manage access through TenantMembership.'
         })
 
-class PropertyViewSet(viewsets.ModelViewSet):
+class PropertyViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
+    throttle_action_classes = {
+        'create': [PrivilegedAdminThrottle],
+        'update': [PrivilegedAdminThrottle],
+        'partial_update': [PrivilegedAdminThrottle],
+        'destroy': [PrivilegedAdminThrottle],
+        'bulk_import': [BulkOperationThrottle],
+        'export_csv': [ExpensiveExportThrottle],
+    }
     permission_classes = [IsAuthenticated]
     serializer_class = PropertySerializer
     lookup_field = 'property_id'
@@ -5120,6 +5372,16 @@ class PropertyViewSet(viewsets.ModelViewSet):
             # Check if user has access to this property through SaaS membership
             if not get_accessible_properties(self.request.user).filter(id=obj.id).exists():
                 logger.warning(f"Property {property_id} exists but not associated with user {self.request.user.username}")
+                reason_code = (
+                    'property_not_granted'
+                    if get_user_tenants(self.request.user).filter(pk=obj.tenant_id).exists()
+                    else 'cross_tenant'
+                )
+                audit_event(
+                    'security.authorization.denied', 'denied', request=self.request,
+                    reason_code=reason_code, tenant=obj.tenant, property_obj=obj,
+                    target_type='property', target_id=obj.pk,
+                )
                 raise PermissionDenied(f"You do not have permission to access property {property_id}")
 
             return obj
@@ -5383,7 +5645,11 @@ class PropertyViewSet(viewsets.ModelViewSet):
         )
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
+    throttle_action_classes = {
+        'create': [PrivilegedAdminThrottle],
+        'destroy': [PrivilegedAdminThrottle],
+    }
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
@@ -5408,6 +5674,7 @@ class UserViewSet(viewsets.ModelViewSet):
 class PreventiveMaintenanceImageUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
     permission_classes = [IsAuthenticated]
+    throttle_classes = [MediaUploadThrottle]
 
     MAX_IMAGES_PER_PM = 10
 
@@ -5581,6 +5848,7 @@ class PreventiveMaintenanceImageDeleteView(PreventiveMaintenanceImageUploadView)
 # Authentication Views
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AuthCredentialThrottle]
 
     def post(self, request):
         username = request.data.get('username')
@@ -5606,6 +5874,7 @@ class LoginView(APIView):
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [AuthCredentialThrottle]
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
@@ -5711,6 +5980,7 @@ def auth_providers(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([AuthCredentialThrottle])
 def login_view(request):
     """Handle user login and return JWT tokens"""
     username = request.data.get('username')
@@ -5737,6 +6007,7 @@ def login_view(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([PasswordRecoveryThrottle])
 def forgot_password(request):
     """Generate a password reset token and send a reset link to the user's email if available."""
     from django.conf import settings
@@ -5789,6 +6060,7 @@ def forgot_password(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([PasswordRecoveryThrottle])
 def reset_password(request):
     """Reset a user's password using a valid token."""
     token = request.data.get('token')
@@ -6593,7 +6865,8 @@ class UtilityConsumptionViewSet(viewsets.ModelViewSet):
         instance.delete()
 
 
-class InventoryViewSet(viewsets.ModelViewSet):
+class InventoryViewSet(ActionThrottleMixin, viewsets.ModelViewSet):
+    throttle_action_classes = {'bulk_import': [BulkOperationThrottle]}
     """
     API endpoint for managing inventory items for maintenance engineers.
     Tracks tools, parts, supplies, equipment, and consumables.
@@ -7331,33 +7604,16 @@ def push_test(request):
 #     attached to that property (so a stranger can't enumerate or spoof
 #     other tenants from a single QR scan).
 #   - Caps description length and trims everything.
-#   - Throttles by IP via the cache (15 requests per hour).
+#   - Throttles by trusted client IP via the shared security throttle cache
+#     (15 requests per hour).
 #   - Assigns the job to the property's first attached user (typically
 #     the chief engineer) so the assignee FK never goes null.
 
-from django.core.cache import cache
-
-
-def _client_ip(request) -> str:
-    forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '').strip()
-    if forwarded:
-        return forwarded.split(',', 1)[0].strip()
-    return (request.META.get('REMOTE_ADDR') or 'anon').strip()
-
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([PublicJobRequestThrottle])
 def public_job_request(request, property_id, room_id):
     """Create a maintenance Job from an unauthenticated guest scan."""
-
-    ip = _client_ip(request)
-    bucket_key = f'pcms:public-job-request:{ip}'
-    count = cache.get(bucket_key, 0)
-    if count >= 15:
-        return Response(
-            {'error': 'Too many requests from this network. Try again later.'},
-            status=status.HTTP_429_TOO_MANY_REQUESTS,
-        )
 
     payload = request.data or {}
     description = (payload.get('description') or '').strip()
@@ -7412,7 +7668,7 @@ def public_job_request(request, property_id, room_id):
         remark_lines.append(f'Guest: {guest_name}')
     if guest_contact:
         remark_lines.append(f'Contact: {guest_contact}')
-    remark_lines.append(f'Source IP: {ip}')
+    remark_lines.append(f'Source IP: {anonymous_source_ip(request)}')
 
     job = Job.objects.create(
         user=assignee,
@@ -7424,8 +7680,6 @@ def public_job_request(request, property_id, room_id):
         priority='medium',
     )
     job.rooms.set([room_obj])
-
-    cache.set(bucket_key, count + 1, timeout=60 * 60)
 
     return Response(
         {

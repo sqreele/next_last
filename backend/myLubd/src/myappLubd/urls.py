@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views
 from .protected_media import ProtectedMediaView
+from .throttles import AuthCredentialThrottle
 from .views import (
     RoomViewSet, TopicViewSet, JobViewSet, PropertyViewSet,
     UserProfileViewSet, UserViewSet, MachineViewSet,
@@ -14,6 +15,14 @@ from .views import (
 
 # Set the app name
 app_name = 'myappLubd'
+
+
+class ThrottledTokenObtainPairView(TokenObtainPairView):
+    throttle_classes = [AuthCredentialThrottle]
+
+
+class ThrottledTokenRefreshView(TokenRefreshView):
+    throttle_classes = [AuthCredentialThrottle]
 
 # Create a router and register viewsets
 router = DefaultRouter()
@@ -62,8 +71,8 @@ urlpatterns = [
     path('api/v1/', include(router.urls)),
     
     # Authentication endpoints
-    path('api/v1/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/v1/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/v1/token/', ThrottledTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/v1/token/refresh/', ThrottledTokenRefreshView.as_view(), name='token_refresh'),
     path('api/v1/auth/session/', views.CustomSessionView.as_view(), name='auth_session'),
     path('api/v1/auth/_log', views.log_view, name='log_view'),
     path('api/v1/auth/check/', views.auth_check, name='auth_check'),

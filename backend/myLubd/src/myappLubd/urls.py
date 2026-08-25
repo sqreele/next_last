@@ -11,6 +11,7 @@ from .views import (
     MaintenanceProcedureViewSet, UtilityConsumptionViewSet, InventoryViewSet,
     AreaViewSet, TenantViewSet, TenantMembershipViewSet,
     SubscriptionPlanViewSet, TenantSubscriptionViewSet, UsageMetricViewSet,
+    LegacyApplicationAuthEnabled,
 )
 
 # Set the app name
@@ -19,10 +20,12 @@ app_name = 'myappLubd'
 
 class ThrottledTokenObtainPairView(TokenObtainPairView):
     throttle_classes = [AuthCredentialThrottle]
+    permission_classes = [LegacyApplicationAuthEnabled]
 
 
 class ThrottledTokenRefreshView(TokenRefreshView):
     throttle_classes = [AuthCredentialThrottle]
+    permission_classes = [LegacyApplicationAuthEnabled]
 
 # Create a router and register viewsets
 router = DefaultRouter()

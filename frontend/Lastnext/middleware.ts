@@ -109,7 +109,11 @@ async function readSessionCookie(
   if (!cookieValue) return null;
 
   try {
-    if (cookieValue.trim().startsWith("{")) {
+    if (
+      process.env.NODE_ENV !== "production" &&
+      process.env.ALLOW_LEGACY_PLAINTEXT_AUTH_SESSION === "true" &&
+      cookieValue.trim().startsWith("{")
+    ) {
       return JSON.parse(cookieValue) as MiddlewareSession;
     }
 
@@ -132,6 +136,25 @@ function hasValidSession(session: MiddlewareSession | null): boolean {
   );
 }
 
+function sanitizeLocalRedirect(value: string | null, fallback: string): string {
+  if (!value) return fallback;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    return fallback;
+  }
+  if (
+    !decoded.startsWith("/") ||
+    decoded.startsWith("//") ||
+    decoded.includes("\\") ||
+    /[\u0000-\u001f\u007f]/.test(decoded)
+  ) {
+    return fallback;
+  }
+  return decoded;
+}
+
 // Define protected routes that require authentication
 const protectedRoutes = [
   "/dashboard",
@@ -146,21 +169,6 @@ const protectedRoutes = [
 
 // Define public routes that don't require authentication
 const PUBLIC_FILE = /\.[^/]+$/;
-
-const publicRoutes = [
-  "/",
-  "/auth/login",
-  "/auth/register",
-  "/auth/forgot-password",
-  "/auth/reset-password",
-  "/about",
-  "/contact",
-  "/pricing",
-  "/features",
-  "/api/auth",
-  "/_next",
-  "/favicon.ico",
-];
 
 // Define API routes that require authentication
 const protectedApiRoutes = [
@@ -220,17 +228,10 @@ export async function middleware(request: NextRequest) {
 
   // Get the auth0_session cookie and check if user is authenticated.
   // Cookies written by app/lib/auth0/session-cookie.ts are AES-GCM sealed as
-  // v1.<iv>.<tag>.<ciphertext>; older deployments may still have plain JSON.
+  // v1.<iv>.<tag>.<ciphertext>. Plain JSON is rejected in production.
   const auth0SessionCookie = request.cookies.get(AUTH0_SESSION_COOKIE)?.value;
   const sessionData = await readSessionCookie(auth0SessionCookie);
-  let isAuthenticated = hasValidSession(sessionData);
-
-  if (
-    !isAuthenticated &&
-    request.headers.get("authorization")?.toLowerCase().startsWith("bearer ")
-  ) {
-    isAuthenticated = true;
-  }
+  const isAuthenticated = hasValidSession(sessionData);
 
   // Handle protected routes
   if (isProtectedRoute || isProtectedApiRoute) {
@@ -270,8 +271,10 @@ export async function middleware(request: NextRequest) {
 
   // Handle login page - redirect authenticated users to dashboard
   if (pathname === "/auth/login" && isAuthenticated) {
-    const redirectUrl =
-      request.nextUrl.searchParams.get("redirect") || "/dashboard";
+    const redirectUrl = sanitizeLocalRedirect(
+      request.nextUrl.searchParams.get("redirect"),
+      "/dashboard",
+    );
     const baseUrl =
       process.env.AUTH0_BASE_URL ||
       process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||

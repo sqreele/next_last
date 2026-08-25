@@ -179,7 +179,8 @@ class MasterDataActionRBACContractTests(APITestCase):
             {'name': 'A2 New Customer', 'timezone': 'Asia/Bangkok'},
             format='json',
         )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.content)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN, response.content)
+        self.assertFalse(Tenant.objects.filter(name='A2 New Customer').exists())
 
         for role, user in self.users.items():
             with self.subTest(role=role):

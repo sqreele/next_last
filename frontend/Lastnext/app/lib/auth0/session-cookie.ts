@@ -57,8 +57,13 @@ export async function openSessionCookie(cookieValue?: string | null): Promise<Co
       return JSON.parse(plaintext.toString('utf8')) as CompatSession;
     }
 
-    // Backward compatibility for pre-encryption cookies. New writes always seal.
-    if (cookieValue.trim().startsWith('{')) {
+    // A short-lived local-only escape hatch exists for development cutovers.
+    // Production accepts authenticated encryption only.
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      process.env.ALLOW_LEGACY_PLAINTEXT_AUTH_SESSION === 'true' &&
+      cookieValue.trim().startsWith('{')
+    ) {
       return JSON.parse(cookieValue) as CompatSession;
     }
   } catch {
@@ -98,7 +103,8 @@ export function clearSessionCookie(response: NextResponse): void {
 
 export function sanitizeSessionForClient(session: CompatSession | null): CompatSession | null {
   if (!session?.user) return session;
-  const { refreshToken: _refreshToken, ...userWithoutRefreshToken } = session.user;
+  const userWithoutRefreshToken = { ...session.user };
+  delete userWithoutRefreshToken.refreshToken;
   return {
     ...session,
     user: userWithoutRefreshToken as CompatSession['user'],

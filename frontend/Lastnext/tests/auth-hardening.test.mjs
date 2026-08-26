@@ -95,11 +95,24 @@ test('ID token verification enforces signature, issuer, audience, expiry, and no
 });
 
 test('login and callback retain state, require nonce and PKCE, and fail closed', async () => {
-  const login = await readFile(new URL('app/api/auth/[...auth0]/route.ts', root), 'utf8');
+  const rootLogin = await readFile(new URL('app/api/auth/route.ts', root), 'utf8');
+  const canonicalLogin = await readFile(new URL('app/api/auth/login/route.ts', root), 'utf8');
+  const catchAllLogin = await readFile(new URL('app/api/auth/[...auth0]/route.ts', root), 'utf8');
+  const loginFlow = await readFile(new URL('app/lib/auth0/login-flow.ts', root), 'utf8');
   const callback = await readFile(new URL('app/api/auth/callback/route.ts', root), 'utf8');
-  assert.match(login, /auth0_login_state/);
-  assert.match(login, /auth0_login_nonce/);
-  assert.match(login, /code_challenge_method: 'S256'/);
+  assert.match(rootLogin, /beginHardenedAuth0Login\(request\)/);
+  assert.match(canonicalLogin, /\/api\/auth/);
+  assert.match(catchAllLogin, /beginHardenedAuth0Login\(request\)/);
+  assert.match(loginFlow, /auth0_login_state/);
+  assert.match(loginFlow, /auth0_login_nonce/);
+  assert.match(loginFlow, /auth0_pkce_verifier/);
+  assert.match(loginFlow, /code_challenge/);
+  assert.match(loginFlow, /code_challenge_method: 'S256'/);
+  assert.match(loginFlow, /httpOnly: true/);
+  assert.match(loginFlow, /sameSite: 'lax'/);
+  assert.match(loginFlow, /maxAge: 10 \* 60/);
+  assert.doesNotMatch(rootLogin, /\/authorize/);
+  assert.doesNotMatch(rootLogin, /randomUUID/);
   assert.match(callback, /state !== expectedState/);
   assert.match(callback, /nonce: expectedNonce/);
   assert.match(callback, /code_verifier: codeVerifier/);

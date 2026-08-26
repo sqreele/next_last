@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
+from django.test import override_settings
 
 from .models import (
     Property,
@@ -41,7 +42,8 @@ class SaaSFoundationTests(APITestCase):
             max_pm_schedules=10,
         )
 
-    def test_creating_tenant_adds_owner_membership_and_subscription(self):
+    @override_settings(SELF_SERVICE_TENANT_CREATION_ENABLED=True)
+    def test_explicit_self_service_creates_owner_membership_and_subscription(self):
         _login(self.client, self.owner)
         resp = self.client.post(
             '/api/v1/tenants/',
@@ -66,6 +68,29 @@ class SaaSFoundationTests(APITestCase):
             ).exists()
         )
         self.assertTrue(TenantSubscription.objects.filter(tenant=tenant).exists())
+
+    def test_tenantless_normal_user_cannot_self_create_tenant(self):
+        _login(self.client, self.owner)
+        resp = self.client.post(
+            '/api/v1/tenants/',
+            {'name': 'Blocked Bootstrap', 'timezone': 'Asia/Bangkok'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN, resp.content)
+        self.assertFalse(Tenant.objects.filter(name='Blocked Bootstrap').exists())
+
+    def test_superuser_can_create_tenant(self):
+        admin = User.objects.create_superuser(
+            username='platform-admin', email='admin@example.com', password='pw12345!'
+        )
+        _login(self.client, admin)
+        resp = self.client.post(
+            '/api/v1/tenants/',
+            {'name': 'Admin Created', 'timezone': 'Asia/Bangkok'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.content)
+        self.assertEqual(Tenant.objects.get(name='Admin Created').owner, admin)
 
     def test_tenant_timezone_must_be_valid_iana_name(self):
         _login(self.client, self.owner)

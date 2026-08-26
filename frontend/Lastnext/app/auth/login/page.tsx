@@ -43,7 +43,12 @@ const authErrorMessages: Record<string, string> = {
   config_error: 'Authentication is not configured correctly. Please contact support.',
   invalid_request: 'This sign-in request could not be completed.',
   invalid_state: 'Your sign-in session expired. Please start again.',
+  invalid_nonce: 'Your sign-in session could not be verified. Please start again.',
+  id_token_invalid: 'We could not verify your identity. Please start again.',
+  identity_unverified: 'A verified email address is required. Please contact your administrator.',
   no_code: 'The identity service did not return a valid sign-in code. Please start again.',
+  pkce_required: 'Your sign-in session expired. Please start again.',
+  provider_error: 'Access was not granted. Please try again or contact your administrator.',
   token_exchange_error: 'We could not securely complete sign in. Please try again.',
   token_exchange_failed: 'We could not verify the sign-in response. Please try again.',
 };
@@ -87,7 +92,12 @@ function LoginContent() {
 
   const handleSecureLogin = () => {
     setIsRedirecting(true);
-    router.push('/api/auth/login');
+    const redirect = searchParams.get('redirect');
+    router.push(
+      redirect
+        ? `/api/auth/login?redirect=${encodeURIComponent(redirect)}`
+        : '/api/auth/login',
+    );
   };
 
   if (sessionLoading) {

@@ -40,18 +40,20 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
         elif len(auth) > 2:
             raise exceptions.AuthenticationFailed(_('Invalid Authorization header.'))
 
-        token = auth[1].decode('utf-8')
-        logger.debug(f"Received JWT token: {token[:20]}...")
+        try:
+            token = auth[1].decode('utf-8')
+        except UnicodeDecodeError:
+            raise exceptions.AuthenticationFailed(_('Invalid Authorization header.'))
 
         try:
             payload = self._validate_auth0_token(token)
-            logger.debug(f"JWT validation successful, payload: {payload}")
+            logger.debug("JWT validation successful")
         except exceptions.AuthenticationFailed:
             # Propagate DRF-friendly exceptions
             logger.warning("JWT validation failed with AuthenticationFailed")
             raise
-        except Exception as e:
-            logger.error(f"Unexpected error during JWT validation: {e}")
+        except Exception:
+            logger.error("Unexpected error during JWT validation")
             raise exceptions.AuthenticationFailed(_('Invalid token.'))
 
         user = self._get_or_create_user_from_claims(payload)
@@ -66,7 +68,11 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
         issuer = getattr(settings, 'AUTH0_ISSUER', None) or f"https://{domain}/"
         audience = getattr(settings, 'AUTH0_AUDIENCE', None)
 
-        logger.debug(f"Validating token with domain: {domain}, issuer: {issuer}, audience: {audience}")
+        if not audience:
+            logger.error("Auth0 audience is not configured")
+            raise exceptions.AuthenticationFailed(_('Token audience validation is unavailable.'))
+
+        logger.debug("Validating JWT against configured Auth0 issuer and audience")
 
         # Get the JWKS (JSON Web Key Set) from Auth0
         jwks_url = f"https://{domain}/.well-known/jwks.json"
@@ -103,27 +109,39 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
 
         logger.debug("Successfully retrieved signing key from JWKS")
 
-        # First, decode without verification to see the actual issuer
+        # Read the issuer only to reject a missing claim with a precise audit
+        # reason. Trust is established by the signed decode below.
         try:
             # python-jose requires a key argument when calling decode();
             # use get_unverified_headers + jwt.get_unverified_claims for unverified payload
             unverified_payload = jwt.get_unverified_claims(token)
             actual_issuer = unverified_payload.get('iss')
-            logger.debug(f"Token issuer: {actual_issuer}, Expected issuer: {issuer}")
-        except JWTError as e:
-            logger.warning(f"Could not decode unverified payload (JWT Error): {e}")
+            logger.debug("Comparing JWT issuer against the configured issuer")
+        except JWTError:
+            logger.warning("Could not decode unverified JWT claims")
             actual_issuer = None
-        except Exception as e:
-            logger.warning(f"Could not decode unverified payload (Unexpected error): {type(e).__name__}: {e}")
+        except Exception:
+            logger.warning("Unexpected failure while decoding unverified JWT claims")
             actual_issuer = None
 
-        # Prepare validation options - be more flexible with issuer validation
+        if not actual_issuer:
+            logger.warning("JWT is missing the issuer claim")
+            raise exceptions.AuthenticationFailed(_('Invalid token issuer.'))
+
+        if actual_issuer != issuer:
+            logger.warning("JWT issuer validation failed")
+            raise exceptions.AuthenticationFailed(_('Invalid token issuer.'))
+
         validation_options = {
             'verify_signature': True,
             'verify_exp': True,
             'verify_iat': True,
-            'verify_iss': False,  # We'll handle issuer validation manually
-            'verify_aud': bool(audience),
+            'verify_iss': True,
+            'verify_aud': True,
+            'require_exp': True,
+            'require_iat': True,
+            'require_iss': True,
+            'require_aud': True,
         }
 
         try:
@@ -133,28 +151,16 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
                 signing_key,
                 algorithms=['RS256'],
                 audience=audience,
+                issuer=issuer,
                 options=validation_options
             )
-            
-            # Manual issuer validation with flexibility for trailing slashes
-            if actual_issuer:
-                # Normalize both issuers by removing trailing slashes
-                normalized_actual = actual_issuer.rstrip('/')
-                normalized_expected = issuer.rstrip('/')
-                
-                if normalized_actual != normalized_expected:
-                    logger.warning(f"Issuer mismatch: {normalized_actual} != {normalized_expected}")
-                    raise exceptions.AuthenticationFailed(_('Invalid token issuer.'))
-                else:
-                    logger.debug("Issuer validation successful")
-            
-            logger.debug(f"JWT decoded successfully, payload keys: {list(payload.keys())}")
+            logger.debug("JWT decoded successfully")
             return payload
-        except JWTError as e:
-            logger.error(f"JWT validation error: {e}")
+        except JWTError:
+            logger.error("JWT validation failed")
             raise exceptions.AuthenticationFailed(_('Invalid token.'))
-        except Exception as e:
-            logger.error(f"Unexpected error during JWT validation: {e}")
+        except Exception:
+            logger.error("Unexpected error during JWT validation")
             raise exceptions.AuthenticationFailed(_('Token validation failed.'))
 
     def _get_or_create_user_from_claims(self, claims):

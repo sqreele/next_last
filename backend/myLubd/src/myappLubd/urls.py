@@ -9,11 +9,18 @@ from .views import (
     MaintenanceProcedureViewSet, UtilityConsumptionViewSet, InventoryViewSet,
     AreaViewSet, TenantViewSet, TenantMembershipViewSet,
     SubscriptionPlanViewSet, TenantSubscriptionViewSet, UsageMetricViewSet,
+    LegacyApplicationAuthEnabled,
 )
 
 # Set the app name
 app_name = 'myappLubd'
 
+class GatedTokenObtainPairView(TokenObtainPairView):
+    permission_classes = [LegacyApplicationAuthEnabled]
+
+
+class GatedTokenRefreshView(TokenRefreshView):
+    permission_classes = [LegacyApplicationAuthEnabled]
 # Create a router and register viewsets
 router = DefaultRouter()
 # Register ViewSets with the router
@@ -56,8 +63,8 @@ urlpatterns = [
     path('api/v1/', include(router.urls)),
     
     # Authentication endpoints
-    path('api/v1/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/v1/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/v1/token/', GatedTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/v1/token/refresh/', GatedTokenRefreshView.as_view(), name='token_refresh'),
     path('api/v1/auth/session/', views.CustomSessionView.as_view(), name='auth_session'),
     path('api/v1/auth/_log', views.log_view, name='log_view'),
     path('api/v1/auth/check/', views.auth_check, name='auth_check'),

@@ -4684,6 +4684,13 @@ class TenantViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
+        if (
+            not self.request.user.is_superuser
+            and not getattr(settings, 'SELF_SERVICE_TENANT_CREATION_ENABLED', False)
+        ):
+            raise PermissionDenied(
+                "Tenant creation is restricted to platform administrators."
+            )
         if not self.request.user.is_superuser:
             if get_user_tenants(self.request.user).exists():
                 raise PermissionDenied("Your user already belongs to a tenant.")
@@ -5593,8 +5600,17 @@ class PreventiveMaintenanceImageDeleteView(PreventiveMaintenanceImageUploadView)
         return Response(self._serialize_pm(request, pm), status=status.HTTP_200_OK)
 
 # Authentication Views
+class LegacyApplicationAuthEnabled(BasePermission):
+    """Explicit development/test gate for retired application credentials."""
+
+    message = 'Legacy application authentication is disabled.'
+
+    def has_permission(self, request, view):
+        return bool(getattr(settings, 'LEGACY_APP_AUTH_ENABLED', False))
+
+
 class LoginView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [LegacyApplicationAuthEnabled]
 
     def post(self, request):
         username = request.data.get('username')
@@ -5619,7 +5635,7 @@ class LoginView(APIView):
         return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 class RegisterView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [LegacyApplicationAuthEnabled]
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
@@ -5660,7 +5676,7 @@ class LogoutView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class CustomSessionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [LegacyApplicationAuthEnabled, IsAuthenticated]
 
     def get(self, request):
         session = Session.objects.filter(user=request.user).first()
@@ -5706,7 +5722,7 @@ def auth_check(request):
     }, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([LegacyApplicationAuthEnabled])
 def auth_providers(request):
     """Return a list of available authentication providers"""
     providers = {
@@ -5724,7 +5740,7 @@ def auth_providers(request):
     return Response(providers, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([LegacyApplicationAuthEnabled])
 def login_view(request):
     """Handle user login and return JWT tokens"""
     username = request.data.get('username')
@@ -5750,7 +5766,7 @@ def login_view(request):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([LegacyApplicationAuthEnabled])
 def forgot_password(request):
     """Generate a password reset token and send a reset link to the user's email if available."""
     from django.conf import settings
@@ -5802,7 +5818,7 @@ def forgot_password(request):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([LegacyApplicationAuthEnabled])
 def reset_password(request):
     """Reset a user's password using a valid token."""
     token = request.data.get('token')
@@ -5840,9 +5856,9 @@ def log_view(request):
     return Response({"message": "ok"}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([LegacyApplicationAuthEnabled])
 def google_auth(request):
-    logger.info("google_auth view started")
+    logger.info("Legacy Google authentication attempt")
     try:
         id_token_credential = request.data.get('id_token')
         access_token = request.data.get('access_token')
@@ -5852,7 +5868,7 @@ def google_auth(request):
             return Response({'error': 'No ID token provided'}, status=status.HTTP_400_BAD_REQUEST)
 
         idinfo = id_token.verify_oauth2_token(id_token_credential, requests.Request(), settings.GOOGLE_CLIENT_ID)
-        logger.info("Token verification successful")
+        logger.info("Legacy Google identity token verified")
 
         email = idinfo.get('email')
         google_id = idinfo.get('sub')
@@ -5914,13 +5930,12 @@ def google_auth(request):
                 'properties': list(get_accessible_properties(user).values('id', 'name', 'property_id')),
             }
         }
-        logger.info(f"Response Data to Frontend: {json.dumps(response_data)}")
+        logger.info("Legacy Google authentication succeeded for user_id=%s", user.id)
         return Response(response_data, status=status.HTTP_200_OK)
 
-    except Exception as e:
-        logger.error(f"Unexpected error in google_auth: {str(e)}")
-        logger.exception(e)
-        return Response({'error': 'Authentication failed', 'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except Exception:
+        logger.exception("Legacy Google authentication failed")
+        return Response({'error': 'Authentication failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Health Check

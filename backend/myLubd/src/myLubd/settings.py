@@ -228,13 +228,30 @@ CACHES = {
 # Enable caching
 USE_CACHE = True
 
+# Legacy application credentials are retained only for explicitly opted-in local
+# development/test workflows. They must never become an alternate production
+# login path; Django Admin continues to use Django's session authentication.
+def _env_flag(name: str, default: bool = False) -> bool:
+    return os.getenv(name, str(default)).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+LEGACY_APP_AUTH_ENABLED = DEBUG and _env_flag('LEGACY_APP_AUTH_ENABLED')
+SELF_SERVICE_TENANT_CREATION_ENABLED = DEBUG and _env_flag(
+    'SELF_SERVICE_TENANT_CREATION_ENABLED'
+)
+
+_api_authentication_classes = [
+    'rest_framework.authentication.SessionAuthentication',
+    'myappLubd.auth.Auth0JWTAuthentication',
+]
+if LEGACY_APP_AUTH_ENABLED:
+    _api_authentication_classes.append(
+        'rest_framework_simplejwt.authentication.JWTAuthentication'
+    )
+
 # REST Framework Configuration
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',  # For DRF browsable API
-        'myappLubd.auth.Auth0JWTAuthentication',     # Auth0 only
-        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Fallback
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': _api_authentication_classes,
     'DEFAULT_PERMISSION_CLASSES': [
         # Allow anonymous access in development mode only
         'rest_framework.permissions.AllowAny' if DEBUG else 'rest_framework.permissions.IsAuthenticated',
@@ -295,7 +312,11 @@ if not _auth0_domain and _auth0_issuer:
         _auth0_domain = (_auth0_issuer or '').replace('https://', '').replace('http://', '').strip('/') or None
 
 AUTH0_DOMAIN = _auth0_domain
-AUTH0_ISSUER = _auth0_issuer or (f"https://{AUTH0_DOMAIN}/" if AUTH0_DOMAIN else None)
+AUTH0_ISSUER = (
+    _auth0_issuer.rstrip('/') + '/'
+    if _auth0_issuer
+    else (f"https://{AUTH0_DOMAIN}/" if AUTH0_DOMAIN else None)
+)
 AUTH0_CLAIM_NAMESPACE = os.getenv('AUTH0_CLAIM_NAMESPACE', 'https://hotelcarepro.com').rstrip('/')
 
 # Auth0 Management API credentials for fetching user details

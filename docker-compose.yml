@@ -91,7 +91,7 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: myLubd.settings
       PYTHONPATH: /app
-      DEBUG: 1
+      DEBUG: ${DEBUG:-False}
       DJANGO_ALLOWED_HOSTS: localhost 127.0.0.1 [::1] ${DOMAIN} www.${DOMAIN} django-backend backend
       DJANGO_CORS_ORIGINS: https://${DOMAIN}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN}

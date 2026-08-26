@@ -476,10 +476,10 @@ else:
     ]
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
-      "https://pcms.live",
+    "https://pcms.live",
     "https://www.pcms.live",
     "http://nextjs-frontend:3000",
-     
+    "https://staymaint.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ['Content-Type', 'X-CSRFToken']

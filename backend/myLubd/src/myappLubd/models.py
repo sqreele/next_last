@@ -30,6 +30,38 @@ class User(AbstractUser):
         pass
 
 
+class AuthIdentity(models.Model):
+    """Durable external identity binding for a canonical Django user."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='auth_identities',
+        db_index=False,
+    )
+    issuer = models.CharField(max_length=512)
+    subject = models.CharField(max_length=512)
+    email_at_link = models.EmailField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['issuer', 'subject']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['issuer', 'subject'],
+                name='unique_auth_identity_issuer_subject',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['user'], name='auth_identity_user_idx'),
+        ]
+        verbose_name_plural = 'Auth identities'
+
+    def __str__(self):
+        return f'{self.issuer} / {self.subject} -> {self.user}'
+
+
 class Tenant(models.Model):
     """Commercial SaaS account that owns one or more hotel properties."""
 

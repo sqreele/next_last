@@ -50,6 +50,7 @@ from io import BytesIO
 import qrcode
 import base64
 from .models import (
+    AuthIdentity,
     Property,
     Room,
     Topic,
@@ -5833,6 +5834,22 @@ class TenantAdmin(admin.ModelAdmin):
     search_fields = ['tenant_id', 'name', 'slug', 'billing_email', 'owner__username', 'owner__email']
     readonly_fields = ['tenant_id', 'created_at', 'updated_at']
     autocomplete_fields = ['owner']
+
+
+@admin.register(AuthIdentity)
+class AuthIdentityAdmin(admin.ModelAdmin):
+    list_per_page = 25
+    list_display = ['user', 'issuer', 'subject', 'email_at_link', 'created_at', 'last_seen_at']
+    list_filter = ['issuer', 'created_at', 'last_seen_at']
+    search_fields = ['user__username', 'user__email', 'email_at_link', 'issuer', 'subject']
+    readonly_fields = ['user', 'issuer', 'subject', 'email_at_link', 'created_at', 'last_seen_at']
+    ordering = ['-last_seen_at']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(TenantMembership)

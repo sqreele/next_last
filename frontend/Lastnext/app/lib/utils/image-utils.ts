@@ -44,8 +44,8 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
       // In production, convert to the production domain
       if (process.env.NODE_ENV === 'production') {
         const productionUrl = normalizedInput
-          .replace('http://backend:8000', 'https://hotelcarepro.com')
-          .replace('http://django-backend:8000', 'https://hotelcarepro.com');
+          .replace('http://backend:8000', 'https://staymaint.com')
+          .replace('http://django-backend:8000', 'https://staymaint.com');
         return productionUrl;
       } else {
         // In development, convert to localhost URLs for browser access
@@ -65,11 +65,6 @@ export function fixImageUrl(imageUrl: string | null | undefined): string | null 
       // For non-media files, use relative path
       const relativePath = normalizedInput.replace('http://localhost:8000', '');
       return relativePath;
-    }
-    
-    // For production URLs, return as-is
-    if (normalizedInput.includes('hotelcarepro.com') || normalizedInput.includes('www.hotelcarepro.com')) {
-      return encodeURI(normalizedInput);
     }
     
     // For other external URLs, return them as-is for Next.js Image component

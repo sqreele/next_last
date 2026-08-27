@@ -7,7 +7,7 @@ import {
 // Dynamic sitemap generation for HotelCare Pro
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://hotelcarepro.com";
+    process.env.NEXT_PUBLIC_SITE_URL || "https://staymaint.com";
 
   // Static pages that should be indexed
   const staticPages = [

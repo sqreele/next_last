@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const returnTo = sanitizeLogoutPath(searchParams.get('returnTo'), '/');
     
     // Use server-side environment variables
-    const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
+    const baseUrl = process.env.AUTH0_BASE_URL || 'https://staymaint.com';
     const auth0Domain = process.env.AUTH0_DOMAIN;
     const clientId = process.env.AUTH0_CLIENT_ID;
     
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     
   } catch {
     console.error('auth0_logout_failed', { reason: 'unexpected_error' });
-    const baseUrl = process.env.AUTH0_BASE_URL || 'https://hotelcarepro.com';
+    const baseUrl = process.env.AUTH0_BASE_URL || 'https://staymaint.com';
     const response = NextResponse.redirect(localAppUrl(baseUrl, '/auth/login'));
     clearLocalAuthCookies(response);
     return response;

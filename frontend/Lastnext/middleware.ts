@@ -215,7 +215,7 @@ export async function middleware(request: NextRequest) {
         process.env.AUTH0_BASE_URL ||
         process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
         process.env.APP_BASE_URL ||
-        "https://hotelcarepro.com";
+        "https://staymaint.com";
       const loginUrl = new URL("/auth/login", baseUrl);
       loginUrl.searchParams.set("redirect", pathname);
 
@@ -251,7 +251,7 @@ export async function middleware(request: NextRequest) {
       process.env.AUTH0_BASE_URL ||
       process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
       process.env.APP_BASE_URL ||
-      "https://hotelcarepro.com";
+      "https://staymaint.com";
     return NextResponse.redirect(new URL(redirectUrl, baseUrl));
   }
 

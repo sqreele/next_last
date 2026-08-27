@@ -15,16 +15,16 @@ const TRANSACTION_COOKIE_OPTIONS = {
 };
 
 function resolveAudience(raw?: string | null): string {
-  const fallback = 'https://api.hotelcarepro.com';
+  const fallback = 'https://api.staymaint.com';
   if (!raw) return fallback;
   const trimmed = raw.trim().replace(/\/$/, '');
   if (
     [
-      'https://api.hotelcarepro.com/api',
-      'https://hotelcarepro.com',
-      'http://hotelcarepro.com',
-      'https://www.hotelcarepro.com',
-      'https://hotelcarepro.com/api',
+      'https://api.staymaint.com/api',
+      'https://staymaint.com',
+      'http://staymaint.com',
+      'https://www.staymaint.com',
+      'https://staymaint.com/api',
     ].includes(trimmed)
   ) return fallback;
   return trimmed;

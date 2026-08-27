@@ -48,20 +48,20 @@ export const metadata: Metadata = {
   authors: [
     {
       name: 'HotelCare Pro',
-      url: 'https://hotelcarepro.com',
+      url: 'https://staymaint.com',
     },
   ],
   creator: 'HotelCare Pro',
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://hotelcarepro.com',
+    url: 'https://staymaint.com',
     title: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',
     description: 'HotelCare Pro - Professional hotel engineering and maintenance management. Efficiently manage maintenance tasks and jobs with our modern dashboard. Perfect for hotel engineers and facility teams.',
     siteName: 'HotelCare Pro',
     images: [
       {
-        url: 'https://hotelcarepro.com/og-image.jpg',
+        url: 'https://staymaint.com/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',
@@ -73,7 +73,7 @@ export const metadata: Metadata = {
     title: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',
     description: 'HotelCare Pro - Professional hotel engineering and maintenance management. Track and manage hotel maintenance tasks seamlessly.',
     creator: '@HotelCarePro',
-    images: ['https://hotelcarepro.com/twitter-image.jpg'],
+    images: ['https://staymaint.com/twitter-image.jpg'],
   },
   robots: {
     index: true,

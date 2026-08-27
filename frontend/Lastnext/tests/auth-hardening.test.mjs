@@ -25,7 +25,7 @@ test('redirect sanitizer accepts local paths and rejects external variants', () 
   ]) {
     assert.equal(sanitizeLocalPath(unsafe, '/'), '/');
   }
-  assert.equal(localAppUrl('https://hotelcarepro.com/base', '//evil.example'), 'https://hotelcarepro.com/');
+  assert.equal(localAppUrl('https://staymaint.com/base', '//evil.example'), 'https://staymaint.com/');
 });
 
 test('logout returnTo is restricted to known local destinations', () => {

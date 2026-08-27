@@ -17,11 +17,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'สร้างงานซ่อม - HotelCare Pro',
     description: 'เพิ่มงานซ่อมบำรุงโรงแรมได้ง่ายด้วย HotelCare Pro',
-    url: 'https://hotelcarepro.com/dashboard/create-job',
+    url: 'https://staymaint.com/dashboard/create-job',
     type: 'website',
     images: [
       {
-        url: 'https://hotelcarepro.com/og-create-job.jpg',
+        url: 'https://staymaint.com/og-create-job.jpg',
         width: 1200,
         height: 630,
         alt: 'HotelCare Pro - หน้าสร้างงานซ่อม',
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'สร้างงานซ่อม - HotelCare Pro',
     description: 'สร้างงานซ่อมบำรุงโรงแรมได้ง่ายด้วย HotelCare Pro',
-    images: ['https://hotelcarepro.com/twitter-create-job.jpg'],
+    images: ['https://staymaint.com/twitter-create-job.jpg'],
   },
 };
 

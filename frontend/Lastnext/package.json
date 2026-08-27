@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "echo \"No automated tests configured yet\"",
     "test:jobs-dashboard": "node --test tests/jobs-dashboard-request.test.mjs",
-    "test:pm-pdf": "node --test tests/pm-pdf-evidence.test.cjs"
+    "test:pm-pdf": "node --test tests/pm-pdf-evidence.test.cjs",
+    "test:runtime-origins": "node --test tests/runtime-origin-regression.test.mjs"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.13.3",

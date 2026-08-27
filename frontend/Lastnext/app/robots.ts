@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 
 // Robots.txt configuration for HotelCare Pro
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://hotelcarepro.com';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://staymaint.com';
   
   return {
     rules: [
@@ -26,4 +26,3 @@ export default function robots(): MetadataRoute.Robots {
     host: baseUrl,
   };
 }
-

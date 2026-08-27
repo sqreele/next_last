@@ -3,7 +3,7 @@
 
 export const seoConfig = {
   siteName: 'HotelCare Pro',
-  siteUrl: 'https://hotelcarepro.com',
+  siteUrl: 'https://staymaint.com',
   defaultTitle: 'HotelCare Pro - Smart Hotel Maintenance and Engineering Management Software',
   titleTemplate: '%s | HotelCare Pro',
   defaultDescription: 'Manage work orders, preventive maintenance, assets, rooms, technicians and engineering reports in one HotelCare Pro platform.',
@@ -24,7 +24,7 @@ export const seoConfig = {
   ],
   author: {
     name: 'HotelCare Pro',
-    url: 'https://hotelcarepro.com',
+    url: 'https://staymaint.com',
   },
   twitter: {
     handle: '@HotelCarePro',
@@ -35,7 +35,7 @@ export const seoConfig = {
     locale: 'en_US',
     images: [
       {
-        url: 'https://hotelcarepro.com/og-image.jpg',
+        url: 'https://staymaint.com/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',

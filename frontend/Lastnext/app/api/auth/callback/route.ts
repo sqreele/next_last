@@ -10,7 +10,7 @@ import { setSessionCookie } from '@/app/lib/auth0/session-cookie';
 
 const RAW_AUTH_ID_PATTERN = /^(google-oauth2_|auth0_)/i;
 const RAW_AUTH_PIPE_PATTERN = /^(google-oauth2|auth0)\|/i;
-const DEFAULT_AUTH0_CLAIM_NAMESPACE = 'https://hotelcarepro.com';
+const DEFAULT_AUTH0_CLAIM_NAMESPACE = 'https://staymaint.com';
 
 function getAuth0Claim(claims: Record<string, unknown>, claim: string): unknown {
   const namespace = (

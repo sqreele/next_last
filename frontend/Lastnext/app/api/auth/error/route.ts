@@ -1,6 +1,6 @@
 // app/api/auth/error/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { ERROR_TYPES, ROUTES } from '@/app/lib/config';
+import { ERROR_TYPES } from '@/app/lib/config';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
         process.env.AUTH0_BASE_URL ||
         process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
         process.env.APP_BASE_URL ||
-        'https://hotelcarepro.com';
+        'https://staymaint.com';
       const errorUrl = new URL('/auth/error', baseUrl);
       errorUrl.searchParams.set('error', ERROR_TYPES.SESSION_EXPIRED);
       
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       process.env.AUTH0_BASE_URL ||
       process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
       process.env.APP_BASE_URL ||
-      'https://hotelcarepro.com';
+      'https://staymaint.com';
     const errorUrl = new URL('/auth/error', baseUrl);
     errorUrl.searchParams.set('error', error);
     return NextResponse.redirect(errorUrl);
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       process.env.AUTH0_BASE_URL ||
       process.env.NEXT_PUBLIC_AUTH0_BASE_URL ||
       process.env.APP_BASE_URL ||
-      'https://hotelcarepro.com';
+      'https://staymaint.com';
     const errorUrl = new URL('/auth/error', baseUrl);
     errorUrl.searchParams.set('error', ERROR_TYPES.SESSION_EXPIRED);
     

@@ -28,7 +28,7 @@ const en = (
   title,
   metaTitle,
   description,
-  eyebrow: "HotelCare Pro for hotel operations",
+  eyebrow: "StayMaint for hotel operations",
   benefits,
   workflow,
   featureTitle,
@@ -81,7 +81,7 @@ export const englishMarketingPages: Record<string, MarketingPage> = {
           "It is an operational system for reporting, assigning, tracking and analyzing maintenance work across hotel rooms, public areas and engineering assets.",
       },
       {
-        question: "Can technicians use HotelCare Pro on mobile?",
+        question: "Can technicians use StayMaint on mobile?",
         answer:
           "Yes. The interface is mobile-first, with touch-friendly actions and concise job cards for work on the move.",
       },
@@ -133,7 +133,7 @@ export const englishMarketingPages: Record<string, MarketingPage> = {
       {
         question: "Does it support multiple hotels?",
         answer:
-          "Yes. HotelCare Pro is designed to separate property data while giving authorized managers a portfolio-level view.",
+          "Yes. StayMaint is designed to separate property data while giving authorized managers a portfolio-level view.",
       },
     ],
   ),
@@ -183,7 +183,7 @@ export const englishMarketingPages: Record<string, MarketingPage> = {
       {
         question: "Can a failed PM check create follow-up work?",
         answer:
-          "HotelCare Pro keeps defects connected to the maintenance record so teams can create and track corrective work.",
+          "StayMaint keeps defects connected to the maintenance record so teams can create and track corrective work.",
       },
     ],
   ),
@@ -240,7 +240,7 @@ export const englishMarketingPages: Record<string, MarketingPage> = {
   "hotel-cmms": en(
     "hotel-cmms",
     "A hotel CMMS designed around rooms, guests and engineering teams",
-    "Hotel CMMS Software | HotelCare Pro",
+    "Hotel CMMS Software | StayMaint",
     "Combine corrective work, preventive maintenance, assets, inventory and engineering reports in a CMMS tailored to hospitality operations.",
     [
       {
@@ -281,7 +281,7 @@ export const englishMarketingPages: Record<string, MarketingPage> = {
           "A computerized maintenance management system organizes hotel maintenance work, assets, schedules, parts and records in one system.",
       },
       {
-        question: "Is HotelCare Pro only for large properties?",
+        question: "Is StayMaint only for large properties?",
         answer:
           "No. Its workflow supports individual hotels and multi-property teams without requiring an ecommerce-style or overly complex interface.",
       },
@@ -447,7 +447,7 @@ export const thaiMarketingPages: Record<string, MarketingPage> = {
     metaTitle: "ระบบแจ้งซ่อมโรงแรมสำหรับทีมช่าง",
     description:
       "รับแจ้งปัญหาจากห้องพักและพื้นที่ต่าง ๆ จัดลำดับความสำคัญ มอบหมายช่าง และติดตามสถานะงานซ่อมในระบบเดียว",
-    eyebrow: "HotelCare Pro สำหรับงานโรงแรม",
+    eyebrow: "StayMaint สำหรับงานโรงแรม",
     benefits: [
       {
         title: "แจ้งงานได้รวดเร็ว",
@@ -496,7 +496,7 @@ export const thaiMarketingPages: Record<string, MarketingPage> = {
     slug: "ระบบบริหารงานซ่อมบำรุงโรงแรม",
     locale: "th",
     title: "ระบบบริหารงานซ่อมบำรุงโรงแรมแบบครบวงจร",
-    metaTitle: "ระบบบริหารงานซ่อมบำรุงโรงแรม | HotelCare Pro",
+    metaTitle: "ระบบบริหารงานซ่อมบำรุงโรงแรม | StayMaint",
     description:
       "บริหารใบงาน แผนบำรุงรักษาเชิงป้องกัน เครื่องจักร อะไหล่ ห้องพัก ทีมช่าง และรายงานวิศวกรรมในแพลตฟอร์มเดียว",
     eyebrow: "แพลตฟอร์มบริหารฝ่ายช่างโรงแรม",

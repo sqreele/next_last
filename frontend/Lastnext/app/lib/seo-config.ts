@@ -2,13 +2,13 @@
 // Use this for consistent branding across all pages
 
 export const seoConfig = {
-  siteName: 'HotelCare Pro',
+  siteName: 'StayMaint',
   siteUrl: 'https://staymaint.com',
-  defaultTitle: 'HotelCare Pro - Smart Hotel Maintenance and Engineering Management Software',
-  titleTemplate: '%s | HotelCare Pro',
-  defaultDescription: 'Manage work orders, preventive maintenance, assets, rooms, technicians and engineering reports in one HotelCare Pro platform.',
+  defaultTitle: 'StayMaint - Smart Hotel Maintenance and Engineering Management Software',
+  titleTemplate: '%s | StayMaint',
+  defaultDescription: 'Manage work orders, preventive maintenance, assets, rooms, technicians and engineering reports in one StayMaint platform.',
   defaultKeywords: [
-    'HotelCare Pro',
+    'StayMaint',
     'hotel engineering',
     'hotel maintenance',
     'property maintenance',
@@ -23,11 +23,11 @@ export const seoConfig = {
     'hotel facilities',
   ],
   author: {
-    name: 'HotelCare Pro',
+    name: 'StayMaint',
     url: 'https://staymaint.com',
   },
   twitter: {
-    handle: '@HotelCarePro',
+    handle: '@StayMaint',
     cardType: 'summary_large_image' as const,
   },
   openGraph: {
@@ -38,7 +38,7 @@ export const seoConfig = {
         url: 'https://staymaint.com/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',
+        alt: 'StayMaint - Hotel Engineering & Maintenance Dashboard',
       },
     ],
   },
@@ -48,63 +48,63 @@ export const seoConfig = {
 export const pageMetadata = {
   dashboard: {
     title: 'Dashboard',
-    description: 'HotelCare Pro Dashboard - View and manage all your hotel maintenance jobs, equipment status, and facility operations in one place.',
-    keywords: ['dashboard', 'hotel management', 'maintenance overview', 'job tracking', 'HotelCare Pro'],
+    description: 'StayMaint Dashboard - View and manage all your hotel maintenance jobs, equipment status, and facility operations in one place.',
+    keywords: ['dashboard', 'hotel management', 'maintenance overview', 'job tracking', 'StayMaint'],
   },
   myJobs: {
     title: 'My Jobs',
-    description: 'View and manage your assigned hotel maintenance jobs with HotelCare Pro. Track progress, update status, and complete tasks efficiently.',
-    keywords: ['my jobs', 'assigned tasks', 'maintenance jobs', 'job management', 'HotelCare Pro'],
+    description: 'View and manage your assigned hotel maintenance jobs with StayMaint. Track progress, update status, and complete tasks efficiently.',
+    keywords: ['my jobs', 'assigned tasks', 'maintenance jobs', 'job management', 'StayMaint'],
   },
   createJob: {
     title: 'Create Job',
-    description: 'Create a new hotel maintenance job effortlessly with HotelCare Pro. Assign tasks, set priorities, and upload images with our intuitive form.',
-    keywords: ['create job', 'new maintenance task', 'job creation', 'HotelCare Pro'],
+    description: 'Create a new hotel maintenance job effortlessly with StayMaint. Assign tasks, set priorities, and upload images with our intuitive form.',
+    keywords: ['create job', 'new maintenance task', 'job creation', 'StayMaint'],
   },
   preventiveMaintenance: {
     title: 'Preventive Maintenance',
-    description: 'Schedule and manage preventive maintenance tasks for your hotel equipment with HotelCare Pro. Reduce downtime and extend equipment life.',
-    keywords: ['preventive maintenance', 'scheduled maintenance', 'equipment care', 'PM schedule', 'HotelCare Pro'],
+    description: 'Schedule and manage preventive maintenance tasks for your hotel equipment with StayMaint. Reduce downtime and extend equipment life.',
+    keywords: ['preventive maintenance', 'scheduled maintenance', 'equipment care', 'PM schedule', 'StayMaint'],
   },
   machines: {
     title: 'Equipment & Machines',
-    description: 'Manage all hotel equipment and machines with HotelCare Pro. Track maintenance history, schedules, and equipment status.',
-    keywords: ['equipment', 'machines', 'hotel equipment', 'equipment management', 'HotelCare Pro'],
+    description: 'Manage all hotel equipment and machines with StayMaint. Track maintenance history, schedules, and equipment status.',
+    keywords: ['equipment', 'machines', 'hotel equipment', 'equipment management', 'StayMaint'],
   },
   rooms: {
     title: 'Rooms Management',
-    description: 'Manage hotel rooms and their maintenance needs with HotelCare Pro. Track room status, issues, and maintenance history.',
-    keywords: ['rooms', 'room management', 'hotel rooms', 'room maintenance', 'HotelCare Pro'],
+    description: 'Manage hotel rooms and their maintenance needs with StayMaint. Track room status, issues, and maintenance history.',
+    keywords: ['rooms', 'room management', 'hotel rooms', 'room maintenance', 'StayMaint'],
   },
   roomsByTopic: {
     title: 'Rooms by Topic',
-    description: 'View hotel rooms organized by maintenance topics with HotelCare Pro. Easily identify and address common issues across rooms.',
-    keywords: ['rooms by topic', 'maintenance topics', 'room issues', 'HotelCare Pro'],
+    description: 'View hotel rooms organized by maintenance topics with StayMaint. Easily identify and address common issues across rooms.',
+    keywords: ['rooms by topic', 'maintenance topics', 'room issues', 'StayMaint'],
   },
   inventory: {
     title: 'Inventory',
-    description: 'Manage hotel maintenance inventory and spare parts with HotelCare Pro. Track stock levels, orders, and usage.',
-    keywords: ['inventory', 'spare parts', 'stock management', 'maintenance supplies', 'HotelCare Pro'],
+    description: 'Manage hotel maintenance inventory and spare parts with StayMaint. Track stock levels, orders, and usage.',
+    keywords: ['inventory', 'spare parts', 'stock management', 'maintenance supplies', 'StayMaint'],
   },
   reports: {
     title: 'Jobs Report',
-    description: 'Generate and view hotel maintenance reports with HotelCare Pro. Analyze performance, trends, and operational efficiency.',
-    keywords: ['reports', 'analytics', 'maintenance reports', 'performance tracking', 'HotelCare Pro'],
+    description: 'Generate and view hotel maintenance reports with StayMaint. Analyze performance, trends, and operational efficiency.',
+    keywords: ['reports', 'analytics', 'maintenance reports', 'performance tracking', 'StayMaint'],
   },
   profile: {
     title: 'Profile',
-    description: 'Manage your HotelCare Pro profile settings, preferences, and account information.',
-    keywords: ['profile', 'account settings', 'user preferences', 'HotelCare Pro'],
+    description: 'Manage your StayMaint profile settings, preferences, and account information.',
+    keywords: ['profile', 'account settings', 'user preferences', 'StayMaint'],
   },
   login: {
     title: 'Sign In',
-    description: 'Sign in to HotelCare Pro - Your professional hotel engineering and maintenance management platform.',
-    keywords: ['login', 'sign in', 'HotelCare Pro access', 'hotel management'],
+    description: 'Sign in to StayMaint - Your professional hotel engineering and maintenance management platform.',
+    keywords: ['login', 'sign in', 'StayMaint access', 'hotel management'],
   },
   register: {
     title: 'Create Account',
-    description: 'Create your HotelCare Pro account and start managing your hotel engineering and maintenance operations.',
-    keywords: ['register', 'sign up', 'create account', 'HotelCare Pro'],
+    description: 'Create your StayMaint account and start managing your hotel engineering and maintenance operations.',
+    keywords: ['register', 'sign up', 'create account', 'StayMaint'],
   },
 };
 

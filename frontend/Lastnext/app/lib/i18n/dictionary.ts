@@ -17,7 +17,7 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
 const en = {
   // App chrome
-  'app.title': 'HotelCare Pro',
+  'app.title': 'StayMaint',
   'app.tagline': 'Hotel maintenance management',
 
   // Navigation
@@ -93,7 +93,7 @@ const en = {
   'empty.offlineHome': 'Back to dashboard',
 
   // PWA
-  'pwa.installTitle': 'Install HotelCare Pro',
+  'pwa.installTitle': 'Install StayMaint',
   'pwa.installBody': 'Add to your home screen for one-tap access to work orders.',
   'pwa.installButton': 'Install',
   'pwa.updateTitle': 'A new version is ready',
@@ -331,7 +331,7 @@ const en = {
 type DictKey = keyof typeof en;
 
 const th: Record<DictKey, string> = {
-  'app.title': 'HotelCare Pro',
+  'app.title': 'StayMaint',
   'app.tagline': 'ระบบจัดการงานซ่อมบำรุงโรงแรม',
 
   'nav.dashboard': 'แดชบอร์ด',
@@ -399,7 +399,7 @@ const th: Record<DictKey, string> = {
   'empty.offlineRetry': 'ลองใหม่',
   'empty.offlineHome': 'กลับหน้าหลัก',
 
-  'pwa.installTitle': 'ติดตั้ง HotelCare Pro',
+  'pwa.installTitle': 'ติดตั้ง StayMaint',
   'pwa.installBody': 'เพิ่มไว้หน้าจอหลักเพื่อเข้าถึงงานซ่อมได้รวดเร็ว',
   'pwa.installButton': 'ติดตั้ง',
   'pwa.updateTitle': 'มีเวอร์ชันใหม่พร้อมแล้ว',

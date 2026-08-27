@@ -22,7 +22,7 @@ export async function generateMetadata({
     description: page.description,
     keywords: [
       page.slug.replaceAll("-", " "),
-      "HotelCare Pro",
+      "StayMaint",
       "hotel maintenance software",
     ],
     alternates: { canonical: url },

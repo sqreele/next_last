@@ -8,7 +8,7 @@ import AreasClient from './AreasClient';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Areas - HotelCarePro',
+  title: 'Areas - StayMaint',
   description: 'Manage property areas and zones used for maintenance jobs.',
 };
 

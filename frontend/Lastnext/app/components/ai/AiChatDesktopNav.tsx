@@ -24,7 +24,7 @@ export default function AiChatDesktopNav() {
             <Package2 className="h-5 w-5" />
           </span>
           <span className="text-lg font-bold text-[var(--pcms-text)] transition-colors group-hover:text-[var(--pcms-primary-strong)]">
-            HotelCare Pro
+            StayMaint
           </span>
         </Link>
       </div>

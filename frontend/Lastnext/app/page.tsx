@@ -97,7 +97,7 @@ export default function LandingPage() {
               <Building className="h-5 w-5" />
             </span>
             <span className="text-lg font-bold text-[var(--pcms-text)] sm:text-xl">
-              HotelCare Pro
+              StayMaint
             </span>
           </Link>
 
@@ -142,7 +142,7 @@ export default function LandingPage() {
           </span>
 
           <p className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--pcms-primary-strong)]">
-            HotelCare Pro
+            StayMaint
           </p>
           <h1 className="mb-6 text-balance text-4xl font-bold leading-tight text-[var(--pcms-text)] sm:text-5xl lg:text-6xl">
             Smart Hotel Maintenance and Engineering Management Software
@@ -213,7 +213,7 @@ export default function LandingPage() {
               Everything you need for hotel engineering management
             </h2>
             <p className="mx-auto max-w-2xl text-balance text-base text-[var(--pcms-text-muted)] sm:text-lg">
-              From preventive maintenance to team coordination, HotelCare Pro
+              From preventive maintenance to team coordination, StayMaint
               has the tools your engineering team needs every day.
             </p>
           </div>
@@ -261,7 +261,7 @@ export default function LandingPage() {
               </h2>
               <p className="mb-8 text-balance text-base text-[var(--pcms-text-muted)] sm:text-lg">
                 Join thousands of hotel engineers who have revolutionized their
-                maintenance processes with HotelCare Pro.
+                maintenance processes with StayMaint.
               </p>
 
               <ul className="space-y-3">
@@ -287,7 +287,7 @@ export default function LandingPage() {
                   Trusted by hotel industry leaders
                 </h3>
                 <p className="mb-8 text-center text-sm text-blue-100 sm:text-base">
-                  Join hotels that trust HotelCare Pro with their engineering
+                  Join hotels that trust StayMaint with their engineering
                   management
                 </p>
                 <div className="grid grid-cols-2 gap-6 text-center">
@@ -318,7 +318,7 @@ export default function LandingPage() {
           </h2>
           <p className="mb-8 text-balance text-base text-slate-300 sm:text-lg">
             Join thousands of hotel engineers who have already transformed their
-            maintenance operations with HotelCare Pro.
+            maintenance operations with StayMaint.
           </p>
 
           <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
@@ -359,7 +359,7 @@ export default function LandingPage() {
               <div className="mb-4 flex items-center gap-2">
                 <Building className="h-6 w-6 text-blue-500" />
                 <span className="text-lg font-bold text-white">
-                  HotelCare Pro
+                  StayMaint
                 </span>
               </div>
               <p className="text-sm leading-relaxed">
@@ -424,7 +424,7 @@ export default function LandingPage() {
 
           <div className="mt-10 border-t border-slate-800 pt-6 text-center text-xs sm:text-sm">
             <p>
-              &copy; {new Date().getFullYear()} HotelCare Pro. All rights
+              &copy; {new Date().getFullYear()} StayMaint. All rights
               reserved.
             </p>
           </div>

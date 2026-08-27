@@ -125,10 +125,10 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch (e) {
-    data = { title: 'HotelCare Pro', body: event.data ? event.data.text() : '' };
+    data = { title: 'StayMaint', body: event.data ? event.data.text() : '' };
   }
 
-  const title = data.title || 'HotelCare Pro';
+  const title = data.title || 'StayMaint';
   const options = {
     body: data.body || '',
     tag: data.tag || 'pcms-default',

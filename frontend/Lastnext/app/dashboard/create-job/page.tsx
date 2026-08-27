@@ -11,12 +11,12 @@ import { Skeleton } from '@/app/components/ui/loading';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'สร้างงานซ่อม - HotelCare Pro',
+  title: 'สร้างงานซ่อม - StayMaint',
   description: 'สร้างงานซ่อมบำรุงโรงแรม มอบหมายงาน ตั้งค่าความสำคัญ และอัปโหลดรูปภาพได้ในฟอร์มเดียว',
-  keywords: ['HotelCare Pro', 'สร้างงานซ่อม', 'งานซ่อมโรงแรม', 'จัดการงานซ่อม', 'บำรุงรักษาโรงแรม'],
+  keywords: ['StayMaint', 'สร้างงานซ่อม', 'งานซ่อมโรงแรม', 'จัดการงานซ่อม', 'บำรุงรักษาโรงแรม'],
   openGraph: {
-    title: 'สร้างงานซ่อม - HotelCare Pro',
-    description: 'เพิ่มงานซ่อมบำรุงโรงแรมได้ง่ายด้วย HotelCare Pro',
+    title: 'สร้างงานซ่อม - StayMaint',
+    description: 'เพิ่มงานซ่อมบำรุงโรงแรมได้ง่ายด้วย StayMaint',
     url: 'https://staymaint.com/dashboard/create-job',
     type: 'website',
     images: [
@@ -24,14 +24,14 @@ export const metadata: Metadata = {
         url: 'https://staymaint.com/og-create-job.jpg',
         width: 1200,
         height: 630,
-        alt: 'HotelCare Pro - หน้าสร้างงานซ่อม',
+        alt: 'StayMaint - หน้าสร้างงานซ่อม',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'สร้างงานซ่อม - HotelCare Pro',
-    description: 'สร้างงานซ่อมบำรุงโรงแรมได้ง่ายด้วย HotelCare Pro',
+    title: 'สร้างงานซ่อม - StayMaint',
+    description: 'สร้างงานซ่อมบำรุงโรงแรมได้ง่ายด้วย StayMaint',
     images: ['https://staymaint.com/twitter-create-job.jpg'],
   },
 };

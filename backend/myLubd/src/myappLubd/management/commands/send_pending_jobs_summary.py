@@ -363,7 +363,7 @@ class Command(BaseCommand):
                 "property_name": property_name,
                 "stats": stats,
                 "job_details": job_details,
-                "brand_name": "HotelCare Pro",
+                "brand_name": "StayMaint",
                 "base_url": getattr(settings, "FRONTEND_BASE_URL", "https://hotelcarepro.com"),
             }
             

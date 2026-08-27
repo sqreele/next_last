@@ -52,7 +52,7 @@ export default function AiChatMobileMenu() {
                       </span>
                       <span>
                         <span className="block text-lg font-bold leading-tight text-foreground">
-                          HotelCare Pro
+                          StayMaint
                         </span>
                         <span className="block text-xs font-semibold text-muted-foreground">
                           Hotel maintenance operations

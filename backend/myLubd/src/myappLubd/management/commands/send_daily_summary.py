@@ -350,7 +350,7 @@ class Command(BaseCommand):
                 "total_created": total_created,
                 "completed_today": completed_today,
                 "status_list": status_list,
-                "brand_name": "HotelCare Pro",
+                "brand_name": "StayMaint",
                 "base_url": getattr(settings, "FRONTEND_BASE_URL", "https://hotelcarepro.com"),
                 # Monthly statistics
                 "monthly_stats": monthly_stats,
@@ -558,7 +558,7 @@ class Command(BaseCommand):
                 "total_created": total_created,
                 "completed_today": completed_today,
                 "status_list": status_list,
-                "brand_name": "HotelCare Pro",
+                "brand_name": "StayMaint",
                 "base_url": getattr(settings, "FRONTEND_BASE_URL", "https://hotelcarepro.com"),
                 "monthly_stats": monthly_stats,
                 "daily_stats": monthly_stats['daily_stats'],

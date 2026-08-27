@@ -8,8 +8,8 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-admin.site.site_header = 'HotelCare Pro Administration'
-admin.site.site_title = 'HotelCare Pro Admin'
+admin.site.site_header = 'StayMaint Administration'
+admin.site.site_title = 'StayMaint Admin'
 admin.site.index_title = 'Operations overview'
 
 # Custom User Admin

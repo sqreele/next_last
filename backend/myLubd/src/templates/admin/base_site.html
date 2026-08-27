@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 {% load static %}
 
-{% block title %}{{ title }} | HotelCare Pro Admin{% endblock %}
+{% block title %}{{ title }} | StayMaint Admin{% endblock %}
 
 {% block extrastyle %}
   {{ block.super }}
@@ -10,10 +10,10 @@
 
 {% block branding %}
   <div id="site-branding">
-    <a class="brand-link" href="{% url 'admin:index' %}" aria-label="HotelCare Pro administration home">
+    <a class="brand-link" href="{% url 'admin:index' %}" aria-label="StayMaint administration home">
       <span class="brand-mark" aria-hidden="true">H</span>
       <span class="brand-copy">
-        <strong>HotelCare Pro</strong>
+        <strong>StayMaint</strong>
         <small>Administration</small>
       </span>
     </a>

@@ -245,7 +245,7 @@ class Command(BaseCommand):
                 "jobs": jobs[:50],  # Limit to 50 jobs for email
                 "room_stats": stats['room_stats'],
                 "topic_stats": stats['topic_stats'],
-                "brand_name": "HotelCare Pro",
+                "brand_name": "StayMaint",
                 "base_url": getattr(settings, "FRONTEND_BASE_URL", "https://hotelcarepro.com"),
             }
             

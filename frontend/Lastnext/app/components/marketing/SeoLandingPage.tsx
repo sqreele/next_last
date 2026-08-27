@@ -43,7 +43,7 @@ export function SeoLandingPage({ page }: { page: MarketingPage }) {
             <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
               <Hotel className="h-5 w-5" aria-hidden />
             </span>
-            HotelCare Pro
+            StayMaint
           </Link>
           <div className="flex items-center gap-2">
             <Button
@@ -81,8 +81,8 @@ export function SeoLandingPage({ page }: { page: MarketingPage }) {
               <Button size="lg" asChild>
                 <Link href="/auth/register">
                   {isThai
-                    ? "ทดลองใช้ HotelCare Pro"
-                    : "Start with HotelCare Pro"}
+                    ? "ทดลองใช้ StayMaint"
+                    : "Start with StayMaint"}
                   <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
                 </Link>
               </Button>
@@ -213,8 +213,8 @@ export function SeoLandingPage({ page }: { page: MarketingPage }) {
                 </h2>
                 <p className="mt-2 text-sm text-background/70">
                   {isThai
-                    ? "รวมทีม งาน และประวัติการซ่อมไว้ใน HotelCare Pro"
-                    : "Bring your team, work orders and maintenance history into HotelCare Pro."}
+                    ? "รวมทีม งาน และประวัติการซ่อมไว้ใน StayMaint"
+                    : "Bring your team, work orders and maintenance history into StayMaint."}
                 </p>
               </div>
               <Button variant="secondary" size="lg" asChild>

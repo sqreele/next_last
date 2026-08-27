@@ -14,7 +14,7 @@ export function MobileTopBar({ title, actions }: { title: string; actions?: Reac
   return (
     <div className="pcms-section-card flex items-center justify-between gap-3 p-2.5 md:p-3">
       <div className="min-w-0 px-2">
-        <p className="pcms-eyebrow">HotelCare Pro</p>
+        <p className="pcms-eyebrow">StayMaint</p>
         <h2 className="truncate text-xl font-bold text-[var(--pcms-text)] md:text-2xl">{title}</h2>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">

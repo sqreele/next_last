@@ -29,12 +29,12 @@ const lineSeed = localFont({
 // SEO-Optimized Metadata for HotelCare Pro - Hotel Engineering & Maintenance Management
 export const metadata: Metadata = {
   title: {
-    default: 'HotelCare Pro - Smart Hotel Maintenance and Engineering Management Software',
-    template: '%s | HotelCare Pro',
+    default: 'StayMaint - Smart Hotel Maintenance and Engineering Management Software',
+    template: '%s | StayMaint',
   },
-  description: 'Manage work orders, preventive maintenance, assets, rooms, technicians and engineering reports in one HotelCare Pro platform.',
+  description: 'Manage work orders, preventive maintenance, assets, rooms, technicians and engineering reports in one StayMaint platform.',
   keywords: [
-    'HotelCare Pro',
+    'StayMaint',
     'hotel engineering',
     'hotel maintenance',
     'property maintenance',
@@ -47,32 +47,32 @@ export const metadata: Metadata = {
   ],
   authors: [
     {
-      name: 'HotelCare Pro',
+      name: 'StayMaint',
       url: 'https://staymaint.com',
     },
   ],
-  creator: 'HotelCare Pro',
+  creator: 'StayMaint',
   openGraph: {
     type: 'website',
     locale: 'en_US',
     url: 'https://staymaint.com',
-    title: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',
-    description: 'HotelCare Pro - Professional hotel engineering and maintenance management. Efficiently manage maintenance tasks and jobs with our modern dashboard. Perfect for hotel engineers and facility teams.',
-    siteName: 'HotelCare Pro',
+    title: 'StayMaint - Hotel Engineering & Maintenance Dashboard',
+    description: 'StayMaint - Professional hotel engineering and maintenance management. Efficiently manage maintenance tasks and jobs with our modern dashboard. Perfect for hotel engineers and facility teams.',
+    siteName: 'StayMaint',
     images: [
       {
         url: 'https://staymaint.com/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',
+        alt: 'StayMaint - Hotel Engineering & Maintenance Dashboard',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'HotelCare Pro - Hotel Engineering & Maintenance Dashboard',
-    description: 'HotelCare Pro - Professional hotel engineering and maintenance management. Track and manage hotel maintenance tasks seamlessly.',
-    creator: '@HotelCarePro',
+    title: 'StayMaint - Hotel Engineering & Maintenance Dashboard',
+    description: 'StayMaint - Professional hotel engineering and maintenance management. Track and manage hotel maintenance tasks seamlessly.',
+    creator: '@StayMaint',
     images: ['https://staymaint.com/twitter-image.jpg'],
   },
   robots: {
@@ -112,7 +112,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="HotelCare Pro" />
+        <meta name="apple-mobile-web-app-title" content="StayMaint" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="color-scheme" content="light dark" />

@@ -26,7 +26,7 @@ export function TabletNav({ className }: TabletNavProps) {
         <Link href="/dashboard" className="flex items-center gap-2">
           <Package2 className="h-8 w-8 text-blue-600" />
           <span className="font-bold text-xl text-foreground">
-            HotelCare Pro
+            StayMaint
           </span>
         </Link>
       </div>

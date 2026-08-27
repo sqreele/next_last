@@ -20,7 +20,7 @@ export async function generateMetadata({
   return {
     title: page.metaTitle,
     description: page.description,
-    keywords: [page.slug, "HotelCare Pro", "โปรแกรมซ่อมบำรุงโรงแรม"],
+    keywords: [page.slug, "StayMaint", "โปรแกรมซ่อมบำรุงโรงแรม"],
     alternates: { canonical: url },
     openGraph: {
       title: page.metaTitle,

@@ -26,7 +26,7 @@ export function PageLoader({
           <div className="flex items-center gap-4">
             <div className="h-11 w-11 shrink-0 animate-pulse rounded-lg bg-muted motion-reduce:animate-none" />
             <div className="min-w-0 flex-1">
-              <p className="pcms-eyebrow">HotelCare Pro</p>
+              <p className="pcms-eyebrow">StayMaint</p>
               <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{label}</h1>
               <p className="mt-1 text-sm text-muted-foreground">{description}</p>
             </div>

@@ -18,7 +18,7 @@ export default function AccessPendingPage() {
           Waiting for property access
         </h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Your account is secure and ready. Ask your HotelCare Pro administrator
+          Your account is secure and ready. Ask your StayMaint administrator
           to assign the properties you are authorized to manage.
         </p>
 
@@ -63,7 +63,7 @@ export default function AccessPendingPage() {
 
         <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-400">
           <Building2 className="h-3.5 w-3.5" />
-          HotelCare Pro
+          StayMaint
         </div>
       </section>
     </main>

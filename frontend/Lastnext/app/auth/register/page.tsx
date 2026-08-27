@@ -42,7 +42,7 @@ export default function RegisterPage() {
             <Building2 className="h-5 w-5" />
           </span>
           <div>
-            <p className="text-base font-semibold tracking-tight">HotelCare Pro</p>
+            <p className="text-base font-semibold tracking-tight">StayMaint</p>
             <p className="text-xs text-slate-400">Engineering operations platform</p>
           </div>
         </Link>
@@ -86,12 +86,12 @@ export default function RegisterPage() {
           <Link
             href="/"
             className="flex items-center gap-2.5 lg:hidden"
-            aria-label="HotelCare Pro home"
+            aria-label="StayMaint home"
           >
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white">
               <Building2 className="h-4 w-4" />
             </span>
-            <span className="font-semibold tracking-tight text-slate-900">HotelCare Pro</span>
+            <span className="font-semibold tracking-tight text-slate-900">StayMaint</span>
           </Link>
           <Link
             href="/auth/login"
@@ -111,7 +111,7 @@ export default function RegisterPage() {
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-600">
                 Create your account through our secure registration service.
-                Property access is assigned separately by your HotelCare Pro
+                Property access is assigned separately by your StayMaint
                 administrator.
               </p>
             </div>
@@ -121,7 +121,7 @@ export default function RegisterPage() {
         </div>
 
         <footer className="px-5 py-6 text-center text-xs text-slate-400 sm:px-8">
-          © {new Date().getFullYear()} HotelCare Pro · Secure hotel operations
+          © {new Date().getFullYear()} StayMaint · Secure hotel operations
         </footer>
       </section>
     </main>

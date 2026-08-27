@@ -39,7 +39,7 @@ export default function RegisterForm() {
         </span>
         <p className="text-xs leading-5 text-slate-600">
           Registration and password security are handled by our secure identity
-          service. Property access is granted separately by your HotelCare Pro
+          service. Property access is granted separately by your StayMaint
           administrator.
         </p>
       </div>

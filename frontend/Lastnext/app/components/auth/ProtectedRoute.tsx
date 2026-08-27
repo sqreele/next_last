@@ -21,7 +21,7 @@ interface LoadingFallbackProps {
 }
 
 const LoadingFallback: React.FC<LoadingFallbackProps> = ({ message = 'Loading...' }) => (
-  <PageLoader label={message} description="Checking your secure HotelCarePro session before opening the workspace." />
+  <PageLoader label={message} description="Checking your secure StayMaint session before opening the workspace." />
 );
 
 interface UnauthorizedFallbackProps {

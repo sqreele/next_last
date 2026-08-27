@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import { type Metadata, type Viewport } from 'next';
 import localFont from 'next/font/local';
-import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from '@/app/providers';
 import { Toaster } from '@/app/components/ui/toaster';
 import { RouteTransitionLoader } from '@/app/components/ui/loading/RouteTransitionLoader';
@@ -156,7 +155,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
           </LocaleProvider>
           </ThemeProvider>
         </SWRProvider>
-        <Analytics />
       </body>
     </html>
   );

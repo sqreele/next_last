@@ -2,6 +2,10 @@ import logging
 import requests
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.db import IntegrityError, transaction
+from django.utils import timezone
+
+from .models import AuthIdentity
 
 User = get_user_model()
 from rest_framework import authentication, exceptions
@@ -18,7 +22,7 @@ logger = logging.getLogger(__name__)
 class Auth0JWTAuthentication(authentication.BaseAuthentication):
     """
     Auth0 JWT authentication backend for Django REST Framework.
-    Validates JWT tokens from Auth0 and creates/updates local user accounts.
+    Validates JWT tokens from Auth0 and resolves pre-provisioned local accounts.
     Uses python-jose for robust JWT validation.
     """
     www_authenticate_realm = 'api'
@@ -164,112 +168,131 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed(_('Token validation failed.'))
 
     def _get_or_create_user_from_claims(self, claims):
-        # Accounts and property access are provisioned by an administrator. Auth0
-        # only proves ownership of an existing, verified email address; it must
-        # never create an account or fall back to a potentially colliding username.
+        """Resolve an Auth0 principal without creating or merging Django users."""
         claim_namespace = getattr(settings, 'AUTH0_CLAIM_NAMESPACE', 'https://hotelcarepro.com').rstrip('/')
-        email = (
+        issuer = self._nonempty_string(claims.get('iss'))
+        subject = self._nonempty_string(claims.get('sub'))
+        raw_email = (
             claims.get(f'{claim_namespace}/email')
             or claims.get('email')
             or ''
-        ).strip()
+        )
+        email = self._normalize_email(raw_email)
         email_verified = claims.get(f'{claim_namespace}/email_verified')
         if email_verified is None:
             # Temporary compatibility for tokens issued before namespaced claims
             # were added to the Auth0 Post Login Action.
             email_verified = claims.get('email_verified')
-        sub = claims.get('sub') or ''
 
-        logger.debug(f"Processing claims for email: {email}, sub: {sub}")
+        if not issuer:
+            logger.warning("Validated Auth0 token is missing its issuer")
+            raise exceptions.AuthenticationFailed(_('Token issuer is required.'))
+        if not subject:
+            logger.warning("Auth0 token is missing its subject")
+            raise exceptions.AuthenticationFailed(_('Token subject is required.'))
 
-        if not email:
-            logger.warning("Auth0 token is missing the email claim")
-            raise exceptions.AuthenticationFailed(_('A verified email address is required.'))
+        identity = self._load_identity(issuer, subject)
+        if identity is not None:
+            return self._resolve_bound_identity(identity, email)
 
-        if email_verified is not True:
-            logger.warning("Auth0 email is not verified: %s", email)
-            raise exceptions.AuthenticationFailed(_('Email address is not verified.'))
+        return self._link_preprovisioned_user(
+            issuer=issuer,
+            subject=subject,
+            email=email,
+            email_verified=email_verified,
+        )
 
-        matching_users = User.objects.filter(email__iexact=email)
-        match_count = matching_users.count()
-        if match_count == 0:
-            logger.warning("No pre-provisioned account found for Auth0 email: %s", email)
-            raise exceptions.AuthenticationFailed(
-                _('No account is registered for this email address. Please contact an administrator.')
-            )
-        if match_count > 1:
-            logger.error("Multiple local accounts use Auth0 email: %s", email)
-            raise exceptions.AuthenticationFailed(
-                _('Multiple accounts are registered for this email address. Please contact an administrator.')
-            )
+    @staticmethod
+    def _nonempty_string(value):
+        return value.strip() if isinstance(value, str) else ''
 
-        user = matching_users.first()
+    @staticmethod
+    def _normalize_email(value):
+        if not isinstance(value, str):
+            return ''
+        return User.objects.normalize_email(value.strip())
+
+    @staticmethod
+    def _load_identity(issuer, subject):
+        return (
+            AuthIdentity.objects.select_related('user')
+            .filter(issuer=issuer, subject=subject)
+            .first()
+        )
+
+    def _resolve_bound_identity(self, identity, presented_email=''):
+        user = identity.user
         if not user.is_active:
-            logger.warning("Inactive account attempted Auth0 login: %s", email)
+            logger.warning("Inactive account attempted Auth0 login through an existing identity")
             raise exceptions.AuthenticationFailed(_('This account is inactive.'))
 
-        username = user.username
-        logger.debug(f"Matched pre-provisioned user by verified email: {user}")
+        if (
+            presented_email
+            and user.email
+            and presented_email.casefold() != user.email.strip().casefold()
+        ):
+            logger.info("Auth0 identity presented a changed email; existing binding retained")
 
-        # Extract user profile information from JWT claims and available data
-        # Since we can't use Management API without client_credentials grant type,
-        # we'll use the data available in the JWT token and session
-        logger.debug(f"Extracting user profile from available claims for sub: {sub}")
-        
-        # Get profile information from JWT claims
-        profile_updated = False
-        
-        # Extract email from claims if available
-        if email and user.email != email:
-            user.email = email
-            profile_updated = True
-            logger.debug(f"Updated email from JWT claims: {email}")
-        
-        # Extract given_name (first name) from claims
-        if claims.get('given_name') and user.first_name != claims['given_name']:
-            user.first_name = claims['given_name'][:30]
-            profile_updated = True
-            logger.debug(f"Updated first_name from JWT claims: {claims['given_name']}")
-        
-        # Extract family_name (last name) from claims
-        if claims.get('family_name') and user.last_name != claims['family_name']:
-            user.last_name = claims['family_name'][:150]
-            profile_updated = True
-            logger.debug(f"Updated last_name from JWT claims: {claims['family_name']}")
-        
-        # Extract name (full name) and split if no given_name/family_name
-        if claims.get('name') and not user.first_name and not user.last_name:
-            name_parts = claims['name'].split(' ', 1)
-            if len(name_parts) >= 2:
-                user.first_name = name_parts[0][:30]
-                user.last_name = name_parts[1][:150]
-                profile_updated = True
-                logger.debug(f"Updated name from JWT claims: {claims['name']} -> first: {user.first_name}, last: {user.last_name}")
-            elif len(name_parts) == 1:
-                user.first_name = name_parts[0][:30]
-                profile_updated = True
-                logger.debug(f"Updated first_name from JWT claims (single name): {name_parts[0]}")
-        
-        # Extract nickname if no first name is available
-        if claims.get('nickname') and not user.first_name:
-            user.first_name = claims['nickname'][:30]
-            profile_updated = True
-            logger.debug(f"Updated first_name from nickname: {claims['nickname']}")
-        
-        # Extract picture/profile image URL if available
-        if claims.get('picture') and not hasattr(user, 'profile_image'):
-            # Note: Django User model doesn't have profile_image by default
-            # This would need a custom user model or profile model to store
-            logger.debug(f"Profile image available in claims: {claims['picture']}")
-        
-        # Save profile updates if any were made
-        if profile_updated:
-            user.save(update_fields=['email', 'first_name', 'last_name'])
-            logger.info(f"Updated user {username} profile from JWT claims: email={user.email}, first_name={user.first_name}, last_name={user.last_name}")
-        else:
-            logger.debug(f"No profile updates needed for user {username}")
-        
-        # Log the final user profile state
-        logger.debug(f"Final user profile for {username}: email={user.email}, first_name={user.first_name}, last_name={user.last_name}")
-
+        now = timezone.now()
+        AuthIdentity.objects.filter(pk=identity.pk).update(last_seen_at=now)
+        identity.last_seen_at = now
+        logger.debug("Resolved Auth0 principal through an existing identity binding")
         return user
+
+    def _link_preprovisioned_user(self, *, issuer, subject, email, email_verified):
+        if not email:
+            logger.warning("Unlinked Auth0 identity is missing the email claim")
+            raise exceptions.AuthenticationFailed(_('A verified email address is required.'))
+        if email_verified is not True:
+            logger.warning("Unlinked Auth0 identity did not present a verified email")
+            raise exceptions.AuthenticationFailed(_('Email address is not verified.'))
+
+        try:
+            with transaction.atomic():
+                matching_users = list(
+                    User.objects.select_for_update()
+                    .filter(email__iexact=email)
+                    .order_by('pk')[:2]
+                )
+                if not matching_users:
+                    logger.warning("No pre-provisioned account matched an Auth0 email")
+                    raise exceptions.AuthenticationFailed(
+                        _('No account is registered for this email address. Please contact an administrator.')
+                    )
+                if len(matching_users) > 1:
+                    logger.error("Multiple local accounts matched an Auth0 email")
+                    raise exceptions.AuthenticationFailed(
+                        _('Multiple accounts are registered for this email address. Please contact an administrator.')
+                    )
+
+                user = matching_users[0]
+                candidate_user_id = user.pk
+                if not user.is_active:
+                    logger.warning("Inactive account attempted initial Auth0 identity linking")
+                    raise exceptions.AuthenticationFailed(_('This account is inactive.'))
+
+                AuthIdentity.objects.create(
+                    user=user,
+                    issuer=issuer,
+                    subject=subject,
+                    email_at_link=email,
+                    last_seen_at=timezone.now(),
+                )
+        except IntegrityError:
+            # A concurrent first login may have created the same binding. The
+            # unique constraint decides the winner; always reload its user.
+            identity = self._load_identity(issuer, subject)
+            if identity is None:
+                raise
+            if identity.user_id != candidate_user_id:
+                logger.error("Auth0 identity race resolved to a different user; rejecting login")
+                raise exceptions.AuthenticationFailed(_('Identity binding conflict.'))
+            logger.info("Resolved concurrent Auth0 identity linking race")
+
+        # Re-read the database binding even after our insert. It is the sole
+        # authority after a first-link race, never the email candidate above.
+        identity = self._load_identity(issuer, subject)
+        if identity is None:
+            logger.error("Auth0 identity binding was not available after linking")
+            raise exceptions.AuthenticationFailed(_('Identity linking failed.'))
+        return self._resolve_bound_identity(identity, email)

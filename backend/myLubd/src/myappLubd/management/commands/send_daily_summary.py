@@ -2,16 +2,16 @@ import logging
 from datetime import timedelta
 from collections import defaultdict
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.db.models import Q
 
 from django.contrib.auth import get_user_model
 from myappLubd.models import Job, Property
-from myappLubd.email_utils import send_email
+from myappLubd.email_utils import normalize_email_addresses, send_email
 from myappLubd.timezones import local_date_bounds, localtime_for, object_timezone
-from myappLubd.tenancy import get_property_summary_recipients
+from myappLubd.tenancy import get_property_summary_email_users
 
 
 logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ class Command(BaseCommand):
         total_created_this_month = sum(monthly_totals.values())
         total_completed_this_month = Job.objects.filter(
             completed_at__range=(start_of_month, end_of_month)
-        ).count()
+        ).filter(property_filter).distinct().count()
         
         return {
             'daily_stats': daily_stats,
@@ -196,6 +196,12 @@ class Command(BaseCommand):
             dest="exclude_user_ids",
             default=None,
             help="Comma-separated list of user IDs to exclude from sending",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            dest="dry_run",
+            help="Resolve and render summaries without sending email",
         )
 
     def handle(self, *args, **options):
@@ -378,21 +384,21 @@ class Command(BaseCommand):
             env_recipients = getattr(settings, "DAILY_SUMMARY_RECIPIENTS", None)
 
             if explicit_to:
-                recipients = [explicit_to]
+                recipients = normalize_email_addresses([explicit_to])
             elif env_recipients:
                 # Support comma/semicolon separated list in env
                 if isinstance(env_recipients, str):
                     candidates = [e.strip() for e in env_recipients.replace(";", ",").split(",")]
                 else:
                     candidates = list(env_recipients)
-                recipients = [e for e in candidates if e]
+                recipients = normalize_email_addresses(candidates)
             else:
                 User = get_user_model()
                 if property_id:
                     # Filter users by property assignment - only users assigned to this property receive emails
-                    users_qs = get_property_summary_recipients(
+                    users_qs = get_property_summary_email_users(
                         Property.objects.filter(pk=property_id).first()
-                    ).filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
+                    )
                 elif options.get("all_users"):
                     users_qs = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
                 else:
@@ -424,12 +430,24 @@ class Command(BaseCommand):
                     except ValueError:
                         logger.warning(f"Invalid user IDs in --exclude-user-ids: {exclude_user_ids}")
                 
-                recipients = list(users_qs.values_list("email", flat=True))
+                recipients = normalize_email_addresses(
+                    users_qs.values_list("email", flat=True)
+                )
 
                 if not recipients:
                     fallback = getattr(settings, "SERVER_EMAIL", None) or getattr(settings, "DEFAULT_FROM_EMAIL", None)
                     if fallback:
-                        recipients = [fallback]
+                        recipients = normalize_email_addresses([fallback])
+
+            if options.get("dry_run"):
+                self.stdout.write("DRY RUN - no email will be sent")
+                self.stdout.write(f"Property ID: {property_id or 'ALL'}")
+                self.stdout.write(f"Property name: {property_obj.name if property_obj else 'All properties'}")
+                self.stdout.write(f"Recipient count: {len(recipients)}")
+                self.stdout.write(f"Jobs created: {total_created}")
+                self.stdout.write(f"Jobs completed: {completed_today}")
+                self.stdout.write(f"Would send: {'YES' if recipients else 'NO'}")
+                return
 
             if not recipients:
                 logger.error("No recipient email addresses found.")
@@ -437,32 +455,43 @@ class Command(BaseCommand):
                 return
             
             # Log recipient info for debugging
-            logger.info(f"Sending daily summary to {len(recipients)} recipients" + (f" for property {property_id}" if property_id else ""))
+            logger.info(
+                "Sending daily summary recipient_count=%s property_id=%s",
+                len(recipients),
+                property_id or "all",
+            )
 
             sent_count = 0
             for to_email in recipients:
-                success = send_email(to_email=to_email, subject=subject, body=body, html_body=html_body)
+                try:
+                    success = send_email(to_email=to_email, subject=subject, body=body, html_body=html_body)
+                except Exception:
+                    logger.exception("Unexpected daily summary transport error")
+                    success = False
                 if success:
                     sent_count += 1
-                    logger.info("Daily summary email sent to %s", to_email)
+                    logger.info("Daily summary delivery succeeded")
                 else:
-                    logger.error("Failed to send daily summary email to %s", to_email)
+                    logger.error("Daily summary delivery failed")
 
             if sent_count:
                 self.stdout.write(self.style.SUCCESS(f"Daily summary email sent to {sent_count}/{len(recipients)} recipients"))
             else:
-                self.stdout.write(self.style.ERROR("Failed to send daily summary email to all recipients"))
+                raise CommandError("Failed to send daily summary email to all attempted recipients")
+        except CommandError:
+            raise
         except Exception as exc:
             logger.exception("Error while sending daily summary email: %s", exc)
-            self.stdout.write(self.style.ERROR(f"Error: {exc}"))
+            raise CommandError(f"Error while sending daily summary email: {exc}") from exc
 
     def _handle_all_properties(self, options):
         """Send daily summary for all properties to their respective users."""
         properties = Property.objects.select_related('tenant')
         total_sent = 0
         total_properties = properties.count()
+        total_attempted_deliveries = 0
+        total_successful_deliveries = 0
         
-        User = get_user_model()
         exclude_emails = options.get('exclude_emails')
         exclude_user_ids = options.get('exclude_user_ids')
         
@@ -472,14 +501,7 @@ class Command(BaseCommand):
             timezone_label = object_timezone(property_obj).key
             
             # Get users assigned to this property
-            users_qs = get_property_summary_recipients(property_obj).filter(
-                is_active=True
-            ).exclude(email__isnull=True).exclude(email__exact="")
-            
-            # Exclude users with email notifications disabled
-            users_qs = users_qs.filter(
-                Q(userprofile__email_notifications_enabled=True) | Q(userprofile__isnull=True)
-            )
+            users_qs = get_property_summary_email_users(property_obj)
             
             # Apply exclusions
             if exclude_emails:
@@ -495,11 +517,9 @@ class Command(BaseCommand):
                 except ValueError:
                     pass
             
-            recipients = list(users_qs.values_list("email", flat=True).distinct())
-            
-            if not recipients:
-                logger.info(f"No users assigned to property {property_obj.name}, skipping")
-                continue
+            recipients = normalize_email_addresses(
+                users_qs.values_list("email", flat=True).distinct()
+            )
             
             # Build property filter for this property
             # Jobs are related to properties through rooms.properties
@@ -510,19 +530,30 @@ class Command(BaseCommand):
             
             jobs_today = Job.objects.filter(created_at__range=(start_of_day, end_of_window)).filter(property_filter).distinct()
             total_created = jobs_today.count()
+            completed_today = Job.objects.filter(
+                completed_at__range=(start_of_day, end_of_window)
+            ).filter(property_filter).distinct().count()
+
+            if not recipients:
+                if options.get("dry_run"):
+                    self._write_property_dry_run(property_obj, 0, total_created, completed_today, False)
+                else:
+                    logger.info(f"No users assigned to property {property_obj.name}, skipping")
+                continue
             
             if total_created == 0:
-                logger.info(f"No jobs today for property {property_obj.name}, skipping")
+                if options.get("dry_run"):
+                    self._write_property_dry_run(
+                        property_obj, len(recipients), 0, completed_today, False
+                    )
+                else:
+                    logger.info(f"No jobs today for property {property_obj.name}, skipping")
                 continue
             
             status_counts = {
                 status_key: jobs_today.filter(status=status_key).count()
                 for status_key, _ in Job.STATUS_CHOICES
             }
-            
-            completed_today = Job.objects.filter(
-                completed_at__range=(start_of_day, end_of_window)
-            ).filter(property_filter).distinct().count()
             
             # Get monthly and topic stats
             monthly_stats = self.get_daily_and_monthly_stats(now, property_filter)
@@ -575,21 +606,72 @@ class Command(BaseCommand):
                 "total_topic_assignments_month": topic_stats['total_topic_assignments_month'],
             }
             html_body = render_to_string("emails/daily_summary.html", context)
+
+            if options.get("dry_run"):
+                self._write_property_dry_run(
+                    property_obj,
+                    len(recipients),
+                    total_created,
+                    completed_today,
+                    True,
+                )
+                continue
             
             # Send to all property users
             sent_count = 0
             for to_email in recipients:
-                success = send_email(to_email=to_email, subject=subject, body=body, html_body=html_body)
+                total_attempted_deliveries += 1
+                try:
+                    success = send_email(to_email=to_email, subject=subject, body=body, html_body=html_body)
+                except Exception:
+                    logger.exception(
+                        "Unexpected daily summary transport error property_id=%s",
+                        property_id,
+                    )
+                    success = False
                 if success:
                     sent_count += 1
-                    logger.info(f"Daily summary sent to {to_email} for property {property_obj.name}")
+                    total_successful_deliveries += 1
+                    logger.info(
+                        "Daily summary delivery succeeded property_id=%s",
+                        property_id,
+                    )
                 else:
-                    logger.error(f"Failed to send daily summary to {to_email}")
+                    logger.error(
+                        "Daily summary delivery failed property_id=%s",
+                        property_id,
+                    )
             
             if sent_count > 0:
                 total_sent += 1
                 logger.info(f"Daily summary sent for property {property_obj.name} to {sent_count} users")
         
+        if options.get("dry_run"):
+            self.stdout.write(
+                self.style.SUCCESS(f"Dry run completed for {total_properties} properties")
+            )
+            return
+
         self.stdout.write(
             self.style.SUCCESS(f"Daily summaries sent for {total_sent}/{total_properties} properties")
         )
+
+        if total_attempted_deliveries and not total_successful_deliveries:
+            raise CommandError("Failed to send every attempted daily summary delivery")
+
+    def _write_property_dry_run(
+        self,
+        property_obj,
+        recipient_count,
+        total_created,
+        completed_today,
+        would_send,
+    ):
+        """Write a recipient-safe preview for one property."""
+        self.stdout.write("DRY RUN - no email will be sent")
+        self.stdout.write(f"Property ID: {property_obj.id}")
+        self.stdout.write(f"Property name: {property_obj.name}")
+        self.stdout.write(f"Recipient count: {recipient_count}")
+        self.stdout.write(f"Jobs created: {total_created}")
+        self.stdout.write(f"Jobs completed: {completed_today}")
+        self.stdout.write(f"Would send: {'YES' if would_send else 'NO'}")

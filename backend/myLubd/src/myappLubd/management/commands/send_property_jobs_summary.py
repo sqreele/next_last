@@ -1,16 +1,16 @@
 import logging
 from datetime import timedelta
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.db.models import Count, Q
 
 from django.contrib.auth import get_user_model
 from myappLubd.models import Job, Property
-from myappLubd.email_utils import send_email
+from myappLubd.email_utils import normalize_email_addresses, send_email
 from myappLubd.timezones import localtime_for, object_timezone
-from myappLubd.tenancy import get_property_summary_recipients
+from myappLubd.tenancy import get_property_summary_email_users
 
 
 logger = logging.getLogger(__name__)
@@ -63,6 +63,11 @@ class Command(BaseCommand):
             default=None,
             help="Comma-separated list of user IDs to exclude from sending",
         )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Resolve summary counts and recipients without sending email",
+        )
 
     def get_property_job_statistics(self, property_id, days=7):
         """Calculate job statistics for a specific property."""
@@ -76,7 +81,7 @@ class Command(BaseCommand):
         
         # Get all jobs for this property within the time range
         # Jobs are related to properties through rooms.properties
-        jobs = Job.objects.filter(
+        jobs = Job.objects.select_related('property').filter(
             property__id=property_id
         ).filter(
             created_at__gte=start_date
@@ -101,14 +106,9 @@ class Command(BaseCommand):
         recent_jobs_queryset = jobs.order_by('-created_at')[:10]
         recent_jobs = []
         for job in recent_jobs_queryset:
-            # Get all properties this job belongs to through its rooms
-            job_properties = Property.objects.filter(
-                rooms__jobs=job
-            ).distinct().values_list('name', flat=True)
-            
             recent_jobs.append({
                 'job': job,
-                'properties': list(job_properties) if job_properties else []
+                'properties': [job.property.name],
             })
         
         # Get room statistics
@@ -162,18 +162,18 @@ class Command(BaseCommand):
         User = get_user_model()
         if strict_mode:
             # Only users explicitly assigned to this property
-            users_qs = get_property_summary_recipients(
+            users_qs = get_property_summary_email_users(
                 Property.objects.filter(pk=property_id).first()
-            ).filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
+            )
         else:
             # Platform break-glass may receive this property summary; staff
             # status does not expand application property access.
             users_qs = (
-                get_property_summary_recipients(Property.objects.filter(pk=property_id).first())
+                get_property_summary_email_users(Property.objects.filter(pk=property_id).first())
                 | User.objects.filter(is_superuser=True)
             ).filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="").distinct()
         
-        # Exclude users with email notifications disabled
+        # Break-glass users must also honor notification preferences.
         users_qs = users_qs.filter(
             Q(userprofile__email_notifications_enabled=True) | Q(userprofile__isnull=True)
         )
@@ -202,38 +202,89 @@ class Command(BaseCommand):
             strict_mode = not include_staff  # strict_mode is True unless --include-staff is specified
             exclude_emails = options.get('exclude_emails')
             exclude_user_ids = options.get('exclude_user_ids')
+            dry_run = options.get('dry_run', False)
             
             if options.get('all_properties'):
-                # Send summary for all properties
-                properties = Property.objects.all()
-                total_sent = 0
-                
+                properties = list(Property.objects.select_related('tenant'))
+                successful_properties = 0
+                attempted_deliveries = 0
+                successful_deliveries = 0
+                failed_deliveries = 0
+
                 for property_obj in properties:
                     stats = self.get_property_job_statistics(property_obj.id, days)
                     property_now = localtime_for(property_obj)
-                    users = self.get_property_users(
+                    user_objects = self.get_property_users(
                         property_obj.id, 
                         strict_mode=strict_mode,
                         exclude_emails=exclude_emails,
                         exclude_user_ids=exclude_user_ids
                     )
-                    
-                    if users.exists():
-                        success = self.send_property_summary_email(stats, users, property_now)
-                        if success:
-                            total_sent += 1
-                            logger.info(f"Property summary sent for {property_obj.name}")
+                    recipients = normalize_email_addresses(
+                        user_objects.values_list('email', flat=True)
+                    )
+
+                    if dry_run:
+                        self._write_dry_run(
+                            property_obj,
+                            stats['total_jobs'],
+                            len(recipients),
+                            bool(recipients),
+                        )
+                        continue
+
+                    if not recipients:
+                        logger.warning(
+                            "No property summary recipients property_id=%s",
+                            property_obj.id,
+                        )
+                        continue
+
+                    sent_count, failure_count = self.send_property_summary_email(
+                        stats, recipients, property_now
+                    )
+                    attempted_deliveries += len(recipients)
+                    successful_deliveries += sent_count
+                    failed_deliveries += failure_count
+                    if sent_count:
+                        successful_properties += 1
+                        logger.info(
+                            "Property summary completed property_id=%s success_count=%s failure_count=%s",
+                            property_obj.id,
+                            sent_count,
+                            failure_count,
+                        )
+
+                if dry_run:
+                    self.stdout.write(
+                        self.style.SUCCESS(
+                            f"Dry run completed for {len(properties)} properties"
+                        )
+                    )
+                    return
                 
                 self.stdout.write(
-                    self.style.SUCCESS(f"Property summaries sent for {total_sent}/{properties.count()} properties")
+                    self.style.SUCCESS(
+                        "Property summaries sent for "
+                        f"{successful_properties}/{len(properties)} properties; "
+                        f"success_count={successful_deliveries}; "
+                        f"failure_count={failed_deliveries}"
+                    )
                 )
+                if attempted_deliveries and not successful_deliveries:
+                    raise CommandError(
+                        "Failed to send every attempted property summary delivery"
+                    )
             else:
-                # Send summary for specific property
                 property_id = options.get('property_id')
                 if not property_id:
-                    self.stdout.write(self.style.ERROR("Missing --property-id (or use --all-properties)"))
-                    return
-                stats = self.get_property_job_statistics(property_id, days)
+                    raise CommandError("Missing --property-id (or use --all-properties)")
+                property_obj = Property.objects.filter(
+                    id=property_id
+                ).select_related('tenant').first()
+                if property_obj is None:
+                    raise CommandError(f"Property {property_id} not found")
+                stats = self.get_property_job_statistics(property_obj.id, days)
                 
                 # Determine recipients
                 explicit_to = options.get("to_email")
@@ -242,49 +293,81 @@ class Command(BaseCommand):
                     if exclude_emails:
                         email_list = [e.strip() for e in exclude_emails.split(",") if e.strip()]
                         if explicit_to in email_list:
-                            logger.info(f"Explicit email {explicit_to} is in exclude list, skipping")
-                            self.stdout.write(self.style.WARNING(f"Email {explicit_to} is excluded"))
+                            logger.info("Explicit recipient is excluded")
+                            self.stdout.write(self.style.WARNING("Explicit recipient is excluded"))
                             return
-                    users = [explicit_to]
+                    recipients = normalize_email_addresses([explicit_to])
                 else:
                     user_objects = self.get_property_users(
-                        property_id, 
+                        property_obj.id,
                         strict_mode=strict_mode,
                         exclude_emails=exclude_emails,
                         exclude_user_ids=exclude_user_ids
                     )
-                    users = list(user_objects.values_list("email", flat=True))
+                    recipients = normalize_email_addresses(
+                        user_objects.values_list("email", flat=True)
+                    )
                     
-                    if not users:
+                    if not recipients:
                         # Only platform break-glass may receive a global fallback.
                         User = get_user_model()
                         staff_users = User.objects.filter(
                             is_active=True, is_superuser=True
-                        ).exclude(email__isnull=True).exclude(email__exact="")
-                        users = list(staff_users.values_list("email", flat=True))
+                        ).exclude(email__isnull=True).exclude(email__exact="").filter(
+                            Q(userprofile__email_notifications_enabled=True)
+                            | Q(userprofile__isnull=True)
+                        )
+                        recipients = normalize_email_addresses(
+                            staff_users.values_list("email", flat=True)
+                        )
                         
-                        if users:
-                            logger.info(f"No property-assigned users found. Falling back to {len(users)} staff users")
-                
-                if not users:
-                    logger.error("No recipient email addresses found.")
-                    self.stdout.write(self.style.ERROR("No recipient email addresses found"))
+                        if recipients:
+                            logger.info(
+                                "Using break-glass property summary recipients recipient_count=%s",
+                                len(recipients),
+                            )
+
+                if dry_run:
+                    self._write_dry_run(
+                        property_obj,
+                        stats['total_jobs'],
+                        len(recipients),
+                        bool(recipients),
+                    )
                     return
-                
-                property_obj = Property.objects.filter(id=property_id).select_related('tenant').first()
-                success = self.send_property_summary_email(stats, users, localtime_for(property_obj))
-                if success:
+
+                if not recipients:
+                    raise CommandError("No valid recipient email addresses found")
+
+                sent_count, failure_count = self.send_property_summary_email(
+                    stats, recipients, localtime_for(property_obj)
+                )
+                if sent_count:
                     self.stdout.write(
-                        self.style.SUCCESS(f"Property summary email sent for {stats['property_name']}")
+                        self.style.SUCCESS(
+                            "Property summary completed; "
+                            f"success_count={sent_count}; failure_count={failure_count}"
+                        )
                     )
                 else:
-                    self.stdout.write(
-                        self.style.ERROR("Failed to send property summary email")
+                    raise CommandError(
+                        "Failed to send every attempted property summary delivery"
                     )
-                    
+        except CommandError:
+            raise
         except Exception as exc:
             logger.exception("Error while sending property summary email: %s", exc)
-            self.stdout.write(self.style.ERROR(f"Error: {exc}"))
+            raise CommandError(
+                f"Error while sending property summary email: {exc}"
+            ) from exc
+
+    def _write_dry_run(self, property_obj, job_count, recipient_count, would_send):
+        self.stdout.write("DRY RUN - no email will be sent")
+        self.stdout.write(f"Property ID: {property_obj.id}")
+        self.stdout.write(f"Property name: {property_obj.name}")
+        self.stdout.write(f"Jobs selected: {job_count}")
+        self.stdout.write(f"Recipient count: {recipient_count}")
+        self.stdout.write(f"Would send: {'YES' if would_send else 'NO'}")
 
     def send_property_summary_email(self, stats, users, now):
         """Send the property summary email."""
@@ -365,21 +448,39 @@ class Command(BaseCommand):
             
             # Send to all users
             sent_count = 0
+            failure_count = 0
             for user_email in users:
-                success = send_email(
-                    to_email=user_email, 
-                    subject=subject, 
-                    body=body, 
-                    html_body=html_body
-                )
+                try:
+                    success = send_email(
+                        to_email=user_email,
+                        subject=subject,
+                        body=body,
+                        html_body=html_body
+                    )
+                except Exception:
+                    logger.exception(
+                        "Unexpected property summary transport error property_id=%s",
+                        stats['property_id'],
+                    )
+                    success = False
                 if success:
                     sent_count += 1
-                    logger.info(f"Property summary email sent to {user_email}")
+                    logger.info(
+                        "Property summary delivery succeeded property_id=%s",
+                        stats['property_id'],
+                    )
                 else:
-                    logger.error(f"Failed to send property summary email to {user_email}")
+                    failure_count += 1
+                    logger.error(
+                        "Property summary delivery failed property_id=%s",
+                        stats['property_id'],
+                    )
             
-            return sent_count > 0
+            return sent_count, failure_count
             
-        except Exception as e:
-            logger.error(f"Error sending property summary email: {e}")
-            return False
+        except Exception:
+            logger.exception(
+                "Error preparing property summary property_id=%s",
+                stats.get('property_id'),
+            )
+            raise

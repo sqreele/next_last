@@ -7,9 +7,31 @@ from email.mime.multipart import MIMEMultipart
 from typing import Optional, List, Dict, Any
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.template.loader import render_to_string
 
 logger = logging.getLogger(__name__)
+
+
+def normalize_email_addresses(candidates) -> List[str]:
+    """Return valid, trimmed email strings, deduplicated case-insensitively."""
+    normalized = []
+    seen = set()
+    for candidate in candidates or []:
+        if not isinstance(candidate, str):
+            continue
+        email = candidate.strip()
+        try:
+            validate_email(email)
+        except ValidationError:
+            continue
+        key = email.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(email)
+    return normalized
 
 try:
     # Lazy import to avoid hard dependency if not configured yet
@@ -55,6 +77,12 @@ def send_email(to_email: str, subject: str, body: str, from_email: Optional[str]
 
     Returns True on success, False otherwise.
     """
+    recipients = normalize_email_addresses([to_email])
+    if not recipients:
+        logger.warning("Email transport rejected an invalid recipient")
+        return False
+    to_email = recipients[0]
+
     # Try Gmail API first
     service = _build_gmail_service()
     from_addr = from_email or getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@hotelcarepro.com')
@@ -84,10 +112,10 @@ def send_email(to_email: str, subject: str, body: str, from_email: Optional[str]
                 raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
 
             service.users().messages().send(userId='me', body={'raw': raw}).execute()
-            logger.info(f"Email sent via Gmail API to {to_email}")
+            logger.info("Email sent via Gmail API")
             return True
         except Exception as e:
-            logger.error(f"Gmail API send failed: {e}")
+            logger.error("Gmail API send failed (%s)", type(e).__name__)
             # Continue to try SMTP fallback
 
     # SMTP fallback using Django's send_mail
@@ -104,10 +132,10 @@ def send_email(to_email: str, subject: str, body: str, from_email: Optional[str]
         from django.core.mail import send_mail
         sent = send_mail(subject, body or '', from_addr, [to_email], fail_silently=False, html_message=html_body)
         if sent:
-            logger.info(f"Email sent via SMTP to {to_email}")
+            logger.info("Email sent via SMTP")
             return True
     except Exception as e:
-        logger.error(f"SMTP send failed: {e}")
+        logger.error("SMTP send failed (%s)", type(e).__name__)
 
     return False
 
@@ -191,14 +219,14 @@ The MaintenancePro Team
         )
         
         if success:
-            logger.info(f"Welcome email sent successfully to {user_email}")
+            logger.info("Welcome email sent successfully")
         else:
-            logger.warning(f"Failed to send welcome email to {user_email}")
+            logger.warning("Failed to send welcome email")
         
         return success
         
     except Exception as e:
-        logger.error(f"Error sending welcome email to {user_email}: {e}")
+        logger.error("Error sending welcome email (%s)", type(e).__name__)
         return False
 
 
@@ -263,7 +291,9 @@ This is an automated notification from MaintenancePro.
             if send_email(to_email=admin_email, subject=subject, body=body):
                 success_count += 1
         except Exception as e:
-            logger.error(f"Failed to send admin notification to {admin_email}: {e}")
+            logger.error(
+                "Failed to send admin notification (%s)", type(e).__name__
+            )
     
     logger.info(f"Admin notifications sent: {success_count}/{len(admin_emails)}")
     return success_count > 0

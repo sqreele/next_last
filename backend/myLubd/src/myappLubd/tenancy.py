@@ -150,6 +150,7 @@ def get_property_summary_recipients(property_obj):
     return user_model.objects.filter(
         Q(
             tenant_memberships__is_active=True,
+            tenant_memberships__tenant_id=property_obj.tenant_id,
             tenant_memberships__properties=property_obj,
         )
         | Q(
@@ -158,6 +159,21 @@ def get_property_summary_recipients(property_obj):
             tenant_memberships__role__in=TENANT_WIDE_PROPERTY_ROLES,
         )
     ).distinct()
+
+
+def get_property_summary_email_users(property_obj):
+    """Return active, opted-in users authorized for a property summary."""
+    return (
+        get_property_summary_recipients(property_obj)
+        .filter(is_active=True)
+        .exclude(email__isnull=True)
+        .exclude(email__exact='')
+        .filter(
+            Q(userprofile__email_notifications_enabled=True)
+            | Q(userprofile__isnull=True)
+        )
+        .distinct()
+    )
 
 
 def user_can_access_property(user, property_obj):

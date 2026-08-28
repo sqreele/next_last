@@ -1,16 +1,16 @@
 import logging
 from datetime import timedelta
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.db.models import Count, Q
 
 from django.contrib.auth import get_user_model
 from myappLubd.models import Job, Property
-from myappLubd.email_utils import send_email
+from myappLubd.email_utils import normalize_email_addresses, send_email
 from myappLubd.timezones import localtime_for
-from myappLubd.tenancy import get_accessible_properties, get_property_summary_recipients
+from myappLubd.tenancy import get_accessible_properties, get_property_summary_email_users
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class Command(BaseCommand):
         property_obj = Property.objects.filter(pk=property_id).first()
         if property_obj is None:
             return User.objects.none()
-        return get_property_summary_recipients(property_obj)
+        return get_property_summary_email_users(property_obj)
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -83,6 +83,11 @@ class Command(BaseCommand):
             default=None,
             help="Comma-separated list of user IDs to exclude from sending",
         )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Resolve assigned-job and recipient counts without sending email",
+        )
 
     def _primary_user_property(self, user):
         return get_accessible_properties(user).select_related('tenant').first()
@@ -96,7 +101,8 @@ class Command(BaseCommand):
         
         # Base query for jobs in date range
         jobs_query = Job.objects.filter(
-            created_at__gte=start_date
+            created_at__gte=start_date,
+            user=user,
         )
         
         # Apply property filter
@@ -252,23 +258,43 @@ class Command(BaseCommand):
             html_body = render_to_string("emails/user_property_jobs.html", context)
             
             # Send email
+            recipients = normalize_email_addresses([user.email])
+            if not recipients:
+                logger.warning(
+                    "User job summary skipped invalid recipient user_id=%s",
+                    user.id,
+                )
+                return False
+
             success = send_email(
-                to_email=user.email,
+                to_email=recipients[0],
                 subject=subject,
                 body=body,
                 html_body=html_body
             )
             
             if success:
-                logger.info(f"User job email sent to {user.email} for property {property_name}")
+                logger.info(
+                    "User job summary delivery succeeded user_id=%s property_id=%s",
+                    user.id,
+                    getattr(property_obj, 'id', None),
+                )
                 return True
             else:
-                logger.error(f"Failed to send user job email to {user.email}")
+                logger.error(
+                    "User job summary delivery failed user_id=%s property_id=%s",
+                    user.id,
+                    getattr(property_obj, 'id', None),
+                )
                 return False
                 
-        except Exception as e:
-            logger.error(f"Error sending user job email to {user.email}: {e}")
-            return False
+        except Exception:
+            logger.exception(
+                "Error preparing user job summary user_id=%s property_id=%s",
+                user.id,
+                getattr(property_obj, 'id', None),
+            )
+            raise
 
     def handle(self, *args, **options):
         try:
@@ -278,176 +304,256 @@ class Command(BaseCommand):
             status_filter = options.get('status')
             priority_filter = options.get('priority')
             test_mode = options.get('test_mode', False)
+            dry_run = options.get('dry_run', False)
             
-            # Handle --all-properties flag
             if options.get('all_properties'):
-                self._handle_all_properties(options, days, status_filter, priority_filter, test_mode)
+                self._handle_all_properties(
+                    options, days, status_filter, priority_filter, test_mode, dry_run
+                )
                 return
             
             User = get_user_model()
-            
-            # Get users to send emails to
+            property_obj = None
+            if property_id:
+                property_obj = Property.objects.filter(
+                    id=property_id
+                ).select_related('tenant').first()
+                if property_obj is None:
+                    raise CommandError(f"Property {property_id} not found")
+
             if user_id:
                 users = User.objects.filter(id=user_id, is_active=True).exclude(email__isnull=True).exclude(email__exact="")
-            elif property_id:
-                # Filter users by property assignment - only users assigned to this property receive emails
+                if property_obj is not None:
+                    users = users.filter(
+                        pk__in=self._users_with_property_access(property_obj.id)
+                    )
+            elif property_obj is not None:
                 users = self._users_with_property_access(property_id).filter(
                     is_active=True
                 ).exclude(email__isnull=True).exclude(email__exact="")
             else:
                 users = User.objects.filter(is_active=True).exclude(email__isnull=True).exclude(email__exact="")
             
-            # Exclude users with email notifications disabled
             users = users.filter(
                 Q(userprofile__email_notifications_enabled=True) | Q(userprofile__isnull=True)
             )
-            
-            # Exclude specific emails if provided
-            exclude_emails = options.get('exclude_emails')
-            if exclude_emails:
-                email_list = [e.strip() for e in exclude_emails.split(",") if e.strip()]
-                if email_list:
-                    users = users.exclude(email__in=email_list)
-            
-            # Exclude specific user IDs if provided
-            exclude_user_ids = options.get('exclude_user_ids')
-            if exclude_user_ids:
-                try:
-                    user_id_list = [int(uid.strip()) for uid in exclude_user_ids.split(",") if uid.strip()]
-                    if user_id_list:
-                        users = users.exclude(id__in=user_id_list)
-                except ValueError:
-                    logger.warning(f"Invalid user IDs in --exclude-user-ids: {exclude_user_ids}")
+            users = self._apply_exclusions(users, options)
             
             if not users.exists():
-                self.stdout.write(self.style.ERROR("No active users with email addresses found"))
-                return
+                if dry_run:
+                    self._write_dry_run(property_obj, 0, 0, 0)
+                    return
+                raise CommandError("No authorized active recipients found")
             
-            # Test mode - send to first user only
             if test_mode:
                 users = users[:1]
                 self.stdout.write(self.style.WARNING("Test mode: Sending to first user only"))
-            
-            # Get property info
-            property_obj = None
-            if property_id:
-                try:
-                    property_obj = Property.objects.select_related('tenant').get(id=property_id)
-                except Property.DoesNotExist:
-                    self.stdout.write(self.style.ERROR(f"Property with ID {property_id} not found"))
-                    return
-            
+
             sent_count = 0
+            failure_count = 0
+            attempted_count = 0
+            selected_job_count = 0
+            eligible_recipient_count = 0
             total_users = users.count()
             
             for user in users:
                 user_property_obj = property_obj or self._primary_user_property(user)
                 now = localtime_for(user_property_obj)
-                # Get user's jobs
                 jobs = self.get_user_property_jobs(user, property_id, days, status_filter, priority_filter, now)
+                job_count = jobs.count()
+                selected_job_count += job_count
                 
-                if not jobs.exists():
-                    logger.info(f"No jobs found for user {user.email}")
+                if not job_count:
+                    logger.info("No assigned jobs found user_id=%s", user.id)
                     continue
-                
-                # Get job statistics
+                eligible_recipient_count += 1
+
+                if dry_run:
+                    continue
+
                 stats = self.get_job_statistics(jobs)
-                
-                # Send email
-                success = self.send_user_job_email(user, user_property_obj, jobs, stats, days, now)
+                attempted_count += 1
+                try:
+                    success = self.send_user_job_email(
+                        user, user_property_obj, jobs, stats, days, now
+                    )
+                except Exception:
+                    success = False
                 if success:
                     sent_count += 1
+                else:
+                    failure_count += 1
                 
-                # In test mode, only send to first user
                 if test_mode:
                     break
-            
+
+            if dry_run:
+                self._write_dry_run(
+                    property_obj,
+                    selected_job_count,
+                    total_users,
+                    eligible_recipient_count,
+                )
+                return
+
             if sent_count > 0:
                 self.stdout.write(
-                    self.style.SUCCESS(f"User job emails sent to {sent_count}/{total_users} users")
+                    self.style.SUCCESS(
+                        f"User job summaries completed; success_count={sent_count}; "
+                        f"failure_count={failure_count}"
+                    )
+                )
+            elif attempted_count:
+                raise CommandError(
+                    "Failed to send every attempted user job summary delivery"
                 )
             else:
                 self.stdout.write(
-                    self.style.WARNING("No emails were sent (no jobs found or email failures)")
+                    self.style.WARNING("No emails were sent because no assigned jobs were found")
                 )
-                
+        except CommandError:
+            raise
         except Exception as exc:
             logger.exception("Error while sending user property job emails: %s", exc)
-            self.stdout.write(self.style.ERROR(f"Error: {exc}"))
+            raise CommandError(
+                f"Error while sending user property job emails: {exc}"
+            ) from exc
 
-    def _handle_all_properties(self, options, days, status_filter, priority_filter, test_mode):
+    def _handle_all_properties(
+        self, options, days, status_filter, priority_filter, test_mode, dry_run
+    ):
         """Send user job emails for all properties to their respective users."""
-        User = get_user_model()
-        
-        properties = Property.objects.select_related('tenant')
-        total_sent = 0
-        total_properties = properties.count()
-        
-        exclude_emails = options.get('exclude_emails')
-        exclude_user_ids = options.get('exclude_user_ids')
+        properties = list(Property.objects.select_related('tenant'))
+        successful_properties = 0
+        attempted_count = 0
+        sent_count = 0
+        failure_count = 0
         
         for property_obj in properties:
             property_id = property_obj.id
-            
-            # Get users assigned to this property
-            users = self._users_with_property_access(property_id).filter(
-                is_active=True
-            ).exclude(email__isnull=True).exclude(email__exact="")
-            
-            # Exclude users with email notifications disabled
-            users = users.filter(
-                Q(userprofile__email_notifications_enabled=True) | Q(userprofile__isnull=True)
+            users = self._apply_exclusions(
+                self._users_with_property_access(property_id), options
             )
-            
-            # Apply exclusions
-            if exclude_emails:
-                email_list = [e.strip() for e in exclude_emails.split(",") if e.strip()]
-                if email_list:
-                    users = users.exclude(email__in=email_list)
-            
-            if exclude_user_ids:
-                try:
-                    user_id_list = [int(uid.strip()) for uid in exclude_user_ids.split(",") if uid.strip()]
-                    if user_id_list:
-                        users = users.exclude(id__in=user_id_list)
-                except ValueError:
-                    pass
-            
-            if not users.exists():
-                logger.info(f"No users assigned to property {property_obj.name}, skipping")
-                continue
-            
-            # Test mode - only first user per property
+            authorized_recipient_count = users.count()
+
             if test_mode:
                 users = users[:1]
-            
+
             property_sent_count = 0
-            
+            selected_job_count = 0
+            eligible_recipient_count = 0
             for user in users:
                 now = localtime_for(property_obj)
-                # Get user's jobs for this property
                 jobs = self.get_user_property_jobs(user, property_id, days, status_filter, priority_filter, now)
-                
-                if not jobs.exists():
-                    logger.info(f"No jobs found for user {user.email} in property {property_obj.name}")
+                job_count = jobs.count()
+                selected_job_count += job_count
+                if not job_count:
+                    logger.info(
+                        "No assigned jobs user_id=%s property_id=%s",
+                        user.id,
+                        property_id,
+                    )
                     continue
-                
-                # Get job statistics
+                eligible_recipient_count += 1
+
+                if dry_run:
+                    continue
+
                 stats = self.get_job_statistics(jobs)
-                
-                # Send email
-                success = self.send_user_job_email(user, property_obj, jobs, stats, days, now)
+                attempted_count += 1
+                try:
+                    success = self.send_user_job_email(
+                        user, property_obj, jobs, stats, days, now
+                    )
+                except Exception:
+                    success = False
                 if success:
                     property_sent_count += 1
-                
-                # In test mode, only send to first user per property
+                    sent_count += 1
+                else:
+                    failure_count += 1
+
                 if test_mode:
                     break
-            
+
+            if dry_run:
+                self._write_dry_run(
+                    property_obj,
+                    selected_job_count,
+                    authorized_recipient_count,
+                    eligible_recipient_count,
+                )
+                continue
+
             if property_sent_count > 0:
-                total_sent += 1
-                logger.info(f"User job emails sent for property {property_obj.name} to {property_sent_count} users")
-        
+                successful_properties += 1
+                logger.info(
+                    "User job summaries completed property_id=%s success_count=%s",
+                    property_id,
+                    property_sent_count,
+                )
+
+        if dry_run:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Dry run completed for {len(properties)} properties"
+                )
+            )
+            return
+
         self.stdout.write(
-            self.style.SUCCESS(f"User job emails sent for {total_sent}/{total_properties} properties")
+            self.style.SUCCESS(
+                "User job summaries sent for "
+                f"{successful_properties}/{len(properties)} properties; "
+                f"success_count={sent_count}; failure_count={failure_count}"
+            )
+        )
+        if attempted_count and not sent_count:
+            raise CommandError(
+                "Failed to send every attempted user job summary delivery"
+            )
+
+    def _apply_exclusions(self, users, options):
+        exclude_emails = options.get('exclude_emails')
+        if exclude_emails:
+            email_list = normalize_email_addresses(exclude_emails.split(','))
+            if email_list:
+                users = users.exclude(email__in=email_list)
+
+        exclude_user_ids = options.get('exclude_user_ids')
+        if exclude_user_ids:
+            try:
+                user_id_list = [
+                    int(uid.strip())
+                    for uid in exclude_user_ids.split(',')
+                    if uid.strip()
+                ]
+            except ValueError:
+                logger.warning("Invalid user IDs supplied to exclusion option")
+            else:
+                if user_id_list:
+                    users = users.exclude(id__in=user_id_list)
+        return users.distinct()
+
+    def _write_dry_run(
+        self,
+        property_obj,
+        job_count,
+        authorized_recipient_count,
+        eligible_recipient_count,
+    ):
+        self.stdout.write("DRY RUN - no email will be sent")
+        self.stdout.write(
+            f"Property ID: {property_obj.id if property_obj else 'ALL'}"
+        )
+        self.stdout.write(
+            f"Property name: {property_obj.name if property_obj else 'All accessible properties'}"
+        )
+        self.stdout.write(f"Assigned jobs selected: {job_count}")
+        self.stdout.write(
+            f"Authorized recipient count: {authorized_recipient_count}"
+        )
+        self.stdout.write(f"Eligible recipient count: {eligible_recipient_count}")
+        self.stdout.write(
+            f"Would send: {'YES' if eligible_recipient_count else 'NO'}"
         )

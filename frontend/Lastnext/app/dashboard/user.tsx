@@ -120,7 +120,7 @@ const User: React.FC = () => {
           </DropdownMenuItem>
         </Link>
 
-        <Link href="/settings">
+        <Link href="/dashboard/settings/users">
           <DropdownMenuItem className="rounded-md cursor-pointer hover:bg-muted">
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>

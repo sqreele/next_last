@@ -143,6 +143,18 @@ class MembershipAdminThrottle(SecurityRateThrottle):
     scope = 'membership_admin'
 
 
+class InvitationAdminThrottle(SecurityRateThrottle):
+    scope = 'invitation_admin'
+
+
+class InvitationPreviewThrottle(SecurityRateThrottle):
+    scope = 'invitation_preview'
+
+
+class InvitationAcceptThrottle(SecurityRateThrottle):
+    scope = 'invitation_accept'
+
+
 class JobAssignmentThrottle(SecurityRateThrottle):
     scope = 'job_assignment'
 

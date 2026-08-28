@@ -140,7 +140,11 @@ function Lightbox({
           fill
           className="object-contain"
           quality={90}
-          unoptimized={url.startsWith("http") || url.includes("/media/")}
+          unoptimized={
+            url.startsWith("http") ||
+            url.includes("/media/") ||
+            url.includes("/api/protected-media/")
+          }
           sizes="100vw"
         />
       </div>
@@ -202,7 +206,9 @@ function SliderCompare({
         fill
         className="object-cover"
         unoptimized={
-          after.url.startsWith("http") || after.url.includes("/media/")
+          after.url.startsWith("http") ||
+          after.url.includes("/media/") ||
+          after.url.includes("/api/protected-media/")
         }
         sizes="(max-width: 768px) 100vw, 800px"
       />
@@ -220,7 +226,9 @@ function SliderCompare({
             fill
             className="object-cover"
             unoptimized={
-              before.url.startsWith("http") || before.url.includes("/media/")
+              before.url.startsWith("http") ||
+              before.url.includes("/media/") ||
+              before.url.includes("/api/protected-media/")
             }
             sizes="(max-width: 768px) 100vw, 800px"
           />
@@ -273,7 +281,9 @@ function SideCard({
         className="object-cover"
         loading="lazy"
         unoptimized={
-          image.url.startsWith("http") || image.url.includes("/media/")
+          image.url.startsWith("http") ||
+          image.url.includes("/media/") ||
+          image.url.includes("/api/protected-media/")
         }
         sizes="(max-width: 768px) 100vw, 50vw"
       />

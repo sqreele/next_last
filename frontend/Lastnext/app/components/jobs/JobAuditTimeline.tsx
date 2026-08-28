@@ -252,7 +252,8 @@ export function JobAuditTimeline({ jobId, className }: JobAuditTimelineProps) {
                         loading="lazy"
                         unoptimized={
                           (event.image_url || "").startsWith("http") ||
-                          (event.image_url || "").includes("/media/")
+                          (event.image_url || "").includes("/media/") ||
+                          (event.image_url || "").includes("/api/protected-media/")
                         }
                       />
                     </div>

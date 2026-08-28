@@ -51,7 +51,8 @@ export function OptimizedImageEnhanced({
   const isExternalImage =
     src.startsWith("http") ||
     src.startsWith("/media/") ||
-    src.includes("/media/");
+    src.includes("/media/") ||
+    src.includes("/api/protected-media/");
 
   const optimizedProps = getOptimizedImageProps(src, alt, imageOptions, {
     width: typeof width === "string" ? parseInt(width) : width,

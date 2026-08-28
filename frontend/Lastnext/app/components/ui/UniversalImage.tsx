@@ -190,7 +190,8 @@ export function UniversalImage({
   const isExternalImage =
     src.startsWith("http") ||
     src.startsWith("/media/") ||
-    src.includes("/media/");
+    src.includes("/media/") ||
+    src.includes("/api/protected-media/");
   const shouldUnoptimize = isExternalImage;
 
   // Debug logging

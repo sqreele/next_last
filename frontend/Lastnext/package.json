@@ -10,8 +10,10 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "echo \"No automated tests configured yet\"",
+    "test:detailed-users": "node --test tests/detailed-users-request.test.mjs",
     "test:jobs-dashboard": "node --test tests/jobs-dashboard-request.test.mjs",
     "test:pm-pdf": "node --test tests/pm-pdf-evidence.test.cjs",
+    "test:protected-media": "node --test tests/protected-media-url.test.mjs",
     "test:csp": "node --test tests/csp.test.mjs"
   },
   "dependencies": {

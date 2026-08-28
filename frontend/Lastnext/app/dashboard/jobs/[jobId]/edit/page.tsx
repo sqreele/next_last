@@ -7,6 +7,7 @@ import { Job } from "@/app/lib/types";
 import FileUpload from "@/app/components/jobs/FileUpload";
 import Image from "next/image";
 import { useMinLoaderTime } from "@/app/lib/hooks/useMinLoaderTime";
+import { fixImageUrl } from "@/app/lib/utils/image-utils";
 
 export default function EditJobPage() {
   const router = useRouter();
@@ -223,14 +224,7 @@ export default function EditJobPage() {
               </h2>
               <div className="grid grid-cols-2 gap-3">
                 {job.image_urls.map((url, index) => {
-                  const imageUrl = (() => {
-                    if (typeof url === "string" && url.startsWith("http"))
-                      return url;
-                    if (typeof url === "string" && url.startsWith("/media/"))
-                      return url;
-                    if (typeof url === "string") return `/media/${url}`;
-                    return String(url);
-                  })();
+                  const imageUrl = fixImageUrl(String(url)) || String(url);
                   return (
                     <div
                       key={index}
@@ -242,7 +236,10 @@ export default function EditJobPage() {
                         fill
                         className="object-cover"
                         quality={75}
-                        unoptimized={imageUrl.startsWith("http")}
+                        unoptimized={
+                          imageUrl.startsWith("http") ||
+                          imageUrl.includes("/api/protected-media/")
+                        }
                       />
                     </div>
                   );

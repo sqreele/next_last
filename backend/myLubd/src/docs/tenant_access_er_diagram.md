@@ -1,8 +1,9 @@
 # Tenant and Property Access ER Diagram
 
-This diagram documents the Phase A.3 tenant/access boundary. The two legacy
-access relations remain in the schema for compatibility; tenant-backed
-authorization is derived from `TenantMembership` and its property grants.
+This diagram documents the tenant/access boundary. Tenant-backed authorization
+is derived from `TenantMembership` and its property grants. The former
+`Property.users` and `UserProfile.properties` relations were removed by
+migration `0077`.
 
 ```mermaid
 erDiagram
@@ -48,16 +49,6 @@ erDiagram
         bigint property_id FK
     }
 
-    PROPERTY_USER_LEGACY_ACCESS {
-        bigint property_id FK
-        bigint user_id FK
-    }
-
-    USER_PROFILE_PROPERTY_LEGACY_ACCESS {
-        bigint userprofile_id FK
-        bigint property_id FK
-    }
-
     USER ||--o{ TENANT : owns
     TENANT ||--o{ PROPERTY : contains
     TENANT ||--o{ TENANT_MEMBERSHIP : has
@@ -65,10 +56,6 @@ erDiagram
     TENANT_MEMBERSHIP ||--o{ TENANT_MEMBERSHIP_PROPERTY : grants
     PROPERTY ||--o{ TENANT_MEMBERSHIP_PROPERTY : permits
     USER ||--|| USER_PROFILE : has
-    USER ||--o{ PROPERTY_USER_LEGACY_ACCESS : legacy_direct_access
-    PROPERTY ||--o{ PROPERTY_USER_LEGACY_ACCESS : legacy_direct_access
-    USER_PROFILE ||--o{ USER_PROFILE_PROPERTY_LEGACY_ACCESS : legacy_profile_access
-    PROPERTY ||--o{ USER_PROFILE_PROPERTY_LEGACY_ACCESS : legacy_profile_access
 ```
 
 Authorization semantics:
@@ -76,8 +63,7 @@ Authorization semantics:
 - `owner`, `admin`, and `manager` are tenant-wide roles.
 - `supervisor`, `technician`, `viewer`, and `billing` are restricted to the
   `TenantMembership.properties` grants.
-- `Property.users` and `UserProfile.properties` are legacy compatibility
-  paths. They are not the canonical authorization source for tenant-backed
-  properties.
+- The old direct property-user access paths no longer exist in the current
+  schema; `TenantMembership.properties` is the canonical property grant.
 - `User.is_staff` / `User.is_superuser` retain the application’s existing
   platform-admin bypass and are not represented by a TenantMembership grant.

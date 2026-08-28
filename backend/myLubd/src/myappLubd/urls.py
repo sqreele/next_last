@@ -4,6 +4,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views
 from .protected_media import ProtectedMediaView
 from .throttles import AuthCredentialThrottle
+from .invitations import (
+    TenantInvitationAcceptView,
+    TenantInvitationPreviewView,
+    TenantInvitationViewSet,
+)
 from .views import (
     RoomViewSet, TopicViewSet, JobViewSet, PropertyViewSet,
     UserProfileViewSet, UserViewSet, MachineViewSet,
@@ -47,10 +52,21 @@ router.register(r'tenant-memberships', TenantMembershipViewSet, basename='tenant
 router.register(r'subscription-plans', SubscriptionPlanViewSet, basename='subscription-plan')
 router.register(r'tenant-subscriptions', TenantSubscriptionViewSet, basename='tenant-subscription')
 router.register(r'usage-metrics', UsageMetricViewSet, basename='usage-metric')
+router.register(r'tenant-invitations', TenantInvitationViewSet, basename='tenant-invitation')
 
 
 # Define the URL patterns
 urlpatterns = [
+    path(
+        'api/v1/invitations/preview/',
+        TenantInvitationPreviewView.as_view(),
+        name='tenant-invitation-preview',
+    ),
+    path(
+        'api/v1/invitations/accept/',
+        TenantInvitationAcceptView.as_view(),
+        name='tenant-invitation-accept',
+    ),
     path(
         'api/v1/protected-media/<str:media_type>/<int:object_id>/<str:variant>/',
         ProtectedMediaView.as_view(),

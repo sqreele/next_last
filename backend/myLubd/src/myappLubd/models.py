@@ -1,7 +1,7 @@
 from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
-from django.utils.crypto import get_random_string
+from django.utils.crypto import constant_time_compare, get_random_string
 from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from django.db.models import Q  # ✅ PERFORMANCE OPTIMIZATION: Import Q for partial indexes
@@ -17,6 +17,8 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.conf import settings
 import logging
+import hashlib
+import secrets
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -28,6 +30,38 @@ class User(AbstractUser):
     
     class Meta:
         pass
+
+
+class AuthIdentity(models.Model):
+    """Durable external identity binding for a canonical Django user."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='auth_identities',
+        db_index=False,
+    )
+    issuer = models.CharField(max_length=512)
+    subject = models.CharField(max_length=512)
+    email_at_link = models.EmailField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['issuer', 'subject']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['issuer', 'subject'],
+                name='unique_auth_identity_issuer_subject',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['user'], name='auth_identity_user_idx'),
+        ]
+        verbose_name_plural = 'Auth identities'
+
+    def __str__(self):
+        return f'{self.issuer} / {self.subject} -> {self.user}'
 
 
 class Tenant(models.Model):
@@ -216,6 +250,103 @@ class TenantMembership(models.Model):
     @property
     def can_manage_tenant(self):
         return self.role in {'owner', 'admin', 'billing'}
+
+
+class TenantInvitation(models.Model):
+    """Time-limited, hashed-token invitation to one tenant membership."""
+
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name='invitations',
+    )
+    email = models.EmailField()
+    role = models.CharField(max_length=20, choices=TenantMembership.ROLE_CHOICES)
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_tenant_invitations',
+    )
+    accepted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='accepted_tenant_invitations',
+    )
+    properties = models.ManyToManyField(
+        'Property',
+        related_name='tenant_invitations',
+        blank=True,
+    )
+    token_hash = models.CharField(max_length=64, unique=True, editable=False)
+    expires_at = models.DateTimeField(db_index=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['email'],
+                condition=models.Q(accepted_at__isnull=True, revoked_at__isnull=True),
+                name='unique_pending_invitation_email',
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(accepted_at__isnull=True, accepted_by__isnull=True)
+                    | models.Q(accepted_at__isnull=False, accepted_by__isnull=False)
+                ),
+                name='invitation_acceptance_actor_consistent',
+            ),
+            models.CheckConstraint(
+                check=(
+                    models.Q(accepted_at__isnull=True)
+                    | models.Q(revoked_at__isnull=True)
+                ),
+                name='invitation_not_accepted_and_revoked',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['tenant', 'created_at'], name='tenant_invite_created_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.email} -> {self.tenant} ({self.role})'
+
+    def save(self, *args, **kwargs):
+        self.email = self.normalize_email(self.email)
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def normalize_email(value):
+        normalized = User.objects.normalize_email(str(value or '').strip())
+        return normalized.casefold()
+
+    @staticmethod
+    def hash_token(token):
+        return hashlib.sha256(str(token or '').encode('utf-8')).hexdigest()
+
+    def issue_token(self):
+        token = secrets.token_urlsafe(32)
+        self.token_hash = self.hash_token(token)
+        return token
+
+    def matches_token(self, token):
+        return constant_time_compare(self.token_hash, self.hash_token(token))
+
+    @property
+    def status(self):
+        if self.accepted_at is not None:
+            return 'accepted'
+        if self.revoked_at is not None:
+            return 'revoked'
+        if self.expires_at <= timezone.now():
+            return 'expired'
+        return 'pending'
 
 
 class UsageMetric(models.Model):

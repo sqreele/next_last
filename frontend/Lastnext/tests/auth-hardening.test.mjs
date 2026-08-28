@@ -106,6 +106,20 @@ test('login and callback retain state, require nonce and PKCE, and fail closed',
   assert.match(callback, /verifyAuth0IdToken/);
   assert.doesNotMatch(callback, /Buffer\.from\(payload/);
   assert.match(callback, /\/auth\/access-pending/);
+  assert.match(callback, /requestedRedirect === '\/invitations\/accept'/);
+  assert.match(callback, /hasPropertyAccess \|\| invitationReturn/);
+});
+
+test('invitation acceptance preserves Auth0 return flow without logging tokens', async () => {
+  const acceptancePage = await readFile(new URL('app/invitations/accept/page.tsx', root), 'utf8');
+  const settingsPage = await readFile(new URL('app/dashboard/settings/users/page.tsx', root), 'utf8');
+  assert.match(acceptancePage, /\/auth\/login\?redirect=/);
+  assert.match(acceptancePage, /\/api\/v1\/invitations\/preview\//);
+  assert.match(acceptancePage, /\/api\/v1\/invitations\/accept\//);
+  assert.match(acceptancePage, /\/auth\/login\?redirect=%2Finvitations%2Faccept/);
+  assert.doesNotMatch(acceptancePage, /[?&]token=/);
+  assert.doesNotMatch(acceptancePage, /console\.(log|warn|error).*token/i);
+  assert.doesNotMatch(settingsPage, /token_hash|plaintext token/i);
 });
 
 test('sessions are sealed and logout clears the session cookie', async () => {

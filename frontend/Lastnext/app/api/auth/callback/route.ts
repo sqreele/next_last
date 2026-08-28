@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
       console.warn('auth0_access_probe_failed', { reason: 'backend_unavailable' });
     }
 
-    const invitationReturn = requestedRedirect.startsWith('/invitations/accept?');
+    const invitationReturn = requestedRedirect === '/invitations/accept';
     const destination = hasPropertyAccess || invitationReturn
       ? requestedRedirect
       : '/auth/access-pending';

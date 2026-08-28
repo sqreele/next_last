@@ -6,14 +6,21 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, close_old_connections, connection
+from django.db.models.deletion import ProtectedError
 from django.test import TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from rest_framework.test import APITestCase
 
 from .auth import Auth0JWTAuthentication
-from .invitations import accept_invitation, create_invitation, invitation_from_token
+from .invitations import (
+    accept_invitation,
+    create_invitation,
+    invitation_from_token,
+    send_invitation,
+)
 from .models import AuthIdentity, Property, Tenant, TenantInvitation, TenantMembership
 from .tenancy import get_accessible_properties
 
@@ -184,17 +191,23 @@ class TenantInvitationTests(APITestCase):
     def test_preview_reports_valid_expired_revoked_and_accepted_states(self):
         invitation, token = self.make_invitation()
         endpoint = reverse('myappLubd:tenant-invitation-preview')
-        response = self.client.get(endpoint, {'token': token})
+        response = self.client.post(endpoint, {'token': token}, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'pending')
         self.assertNotIn('email', response.data)
 
         invitation.expires_at = timezone.now() - timedelta(seconds=1)
         invitation.save(update_fields=['expires_at', 'updated_at'])
-        self.assertEqual(self.client.get(endpoint, {'token': token}).data['status'], 'expired')
+        self.assertEqual(
+            self.client.post(endpoint, {'token': token}, format='json').data['status'],
+            'expired',
+        )
         invitation.revoked_at = timezone.now()
         invitation.save(update_fields=['revoked_at', 'updated_at'])
-        self.assertEqual(self.client.get(endpoint, {'token': token}).data['status'], 'revoked')
+        self.assertEqual(
+            self.client.post(endpoint, {'token': token}, format='json').data['status'],
+            'revoked',
+        )
 
         invitation.revoked_at = None
         invitation.expires_at = timezone.now() + timedelta(days=1)
@@ -203,15 +216,41 @@ class TenantInvitationTests(APITestCase):
         invitation.save(update_fields=[
             'revoked_at', 'expires_at', 'accepted_at', 'accepted_by', 'updated_at',
         ])
-        self.assertEqual(self.client.get(endpoint, {'token': token}).data['status'], 'accepted')
+        self.assertEqual(
+            self.client.post(endpoint, {'token': token}, format='json').data['status'],
+            'accepted',
+        )
 
     def test_preview_invalid_token_uses_generic_not_found(self):
-        response = self.client.get(
+        response = self.client.post(
             reverse('myappLubd:tenant-invitation-preview'),
             {'token': 'invalid'},
+            format='json',
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(str(response.data['detail']), 'Invitation unavailable.')
+
+    def test_preview_rejects_get_query_token_and_never_echoes_secrets(self):
+        invitation, token = self.make_invitation()
+        endpoint = reverse('myappLubd:tenant-invitation-preview')
+        get_response = self.client.get(endpoint, {'token': token})
+        self.assertEqual(get_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+        post_response = self.client.post(endpoint, {'token': token}, format='json')
+        self.assertEqual(post_response.status_code, status.HTTP_200_OK)
+        rendered = str(post_response.data)
+        self.assertNotIn(token, rendered)
+        self.assertNotIn(invitation.token_hash, rendered)
+
+    @patch('myappLubd.invitations.send_email', return_value=True)
+    def test_invitation_email_uses_fragment_token_only(self, mocked_send_email):
+        invitation, token = self.make_invitation()
+        self.assertTrue(send_invitation(invitation, token))
+        args, kwargs = mocked_send_email.call_args
+        self.assertIn(f'/invitations/accept#token={token}', args[2])
+        self.assertIn(f'/invitations/accept#token={token}', kwargs['html_body'])
+        self.assertNotIn(f'?token={token}', args[2])
+        self.assertNotIn(f'?token={token}', kwargs['html_body'])
 
     def test_accept_requires_auth0_bound_authenticated_user(self):
         _invitation, token = self.make_invitation()
@@ -231,6 +270,20 @@ class TenantInvitationTests(APITestCase):
         self.client.force_authenticate(unbound)
         response = self.client.post(endpoint, {'token': token}, format='json')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_accept_rejects_query_only_token(self):
+        _invitation, token = self.make_invitation()
+        self.client.force_authenticate(self.invitee)
+        response = self.client.post(
+            f"{reverse('myappLubd:tenant-invitation-accept')}?token={token}",
+            {},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(TenantMembership.objects.filter(
+            tenant=self.tenant,
+            user=self.invitee,
+        ).exists())
 
     def test_accept_correct_email_creates_canonical_membership_and_grants(self):
         invitation, token = self.make_invitation(email='PERSON@example.com')
@@ -314,6 +367,11 @@ class TenantInvitationTests(APITestCase):
         self.assertIsNotNone(accepted.accepted_at)
 
         other_invitee = User.objects.create_user(username='conflict', email='conflict@example.com')
+        AuthIdentity.objects.create(
+            user=other_invitee,
+            issuer='https://tenant.auth0.com/',
+            subject='auth0|conflict',
+        )
         conflict_membership = TenantMembership.objects.create(
             tenant=self.other_tenant, user=other_invitee, role='viewer',
         )
@@ -375,6 +433,30 @@ class TenantInvitationTests(APITestCase):
         ))
         self.assertEqual(rejected.status_code, status.HTTP_409_CONFLICT)
 
+    def test_accepted_invitation_protects_accepting_user_history(self):
+        invitation, token = self.make_invitation()
+        accept_invitation(token=token, user=self.invitee)
+
+        with self.assertRaises(ProtectedError):
+            self.invitee.delete()
+
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.accepted_by_id, self.invitee.pk)
+        self.assertIsNotNone(invitation.accepted_at)
+        self.assertIsNone(invitation.revoked_at)
+        self.assertTrue(User.objects.filter(pk=self.invitee.pk).exists())
+
+    def test_pending_invitation_does_not_protect_matching_unaccepted_user(self):
+        invitation, _token = self.make_invitation()
+        invitee_pk = self.invitee.pk
+        self.invitee.delete()
+
+        invitation.refresh_from_db()
+        self.assertFalse(User.objects.filter(pk=invitee_pk).exists())
+        self.assertIsNone(invitation.accepted_by_id)
+        self.assertIsNone(invitation.accepted_at)
+        self.assertIsNone(invitation.revoked_at)
+
 
 @skipUnless(connection.vendor == 'postgresql', 'Requires PostgreSQL row-lock semantics.')
 class TenantInvitationConcurrencyTests(TransactionTestCase):
@@ -383,6 +465,11 @@ class TenantInvitationConcurrencyTests(TransactionTestCase):
     def setUp(self):
         self.owner = User.objects.create_user(username='owner', email='owner@example.com')
         self.invitee = User.objects.create_user(username='invitee', email='person@example.com')
+        AuthIdentity.objects.create(
+            user=self.invitee,
+            issuer='https://tenant.auth0.com/',
+            subject='auth0|concurrent-invitee',
+        )
         self.tenant = Tenant.objects.create(name='Concurrent Tenant')
         self.property = Property.objects.create(name='Concurrent Hotel', tenant=self.tenant)
         TenantMembership.objects.create(tenant=self.tenant, user=self.owner, role='owner')
@@ -428,3 +515,56 @@ class TenantInvitationConcurrencyTests(TransactionTestCase):
         duplicate.issue_token()
         with self.assertRaises(IntegrityError):
             duplicate.save()
+
+    def test_concurrent_create_and_accept_use_one_lock_order_without_deadlock(self):
+        barrier = Barrier(2)
+
+        def accept_once():
+            close_old_connections()
+            try:
+                user = User.objects.get(pk=self.invitee.pk)
+                barrier.wait()
+                result = accept_invitation(token=self.token, user=user)
+                return 'accepted', result[1].pk
+            finally:
+                connection.close()
+
+        def create_once():
+            close_old_connections()
+            try:
+                tenant = Tenant.objects.get(pk=self.tenant.pk)
+                owner = User.objects.get(pk=self.owner.pk)
+                prop = Property.objects.get(pk=self.property.pk)
+                barrier.wait()
+                try:
+                    invitation, _token = create_invitation(
+                        tenant=tenant,
+                        email=self.invitee.email,
+                        role='technician',
+                        properties=[prop],
+                        invited_by=owner,
+                    )
+                    return 'created', invitation.pk
+                except DRFValidationError:
+                    return 'duplicate', None
+            finally:
+                connection.close()
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            accept_future = executor.submit(accept_once)
+            create_future = executor.submit(create_once)
+            results = [accept_future.result(), create_future.result()]
+
+        self.assertEqual(results[0][0], 'accepted')
+        self.assertIn(results[1][0], {'created', 'duplicate'})
+        self.assertEqual(
+            TenantMembership.objects.filter(tenant=self.tenant, user=self.invitee).count(),
+            1,
+        )
+        membership = TenantMembership.objects.get(tenant=self.tenant, user=self.invitee)
+        self.assertEqual(membership.properties.count(), 1)
+        self.assertLessEqual(TenantInvitation.objects.filter(
+            email=self.invitee.email,
+            accepted_at__isnull=True,
+            revoked_at__isnull=True,
+        ).count(), 1)

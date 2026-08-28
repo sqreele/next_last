@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { AlertCircle, Building2, CheckCircle2, Clock3, Loader2, LockKeyhole, XCircle } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
@@ -10,6 +10,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { useSessionGuard } from "@/app/lib/hooks/useSessionGuard";
+import { captureInvitationToken, clearInvitationToken } from "@/app/lib/invitation-token.mjs";
 
 type PreviewStatus = "pending" | "accepted" | "expired" | "revoked";
 type Preview = {
@@ -25,17 +26,24 @@ function InvitationLoading() {
 }
 
 function AcceptInvitationContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams.get("token") || "";
   const { isAuthenticated, isLoading: sessionLoading } = useSessionGuard({ requireAuth: false, showToast: false });
+  const [token, setToken] = useState("");
+  const [tokenReady, setTokenReady] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
 
-  const returnPath = useMemo(() => `/invitations/accept?token=${encodeURIComponent(token)}`, [token]);
+  useEffect(() => {
+    setToken(captureInvitationToken(window.location, window.history, window.sessionStorage));
+    setTokenReady(true);
+  }, []);
+
+  const discardToken = useCallback(() => {
+    clearInvitationToken(window.sessionStorage);
+  }, []);
 
   const loadPreview = useCallback(async () => {
     if (!token) {
@@ -44,19 +52,29 @@ function AcceptInvitationContent() {
       return;
     }
     setLoading(true);
-    const response = await fetch(`/api/v1/invitations/preview/?token=${encodeURIComponent(token)}`, { cache: "no-store" });
+    const response = await fetch("/api/v1/invitations/preview/", {
+      method: "POST",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
+      if (response.status === 404 || response.status === 410) discardToken();
       setError("This invitation link is invalid or unavailable.");
       setPreview(null);
     } else {
-      setPreview(payload as Preview);
+      const nextPreview = payload as Preview;
+      setPreview(nextPreview);
+      if (nextPreview.status !== "pending") discardToken();
       setError(null);
     }
     setLoading(false);
-  }, [token]);
+  }, [discardToken, token]);
 
-  useEffect(() => { void loadPreview(); }, [loadPreview]);
+  useEffect(() => {
+    if (tokenReady) void loadPreview();
+  }, [loadPreview, tokenReady]);
 
   async function accept() {
     setAccepting(true);
@@ -70,9 +88,11 @@ function AcceptInvitationContent() {
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
+        if ([404, 409, 410].includes(response.status)) discardToken();
         const detail = typeof payload?.detail === "string" ? payload.detail : "Unable to accept this invitation.";
         throw new Error(detail);
       }
+      discardToken();
       setAccepted(true);
       setPreview((current) => current ? { ...current, status: "accepted" } : current);
     } catch (acceptError) {
@@ -82,7 +102,7 @@ function AcceptInvitationContent() {
     }
   }
 
-  if (loading || sessionLoading) return <InvitationLoading />;
+  if (!tokenReady || loading || sessionLoading) return <InvitationLoading />;
 
   const stateCopy: Record<Exclude<PreviewStatus, "pending">, { title: string; detail: string; icon: typeof AlertCircle }> = {
     accepted: { title: "Invitation already accepted", detail: "This invitation has already been used.", icon: CheckCircle2 },
@@ -122,7 +142,7 @@ function AcceptInvitationContent() {
               ) : (
                 <div className="space-y-3">
                   <Alert><LockKeyhole className="h-4 w-4" /><AlertDescription>Sign in with the email address that received this invitation.</AlertDescription></Alert>
-                  <Button asChild className="h-12 w-full"><Link href={`/auth/login?redirect=${encodeURIComponent(returnPath)}`}>Sign in to accept</Link></Button>
+                  <Button asChild className="h-12 w-full"><Link href="/auth/login?redirect=%2Finvitations%2Faccept">Sign in to accept</Link></Button>
                 </div>
               )}
             </>
@@ -134,5 +154,5 @@ function AcceptInvitationContent() {
 }
 
 export default function AcceptInvitationPage() {
-  return <Suspense fallback={<InvitationLoading />}><AcceptInvitationContent /></Suspense>;
+  return <AcceptInvitationContent />;
 }

@@ -134,6 +134,7 @@ def create_invitation(*, tenant, email, role, properties, invited_by):
 
 def rotate_invitation_token(invitation):
     with transaction.atomic():
+        Tenant.objects.select_for_update().get(pk=invitation.tenant_id)
         locked = TenantInvitation.objects.select_for_update().get(pk=invitation.pk)
         if locked.accepted_at is not None:
             raise InvitationConflict('Accepted invitations cannot be resent.')
@@ -147,6 +148,7 @@ def rotate_invitation_token(invitation):
 
 def revoke_invitation(invitation):
     with transaction.atomic():
+        Tenant.objects.select_for_update().get(pk=invitation.tenant_id)
         locked = TenantInvitation.objects.select_for_update().get(pk=invitation.pk)
         if locked.accepted_at is not None:
             raise InvitationConflict('Accepted invitations cannot be revoked.')
@@ -156,7 +158,7 @@ def revoke_invitation(invitation):
     return locked
 
 
-def invitation_from_token(token, *, for_update=False):
+def invitation_from_token(token, *, for_update=False, tenant_id=None):
     raw_token = str(token or '').strip()
     if not raw_token or len(raw_token) > 256:
         raise NotFound('Invitation unavailable.')
@@ -167,6 +169,8 @@ def invitation_from_token(token, *, for_update=False):
         # join. Only the invitation is authoritative here; the tenant receives
         # its own explicit lock during acceptance.
         queryset = queryset.select_for_update(of=('self',))
+    if tenant_id is not None:
+        queryset = queryset.filter(tenant_id=tenant_id)
     invitation = queryset.filter(token_hash=token_hash).first()
     if invitation is None or not invitation.matches_token(raw_token):
         raise NotFound('Invitation unavailable.')
@@ -183,17 +187,39 @@ def _membership_matches_invitation(membership, invitation, property_ids):
 
 
 def accept_invitation(*, token, user):
+    # This non-locking lookup identifies the tenant whose row must be locked
+    # first. It is never used as authorization or authoritative state.
+    candidate = invitation_from_token(token)
+
     with transaction.atomic():
-        invitation = invitation_from_token(token, for_update=True)
-        Tenant.objects.select_for_update().get(pk=invitation.tenant_id)
-        property_ids = set(invitation.properties.values_list('pk', flat=True))
+        try:
+            tenant = Tenant.objects.select_for_update().get(pk=candidate.tenant_id)
+        except Tenant.DoesNotExist as exc:
+            raise NotFound('Invitation unavailable.') from exc
+        invitation = invitation_from_token(
+            token,
+            for_update=True,
+            tenant_id=tenant.pk,
+        )
+        canonical_user = User.objects.select_for_update().filter(pk=user.pk).first()
+        if canonical_user is None or not canonical_user.is_active:
+            raise PermissionDenied('This account is inactive.')
+        if not AuthIdentity.objects.filter(user=canonical_user).exists():
+            raise PermissionDenied('Auth0 identity authentication is required.')
+
+        invitation_properties = list(invitation.properties.select_for_update())
+        try:
+            validate_role_properties(invitation.role, invitation_properties, tenant)
+        except serializers.ValidationError as exc:
+            raise InvitationConflict('Invitation role or property scope is invalid.') from exc
+        property_ids = {prop.pk for prop in invitation_properties}
 
         if invitation.accepted_at is not None:
-            if invitation.accepted_by_id != user.pk:
+            if invitation.accepted_by_id != canonical_user.pk:
                 raise InvitationConflict('Invitation has already been accepted.')
             membership = TenantMembership.objects.select_for_update().filter(
-                tenant=invitation.tenant,
-                user=user,
+                tenant=tenant,
+                user=canonical_user,
             ).first()
             if membership is None or not _membership_matches_invitation(
                 membership, invitation, property_ids,
@@ -207,18 +233,12 @@ def accept_invitation(*, token, user):
             raise InvitationGone('Invitation has been revoked.')
         if invitation.expires_at <= timezone.now():
             raise InvitationGone('Invitation has expired.')
-        if not user.is_active:
-            raise PermissionDenied('This account is inactive.')
-        if TenantInvitation.normalize_email(user.email) != invitation.email:
+        if TenantInvitation.normalize_email(canonical_user.email) != invitation.email:
             raise PermissionDenied('Sign in with the email address that received this invitation.')
-        if Property.objects.filter(pk__in=property_ids).exclude(
-            tenant=invitation.tenant,
-        ).exists():
-            raise InvitationConflict('Invitation property scope is invalid.')
 
         membership = TenantMembership.objects.select_for_update().filter(
-            tenant=invitation.tenant,
-            user=user,
+            tenant=tenant,
+            user=canonical_user,
         ).first()
         created = False
         if membership is not None:
@@ -227,10 +247,10 @@ def accept_invitation(*, token, user):
                     'Your existing membership role or property grants conflict with this invitation.',
                 )
         else:
-            enforce_subscription_limit(invitation.tenant, 'max_users')
+            enforce_subscription_limit(tenant, 'max_users')
             membership = TenantMembership.objects.create(
-                tenant=invitation.tenant,
-                user=user,
+                tenant=tenant,
+                user=canonical_user,
                 role=invitation.role,
                 invited_by=invitation.invited_by,
             )
@@ -238,7 +258,7 @@ def accept_invitation(*, token, user):
                 membership.properties.set(property_ids)
             created = True
 
-        invitation.accepted_by = user
+        invitation.accepted_by = canonical_user
         invitation.accepted_at = timezone.now()
         invitation.save(update_fields=['accepted_by', 'accepted_at', 'updated_at'])
         return invitation, membership, created
@@ -246,7 +266,7 @@ def accept_invitation(*, token, user):
 
 def send_invitation(invitation, token):
     base_url = str(getattr(settings, 'FRONTEND_BASE_URL', '') or '').rstrip('/')
-    invite_url = f'{base_url}/invitations/accept?{urlencode({"token": token})}'
+    invite_url = f'{base_url}/invitations/accept#{urlencode({"token": token})}'
     tenant_name = invitation.tenant.name.replace('\r', ' ').replace('\n', ' ')
     inviter_name = (
         invitation.invited_by.get_full_name().strip()
@@ -428,8 +448,8 @@ class TenantInvitationPreviewView(APIView):
     authentication_classes = []
     throttle_classes = [InvitationPreviewThrottle]
 
-    def get(self, request):
-        invitation = invitation_from_token(request.query_params.get('token'))
+    def post(self, request):
+        invitation = invitation_from_token(request.data.get('token'))
         return Response({
             'tenant_name': invitation.tenant.name,
             'role': invitation.role,

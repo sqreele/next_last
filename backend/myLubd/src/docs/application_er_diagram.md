@@ -14,6 +14,15 @@ erDiagram
         string email
         string property_id "legacy attribute"
     }
+    AUTH_IDENTITY {
+        bigint id PK
+        bigint user_id FK
+        string issuer
+        string subject
+        string email_at_link "nullable"
+        datetime created_at
+        datetime last_seen_at
+    }
     USER_PROFILE {
         bigint id PK
         bigint user_id FK, UK
@@ -55,10 +64,25 @@ erDiagram
         bigint user_id FK
         bigint invited_by_id FK "nullable"
         string role
+        boolean is_active
+    }
+    TENANT_INVITATION {
+        bigint id PK
+        bigint tenant_id FK
+        string email "normalized on save"
+        string role
+        bigint invited_by_id FK "nullable; SET_NULL"
+        bigint accepted_by_id FK "nullable; PROTECT"
+        string token_hash UK
+        datetime expires_at
+        datetime accepted_at "nullable"
+        datetime revoked_at "nullable"
+        datetime created_at
+        datetime updated_at
     }
     PROPERTY {
         int id PK
-        bigint tenant_id FK "nullable during migration"
+        bigint tenant_id FK "nullable"
         string property_id UK
         string name UK
     }
@@ -69,7 +93,8 @@ erDiagram
         date period_end
     }
 
-    USER ||--|| USER_PROFILE : has
+    USER ||--o{ AUTH_IDENTITY : binds
+    USER ||--o| USER_PROFILE : has
     USER ||--o{ SESSION : opens
     USER ||--o{ PUSH_SUBSCRIPTION : registers
     USER o|--o{ TENANT : owns
@@ -80,14 +105,37 @@ erDiagram
     USER o|--o{ TENANT_MEMBERSHIP : invites
     TENANT_MEMBERSHIP }o--o{ PROPERTY : grants_access_to
     TENANT o|--o{ PROPERTY : contains
+    TENANT ||--o{ TENANT_INVITATION : issues
+    USER o|--o{ TENANT_INVITATION : creates
+    USER o|--o{ TENANT_INVITATION : accepts
+    TENANT_INVITATION }o--o{ PROPERTY : proposes_access_to
     TENANT ||--o{ USAGE_METRIC : measures
 ```
 
-`TenantMembership(tenant, user)` and
-`UsageMetric(tenant, period_start, period_end)` are unique. Membership property
-grants scope property-level roles; see
-[tenant_access_er_diagram.md](tenant_access_er_diagram.md) for authorization
-semantics.
+`AuthIdentity(issuer, subject)`, `TenantMembership(tenant, user)`, and
+`UsageMetric(tenant, period_start, period_end)` are unique. `AuthIdentity` is
+only the durable external-identity binding from a validated Auth0 JWT to a
+canonical `User`; it grants no tenant or property access. A user may have many
+external identities, and `email_at_link` records link-time context rather than
+an authorization key.
+
+`TenantInvitation.token_hash` is globally unique. The normalized `email` is
+unique only while both `accepted_at` and `revoked_at` are null. Database checks
+require `accepted_at` and `accepted_by` to be either both null or both set, and
+prevent an invitation from being both accepted and revoked. Deleting an
+accepting user is blocked by `accepted_by=PROTECT`; deleting an inviter sets
+`invited_by` to null. Invitation properties use an implicit many-to-many
+junction table and describe the grants proposed for acceptance.
+
+`Property.tenant` remains nullable in the current model and migration state;
+this is a current schema fact, not a transitional migration note. For
+tenant-backed properties, application authorization is derived only from an
+active `TenantMembership`: owner/admin/manager roles are tenant-wide and other
+roles use the membership's property grants. Invitations do not grant access
+until acceptance creates or confirms that canonical membership. The legacy
+`User.property_id` attribute is not an authorization relationship. See
+[tenant_access_er_diagram.md](tenant_access_er_diagram.md) for the complete
+authentication and authorization boundary.
 
 ## Work orders and location
 

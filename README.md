@@ -8,8 +8,8 @@ Production domain: `https://hotelcarepro.com`
 
 ## Data Model
 
-- [Application ER diagram](backend/myLubd/src/docs/application_er_diagram.md)
-- [Tenant access ER diagram](backend/myLubd/src/docs/tenant_access_er_diagram.md)
+- [Application ER diagram](backend/myLubd/src/docs/application_er_diagram.md) — current logical Django schema
+- [Tenant access ER diagram](backend/myLubd/src/docs/tenant_access_er_diagram.md) — authentication, onboarding, and authorization boundaries
 
 ## Scope
 

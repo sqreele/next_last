@@ -721,9 +721,10 @@ export default function PreventiveMaintenanceDashboard() {
                                     height={40}
                                     className="h-full w-full object-cover"
                                     quality={60}
-                                    unoptimized={beforeImageUrl.startsWith(
-                                      "http",
-                                    )}
+                                    unoptimized={
+                                      beforeImageUrl.startsWith("http") ||
+                                      beforeImageUrl.includes("/api/protected-media/")
+                                    }
                                   />
                                 </div>
                               )}
@@ -736,9 +737,10 @@ export default function PreventiveMaintenanceDashboard() {
                                     height={40}
                                     className="h-full w-full object-cover"
                                     quality={60}
-                                    unoptimized={afterImageUrl.startsWith(
-                                      "http",
-                                    )}
+                                    unoptimized={
+                                      afterImageUrl.startsWith("http") ||
+                                      afterImageUrl.includes("/api/protected-media/")
+                                    }
                                   />
                                 </div>
                               )}

@@ -36,6 +36,7 @@ export function ProfileImage({ src, alt, size = 'md' }: ProfileImageProps) {
       height={imageSize}
       className={`${container} rounded-full object-cover border-2 border-muted`}
       onError={() => setError(true)}
+      unoptimized={src.includes('/api/protected-media/')}
       priority
     />
   );

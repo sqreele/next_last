@@ -191,7 +191,9 @@ export default function MaintenanceJobCard({
               className="object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
               onError={() => setImageFailed(true)}
               unoptimized={
-                imageUrl.startsWith("http") || imageUrl.includes("/media/")
+                imageUrl.startsWith("http") ||
+                imageUrl.includes("/media/") ||
+                imageUrl.includes("/api/protected-media/")
               }
             />
           ) : (

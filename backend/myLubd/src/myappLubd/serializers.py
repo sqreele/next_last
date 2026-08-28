@@ -1045,8 +1045,16 @@ class JobSerializer(serializers.ModelSerializer):
         elif userprofile.profile_image:
             image_url = userprofile.profile_image.url
 
-        properties_qs = get_accessible_properties(user).values('property_id', 'name')
-        properties = list(properties_qs)
+        cache = getattr(self, '_accessible_properties_cache', None)
+        if cache is None:
+            cache = self._accessible_properties_cache = {}
+        user_pk = getattr(user, 'pk', None)
+        cache_key = ('pk', user_pk) if user_pk is not None else ('object', id(user))
+        if cache_key not in cache:
+            cache[cache_key] = list(
+                get_accessible_properties(user).values('property_id', 'name')
+            )
+        properties = cache[cache_key]
 
         return {
             'profile_image': image_url,

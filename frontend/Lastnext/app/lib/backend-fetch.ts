@@ -53,9 +53,10 @@ export function backendFetch(
     headers,
   };
 
+  // Never trust a protocol assertion supplied by a browser or another caller.
+  headers.delete('X-Forwarded-Proto');
   if (isTrustedInternalRequest) {
     headers.set('X-Forwarded-Proto', 'https');
-    options.redirect = 'manual';
   }
 
   return fetch(target, options);

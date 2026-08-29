@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch jobs from the external API
-    const response = await fetch(apiUrl, {
+    const response = await backendFetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${session.user.accessToken}`,
         'Content-Type': 'application/json',

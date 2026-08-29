@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/app/lib/config';
 import { getServerSession } from '@/app/lib/session.server';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 export async function GET(
   request: NextRequest,
@@ -27,7 +28,7 @@ export async function GET(
       API_CONFIG.baseUrl,
     );
     upstream.searchParams.set('property_id', propertyId);
-    const response = await fetch(upstream, {
+    const response = await backendFetch(upstream, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',

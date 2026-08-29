@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/app/lib/session.server";
 import { API_CONFIG } from "@/app/lib/config";
+import { backendFetch } from "@/app/lib/backend-fetch";
 
 export async function GET(
   request: NextRequest,
@@ -20,7 +21,7 @@ export async function GET(
         { status: 400 },
       );
     }
-    const response = await fetch(
+    const response = await backendFetch(
       `${API_CONFIG.baseUrl}/api/v1/jobs/${encodeURIComponent(jobId)}/comments/?property_id=${encodeURIComponent(propertyId)}`,
       {
         headers: {
@@ -59,7 +60,7 @@ export async function POST(
       );
     }
     const body = await request.json();
-    const response = await fetch(
+    const response = await backendFetch(
       `${API_CONFIG.baseUrl}/api/v1/jobs/${encodeURIComponent(jobId)}/comments/?property_id=${encodeURIComponent(propertyId)}`,
       {
         method: "POST",

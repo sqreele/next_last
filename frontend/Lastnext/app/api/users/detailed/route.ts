@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/app/lib/config';
 import type { Property } from '@/app/lib/types';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 interface DetailedProfileResponse {
   id: string | number;
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/user-profiles/detailed/${queryString ? `?${queryString}` : ''}`;
     
     // Fetch detailed user profiles from the external API
-    const response = await fetch(apiUrl, {
+    const response = await backendFetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',

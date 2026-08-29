@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG } from '@/app/lib/config';
+import { backendFetch } from '@/app/lib/backend-fetch';
 import type { MonthName, UtilityConsumptionRow } from '@/app/dashboard/utility-consumption/types';
 import { coerceUtilityConsumptionRow } from '@/app/dashboard/utility-consumption/utils/data';
 
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
     const queryString = searchParams.toString();
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/utility-consumption/${queryString ? `?${queryString}` : ''}`;
 
-    const response = await fetch(apiUrl, {
+    const response = await backendFetch(apiUrl, {
       headers: {
         Authorization: `Bearer ${session.user.accessToken}`,
         'Content-Type': 'application/json',

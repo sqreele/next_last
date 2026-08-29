@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG } from '@/app/lib/config';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/users/${queryString ? `?${queryString}` : ''}`;
     
     // Fetch users from the external API
-    const response = await fetch(apiUrl, {
+    const response = await backendFetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${session.user.accessToken}`,
         'Content-Type': 'application/json',
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Create user in the external API
-    const response = await fetch(
+    const response = await backendFetch(
       `${API_CONFIG.baseUrl}/api/v1/users/`,
       {
         method: 'POST',

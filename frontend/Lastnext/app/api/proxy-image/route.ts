@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,7 +73,7 @@ export async function GET(request: Request) {
     }
 
     // Fetch the remote image
-    const res = await fetch(targetUrl, {
+    const res = await backendFetch(targetUrl, {
       headers: {
         'User-Agent': 'HotelCarePro-PDF-ImageProxy/1.0',
         'Accept': 'image/*,*/*;q=0.8',

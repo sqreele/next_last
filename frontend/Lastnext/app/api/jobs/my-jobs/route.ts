@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/app/lib/config';
 import { getServerSession } from '@/app/lib/session.server';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 const ALLOWED_QUERY_PARAMS = new Set([
   'property_id',
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const response = await fetch(upstream, {
+    const response = await backendFetch(upstream, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: 'application/json',

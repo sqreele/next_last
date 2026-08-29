@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG } from '@/app/lib/config';
+import { backendFetch } from '@/app/lib/backend-fetch';
 import type { DashboardSummaryResponse } from '@/app/dashboard/chartdashboard/types';
 
 export async function GET(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     const queryString = searchParams.toString();
     const apiUrl = `${API_CONFIG.baseUrl}/api/v1/dashboard/summary/${queryString ? `?${queryString}` : ''}`;
 
-    const response = await fetch(apiUrl, {
+    const response = await backendFetch(apiUrl, {
       headers: {
         Authorization: `Bearer ${session.user.accessToken}`,
         'Content-Type': 'application/json',

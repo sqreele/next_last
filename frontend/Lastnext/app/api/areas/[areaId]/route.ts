@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG } from '@/app/lib/config';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 async function proxy(
   request: NextRequest,
@@ -25,7 +26,7 @@ async function proxy(
     init.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${API_CONFIG.baseUrl}/api/v1/areas/${areaId}/`, init);
+  const response = await backendFetch(`${API_CONFIG.baseUrl}/api/v1/areas/${areaId}/`, init);
   const text = await response.text();
   const data = text ? (() => { try { return JSON.parse(text); } catch { return { detail: text }; } })() : {};
   return NextResponse.json(data, { status: response.status });

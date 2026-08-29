@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG } from '@/app/lib/config';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 export async function GET(
   request: NextRequest,
@@ -17,7 +18,7 @@ export async function GET(
     const { jobId } = await params;
 
     // Fetch job from the external API
-    const response = await fetch(
+    const response = await backendFetch(
       `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`,
       {
         headers: {
@@ -79,7 +80,7 @@ export async function PUT(
     }
 
     // Update job in the external API
-    const response = await fetch(
+    const response = await backendFetch(
       `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`,
       fetchOptions
     );
@@ -136,7 +137,7 @@ export async function PATCH(
     }
 
     // Update job in the external API
-    const response = await fetch(
+    const response = await backendFetch(
       `${API_CONFIG.baseUrl}/api/v1/jobs/${jobId}/`,
       fetchOptions
     );
@@ -176,7 +177,7 @@ export async function DELETE(
     const { jobId } = await params;
 
     // Delete job from the external API
-    const response = await fetch(
+    const response = await backendFetch(
       `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.jobs}${jobId}/`,
       {
         method: 'DELETE',
@@ -204,4 +205,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

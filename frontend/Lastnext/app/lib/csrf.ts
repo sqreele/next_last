@@ -20,13 +20,18 @@ function getBackendBaseUrl(): string {
 export async function fetchCsrfToken(): Promise<string | null> {
   try {
     const baseUrl = getBackendBaseUrl();
-    const response = await fetch(`${baseUrl}/api/v1/csrf-token/`, {
+    const targetUrl = `${baseUrl}/api/v1/csrf-token/`;
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+    };
+    if (typeof window === 'undefined' && new URL(baseUrl).protocol === 'http:') {
+      headers['X-Forwarded-Proto'] = 'https';
+    }
+    const response = await fetch(targetUrl, {
       method: 'GET',
       credentials: 'include',
       cache: 'no-store',
-      headers: {
-        'Accept': 'application/json',
-      },
+      headers,
     });
 
     if (!response.ok) {

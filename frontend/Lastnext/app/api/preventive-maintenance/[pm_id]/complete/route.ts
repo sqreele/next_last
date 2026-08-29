@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 export async function POST(
   request: NextRequest,
@@ -29,7 +30,7 @@ export async function POST(
     }
 
     // Forward the request to the Django backend
-    const response = await fetch(apiUrl, {
+    const response = await backendFetch(apiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${session.user.accessToken}`,

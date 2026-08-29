@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG } from '@/app/lib/config';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 export async function GET(
   request: NextRequest,
@@ -17,7 +18,7 @@ export async function GET(
     const { propertyId } = await params;
 
     // Fetch property from the external API
-    const response = await fetch(
+    const response = await backendFetch(
       `${API_CONFIG.baseUrl}/api/v1/properties/${propertyId}/`,
       {
         headers: {
@@ -45,4 +46,4 @@ export async function GET(
       { status: 500 }
     );
   }
-} 
+}

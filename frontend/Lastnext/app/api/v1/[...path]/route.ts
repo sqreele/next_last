@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/app/lib/config';
 import { getSessionFromRequest } from '@/app/lib/auth0/session-cookie';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 export const runtime = 'nodejs';
 
@@ -58,7 +59,7 @@ async function proxyRequest(request: NextRequest, context: RouteContext) {
     (init as { duplex?: 'half' }).duplex = 'half';
   }
 
-  const backendResponse = await fetch(targetUrl, init);
+  const backendResponse = await backendFetch(targetUrl, init);
   const responseHeaders = new Headers();
   const contentType = backendResponse.headers.get('content-type');
   if (contentType) {

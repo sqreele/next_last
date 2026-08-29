@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG, DEBUG_CONFIG } from '@/app/lib/config';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch preventive maintenance from the external API
-    const response = await fetch(apiUrl, {
+    const response = await backendFetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${session.user.accessToken}`,
         'Content-Type': 'application/json',
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward the request to the backend API
-    const response = await fetch(apiUrl, {
+    const response = await backendFetch(apiUrl, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${session.user.accessToken}`,

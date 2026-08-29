@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
     const body = await request.json();
 
-    const response = await fetch(`${API_CONFIG.baseUrl}/api/v1/areas/`, {
+    const response = await backendFetch(`${API_CONFIG.baseUrl}/api/v1/areas/`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${session.user.accessToken}`,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/app/lib/session.server';
 import { API_CONFIG } from '@/app/lib/config';
+import { backendFetch } from '@/app/lib/backend-fetch';
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
     // Search jobs
     if (type === 'all' || type === 'jobs') {
       searchPromises.push(
-        fetch(`${API_CONFIG.baseUrl}/api/v1/jobs/?search=${encodeURIComponent(searchTerm)}`, {
+        backendFetch(`${API_CONFIG.baseUrl}/api/v1/jobs/?search=${encodeURIComponent(searchTerm)}`, {
           headers: {
             'Authorization': `Bearer ${session.user.accessToken}`,
             'Content-Type': 'application/json',
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
     // Search properties
     if (type === 'all' || type === 'properties') {
       searchPromises.push(
-        fetch(`${API_CONFIG.baseUrl}/api/v1/properties/?search=${encodeURIComponent(searchTerm)}`, {
+        backendFetch(`${API_CONFIG.baseUrl}/api/v1/properties/?search=${encodeURIComponent(searchTerm)}`, {
           headers: {
             'Authorization': `Bearer ${session.user.accessToken}`,
             'Content-Type': 'application/json',
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
     // Search rooms
     if (type === 'all' || type === 'rooms') {
       searchPromises.push(
-        fetch(`${API_CONFIG.baseUrl}/api/v1/rooms/?search=${encodeURIComponent(searchTerm)}`, {
+        backendFetch(`${API_CONFIG.baseUrl}/api/v1/rooms/?search=${encodeURIComponent(searchTerm)}`, {
           headers: {
             'Authorization': `Bearer ${session.user.accessToken}`,
             'Content-Type': 'application/json',
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
     // Search topics
     if (type === 'all' || type === 'topics') {
       searchPromises.push(
-        fetch(`${API_CONFIG.baseUrl}/api/v1/topics/?search=${encodeURIComponent(searchTerm)}`, {
+        backendFetch(`${API_CONFIG.baseUrl}/api/v1/topics/?search=${encodeURIComponent(searchTerm)}`, {
           headers: {
             'Authorization': `Bearer ${session.user.accessToken}`,
             'Content-Type': 'application/json',
@@ -118,4 +119,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

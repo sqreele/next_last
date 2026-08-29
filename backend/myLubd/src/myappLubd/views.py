@@ -3639,7 +3639,9 @@ class JobViewSet(viewsets.ModelViewSet):
         # Use prefetch_related for many-to-many and reverse foreign keys
         queryset = Job.objects.select_related(
             'user',           # Foreign key to User
+            'user__userprofile',
             'updated_by',     # Foreign key to User
+            'updated_by__userprofile',
             'property',       # Canonical Job ownership
             'area',           # Foreign key to Area
             'area__property',
@@ -3707,7 +3709,9 @@ class JobViewSet(viewsets.ModelViewSet):
             except (TypeError, ValueError):
                 queryset = queryset.filter(user__username=str(user_filter))
 
-        return queryset.distinct()
+        return queryset.annotate(
+            _comments_count=Count('comments', distinct=True)
+        ).distinct()
 
     @action(detail=False, methods=['get'], url_path='dashboard')
     def dashboard(self, request):

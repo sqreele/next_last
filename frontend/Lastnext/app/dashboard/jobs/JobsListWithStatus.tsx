@@ -17,6 +17,11 @@ import {
   type JobsDashboardStatusCounts,
 } from "@/app/lib/hooks/jobs-dashboard-request.mjs";
 import { cn } from "@/app/lib/utils/cn";
+import { PageContainer } from "@/app/components/layout/PageContainer";
+import { PageHeader } from "@/app/components/layout/PageHeader";
+import { FeedbackState } from "@/app/components/feedback/FeedbackState";
+import { Button } from "@/app/components/ui/button";
+import { Input } from "@/app/components/ui/input";
 
 const PAGE_SIZE = 24;
 const EMPTY_COUNTS: JobsDashboardStatusCounts = {
@@ -145,38 +150,41 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
   };
 
   return (
-    <div className="w-full max-w-none space-y-5 px-3 py-3 sm:px-4 md:px-5 lg:mx-auto lg:max-w-7xl">
-      <header className="pcms-page-header gap-4">
-        <div className="min-w-0">
-          <p className="pcms-eyebrow">Jobs workspace</p>
-          <h1>Maintenance jobs</h1>
-          <p className="pcms-page-description">
-            {!activePropertyId ? "Choose an active property to load its maintenance work."
-              : scopedResponse ? `${scopedResponse.count} job${scopedResponse.count === 1 ? "" : "s"} at ${scopedResponse.property_name}`
-                : "Property-scoped maintenance work"}
-          </p>
-        </div>
-        {scopedResponse?.can_operate && (
-          <Link href={`/dashboard/create-job?property_id=${encodeURIComponent(activePropertyId)}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2">
-            <Plus className="h-4 w-4" aria-hidden="true" /> Create job
-          </Link>
-        )}
-      </header>
+    <PageContainer>
+      <PageHeader
+        eyebrow="Jobs workspace"
+        title="Maintenance jobs"
+        description={
+          !activePropertyId
+            ? "Choose an active property to load its maintenance work."
+            : scopedResponse
+              ? `${scopedResponse.count} job${scopedResponse.count === 1 ? "" : "s"} at ${scopedResponse.property_name}`
+              : "Property-scoped maintenance work"
+        }
+        actions={scopedResponse?.can_operate ? (
+          <Button asChild>
+            <Link href={`/dashboard/create-job?property_id=${encodeURIComponent(activePropertyId)}`}>
+              <Plus className="h-4 w-4" aria-hidden="true" /> Create job
+            </Link>
+          </Button>
+        ) : undefined}
+      />
 
       {status === "loading" || propertyLoading ? (
         <JobListSkeleton count={6} />
       ) : !activePropertyId ? (
-        <section className="rounded-2xl border border-dashed border-border bg-card px-5 py-14 text-center" role="status">
-          <h2 className="text-lg font-bold text-foreground">{properties.length > 0 ? "Select a property to view jobs." : "No accessible properties"}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{properties.length > 0 ? "Use the property selector in the navigation, then this page will load that property only." : "Ask a tenant administrator to grant you access to a property."}</p>
-        </section>
+        <FeedbackState
+          variant={properties.length > 0 ? "empty" : "unauthorized"}
+          title={properties.length > 0 ? "Select a property to view jobs" : "No accessible properties"}
+          description={properties.length > 0 ? "Use the property selector in the navigation, then this page will load that property only." : "Ask a tenant administrator to grant you access to a property."}
+        />
       ) : (
         <>
           <section className="space-y-3 rounded-2xl border border-border bg-card p-3 shadow-sm" aria-label="Job filters">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
               <label htmlFor="jobs-search" className="sr-only">Search jobs</label>
-              <input id="jobs-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search job ID, description, room, area, topic, or assignee" className="h-11 w-full rounded-lg border border-border bg-background pl-10 pr-3 text-sm outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20" />
+              <Input id="jobs-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search job ID, description, room, area, topic, or assignee" className="pl-10" />
             </div>
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               <label className="sr-only" htmlFor="jobs-priority">Priority</label>
@@ -191,9 +199,9 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
               <select id="jobs-ordering" value={ordering} onChange={(event) => setOrdering(event.target.value as Ordering)} className="h-11 rounded-lg border border-border bg-background px-3 text-sm font-semibold">
                 <option value="-created_at">Newest first</option><option value="created_at">Oldest first</option><option value="-updated_at">Recently updated</option>
               </select>
-              <button type="button" onClick={() => setRefreshKey((value) => value + 1)} className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm font-bold hover:bg-muted">
+              <Button type="button" variant="outline" onClick={() => setRefreshKey((value) => value + 1)}>
                 <RefreshCcw className="h-4 w-4" aria-hidden="true" /> Refresh
-              </button>
+              </Button>
             </div>
           </section>
 
@@ -213,17 +221,20 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
           </div>
 
           {loading ? <JobListSkeleton count={6} /> : error ? (
-            <section role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center text-red-900">
-              <h2 className="font-bold">Jobs could not be loaded</h2><p className="mt-1 text-sm">{error}</p>
-              <button type="button" onClick={() => setRefreshKey((value) => value + 1)} className="mt-4 rounded-lg border border-red-300 px-4 py-2 text-sm font-bold">Try again</button>
-            </section>
+            <FeedbackState
+              variant="error"
+              title="Jobs could not be loaded"
+              description={error}
+              action={<Button type="button" variant="outline" onClick={() => setRefreshKey((value) => value + 1)}>Try again</Button>}
+            />
           ) : jobs.length === 0 ? (
-            <section className="rounded-2xl border border-dashed border-border bg-card px-5 py-14 text-center" role="status">
-              <h2 className="text-lg font-bold">{hasActiveFilters ? "No jobs match these filters" : "No jobs found for this property"}</h2>
-              <p className="mt-2 text-sm text-muted-foreground">{hasActiveFilters ? "Try clearing the search, status, priority, or date filter." : "New maintenance jobs for this property will appear here."}</p>
-            </section>
+            <FeedbackState
+              variant={hasActiveFilters ? "no-results" : "empty"}
+              title={hasActiveFilters ? "No jobs match these filters" : "No jobs found for this property"}
+              description={hasActiveFilters ? "Try clearing the search, status, priority, or date filter." : "New maintenance jobs for this property will appear here."}
+            />
           ) : (
-            <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {jobs.map((job) => <MaintenanceJobCard key={job.job_id} job={job} />)}
             </div>
           )}
@@ -239,6 +250,6 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
           )}
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -4,11 +4,9 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Search, RefreshCw, Home, FileText, Settings, Plus } from 'lucide-react';
 import { cn } from '@/app/lib/utils/cn';
-import { useLocale } from '@/app/lib/i18n/LocaleProvider';
-import type { DictKey } from '@/app/lib/i18n/dictionary';
-import { getPriorityConfig, normalizePriorityValue } from '@/app/design-system/priority-config';
 import { FeedbackState } from '@/app/components/feedback/FeedbackState';
 export { StatusBadge, getStatusBadgeConfig, humanize, normalizeStatus } from '@/app/components/StatusBadge';
+export { PriorityBadge, normalizePriority } from '@/app/components/PriorityBadge';
 
 export function MobileTopBar({ title, actions }: { title: string; actions?: React.ReactNode }) {
   return (
@@ -78,36 +76,6 @@ export function SkeletonCard() {
       <strong />
       <em />
     </div>
-  );
-}
-
-export function normalizePriority(priority?: string) {
-  return normalizePriorityValue(priority);
-}
-
-const PRIORITY_I18N: Record<string, DictKey> = {
-  low: 'priority.low',
-  medium: 'priority.medium',
-  high: 'priority.high',
-  critical: 'priority.critical',
-};
-
-export function PriorityBadge({ priority }: { priority?: string }) {
-  const normalized = normalizePriority(priority);
-  const { t } = useLocale();
-  const dictKey = PRIORITY_I18N[normalized];
-  const config = getPriorityConfig(priority);
-  const label = dictKey ? t(dictKey) : config.label;
-  return (
-    <span
-      className={cn(
-        'inline-flex min-h-7 items-center rounded-full border px-2.5 py-1 text-xs font-semibold',
-        config.className,
-      )}
-      title={config.description}
-    >
-      {label}
-    </span>
   );
 }
 

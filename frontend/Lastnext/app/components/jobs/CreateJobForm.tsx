@@ -230,19 +230,20 @@ const JOB_TYPES = [
 }>;
 
 const STATUS_SELECT_CLASSES: Record<string, string> = {
-  pending: "border-[#e2e6e8] bg-card text-[#4f5d63]",
-  in_progress: "border-[#46b8bc] bg-[#f8ffff] text-[#1b7178]",
-  waiting_sparepart: "border-[#f0c36d] bg-[#fffaf0] text-[#946200]",
-  completed: "border-[#7cc89c] bg-[#f5fff8] text-[#267345]",
-  cancelled: "border-[#eca3a3] bg-[#fff7f7] text-[#a53d3d]",
+  pending: "border-info/30 bg-info/10 text-info",
+  in_progress: "border-warning/35 bg-warning/10 text-warning-foreground",
+  waiting_sparepart: "border-warning/35 bg-warning/10 text-warning-foreground",
+  completed: "border-success/30 bg-success/10 text-success",
+  cancelled: "border-destructive/30 bg-destructive/10 text-destructive",
 };
 
 const STATUS_OPTION_CLASSES: Record<string, string> = {
-  pending: "font-semibold text-[#4f5d63] focus:bg-muted",
-  in_progress: "font-semibold text-[#1b7178] focus:bg-[#f8ffff]",
-  waiting_sparepart: "font-semibold text-[#946200] focus:bg-[#fffaf0]",
-  completed: "font-semibold text-[#267345] focus:bg-[#f5fff8]",
-  cancelled: "font-semibold text-[#a53d3d] focus:bg-[#fff7f7]",
+  pending: "font-semibold text-info focus:bg-info/10",
+  in_progress: "font-semibold text-warning-foreground focus:bg-warning/10",
+  waiting_sparepart:
+    "font-semibold text-warning-foreground focus:bg-warning/10",
+  completed: "font-semibold text-success focus:bg-success/10",
+  cancelled: "font-semibold text-destructive focus:bg-destructive/10",
 };
 
 const initialValues: FormValues = {
@@ -261,15 +262,15 @@ const initialValues: FormValues = {
 };
 
 const SECTION_CARD_CLASS =
-  "scroll-mt-28 rounded-[4px] border border-[#e2e6e8] bg-card p-4 sm:p-5";
+  "scroll-mt-32 rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5";
 const FORM_SHELL_CLASS =
-  "mx-auto min-h-screen w-full max-w-7xl overflow-x-hidden bg-[#f7f8f8] pb-32 text-[#2f3a3f] md:pb-8";
+  "mx-auto w-full min-w-0 max-w-7xl overflow-x-hidden pb-28 text-foreground md:pb-4";
 const FIELD_BASE_CLASS =
-  "border border-[#dfe5e8] bg-card text-[#2f3a3f] placeholder:text-[#9aa4a9] focus:border-[#46b8bc] focus:ring-[#dff6f7]";
+  "border border-input bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20";
 
 function RequiredMark() {
   return (
-    <span className="text-red-500" aria-label="required">
+    <span className="text-destructive" aria-label="required">
       *
     </span>
   );
@@ -293,7 +294,7 @@ function ProgressRing({ percent }: { percent: number }) {
           cy="23"
           r="19"
           fill="none"
-          stroke="#e2e6e8"
+          stroke="hsl(var(--border))"
           strokeWidth="4"
         />
         <circle
@@ -301,7 +302,7 @@ function ProgressRing({ percent }: { percent: number }) {
           cy="23"
           r="19"
           fill="none"
-          stroke="#46b8bc"
+          stroke="hsl(var(--primary))"
           strokeWidth="4"
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -309,7 +310,7 @@ function ProgressRing({ percent }: { percent: number }) {
           className="transition-[stroke-dashoffset] duration-300"
         />
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-semibold text-[#269fa8]">
+      <div className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-semibold text-primary">
         {percent}%
       </div>
     </div>
@@ -337,23 +338,23 @@ function CreateJobHeader({
 
   return (
     <header
-      className="sticky top-0 z-30 rounded-b-[4px] border border-[#e2e6e8] bg-card px-4 pb-4 pt-3 text-[#2f3a3f] shadow-soft md:top-3 md:rounded-[4px] md:px-5 xl:px-6"
+      className="sticky top-0 z-30 rounded-xl border border-border bg-card px-4 pb-4 pt-3 text-foreground shadow-soft md:top-3 md:px-5 xl:px-6"
       style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
     >
       <div className="flex items-center gap-3 md:gap-4">
         <button
           type="button"
           onClick={onBack}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[4px] border border-[#e2e6e8] bg-card text-[#6f7c82] transition hover:border-[#46b8bc] hover:text-[#269fa8] active:scale-95"
+          className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none"
           aria-label={t("createJob.header.back")}
         >
           <ArrowLeft className="h-[18px] w-[18px]" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[17px] font-bold leading-tight md:text-xl">
+          <h2 className="break-words text-lg font-semibold leading-tight text-foreground md:text-xl">
             {t("createJob.header.title")}
-          </h1>
-          <p className="mt-0.5 text-xs text-[#8a9499]">
+          </h2>
+          <p className="mt-1 break-words text-xs leading-5 text-muted-foreground">
             {t("createJob.header.subtitle")}
           </p>
         </div>
@@ -374,13 +375,13 @@ function CreateJobHeader({
                   .getElementById(step.target)
                   ?.scrollIntoView({ behavior: "smooth", block: "start" })
               }
-              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] transition ${
+              className={`flex min-h-11 shrink-0 touch-manipulation items-center gap-1.5 rounded-full border px-3 py-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none ${
                 done
-                  ? "border-[#46b8bc] bg-[#f8ffff] font-semibold text-[#269fa8]"
-                  : "border-[#e2e6e8] bg-card text-[#7b878c]"
+                  ? "border-primary/30 bg-primary/10 font-semibold text-primary"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted"
               }`}
             >
-              {done && <Check className="h-3 w-3 text-[#269fa8]" />}
+              {done && <Check className="h-3.5 w-3.5 text-primary" />}
               {step.label}
             </button>
           );
@@ -400,15 +401,17 @@ function SectionTitle({
   description: string;
 }) {
   return (
-    <div className="mb-4 flex items-start gap-2.5">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[4px] border border-[#e2e6e8] bg-[#f8ffff] text-[#269fa8]">
+    <div className="mb-5 flex items-start gap-3">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
         <Icon className="h-4 w-4" aria-hidden />
       </div>
       <div className="min-w-0">
-        <h2 className="text-[15px] font-semibold leading-tight text-[#2f3a3f]">
+        <h2 className="break-words text-base font-semibold leading-6 text-foreground">
           {title}
         </h2>
-        <p className="mt-0.5 text-xs leading-5 text-[#8a9499]">{description}</p>
+        <p className="mt-1 break-words text-sm leading-5 text-muted-foreground">
+          {description}
+        </p>
       </div>
     </div>
   );
@@ -417,7 +420,7 @@ function SectionTitle({
 function LoadingSkeleton({ label }: { label: string }) {
   return (
     <div className="space-y-2" role="status" aria-live="polite">
-      <div className="h-12 animate-pulse rounded-[4px] bg-[#edf1f2]" />
+      <div className="h-12 animate-pulse rounded-lg bg-muted" />
       <p className="text-xs font-semibold text-muted-foreground">{label}</p>
     </div>
   );
@@ -1033,9 +1036,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
             aria-busy="true"
             role="status"
           >
-            <div className="flex h-14 w-14 items-center justify-center rounded-[4px] border border-[#e2e6e8] bg-[#f8ffff]">
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
               <Loader
-                className="h-8 w-8 animate-spin text-[#269fa8]"
+                className="h-8 w-8 animate-spin text-primary"
                 aria-hidden
               />
             </div>
@@ -1096,9 +1099,9 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             aria-busy="true"
                             role="status"
                           >
-                            <div className="flex h-14 w-14 items-center justify-center rounded-[4px] border border-[#e2e6e8] bg-[#f8ffff]">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
                               <Loader
-                                className="h-8 w-8 animate-spin text-[#269fa8]"
+                                className="h-8 w-8 animate-spin text-primary"
                                 aria-hidden
                               />
                             </div>
@@ -1123,7 +1126,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             <div className="md:col-span-2 space-y-2">
                               <Label
                                 htmlFor="description"
-                                className="text-sm font-semibold text-[#2f3a3f]"
+                                className="text-sm font-semibold text-foreground"
                               >
                                 {t("createJob.description")} <RequiredMark />
                               </Label>
@@ -1135,7 +1138,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   "createJob.descriptionPlaceholder",
                                 )}
                                 disabled={isSubmitting}
-                                className={`w-full min-h-[96px] rounded-[4px] p-3 text-sm transition-all duration-200 sm:min-h-[110px] ${
+                                className={`min-h-28 w-full rounded-lg p-3 text-sm transition-colors ${
                                   touched.description && errors.description
                                     ? "border border-red-300 focus:border-red-500 focus:ring-red-100"
                                     : FIELD_BASE_CLASS
@@ -1152,7 +1155,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
                             {/* Status and Priority */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-semibold text-[#2f3a3f]">
+                              <Label className="text-sm font-semibold text-foreground">
                                 {t("createJob.status")}{" "}
                                 <span className="text-red-500">*</span>
                               </Label>
@@ -1165,7 +1168,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 disabled={isSubmitting}
                               >
                                 <SelectTrigger
-                                  className={`h-11 rounded-[4px] font-semibold transition-all duration-200 ${
+                                  className={`h-11 rounded-lg font-semibold transition-colors ${
                                     (touched.status || submitCount > 0) &&
                                     errors.status
                                       ? "border border-red-400 bg-red-50 text-red-900"
@@ -1191,8 +1194,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <div className="flex items-center gap-2 rounded-[4px] border border-[#e2e6e8] bg-[#fafafa] px-3 py-2">
-                                <span className="text-xs font-semibold uppercase text-[#8a9499]">
+                              <div className="flex min-h-11 flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+                                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                   {t("createJob.selected")}
                                 </span>
                                 <StatusBadge status={values.status} size="sm" />
@@ -1207,12 +1210,12 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             </div>
 
                             <div className="space-y-2">
-                              <Label className="text-sm font-semibold text-[#2f3a3f]">
+                              <Label className="text-sm font-semibold text-foreground">
                                 {t("createJob.priority")}{" "}
                                 <span className="text-red-500">*</span>
                               </Label>
                               <div
-                                className={`grid grid-cols-2 gap-2 sm:grid-cols-4 ${(touched.priority || submitCount > 0) && errors.priority ? "ring-2 ring-red-200 rounded-[4px] p-1" : ""}`}
+                                className={`grid grid-cols-2 gap-2 sm:grid-cols-4 ${(touched.priority || submitCount > 0) && errors.priority ? "rounded-lg p-1 ring-2 ring-destructive/20" : ""}`}
                                 role="radiogroup"
                                 aria-label={t("createJob.priority")}
                               >
@@ -1221,17 +1224,17 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     values.priority === option.value;
                                   const colorMap: Record<string, string> = {
                                     low: active
-                                      ? "border-[#46b8bc] bg-[#46b8bc] text-white"
-                                      : "border-[#e2e6e8] bg-card text-[#4f5d63] hover:border-[#46b8bc] hover:bg-[#f8ffff]",
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-background text-foreground hover:border-primary/30 hover:bg-primary/10",
                                     medium: active
-                                      ? "border-[#46b8bc] bg-[#46b8bc] text-white"
-                                      : "border-[#e2e6e8] bg-card text-[#4f5d63] hover:border-[#46b8bc] hover:bg-[#f8ffff]",
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-background text-foreground hover:border-primary/30 hover:bg-primary/10",
                                     high: active
-                                      ? "border-[#46b8bc] bg-[#46b8bc] text-white"
-                                      : "border-[#e2e6e8] bg-card text-[#4f5d63] hover:border-[#46b8bc] hover:bg-[#f8ffff]",
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-background text-foreground hover:border-primary/30 hover:bg-primary/10",
                                     critical: active
-                                      ? "border-[#46b8bc] bg-[#46b8bc] text-white"
-                                      : "border-[#e2e6e8] bg-card text-[#4f5d63] hover:border-[#46b8bc] hover:bg-[#f8ffff]",
+                                      ? "border-primary bg-primary text-primary-foreground"
+                                      : "border-border bg-background text-foreground hover:border-primary/30 hover:bg-primary/10",
                                   };
                                   return (
                                     <button
@@ -1248,7 +1251,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                           false,
                                         );
                                       }}
-                                      className={`min-h-[40px] touch-manipulation rounded-[4px] border px-3 py-2 text-sm font-semibold transition-all duration-150 active:scale-95 ${colorMap[option.value]}`}
+                                      className={`min-h-11 touch-manipulation rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none ${colorMap[option.value]}`}
                                     >
                                       {t(option.labelKey)}
                                     </button>
@@ -1265,7 +1268,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             </div>
 
                             <div className="space-y-2 md:col-span-2">
-                              <Label className="text-sm font-semibold text-[#2f3a3f]">
+                              <Label className="text-sm font-semibold text-foreground">
                                 {t("createJob.jobType")} <RequiredMark />
                               </Label>
                               <div
@@ -1298,10 +1301,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                           type.key === "pm",
                                         );
                                       }}
-                                      className={`min-h-[68px] touch-manipulation rounded-[4px] border p-3 text-left transition-all focus:outline-none focus:ring-2 focus:ring-[#dff6f7] active:scale-[0.98] ${
+                                      className={`min-h-[72px] touch-manipulation rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transition-none ${
                                         active
-                                          ? "border-[#46b8bc] bg-[#f8ffff] text-[#1b7178]"
-                                          : "border-[#e2e6e8] bg-card text-[#4f5d63] hover:border-[#46b8bc] hover:bg-[#f8ffff]"
+                                          ? "border-primary/30 bg-primary/10 text-primary"
+                                          : "border-border bg-background text-foreground hover:border-primary/30 hover:bg-primary/10"
                                       }`}
                                     >
                                       <span className="flex items-center gap-2 font-semibold">
@@ -1317,7 +1320,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                           />
                                         )}
                                       </span>
-                                      <span className="mt-1 block text-xs font-medium text-[#8a9499]">
+                                      <span className="mt-1 block text-xs font-normal leading-5 text-muted-foreground">
                                         {t(type.descriptionKey)}
                                       </span>
                                     </button>
@@ -1338,7 +1341,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             title={t("createJob.step.location")}
                             description={t("createJob.section.locationDesc")}
                           />
-                          <div className="mb-4 flex gap-2 rounded-[4px] border border-[#e2e6e8] bg-[#f8ffff] p-3 text-[12.5px] leading-5 text-[#4f5d63]">
+                          <div className="mb-5 flex gap-2 rounded-lg border border-info/20 bg-info/10 p-3 text-sm leading-5 text-foreground">
                             <Info
                               className="mt-0.5 h-4 w-4 shrink-0"
                               aria-hidden
@@ -1356,7 +1359,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                           <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                             {/* Area Selection - required if no room selected */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-semibold text-[#2f3a3f]">
+                              <Label className="text-sm font-semibold text-foreground">
                                 {t("createJob.areaZone")}{" "}
                                 {values.room && values.room.room_id ? (
                                   <span className="text-xs font-medium text-muted-foreground">
@@ -1393,7 +1396,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 disabled={isSubmitting || !activePropertyId}
                               >
                                 <SelectTrigger
-                                  className={`h-11 rounded-[4px] ${
+                                  className={`h-11 rounded-lg ${
                                     (touched.area_id || submitCount > 0) &&
                                     errors.area_id
                                       ? "border border-red-400 bg-red-50 text-red-900"
@@ -1430,7 +1433,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 </SelectContent>
                               </Select>
                               {values.area_id && (
-                                <p className="text-xs font-semibold text-[#269fa8]">
+                                <p className="text-xs font-semibold text-primary">
                                   {t("createJob.areaSavedHint")}
                                 </p>
                               )}
@@ -1445,7 +1448,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
                             {/* Floor Selection */}
                             <div className="space-y-2">
-                              <Label className="text-sm font-semibold text-[#2f3a3f]">
+                              <Label className="text-sm font-semibold text-foreground">
                                 {t("createJob.floor")}{" "}
                                 {!activePropertyId && (
                                   <span className="text-xs font-medium text-muted-foreground">
@@ -1476,7 +1479,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 }
                               >
                                 <SelectTrigger
-                                  className={`h-11 rounded-[4px] ${FIELD_BASE_CLASS}`}
+                                  className={`h-11 rounded-lg ${FIELD_BASE_CLASS}`}
                                 >
                                   {isFloorLoading ? (
                                     <span className="flex items-center gap-2 text-muted-foreground">
@@ -1520,7 +1523,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
                             {/* Room Selection */}
                             <div className="md:col-span-2 space-y-2">
-                              <Label className="text-sm font-semibold text-[#2f3a3f]">
+                              <Label className="text-sm font-semibold text-foreground">
                                 {t("createJob.roomNumber")}{" "}
                                 {values.area_id ? (
                                   <span className="text-xs font-medium text-muted-foreground">
@@ -1577,8 +1580,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             {(values.area_id ||
                               values.floor ||
                               values.room) && (
-                              <div className="md:col-span-2 rounded-[4px] border border-[#e2e6e8] bg-[#fafafa] p-3">
-                                <p className="mb-2 text-xs font-semibold uppercase text-[#8a9499]">
+                              <div className="rounded-lg border border-border bg-muted/40 p-3 md:col-span-2">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                   {t("createJob.selectedLocation")}
                                 </p>
                                 <div className="flex flex-wrap gap-2">
@@ -1590,7 +1593,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                         setFieldValue("floor", null);
                                         setFieldValue("room", null);
                                       }}
-                                      className="inline-flex min-h-8 items-center gap-1.5 rounded-[4px] border border-[#46b8bc] bg-[#f8ffff] px-3 py-1 text-sm font-semibold text-[#269fa8]"
+                                      className="inline-flex min-h-11 max-w-full touch-manipulation items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-left text-sm font-semibold text-primary"
                                     >
                                       <MapPin className="h-4 w-4" />{" "}
                                       {areas.find(
@@ -1606,7 +1609,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                         setFieldValue("floor", null);
                                         setFieldValue("room", null);
                                       }}
-                                      className="inline-flex min-h-8 items-center gap-1.5 rounded-[4px] border border-[#46b8bc] bg-[#f8ffff] px-3 py-1 text-sm font-semibold text-[#269fa8]"
+                                      className="inline-flex min-h-11 max-w-full touch-manipulation items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-left text-sm font-semibold text-primary"
                                     >
                                       <Layers3 className="h-4 w-4" />{" "}
                                       {formatMessage(
@@ -1622,7 +1625,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                       onClick={() =>
                                         setFieldValue("room", null)
                                       }
-                                      className="inline-flex min-h-8 items-center gap-1.5 rounded-[4px] border border-[#46b8bc] bg-[#f8ffff] px-3 py-1 text-sm font-semibold text-[#269fa8]"
+                                      className="inline-flex min-h-11 max-w-full touch-manipulation items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-left text-sm font-semibold text-primary"
                                     >
                                       <DoorOpen className="h-4 w-4" />{" "}
                                       {values.room.name}{" "}
@@ -1649,7 +1652,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             {/* Topic Selection */}
                             <div className="space-y-3">
                               <div className="space-y-1">
-                                <Label className="text-sm font-semibold text-[#2f3a3f]">
+                                <Label className="text-sm font-semibold text-foreground">
                                   {t("createJob.category")}{" "}
                                   <span className="text-red-500">*</span>
                                 </Label>
@@ -1696,7 +1699,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             <div className="space-y-2">
                               <Label
                                 htmlFor="remarks"
-                                className="text-sm font-semibold text-[#2f3a3f]"
+                                className="text-sm font-semibold text-foreground"
                               >
                                 {t("createJob.remarks")}
                               </Label>
@@ -1706,7 +1709,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 name="remarks"
                                 placeholder={t("createJob.remarksPlaceholder")}
                                 disabled={isSubmitting}
-                                className={`w-full min-h-[96px] rounded-[4px] p-3 text-sm transition-all duration-200 sm:min-h-[110px] ${
+                                className={`min-h-28 w-full rounded-lg p-3 text-sm transition-colors ${
                                   (touched.remarks || submitCount > 0) &&
                                   errors.remarks
                                     ? "border border-red-300 focus:border-red-500 focus:ring-red-100"
@@ -1724,7 +1727,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
                             {/* Checkboxes */}
                             <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
-                              <div className="flex items-center gap-3 rounded-[4px] border border-[#e2e6e8] bg-card p-3">
+                              <div className="flex min-h-12 items-center gap-3 rounded-lg border border-border bg-background p-3">
                                 <Checkbox
                                   id="is_defective"
                                   checked={values.is_defective}
@@ -1732,17 +1735,17 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     setFieldValue("is_defective", checked)
                                   }
                                   disabled={isSubmitting}
-                                  className="h-5 w-5 rounded border border-[#46b8bc] text-[#269fa8]"
+                                  className="h-5 w-5 rounded border-primary"
                                 />
                                 <Label
                                   htmlFor="is_defective"
-                                  className="cursor-pointer text-sm font-semibold text-[#2f3a3f]"
+                                  className="cursor-pointer text-sm font-semibold text-foreground"
                                 >
                                   {t("createJob.isDefective")}
                                 </Label>
                               </div>
 
-                              <div className="flex items-center gap-3 rounded-[4px] border border-[#e2e6e8] bg-card p-3">
+                              <div className="flex min-h-12 items-center gap-3 rounded-lg border border-border bg-background p-3">
                                 <Checkbox
                                   id="is_preventivemaintenance"
                                   checked={values.is_preventivemaintenance}
@@ -1753,11 +1756,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     )
                                   }
                                   disabled={isSubmitting}
-                                  className="h-5 w-5 rounded border border-[#46b8bc] text-[#269fa8]"
+                                  className="h-5 w-5 rounded border-primary"
                                 />
                                 <Label
                                   htmlFor="is_preventivemaintenance"
-                                  className="cursor-pointer text-sm font-semibold text-[#2f3a3f]"
+                                  className="cursor-pointer text-sm font-semibold text-foreground"
                                 >
                                   {t("createJob.isPreventiveMaintenance")}
                                 </Label>
@@ -1779,7 +1782,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
 
                           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                             <div className="space-y-2">
-                              <Label className="text-sm font-semibold text-[#2f3a3f]">
+                              <Label className="text-sm font-semibold text-foreground">
                                 {formatMessage(t("createJob.beforePhoto"), {
                                   max: MAX_FILES_PER_STAGE,
                                 })}{" "}
@@ -1810,7 +1813,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                             </div>
 
                             <div className="space-y-2">
-                              <Label className="text-sm font-semibold text-[#2f3a3f]">
+                              <Label className="text-sm font-semibold text-foreground">
                                 {formatMessage(t("createJob.afterPhoto"), {
                                   max: MAX_FILES_PER_STAGE,
                                 })}
@@ -1849,44 +1852,44 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                           >
                             <dl className="space-y-3 text-sm">
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-[#8a9499]">
+                                <dt className="text-muted-foreground">
                                   {t("createJob.property")}
                                 </dt>
-                                <dd className="text-right font-semibold text-[#2f3a3f]">
+                                <dd className="min-w-0 break-words text-right font-semibold text-foreground [overflow-wrap:anywhere]">
                                   {selectedPropertyLabel ||
                                     t("createJob.error.selectActiveProperty")}
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-[#8a9499]">
+                                <dt className="text-muted-foreground">
                                   {t("createJob.area")}
                                 </dt>
-                                <dd className="text-right font-semibold text-[#2f3a3f]">
+                                <dd className="min-w-0 break-words text-right font-semibold text-foreground [overflow-wrap:anywhere]">
                                   {areas.find(
                                     (area) => area.id === values.area_id,
                                   )?.name || t("createJob.selectAreaOptional")}
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-[#8a9499]">
+                                <dt className="text-muted-foreground">
                                   {t("createJob.roomNumber")}
                                 </dt>
-                                <dd className="text-right font-semibold text-[#2f3a3f]">
+                                <dd className="min-w-0 break-words text-right font-semibold text-foreground [overflow-wrap:anywhere]">
                                   {values.room?.name ||
                                     t("createJob.selectRoomNumber")}
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-[#8a9499]">
+                                <dt className="text-muted-foreground">
                                   {t("createJob.category")}
                                 </dt>
-                                <dd className="font-semibold text-[#2f3a3f]">
+                                <dd className="min-w-0 break-words text-right font-semibold text-foreground [overflow-wrap:anywhere]">
                                   {values.topic.title ||
                                     t("createJob.category")}
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-[#8a9499]">
+                                <dt className="text-muted-foreground">
                                   {t("createJob.status")}
                                 </dt>
                                 <dd>
@@ -1897,7 +1900,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-[#8a9499]">
+                                <dt className="text-muted-foreground">
                                   {t("createJob.priority")}
                                 </dt>
                                 <dd>
@@ -1905,10 +1908,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-[#8a9499]">
+                                <dt className="text-muted-foreground">
                                   {t("createJob.summary.assignedTo")}
                                 </dt>
-                                <dd className="text-right font-semibold text-[#2f3a3f]">
+                                <dd className="min-w-0 break-words text-right font-semibold text-foreground [overflow-wrap:anywhere]">
                                   {[
                                     session?.user?.first_name,
                                     session?.user?.last_name,
@@ -1920,18 +1923,18 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-[#8a9499]">
+                                <dt className="text-muted-foreground">
                                   {t("createJob.summary.beforeCount")}
                                 </dt>
-                                <dd className="font-semibold text-[#2f3a3f]">
+                                <dd className="font-semibold text-foreground">
                                   {values.files.length}
                                 </dd>
                               </div>
                               <div className="flex items-center justify-between gap-3">
-                                <dt className="text-[#8a9499]">
+                                <dt className="text-muted-foreground">
                                   {t("createJob.summary.afterCount")}
                                 </dt>
-                                <dd className="font-semibold text-[#2f3a3f]">
+                                <dd className="font-semibold text-foreground">
                                   {values.afterFiles.length}
                                 </dd>
                               </div>
@@ -1961,11 +1964,11 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                   key={String(label)}
                                   className="flex items-center justify-between gap-3 text-sm"
                                 >
-                                  <span className="font-medium text-[#6f7c82]">
+                                  <span className="min-w-0 break-words font-medium text-muted-foreground [overflow-wrap:anywhere]">
                                     {label}
                                   </span>
                                   <span
-                                    className={`inline-flex h-6 min-w-6 items-center justify-center rounded-[4px] px-2 text-xs font-semibold ${done ? "bg-[#f8ffff] text-[#269fa8]" : "bg-[#fafafa] text-[#8a9499]"}`}
+                                    className={`inline-flex min-h-7 min-w-7 items-center justify-center rounded-full px-2 text-xs font-semibold ${done ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
                                   >
                                     {done
                                       ? t("createJob.progress.done")
@@ -1996,7 +1999,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                       const allReady = completedCount === stepStatus.length;
                       return (
                         <div
-                          className="fixed bottom-[4.5rem] left-0 right-0 z-20 border-t border-[#e2e6e8] bg-card px-3 py-3 shadow-[0_-2px_10px_rgba(47,58,63,0.08)] sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
+                          className="fixed bottom-[4.5rem] left-0 right-0 z-20 border-t border-border bg-card px-3 py-3 shadow-soft sm:px-6 md:static md:border-t-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none"
                           style={{
                             bottom:
                               "calc(4.5rem + env(safe-area-inset-bottom))",
@@ -2004,8 +2007,8 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                         >
                           <div className="w-full max-w-none md:max-w-none">
                             {!allReady && !isSubmitting && (
-                              <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 md:hidden">
-                                <span className="flex items-center gap-1.5">
+                              <div className="mb-2 flex flex-col items-stretch gap-2 rounded-lg border border-warning/20 bg-warning/10 px-3 py-2 text-xs font-semibold text-foreground md:hidden">
+                                <span className="flex min-w-0 items-start gap-1.5 leading-5">
                                   <AlertCircle className="h-3.5 w-3.5" />
                                   {formatMessage(
                                     t("createJob.mobileProgress"),
@@ -2018,7 +2021,7 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                 </span>
                                 <button
                                   type="button"
-                                  className="rounded-[4px] border border-[#46b8bc] bg-card px-2 py-1 text-[11px] font-semibold text-[#269fa8] hover:bg-[#f8ffff]"
+                                  className="min-h-11 self-start rounded-lg border border-primary/30 bg-background px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                   onClick={() => {
                                     if (typeof document !== "undefined") {
                                       document
@@ -2060,10 +2063,10 @@ const CreateJobForm: React.FC<{ onJobCreated?: () => void }> = ({
                                     });
                                 }
                               }}
-                              className={`h-12 w-full touch-manipulation rounded-[4px] text-sm font-semibold text-white transition-all duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-100 sm:text-base ${
+                              className={`h-12 w-full touch-manipulation rounded-lg text-sm font-semibold text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-100 sm:text-base ${
                                 allReady
-                                  ? "bg-[#46b8bc] hover:bg-[#269fa8] disabled:bg-[#9ccfd1]"
-                                  : "bg-[#46b8bc] hover:bg-[#269fa8] disabled:bg-[#9ccfd1]"
+                                  ? "bg-primary hover:bg-[hsl(var(--primary-hover))] disabled:bg-primary/50"
+                                  : "bg-primary hover:bg-[hsl(var(--primary-hover))] disabled:bg-primary/50"
                               }`}
                             >
                               {isSubmitting ? (

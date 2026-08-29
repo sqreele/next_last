@@ -183,8 +183,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       <div
         className={cn(
-          "w-full rounded-[4px] border border-[#e2e6e8] bg-card p-4 transition-colors",
-          isDragging && "border-[#46b8bc] bg-[#f8ffff]",
+          "w-full rounded-xl border border-border bg-background p-4 transition-colors",
+          isDragging && "border-primary bg-primary/10",
           disabled && "opacity-60",
         )}
         onDragOver={(e) => {
@@ -195,15 +195,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onDrop={handleDrop}
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[12px] leading-5 text-[#8a9499]">
+          <p className="break-words text-xs leading-5 text-muted-foreground">
             {formatMessage(t("fileUpload.addPhotos"), { max: maxFiles })}{" "}
-            <span className="text-[#a1aaae]">{t("fileUpload.rearrange")}</span>
+            <span>{t("fileUpload.rearrange")}</span>
           </p>
           <div className="grid grid-cols-2 gap-2 sm:flex">
             <label
               htmlFor={inputId}
               className={cn(
-                "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-md border border-[#46b8bc] bg-card px-3 py-2 text-[12px] font-semibold text-[#269fa8] transition hover:bg-[#f4ffff] active:scale-[0.98]",
+                "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-primary/30 bg-background px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 disabled ? "pointer-events-none" : "cursor-pointer",
               )}
             >
@@ -212,7 +212,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <label
               htmlFor={cameraInputId}
               className={cn(
-                "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-md border border-[#46b8bc] bg-[#f4ffff] px-3 py-2 text-[12px] font-semibold text-[#269fa8] transition active:scale-[0.98] sm:hidden",
+                "inline-flex min-h-11 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:hidden",
                 disabled ? "pointer-events-none" : "cursor-pointer",
               )}
             >
@@ -221,15 +221,15 @@ const FileUpload: React.FC<FileUploadProps> = ({
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-[10px]">
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-5">
           {selectedFiles.map((file, index) => (
             <div
               key={`${file.name}-${index}-${file.lastModified}`}
-              className="group relative h-[90px] w-[90px] shrink-0 overflow-hidden rounded-[4px] bg-muted"
+              className="group relative aspect-square min-w-0 overflow-hidden rounded-lg border border-border bg-muted"
             >
               {!loadedPreviews[file.name] && (
                 <div className="absolute inset-0 z-10 grid place-items-center bg-muted">
-                  <Loader2 className="h-4 w-4 animate-spin text-[#269fa8]" />
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 </div>
               )}
               <Image
@@ -242,7 +242,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
                   "object-cover transition-opacity duration-200",
                   loadedPreviews[file.name] ? "opacity-100" : "opacity-0",
                 )}
-                sizes="90px"
+                sizes="(max-width: 639px) 30vw, 90px"
                 onLoad={() =>
                   setLoadedPreviews((prev) => ({ ...prev, [file.name]: true }))
                 }
@@ -250,7 +250,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               {!disabled && (
                 <button
                   type="button"
-                  className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full bg-card/90 text-red-600 shadow-sm transition hover:text-red-700 sm:h-7 sm:w-7 sm:text-[#6f7c82] sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+                  className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-full bg-card/90 text-destructive shadow-sm transition-colors hover:bg-card sm:h-8 sm:w-8 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
                   onClick={() => removeFile(index)}
                   aria-label={t("fileUpload.removeFile")}
                 >
@@ -264,7 +264,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
             <label
               htmlFor={inputId}
               className={cn(
-                "grid h-11 w-11 shrink-0 touch-manipulation place-items-center self-center rounded-md border border-[#46b8bc] bg-card text-[24px] font-light leading-none text-[#46b8bc] transition hover:bg-[#f4ffff] sm:h-[30px] sm:w-[30px]",
+                "grid aspect-square w-full min-w-0 touch-manipulation place-items-center rounded-lg border border-dashed border-primary/40 bg-background text-2xl font-light leading-none text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 disabled ? "pointer-events-none" : "cursor-pointer",
               )}
               aria-label={t("fileUpload.addPhotosLabel")}

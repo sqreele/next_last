@@ -68,29 +68,31 @@ export default function FilterPanel({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card px-3 py-4 shadow-soft sm:px-4">
+    <section className="rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5" aria-label="Preventive maintenance filters">
       {/* Search */}
-      <div className="relative mb-4">
-        <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+      <div className="relative mb-4 min-w-0">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
         <input
           type="text"
           placeholder="Search maintenance tasks..."
+          aria-label="Search preventive maintenance tasks"
           value={currentFilters.search || ""}
           onChange={(e) => onFilterChangeAction("search", e.target.value)}
-          className="w-full pl-10 pr-10 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="h-12 w-full min-w-0 rounded-lg border border-input bg-background py-3 pl-10 pr-11 text-base text-foreground shadow-soft transition-[border-color,box-shadow] placeholder:text-muted-foreground hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
         />
         {currentFilters.search && (
           <button
             onClick={() => onFilterChangeAction("search", "")}
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-muted-foreground p-1"
+            className="absolute right-1.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Clear maintenance search"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         )}
       </div>
 
       {/* Filter chips */}
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="mb-4 flex flex-wrap gap-2">
         {currentFilters.status && (
           <FilterChip
             label={`Status: ${currentFilters.status}`}
@@ -115,13 +117,14 @@ export default function FilterPanel({
       </div>
 
       {/* Expandable sections */}
-      <div className="space-y-3">
+      <div className="divide-y divide-border rounded-lg border border-border bg-background px-3 sm:px-4">
         <FilterSection title="Status & Frequency">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <select
+              aria-label="Filter by maintenance status"
               value={currentFilters.status || ""}
               onChange={(e) => onFilterChangeAction("status", e.target.value)}
-              className="px-3 py-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
             >
               <option value="">All Status</option>
               <option value="completed">Completed</option>
@@ -129,11 +132,12 @@ export default function FilterPanel({
               <option value="overdue">Overdue</option>
             </select>
             <select
+              aria-label="Filter by maintenance frequency"
               value={currentFilters.frequency || ""}
               onChange={(e) =>
                 onFilterChangeAction("frequency", e.target.value)
               }
-              className="px-3 py-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
             >
               <option value="">All Frequencies</option>
               <option value="daily">Daily</option>
@@ -150,9 +154,10 @@ export default function FilterPanel({
         <FilterSection title="Machine & Dates">
           <div className="space-y-3">
             <select
+              aria-label="Filter by machine"
               value={currentFilters.machine || ""}
               onChange={(e) => onFilterChangeAction("machine", e.target.value)}
-              className="w-full px-3 py-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
             >
               <option value="">All Machines</option>
               {machineOptions.map((machine) => (
@@ -163,7 +168,7 @@ export default function FilterPanel({
             </select>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Start Date
                 </label>
                 <input
@@ -172,11 +177,11 @@ export default function FilterPanel({
                   onChange={(e) =>
                     onFilterChangeAction("startDate", e.target.value)
                   }
-                  className="w-full px-3 py-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   End Date
                 </label>
                 <input
@@ -185,7 +190,7 @@ export default function FilterPanel({
                   onChange={(e) =>
                     onFilterChangeAction("endDate", e.target.value)
                   }
-                  className="w-full px-3 py-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
                 />
               </div>
             </div>
@@ -194,9 +199,10 @@ export default function FilterPanel({
 
         <FilterSection title="Sort & Display">
           <select
+            aria-label="Sort preventive maintenance tasks"
             value={`${sortBy}-${sortOrder}`}
             onChange={(e) => handleSortChange(e.target.value)}
-            className="w-full px-3 py-3 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
           >
             <option value="date-desc">Date (Newest First)</option>
             <option value="date-asc">Date (Oldest First)</option>
@@ -209,23 +215,23 @@ export default function FilterPanel({
       </div>
 
       {/* Filter actions */}
-      <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
-        <span className="text-sm text-muted-foreground">
+      <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <span className="min-w-0 text-sm text-muted-foreground">
           {totalCount} tasks found
           {currentFilters.machine && (
-            <span className="block text-blue-600 font-medium mt-1">
+            <span className="mt-1 block break-words font-semibold text-primary">
               Filtered by: {getMachineNameById(currentFilters.machine)}
             </span>
           )}
         </span>
         <button
           onClick={onClearFiltersAction}
-          className="text-sm text-blue-600 hover:text-blue-800 px-3 py-2 font-medium rounded-lg hover:bg-blue-50 transition-colors"
+          className="inline-flex min-h-11 items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 hover:text-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           Clear all
         </button>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -240,18 +246,18 @@ function FilterChip({
   color: string;
 }) {
   const colorClasses = {
-    blue: "bg-blue-100 text-blue-800",
-    green: "bg-green-100 text-green-800",
-    purple: "bg-purple-100 text-purple-800",
+    blue: "bg-primary/10 text-primary",
+    green: "bg-success/10 text-success",
+    purple: "bg-info/10 text-info",
   };
 
   return (
     <div
-      className={`flex items-center px-3 py-1 rounded-full text-sm ${colorClasses[color as keyof typeof colorClasses]}`}
+      className={`flex min-h-9 max-w-full items-center rounded-full px-3 py-1 text-sm ${colorClasses[color as keyof typeof colorClasses]}`}
     >
-      <span>{label}</span>
-      <button onClick={onRemove} className="ml-2 hover:opacity-70">
-        <X className="h-3 w-3" />
+      <span className="min-w-0 break-words">{label}</span>
+      <button onClick={onRemove} className="ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`Remove ${label} filter`}>
+        <X className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     </div>
   );
@@ -265,12 +271,12 @@ function FilterSection({
   children: React.ReactNode;
 }) {
   return (
-    <details className="group border-b border-border last:border-b-0">
-      <summary className="flex items-center justify-between py-3 cursor-pointer select-none">
-        <span className="font-medium text-muted-foreground">{title}</span>
-        <ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
+    <details className="group">
+      <summary className="flex min-h-12 cursor-pointer select-none items-center justify-between gap-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+        <span className="font-semibold text-foreground">{title}</span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
       </summary>
-      <div className="pt-2 pb-4">{children}</div>
+      <div className="pb-4 pt-1">{children}</div>
     </details>
   );
 }

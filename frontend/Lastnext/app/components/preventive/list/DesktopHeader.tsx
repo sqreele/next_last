@@ -32,16 +32,19 @@ export default function DesktopHeader({
   onToggleFilters,
 }: DesktopHeaderProps) {
   return (
-    <div className="hidden md:block container w-full max-w-none px-3 sm:px-6 lg:mx-auto lg:max-w-7xl py-8">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
+    <header className="mx-auto hidden w-full max-w-7xl py-3 md:block">
+      <div className="flex flex-col gap-5 border-b border-border pb-5 xl:flex-row xl:items-end xl:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            Maintenance workspace
+          </p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-foreground">
             Preventive Maintenance
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="mt-2 text-base leading-6 text-muted-foreground">
             Manage your scheduled maintenance tasks
             {currentFilters.machine && (
-              <span className="text-blue-600 font-medium">
+              <span className="font-semibold text-primary">
                 {" "}
                 • Filtered by: {getMachineNameById(currentFilters.machine)}
               </span>
@@ -49,57 +52,58 @@ export default function DesktopHeader({
           </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <div className="grid w-full grid-cols-2 gap-2 lg:flex lg:flex-wrap xl:w-auto xl:shrink-0">
           <Link
             href="/dashboard/preventive-maintenance/dashboard"
-            className="flex items-center px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted transition-colors"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <BarChart3 className="h-4 w-4 mr-2" />
+            <BarChart3 className="h-4 w-4" aria-hidden="true" />
             Dashboard
           </Link>
 
           <Link
             href="/dashboard/preventive-maintenance/schedule"
-            className="flex items-center px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted transition-colors"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <CalendarDays className="h-4 w-4 mr-2" />
+            <CalendarDays className="h-4 w-4" aria-hidden="true" />
             Calendar
           </Link>
 
           <Link
             href="/dashboard/preventive-maintenance/plans"
-            className="flex items-center px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted transition-colors"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <Repeat2 className="h-4 w-4 mr-2" />
+            <Repeat2 className="h-4 w-4" aria-hidden="true" />
             Master Plans
           </Link>
 
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="flex items-center px-4 py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             title="Refresh Data"
             aria-label="Refresh maintenance data"
           >
             <RefreshCw
-              className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              aria-hidden="true"
             />
             Refresh
           </button>
 
           <button
             onClick={onToggleFilters}
-            className={`flex items-center px-4 py-2 border rounded-lg transition-colors ${
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold shadow-soft transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
               showFilters
-                ? "bg-blue-50 border-blue-200 text-blue-700"
-                : "border-border text-muted-foreground hover:bg-muted"
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border bg-background text-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
             }`}
             aria-label="Toggle maintenance filters"
           >
-            <Filter className="h-4 w-4 mr-2" />
+            <Filter className="h-4 w-4" aria-hidden="true" />
             Filters
             {activeFiltersCount > 0 && (
-              <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">
                 {activeFiltersCount}
               </span>
             )}
@@ -108,14 +112,14 @@ export default function DesktopHeader({
           {canOperate && (
             <Link
               href="/dashboard/preventive-maintenance/create"
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
               New Maintenance
             </Link>
           )}
         </div>
       </div>
-    </div>
+    </header>
   );
 }

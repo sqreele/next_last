@@ -119,6 +119,8 @@ test('login and callback retain state, require nonce and PKCE, and fail closed',
   assert.match(callback, /verifyAuth0IdToken/);
   assert.doesNotMatch(callback, /Buffer\.from\(payload/);
   assert.match(callback, /\/auth\/access-pending/);
+  assert.match(callback, /requestedRedirect === '\/invitations\/accept'/);
+  assert.match(callback, /hasPropertyAccess \|\| invitationReturn/);
 });
 
 test('sessions are sealed and logout clears the session cookie', async () => {

@@ -57,7 +57,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
   return (
     <nav
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background md:hidden",
+        "fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/95 shadow-[0_-4px_18px_rgba(15,23,42,0.08)] backdrop-blur-xl md:hidden",
         "transition-transform duration-200 ease-out will-change-transform",
         hidden ? "translate-y-full" : "translate-y-0",
         className,
@@ -65,7 +65,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
       role="navigation"
       aria-label="Mobile navigation"
     >
-      <div className="flex items-center justify-around gap-1 px-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
+      <div className="mx-auto flex max-w-lg items-center justify-around gap-0.5 px-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2">
         {mobilePrimaryNavigation.map((item) => {
           const isActive = isNavigationItemActive(
             pathname,
@@ -80,7 +80,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
               href={item.href}
               onClick={() => triggerHaptic("selection")}
               className={cn(
-                "flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "min-w-0 flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                 item.name === "Create Job" && "order-none",
               )}
               aria-current={isActive ? "page" : undefined}
@@ -88,10 +88,10 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
             >
               <div
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 transition-colors touch-manipulation sm:px-2",
+                  "relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 transition-colors touch-manipulation sm:px-2",
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-soft"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted",
+                    ? "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20"
+                    : "text-muted-foreground hover:bg-muted/70 hover:text-foreground active:bg-muted",
                   item.name === "Create Job" &&
                     !isActive &&
                     "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20",
@@ -101,7 +101,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
                   className={cn(
                     "h-6 w-6 transition-colors",
                     isActive
-                      ? "text-primary-foreground"
+                      ? "text-primary"
                       : item.name === "Create Job"
                         ? "text-primary"
                         : "text-muted-foreground",
@@ -110,9 +110,9 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
                 />
                 <span
                   className={cn(
-                    "text-xs font-semibold leading-none",
+                    "max-w-full truncate text-[11px] font-semibold leading-none sm:text-xs",
                     isActive
-                      ? "text-primary-foreground"
+                      ? "text-primary"
                       : item.name === "Create Job"
                         ? "text-primary"
                         : "text-muted-foreground",
@@ -120,6 +120,12 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
                 >
                   {NAV_I18N[item.name] ? t(NAV_I18N[item.name]) : item.shortName}
                 </span>
+                {isActive ? (
+                  <span
+                    className="absolute bottom-0.5 h-1 w-4 rounded-full bg-primary"
+                    aria-hidden="true"
+                  />
+                ) : null}
               </div>
             </Link>
           );
@@ -129,10 +135,10 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
             <button
               type="button"
               className={cn(
-                "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-muted-foreground transition-colors",
-                "hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-muted-foreground transition-colors",
+                "hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                 hasActiveSecondaryItem &&
-                  "bg-primary text-primary-foreground shadow-soft",
+                  "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20",
               )}
               aria-label={
                 hasActiveSecondaryItem
@@ -142,16 +148,22 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
             >
               <Grid2X2 className="h-6 w-6" aria-hidden="true" />
               <span className="text-xs font-semibold leading-none">More</span>
+              {hasActiveSecondaryItem ? (
+                <span
+                  className="absolute bottom-0.5 h-1 w-4 rounded-full bg-primary"
+                  aria-hidden="true"
+                />
+              ) : null}
             </button>
           </SheetTrigger>
           <SheetContent
             side="bottom"
-            className="max-h-[80dvh] rounded-t-2xl border-border bg-background px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+            className="max-h-[85dvh] rounded-t-2xl border-border bg-background px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-card"
           >
-            <SheetHeader className="text-left">
-              <SheetTitle>More tools</SheetTitle>
+            <SheetHeader className="border-b border-border pb-3 text-left">
+              <SheetTitle className="text-lg font-semibold">More tools</SheetTitle>
             </SheetHeader>
-            <div className="mt-4 grid grid-cols-2 gap-2 overflow-y-auto">
+            <div className="mt-4 grid grid-cols-2 gap-2 overflow-y-auto pb-1">
               {mobileSecondaryNavigation.map((item) => {
                 const Icon = item.icon;
                 const isActive = isNavigationItemActive(
@@ -166,15 +178,21 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
                     onClick={() => setMoreOpen(false)}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "flex min-h-14 items-center gap-3 rounded-xl border border-border px-3 py-2 text-sm font-medium",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "relative flex min-h-16 min-w-0 items-center gap-3 rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-card text-foreground hover:bg-muted",
+                        ? "border-primary/30 bg-primary/10 font-semibold text-primary ring-1 ring-inset ring-primary/20"
+                        : "border-border bg-card text-foreground hover:bg-muted/70",
                     )}
                   >
                     <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                    <span>{item.name}</span>
+                    <span className="min-w-0 break-words leading-5">{item.name}</span>
+                    {isActive ? (
+                      <span
+                        className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary"
+                        aria-hidden="true"
+                      />
+                    ) : null}
                   </Link>
                 );
               })}

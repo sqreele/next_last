@@ -37,14 +37,14 @@ const User: React.FC = () => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="w-full flex items-center justify-between gap-2 px-3 py-2 h-auto hover:bg-muted"
+          className="h-auto min-h-12 w-full justify-between gap-2 rounded-xl px-2 py-2 text-left hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div
               className={cn(
-                "h-10 w-10 rounded-full flex items-center justify-center overflow-hidden",
+                "flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg",
                 !session.user.profile_image &&
-                  "bg-gradient-to-br from-blue-500 to-blue-700",
+                  "bg-primary",
               )}
             >
               {session.user.profile_image &&
@@ -58,32 +58,32 @@ const User: React.FC = () => {
                   fill
                 />
               ) : (
-                <span className="text-white font-semibold">{initials}</span>
+                <span className="font-semibold text-primary-foreground">{initials}</span>
               )}
             </div>
-            <div className="flex flex-col text-left">
-              <span className="font-medium text-sm text-foreground">
+            <div className="flex min-w-0 flex-col text-left">
+              <span className="truncate text-sm font-semibold text-foreground">
                 {displayName}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="truncate text-xs text-muted-foreground">
                 {session.user.positions || "User"}
               </span>
             </div>
           </div>
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-[240px] p-2 bg-card border-border"
+        className="w-[min(16rem,calc(100vw-2rem))] rounded-xl border-border bg-popover p-2 shadow-card"
         align="start"
       >
-        <DropdownMenuItem className="flex flex-col items-start rounded-md p-3 hover:bg-muted">
-          <div className="flex w-full items-center gap-3">
+        <DropdownMenuItem className="flex flex-col items-start rounded-lg p-3 hover:bg-muted focus:bg-muted">
+          <div className="flex min-w-0 w-full items-center gap-3">
             <div
               className={cn(
-                "h-10 w-10 rounded-full flex items-center justify-center overflow-hidden",
+                "flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg",
                 !session.user.profile_image &&
-                  "bg-gradient-to-br from-blue-500 to-blue-700",
+                  "bg-primary",
               )}
             >
               {session.user.profile_image &&
@@ -97,43 +97,43 @@ const User: React.FC = () => {
                   fill
                 />
               ) : (
-                <span className="text-white font-semibold">{initials}</span>
+                <span className="font-semibold text-primary-foreground">{initials}</span>
               )}
             </div>
-            <div className="flex flex-col text-left">
-              <span className="font-medium text-sm text-foreground">
+            <div className="flex min-w-0 flex-col text-left">
+              <span className="truncate text-sm font-semibold text-foreground">
                 {displayName}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="truncate text-xs text-muted-foreground">
                 {session.user.email || ""}
               </span>
             </div>
           </div>
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator className="bg-gray-200" />
+        <DropdownMenuSeparator className="bg-border" />
 
         <Link href="/dashboard/profile">
-          <DropdownMenuItem className="rounded-md cursor-pointer hover:bg-muted">
-            <User2 className="mr-2 h-4 w-4" />
+          <DropdownMenuItem className="min-h-11 cursor-pointer rounded-lg hover:bg-muted focus:bg-muted">
+            <User2 className="mr-2 h-4 w-4" aria-hidden="true" />
             <span>My Profile</span>
           </DropdownMenuItem>
         </Link>
 
         <Link href="/settings">
-          <DropdownMenuItem className="rounded-md cursor-pointer hover:bg-muted">
-            <Settings className="mr-2 h-4 w-4" />
+          <DropdownMenuItem className="min-h-11 cursor-pointer rounded-lg hover:bg-muted focus:bg-muted">
+            <Settings className="mr-2 h-4 w-4" aria-hidden="true" />
             <span>Settings</span>
           </DropdownMenuItem>
         </Link>
 
-        <DropdownMenuSeparator className="bg-gray-200" />
+        <DropdownMenuSeparator className="bg-border" />
 
         <DropdownMenuItem
-          className="rounded-md cursor-pointer text-red-500 hover:bg-red-50"
+          className="min-h-11 cursor-pointer rounded-lg text-destructive hover:bg-destructive/10 focus:bg-destructive/10 focus:text-destructive"
           onClick={() => appSignOut({ callbackUrl: "/auth/login" })}
         >
-          <LogOut className="mr-2 h-4 w-4" />
+          <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
           <span>Logout</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

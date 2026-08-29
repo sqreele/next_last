@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu";
 import { Button } from "@/app/components/ui/button";
-import { ChevronDown, Building2, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Building2, Loader2 } from "lucide-react";
 import { cn } from "@/app/lib/utils/cn";
 import { useMainStore } from "@/app/lib/stores/mainStore";
 import {
@@ -86,9 +86,9 @@ const HeaderPropertyList = React.memo(() => {
       <Button
         variant="outline"
         disabled
-        className="flex items-center gap-2 w-full sm:w-auto h-12 px-4 bg-card border-border text-muted-foreground"
+        className="h-11 w-full gap-2 rounded-lg border-border bg-card px-3 text-muted-foreground sm:w-auto"
       >
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         Loading...
       </Button>
     );
@@ -100,16 +100,16 @@ const HeaderPropertyList = React.memo(() => {
       <Button
         variant="outline"
         disabled
-        className="flex items-center gap-2 w-full sm:w-auto h-12 px-4 bg-card border-border text-muted-foreground"
+        className="h-11 w-full gap-2 rounded-lg border-border bg-card px-3 text-muted-foreground sm:w-auto"
       >
-        <Building2 className="h-4 w-4" />
+        <Building2 className="h-4 w-4" aria-hidden="true" />
         No Properties
       </Button>
     );
   }
 
   return (
-    <div className="relative w-full sm:w-auto">
+    <div className="relative w-full min-w-0 sm:w-auto">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -120,21 +120,21 @@ const HeaderPropertyList = React.memo(() => {
                 ? "Property selector locked to your assigned property"
                 : "Select property"
             }
-            className="flex items-center justify-between gap-2 w-full sm:w-auto h-12 px-4 bg-card border-border hover:bg-muted disabled:cursor-not-allowed disabled:opacity-100"
+            className="h-11 w-full min-w-0 justify-between gap-2 rounded-lg border-border bg-card px-3 shadow-none hover:border-primary/30 hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-100 sm:w-auto sm:max-w-56"
           >
-            <div className="flex items-center gap-2 truncate">
-              <Building2 className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              <span className="truncate text-muted-foreground">
+            <div className="flex min-w-0 items-center gap-2">
+              <Building2 className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <span className="truncate text-sm font-semibold text-foreground">
                 {getPropertyName(currentProperty)}
               </span>
             </div>
             {!isSelectorLocked && (
-              <ChevronDown className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-full min-w-[200px] max-w-[90vw] bg-card border-border shadow-soft rounded-md mt-1"
+          className="mt-1 w-full min-w-[220px] max-w-[90vw] rounded-xl border-border bg-popover p-1.5 shadow-card"
           align="start"
         >
           {safeProperties.map((property: any, index: number) => (
@@ -142,14 +142,17 @@ const HeaderPropertyList = React.memo(() => {
               key={getPropertyId(property) || `property-${index}`}
               onClick={() => handlePropertySelect(property)}
               className={cn(
-                "flex items-center gap-2 px-3 py-2.5 text-base cursor-pointer min-h-[44px]",
+                "min-h-11 cursor-pointer gap-2 rounded-lg px-3 py-2.5 text-sm focus:bg-muted focus:text-foreground",
                 selectedProperty === getPropertyId(property)
-                  ? "bg-blue-600 text-white"
-                  : "hover:bg-muted text-muted-foreground",
+                  ? "bg-primary/10 font-semibold text-primary"
+                  : "text-foreground hover:bg-muted",
               )}
             >
-              <Building2 className="h-4 w-4 flex-shrink-0" />
-              <span className="truncate">{getPropertyName(property)}</span>
+              <Building2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate">{getPropertyName(property)}</span>
+              {selectedProperty === getPropertyId(property) ? (
+                <Check className="h-4 w-4 shrink-0" aria-hidden="true" />
+              ) : null}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>

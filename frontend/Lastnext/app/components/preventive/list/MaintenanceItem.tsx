@@ -2,7 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
-import { PreventiveMaintenance } from "@/app/lib/preventiveMaintenanceModels";
+import {
+  PreventiveMaintenance,
+  determinePMStatus,
+} from "@/app/lib/preventiveMaintenanceModels";
 import {
   Eye,
   Edit,
@@ -40,64 +43,70 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
   canOperate,
 }) => {
   const statusInfo = getStatusInfo(item);
+  const canonicalStatus = determinePMStatus(item).toLowerCase();
+  const statusSurface = canonicalStatus === "overdue"
+    ? "border-l-destructive bg-destructive/[0.03]"
+    : canonicalStatus === "completed"
+      ? "border-l-success bg-success/[0.03]"
+      : "border-l-transparent bg-card";
 
   return (
-    <div className="px-4 md:px-6 py-4 hover:bg-muted transition-colors">
-      <div className="flex items-start md:items-center">
+    <article className={`border-l-4 px-4 py-4 transition-colors hover:bg-muted/60 sm:px-5 lg:px-6 ${statusSurface}`}>
+      <div className="flex items-start xl:items-center">
         {/* Desktop Checkbox */}
-        {canOperate && <div className="hidden md:block">
+        {canOperate && <div className="hidden xl:block">
           <input
             type="checkbox"
             checked={isSelected}
             onChange={(e) => onSelect(e.target.checked)}
             aria-label={`Select ${item.pmtitle || `task ${item.pm_id}`}`}
-            className="h-4 w-4 text-blue-600 rounded border-border focus:ring-blue-500"
+            className="h-5 w-5 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
         </div>}
 
-        <div className="flex-1 md:ml-4">
+        <div className="min-w-0 flex-1 xl:ml-4">
           {/* Mobile Layout */}
-          <div className="md:hidden">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center space-x-2 mb-2">
+          <div className="xl:hidden">
+            <div className="flex min-w-0 items-start justify-between">
+              <div className="min-w-0 flex-1">
+                <div className="mb-3 flex min-w-0 items-start gap-2">
                   {canOperate && <input
                     type="checkbox"
                     checked={isSelected}
                     onChange={(e) => onSelect(e.target.checked)}
                     aria-label={`Select ${item.pmtitle || `task ${item.pm_id}`}`}
-                    className="h-5 w-5 flex-none rounded border-border text-blue-600 focus:ring-blue-500"
+                    className="mt-0.5 h-5 w-5 flex-none rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   />}
                   <Link
                     href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                    className="min-w-0 text-base font-semibold text-foreground hover:text-blue-600"
+                    className="min-w-0 break-words text-base font-semibold leading-5 text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     {item.pmtitle || `Task ${item.pm_id}`}
                   </Link>
                 </div>
 
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  <div className="flex items-center">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    <span>{formatDate(item.scheduled_date)}</span>
+                <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <Calendar className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 break-words">Scheduled {formatDate(item.scheduled_date)}</span>
                   </div>
-                  <div className="flex items-center">
-                    <Clock className="h-3 w-3 mr-1" />
-                    <span>
+                  <div className="flex min-w-0 items-start gap-2">
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 break-words">
                       Next due:{" "}
                       {item.next_due_date
                         ? formatDate(item.next_due_date)
                         : "N/A"}
                     </span>
                   </div>
-                  <div className="flex items-center">
-                    <Wrench className="h-3 w-3 mr-1" />
-                    <span>{getMachineNames(item.machines)}</span>
+                  <div className="flex min-w-0 items-start gap-2">
+                    <Wrench className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 break-words">{getMachineNames(item.machines)}</span>
                   </div>
                   {item.procedure_template_id && (
-                    <div className="flex items-center">
-                      <Clipboard className="h-3 w-3 mr-1" />
-                      <span className="truncate">
+                    <div className="flex min-w-0 items-start gap-2">
+                      <Clipboard className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span className="min-w-0 break-words">
                         {item.procedure_template_name ||
                           `Task #${item.procedure_template_id}`}
                       </span>
@@ -105,33 +114,33 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center justify-between mt-3">
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-3">
                   <StatusBadge status={statusInfo.text} />
 
-                  <div className="flex items-center space-x-2">
+                  <div className="ml-auto flex items-center gap-1">
                     <Link
                       href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                      className="grid h-11 w-11 place-items-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-800"
+                      className="grid h-11 w-11 place-items-center rounded-lg text-primary hover:bg-primary/10 hover:text-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       title="View Details"
                       aria-label={`View ${item.pmtitle || `task ${item.pm_id}`}`}
                     >
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-4 w-4" aria-hidden="true" />
                     </Link>
                     {canOperate && <Link
                       href={`/dashboard/preventive-maintenance/edit/${item.pm_id}`}
-                      className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                      className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       title="Edit"
                       aria-label={`Edit ${item.pmtitle || `task ${item.pm_id}`}`}
                     >
-                      <Edit className="h-4 w-4" />
+                      <Edit className="h-4 w-4" aria-hidden="true" />
                     </Link>}
                     {canOperate && <button
                       onClick={() => onDelete(item.pm_id)}
-                      className="grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-800"
+                      className="grid h-11 w-11 place-items-center rounded-lg text-destructive hover:bg-destructive/10 hover:text-[hsl(var(--destructive-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       title="Delete"
                       aria-label={`Delete ${item.pmtitle || `task ${item.pm_id}`}`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </button>}
                   </div>
                 </div>
@@ -140,12 +149,12 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
           </div>
 
           {/* Desktop Layout */}
-          <div className="hidden md:block">
-            <div className="grid grid-cols-6 gap-4 items-center">
+          <div className="hidden xl:block">
+            <div className="grid min-w-0 grid-cols-[1.25fr_1fr_0.9fr_1.2fr_1.2fr_8.5rem] items-center gap-4">
               <div className="text-sm text-foreground">
                 <Link
                   href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                  className="font-medium hover:text-blue-600 block"
+                  className="block break-words font-semibold hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   {item.pmtitle || `Task ${item.pm_id}`}
                 </Link>
@@ -165,7 +174,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                 <StatusBadge status={statusInfo.text} />
               </div>
 
-              <div className="text-sm text-foreground truncate">
+              <div className="min-w-0 truncate text-sm text-foreground">
                 <div className="flex items-center gap-2">
                   <span className="truncate">
                     {getMachineNames(item.machines)}
@@ -177,7 +186,7 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
                 {item.procedure_template_id ? (
                   <Link
                     href={`/dashboard/maintenance-tasks/${item.procedure_template_id}`}
-                    className="text-primary hover:underline"
+                    className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     title={
                       item.procedure_template_name ||
                       `Task #${item.procedure_template_id}`
@@ -201,34 +210,34 @@ const MaintenanceItem: React.FC<MaintenanceItemProps> = ({
               <div className="flex items-center space-x-2">
                 <Link
                   href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                  className="grid h-11 w-11 place-items-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-800"
+                  className="grid h-11 w-11 place-items-center rounded-lg text-primary hover:bg-primary/10 hover:text-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   title="View Details"
                   aria-label={`View ${item.pmtitle || `task ${item.pm_id}`}`}
                 >
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-4 w-4" aria-hidden="true" />
                 </Link>
                 {canOperate && <Link
                   href={`/dashboard/preventive-maintenance/edit/${item.pm_id}`}
-                  className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   title="Edit"
                   aria-label={`Edit ${item.pmtitle || `task ${item.pm_id}`}`}
                 >
-                  <Edit className="h-4 w-4" />
+                  <Edit className="h-4 w-4" aria-hidden="true" />
                 </Link>}
                 {canOperate && <button
                   onClick={() => onDelete(item.pm_id)}
-                  className="grid h-11 w-11 place-items-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-800"
+                  className="grid h-11 w-11 place-items-center rounded-lg text-destructive hover:bg-destructive/10 hover:text-[hsl(var(--destructive-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   title="Delete"
                   aria-label={`Delete ${item.pmtitle || `task ${item.pm_id}`}`}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                 </button>}
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 };
 

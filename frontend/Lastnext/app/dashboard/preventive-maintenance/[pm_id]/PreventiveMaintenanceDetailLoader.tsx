@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, CalendarClock, Repeat2, Wrench } from 'lucide-react';
+import { CalendarClock, Repeat2, Wrench } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/components/ui/button';
+import { FeedbackState } from '@/app/components/feedback/FeedbackState';
 import { PageLoader } from '@/app/components/ui/loading';
 import { useSession } from '@/app/lib/session.client';
 import {
@@ -124,9 +125,12 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
 
   if (!selectedPropertyId) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold">Select a property</h1>
-        <p className="mt-2 text-muted-foreground">Select a property to view preventive maintenance details.</p>
+      <div className="mx-auto w-full max-w-2xl px-4 py-12 sm:px-6">
+        <FeedbackState
+          variant="empty"
+          title="Select a property"
+          description="Select a property to view preventive maintenance details."
+        />
       </div>
     );
   }
@@ -135,39 +139,39 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
     const assignee = masterPlan.assigned_to_details;
     const assigneeName = [assignee?.first_name, assignee?.last_name].filter(Boolean).join(' ') || assignee?.username || 'Unassigned';
     return (
-      <div className="mx-auto w-full max-w-5xl px-3 py-4 sm:px-6 sm:py-6">
-        {error && <div className="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-red-800" role="alert">{error}</div>}
-        <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <span className="inline-flex rounded-full bg-purple-100 px-3 py-1 text-xs font-bold text-purple-800">Projected master plan</span>
-            <h1 className="mt-2 text-2xl font-bold text-foreground">{masterPlan.title}</h1>
-            <p className="text-sm text-muted-foreground">#{masterPlan.plan_id}</p>
+      <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-5 sm:px-6 lg:px-8">
+        {error && <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm font-medium text-destructive" role="alert">{error}</div>}
+        <header className="flex flex-col gap-4 border-b border-border pb-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="min-w-0">
+            <span className="inline-flex min-h-7 items-center rounded-full border border-info/30 bg-info/10 px-3 py-1 text-xs font-semibold text-info">Projected master plan</span>
+            <h1 className="mt-3 break-words text-2xl font-bold tracking-tight text-foreground md:text-3xl">{masterPlan.title}</h1>
+            <p className="mt-1 break-all font-mono text-sm text-muted-foreground">#{masterPlan.plan_id}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:shrink-0">
             <Button asChild variant="outline"><Link href="/dashboard/preventive-maintenance/plans">All plans</Link></Button>
             <Button asChild variant="outline"><Link href="/dashboard/preventive-maintenance/schedule">View schedule</Link></Button>
             {canOperate && <Button asChild><Link href={`/dashboard/preventive-maintenance/plans/${masterPlan.plan_id}/edit`}>Edit plan</Link></Button>}
             {canOperate && <Button variant="destructive" onClick={() => setConfirmingDelete(true)}>Delete</Button>}
           </div>
-        </div>
+        </header>
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-xl border border-border bg-card p-5"><CalendarClock className="mb-3 h-5 w-5 text-primary" /><p className="text-xs font-semibold uppercase text-muted-foreground">Next due</p><p className="mt-1 font-semibold">{new Date(masterPlan.next_due_date || masterPlan.start_date).toLocaleString()}</p></div>
-          <div className="rounded-xl border border-border bg-card p-5"><Repeat2 className="mb-3 h-5 w-5 text-primary" /><p className="text-xs font-semibold uppercase text-muted-foreground">Frequency</p><p className="mt-1 font-semibold capitalize">{masterPlan.frequency}{masterPlan.custom_days ? ` (${masterPlan.custom_days} days)` : ''}</p></div>
-          <div className="rounded-xl border border-border bg-card p-5"><Wrench className="mb-3 h-5 w-5 text-primary" /><p className="text-xs font-semibold uppercase text-muted-foreground">Equipment</p><p className="mt-1 font-semibold">{masterPlan.machines?.map((machine) => machine.name || machine.machine_id).join(', ') || 'No equipment'}</p></div>
+          <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft"><span className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-warning/10 text-warning-foreground"><CalendarClock className="h-5 w-5" aria-hidden="true" /></span><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Next due</p><p className="mt-1 break-words font-semibold text-foreground">{new Date(masterPlan.next_due_date || masterPlan.start_date).toLocaleString()}</p></div>
+          <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft"><span className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-info/10 text-info"><Repeat2 className="h-5 w-5" aria-hidden="true" /></span><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Frequency</p><p className="mt-1 break-words font-semibold capitalize text-foreground">{masterPlan.frequency}{masterPlan.custom_days ? ` (${masterPlan.custom_days} days)` : ''}</p></div>
+          <div className="min-w-0 rounded-xl border border-border bg-card p-5 shadow-soft"><span className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary"><Wrench className="h-5 w-5" aria-hidden="true" /></span><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Equipment</p><p className="mt-1 break-words font-semibold text-foreground">{masterPlan.machines?.map((machine) => machine.name || machine.machine_id).join(', ') || 'No equipment'}</p></div>
         </div>
-        <div className="mt-4 rounded-xl border border-border bg-card p-5">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-soft" aria-label="Master plan details">
           <dl className="grid gap-4 sm:grid-cols-2">
             <div><dt className="text-sm text-muted-foreground">Assigned to</dt><dd className="font-medium">{assigneeName}</dd></div>
-            <div><dt className="text-sm text-muted-foreground">Status</dt><dd className="font-medium">{masterPlan.active ? 'Active' : 'Inactive'}</dd></div>
+            <div><dt className="text-sm text-muted-foreground">Status</dt><dd className="mt-1 inline-flex items-center gap-2 font-medium"><span className={`h-2 w-2 rounded-full ${masterPlan.active ? 'bg-success' : 'bg-muted-foreground'}`} aria-hidden="true" />{masterPlan.active ? 'Active' : 'Inactive'}</dd></div>
             <div><dt className="text-sm text-muted-foreground">Task template</dt><dd className="font-medium">{masterPlan.procedure_template_name || 'Not set'}</dd></div>
             <div><dt className="text-sm text-muted-foreground">Lead time</dt><dd className="font-medium">{masterPlan.lead_time_days} days</dd></div>
           </dl>
           {masterPlan.notes && <div className="mt-5 border-t border-border pt-4"><p className="text-sm text-muted-foreground">Notes</p><p className="mt-1 whitespace-pre-wrap">{masterPlan.notes}</p></div>}
           {masterPlan.procedure && <div className="mt-5 border-t border-border pt-4"><p className="text-sm text-muted-foreground">Procedure</p><p className="mt-1 whitespace-pre-wrap">{masterPlan.procedure}</p></div>}
-        </div>
-        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-5 dark:border-blue-900 dark:bg-blue-950/30">
-          <h2 className="font-bold text-blue-950 dark:text-blue-100">Record maintenance work and photos</h2>
-          <p className="mt-2 text-sm text-blue-900 dark:text-blue-200">
+        </section>
+        <section className="rounded-xl border border-info/30 bg-info/10 p-5" aria-labelledby="work-form-title">
+          <h2 id="work-form-title" className="font-bold text-foreground">Record maintenance work and photos</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
             Before and After photos belong to each generated PM work form, not to this recurring master plan.
             The system generates that form when the occurrence enters its {masterPlan.lead_time_days}-day lead window.
           </p>
@@ -178,20 +182,20 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
                   Open work form · #{masterPlan.generated_pm_id}
                 </Link>
               </Button>
-              <span className="text-sm font-medium capitalize text-blue-800 dark:text-blue-200">
+              <span className="text-sm font-medium capitalize text-info">
                 Status: {masterPlan.generated_pm_status || 'pending'}
               </span>
             </div>
           ) : (
-            <p className="mt-4 rounded-lg bg-white/70 px-4 py-3 text-sm font-medium text-blue-900 dark:bg-black/20 dark:text-blue-100">
+            <p className="mt-4 rounded-lg border border-info/20 bg-background/70 px-4 py-3 text-sm font-medium text-foreground">
               No work form has been generated yet. It will become available before the next due date according to the lead time above.
             </p>
           )}
-        </div>
+        </section>
         {confirmingDelete && (
-          <div className="mt-4 rounded-xl border border-red-300 bg-red-50 p-5" role="alertdialog" aria-labelledby="delete-master-plan-title">
-            <h2 id="delete-master-plan-title" className="font-bold text-red-950">Delete this recurring plan?</h2>
-            <p className="mt-2 text-sm text-red-900">Generated PM work records will be preserved, but no new work will be projected from this rule.</p>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-5" role="alertdialog" aria-labelledby="delete-master-plan-title">
+            <h2 id="delete-master-plan-title" className="font-bold text-foreground">Delete this recurring plan?</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Generated PM work records will be preserved, but no new work will be projected from this rule.</p>
             <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button variant="outline" onClick={() => setConfirmingDelete(false)} disabled={deleting}>Cancel</Button>
               <Button variant="destructive" onClick={() => void deleteMasterPlan()} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete plan'}</Button>
@@ -204,24 +208,20 @@ export default function PreventiveMaintenanceDetailLoader({ pmId }: DetailLoader
 
   if (error || !maintenance) {
     return (
-      <div className="mx-auto flex min-h-[50vh] max-w-xl items-center px-4 py-12">
-        <div className="w-full rounded-lg border border-red-200 bg-red-50 p-6 text-center dark:border-red-900 dark:bg-red-950/30">
-          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-600" aria-hidden="true" />
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Unable to load maintenance details
-          </h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{error}</p>
-          <Button asChild className="mt-5">
-            <Link href="/dashboard/preventive-maintenance/">Back to preventive maintenance</Link>
-          </Button>
-        </div>
+      <div className="mx-auto flex min-h-[50vh] w-full max-w-2xl items-center px-4 py-12 sm:px-6">
+        <FeedbackState
+          variant="error"
+          title="Unable to load maintenance details"
+          description={error || "The maintenance record is unavailable."}
+          action={<Button asChild><Link href="/dashboard/preventive-maintenance/">Back to preventive maintenance</Link></Button>}
+        />
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl">
-      <h1 className="mb-4 text-2xl font-bold">Preventive Maintenance Details</h1>
+    <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-primary">Maintenance record</p>
       <PreventiveMaintenanceClient maintenanceData={maintenance} />
     </div>
   );

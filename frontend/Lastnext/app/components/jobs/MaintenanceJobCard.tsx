@@ -34,6 +34,7 @@ import { cn } from "@/app/lib/utils/cn";
 import { getDisplayName } from "@/app/lib/utils/display-name";
 import { createImageUrl } from "@/app/lib/utils/image-utils";
 import { StatusBadge } from "@/app/components/StatusBadge";
+import { PriorityBadge } from "@/app/components/PriorityBadge";
 
 type ViewMode = "grid" | "list";
 
@@ -187,7 +188,7 @@ export default function MaintenanceJobCard({
               alt={`Maintenance job at ${getLocation(job)}`}
               fill
               loading="lazy"
-              sizes="(max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw"
+              sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw"
               className="object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transform-none"
               onError={() => setImageFailed(true)}
               unoptimized={
@@ -243,16 +244,7 @@ export default function MaintenanceJobCard({
 
           <div className="job-card-status mt-3 flex flex-wrap items-center gap-2">
             <StatusBadge status={job.status} size="sm" />
-            <span
-              className={cn(
-                "inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide sm:text-xs",
-                job.priority === "high" && "border-red-200 bg-red-50 text-red-800",
-                job.priority === "medium" && "border-amber-200 bg-amber-50 text-amber-800",
-                job.priority === "low" && "border-emerald-200 bg-emerald-50 text-emerald-800",
-              )}
-            >
-              {job.priority} priority
-            </span>
+            <PriorityBadge priority={job.priority} size="sm" />
           </div>
 
           <dl className="job-card-meta mt-3 grid grid-cols-1 gap-1.5 text-[11px] text-foreground sm:mt-4 sm:gap-2 sm:text-sm">

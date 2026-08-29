@@ -72,7 +72,7 @@ export const navigationGroups: readonly NavigationGroup[] = [
     items: [
       { name: "AI Assistant", href: "/ai-chat", icon: BotMessageSquare },
       { name: "Reports", href: "/dashboard/jobs-report", icon: FileText },
-      { name: "Settings", shortName: "More", href: "/dashboard/profile", icon: Settings },
+      { name: "Settings", shortName: "More", href: "/dashboard/settings/users", icon: Settings },
     ],
   },
 ];

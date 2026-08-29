@@ -11,6 +11,11 @@ from .views import (
     SubscriptionPlanViewSet, TenantSubscriptionViewSet, UsageMetricViewSet,
     LegacyApplicationAuthEnabled,
 )
+from .invitations import (
+    TenantInvitationAcceptView,
+    TenantInvitationPreviewView,
+    TenantInvitationViewSet,
+)
 
 # Set the app name
 app_name = 'myappLubd'
@@ -41,6 +46,7 @@ router.register(r'tenant-memberships', TenantMembershipViewSet, basename='tenant
 router.register(r'subscription-plans', SubscriptionPlanViewSet, basename='subscription-plan')
 router.register(r'tenant-subscriptions', TenantSubscriptionViewSet, basename='tenant-subscription')
 router.register(r'usage-metrics', UsageMetricViewSet, basename='usage-metric')
+router.register(r'tenant-invitations', TenantInvitationViewSet, basename='tenant-invitation')
 
 
 # Define the URL patterns
@@ -57,6 +63,19 @@ urlpatterns = [
         'api/v1/preventive-maintenance/<str:pm_id>/images/<str:image_id>/',
         views.PreventiveMaintenanceImageDeleteView.as_view(),
         name='delete_pm_image',
+    ),
+
+    # Invitation secrets are accepted only in POST bodies. There are no token
+    # query-string or route-segment variants.
+    path(
+        'api/v1/invitations/preview/',
+        TenantInvitationPreviewView.as_view(),
+        name='tenant-invitation-preview',
+    ),
+    path(
+        'api/v1/invitations/accept/',
+        TenantInvitationAcceptView.as_view(),
+        name='tenant-invitation-accept',
     ),
     
     # API routes under 'api/v1/' (router must come after specific paths)

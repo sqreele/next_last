@@ -13,9 +13,17 @@ import {
   Printer,
   StickyNote,
   AlertTriangle,
+  Building2,
+  Hash,
+  Tag,
 } from "lucide-react";
-import { StatusBadge, PriorityBadge } from "@/app/components/pcms-ui";
+import { StatusBadge } from "@/app/components/StatusBadge";
+import { PriorityBadge } from "@/app/components/PriorityBadge";
 import { Badge } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/app/components/ui/card";
+import { PageContainer } from "@/app/components/layout/PageContainer";
+import { PageHeader } from "@/app/components/layout/PageHeader";
 import { Job, JobImage } from "@/app/lib/types";
 import Image from "next/image";
 import { fixImageUrl } from "@/app/lib/utils/image-utils";
@@ -188,203 +196,341 @@ export default async function JobPage({ params, searchParams }: Props) {
       });
     };
 
+    const propertyNames = (job.properties || []).map((propId, index) => {
+      const propKey =
+        typeof propId === "object" && propId
+          ? String(propId.property_id || propId.id || index)
+          : String(propId);
+      const property = properties.find(
+        (candidate) => candidate.property_id === propKey,
+      );
+      return { key: propKey, label: property?.name || `ID: ${propKey}` };
+    });
+    const primaryProperty = job.property_id
+      ? properties.find(
+          (property) =>
+            String(property.property_id) === String(job.property_id),
+        )
+      : undefined;
+    const displayedProperties =
+      propertyNames.length > 0
+        ? propertyNames
+        : primaryProperty
+          ? [
+              {
+                key: String(primaryProperty.property_id),
+                label: primaryProperty.name,
+              },
+            ]
+          : [];
+    const assignee = job.user
+      ? getDisplayName(
+          job.user,
+          job.technician_name || job.user_name || "Unknown Technician",
+        )
+      : null;
+
     return (
       <JobDetailPropertyBoundary jobPropertyId={job.property_id}>
-        <div className="w-full max-w-none space-y-5 px-3 py-4 sm:px-0 sm:py-0 lg:mx-auto lg:max-w-4xl">
-        <div className="pcms-page-header">
-          <div className="min-w-0">
-            <p className="pcms-eyebrow">Maintenance Job</p>
-            <h1 className="flex flex-wrap items-center gap-2">
-              <span>Job #{job.job_id}</span>
-              <PriorityBadge priority={job.priority} />
-            </h1>
-          </div>
-        </div>
+        <PageContainer className="max-w-5xl">
+          <PageHeader
+            eyebrow="Maintenance job"
+            title={`Job #${job.job_id}`}
+            description="Work-order details, activity, photos, and team updates."
+            actions={
+              <>
+                <Button variant="outline" asChild>
+                  <Link href="/dashboard/jobs">
+                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                    Jobs
+                  </Link>
+                </Button>
+                <ReassignJobButton job={job} className="min-h-11 px-4" />
+                <Button variant="outline" asChild>
+                  <a href={`/dashboard/jobs/${job.job_id}/print/`}>
+                    <Printer className="h-4 w-4" aria-hidden="true" />
+                    Print
+                  </a>
+                </Button>
+              </>
+            }
+          />
 
-        <nav
-          className="pcms-section-card p-3 sm:p-4"
-          aria-label="Easy job menu"
-        >
-          <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted-foreground">
-            Easy menu
-          </p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <Link
-              href="/dashboard/jobs"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
-            >
-              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-              Jobs
-            </Link>
-            <ReassignJobButton
-              job={job}
-              className="min-h-12 w-full rounded-xl px-3 text-sm font-bold"
-            />
-            <a
-              href={`/dashboard/jobs/${job.job_id}/print/`}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
-            >
-              <Printer className="h-4 w-4" aria-hidden="true" />
-              Print
-            </a>
-          </div>
-        </nav>
-
-        <div className="pcms-section-card space-y-4 p-5 text-[var(--pcms-text)] sm:p-6">
-          {/* Basic Info */}
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">ID:</span>
-            <span>{job.id || job.job_id}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold">Status:</span>
+          <section
+            className="flex flex-wrap items-center gap-2"
+            aria-label="Job status and priority"
+          >
             <StatusBadge status={job.status} />
-          </div>
-
-          {/* Description */}
-          {job.description && (
-            <div className="flex items-start gap-2">
-              <MessageSquare className="w-4 h-4 text-[var(--pcms-text-muted)] mt-1 flex-shrink-0" />
-              <div>
-                <span className="font-semibold">Description:</span>
-                <p className="mt-1 text-sm leading-relaxed text-[var(--pcms-text-muted)]">
-                  {job.description}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Timestamps */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[var(--pcms-text-muted)]" />
-              <span>
-                <span className="font-semibold">Created:</span>{" "}
-                {formatDate(job.created_at)}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-[var(--pcms-text-muted)]" />
-              <span>
-                <span className="font-semibold">Updated:</span>{" "}
-                {formatDate(job.updated_at)}
-              </span>
-            </div>
-            {job.completed_at && (
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                <span>
-                  <span className="font-semibold">Completed:</span>{" "}
-                  {formatDate(job.completed_at)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* User */}
-          {job.user && (
-            <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-[var(--pcms-text-muted)]" />
-              <span>
-                <span className="font-semibold">Assigned to:</span>{" "}
-                {getDisplayName(
-                  job.user,
-                  job.technician_name || job.user_name || "Unknown Technician",
-                )}
-              </span>
-            </div>
-          )}
-
-          {/* Rooms */}
-          {job.rooms && job.rooms.length > 0 && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[var(--pcms-text-muted)]" />
-                <span className="font-semibold">Rooms:</span>
-              </div>
-              <ul className="ml-6 list-disc text-sm">
-                {job.rooms.map((room) => (
-                  <li key={room.room_id}>
-                    {(() => {
-                      const roomParts = [];
-
-                      // Add room ID if available
-                      if (room.room_id) {
-                        roomParts.push(`Room ID: #${room.room_id}`);
-                      }
-
-                      // Add room type if available
-                      if (room.room_type) {
-                        roomParts.push(`Type: ${room.room_type}`);
-                      }
-
-                      // Add room name
-                      const roomName = room.name || "Unknown Room";
-                      roomParts.push(roomName);
-
-                      return roomParts.join(" | ");
-                    })()}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Area */}
-          {(job.area || job.area_name) && (
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-[var(--pcms-text-muted)]" />
-              <span className="font-semibold">Area:</span>
-              <Badge variant="outline" className="text-sm">
-                {job.area?.name || job.area_name}
+            <PriorityBadge priority={job.priority} />
+            {job.is_defective ? (
+              <Badge
+                variant="destructive"
+                className="min-h-8 gap-1.5 px-2.5 py-1 text-sm"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                Defective
               </Badge>
-            </div>
+            ) : null}
+          </section>
+
+          {(displayedProperties.length > 0 ||
+            (job.rooms && job.rooms.length > 0) ||
+            job.area ||
+            job.area_name) && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-base font-semibold leading-6 text-card-foreground">
+                  Location
+                </h2>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+                  {displayedProperties.length > 0 && (
+                    <div className="min-w-0">
+                      <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <Building2
+                          className="h-4 w-4 flex-none"
+                          aria-hidden="true"
+                        />
+                        Property
+                      </dt>
+                      <dd>
+                        <ul className="mt-1.5 space-y-1 text-sm font-medium text-foreground">
+                          {displayedProperties.map((property) => (
+                            <li
+                              key={property.key}
+                              className="break-words [overflow-wrap:anywhere]"
+                            >
+                              {property.label}
+                            </li>
+                          ))}
+                        </ul>
+                      </dd>
+                    </div>
+                  )}
+
+                  {job.rooms && job.rooms.length > 0 && (
+                    <div className="min-w-0">
+                      <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <MapPin
+                          className="h-4 w-4 flex-none"
+                          aria-hidden="true"
+                        />
+                        Rooms
+                      </dt>
+                      <dd>
+                        <ul className="mt-1.5 space-y-1 text-sm font-medium text-foreground">
+                          {job.rooms.map((room) => {
+                            const roomParts = [];
+                            if (room.room_id) {
+                              roomParts.push(`Room ID: #${room.room_id}`);
+                            }
+                            if (room.room_type) {
+                              roomParts.push(`Type: ${room.room_type}`);
+                            }
+                            roomParts.push(room.name || "Unknown Room");
+                            return (
+                              <li
+                                key={room.room_id}
+                                className="break-words [overflow-wrap:anywhere]"
+                              >
+                                {roomParts.join(" · ")}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </dd>
+                    </div>
+                  )}
+
+                  {(job.area || job.area_name) && (
+                    <div className="min-w-0">
+                      <dt className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <MapPin
+                          className="h-4 w-4 flex-none"
+                          aria-hidden="true"
+                        />
+                        Area
+                      </dt>
+                      <dd className="mt-1.5 break-words text-sm font-medium text-foreground [overflow-wrap:anywhere]">
+                        {job.area?.name || job.area_name}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Properties */}
-          {job.properties && job.properties.length > 0 && (
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-[var(--pcms-text-muted)]" />
-                <span className="font-semibold">Properties:</span>
+          <Card>
+            <CardHeader>
+              <div className="flex items-start gap-3">
+                <span className="grid h-10 w-10 flex-none place-items-center rounded-lg bg-primary/10 text-primary">
+                  <Tag className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="break-words text-base font-semibold leading-6 text-card-foreground [overflow-wrap:anywhere]">
+                    {job.topics?.[0]?.title ||
+                      job.title ||
+                      "Maintenance request"}
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Job overview
+                  </p>
+                </div>
               </div>
-              <ul className="ml-6 list-disc text-sm">
-                {job.properties.map((propId, index) => {
-                  const propKey =
-                    typeof propId === "object" && propId
-                      ? String(propId.property_id || propId.id || index)
-                      : String(propId);
-                  const prop = properties.find(
-                    (p) => p.property_id === propKey,
-                  );
-                  return (
-                    <li key={propKey}>{prop?.name || `ID: ${propKey}`}</li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-
-          {/* Remarks */}
-          {job.remarks && (
-            <div className="flex items-start gap-2">
-              <StickyNote className="w-4 h-4 text-[var(--pcms-text-muted)] mt-1 flex-shrink-0" />
-              <div>
-                <span className="font-semibold">Remarks:</span>
-                <p className="mt-1 text-sm leading-relaxed text-[var(--pcms-text-muted)]">
-                  {job.remarks}
+            </CardHeader>
+            <CardContent className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Hash className="h-4 w-4 flex-none" aria-hidden="true" />
+                  Record ID
+                </p>
+                <p className="mt-1.5 break-words text-sm font-medium text-foreground [overflow-wrap:anywhere]">
+                  {job.id || job.job_id}
                 </p>
               </div>
-            </div>
-          )}
 
-          {/* Defective */}
-          {job.is_defective && (
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-500" />
-              <span className="font-semibold text-red-600">Defective</span>
-            </div>
-          )}
+              {/* Description */}
+              {job.description && (
+                <section
+                  className="min-w-0 md:col-span-2"
+                  aria-labelledby="job-description-heading"
+                >
+                  <div className="flex items-center gap-2">
+                    <MessageSquare
+                      className="h-4 w-4 flex-none text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <h3
+                      id="job-description-heading"
+                      className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      Description
+                    </h3>
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground [overflow-wrap:anywhere] md:text-base md:leading-7">
+                    {job.description}
+                  </p>
+                </section>
+              )}
+
+              {/* Timestamps */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Timestamps
+                </p>
+                <div className="flex min-w-0 items-start gap-2 text-sm">
+                  <Calendar
+                    className="mt-0.5 h-4 w-4 flex-none text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <span className="break-words [overflow-wrap:anywhere]">
+                    <span className="font-semibold">Created:</span>{" "}
+                    <time dateTime={job.created_at}>
+                      {formatDate(job.created_at)}
+                    </time>
+                  </span>
+                </div>
+                <div className="flex min-w-0 items-start gap-2 text-sm">
+                  <Clock
+                    className="mt-0.5 h-4 w-4 flex-none text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <span className="break-words [overflow-wrap:anywhere]">
+                    <span className="font-semibold">Updated:</span>{" "}
+                    <time dateTime={job.updated_at}>
+                      {formatDate(job.updated_at)}
+                    </time>
+                  </span>
+                </div>
+                {job.completed_at && (
+                  <div className="flex min-w-0 items-start gap-2 text-sm">
+                    <CheckCircle2
+                      className="mt-0.5 h-4 w-4 flex-none text-success"
+                      aria-hidden="true"
+                    />
+                    <span className="break-words [overflow-wrap:anywhere]">
+                      <span className="font-semibold">Completed:</span>{" "}
+                      <time dateTime={job.completed_at}>
+                        {formatDate(job.completed_at)}
+                      </time>
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* User */}
+              {assignee && (
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <User className="h-4 w-4 flex-none" aria-hidden="true" />
+                    Assigned to
+                  </p>
+                  <p className="mt-1.5 break-words text-sm font-medium text-foreground [overflow-wrap:anywhere]">
+                    {assignee}
+                  </p>
+                </div>
+              )}
+
+              {/* Remarks */}
+              {job.remarks && (
+                <div className="min-w-0 md:col-span-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <StickyNote
+                      className="h-4 w-4 flex-none"
+                      aria-hidden="true"
+                    />
+                    Remarks
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground [overflow-wrap:anywhere]">
+                    {job.remarks}
+                  </p>
+                </div>
+              )}
+
+              {job.created_by_name && (
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Reported by
+                  </p>
+                  <p className="mt-1.5 break-words text-sm font-medium text-foreground [overflow-wrap:anywhere]">
+                    {job.created_by_name}
+                  </p>
+                </div>
+              )}
+
+              {job.updated_by_name && (
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Updated by
+                  </p>
+                  <p className="mt-1.5 break-words text-sm font-medium text-foreground [overflow-wrap:anywhere]">
+                    {job.updated_by_name}
+                  </p>
+                </div>
+              )}
+
+              {job.topics && job.topics.length > 0 && (
+                <div className="min-w-0 md:col-span-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Topics
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {job.topics.map((topic) => (
+                      <Badge
+                        key={topic.id || topic.title}
+                        variant="outline"
+                        className="max-w-full break-words text-sm [overflow-wrap:anywhere]"
+                      >
+                        {topic.title}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Before / After comparison — shown above the flat gallery */}
           <BeforeAfterCompare
@@ -396,92 +542,86 @@ export default async function JobPage({ params, searchParams }: Props) {
 
           {/* Images */}
           {propertyFilteredImageUrls.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="text-lg font-black text-[var(--pcms-text)]">
-                All images
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {propertyFilteredImageUrls.map((url, index) => {
-                  // Use the fixImageUrl utility to properly handle different URL formats
-                  const imageUrl = fixImageUrl(url);
+            <Card>
+              <CardHeader>
+                <h2 className="text-base font-semibold leading-6 text-card-foreground">
+                  All photos
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {propertyFilteredImageUrls.length} photo
+                  {propertyFilteredImageUrls.length === 1 ? "" : "s"} attached
+                  to this job.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {propertyFilteredImageUrls.map((url, index) => {
+                    // Use the fixImageUrl utility to properly handle different URL formats
+                    const imageUrl = fixImageUrl(url);
 
-                  // Debug logging for image URLs
+                    // Debug logging for image URLs
 
-                  // Use original URL if fixImageUrl returns null
-                  const finalImageUrl = imageUrl || url;
+                    // Use original URL if fixImageUrl returns null
+                    const finalImageUrl = imageUrl || url;
 
-                  if (!finalImageUrl) {
+                    if (!finalImageUrl) {
+                      return (
+                        <div
+                          key={index}
+                          className="relative grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-xl border border-dashed border-border bg-muted"
+                        >
+                          <span className="text-sm text-muted-foreground">
+                            No Image
+                          </span>
+                        </div>
+                      );
+                    }
+
                     return (
-                      <div
+                      <figure
                         key={index}
-                        className="relative flex h-56 w-full items-center justify-center overflow-hidden rounded-[1.5rem] bg-[var(--pcms-surface-soft)] shadow-[var(--pcms-shadow-soft)]"
+                        className="min-w-0 overflow-hidden rounded-xl border border-border bg-muted"
                       >
-                        <span className="text-[var(--pcms-text-muted)]">
-                          No Image
-                        </span>
-                      </div>
+                        <div className="relative aspect-[4/3] w-full">
+                          <Image
+                            src={finalImageUrl}
+                            alt={`Job image ${index + 1}`}
+                            fill
+                            loading="lazy"
+                            className="object-cover"
+                            quality={85}
+                            sizes="(max-width: 639px) 100vw, (max-width: 1199px) 50vw, 480px"
+                            unoptimized={
+                              finalImageUrl.startsWith("http") ||
+                              finalImageUrl.includes("/media/") ||
+                              finalImageUrl.includes("/api/protected-media/")
+                            }
+                            placeholder="blur"
+                            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
+                          />
+                        </div>
+                        <figcaption className="px-3 py-2 text-xs text-muted-foreground">
+                          Photo {index + 1} of{" "}
+                          {propertyFilteredImageUrls.length}
+                        </figcaption>
+                      </figure>
                     );
-                  }
-
-                  return (
-                    <div
-                      key={index}
-                      className="relative h-56 w-full overflow-hidden rounded-[1.5rem] shadow-[var(--pcms-shadow-soft)]"
-                    >
-                      <Image
-                        src={finalImageUrl}
-                        alt={`Job image ${index + 1}`}
-                        fill
-                        loading="lazy"
-                        className="object-cover"
-                        quality={85}
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        unoptimized={
-                          finalImageUrl.startsWith("http") ||
-                          finalImageUrl.includes("/media/") ||
-                          finalImageUrl.includes("/api/protected-media/")
-                        }
-                        placeholder="blur"
-                        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+                  })}
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Topics */}
-          {job.topics && job.topics.length > 0 && (
-            <div className="space-y-1">
-              <h2 className="text-lg font-black text-[var(--pcms-text)]">
-                Topics
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {job.topics.map((topic) => (
-                  <Badge
-                    key={topic.id || topic.title}
-                    variant="outline"
-                    className="text-sm"
-                  >
-                    {topic.title}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+          {/* Audit log — derived event timeline */}
+          <JobAuditTimeline jobId={job.job_id} />
 
-        {/* Audit log — derived event timeline */}
-        <JobAuditTimeline jobId={job.job_id} />
-
-        {/* Comments */}
-        <JobCommentsSection
-          jobId={job.job_id}
-          propertyId={job.property_id ? String(job.property_id) : ""}
-          canComment={job.can_operate === true}
-        />
-        </div>
+          {/* Comments */}
+          <JobCommentsSection
+            jobId={job.job_id}
+            propertyId={job.property_id ? String(job.property_id) : ""}
+            canComment={job.can_operate === true}
+          />
+        </PageContainer>
       </JobDetailPropertyBoundary>
     );
   } catch (error) {

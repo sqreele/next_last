@@ -234,7 +234,7 @@ const JobCommentsSection: React.FC<Props> = ({
 
   return (
     <section
-      className="pcms-section-card space-y-5 p-4 sm:p-6"
+      className="space-y-5 rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5"
       aria-labelledby="job-comments-heading"
     >
       <div className="flex items-start gap-3">
@@ -244,7 +244,7 @@ const JobCommentsSection: React.FC<Props> = ({
         <div className="min-w-0">
           <h2
             id="job-comments-heading"
-            className="flex flex-wrap items-center gap-2 text-lg font-black text-[var(--pcms-text)]"
+            className="flex flex-wrap items-center gap-2 text-lg font-semibold text-foreground"
           >
             Comments
             {viewState === "ready" ? (
@@ -290,14 +290,14 @@ const JobCommentsSection: React.FC<Props> = ({
           </p>
         </div>
       ) : (
-        <ol className="max-w-3xl space-y-3" aria-label="Comments on this job">
+        <ol className="space-y-3" aria-label="Comments on this job">
           {comments.map((c) => (
             <li
               key={c.id}
               className="rounded-xl border border-border bg-card p-4"
             >
               <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                <span className="text-sm font-semibold text-foreground">
+                <span className="max-w-full break-words text-sm font-semibold text-foreground [overflow-wrap:anywhere]">
                   {c.author_name || c.author_username || "Unknown"}
                 </span>
                 {c.id < 0 ? (
@@ -306,7 +306,7 @@ const JobCommentsSection: React.FC<Props> = ({
                   </span>
                 ) : (
                   <time
-                    className="text-xs text-muted-foreground"
+                    className="break-words text-xs text-muted-foreground [overflow-wrap:anywhere]"
                     dateTime={c.created_at}
                   >
                     {formatTimestamp(c.created_at)}

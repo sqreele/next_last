@@ -216,21 +216,23 @@ export default function PreventiveMaintenanceDashboard() {
 
   if (!selectedProperty) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold text-foreground">Select a property</h1>
-        <p className="mt-2 text-muted-foreground">
+      <div className="mx-auto flex min-h-[55vh] w-full max-w-2xl items-center px-4 py-12">
+        <div className="w-full rounded-xl border border-border bg-card p-8 text-center shadow-soft">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Select a property</h1>
+        <p className="mt-2 leading-6 text-muted-foreground">
           Choose an active property from the dashboard header to view preventive maintenance analytics.
         </p>
+        </div>
       </div>
     );
   }
 
   if (statisticsLoading && !statistics) {
     return (
-      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
-        <div className="text-center py-10">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-border border-t-blue-600"></div>
-          <p className="mt-2 text-muted-foreground">Loading dashboard...</p>
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="rounded-xl border border-border bg-card py-12 text-center shadow-soft" aria-busy="true">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary"></div>
+          <p className="mt-3 text-sm font-medium text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -238,13 +240,13 @@ export default function PreventiveMaintenanceDashboard() {
 
   if (error) {
     return (
-      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-4 text-sm font-medium text-destructive" role="alert">
           {error}
         </div>
         <Link
           href="/dashboard/preventive-maintenance/"
-          className="bg-muted py-2 px-4 rounded-md text-muted-foreground hover:bg-gray-200"
+          className="mt-4 inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-soft hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           View All Maintenance Tasks
         </Link>
@@ -256,9 +258,9 @@ export default function PreventiveMaintenanceDashboard() {
   // an actual zero-data response still has a counts object full of zeroes.
   if (!statistics || !statistics.counts) {
     return (
-      <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
-        <div className="text-center py-10">
-          <p className="text-lg text-muted-foreground">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="rounded-xl border border-border bg-card py-12 text-center shadow-soft" aria-busy="true">
+          <p className="text-base font-medium text-muted-foreground">
             Loading maintenance summary...
           </p>
         </div>
@@ -273,38 +275,42 @@ export default function PreventiveMaintenanceDashboard() {
   );
 
   return (
-    <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
-      <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-foreground">
-          Preventive Maintenance Dashboard
-        </h1>
+    <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-5 sm:px-6 lg:px-8">
+      <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">Maintenance analytics</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+            Preventive Maintenance Dashboard
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">Property-scoped maintenance performance and upcoming work.</p>
+        </div>
         <div className="grid grid-cols-2 gap-2 sm:flex sm:space-x-3">
           <Link
             href="/dashboard/preventive-maintenance"
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-muted px-3 py-2 text-center text-sm font-semibold text-muted-foreground hover:bg-gray-200 sm:px-4"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-center text-sm font-semibold text-foreground shadow-soft hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
           >
             View All Tasks
           </Link>
           {canOperate && (
             <Link
               href="/dashboard/preventive-maintenance/create"
-              className="inline-flex min-h-11 items-center justify-center rounded-md bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-blue-700 sm:px-4"
+              className="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary bg-primary px-3 py-2 text-center text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-4"
             >
               Create New
             </Link>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Main Stats Cards */}
-      <div className="mb-6 grid grid-cols-2 gap-3 md:mb-8 md:gap-6 lg:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4" aria-label="Preventive maintenance KPIs">
         {/* Total */}
-        <div className="order-3 rounded-lg bg-card p-4 shadow sm:p-6">
+        <div className="order-3 min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5">
           <div className="flex items-center">
-            <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-info/10 text-info sm:h-12 sm:w-12">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8"
+                className="h-6 w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -317,11 +323,11 @@ export default function PreventiveMaintenanceDashboard() {
                 />
               </svg>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-muted-foreground">
+            <div className="ml-3 min-w-0">
+              <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Total Tasks
               </p>
-              <p className="text-2xl font-bold text-foreground sm:text-3xl">
+              <p className="text-2xl font-bold tabular-nums text-info sm:text-3xl">
                 {statistics.counts.total}
               </p>
             </div>
@@ -329,12 +335,12 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
 
         {/* Upcoming open work */}
-        <div className="order-2 rounded-lg bg-card p-4 shadow sm:p-6">
+        <div className="order-2 min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5">
           <div className="flex items-center">
-            <div className="p-3 rounded-full bg-yellow-100 text-yellow-600">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-warning/10 text-warning-foreground sm:h-12 sm:w-12">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8"
+                className="h-6 w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -347,11 +353,11 @@ export default function PreventiveMaintenanceDashboard() {
                 />
               </svg>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-muted-foreground">
+            <div className="ml-3 min-w-0">
+              <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Upcoming
               </p>
-              <p className="text-2xl font-bold text-foreground sm:text-3xl">
+              <p className="text-2xl font-bold tabular-nums text-warning-foreground sm:text-3xl">
                 {statistics.counts.pending}
               </p>
             </div>
@@ -359,12 +365,12 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
 
         {/* Overdue */}
-        <div className="order-1 rounded-lg bg-card p-4 shadow sm:p-6">
+        <div className="order-1 min-w-0 rounded-xl border border-destructive/30 bg-destructive/[0.03] p-4 shadow-soft sm:p-5">
           <div className="flex items-center">
-            <div className="p-3 rounded-full bg-red-100 text-red-600">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-destructive/10 text-destructive sm:h-12 sm:w-12">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8"
+                className="h-6 w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -377,11 +383,11 @@ export default function PreventiveMaintenanceDashboard() {
                 />
               </svg>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-muted-foreground">
+            <div className="ml-3 min-w-0">
+              <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Overdue
               </p>
-              <p className="text-2xl font-bold text-red-600 sm:text-3xl">
+              <p className="text-2xl font-bold tabular-nums text-destructive sm:text-3xl">
                 {statistics.counts.overdue}
               </p>
             </div>
@@ -389,12 +395,12 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
 
         {/* Completed */}
-        <div className="order-4 rounded-lg bg-card p-4 shadow sm:p-6">
+        <div className="order-4 min-w-0 rounded-xl border border-success/30 bg-success/[0.03] p-4 shadow-soft sm:p-5">
           <div className="flex items-center">
-            <div className="p-3 rounded-full bg-green-100 text-green-600">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-success/10 text-success sm:h-12 sm:w-12">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8"
+                className="h-6 w-6"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -407,44 +413,44 @@ export default function PreventiveMaintenanceDashboard() {
                 />
               </svg>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-muted-foreground">
+            <div className="ml-3 min-w-0">
+              <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Completed
               </p>
-              <p className="text-2xl font-bold text-green-600 sm:text-3xl">
+              <p className="text-2xl font-bold tabular-nums text-success sm:text-3xl">
                 {statistics.counts.completed}
               </p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Completion Progress */}
-      <div className="bg-card rounded-lg shadow p-6 mb-8">
-        <h2 className="text-lg font-semibold text-muted-foreground mb-4">
+      <section className="rounded-xl border border-border bg-card p-5 shadow-soft sm:p-6" aria-labelledby="completion-rate-title">
+        <h2 id="completion-rate-title" className="mb-4 text-lg font-semibold text-foreground">
           Completion Rate
         </h2>
-        <div className="flex items-center mb-2">
-          <div className="w-full bg-gray-200 rounded-full h-4">
+        <div className="mb-2 flex items-center gap-4">
+          <div className="h-3 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Completion rate" aria-valuenow={getCompletionRate()} aria-valuemin={0} aria-valuemax={100}>
             <div
-              className="bg-green-600 h-4 rounded-full"
+              className="h-3 rounded-full bg-success"
               style={{ width: `${getCompletionRate()}%` }}
             ></div>
           </div>
-          <span className="ml-4 text-xl font-bold">{getCompletionRate()}%</span>
+          <span className="shrink-0 text-xl font-bold tabular-nums text-success">{getCompletionRate()}%</span>
         </div>
         <p className="text-sm text-muted-foreground">
           {statistics.counts.completed} of {completionEligibleTotal} non-cancelled
           maintenance tasks completed
         </p>
-      </div>
+      </section>
 
       {/* Frequency Distribution - Fixed to use frequency and count properties */}
       {statistics.frequency_distribution &&
         Array.isArray(statistics.frequency_distribution) &&
         statistics.frequency_distribution.length > 0 && (
-          <div className="bg-card rounded-lg shadow p-6 mb-8">
-            <h2 className="text-lg font-semibold text-muted-foreground mb-4">
+          <section className="rounded-xl border border-border bg-card p-5 shadow-soft sm:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
               Maintenance Frequency Distribution
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -456,7 +462,7 @@ export default function PreventiveMaintenanceDashboard() {
                 .map((item: FrequencyDistributionItem, index: number) => (
                   <div
                     key={`${item.frequency || "unknown"}-${index}`}
-                    className="bg-muted rounded-lg p-4 text-center"
+                    className="rounded-lg border border-border bg-muted/40 p-4 text-center"
                   >
                     <p className="text-xl font-bold text-foreground">
                       {item.count || 0}
@@ -467,25 +473,25 @@ export default function PreventiveMaintenanceDashboard() {
                   </div>
                 ))}
             </div>
-          </div>
+          </section>
         )}
       {(!statistics.frequency_distribution ||
         statistics.frequency_distribution.length === 0) && (
-        <div className="mb-8 rounded-lg bg-card p-6 shadow">
-          <h2 className="mb-2 text-lg font-semibold text-muted-foreground">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-soft sm:p-6">
+          <h2 className="mb-2 text-lg font-semibold text-foreground">
             Maintenance Frequency Distribution
           </h2>
           <p className="text-sm text-muted-foreground">
             No frequency data is available for this property yet.
           </p>
-        </div>
+        </section>
       )}
 
       {/* Average Completion Times - Using avg_completion_times data */}
       {statistics.avg_completion_times &&
         Object.keys(statistics.avg_completion_times).length > 0 && (
-          <div className="bg-card rounded-lg shadow p-6 mb-8">
-            <h2 className="text-lg font-semibold text-muted-foreground mb-4">
+          <section className="rounded-xl border border-border bg-card p-5 shadow-soft sm:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
               Average Completion Times
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -493,7 +499,7 @@ export default function PreventiveMaintenanceDashboard() {
                 ([frequency, avgDays]) => (
                   <div
                     key={frequency}
-                    className="bg-muted rounded-lg p-4 text-center"
+                    className="rounded-lg border border-border bg-muted/40 p-4 text-center"
                   >
                     <p className="text-xl font-bold text-foreground">
                       {typeof avgDays === "number" ? Math.round(avgDays) : 0}{" "}
@@ -517,37 +523,38 @@ export default function PreventiveMaintenanceDashboard() {
               * Negative values indicate tasks completed early, positive values
               indicate delays
             </p>
-          </div>
+          </section>
         )}
       {(!statistics.avg_completion_times ||
         Object.keys(statistics.avg_completion_times).length === 0) && (
-        <div className="mb-8 rounded-lg bg-card p-6 shadow">
-          <h2 className="mb-2 text-lg font-semibold text-muted-foreground">
+        <section className="rounded-xl border border-border bg-card p-5 shadow-soft sm:p-6">
+          <h2 className="mb-2 text-lg font-semibold text-foreground">
             Average Completion Times
           </h2>
           <p className="text-sm text-muted-foreground">
             Completion timing will appear after tasks have been completed.
           </p>
-        </div>
+        </section>
       )}
 
       {/* Enhanced Upcoming Maintenance Section */}
-      <div className="bg-card rounded-lg shadow mb-8">
-        <div className="border-b px-4 py-4 sm:px-6">
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft" aria-labelledby="upcoming-maintenance-title">
+        <div className="border-b border-border bg-muted/30 px-4 py-4 sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold text-muted-foreground">
+            <h2 id="upcoming-maintenance-title" className="text-lg font-semibold text-foreground">
               Upcoming Maintenance
             </h2>
             <div className="flex flex-wrap items-center gap-3 sm:space-x-4">
               <span className="text-sm text-muted-foreground">
                 Total: {visibleUpcomingTotal} tasks
               </span>
-              <div className="flex items-center space-x-2">
-                <label className="text-sm text-muted-foreground">Show:</label>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="text-sm font-medium text-muted-foreground">Show:</label>
                 <select
                   value={upcomingPageSize}
                   onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="text-sm border border-border rounded px-2 py-1"
+                  className="h-11 rounded-lg border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                  aria-label="Upcoming tasks per page"
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
@@ -561,35 +568,35 @@ export default function PreventiveMaintenanceDashboard() {
         </div>
 
         {upcomingLoading ? (
-          <div className="p-8 text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-muted-foreground">
+          <div className="p-10 text-center" aria-busy="true">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary"></div>
+            <p className="mt-3 text-sm font-medium text-muted-foreground">
               Loading upcoming maintenance...
             </p>
           </div>
         ) : upcomingError ? (
           <div className="p-8 text-center" role="alert">
-            <p className="font-medium text-red-700">{upcomingError}</p>
+            <p className="font-medium text-destructive">{upcomingError}</p>
             <button
               type="button"
               onClick={() => void fetchUpcomingMaintenance(upcomingPage, upcomingPageSize)}
-              className="mt-4 inline-flex min-h-11 items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Try again
             </button>
           </div>
         ) : visibleUpcomingItems.length > 0 ? (
           <>
-            <div className="divide-y divide-border md:hidden">
+            <div className="divide-y divide-border xl:hidden">
               {visibleUpcomingItems.map((item: PreventiveMaintenance) => {
                 const status = item.status || determinePMStatus(item);
                 const title = getMaintenanceTitle(item);
 
                 return (
-                  <article key={item.pm_id} className="space-y-3 p-4">
+                  <article key={item.pm_id} className="space-y-3 p-4 transition-colors hover:bg-muted/50 sm:p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate font-semibold text-foreground">{title}</p>
+                        <p className="break-words font-semibold text-foreground">{title}</p>
                         <p className="text-sm text-muted-foreground">Task #{item.pm_id}</p>
                       </div>
                       <StatusBadge status={status} />
@@ -607,14 +614,14 @@ export default function PreventiveMaintenanceDashboard() {
                     <div className="grid grid-cols-2 gap-2">
                       <Link
                         href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                        className="inline-flex min-h-11 items-center justify-center rounded-md border border-border px-3 py-2 text-sm font-semibold text-blue-700"
+                        className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-primary shadow-soft hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                       >
                         View
                       </Link>
                       {canOperate && status !== "completed" && (
                         <Link
                           href={`/dashboard/preventive-maintenance/edit/${item.pm_id}?complete=true`}
-                          className="inline-flex min-h-11 items-center justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white"
+                          className="inline-flex min-h-11 items-center justify-center rounded-lg border border-success bg-success px-3 py-2 text-sm font-semibold text-success-foreground shadow-soft hover:border-[hsl(var(--success-hover))] hover:bg-[hsl(var(--success-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                         >
                           Complete
                         </Link>
@@ -624,9 +631,9 @@ export default function PreventiveMaintenanceDashboard() {
                 );
               })}
             </div>
-            <div className="hidden overflow-x-auto md:block">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-muted">
+            <div className="hidden overflow-x-auto xl:block">
+              <table className="min-w-full divide-y divide-border">
+                <thead className="bg-muted/50">
                   <tr>
                     <th
                       scope="col"
@@ -672,7 +679,7 @@ export default function PreventiveMaintenanceDashboard() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-card divide-y divide-gray-200">
+                <tbody className="divide-y divide-border bg-card">
                   {visibleUpcomingItems
                     .filter(
                       (item: PreventiveMaintenance) =>
@@ -690,9 +697,9 @@ export default function PreventiveMaintenanceDashboard() {
                       const afterImageUrl = fixImageUrl(item.after_image_url);
 
                       return (
-                        <tr key={item.pm_id} className="hover:bg-muted">
+                        <tr key={item.pm_id} className="hover:bg-muted/60">
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="font-medium text-blue-600">
+                            <span className="font-medium text-primary">
                               {item.pm_id}
                             </span>
                           </td>
@@ -749,14 +756,14 @@ export default function PreventiveMaintenanceDashboard() {
                             <div className="flex space-x-2">
                               <Link
                                 href={`/dashboard/preventive-maintenance/${item.pm_id}`}
-                                className="text-blue-600 hover:text-blue-900"
+                                className="rounded text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               >
                                 View
                               </Link>
                               {canOperate && status !== "completed" && (
                                 <Link
                                   href={`/dashboard/preventive-maintenance/edit/${item.pm_id}?complete=true`}
-                                  className="text-green-600 hover:text-green-900"
+                                  className="rounded text-success hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                                 >
                                   Complete
                                 </Link>
@@ -772,7 +779,7 @@ export default function PreventiveMaintenanceDashboard() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t bg-muted">
+              <div className="border-t border-border bg-muted/30 px-4 py-4 sm:px-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center justify-between gap-2 sm:justify-start">
                     <span className="text-sm text-muted-foreground">
@@ -785,7 +792,7 @@ export default function PreventiveMaintenanceDashboard() {
                     <button
                       onClick={() => handlePageChange(upcomingPage - 1)}
                       disabled={upcomingPage <= 1}
-                      className="min-h-11 px-3 py-2 text-sm border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="min-h-11 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Previous
                     </button>
@@ -808,10 +815,10 @@ export default function PreventiveMaintenanceDashboard() {
                               onClick={() => handlePageChange(pageNum)}
                               aria-label={`Go to page ${pageNum}`}
                               aria-current={pageNum === upcomingPage ? "page" : undefined}
-                              className={`min-h-11 min-w-11 px-3 py-2 text-sm border rounded ${
+                              className={`min-h-11 min-w-11 rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                                 pageNum === upcomingPage
-                                  ? "bg-blue-600 text-white border-blue-600"
-                                  : "border-border hover:bg-muted"
+                                  ? "border-primary bg-primary text-primary-foreground shadow-soft"
+                                  : "border-border bg-background hover:bg-primary/10 hover:text-primary"
                               }`}
                             >
                               {pageNum}
@@ -824,7 +831,7 @@ export default function PreventiveMaintenanceDashboard() {
                     <button
                       onClick={() => handlePageChange(upcomingPage + 1)}
                       disabled={upcomingPage >= totalPages}
-                      className="min-h-11 px-3 py-2 text-sm border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="min-h-11 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Next
                     </button>
@@ -834,7 +841,7 @@ export default function PreventiveMaintenanceDashboard() {
             )}
           </>
         ) : (
-          <div className="p-6 text-center">
+          <div className="p-8 text-center">
             <div className="text-muted-foreground mb-2">
               <svg
                 className="mx-auto h-12 w-12"
@@ -863,57 +870,67 @@ export default function PreventiveMaintenanceDashboard() {
               {canOperate && (
                 <Link
                   href="/dashboard/preventive-maintenance/create"
-                  className="inline-block bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700"
+                  className="inline-flex min-h-11 items-center justify-center rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   Create New Task
                 </Link>
               )}
               <Link
                 href="/dashboard/preventive-maintenance"
-                className="inline-block bg-muted text-muted-foreground px-4 py-2 rounded text-sm hover:bg-gray-200"
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground shadow-soft hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 View All Tasks
               </Link>
             </div>
           </div>
         )}
-      </div>
+      </section>
 
       {/* Quick Access */}
-      <div className="bg-card rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-muted-foreground mb-4">
+      <section
+        aria-labelledby="quick-actions-heading"
+        className="rounded-xl border border-border bg-card p-4 shadow-soft sm:p-6"
+      >
+        <h2
+          id="quick-actions-heading"
+          className="mb-4 text-lg font-semibold text-foreground"
+        >
           Quick Actions
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {canOperate && <Link
-            href="/dashboard/preventive-maintenance/create"
-            className="flex items-center p-4 border rounded-lg hover:bg-blue-50 hover:border-blue-300"
-          >
-            <div className="p-2 rounded-full bg-blue-100 text-blue-600 mr-3">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-            </div>
-            <span>Create New Task</span>
-          </Link>}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {canOperate && (
+            <Link
+              href="/dashboard/preventive-maintenance/create"
+              className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <div className="mr-3 rounded-full bg-primary/10 p-2 text-primary">
+                <svg
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+              </div>
+              <span>Create New Task</span>
+            </Link>
+          )}
 
           <Link
             href="/dashboard/preventive-maintenance?status=overdue"
-            className="flex items-center p-4 border rounded-lg hover:bg-red-50 hover:border-red-300"
+            className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <div className="p-2 rounded-full bg-red-100 text-red-600 mr-3">
+            <div className="mr-3 rounded-full bg-destructive/10 p-2 text-destructive">
               <svg
+                aria-hidden="true"
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-6 w-6"
                 fill="none"
@@ -933,10 +950,11 @@ export default function PreventiveMaintenanceDashboard() {
 
           <Link
             href="/dashboard/preventive-maintenance?status=pending"
-            className="flex items-center p-4 border rounded-lg hover:bg-yellow-50 hover:border-yellow-300"
+            className="flex min-h-16 items-center rounded-lg border border-border bg-background p-4 font-medium text-foreground transition-colors hover:border-warning/40 hover:bg-warning/10 hover:text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <div className="p-2 rounded-full bg-yellow-100 text-yellow-600 mr-3">
+            <div className="mr-3 rounded-full bg-warning/10 p-2 text-warning">
               <svg
+                aria-hidden="true"
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-6 w-6"
                 fill="none"
@@ -954,7 +972,7 @@ export default function PreventiveMaintenanceDashboard() {
             <span>View Upcoming Tasks</span>
           </Link>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

@@ -946,16 +946,16 @@ export default function PreventiveMaintenanceClient({
   return (
     <>
       <nav
-        className="pcms-section-card mb-4 p-3 sm:p-4"
+        className="mb-5 rounded-xl border border-border bg-card p-3 shadow-soft sm:p-4"
         aria-label="Easy preventive maintenance menu"
       >
-        <p className="mb-2 text-xs font-black uppercase tracking-wide text-muted-foreground">
-          Easy menu
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Record actions
         </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Link
             href="/dashboard/preventive-maintenance"
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ArrowUpRight
               className="h-4 w-4 rotate-180"
@@ -967,7 +967,7 @@ export default function PreventiveMaintenanceClient({
           {canOperate && (
             <Link
               href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Settings className="h-4 w-4" aria-hidden="true" />
               Edit
@@ -978,7 +978,7 @@ export default function PreventiveMaintenanceClient({
             type="button"
             onClick={handleExportPdf}
             disabled={isExportingPdf}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-bold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
             {isExportingPdf ? "Generating..." : "PDF"}
@@ -989,7 +989,7 @@ export default function PreventiveMaintenanceClient({
               type="button"
               onClick={handleMarkComplete}
               disabled={isCompleting}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-green-300 bg-green-50 px-3 py-2 text-sm font-bold text-green-800 transition-colors hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-sm font-semibold text-success shadow-soft transition-colors hover:bg-success/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <CheckCircle className="h-4 w-4" aria-hidden="true" />
               {isCompleting ? "Completing..." : "Complete"}
@@ -998,16 +998,16 @@ export default function PreventiveMaintenanceClient({
         </div>
       </nav>
 
-      <div className="overflow-hidden rounded-xl border border-[var(--pcms-border)] bg-card shadow-[var(--pcms-shadow-soft)]">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
         {/* Modern Header */}
-        <div className="border-b border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] px-4 py-4 sm:px-8 sm:py-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="border-b border-border bg-muted/40 px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
-              <div className="shrink-0 rounded-xl bg-blue-100 p-2.5 sm:p-3">
-                <Wrench className="h-6 w-6 text-blue-600 sm:h-8 sm:w-8" />
+              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary sm:h-12 sm:w-12">
+                <Wrench className="h-6 w-6" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <h1 className="break-words text-xl font-bold leading-tight text-foreground sm:text-2xl">
+                <h1 className="break-words text-xl font-bold leading-tight tracking-tight text-foreground sm:text-2xl lg:text-3xl">
                   {maintenanceData.pmtitle || "Preventive Maintenance"}
                 </h1>
                 <p className="mt-1 break-all font-mono text-xs text-muted-foreground sm:text-sm">
@@ -1016,17 +1016,17 @@ export default function PreventiveMaintenanceClient({
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-3">
               <StatusBadge status={taskStatus} />
             </div>
           </div>
 
           {/* Modern Metadata Cards */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] transition-shadow hover:shadow-[var(--pcms-shadow)]">
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 xl:gap-4">
+            <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Clipboard className="h-5 w-5 text-blue-600" />
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-info/10 text-info">
+                  <Clipboard className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
@@ -1040,13 +1040,14 @@ export default function PreventiveMaintenanceClient({
             </div>
 
             {/* Always show Task Template card - with link if exists, or message if not */}
-            <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] transition-shadow hover:shadow-[var(--pcms-shadow)]">
+            <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft">
               <div className="flex items-center gap-3">
                 <div
-                  className={`p-2 rounded-lg ${maintenanceData.procedure_template_id || maintenanceData.procedure_template ? "bg-indigo-100" : "bg-muted"}`}
+                  className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${maintenanceData.procedure_template_id || maintenanceData.procedure_template ? "bg-primary/10" : "bg-muted"}`}
                 >
                   <Settings
-                    className={`h-5 w-5 ${maintenanceData.procedure_template_id || maintenanceData.procedure_template ? "text-indigo-600" : "text-muted-foreground"}`}
+                    className={`h-5 w-5 ${maintenanceData.procedure_template_id || maintenanceData.procedure_template ? "text-primary" : "text-muted-foreground"}`}
+                    aria-hidden="true"
                   />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -1058,7 +1059,7 @@ export default function PreventiveMaintenanceClient({
                     <>
                       <Link
                         href={`/dashboard/maintenance-tasks/${maintenanceData.procedure_template_id || maintenanceData.procedure_template}`}
-                        className="flex items-start gap-1 break-all font-mono text-base font-semibold text-indigo-600 hover:text-indigo-800 hover:underline sm:text-lg"
+                        className="flex items-start gap-1 break-all font-mono text-base font-semibold text-primary hover:text-[hsl(var(--primary-hover))] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:text-lg"
                       >
                         {maintenanceData.procedure_template_id ||
                           maintenanceData.procedure_template}
@@ -1078,7 +1079,7 @@ export default function PreventiveMaintenanceClient({
                       <p className="text-xs text-muted-foreground mt-1">
                         <Link
                           href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
-                          className="text-blue-600 hover:underline"
+                          className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           Edit this record
                         </Link>{" "}
@@ -1091,16 +1092,16 @@ export default function PreventiveMaintenanceClient({
             </div>
 
             {maintenanceData.property_id && (
-              <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] transition-shadow hover:shadow-[var(--pcms-shadow)]">
+              <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Building className="h-5 w-5 text-green-600" />
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-success/10 text-success">
+                    <Building className="h-5 w-5" aria-hidden="true" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-medium text-muted-foreground">
                       Property ID
                     </p>
-                    <p className="text-lg font-semibold text-foreground">
+                    <p className="break-all text-base font-semibold text-foreground sm:text-lg">
                       {Array.isArray(maintenanceData.property_id)
                         ? maintenanceData.property_id.join(", ")
                         : maintenanceData.property_id}
@@ -1111,20 +1112,20 @@ export default function PreventiveMaintenanceClient({
             )}
 
             {assignedUserInfo && (
-              <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] transition-shadow hover:shadow-[var(--pcms-shadow)]">
+              <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-sky-100 rounded-lg">
-                    <User className="h-5 w-5 text-sky-600" />
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-info/10 text-info">
+                    <User className="h-5 w-5" aria-hidden="true" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-medium text-muted-foreground">
                       Assigned To
                     </p>
-                    <p className="text-lg font-semibold text-foreground">
+                    <p className="break-words text-base font-semibold text-foreground sm:text-lg">
                       {assignedUserInfo.display}
                     </p>
                     {assignedUserInfo.email && (
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="mt-1 break-all text-xs text-muted-foreground">
                         {assignedUserInfo.email}
                       </p>
                     )}
@@ -1133,10 +1134,10 @@ export default function PreventiveMaintenanceClient({
               </div>
             )}
 
-            <div className="bg-card p-4 rounded-xl border border-border shadow-soft hover:shadow-soft transition-shadow">
+            <div className="min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Calendar className="h-5 w-5 text-purple-600" />
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-info/10 text-info">
+                  <Calendar className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
@@ -1150,10 +1151,10 @@ export default function PreventiveMaintenanceClient({
             </div>
 
             {(maintenanceData.completed_date || taskStatus === "completed") && (
-              <div className="rounded-xl border border-[var(--pcms-border)] bg-card p-4 shadow-[var(--pcms-shadow-soft)] transition-shadow hover:shadow-[var(--pcms-shadow)]">
+              <div className="min-w-0 rounded-xl border border-success/30 bg-success/5 p-4 shadow-soft">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-success/10 text-success">
+                    <CheckCircle className="h-5 w-5" aria-hidden="true" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
@@ -1170,10 +1171,10 @@ export default function PreventiveMaintenanceClient({
             )}
 
             {maintenanceData.next_due_date && (
-              <div className="bg-card p-4 rounded-xl border border-border shadow-soft hover:shadow-soft transition-shadow">
+              <div className="min-w-0 rounded-xl border border-warning/30 bg-warning/5 p-4 shadow-soft">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <Clock className="h-5 w-5 text-orange-600" />
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-warning/10 text-warning-foreground">
+                    <Clock className="h-5 w-5" aria-hidden="true" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
@@ -1430,25 +1431,25 @@ export default function PreventiveMaintenanceClient({
         )}
 
         {/* Modern Action Buttons */}
-        <div className="border-t border-border bg-muted px-4 py-4 sm:px-8 sm:py-6">
-          <div className="flex flex-col sm:flex-row justify-between gap-4">
+        <div className="border-t border-border bg-muted/40 px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <Link
               href="/dashboard/preventive-maintenance"
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-card text-muted-foreground rounded-xl hover:bg-muted focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 text-center font-medium border border-border shadow-soft hover:shadow-soft transition-all duration-200"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-center text-sm font-semibold text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <ArrowUpRight className="h-4 w-4 rotate-180" />
+              <ArrowUpRight className="h-4 w-4 rotate-180" aria-hidden="true" />
               Back to List
             </Link>
 
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:flex-wrap xl:justify-end">
               <button
                 onClick={handleExportPdf}
                 disabled={isExportingPdf}
-                className={`pcms-btn pcms-btn-primary flex items-center justify-center gap-2 px-6 py-3 ${
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                   isExportingPdf ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
-                <Download className="h-4 w-4" />
+                <Download className="h-4 w-4" aria-hidden="true" />
                 {isExportingPdf ? "Generating PDF report..." : "Generate PDF"}
               </button>
 
@@ -1456,11 +1457,11 @@ export default function PreventiveMaintenanceClient({
                 <button
                   onClick={handleMarkComplete}
                   disabled={isCompleting}
-                  className={`pcms-btn pcms-btn-success flex items-center justify-center gap-2 px-6 py-3 ${
+                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-success bg-success px-4 py-2 text-sm font-semibold text-success-foreground shadow-soft transition-colors hover:border-[hsl(var(--success-hover))] hover:bg-[hsl(var(--success-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     isCompleting ? "opacity-50 cursor-not-allowed" : ""
                   }`}
                 >
-                  <CheckCircle className="h-4 w-4" />
+                  <CheckCircle className="h-4 w-4" aria-hidden="true" />
                   {isCompleting ? "Completing..." : "Mark Complete"}
                 </button>
               )}
@@ -1468,9 +1469,9 @@ export default function PreventiveMaintenanceClient({
               {canOperate && (
                 <Link
                   href={`/dashboard/preventive-maintenance/edit/${maintenanceData.pm_id}`}
-                  className="pcms-btn pcms-btn-primary flex items-center justify-center gap-2 px-6 py-3 text-center font-medium"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-center text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-4 w-4" aria-hidden="true" />
                   Edit
                 </Link>
               )}
@@ -1479,11 +1480,11 @@ export default function PreventiveMaintenanceClient({
                 <button
                   onClick={handleDelete}
                   disabled={isLoading}
-                  className={`pcms-btn pcms-btn-danger flex items-center justify-center gap-2 px-6 py-3 font-medium ${
+                  className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-destructive bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground shadow-soft transition-colors hover:border-[hsl(var(--destructive-hover))] hover:bg-[hsl(var(--destructive-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                     isLoading ? "opacity-50 cursor-not-allowed" : ""
                   }`}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4" aria-hidden="true" />
                   {isLoading ? "Deleting..." : "Delete"}
                 </button>
               )}

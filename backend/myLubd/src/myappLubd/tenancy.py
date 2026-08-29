@@ -24,6 +24,7 @@ TENANT_OPERATOR_ROLES = {'owner', 'admin', 'manager', 'supervisor', 'technician'
 # tenant.  Keep this decision here rather than duplicating role checks in API
 # views.
 TENANT_WIDE_PROPERTY_ROLES = {'owner', 'admin', 'manager'}
+TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES = {'owner', 'admin'}
 
 
 def get_user_tenant_memberships(user):
@@ -82,6 +83,25 @@ def user_can_manage_tenant(user, tenant):
         user=user,
         is_active=True,
         role__in=TENANT_ADMIN_ROLES,
+    ).exists()
+
+
+def can_manage_membership_property_grants(user, tenant):
+    """Return whether a principal may create tenant membership grants.
+
+    Billing access and Django ``is_staff`` are deliberately not invitation or
+    membership-grant authority. Platform superusers remain the explicit
+    break-glass path.
+    """
+    if not getattr(user, 'is_authenticated', False) or tenant is None:
+        return False
+    if user.is_superuser:
+        return True
+    return TenantMembership.objects.filter(
+        tenant=tenant,
+        user=user,
+        is_active=True,
+        role__in=TENANT_MEMBERSHIP_GRANT_ADMIN_ROLES,
     ).exists()
 
 

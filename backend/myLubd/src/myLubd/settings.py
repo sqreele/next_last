@@ -433,6 +433,11 @@ LOGGING = {
         'level': 'DEBUG' if DEBUG else 'INFO',
         'propagate': False,
     },
+    'myappLubd.invitation_audit': {
+        'handlers': ['detailed_console'],
+        'level': 'INFO',
+        'propagate': False,
+    },
 }
 
 # Email configuration
@@ -449,7 +454,8 @@ SERVER_EMAIL = os.getenv('SERVER_EMAIL') or DEFAULT_FROM_EMAIL
 DAILY_SUMMARY_RECIPIENTS = os.getenv('DAILY_SUMMARY_RECIPIENTS')
 
 # Base URL for links in emails (frontend site)
-FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'https://pcms.live')
+FRONTEND_BASE_URL = os.getenv('FRONTEND_BASE_URL', 'https://staymaint.com')
+TENANT_INVITATION_EXPIRY_DAYS = int(os.getenv('TENANT_INVITATION_EXPIRY_DAYS', '7'))
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'

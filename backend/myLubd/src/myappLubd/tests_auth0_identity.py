@@ -5,6 +5,7 @@ from rest_framework import exceptions
 from unittest.mock import patch
 
 from .auth import Auth0JWTAuthentication
+from .invitations import create_invitation
 from .models import AuthIdentity, Property, Tenant, TenantMembership
 from .tenancy import get_accessible_properties
 
@@ -36,6 +37,47 @@ class Auth0IdentityBindingTests(TestCase):
         self.assertEqual(identity.issuer, self.claims()['iss'])
         self.assertEqual(identity.subject, self.claims()['sub'])
         self.assertEqual(identity.email_at_link, self.user.email)
+
+    def test_verified_invitee_login_links_identity_without_granting_access(self):
+        owner = User.objects.create_user(username='owner', email='owner@example.com')
+        tenant = Tenant.objects.create(name='Invited Identity Tenant')
+        property_obj = Property.objects.create(name='Invited Identity Property', tenant=tenant)
+        invitation, _ = create_invitation(
+            tenant=tenant,
+            email='invited.person@example.com',
+            role='supervisor',
+            properties=[property_obj],
+            invited_by=owner,
+        )
+        invited_user = User.objects.get(email='invited.person@example.com')
+        claims = self.claims(
+            email=invited_user.email,
+            sub='auth0|invited-person',
+        )
+
+        self.assertFalse(AuthIdentity.objects.filter(user=invited_user).exists())
+        self.assertFalse(TenantMembership.objects.filter(user=invited_user).exists())
+        self.assertFalse(get_accessible_properties(invited_user).exists())
+
+        first = self.authentication._get_or_create_user_from_claims(claims)
+        repeated = self.authentication._get_or_create_user_from_claims(claims)
+
+        invitation.refresh_from_db()
+        self.assertEqual(first, invited_user)
+        self.assertEqual(repeated, invited_user)
+        self.assertEqual(
+            AuthIdentity.objects.filter(
+                user=invited_user,
+                issuer=claims['iss'],
+                subject=claims['sub'],
+            ).count(),
+            1,
+        )
+        self.assertEqual(invitation.status, 'pending')
+        self.assertIsNone(invitation.accepted_at)
+        self.assertIsNone(invitation.accepted_by)
+        self.assertFalse(TenantMembership.objects.filter(user=invited_user).exists())
+        self.assertFalse(get_accessible_properties(invited_user).exists())
 
     def test_existing_binding_does_not_require_email_or_relink(self):
         AuthIdentity.objects.create(
@@ -79,8 +121,10 @@ class Auth0IdentityBindingTests(TestCase):
             self.authentication._get_or_create_user_from_claims(self.claims(email_verified='true'))
 
     def test_unknown_email_does_not_create_user_or_binding(self):
-        with self.assertRaises(exceptions.AuthenticationFailed):
+        with self.assertRaises(exceptions.AuthenticationFailed) as raised:
             self.authentication._get_or_create_user_from_claims(self.claims(email='unknown@example.com'))
+        self.assertEqual(raised.exception.get_codes(), 'account_not_registered')
+        self.assertIn('No account is registered', str(raised.exception.detail))
         self.assertEqual(User.objects.count(), 1)
         self.assertEqual(AuthIdentity.objects.count(), 0)
 
@@ -171,6 +215,13 @@ class Auth0IdentityBindingTests(TestCase):
         )
         with self.assertRaisesMessage(exceptions.AuthenticationFailed, 'This account is inactive.'):
             self.authentication._get_or_create_user_from_claims(self.claims())
+
+    def test_inactive_unbound_user_is_rejected_without_binding(self):
+        self.user.is_active = False
+        self.user.save(update_fields=['is_active'])
+        with self.assertRaisesMessage(exceptions.AuthenticationFailed, 'This account is inactive.'):
+            self.authentication._get_or_create_user_from_claims(self.claims())
+        self.assertFalse(AuthIdentity.objects.exists())
 
     def test_namespaced_verified_claims_are_supported(self):
         resolved = self.authentication._get_or_create_user_from_claims(

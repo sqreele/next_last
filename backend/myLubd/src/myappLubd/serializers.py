@@ -921,6 +921,9 @@ class JobSerializer(serializers.ModelSerializer):
         return self._can_operate(obj)
 
     def get_comments_count(self, obj):
+        annotated_count = getattr(obj, '_comments_count', None)
+        if annotated_count is not None:
+            return annotated_count
         try:
             return obj.comments.count()
         except Exception:

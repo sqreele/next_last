@@ -98,7 +98,9 @@ function AcceptInvitationContent() {
           discardToken();
           setTerminalFailure(true);
         }
-        const detail = typeof payload?.detail === "string" ? payload.detail : "Unable to accept this invitation.";
+        const detail = payload?.code === "invitation_email_mismatch"
+          ? "Email does not match this invitation. Please sign in with the email address that received the invitation."
+          : typeof payload?.detail === "string" ? payload.detail : "Unable to accept this invitation.";
         throw new Error(detail);
       }
       discardToken();

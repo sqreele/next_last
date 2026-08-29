@@ -3,7 +3,7 @@ import { backendFetch } from '@/app/lib/backend-fetch';
 import {
   localAppUrl,
   OAUTH_TRANSACTION_COOKIES,
-  sanitizeLocalPath,
+  resolvePostLoginDestination,
   verifyAuth0IdToken,
 } from '@/app/lib/auth0/auth-security.mjs';
 import { setSessionCookie } from '@/app/lib/auth0/session-cookie';
@@ -62,10 +62,7 @@ export async function GET(request: NextRequest) {
   const expectedState = request.cookies.get('auth0_login_state')?.value;
   const expectedNonce = request.cookies.get('auth0_login_nonce')?.value;
   const codeVerifier = request.cookies.get('auth0_pkce_verifier')?.value;
-  const requestedRedirect = sanitizeLocalPath(
-    request.cookies.get('auth0_login_redirect')?.value,
-    '/dashboard',
-  );
+  const requestedRedirect = request.cookies.get('auth0_login_redirect')?.value;
 
   if (request.nextUrl.searchParams.has('error')) {
     return callbackFailure(baseUrl, 'provider_error');
@@ -196,10 +193,7 @@ export async function GET(request: NextRequest) {
       console.warn('auth0_access_probe_failed', { reason: 'backend_unavailable' });
     }
 
-    const invitationReturn = requestedRedirect === '/invitations/accept';
-    const destination = hasPropertyAccess || invitationReturn
-      ? requestedRedirect
-      : '/auth/access-pending';
+    const destination = resolvePostLoginDestination(requestedRedirect, hasPropertyAccess);
     const response = NextResponse.redirect(localAppUrl(baseUrl, destination));
     await setSessionCookie(
       response,

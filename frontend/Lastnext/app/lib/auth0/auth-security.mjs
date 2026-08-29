@@ -40,6 +40,18 @@ export function sanitizeLocalPath(value, fallback = '/') {
   return decoded;
 }
 
+const INVITATION_ACCEPT_PATH = '/invitations/accept';
+
+export function resolvePostLoginDestination(value, hasPropertyAccess) {
+  const requestedRedirect = sanitizeLocalPath(value, '/dashboard');
+  const invitationReturn =
+    requestedRedirect === INVITATION_ACCEPT_PATH ||
+    requestedRedirect === `${INVITATION_ACCEPT_PATH}/`;
+
+  if (invitationReturn) return INVITATION_ACCEPT_PATH;
+  return hasPropertyAccess ? requestedRedirect : '/auth/access-pending';
+}
+
 export function localAppUrl(baseUrl, value, fallback = '/') {
   const base = new URL(baseUrl);
   return new URL(sanitizeLocalPath(value, fallback), base.origin).toString();

@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import {
   createPkcePair,
   localAppUrl,
+  resolvePostLoginDestination,
   sanitizeLocalPath,
   sanitizeLogoutPath,
   verifyAuth0IdToken,
@@ -26,6 +27,16 @@ test('redirect sanitizer accepts local paths and rejects external variants', () 
     assert.equal(sanitizeLocalPath(unsafe, '/'), '/');
   }
   assert.equal(localAppUrl('https://staymaint.com/base', '//evil.example'), 'https://staymaint.com/');
+});
+
+test('post-login redirects preserve the invitation acceptance security boundary', () => {
+  assert.equal(resolvePostLoginDestination('/dashboard', false), '/auth/access-pending');
+  assert.equal(resolvePostLoginDestination('/invitations/accept', false), '/invitations/accept');
+  assert.equal(resolvePostLoginDestination('/dashboard', true), '/dashboard');
+  assert.equal(resolvePostLoginDestination('https://evil.example', true), '/dashboard');
+  assert.equal(resolvePostLoginDestination('/invitations/accept-evil', false), '/auth/access-pending');
+  assert.equal(resolvePostLoginDestination('%2Finvitations%2Faccept', false), '/invitations/accept');
+  assert.equal(resolvePostLoginDestination('/invitations/accept/', false), '/invitations/accept');
 });
 
 test('logout returnTo is restricted to known local destinations', () => {
@@ -118,9 +129,7 @@ test('login and callback retain state, require nonce and PKCE, and fail closed',
   assert.match(callback, /code_verifier: codeVerifier/);
   assert.match(callback, /verifyAuth0IdToken/);
   assert.doesNotMatch(callback, /Buffer\.from\(payload/);
-  assert.match(callback, /\/auth\/access-pending/);
-  assert.match(callback, /requestedRedirect === '\/invitations\/accept'/);
-  assert.match(callback, /hasPropertyAccess \|\| invitationReturn/);
+  assert.match(callback, /resolvePostLoginDestination\(requestedRedirect, hasPropertyAccess\)/);
 });
 
 test('sessions are sealed and logout clears the session cookie', async () => {

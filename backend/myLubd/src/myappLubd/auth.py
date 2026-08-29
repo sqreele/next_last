@@ -257,7 +257,8 @@ class Auth0JWTAuthentication(authentication.BaseAuthentication):
                 if not matching_users:
                     logger.warning("No pre-provisioned account matched an Auth0 email")
                     raise exceptions.AuthenticationFailed(
-                        _('No account is registered for this email address. Please contact an administrator.')
+                        _('No account is registered for this email address. Please contact an administrator.'),
+                        code='account_not_registered',
                     )
                 if len(matching_users) > 1:
                     logger.error("Multiple local accounts matched an Auth0 email")

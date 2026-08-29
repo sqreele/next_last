@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.html import escape
-from rest_framework import mixins, serializers, status, viewsets
+from rest_framework import exceptions, mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, NotFound, PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -47,7 +47,13 @@ class InvitationAuth0JWTAuthentication(Auth0JWTAuthentication):
 
     def authenticate(self, request):
         self._invitation_verified_claims = None
-        result = super().authenticate(request)
+        try:
+            result = super().authenticate(request)
+        except exceptions.AuthenticationFailed as exc:
+            claims = self._invitation_verified_claims
+            if self._has_valid_invitation_email_mismatch(request, claims):
+                raise InvitationEmailMismatch() from exc
+            raise
         if result is None:
             return None
         return result[0], self._invitation_verified_claims
@@ -55,6 +61,19 @@ class InvitationAuth0JWTAuthentication(Auth0JWTAuthentication):
     def _get_or_create_user_from_claims(self, claims):
         self._invitation_verified_claims = claims
         return super()._get_or_create_user_from_claims(claims)
+
+    @staticmethod
+    def _has_valid_invitation_email_mismatch(request, claims):
+        if not isinstance(claims, dict) or _claim_value(claims, 'email_verified') is not True:
+            return False
+        claimed_email = TenantInvitation.normalize_email(_claim_value(claims, 'email'))
+        if not claimed_email:
+            return False
+        try:
+            invitation = invitation_from_token(request.data.get('token'))
+        except (NotFound, AttributeError, TypeError):
+            return False
+        return claimed_email != invitation.email
 
 
 class InvitationConflict(APIException):
@@ -67,6 +86,18 @@ class InvitationGone(APIException):
     status_code = status.HTTP_410_GONE
     default_detail = 'Invitation is no longer available.'
     default_code = 'invitation_gone'
+
+
+class InvitationEmailMismatch(PermissionDenied):
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = 'Email does not match this invitation. Please sign in with the email address that received the invitation.'
+    default_code = 'invitation_email_mismatch'
+
+    def __init__(self):
+        super().__init__({
+            'detail': self.default_detail,
+            'code': self.default_code,
+        })
 
 
 def invitation_ttl():
@@ -215,7 +246,7 @@ def _validate_accepting_identity(user, claims, invitation):
     ).exists():
         raise PermissionDenied('Auth0 identity authentication is required.')
     if email != invitation.email or TenantInvitation.normalize_email(user.email) != invitation.email:
-        raise PermissionDenied('Sign in with the email address that received this invitation.')
+        raise InvitationEmailMismatch()
 
 
 def _membership_matches_invitation(membership, invitation, property_ids):

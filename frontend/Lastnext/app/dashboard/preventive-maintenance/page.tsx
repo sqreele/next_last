@@ -22,8 +22,10 @@ import BulkActions from '@/app/components/preventive/list/BulkActions';
 import LoadingState from '@/app/components/preventive/list/LoadingState';
 import EmptyState from '@/app/components/preventive/list/EmptyState';
 import ErrorDisplay from '@/app/components/preventive/list/ErrorDisplay';
+import { PageContainer } from '@/app/components/layout/PageContainer';
+import { FeedbackState } from '@/app/components/feedback/FeedbackState';
 import Link from 'next/link';
-import { Filter, Plus, Building } from 'lucide-react';
+import { Filter, Plus } from 'lucide-react';
 
 // Import utility functions
 import {
@@ -399,20 +401,18 @@ function PreventiveMaintenanceListPageContent() {
 
   if (!selectedProperty) {
     return (
-      <div className="mx-auto flex min-h-[55vh] w-full max-w-2xl items-center justify-center px-4 py-12">
-        <div className="w-full rounded-2xl border border-border bg-card p-8 text-center shadow-soft">
-          <Building className="mx-auto h-12 w-12 text-muted-foreground" aria-hidden="true" />
-          <h1 className="mt-4 text-2xl font-bold text-foreground">Select a property</h1>
-          <p className="mt-2 text-muted-foreground">
-            Choose an active property from the dashboard header to view and manage its preventive maintenance.
-          </p>
-        </div>
-      </div>
+      <PageContainer className="flex min-h-[55vh] items-center">
+        <FeedbackState
+          title="Select a property"
+          description="Choose an active property from the dashboard header to view and manage its preventive maintenance."
+          className="w-full"
+        />
+      </PageContainer>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-3 sm:px-6 md:pb-8 lg:px-8">
+    <PageContainer>
       {/* Mobile Header */}
       <MobileHeader
         totalCount={totalCount}
@@ -586,7 +586,7 @@ function PreventiveMaintenanceListPageContent() {
           onCancel={() => setDeleteConfirm(null)}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }
 

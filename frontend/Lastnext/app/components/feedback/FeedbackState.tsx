@@ -40,7 +40,7 @@ export function FeedbackState({
   return (
     <section
       className={cn(
-        "flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card px-5 py-10 text-center",
+        "flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card px-5 py-10 text-center shadow-soft",
         className,
       )}
       role={assertive ? "alert" : "status"}
@@ -55,7 +55,9 @@ export function FeedbackState({
           {description}
         </p>
       ) : null}
-      {action ? <div className="mt-5">{action}</div> : null}
+      {action ? (
+        <div className="mt-5 w-full sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">{action}</div>
+      ) : null}
     </section>
   );
 }

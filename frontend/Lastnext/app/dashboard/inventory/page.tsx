@@ -104,11 +104,11 @@ interface InventoryItem {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  available: "bg-green-100 text-green-800 border-green-200",
-  low_stock: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  out_of_stock: "bg-red-100 text-red-800 border-red-200",
-  reserved: "bg-blue-100 text-blue-800 border-blue-200",
-  maintenance: "bg-muted text-foreground border-border",
+  available: "border-success/30 bg-success/10 text-success",
+  low_stock: "border-warning/30 bg-warning/10 text-warning-foreground",
+  out_of_stock: "border-destructive/30 bg-destructive/10 text-destructive",
+  reserved: "border-info/30 bg-info/10 text-info",
+  maintenance: "border-border bg-muted text-foreground",
 };
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -671,11 +671,11 @@ export default function InventoryPage() {
       .replace(/\b\w/g, (l) => l.toUpperCase());
 
     return (
-      <Badge className={colorClass}>
-        {status === "available" && <CheckCircle2 className="h-3 w-3 mr-1" />}
-        {status === "low_stock" && <AlertTriangle className="h-3 w-3 mr-1" />}
-        {status === "out_of_stock" && <XCircle className="h-3 w-3 mr-1" />}
-        {status === "reserved" && <Clock className="h-3 w-3 mr-1" />}
+      <Badge className={`${colorClass} gap-1 whitespace-nowrap`}>
+        {status === "available" && <CheckCircle2 className="h-3 w-3" aria-hidden="true" />}
+        {status === "low_stock" && <AlertTriangle className="h-3 w-3" aria-hidden="true" />}
+        {status === "out_of_stock" && <XCircle className="h-3 w-3" aria-hidden="true" />}
+        {status === "reserved" && <Clock className="h-3 w-3" aria-hidden="true" />}
         {statusText}
       </Badge>
     );
@@ -737,21 +737,24 @@ export default function InventoryPage() {
     (selectedItem ? parsedUseQuantity > selectedItem.quantity : true);
 
   return (
-    <div className="w-full max-w-none space-y-4 px-3 pb-4 pt-2 sm:px-4 md:px-5 lg:mx-auto lg:max-w-7xl desktop:max-w-[94rem]">
+    <PageContainer className="max-w-7xl space-y-5 desktop:max-w-[94rem]">
       {/* Header */}
-      <div className="pcms-page-header">
-        <div className="flex-1">
-          <p className="pcms-eyebrow">Inventory workspace</p>
-          <div className="mb-1 flex items-center gap-3">
-            <h1 className="flex items-center gap-2 text-xl font-bold text-[var(--pcms-text)] sm:gap-3 sm:text-3xl">
-              <Package className="h-6 w-6 text-[var(--pcms-primary)] sm:h-8 sm:w-8" />
+      <header className="flex min-w-0 flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-primary">Inventory workspace</p>
+          <div className="mb-1 flex min-w-0 items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+              <Package className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <h1 className="break-words text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               {t("inventory.title")}
             </h1>
           </div>
-          <p className="pcms-page-description hidden sm:block">
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {totalCount} {t("inventory.itemsTotal")}
             {lowStockCount > 0 && (
-              <span className="ml-2 font-semibold text-yellow-600">
+              <span className="ml-2 inline-flex items-center gap-1 font-semibold text-warning-foreground">
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
                 ({lowStockCount} {t("inventory.lowStockWarning")})
               </span>
             )}
@@ -765,7 +768,7 @@ export default function InventoryPage() {
               ` (${filteredInventory.length} filtered)`}
           </p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:flex-wrap sm:items-center">
           <InventoryCsvImport
             currentPropertyId={selectedProperty}
             onImported={() => void fetchInventory()}
@@ -939,7 +942,7 @@ export default function InventoryPage() {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
+      </header>
 
       {/* Mobile-first stats strip — tap Low Stock to filter without scrolling */}
       <InventoryMobileStats
@@ -953,42 +956,43 @@ export default function InventoryPage() {
       />
 
       {/* Search and Filters */}
-      <Card className="pcms-section-card">
-        <CardContent className="p-3 sm:p-6">
+      <Card>
+        <CardContent className="p-4 md:p-5">
           <div className="flex flex-col gap-4">
             {/* First Row: Search and View Toggle */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               {/* Search */}
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
                 <Input
                   type="text"
+                  aria-label="Search inventory"
                   placeholder="Search by name, ID, location, supplier..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="h-11 rounded-lg pl-10"
                 />
               </div>
 
               {/* View Toggle */}
-              <div className="flex items-center gap-2 rounded-full border border-[var(--pcms-border)] bg-[var(--pcms-surface-soft)] p-1">
+              <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-1" role="group" aria-label="Inventory view">
                 <Button
                   variant={viewMode === "grid" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("grid")}
-                  className="h-9 rounded-full px-3"
+                  className="h-9 min-h-9 rounded-md px-3"
                   aria-label="Show inventory as cards"
                 >
-                  <LayoutGrid className="h-4 w-4" />
+                  <LayoutGrid className="h-4 w-4" aria-hidden="true" />
                 </Button>
                 <Button
                   variant={viewMode === "list" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("list")}
-                  className="h-9 rounded-full px-3"
+                  className="h-9 min-h-9 rounded-md px-3"
                   aria-label="Show inventory as a list"
                 >
-                  <List className="h-4 w-4" />
+                  <List className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             </div>
@@ -1001,7 +1005,7 @@ export default function InventoryPage() {
               aria-expanded={showMobileFilters}
             >
               <span className="inline-flex items-center gap-2">
-                <Filter className="h-4 w-4" />
+                <Filter className="h-4 w-4" aria-hidden="true" />
                 Filters
               </span>
               <span className="text-xs font-bold">
@@ -1017,7 +1021,7 @@ export default function InventoryPage() {
             <div
               className={`${showMobileFilters ? "grid" : "hidden"} gap-3 rounded-xl border border-border bg-muted/40 p-3 sm:flex sm:flex-wrap sm:items-center sm:border-0 sm:bg-transparent sm:p-0`}
             >
-              <Filter className="hidden h-5 w-5 text-muted-foreground sm:block" />
+              <Filter className="hidden h-5 w-5 text-muted-foreground sm:block" aria-hidden="true" />
 
               {/* Category Filter */}
               <Select
@@ -1027,7 +1031,7 @@ export default function InventoryPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectTrigger className="h-11 w-full rounded-lg sm:w-[150px]" aria-label="Filter by category">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1048,7 +1052,7 @@ export default function InventoryPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectTrigger className="h-11 w-full rounded-lg sm:w-[150px]" aria-label="Filter by status">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1069,7 +1073,7 @@ export default function InventoryPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="w-full sm:w-[150px]">
+                <SelectTrigger className="h-11 w-full rounded-lg sm:w-[150px]" aria-label="Filter by room">
                   <SelectValue placeholder="All Rooms" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1090,7 +1094,7 @@ export default function InventoryPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="h-11 w-full rounded-lg sm:w-[180px]" aria-label="Filter by job">
                   <SelectValue placeholder="All Jobs" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1112,7 +1116,7 @@ export default function InventoryPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="h-11 w-full rounded-lg sm:w-[180px]" aria-label="Filter by preventive maintenance">
                   <SelectValue placeholder="All PMs" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1127,15 +1131,15 @@ export default function InventoryPage() {
 
               {/* Low Stock Toggle */}
               <Button
-                variant={lowStockOnly ? "default" : "outline"}
+                variant={lowStockOnly ? "warning" : "outline"}
                 size="sm"
                 onClick={() => {
                   setLowStockOnly(!lowStockOnly);
                   setPage(1);
                 }}
-                className={`gap-2 ${lowStockOnly ? "bg-yellow-600 hover:bg-yellow-700" : ""}`}
+                className="min-h-11 gap-2"
               >
-                <AlertTriangle className="h-4 w-4" />
+                <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                 {t("inventory.lowStockOnly")}
               </Button>
 
@@ -1161,9 +1165,9 @@ export default function InventoryPage() {
                     setPage(1);
                     setShowMobileFilters(false);
                   }}
-                  className="min-h-11 w-full text-red-600 hover:bg-red-50 hover:text-red-700 sm:w-auto"
+                  className="min-h-11 w-full text-destructive hover:bg-destructive/10 hover:text-destructive sm:w-auto"
                 >
-                  <XCircle className="h-4 w-4 mr-1" />
+                  <XCircle className="mr-1 h-4 w-4" aria-hidden="true" />
                   {t("inventory.clearFilters")}
                 </Button>
               )}
@@ -1200,12 +1204,12 @@ export default function InventoryPage() {
           }
         />
       ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-5 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredInventory.map((item) => (
-            <Card key={item.id} variant="interactive" className="h-full">
+            <Card key={item.id} variant="interactive" className="flex h-full flex-col overflow-hidden">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
                     {item.image_url ? (
                       <div className="flex-shrink-0">
                         <img
@@ -1213,7 +1217,7 @@ export default function InventoryPage() {
                           decoding="async"
                           src={item.image_url}
                           alt={item.name}
-                          className="h-16 w-16 rounded-lg border border-border object-cover"
+                          className="h-16 w-16 rounded-xl border border-border object-cover"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.style.display = "none";
@@ -1224,100 +1228,91 @@ export default function InventoryPage() {
                             }
                           }}
                         />
-                        <div className="hidden rounded-lg bg-muted p-2 text-2xl">
+                        <div className="hidden h-16 w-16 items-center justify-center rounded-xl border border-border bg-muted/50 text-2xl">
                           {CATEGORY_ICONS[item.category] || "📋"}
                         </div>
                       </div>
                     ) : (
-                      <div className="flex-shrink-0 rounded-lg bg-muted p-2 text-2xl">
+                      <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-muted/50 text-2xl">
                         {CATEGORY_ICONS[item.category] || "📋"}
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <h3 className="truncate font-semibold text-foreground">
+                      <h3 className="break-words font-semibold leading-5 text-foreground">
                         {item.name}
                       </h3>
-                      <p className="font-mono text-xs text-muted-foreground">
+                      <p className="mt-1 break-all font-mono text-xs font-normal text-muted-foreground">
                         {item.item_id}
                       </p>
                     </div>
                   </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  {getStatusBadge(item.status)}
-                  {item.category_display && (
-                    <Badge variant="secondary" className="text-xs">
-                      {item.category_display}
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Quantity:
-                    </span>
-                    <span className="text-lg font-bold text-foreground">
-                      {item.quantity} {item.unit}
-                    </span>
-                  </div>
+              <CardContent className="flex flex-1 flex-col gap-3">
+                <div className="rounded-xl border border-border bg-muted/30 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Current quantity</p>
+                  <p className="mt-1 break-words text-2xl font-bold tabular-nums text-foreground">
+                    {item.quantity} <span className="text-sm font-semibold text-muted-foreground">{item.unit}</span>
+                  </p>
                   {item.min_quantity > 0 && (
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Min:</span>
-                      <span>
-                        {item.min_quantity} {item.unit}
-                      </span>
-                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">Minimum: {item.min_quantity} {item.unit}</p>
                   )}
                 </div>
 
-                {item.location && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <span className="truncate">{item.location}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {getStatusBadge(item.status)}
+                  <Badge variant="secondary" className="max-w-full whitespace-normal break-words text-left text-xs">
+                    {item.category_display || item.category}
+                  </Badge>
+                </div>
+
+                {(item.property_name || item.location) && (
+                  <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                    <span className="break-words">
+                      {[item.property_name, item.location].filter(Boolean).join(" · ")}
+                    </span>
                   </div>
                 )}
 
                 {item.room_name && (
-                  <div className="text-xs text-muted-foreground">
+                  <div className="break-words text-xs text-muted-foreground">
                     Room: {item.room_name}
                   </div>
                 )}
 
                 {item.last_job_by_user && (
-                  <div className="text-xs text-blue-600 bg-blue-50 p-2 rounded">
-                    <span className="font-semibold">Last Job:</span>{" "}
+                  <div className="break-words rounded-lg border border-info/20 bg-info/10 p-2 text-xs text-info">
+                    <span className="font-semibold">Last job:</span>{" "}
                     {item.last_job_by_user.job_id} -{" "}
                     {item.last_job_by_user.description}
                   </div>
                 )}
 
                 {item.last_pm_by_user && (
-                  <div className="text-xs text-purple-600 bg-purple-50 p-2 rounded">
+                  <div className="break-words rounded-lg border border-primary/20 bg-primary/10 p-2 text-xs text-primary">
                     <span className="font-semibold">Last PM:</span>{" "}
                     {item.last_pm_by_user.pm_id} - {item.last_pm_by_user.title}
                   </div>
                 )}
 
-                <div className="pt-3 border-t border-border flex gap-2">
+                <div className="mt-auto grid grid-cols-2 gap-2 border-t border-border pt-3">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    className="w-full"
                     onClick={() => {
                       setSelectedItem(item);
                       setShowRestockDialog(true);
                     }}
                   >
-                    <ShoppingCart className="h-4 w-4 mr-1" />
+                    <ShoppingCart className="mr-1 h-4 w-4" aria-hidden="true" />
                     Restock
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    className="w-full"
                     onClick={() => {
                       setSelectedItem(item);
                       setShowUseDialog(true);
@@ -1334,14 +1329,14 @@ export default function InventoryPage() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="grid gap-3 p-3 md:hidden">
+            <div className="grid gap-3 p-3 xl:hidden">
               {filteredInventory.map((item) => (
                 <article
                   key={item.id}
-                  className="rounded-xl border border-border bg-card p-3 shadow-soft"
+                  className="rounded-xl border border-border bg-card p-4 shadow-soft"
                 >
                   <div className="flex gap-3">
-                    <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-xl border border-border bg-blue-50 text-2xl">
+                    <div className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-xl border border-border bg-muted/50 text-2xl">
                       {item.image_url ? (
                         <img
                           loading="lazy"
@@ -1357,21 +1352,21 @@ export default function InventoryPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <h3 className="truncate text-sm font-bold text-foreground">
+                          <h3 className="break-words text-sm font-bold leading-5 text-foreground">
                             {item.name}
                           </h3>
-                          <p className="font-mono text-xs text-muted-foreground">
+                          <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
                             {item.item_id}
                           </p>
                         </div>
-                        {getStatusBadge(item.status)}
+                        <span className="shrink-0">{getStatusBadge(item.status)}</span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="max-w-full whitespace-normal break-words text-left text-xs">
                           {item.category_display || item.category}
                         </Badge>
                         {item.location ? (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="max-w-full whitespace-normal break-words text-left text-xs">
                             {item.location}
                           </Badge>
                         ) : null}
@@ -1379,17 +1374,17 @@ export default function InventoryPage() {
                     </div>
                   </div>
                   <div className="mt-3 grid gap-2 border-t border-border pt-3 text-sm">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-end justify-between gap-3 rounded-lg bg-muted/30 px-3 py-2">
                       <span className="text-muted-foreground">Quantity</span>
-                      <strong className="text-foreground">
-                        {item.quantity} {item.unit}
+                      <strong className="break-words text-right text-xl tabular-nums text-foreground">
+                        {item.quantity} <span className="text-xs font-semibold text-muted-foreground">{item.unit}</span>
                       </strong>
                     </div>
                     {(item.last_job_by_user || item.last_pm_by_user) && (
-                      <div className="rounded-xl bg-muted p-2 text-xs text-muted-foreground">
+                      <div className="break-words rounded-xl border border-border bg-muted/40 p-2 text-xs text-muted-foreground">
                         {item.last_job_by_user ? (
                           <p>
-                            <span className="font-semibold text-blue-600">
+                            <span className="font-semibold text-info">
                               Job:
                             </span>{" "}
                             {item.last_job_by_user.job_id}
@@ -1397,7 +1392,7 @@ export default function InventoryPage() {
                         ) : null}
                         {item.last_pm_by_user ? (
                           <p>
-                            <span className="font-semibold text-purple-600">
+                            <span className="font-semibold text-primary">
                               PM:
                             </span>{" "}
                             {item.last_pm_by_user.pm_id}
@@ -1432,40 +1427,40 @@ export default function InventoryPage() {
                 </article>
               ))}
             </div>
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full">
+            <div className="hidden overflow-x-auto xl:block">
+              <table className="w-full min-w-[1120px]">
                 <thead>
-                  <tr className="border-b border-border bg-muted">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Item
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Category
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Quantity
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Location
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Last Job/PM
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-card divide-y divide-gray-200">
+                <tbody className="divide-y divide-border bg-card">
                   {filteredInventory.map((item) => (
                     <tr
                       key={item.id}
-                      className="hover:bg-blue-50 transition-colors"
+                      className="transition-colors hover:bg-muted/40"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           {item.image_url ? (
                             <>
@@ -1474,7 +1469,7 @@ export default function InventoryPage() {
                                 decoding="async"
                                 src={item.image_url}
                                 alt={item.name}
-                                className="w-12 h-12 object-cover rounded-lg border border-border"
+                                className="h-12 w-12 rounded-xl border border-border object-cover"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
                                   target.style.display = "none";
@@ -1494,24 +1489,24 @@ export default function InventoryPage() {
                               {CATEGORY_ICONS[item.category] || "📋"}
                             </div>
                           )}
-                          <div>
-                            <div className="text-sm font-medium text-foreground">
+                          <div className="min-w-0 max-w-64">
+                            <div className="break-words text-sm font-semibold text-foreground">
                               {item.name}
                             </div>
-                            <div className="text-xs text-muted-foreground font-mono">
+                            <div className="break-all font-mono text-xs text-muted-foreground">
                               {item.item_id}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant="secondary" className="text-xs">
+                      <td className="px-5 py-4">
+                        <Badge variant="secondary" className="max-w-44 whitespace-normal break-words text-left text-xs">
                           {item.category_display || item.category}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">
-                          <span className="font-semibold text-foreground">
+                      <td className="whitespace-nowrap px-5 py-4">
+                        <div className="text-sm tabular-nums">
+                          <span className="text-lg font-bold text-foreground">
                             {item.quantity}
                           </span>
                           <span className="text-muted-foreground ml-1">
@@ -1524,14 +1519,14 @@ export default function InventoryPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-5 py-4">
                         {getStatusBadge(item.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-5 py-4">
                         {item.location ? (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            <span>{item.location}</span>
+                            <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+                            <span className="max-w-44 break-words">{item.location}</span>
                           </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">
@@ -1539,13 +1534,13 @@ export default function InventoryPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-xs">
+                      <td className="px-5 py-4 text-xs">
                         {item.last_job_by_user && (
-                          <div className="text-blue-600 mb-1">
+                          <div className="mb-1 text-info">
                             <span className="font-semibold">Job:</span>{" "}
                             {item.last_job_by_user.job_id}
                             <div
-                              className="text-muted-foreground truncate max-w-xs"
+                              className="max-w-52 break-words text-muted-foreground"
                               title={item.last_job_by_user.full_description}
                             >
                               {item.last_job_by_user.description}
@@ -1553,11 +1548,11 @@ export default function InventoryPage() {
                           </div>
                         )}
                         {item.last_pm_by_user && (
-                          <div className="text-purple-600">
+                          <div className="text-primary">
                             <span className="font-semibold">PM:</span>{" "}
                             {item.last_pm_by_user.pm_id}
                             <div
-                              className="text-muted-foreground truncate max-w-xs"
+                              className="max-w-52 break-words text-muted-foreground"
                               title={item.last_pm_by_user.full_title}
                             >
                               {item.last_pm_by_user.title}
@@ -1568,7 +1563,7 @@ export default function InventoryPage() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="whitespace-nowrap px-5 py-4">
                         <div className="flex gap-2">
                           <Button
                             variant="outline"
@@ -1611,20 +1606,20 @@ export default function InventoryPage() {
         }}
       >
         <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-4 sm:max-w-lg sm:p-6">
-          <DialogHeader>
-            <DialogTitle>Restock Item</DialogTitle>
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-xl font-bold">Restock Item</DialogTitle>
             <DialogDescription>
               Add quantity to {selectedItem?.name}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {stockMutationError ? (
-              <p className="text-sm text-red-600" role="alert">
+              <p className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-medium text-destructive" role="alert">
                 {stockMutationError}
               </p>
             ) : null}
-            <div>
-              <Label htmlFor="restock-quantity">Quantity to Add</Label>
+            <div className="space-y-2">
+              <Label htmlFor="restock-quantity" className="font-semibold">Quantity to Add</Label>
               <Input
                 id="restock-quantity"
                 type="number"
@@ -1632,13 +1627,14 @@ export default function InventoryPage() {
                 value={restockQuantity}
                 onChange={(e) => setRestockQuantity(e.target.value)}
                 placeholder="Enter quantity"
+                className="h-12 rounded-xl text-lg font-bold tabular-nums"
               />
             </div>
             {selectedItem && (
-              <div className="text-sm text-muted-foreground">
-                Current: {selectedItem.quantity} {selectedItem.unit}
+              <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                <span className="font-medium">Current:</span> {selectedItem.quantity} {selectedItem.unit}
                 {restockQuantity && (
-                  <span className="ml-2 font-semibold">
+                  <span className="ml-2 font-semibold tabular-nums text-foreground">
                     → {selectedItem.quantity + parseInt(restockQuantity) || 0}{" "}
                     {selectedItem.unit}
                   </span>
@@ -1646,9 +1642,10 @@ export default function InventoryPage() {
               </div>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="!grid grid-cols-2 gap-2 sm:!flex">
             <Button
               variant="outline"
+              className="w-full"
               onClick={() => {
                 setShowRestockDialog(false);
                 setRestockQuantity("");
@@ -1659,6 +1656,7 @@ export default function InventoryPage() {
             </Button>
             <Button
               onClick={handleRestock}
+              className="w-full"
               disabled={
                 stockMutationPending ||
                 !restockQuantity ||
@@ -1685,9 +1683,9 @@ export default function InventoryPage() {
           }
         }}
       >
-        <DialogContent className="max-h-[92vh] gap-0 sm:max-w-lg">
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] gap-0 overflow-y-auto p-4 sm:max-w-lg sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black">Use Item</DialogTitle>
+            <DialogTitle className="text-xl font-bold">Use Item</DialogTitle>
             <DialogDescription>
               Record inventory used for a maintenance job.
             </DialogDescription>
@@ -1699,15 +1697,15 @@ export default function InventoryPage() {
                 {CATEGORY_ICONS[selectedItem.category] || "📋"}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-black text-foreground">
+                <p className="break-words text-base font-bold text-foreground">
                   {selectedItem.name}
                 </p>
-                <p className="truncate font-mono text-xs text-muted-foreground">
+                <p className="break-all font-mono text-xs text-muted-foreground">
                   {selectedItem.item_id}
                 </p>
               </div>
               <div className="flex-none text-right">
-                <p className="text-lg font-black text-foreground">
+                <p className="text-lg font-bold tabular-nums text-foreground">
                   {selectedItem.quantity}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -1719,12 +1717,12 @@ export default function InventoryPage() {
 
           <div className="grid gap-4 py-4">
             {stockMutationError ? (
-              <p className="text-sm text-red-600" role="alert">
+              <p className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm font-medium text-destructive" role="alert">
                 {stockMutationError}
               </p>
             ) : null}
             <div className="space-y-2">
-              <Label htmlFor="use-quantity" className="text-sm font-bold">
+              <Label htmlFor="use-quantity" className="text-sm font-semibold">
                 Quantity to use
               </Label>
               <div className="grid grid-cols-[3rem_1fr_3rem] items-center gap-2">
@@ -1738,7 +1736,7 @@ export default function InventoryPage() {
                   disabled={parsedUseQuantity <= 0}
                   aria-label="Decrease quantity"
                 >
-                  <Minus className="h-5 w-5" />
+                  <Minus className="h-5 w-5" aria-hidden="true" />
                 </Button>
                 <Input
                   id="use-quantity"
@@ -1749,7 +1747,7 @@ export default function InventoryPage() {
                   value={useQuantity}
                   onChange={(e) => setUseQuantity(e.target.value)}
                   placeholder="0"
-                  className="h-12 rounded-xl text-center text-lg font-black"
+                  className="h-12 rounded-xl text-center text-lg font-bold tabular-nums"
                 />
                 <Button
                   type="button"
@@ -1770,15 +1768,15 @@ export default function InventoryPage() {
                   }
                   aria-label="Increase quantity"
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus className="h-5 w-5" aria-hidden="true" />
                 </Button>
               </div>
               {selectedItem && parsedUseQuantity > 0 && (
                 <div
                   className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm font-bold ${
                     invalidUseQuantity
-                      ? "bg-red-50 text-red-700"
-                      : "bg-emerald-50 text-emerald-700"
+                      ? "border border-destructive/30 bg-destructive/10 text-destructive"
+                      : "border border-success/30 bg-success/10 text-success"
                   }`}
                 >
                   <span>Remaining stock</span>
@@ -1822,7 +1820,7 @@ export default function InventoryPage() {
                 </Select>
               )}
               {selectedItem?.last_job_by_user && !selectedJobId && (
-                <div className="text-xs text-blue-600 mt-1">
+                <div className="mt-1 text-xs text-info">
                   Last used: {selectedItem.last_job_by_user.job_id}
                 </div>
               )}
@@ -1862,13 +1860,13 @@ export default function InventoryPage() {
                 </Select>
               )}
               {selectedItem?.last_pm_by_user && !selectedPmId && (
-                <div className="text-xs text-purple-600 mt-1">
+                <div className="mt-1 text-xs text-primary">
                   Last used: {selectedItem.last_pm_by_user.pm_id}
                 </div>
               )}
             </div>
 
-            <div className="text-xs text-muted-foreground pt-2 border-t">
+            <div className="border-t border-border pt-2 text-xs leading-5 text-muted-foreground">
               Note: You can link this inventory usage to a job or PM to track
               what it was used for.
             </div>
@@ -1889,7 +1887,7 @@ export default function InventoryPage() {
             </Button>
             <Button
               onClick={handleUse}
-              className="h-12 w-full rounded-xl bg-blue-600 font-bold text-white hover:bg-blue-700"
+              className="h-12 w-full rounded-xl"
               disabled={stockMutationPending || invalidUseQuantity}
             >
               {stockMutationPending ? "Saving…" : "Use"}
@@ -1901,7 +1899,7 @@ export default function InventoryPage() {
       {/* Pagination */}
       {filteredInventory.length > 0 && totalPages > 1 && (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-4 md:p-5">
             <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
               <div className="text-center text-sm text-muted-foreground sm:text-left">
                 Showing {(page - 1) * pageSize + 1} to{" "}
@@ -1915,7 +1913,7 @@ export default function InventoryPage() {
                   onClick={() => setPage(page - 1)}
                   disabled={page <= 1}
                 >
-                  <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                  <ChevronLeft className="h-4 w-4 sm:mr-1" aria-hidden="true" />
                   <span className="hidden sm:inline">Previous</span>
                 </Button>
 
@@ -1957,21 +1955,22 @@ export default function InventoryPage() {
                   disabled={page >= totalPages}
                 >
                   <span className="hidden sm:inline">Next</span>
-                  <ChevronRight className="h-4 w-4 sm:ml-1" />
+                  <ChevronRight className="h-4 w-4 sm:ml-1" aria-hidden="true" />
                 </Button>
               </div>
 
               <div className="flex w-full items-center justify-center gap-2 sm:w-auto">
-                <label className="text-sm text-muted-foreground">
+                <label htmlFor="inventory-page-size" className="text-sm text-muted-foreground">
                   Per page:
                 </label>
                 <select
+                  id="inventory-page-size"
                   value={pageSize}
                   onChange={(e) => {
                     setPageSize(Number(e.target.value));
                     setPage(1);
                   }}
-                  className="border border-border rounded-md px-3 py-1 text-sm"
+                  className="min-h-10 rounded-lg border border-border bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <option value={12}>12</option>
                   <option value={24}>24</option>
@@ -1983,6 +1982,6 @@ export default function InventoryPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageContainer>
   );
 }

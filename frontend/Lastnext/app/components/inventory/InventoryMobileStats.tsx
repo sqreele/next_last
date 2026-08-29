@@ -93,29 +93,29 @@ export function InventoryMobileStats({
 
   const tones = {
     primary: {
-      card: "border-blue-200 bg-blue-50/60",
-      icon: "bg-blue-600 text-white",
-      value: "text-blue-900",
+      card: "border-primary/25 bg-primary/[0.04]",
+      icon: "bg-primary/10 text-primary",
+      value: "text-primary",
     },
     success: {
-      card: "border-emerald-200 bg-emerald-50/60",
-      icon: "bg-emerald-600 text-white",
-      value: "text-emerald-900",
+      card: "border-success/25 bg-success/[0.04]",
+      icon: "bg-success/10 text-success",
+      value: "text-success",
     },
     warning: {
-      card: "border-amber-200 bg-amber-50/60",
-      icon: "bg-amber-500 text-white",
-      value: "text-amber-900",
+      card: "border-warning/30 bg-warning/[0.06]",
+      icon: "bg-warning/10 text-warning-foreground",
+      value: "text-warning-foreground",
     },
     danger: {
-      card: "border-rose-200 bg-rose-50/60",
-      icon: "bg-rose-600 text-white",
-      value: "text-rose-900",
+      card: "border-destructive/25 bg-destructive/[0.04]",
+      icon: "bg-destructive/10 text-destructive",
+      value: "text-destructive",
     },
     info: {
-      card: "border-indigo-200 bg-indigo-50/60",
-      icon: "bg-indigo-600 text-white",
-      value: "text-indigo-900",
+      card: "border-info/25 bg-info/[0.04]",
+      icon: "bg-info/10 text-info",
+      value: "text-info",
     },
   } as const;
 
@@ -124,39 +124,39 @@ export function InventoryMobileStats({
       aria-label="Inventory summary"
       className={cn("space-y-2", className)}
     >
-      <div className="-mx-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 lg:grid-cols-5">
         {tiles.map((tile) => {
           const tone = tones[tile.tone];
           const Icon = tile.icon;
           const interactive = !!tile.onClick;
           const className = cn(
-            "flex min-w-[120px] flex-none snap-start flex-col items-start gap-1 rounded-xl border p-3 shadow-[var(--pcms-shadow-soft)] transition-all",
+            "flex min-w-[124px] flex-none snap-start flex-col items-start gap-2 rounded-xl border p-3 shadow-soft transition-colors sm:min-w-0",
             tone.card,
-            tile.active && "ring-2 ring-blue-500 ring-offset-1",
+            tile.active && "ring-2 ring-warning ring-offset-2",
             interactive &&
-              "hover:shadow-soft active:scale-[0.98] touch-manipulation",
+              "touch-manipulation hover:border-warning/60 hover:bg-warning/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           );
           const content = (
             <>
               <div className="flex w-full items-center justify-between">
                 <span
                   className={cn(
-                    "grid h-8 w-8 place-items-center rounded-xl",
+                    "grid h-9 w-9 place-items-center rounded-lg",
                     tone.icon,
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4" aria-hidden="true" />
                 </span>
                 {tile.active && (
-                  <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                  <span className="rounded-full bg-warning px-2 py-0.5 text-[10px] font-semibold text-warning-foreground">
                     ON
                   </span>
                 )}
               </div>
-              <p className={cn("text-2xl font-bold leading-none", tone.value)}>
+              <p className={cn("text-2xl font-bold leading-none tabular-nums", tone.value)}>
                 {tile.value}
               </p>
-              <p className="text-[10px] font-bold text-muted-foreground">
+              <p className="text-xs font-semibold text-muted-foreground">
                 {tile.label}
               </p>
             </>
@@ -179,7 +179,7 @@ export function InventoryMobileStats({
         })}
       </div>
       {inventoryValue > 0 && (
-        <p className="px-1 text-xs font-semibold text-muted-foreground">
+        <p className="px-1 text-xs font-medium text-muted-foreground">
           Approx. on-hand value:{" "}
           <span className="text-foreground">
             {inventoryValue.toLocaleString("en-US", {

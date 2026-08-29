@@ -170,17 +170,17 @@ export function TechnicianKpiBoard({
     <section
       aria-label="Technician performance"
       className={cn(
-        "rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5",
+        "min-w-0 rounded-xl border border-border bg-card p-4 shadow-soft sm:p-5",
         className,
       )}
     >
       <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-900 text-white">
-            <Users className="h-4 w-4" />
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <Users className="h-5 w-5" aria-hidden="true" />
           </span>
           <div>
-            <h2 className="text-base font-bold text-foreground sm:text-lg">
+            <h2 className="text-base font-semibold text-foreground sm:text-lg">
               Technician performance
             </h2>
             <p className="text-xs font-medium text-muted-foreground">
@@ -190,50 +190,50 @@ export function TechnicianKpiBoard({
           </div>
         </div>
         {top && (
-          <div className="hidden items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 sm:inline-flex">
-            <TrendingUp className="h-3 w-3" />
+          <div className="hidden items-center gap-2 rounded-full border border-success/25 bg-success/10 px-3 py-1 text-xs font-semibold text-success sm:inline-flex">
+            <TrendingUp className="h-3 w-3" aria-hidden="true" />
             Top by {sortKey}: {top.name}
           </div>
         )}
       </header>
 
       {/* Mobile: stacked cards */}
-      <ul className="space-y-2 md:hidden">
+      <ul className="space-y-2 xl:hidden">
         {sorted.map((row) => (
           <li
             key={row.key}
-            className="rounded-xl border border-border bg-card p-3 shadow-soft"
+            className="rounded-xl border border-border bg-muted/[0.18] p-3"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-bold text-foreground line-clamp-1">
+                <p className="break-words text-sm font-semibold leading-5 text-foreground">
                   {row.name}
                 </p>
-                <p className="text-[11px] font-semibold text-muted-foreground">
+                <p className="mt-1 break-words text-xs text-muted-foreground">
                   {row.assigned} assigned · {row.completed} done · {row.overdue}{" "}
                   overdue
                 </p>
               </div>
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-[11px] font-bold",
+                  "shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
                   row.rate >= 75
-                    ? "bg-emerald-100 text-emerald-800"
+                    ? "border-success/25 bg-success/10 text-success"
                     : row.rate >= 50
-                      ? "bg-amber-100 text-amber-900"
-                      : "bg-rose-100 text-rose-800",
+                      ? "border-warning/30 bg-warning/10 text-warning-foreground"
+                      : "border-destructive/25 bg-destructive/10 text-destructive",
                 )}
               >
                 {row.rate}%
               </span>
             </div>
-            <div className="mt-2 grid grid-cols-3 gap-1 text-[11px] font-semibold text-muted-foreground">
+            <div className="mt-3 grid grid-cols-1 gap-2 border-t border-border pt-3 text-xs font-medium text-muted-foreground sm:grid-cols-3">
               <span className="flex items-center gap-1">
-                <Hammer className="h-3 w-3 text-amber-600" />
+                <Hammer className="h-3.5 w-3.5 text-warning-foreground" aria-hidden="true" />
                 {row.inProgress} active
               </span>
               <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3 text-blue-600" />
+                <Clock className="h-3.5 w-3.5 text-info" aria-hidden="true" />
                 {row.avgResponseHours == null
                   ? "—"
                   : row.avgResponseHours < 24
@@ -241,7 +241,7 @@ export function TechnicianKpiBoard({
                     : `${Math.round(row.avgResponseHours / 24)}d avg`}
               </span>
               <span className="flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-emerald-600" />
+                <TrendingUp className="h-3.5 w-3.5 text-success" aria-hidden="true" />
                 {row.thisWeekCompleted - row.lastWeekCompleted >= 0
                   ? `+${row.thisWeekCompleted - row.lastWeekCompleted}`
                   : row.thisWeekCompleted - row.lastWeekCompleted}{" "}
@@ -253,9 +253,9 @@ export function TechnicianKpiBoard({
       </ul>
 
       {/* Desktop: sortable table */}
-      <div className="hidden overflow-hidden rounded-xl border border-border md:block">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+      <div className="hidden overflow-x-auto rounded-xl border border-border xl:block">
+        <table className="w-full min-w-[960px] text-sm">
+          <thead className="bg-muted/50 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <tr>
               <th className="px-3 py-2">Technician</th>
               <HeaderCell
@@ -290,12 +290,12 @@ export function TechnicianKpiBoard({
               <th className="px-3 py-2">Δ vs prior</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-border">
             {sorted.map((row) => {
               const delta = row.thisWeekCompleted - row.lastWeekCompleted;
               return (
-                <tr key={row.key} className="hover:bg-muted">
-                  <td className="px-3 py-2 font-bold text-foreground">
+                <tr key={row.key} className="transition-colors hover:bg-muted/40">
+                  <td className="max-w-64 break-words px-3 py-3 font-semibold text-foreground">
                     {row.name}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
@@ -303,14 +303,14 @@ export function TechnicianKpiBoard({
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-success" aria-hidden="true" />
                       {row.completed}
                     </span>
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {row.overdue > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-rose-700">
-                        <AlertTriangle className="h-3.5 w-3.5" />
+                      <span className="inline-flex items-center gap-1 text-destructive">
+                        <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
                         {row.overdue}
                       </span>
                     ) : (
@@ -320,12 +320,12 @@ export function TechnicianKpiBoard({
                   <td className="px-3 py-2">
                     <span
                       className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-bold",
+                        "rounded-full border px-2 py-0.5 text-xs font-semibold",
                         row.rate >= 75
-                          ? "bg-emerald-100 text-emerald-800"
+                          ? "border-success/25 bg-success/10 text-success"
                           : row.rate >= 50
-                            ? "bg-amber-100 text-amber-900"
-                            : "bg-rose-100 text-rose-800",
+                            ? "border-warning/30 bg-warning/10 text-warning-foreground"
+                            : "border-destructive/25 bg-destructive/10 text-destructive",
                       )}
                     >
                       {row.rate}%
@@ -341,15 +341,15 @@ export function TechnicianKpiBoard({
                   <td className="px-3 py-2">
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold",
+                        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold",
                         delta > 0
-                          ? "bg-emerald-100 text-emerald-800"
+                          ? "border-success/25 bg-success/10 text-success"
                           : delta < 0
-                            ? "bg-rose-100 text-rose-800"
-                            : "bg-muted text-muted-foreground",
+                            ? "border-destructive/25 bg-destructive/10 text-destructive"
+                            : "border-border bg-muted text-muted-foreground",
                       )}
                     >
-                      <TrendingUp className="h-3 w-3" />
+                      <TrendingUp className="h-3 w-3" aria-hidden="true" />
                       {delta > 0 ? `+${delta}` : delta}
                     </span>
                   </td>
@@ -387,7 +387,7 @@ function HeaderCell({
         type="button"
         onClick={() => onSort(columnKey)}
         className={cn(
-          "inline-flex items-center gap-1 font-bold uppercase tracking-wider",
+          "inline-flex min-h-10 items-center gap-1 rounded-md px-1 font-semibold uppercase tracking-wider focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           active
             ? "text-foreground"
             : "text-muted-foreground hover:text-muted-foreground",

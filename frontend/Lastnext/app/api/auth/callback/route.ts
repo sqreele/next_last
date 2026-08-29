@@ -196,7 +196,10 @@ export async function GET(request: NextRequest) {
       console.warn('auth0_access_probe_failed', { reason: 'backend_unavailable' });
     }
 
-    const destination = hasPropertyAccess ? requestedRedirect : '/auth/access-pending';
+    const invitationReturn = requestedRedirect === '/invitations/accept';
+    const destination = hasPropertyAccess || invitationReturn
+      ? requestedRedirect
+      : '/auth/access-pending';
     const response = NextResponse.redirect(localAppUrl(baseUrl, destination));
     await setSessionCookie(
       response,

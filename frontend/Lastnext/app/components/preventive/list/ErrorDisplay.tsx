@@ -15,7 +15,7 @@ export default function ErrorDisplay({ error, onClear }: ErrorDisplayProps) {
       variant="error"
       title="Unable to load preventive maintenance"
       description={error}
-      className="mb-5 min-h-48"
+      className="min-h-48"
       action={
         <Button type="button" variant="outline" onClick={onClear}>
           <X className="h-4 w-4" aria-hidden="true" />

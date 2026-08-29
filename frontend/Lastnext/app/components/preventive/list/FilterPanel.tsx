@@ -78,7 +78,7 @@ export default function FilterPanel({
           aria-label="Search preventive maintenance tasks"
           value={currentFilters.search || ""}
           onChange={(e) => onFilterChangeAction("search", e.target.value)}
-          className="h-12 w-full min-w-0 rounded-lg border border-input bg-background py-3 pl-10 pr-11 text-base text-foreground shadow-soft transition-[border-color,box-shadow] placeholder:text-muted-foreground hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
+          className="h-12 w-full min-w-0 rounded-lg border border-input bg-background py-3 pl-10 pr-11 text-base text-foreground shadow-soft transition-[border-color,box-shadow] placeholder:text-muted-foreground hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
         />
         {currentFilters.search && (
           <button
@@ -124,7 +124,7 @@ export default function FilterPanel({
               aria-label="Filter by maintenance status"
               value={currentFilters.status || ""}
               onChange={(e) => onFilterChangeAction("status", e.target.value)}
-              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
+              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
             >
               <option value="">All Status</option>
               <option value="completed">Completed</option>
@@ -137,7 +137,7 @@ export default function FilterPanel({
               onChange={(e) =>
                 onFilterChangeAction("frequency", e.target.value)
               }
-              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
+              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
             >
               <option value="">All Frequencies</option>
               <option value="daily">Daily</option>
@@ -157,7 +157,7 @@ export default function FilterPanel({
               aria-label="Filter by machine"
               value={currentFilters.machine || ""}
               onChange={(e) => onFilterChangeAction("machine", e.target.value)}
-              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
+              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
             >
               <option value="">All Machines</option>
               {machineOptions.map((machine) => (
@@ -177,7 +177,7 @@ export default function FilterPanel({
                   onChange={(e) =>
                     onFilterChangeAction("startDate", e.target.value)
                   }
-                  className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
+                  className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
                 />
               </div>
               <div>
@@ -190,7 +190,7 @@ export default function FilterPanel({
                   onChange={(e) =>
                     onFilterChangeAction("endDate", e.target.value)
                   }
-                  className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
+                  className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
                 />
               </div>
             </div>
@@ -202,7 +202,7 @@ export default function FilterPanel({
             aria-label="Sort preventive maintenance tasks"
             value={`${sortBy}-${sortOrder}`}
             onChange={(e) => handleSortChange(e.target.value)}
-            className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm"
+            className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 sm:text-sm lg:h-11"
           >
             <option value="date-desc">Date (Newest First)</option>
             <option value="date-asc">Date (Oldest First)</option>

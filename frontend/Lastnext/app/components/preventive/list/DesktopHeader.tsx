@@ -32,7 +32,7 @@ export default function DesktopHeader({
   onToggleFilters,
 }: DesktopHeaderProps) {
   return (
-    <header className="mx-auto hidden w-full max-w-7xl py-3 md:block">
+    <header className="hidden w-full md:block">
       <div className="flex flex-col gap-5 border-b border-border pb-5 xl:flex-row xl:items-end xl:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-primary">

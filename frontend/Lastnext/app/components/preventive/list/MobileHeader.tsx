@@ -50,7 +50,7 @@ export default function MobileHeader({
             title="Dashboard"
             aria-label="Open maintenance dashboard"
           >
-            <BarChart3 className="h-5 w-5" />
+            <BarChart3 className="h-5 w-5" aria-hidden="true" />
           </Link>
           <Link
             href="/dashboard/preventive-maintenance/schedule"
@@ -58,7 +58,7 @@ export default function MobileHeader({
             title="Calendar"
             aria-label="Open maintenance calendar"
           >
-            <CalendarDays className="h-5 w-5" />
+            <CalendarDays className="h-5 w-5" aria-hidden="true" />
           </Link>
           <Link
             href="/dashboard/preventive-maintenance/plans"
@@ -66,7 +66,7 @@ export default function MobileHeader({
             title="Master Plans"
             aria-label="Open PM master plans"
           >
-            <Repeat2 className="h-5 w-5" />
+            <Repeat2 className="h-5 w-5" aria-hidden="true" />
           </Link>
           <button
             onClick={onRefresh}
@@ -77,6 +77,7 @@ export default function MobileHeader({
           >
             <RefreshCw
               className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`}
+              aria-hidden="true"
             />
           </button>
           <button
@@ -88,7 +89,7 @@ export default function MobileHeader({
             }`}
             aria-label="Toggle maintenance filters"
           >
-            <Filter className="h-5 w-5" />
+            <Filter className="h-5 w-5" aria-hidden="true" />
             {activeFiltersCount > 0 && (
               <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                 {activeFiltersCount}
@@ -101,7 +102,7 @@ export default function MobileHeader({
               className="grid min-h-11 place-items-center rounded-lg border border-primary bg-primary text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               aria-label="Create new maintenance task"
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-5 w-5" aria-hidden="true" />
             </Link>
           )}
         </div>

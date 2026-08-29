@@ -180,43 +180,165 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
         />
       ) : (
         <>
-          <section className="space-y-3 rounded-2xl border border-border bg-card p-3 shadow-sm" aria-label="Job filters">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <label htmlFor="jobs-search" className="sr-only">Search jobs</label>
-              <Input id="jobs-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search job ID, description, room, area, topic, or assignee" className="pl-10" />
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              <label className="sr-only" htmlFor="jobs-priority">Priority</label>
-              <select id="jobs-priority" value={priority} onChange={(event) => setPriority(event.target.value as JobPriority | "all")} className="h-11 rounded-lg border border-border bg-background px-3 text-sm font-semibold">
-                <option value="all">All priorities</option><option value="high">High priority</option><option value="medium">Medium priority</option><option value="low">Low priority</option>
-              </select>
-              <label className="sr-only" htmlFor="jobs-date">Created date</label>
-              <select id="jobs-date" value={date} onChange={(event) => setDate(event.target.value as DateFilter)} className="h-11 rounded-lg border border-border bg-background px-3 text-sm font-semibold">
-                <option value="all">Any date</option><option value="today">Today</option><option value="week">Last 7 days</option><option value="month">Last 30 days</option>
-              </select>
-              <label className="sr-only" htmlFor="jobs-ordering">Sort jobs</label>
-              <select id="jobs-ordering" value={ordering} onChange={(event) => setOrdering(event.target.value as Ordering)} className="h-11 rounded-lg border border-border bg-background px-3 text-sm font-semibold">
-                <option value="-created_at">Newest first</option><option value="created_at">Oldest first</option><option value="-updated_at">Recently updated</option>
-              </select>
-              <Button type="button" variant="outline" onClick={() => setRefreshKey((value) => value + 1)}>
-                <RefreshCcw className="h-4 w-4" aria-hidden="true" /> Refresh
-              </Button>
+          <section
+            className="rounded-xl border border-border bg-card p-4 shadow-soft lg:p-5"
+            aria-label="Job filters"
+          >
+            <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(280px,1fr)_auto] xl:items-end">
+              <div className="min-w-0 space-y-1.5">
+                <label
+                  htmlFor="jobs-search"
+                  className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  Search jobs
+                </label>
+                <div className="relative min-w-0">
+                  <Search
+                    className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <Input
+                    id="jobs-search"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search job ID, description, room, area, topic, or assignee"
+                    className="h-12 min-w-0 pl-10 lg:h-11"
+                  />
+                </div>
+              </div>
+              <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap xl:items-end">
+                <div className="min-w-0 space-y-1.5">
+                  <label
+                    className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                    htmlFor="jobs-priority"
+                  >
+                    Priority
+                  </label>
+                  <select
+                    id="jobs-priority"
+                    value={priority}
+                    onChange={(event) =>
+                      setPriority(event.target.value as JobPriority | "all")
+                    }
+                    className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-40"
+                  >
+                    <option value="all">All priorities</option>
+                    <option value="high">High priority</option>
+                    <option value="medium">Medium priority</option>
+                    <option value="low">Low priority</option>
+                  </select>
+                </div>
+                <div className="min-w-0 space-y-1.5">
+                  <label
+                    className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                    htmlFor="jobs-date"
+                  >
+                    Created date
+                  </label>
+                  <select
+                    id="jobs-date"
+                    value={date}
+                    onChange={(event) =>
+                      setDate(event.target.value as DateFilter)
+                    }
+                    className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-36"
+                  >
+                    <option value="all">Any date</option>
+                    <option value="today">Today</option>
+                    <option value="week">Last 7 days</option>
+                    <option value="month">Last 30 days</option>
+                  </select>
+                </div>
+                <div className="min-w-0 space-y-1.5">
+                  <label
+                    className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                    htmlFor="jobs-ordering"
+                  >
+                    Sort jobs
+                  </label>
+                  <select
+                    id="jobs-ordering"
+                    value={ordering}
+                    onChange={(event) =>
+                      setOrdering(event.target.value as Ordering)
+                    }
+                    className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft transition-[border-color,box-shadow] hover:border-foreground/30 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20 lg:h-11 lg:text-sm xl:w-44"
+                  >
+                    <option value="-created_at">Newest first</option>
+                    <option value="created_at">Oldest first</option>
+                    <option value="-updated_at">Recently updated</option>
+                  </select>
+                </div>
+                <div className="flex items-end sm:pt-[1.375rem] xl:pt-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setRefreshKey((value) => value + 1)}
+                    className="h-12 w-full lg:h-11 lg:w-auto"
+                    aria-label="Refresh jobs"
+                  >
+                    <RefreshCcw className="h-4 w-4" aria-hidden="true" />{" "}
+                    Refresh
+                  </Button>
+                </div>
+              </div>
             </div>
           </section>
 
-          <div className="rounded-xl border border-border bg-card p-3 shadow-sm sm:hidden">
-            <label htmlFor="mobile-job-status" className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-muted-foreground">Job status</label>
-            <select id="mobile-job-status" value={filter} onChange={(event) => setStatus(event.target.value as TabValue)} className="h-12 w-full rounded-xl border-2 border-border bg-background px-3 text-base font-bold">
-              {TABS.map((tab) => <option key={tab.value} value={tab.value}>{tab.label} ({countFor(tab.value)})</option>)}
+          <div className="rounded-xl border border-border bg-card p-4 shadow-soft sm:hidden">
+            <label
+              htmlFor="mobile-job-status"
+              className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-muted-foreground"
+            >
+              Job status
+            </label>
+            <select
+              id="mobile-job-status"
+              value={filter}
+              onChange={(event) => setStatus(event.target.value as TabValue)}
+              className="h-12 w-full min-w-0 rounded-lg border border-input bg-background px-3 text-base font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            >
+              {TABS.map((tab) => (
+                <option key={tab.value} value={tab.value}>
+                  {tab.label} ({countFor(tab.value)})
+                </option>
+              ))}
             </select>
           </div>
-          <div role="tablist" aria-label="Filter jobs by status" className="hidden flex-wrap gap-2 rounded-xl border border-border bg-card p-2 shadow-sm sm:flex">
+          <div
+            role="tablist"
+            aria-label="Filter jobs by status"
+            className="hidden flex-wrap gap-2 rounded-xl border border-border bg-card p-2.5 shadow-soft sm:flex"
+          >
             {TABS.map((tab) => {
               const active = filter === tab.value;
-              return <button key={tab.value} type="button" role="tab" aria-selected={active} onClick={() => setStatus(tab.value)} className={cn("inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold", active ? "border-slate-900 bg-slate-900 text-white" : "border-border text-muted-foreground hover:bg-muted")}>
-                {tab.label}<span className={cn("rounded-full px-1.5 py-0.5 text-[11px]", active ? "bg-white/20" : "bg-muted")}>{countFor(tab.value)}</span>
-              </button>;
+              return (
+                <button
+                  key={tab.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setStatus(tab.value)}
+                  className={cn(
+                    "inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground shadow-soft"
+                      : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary",
+                  )}
+                >
+                  {tab.label}
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[11px] tabular-nums",
+                      active
+                        ? "bg-primary-foreground/15 text-primary-foreground"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {countFor(tab.value)}
+                  </span>
+                </button>
+              );
             })}
           </div>
 
@@ -239,15 +361,46 @@ export function JobsListWithStatus({ initialFilter }: { initialFilter: TabValue 
             </div>
           )}
 
-          {!loading && !error && scopedResponse && scopedResponse.count > PAGE_SIZE && (
-            <nav aria-label="Jobs pagination" className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
-              <p className="text-sm text-muted-foreground">Page {page} of {totalPages} · {scopedResponse.count} jobs</p>
-              <div className="flex gap-2">
-                <button type="button" disabled={!scopedResponse.previous} onClick={() => setPage((value) => Math.max(1, value - 1))} className="inline-flex h-10 items-center gap-1 rounded-lg border border-border px-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Previous</button>
-                <button type="button" disabled={!scopedResponse.next} onClick={() => setPage((value) => value + 1)} className="inline-flex h-10 items-center gap-1 rounded-lg border border-border px-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-40">Next <ChevronRight className="h-4 w-4" /></button>
-              </div>
-            </nav>
-          )}
+          {!loading &&
+            !error &&
+            scopedResponse &&
+            scopedResponse.count > PAGE_SIZE && (
+              <nav
+                aria-label="Jobs pagination"
+                className="flex min-w-0 flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between"
+              >
+                <p className="text-center text-sm font-medium text-muted-foreground sm:text-left">
+                  <span className="font-semibold text-foreground">
+                    Page {page} of {totalPages}
+                  </span>
+                  <span aria-hidden="true"> · </span>
+                  {scopedResponse.count} jobs
+                </p>
+                <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!scopedResponse.previous}
+                    onClick={() => setPage((value) => Math.max(1, value - 1))}
+                    className="w-full px-3 sm:w-auto"
+                    aria-label="Go to previous jobs page"
+                  >
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />{" "}
+                    Previous
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!scopedResponse.next}
+                    onClick={() => setPage((value) => value + 1)}
+                    className="w-full px-3 sm:w-auto"
+                    aria-label="Go to next jobs page"
+                  >
+                    Next <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </div>
+              </nav>
+            )}
         </>
       )}
     </PageContainer>

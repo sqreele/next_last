@@ -147,8 +147,8 @@ export function InventoryCsvImport({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" className={cn("h-10 gap-2", className)}>
-          <Upload className="h-4 w-4" />
+        <Button variant="outline" className={cn("gap-2", className)}>
+          <Upload className="h-4 w-4" aria-hidden="true" />
           Import CSV
         </Button>
       </DialogTrigger>
@@ -165,9 +165,9 @@ export function InventoryCsvImport({
         </DialogHeader>
 
         <div className="space-y-4 px-5 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm font-semibold text-blue-900">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-info/25 bg-info/10 p-3 text-sm font-semibold text-foreground">
             <span className="flex items-center gap-2">
-              <FileSpreadsheet className="h-4 w-4" />
+              <FileSpreadsheet className="h-4 w-4 text-info" aria-hidden="true" />
               Need a starting point?
             </span>
             <Button
@@ -175,17 +175,17 @@ export function InventoryCsvImport({
               size="sm"
               variant="outline"
               onClick={downloadTemplate}
-              className="h-9 border-blue-300 text-blue-700"
+              className="h-9 min-h-9 border-info/30 text-info hover:bg-info/10 hover:text-info"
             >
-              <Download className="mr-1 h-4 w-4" /> Template
+              <Download className="mr-1 h-4 w-4" aria-hidden="true" /> Template
             </Button>
           </div>
 
           <label
             htmlFor="inventory-csv-file"
-            className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted px-4 py-8 text-center transition-colors hover:border-blue-400 hover:bg-blue-50"
+            className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/40 px-4 py-8 text-center transition-colors hover:border-primary/50 hover:bg-primary/5 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
           >
-            <Upload className="h-7 w-7 text-muted-foreground" />
+            <Upload className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
             <span className="text-sm font-bold text-foreground">
               {file ? file.name : "Choose a CSV file"}
             </span>
@@ -221,14 +221,14 @@ export function InventoryCsvImport({
                 className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                 aria-label="Remove selected file"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           )}
 
           {error && (
-            <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800">
-              <AlertCircle className="mt-0.5 h-4 w-4 flex-none" />
+            <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive" role="alert">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-none" aria-hidden="true" />
               {error}
             </div>
           )}
@@ -239,11 +239,11 @@ export function InventoryCsvImport({
                 className={cn(
                   "flex items-start gap-2 rounded-xl border p-3 text-sm font-semibold",
                   result.error_count === 0
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                    : "border-amber-200 bg-amber-50 text-amber-900",
+                    ? "border-success/30 bg-success/10 text-success"
+                    : "border-warning/30 bg-warning/10 text-warning-foreground",
                 )}
               >
-                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none" />
+                <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none" aria-hidden="true" />
                 <span>
                   Imported {result.created_count} item
                   {result.created_count === 1 ? "" : "s"}
@@ -262,7 +262,7 @@ export function InventoryCsvImport({
                     {result.errors.map((row) => (
                       <li
                         key={`err-${row.row}`}
-                        className="py-1.5 font-medium text-rose-700"
+                        className="py-1.5 font-medium text-destructive"
                       >
                         Row {row.row}: {row.error}
                       </li>
@@ -289,11 +289,11 @@ export function InventoryCsvImport({
               type="button"
               onClick={handleUpload}
               disabled={submitting || !file}
-              className="h-11 w-full bg-blue-600 font-bold text-white hover:bg-blue-700 disabled:bg-slate-300 sm:w-auto"
+              className="h-11 w-full font-semibold sm:w-auto"
             >
               {submitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                   Importing...
                 </>
               ) : (

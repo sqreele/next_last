@@ -6,12 +6,9 @@ import { useJobsDashboard } from '@/app/lib/hooks/useJobsDashboard';
 import { useSessionGuard } from '@/app/lib/hooks/useSessionGuard';
 import {
   Activity,
-  AlertTriangle,
   ArrowRight,
   ArrowUpRight,
   BarChart3,
-  Building2,
-  CalendarDays,
   CheckCircle2,
   ClipboardList,
   Clock,
@@ -21,15 +18,12 @@ import {
   Plus,
   RefreshCw,
   ShieldAlert,
-  Sparkles,
   Timer,
   TrendingUp,
-  UserRound,
   Users,
   Wrench,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardContent } from '@/app/components/ui/card';
 import JobList from '@/app/components/jobs/jobList';
 import { Job, JobStatus } from '@/app/lib/types';
 import { getDisplayName } from '@/app/lib/utils/display-name';
@@ -46,6 +40,9 @@ import { MobileKpiStrip } from '@/app/components/dashboard/MobileKpiStrip';
 import { RecentActivityFeed } from '@/app/components/dashboard/RecentActivityFeed';
 import { TechnicianKpiBoard } from '@/app/components/dashboard/TechnicianKpiBoard';
 import { useMainStore } from '@/app/lib/stores/mainStore';
+import { PageContainer } from '@/app/components/layout/PageContainer';
+import { PageHeader } from '@/app/components/layout/PageHeader';
+import { FeedbackState } from '@/app/components/feedback/FeedbackState';
 
 type StatTone = 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'secondary';
 
@@ -355,20 +352,15 @@ export default function ImprovedDashboard() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--sneat-body-bg)' }}>
-        <Card className="w-full max-w-xl">
-          <CardContent className="p-8 text-center space-y-6">
-            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto" style={{ background: 'var(--sneat-danger-soft)' }}>
-              <AlertTriangle className="h-10 w-10" style={{ color: 'var(--sneat-danger)' }} />
-            </div>
-            <div className="space-y-2">
-              <h1 className="text-2xl font-bold" style={{ color: 'var(--sneat-text-strong)' }}>Unable to load KPI Dashboard</h1>
-              <p style={{ color: 'var(--sneat-text-muted)' }}>{error}</p>
-            </div>
-            <Button onClick={refreshJobs} className="w-full">Try Again</Button>
-          </CardContent>
-        </Card>
-      </div>
+      <PageContainer className="flex min-h-[55vh] items-center">
+        <FeedbackState
+          variant="error"
+          title="Unable to load KPI Dashboard"
+          description={error}
+          action={<Button onClick={refreshJobs}>Try Again</Button>}
+          className="w-full"
+        />
+      </PageContainer>
     );
   }
 
@@ -377,58 +369,57 @@ export default function ImprovedDashboard() {
   const peakDayLabel = metrics.weeklyBuckets[metrics.weeklyPeakIndex]?.label ?? '';
 
   return (
-    <div className="sneat-dashboard">
+    <PageContainer className="sneat-dashboard !max-w-7xl !gap-5 !bg-transparent !px-4 !pt-4 sm:!px-6 lg:!px-8">
       {/* Page header */}
-      <div className="sneat-page-header">
-        <div className="sneat-page-header__title">
-          <h1>KPI Dashboard</h1>
-          <p>Hotel maintenance overview, job progress, and technician performance.</p>
-        </div>
-        <div className="sneat-page-actions">
-          {!hasNoActiveProperty && (
-            <Link href="/dashboard/create-job" className="sneat-btn sneat-btn--primary">
-              <Plus className="h-4 w-4" /> Create Job
-            </Link>
-          )}
-          <Link href="/dashboard/jobs-report" className="sneat-btn sneat-btn--ghost">
-            <FileText className="h-4 w-4" /> Reports
-          </Link>
-          <button
-            type="button"
-            onClick={() => refreshJobs()}
-            disabled={loading || hasNoActiveProperty}
-            className="sneat-btn sneat-btn--neutral"
-            aria-label="Refresh dashboard data"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Loading...' : 'Refresh'}
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow="Operations overview"
+        title="KPI Dashboard"
+        description="Hotel maintenance overview, job progress, and technician performance."
+        actions={
+          <>
+            {!hasNoActiveProperty && (
+              <Button asChild>
+                <Link href="/dashboard/create-job">
+                  <Plus className="h-4 w-4" aria-hidden="true" /> Create Job
+                </Link>
+              </Button>
+            )}
+            <Button asChild variant="outline">
+              <Link href="/dashboard/jobs-report">
+                <FileText className="h-4 w-4" aria-hidden="true" /> Reports
+              </Link>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => refreshJobs()}
+              disabled={loading || hasNoActiveProperty}
+              aria-label="Refresh dashboard data"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
+              {loading ? 'Loading...' : 'Refresh'}
+            </Button>
+          </>
+        }
+      />
 
       {hasNoActiveProperty ? (
-        <div
-          className="sneat-card sneat-card--pad-lg"
-          role="status"
-          style={{ textAlign: 'center', alignItems: 'center', gap: '0.75rem' }}
-        >
-          <div className="sneat-stat-card__icon sneat-stat-card__icon--primary" style={{ width: '3rem', height: '3rem' }}>
-            <Building2 className="h-5 w-5" />
-          </div>
-          <h2>Select a property</h2>
-          <p className="sneat-muted">Select a property in the header to view its maintenance dashboard.</p>
-        </div>
+        <FeedbackState
+          title="Select a property"
+          description="Select a property in the header to view its maintenance dashboard."
+        />
       ) : hasNoMaintenanceData ? (
-        <div className="sneat-card sneat-card--pad-lg" style={{ textAlign: 'center', alignItems: 'center', gap: '0.75rem' }}>
-          <div className="sneat-stat-card__icon sneat-stat-card__icon--primary" style={{ width: '3rem', height: '3rem' }}>
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <h2>No maintenance data yet</h2>
-          <p className="sneat-muted">Create the first maintenance job to start tracking hotel operations.</p>
-          <Link href="/dashboard/create-job" className="sneat-btn sneat-btn--primary">
-            <Plus className="h-4 w-4" /> Create Maintenance Job
-          </Link>
-        </div>
+        <FeedbackState
+          title="No maintenance data yet"
+          description="Create the first maintenance job to start tracking hotel operations."
+          action={
+            <Button asChild>
+              <Link href="/dashboard/create-job">
+                <Plus className="h-4 w-4" aria-hidden="true" /> Create Maintenance Job
+              </Link>
+            </Button>
+          }
+        />
       ) : (
         <>
           {/* New unified KPI strip — swipeable on mobile, grid on desktop. */}
@@ -441,11 +432,11 @@ export default function ImprovedDashboard() {
             waitingParts={metrics.statusCounts.waiting_spare_part || metrics.statusCounts.waiting_sparepart || 0}
             completionRate={metrics.completionRate}
             deltas={metrics.deltas}
-            className="lg:hidden"
+            className="xl:hidden"
           />
 
           {/* Desktop summary; the compact KPI strip above owns mobile/tablet. */}
-          <div className="sneat-top-row sneat-dashboard__desktop-summary">
+          <div className="sneat-top-row sneat-dashboard__desktop-summary !hidden xl:!grid">
             <div className="sneat-welcome-card">
               <span className="sneat-welcome-card__eyebrow">Welcome back</span>
               <h2>Operations on track!</h2>
@@ -542,8 +533,8 @@ export default function ImprovedDashboard() {
           </div>
 
           {/* Mid row: weekly chart + donut */}
-          <div className="sneat-mid-grid">
-            <div className="sneat-chart-card">
+          <div className="sneat-mid-grid min-w-0">
+            <div className="sneat-chart-card min-w-0">
               <div className="sneat-card__head">
                 <div>
                   <h2>Weekly Maintenance Activity</h2>
@@ -575,10 +566,10 @@ export default function ImprovedDashboard() {
                   );
                 })}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <p className="sneat-muted">7-day total</p>
-                  <strong style={{ fontSize: '1.25rem', color: 'var(--sneat-text-strong)' }}>{metrics.weeklyTotal} jobs</strong>
+                  <strong className="text-xl text-foreground">{metrics.weeklyTotal} jobs</strong>
                 </div>
                 <Link href="/dashboard/jobs" className="sneat-btn sneat-btn--ghost">
                   View Jobs <ArrowRight className="h-4 w-4" />
@@ -586,7 +577,7 @@ export default function ImprovedDashboard() {
               </div>
             </div>
 
-            <div className="sneat-card sneat-card--pad-lg">
+            <div className="sneat-card sneat-card--pad-lg min-w-0">
               <div className="sneat-card__head">
                 <div>
                   <h2>Jobs by Priority</h2>
@@ -628,8 +619,8 @@ export default function ImprovedDashboard() {
           </div>
 
           {/* Status distribution + Recent transactions analog */}
-          <div className="sneat-mid-grid">
-            <div className="sneat-card sneat-card--pad-lg">
+          <div className="sneat-mid-grid min-w-0">
+            <div className="sneat-card sneat-card--pad-lg min-w-0">
               <div className="sneat-card__head">
                 <div>
                   <h2>Job Status Distribution</h2>
@@ -652,11 +643,10 @@ export default function ImprovedDashboard() {
                             : status.value,
                         )
                       }
-                      className="sneat-list__row"
-                      style={{ background: 'transparent', border: 0, padding: 0, cursor: 'pointer', textAlign: 'left' }}
+                      className="sneat-list__row rounded-lg border-0 bg-transparent p-2 text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <span className={`sneat-list__icon sneat-stat-card__icon--${status.tone}`}>
-                        <Activity className="h-4 w-4" />
+                        <Activity className="h-4 w-4" aria-hidden="true" />
                       </span>
                       <div>
                         <div className="sneat-list__title">{status.label}</div>
@@ -685,8 +675,8 @@ export default function ImprovedDashboard() {
           )}
 
           {/* Categories + Technicians + Activity timeline */}
-          <div className="sneat-mid-grid">
-            <div className="sneat-card sneat-card--pad-lg">
+          <div className="sneat-mid-grid min-w-0">
+            <div className="sneat-card sneat-card--pad-lg min-w-0">
               <div className="sneat-card__head">
                 <div>
                   <h2>Top Categories</h2>
@@ -698,13 +688,13 @@ export default function ImprovedDashboard() {
                   metrics.categoryRows.map(([category, count]) => {
                     const percentage = metrics.total > 0 ? Math.round((count / metrics.total) * 100) : 0;
                     return (
-                      <div key={category} className="sneat-list__row">
+                      <div key={category} className="sneat-list__row min-w-0">
                         <span className="sneat-list__icon sneat-stat-card__icon--primary">
-                          <ClipboardList className="h-4 w-4" />
+                          <ClipboardList className="h-4 w-4" aria-hidden="true" />
                         </span>
-                        <div>
-                          <div className="sneat-list__title">{category}</div>
-                          <div className="sneat-list__caption">{percentage}% of maintenance jobs</div>
+                        <div className="min-w-0">
+                          <div className="sneat-list__title break-words">{category}</div>
+                          <div className="sneat-list__caption break-words">{percentage}% of maintenance jobs</div>
                         </div>
                         <span className="sneat-list__value">{count}</span>
                       </div>
@@ -720,10 +710,10 @@ export default function ImprovedDashboard() {
                 <div className="sneat-list">
                   {metrics.technicianRows.length > 0 ? (
                     metrics.technicianRows.map((row) => (
-                      <div key={row.name} className="sneat-list__row">
+                      <div key={row.name} className="sneat-list__row min-w-0">
                         <span className="sneat-tx-row__avatar">{getInitials(row.name)}</span>
-                        <div>
-                          <div className="sneat-list__title">{row.name}</div>
+                        <div className="min-w-0">
+                          <div className="sneat-list__title break-words">{row.name}</div>
                           <div className="sneat-list__caption">{row.assigned} assigned &middot; {row.completed} done</div>
                         </div>
                         <span className={`sneat-chip sneat-chip--${row.rate >= 75 ? 'success' : row.rate >= 50 ? 'warning' : 'danger'}`}>
@@ -738,7 +728,7 @@ export default function ImprovedDashboard() {
               </div>
             </div>
 
-            <div className="sneat-card sneat-card--pad-lg">
+            <div className="sneat-card sneat-card--pad-lg min-w-0">
               <div className="sneat-card__head">
                 <div>
                   <h2>Activity Timeline</h2>
@@ -753,12 +743,12 @@ export default function ImprovedDashboard() {
                     const tone = statusTone(job.status);
                     const title = job.topics?.[0]?.title || job.title || 'Maintenance Job';
                     return (
-                      <div key={job.job_id || job.id} className={`sneat-timeline__item sneat-timeline__item--${tone}`}>
+                      <div key={job.job_id || job.id} className={`sneat-timeline__item sneat-timeline__item--${tone} min-w-0`}>
                         <div className="sneat-timeline__top">
-                          <span className="sneat-timeline__title">#{job.job_id} &middot; {title}</span>
+                          <span className="sneat-timeline__title min-w-0 break-words">#{job.job_id} &middot; {title}</span>
                           <span className="sneat-timeline__time">{relativeTime(job.created_at)}</span>
                         </div>
-                        <p className="sneat-timeline__body">
+                        <p className="sneat-timeline__body break-words">
                           {getRoomOrArea(job)} &middot; assigned to {getUserName(job.user)}
                         </p>
                         <div style={{ marginTop: '0.4rem', display: 'inline-flex', gap: '0.35rem' }}>
@@ -787,7 +777,7 @@ export default function ImprovedDashboard() {
                 className="sneat-btn sneat-btn--ghost"
                 aria-label="Export maintenance jobs as CSV"
               >
-                <Download className="h-4 w-4" /> Export CSV
+                <Download className="h-4 w-4" aria-hidden="true" /> Export CSV
               </button>
             </div>
 
@@ -814,7 +804,7 @@ export default function ImprovedDashboard() {
             ) : (
               <div className="sneat-board">
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--sneat-text-muted)', fontSize: '0.8125rem' }}>
-                  <BarChart3 className="h-4 w-4" /> Filtered maintenance job board
+                  <BarChart3 className="h-4 w-4" aria-hidden="true" /> Filtered maintenance job board
                 </div>
                 {TAB_CONFIG.map(({ value }) => (
                   <div key={value} hidden={selectedTab !== value}>
@@ -849,6 +839,6 @@ export default function ImprovedDashboard() {
           </div>
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }

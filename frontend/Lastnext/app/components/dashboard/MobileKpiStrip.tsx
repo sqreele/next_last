@@ -54,33 +54,33 @@ const TONE_STYLES: Record<
   { card: string; icon: string; value: string }
 > = {
   primary: {
-    card: "border-blue-200 bg-card",
-    icon: "bg-blue-600 text-white",
-    value: "text-blue-900",
+    card: "border-primary/25 bg-primary/[0.03]",
+    icon: "bg-primary/10 text-primary",
+    value: "text-primary",
   },
   info: {
-    card: "border-sky-200 bg-card",
-    icon: "bg-sky-600 text-white",
-    value: "text-sky-900",
+    card: "border-info/25 bg-info/[0.03]",
+    icon: "bg-info/10 text-info",
+    value: "text-info",
   },
   warning: {
-    card: "border-amber-200 bg-card",
-    icon: "bg-amber-500 text-white",
-    value: "text-amber-900",
+    card: "border-warning/30 bg-warning/[0.04]",
+    icon: "bg-warning/10 text-warning-foreground",
+    value: "text-warning-foreground",
   },
   success: {
-    card: "border-emerald-200 bg-card",
-    icon: "bg-emerald-600 text-white",
-    value: "text-emerald-900",
+    card: "border-success/25 bg-success/[0.03]",
+    icon: "bg-success/10 text-success",
+    value: "text-success",
   },
   danger: {
-    card: "border-rose-200 bg-card",
-    icon: "bg-rose-600 text-white",
-    value: "text-rose-900",
+    card: "border-destructive/25 bg-destructive/[0.03]",
+    icon: "bg-destructive/10 text-destructive",
+    value: "text-destructive",
   },
   neutral: {
     card: "border-border bg-card",
-    icon: "bg-slate-700 text-white",
+    icon: "bg-muted text-foreground",
     value: "text-foreground",
   },
 };
@@ -99,16 +99,16 @@ function DeltaPill({
   const tone = neutral
     ? "bg-muted text-muted-foreground"
     : positive
-      ? "bg-emerald-100 text-emerald-700"
-      : "bg-rose-100 text-rose-700";
+      ? "bg-success/10 text-success"
+      : "bg-destructive/10 text-destructive";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold",
+        "inline-flex min-h-6 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
         tone,
       )}
     >
-      <Icon className="h-3 w-3" />
+      <Icon className="h-3 w-3" aria-hidden="true" />
       {positive ? "+" : ""}
       {delta}
       {label ? <span className="hidden sm:inline">&nbsp;{label}</span> : null}
@@ -122,49 +122,49 @@ function KpiCard({ kpi }: { kpi: KpiInput }) {
   const inner = (
     <div
       className={cn(
-        "flex h-full w-full min-w-[180px] flex-col gap-2 rounded-xl border p-3 shadow-[var(--pcms-shadow-soft)] transition-shadow sm:p-4",
+        "flex h-full w-full min-w-[176px] flex-col gap-3 rounded-xl border p-4 shadow-soft transition-colors",
         styles.card,
-        kpi.href ? "hover:shadow-soft" : "",
+        kpi.href ? "hover:border-primary/40 hover:bg-primary/[0.05]" : "",
       )}
     >
       <div className="flex items-center justify-between gap-2">
         <span
           className={cn(
-            "grid h-9 w-9 place-items-center rounded-xl shadow-soft",
+            "grid h-10 w-10 place-items-center rounded-lg",
             styles.icon,
           )}
         >
-          <Icon className="h-4 w-4" />
+          <Icon className="h-5 w-5" aria-hidden="true" />
         </span>
         <DeltaPill delta={kpi.delta ?? undefined} label={kpi.deltaLabel} />
       </div>
       <div className="space-y-1">
-        <p className="text-[11px] font-bold text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {kpi.label}
         </p>
         <p
           className={cn(
-            "text-2xl font-bold leading-none sm:text-3xl",
+            "text-2xl font-bold leading-none tabular-nums sm:text-3xl",
             styles.value,
           )}
         >
           {kpi.value}
         </p>
         {kpi.hint ? (
-          <p className="text-xs font-medium text-muted-foreground">
+          <p className="text-xs leading-5 text-muted-foreground">
             {kpi.hint}
           </p>
         ) : null}
       </div>
       {kpi.href ? (
-        <span className="mt-auto inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
-          Open <ArrowRight className="h-3 w-3" />
+        <span className="mt-auto inline-flex items-center gap-1 text-xs font-semibold text-primary">
+          Open <ArrowRight className="h-3 w-3" aria-hidden="true" />
         </span>
       ) : null}
     </div>
   );
   return kpi.href ? (
-    <Link href={kpi.href} className="block snap-start">
+    <Link href={kpi.href} className="block snap-start rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
       {inner}
     </Link>
   ) : (

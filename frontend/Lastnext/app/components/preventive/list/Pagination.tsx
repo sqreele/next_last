@@ -25,15 +25,16 @@ export default function Pagination({
   return (
     <>
       {/* Mobile Pagination */}
-      <div className="rounded-xl border border-border bg-card px-3 py-3 shadow-soft md:hidden">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <span className="text-sm text-muted-foreground">
+      <nav aria-label="Preventive maintenance pagination" className="rounded-xl border border-border bg-card p-4 shadow-soft lg:hidden">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-medium tabular-nums text-muted-foreground">
             {startItem}-{endItem} of {totalCount}
           </span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="h-11 rounded-lg border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            aria-label="Tasks per page"
           >
             <option value={10}>10 per page</option>
             <option value={25}>25 per page</option>
@@ -41,41 +42,42 @@ export default function Pagination({
           </select>
         </div>
 
-        <div className="grid grid-cols-[3rem_1fr_3rem] items-center gap-2">
+        <div className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
           <button
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
-            className="grid h-11 w-12 place-items-center rounded-lg border border-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="grid h-11 w-11 place-items-center rounded-lg border border-border bg-background text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Previous page"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5" aria-hidden="true" />
           </button>
 
-          <span className="text-center text-sm font-bold text-foreground">
+          <span className="min-w-0 text-center text-sm font-semibold tabular-nums text-foreground">
             Page {currentPage} of {totalPages}
           </span>
 
           <button
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
-            className="grid h-11 w-12 place-items-center rounded-lg border border-border transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            className="grid h-11 w-11 place-items-center rounded-lg border border-border bg-background text-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Next page"
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
-      </div>
+      </nav>
 
       {/* Desktop Pagination */}
-      <div className="hidden md:flex items-center justify-between px-6 py-4 bg-card border border-border rounded-lg mt-6">
-        <div className="flex items-center text-sm text-muted-foreground">
+      <nav aria-label="Preventive maintenance pagination" className="hidden items-center justify-between gap-4 rounded-xl border border-border bg-card px-5 py-4 shadow-soft lg:flex">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <span>
             Showing {startItem} to {endItem} of {totalCount} results
           </span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="ml-4 px-2 py-1 border border-border rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="h-11 rounded-lg border border-input bg-background px-3 text-sm font-semibold text-foreground shadow-soft focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
+            aria-label="Tasks per page"
           >
             <option value={10}>10 per page</option>
             <option value={25}>25 per page</option>
@@ -83,24 +85,27 @@ export default function Pagination({
           </select>
         </div>
 
-        <div className="flex items-center space-x-1">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
-            className="p-2 text-muted-foreground hover:text-foreground disabled:text-muted-foreground disabled:cursor-not-allowed rounded-lg hover:bg-muted transition-colors"
+            className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Previous page"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </button>
 
           {generatePageNumbers(currentPage, totalPages, 7).map((pageNum) => (
             <button
               key={pageNum}
               onClick={() => onPageChange(pageNum)}
-              className={`px-3 py-1 text-sm rounded transition-colors ${
+              className={`grid h-11 min-w-11 place-items-center rounded-lg px-2 text-sm font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                 currentPage === pageNum
-                  ? "bg-blue-600 text-white"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  ? "bg-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground hover:bg-primary/10 hover:text-primary"
               }`}
+              aria-label={`Go to page ${pageNum}`}
+              aria-current={currentPage === pageNum ? "page" : undefined}
             >
               {pageNum}
             </button>
@@ -109,12 +114,13 @@ export default function Pagination({
           <button
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
-            className="p-2 text-muted-foreground hover:text-foreground disabled:text-muted-foreground disabled:cursor-not-allowed rounded-lg hover:bg-muted transition-colors"
+            className="grid h-11 w-11 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Next page"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
-      </div>
+      </nav>
     </>
   );
 }

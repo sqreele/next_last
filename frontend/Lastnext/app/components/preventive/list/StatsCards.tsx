@@ -13,50 +13,50 @@ export default function StatsCards({ stats }: StatsCardsProps) {
       label: "Overdue",
       value: stats.overdue,
       icon: AlertCircle,
-      color: "text-red-600",
-      bgColor: "text-red-600",
+      iconClass: "bg-destructive/10 text-destructive",
+      valueClass: "text-destructive",
     },
     {
       label: "Open",
       value: stats.pending,
       icon: Clock,
-      color: "text-yellow-600",
-      bgColor: "text-yellow-600",
+      iconClass: "bg-warning/10 text-warning-foreground",
+      valueClass: "text-warning-foreground",
     },
     {
       label: "Total",
       value: stats.total,
       icon: Settings,
-      color: "text-blue-600",
-      bgColor: "text-blue-600",
+      iconClass: "bg-info/10 text-info",
+      valueClass: "text-info",
     },
     {
       label: "Completed",
       value: stats.completed,
       icon: CheckCircle,
-      color: "text-green-600",
-      bgColor: "text-green-600",
+      iconClass: "bg-success/10 text-success",
+      valueClass: "text-success",
     },
   ];
 
   return (
-    <div className="mb-5 grid grid-cols-2 gap-3 md:mb-6 md:grid-cols-4 md:gap-4">
+    <section aria-label="Preventive maintenance summary" className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
       {cards.map((card) => {
         const Icon = card.icon;
         return (
           <div
             key={card.label}
-            className="rounded-lg border border-border bg-card p-3 transition-shadow hover:shadow-soft sm:p-4"
+            className="min-w-0 rounded-xl border border-border bg-card p-3 shadow-soft sm:p-4"
           >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Icon className={`h-6 w-6 sm:h-8 sm:w-8 ${card.color}`} />
-              </div>
-              <div className="ml-2 min-w-0 sm:ml-3">
-                <p className="text-xs font-medium text-muted-foreground sm:text-sm">
+            <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg sm:h-10 sm:w-10 ${card.iconClass}`}>
+                <Icon className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {card.label}
                 </p>
-                <p className={`text-xl font-semibold sm:text-2xl ${card.bgColor}`}>
+                <p className={`mt-0.5 text-xl font-bold tabular-nums sm:text-2xl ${card.valueClass}`}>
                   {card.value}
                 </p>
               </div>
@@ -64,6 +64,6 @@ export default function StatsCards({ stats }: StatsCardsProps) {
           </div>
         );
       })}
-    </div>
+    </section>
   );
 }

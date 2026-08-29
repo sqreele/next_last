@@ -412,7 +412,7 @@ function PreventiveMaintenanceListPageContent() {
   }
 
   return (
-    <div className="w-full space-y-4 px-3 pb-4 pt-2 sm:px-4 md:px-5">
+    <div className="mx-auto w-full max-w-7xl space-y-5 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-3 sm:px-6 md:pb-8 lg:px-8">
       {/* Mobile Header */}
       <MobileHeader
         totalCount={totalCount}
@@ -440,12 +440,12 @@ function PreventiveMaintenanceListPageContent() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="w-full max-w-none lg:mx-auto lg:max-w-7xl">
+        <div className="w-full">
           <StatsCards stats={stats} />
         </div>
       )}
 
-      <div className="w-full max-w-none space-y-4 lg:mx-auto lg:max-w-7xl">
+      <div className="w-full space-y-5">
         {/* Error Display */}
         {error && (
           <ErrorDisplay error={error} onClear={clearError} />
@@ -488,10 +488,10 @@ function PreventiveMaintenanceListPageContent() {
           <div className="relative">
             {/* Show loading overlay when refreshing existing data */}
             {isLoading && maintenanceItems.length > 0 && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/60 backdrop-blur-sm">
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/70 backdrop-blur-sm">
                 <div className="flex flex-col items-center gap-2">
-                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[var(--pcms-primary)]"></div>
-                  <span className="text-sm text-gray-600">Refreshing...</span>
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary"></div>
+                  <span className="text-sm font-medium text-muted-foreground">Refreshing...</span>
                 </div>
               </div>
             )}
@@ -550,17 +550,17 @@ function PreventiveMaintenanceListPageContent() {
         })()}
 
         {/* Action Buttons */}
-        <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`inline-flex min-h-[44px] items-center justify-center rounded-full border px-4 py-2 font-semibold transition-colors ${
-              showFilters ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-[var(--pcms-border)] text-[var(--pcms-text-muted)] hover:bg-[var(--pcms-surface-soft)]'
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-soft transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+              showFilters ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary'
             }`}
           >
-            <Filter className="h-4 w-4 mr-2" />
+            <Filter className="h-4 w-4" aria-hidden="true" />
             Filters
             {activeFiltersCount > 0 && (
-              <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">
                 {activeFiltersCount}
               </span>
             )}
@@ -569,9 +569,9 @@ function PreventiveMaintenanceListPageContent() {
           {canOperate && (
             <Link
               href="/dashboard/preventive-maintenance/create"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-[var(--pcms-primary)] px-4 py-2 font-semibold text-white transition-colors hover:bg-[var(--pcms-primary-hover)]"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
               New Maintenance
             </Link>
           )}

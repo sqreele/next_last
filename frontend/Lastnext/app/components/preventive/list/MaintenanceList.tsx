@@ -38,24 +38,24 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
   canOperate,
 }) => {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+    <section className="overflow-hidden rounded-xl border border-border bg-card shadow-soft" aria-label="Preventive maintenance tasks">
       {/* Desktop Header */}
-      <div className="hidden border-b border-border bg-muted/50 px-5 py-3 md:block">
+      <div className="hidden border-b border-border bg-muted/50 px-5 py-3 xl:block">
         <div className="flex items-center">
-          {canOperate && <div className="w-8">
+          {canOperate && <div className="w-8 shrink-0">
             <input
               type="checkbox"
               checked={selectedItems.length === items.length && items.length > 0}
               onChange={(e) => onSelectAll(e.target.checked)}
               aria-label="Select all maintenance tasks on this page"
-              className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
+              className="h-5 w-5 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </div>}
           
-          <div className="flex-1 grid grid-cols-6 gap-4 ml-4">
+          <div className="ml-4 grid min-w-0 flex-1 grid-cols-[1.25fr_1fr_0.9fr_1.2fr_1.2fr_8.5rem] gap-4">
             <button
               onClick={() => onSort('date')}
-              className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground focus:outline-none"
+              className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Date {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
@@ -66,14 +66,14 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
             
             <button
               onClick={() => onSort('status')}
-              className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground focus:outline-none"
+              className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
             
             <button
               onClick={() => onSort('machine')}
-              className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground focus:outline-none"
+              className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Machine {sortBy === 'machine' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
@@ -105,7 +105,7 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
           />
         ))}
       </div>
-    </div>
+    </section>
   );
 };
 

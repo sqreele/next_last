@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
+from django.core.cache import cache
 from django.db.models.deletion import ProtectedError
 from django.test import override_settings
 from django.urls import reverse
@@ -36,6 +37,7 @@ ISSUER = 'https://tenant.auth0.com/'
 )
 class TenantInvitationTests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.owner = self.make_user('owner', 'owner@example.com')
         self.admin = self.make_user('admin', 'admin@example.com')
         self.manager = self.make_user('manager', 'manager@example.com')

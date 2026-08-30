@@ -235,9 +235,9 @@ export default function JobsContent({
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className="inline-flex min-w-fit items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all hover:bg-[var(--pcms-surface-soft)] hover:text-[var(--pcms-primary-strong)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--pcms-primary)] data-[state=active]:text-white data-[state=active]:shadow-[var(--pcms-button-shadow)]"
+                  className="inline-flex min-w-fit items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all hover:bg-[var(--pcms-surface-soft)] hover:text-[var(--pcms-primary-strong)] focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--pcms-primary)] data-[state=active]:text-white data-[state=active]:shadow-[var(--pcms-button-shadow)]"
                 >
-                  <Icon className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <Icon className="w-4 h-4 mr-2 shrink-0" />
                   {label}
                 </TabsTrigger>
               ))}
@@ -253,7 +253,7 @@ export default function JobsContent({
                   value={value}
                   className={`inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-full border border-white/70 px-3.5 py-2 text-xs font-bold shadow-[var(--pcms-shadow-soft)] transition-all data-[state=active]:bg-[var(--pcms-primary)] data-[state=active]:text-white data-[state=active]:shadow-[var(--pcms-button-shadow)] ${color}`}
                 >
-                  <Icon className="mr-1.5 h-4 w-4 flex-shrink-0" />
+                  <Icon className="mr-1.5 h-4 w-4 shrink-0" />
                   {label}
                 </TabsTrigger>
               ))}

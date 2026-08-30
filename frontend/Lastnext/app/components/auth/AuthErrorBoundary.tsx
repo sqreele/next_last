@@ -138,7 +138,7 @@ export class AuthErrorBoundary extends Component<Props, State> {
                     <summary className="cursor-pointer text-sm text-muted-foreground hover:text-muted-foreground">
                       Error Details
                     </summary>
-                    <div className="mt-2 p-3 bg-muted rounded text-xs text-muted-foreground font-mono">
+                    <div className="mt-2 p-3 bg-muted rounded-sm text-xs text-muted-foreground font-mono">
                       {this.state.error.message}
                     </div>
                   </details>
@@ -184,7 +184,7 @@ export class AuthErrorBoundary extends Component<Props, State> {
                     <summary className="cursor-pointer text-sm text-muted-foreground hover:text-muted-foreground">
                       Stack Trace (Development)
                     </summary>
-                    <div className="mt-2 p-3 bg-muted rounded text-xs text-muted-foreground font-mono overflow-auto max-h-40">
+                    <div className="mt-2 p-3 bg-muted rounded-sm text-xs text-muted-foreground font-mono overflow-auto max-h-40">
                       {this.state.errorInfo.componentStack}
                     </div>
                   </details>

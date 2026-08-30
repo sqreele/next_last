@@ -48,14 +48,14 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
               checked={selectedItems.length === items.length && items.length > 0}
               onChange={(e) => onSelectAll(e.target.checked)}
               aria-label="Select all maintenance tasks on this page"
-              className="h-5 w-5 rounded border-input text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="h-5 w-5 rounded-sm border-input text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </div>}
           
           <div className="ml-4 grid min-w-0 flex-1 grid-cols-[1.25fr_1fr_0.9fr_1.2fr_1.2fr_8.5rem] gap-4">
             <button
               onClick={() => onSort('date')}
-              className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Date {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
@@ -66,14 +66,14 @@ const MaintenanceList: React.FC<MaintenanceListProps> = ({
             
             <button
               onClick={() => onSort('status')}
-              className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>
             
             <button
               onClick={() => onSort('machine')}
-              className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="min-h-10 rounded-md text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               Machine {sortBy === 'machine' && (sortOrder === 'asc' ? '↑' : '↓')}
             </button>

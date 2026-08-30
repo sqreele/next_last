@@ -673,7 +673,7 @@ export default function EditPreventiveMaintenancePage() {
       {(contextError || errors.general) && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
           <div className="flex items-start gap-2 sm:gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-red-700 font-medium text-sm sm:text-base break-words">
                 {contextError || errors.general}
@@ -719,7 +719,7 @@ export default function EditPreventiveMaintenancePage() {
                   type="text"
                   value={formState.pmtitle}
                   onChange={(e) => handleInputChange("pmtitle", e.target.value)}
-                  className={`w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  className={`w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.pmtitle ? "border-red-300" : "border-border"
                   }`}
                   placeholder="Enter maintenance title"
@@ -742,7 +742,7 @@ export default function EditPreventiveMaintenancePage() {
                   onChange={(e) =>
                     handleInputChange("scheduled_date", e.target.value)
                   }
-                  className={`w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target ${
+                  className={`w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target ${
                     errors.scheduled_date ? "border-red-300" : "border-border"
                   }`}
                 />
@@ -768,7 +768,7 @@ export default function EditPreventiveMaintenancePage() {
                           e.target.value as FrequencyType,
                         )
                       }
-                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
@@ -802,7 +802,7 @@ export default function EditPreventiveMaintenancePage() {
                             );
                           }
                         }}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                           errors.custom_days
                             ? "border-red-300"
                             : "border-border"
@@ -830,7 +830,7 @@ export default function EditPreventiveMaintenancePage() {
                   onChange={(e) =>
                     handleInputChange("completed_date", e.target.value)
                   }
-                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target"
+                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
                   Leave empty if not completed yet
@@ -840,7 +840,7 @@ export default function EditPreventiveMaintenancePage() {
               {/* Maintenance Task Template */}
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1.5 sm:mb-2 flex items-center gap-2">
-                  <Settings className="h-4 w-4 flex-shrink-0" />
+                  <Settings className="h-4 w-4 shrink-0" />
                   <span className="flex-1">Maintenance Task Template</span>
                   {loadingMaintenanceTasks && (
                     <span className="text-xs text-muted-foreground">
@@ -857,7 +857,7 @@ export default function EditPreventiveMaintenancePage() {
                       value === "" ? "" : Number(value),
                     );
                   }}
-                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target"
+                  className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target"
                 >
                   <option value="">No Template (Optional)</option>
                   {availableMaintenanceTasks.map((task) => (
@@ -884,7 +884,7 @@ export default function EditPreventiveMaintenancePage() {
                 value={formState.notes}
                 onChange={(e) => handleInputChange("notes", e.target.value)}
                 rows={4}
-                className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                className="w-full px-3 py-2.5 sm:py-2 text-base sm:text-sm border border-border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
                 placeholder="Enter maintenance notes..."
               />
             </div>
@@ -918,7 +918,7 @@ export default function EditPreventiveMaintenancePage() {
                           );
                         }
                       }}
-                      className="h-4 w-4 text-blue-600 rounded border-border focus:ring-blue-500"
+                      className="h-4 w-4 text-blue-600 rounded-sm border-border focus:ring-blue-500"
                     />
                     <span className="text-sm text-muted-foreground">
                       {topic.title}
@@ -1059,7 +1059,7 @@ export default function EditPreventiveMaintenancePage() {
               onClick={() =>
                 handleNavigation("/dashboard/preventive-maintenance")
               }
-              className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 touch-target min-h-[44px]"
+              className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted focus:outline-hidden focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 touch-target min-h-[44px]"
             >
               Cancel
             </button>
@@ -1072,7 +1072,7 @@ export default function EditPreventiveMaintenancePage() {
                     `/dashboard/preventive-maintenance/${resolvedPmId}`,
                   )
                 }
-                className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 touch-target min-h-[44px]"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-border text-muted-foreground rounded-lg hover:bg-muted focus:outline-hidden focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 touch-target min-h-[44px]"
               >
                 View Details
               </button>
@@ -1080,7 +1080,7 @@ export default function EditPreventiveMaintenancePage() {
               <button
                 type="submit"
                 disabled={isSubmitting || !isDirty}
-                className={`flex items-center justify-center w-full sm:w-auto px-6 py-3 sm:py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-target min-h-[44px] ${
+                className={`flex items-center justify-center w-full sm:w-auto px-6 py-3 sm:py-2 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-target min-h-[44px] ${
                   isSubmitting || !isDirty
                     ? "bg-gray-400 text-white cursor-not-allowed"
                     : "bg-blue-600 text-white hover:bg-blue-700"

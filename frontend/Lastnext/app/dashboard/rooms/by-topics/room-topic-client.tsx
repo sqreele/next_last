@@ -409,7 +409,7 @@ export default function RoomsByTopicClient({
                 const roomName = room?.name || `Room ${roomId ?? index + 1}`;
                 const roomType = room?.room_type || "Room";
                 const card = (
-                  <div className="block min-h-20 rounded-xl border border-border p-4 transition-colors hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary">
+                  <div className="block min-h-20 rounded-xl border border-border p-4 transition-colors hover:bg-muted focus:outline-hidden focus:ring-2 focus:ring-primary">
                     <div className="break-words font-semibold text-foreground">
                       {roomName}
                     </div>

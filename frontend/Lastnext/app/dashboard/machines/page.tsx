@@ -432,7 +432,7 @@ export default function MachinesListPage() {
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
-                        <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted sm:h-32 sm:w-32">
+                        <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted sm:h-32 sm:w-32">
                           {machineImageUrl ? (
                             <>
                               <img
@@ -493,7 +493,7 @@ export default function MachinesListPage() {
 
                     {machine.location && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="truncate">{machine.location}</span>
                       </div>
                     )}
@@ -680,7 +680,7 @@ export default function MachinesListPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                            <div className="p-2 bg-blue-100 rounded-lg shrink-0">
                               <Wrench className="h-4 w-4 text-blue-600" />
                             </div>
                             <div>

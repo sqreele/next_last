@@ -956,7 +956,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   if (!hasProperties) {
     return (
       <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-sm mb-4">
           <h2 className="font-semibold mb-2">No Properties Available</h2>
           <p>
             You need to have at least one property assigned to create preventive
@@ -983,7 +983,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   if (userProperties.length === 0) {
     return (
       <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl lg:px-8 desktop:max-w-[96rem]">
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
+        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-sm mb-4">
           <h2 className="font-semibold mb-2">Loading Properties...</h2>
           <p>Please wait while we load your property information.</p>
         </div>
@@ -1347,7 +1347,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
   if (isLoading && pmId && !actualInitialData) {
     return (
       <div
-        className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-xs"
         aria-live="polite"
         aria-busy="true"
         role="status"
@@ -1366,7 +1366,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
     <div className="bg-white shadow-md rounded-lg p-3 sm:p-4 md:p-6 pb-28 md:pb-6">
       {(error || submitError) && (
         <div
-          className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded mb-3 sm:mb-4"
+          className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-sm mb-3 sm:mb-4"
           role="alert"
         >
           <div className="flex justify-between items-start gap-2">
@@ -1575,7 +1575,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
               {/* Full-screen saving/uploading overlay */}
               {(isSubmitting || isLoading) && (
                 <div
-                  className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-sm"
+                  className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-white/90 backdrop-blur-xs"
                   aria-live="polite"
                   aria-busy="true"
                   role="status"
@@ -1656,7 +1656,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   as="select"
                   id="procedure_template"
                   name="procedure_template"
-                  className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 touch-target ${
+                  className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 touch-target ${
                     errors.procedure_template && touched.procedure_template
                       ? "border-red-500"
                       : "border-gray-300"
@@ -1808,7 +1808,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   type="text"
                   id="pmtitle"
                   name="pmtitle"
-                  className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 ${
                     errors.pmtitle && touched.pmtitle
                       ? "border-red-500"
                       : "border-gray-300"
@@ -1834,7 +1834,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   type="datetime-local"
                   id="scheduled_date"
                   name="scheduled_date"
-                  className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full p-2.5 sm:p-3 text-base sm:text-sm border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 ${
                     errors.scheduled_date && touched.scheduled_date
                       ? "border-red-500"
                       : "border-gray-300"
@@ -1856,7 +1856,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                     <Field
                       type="checkbox"
                       name="create_master_plan"
-                      className="mt-1 h-4 w-4 rounded border-purple-300"
+                      className="mt-1 h-4 w-4 rounded-sm border-purple-300"
                     />
                     <span>
                       Create as PM Master Plan / Recurring Rule
@@ -1879,7 +1879,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                         min="0"
                         id="lead_time_days"
                         name="lead_time_days"
-                        className="mt-1 w-full rounded-md border border-purple-200 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        className="mt-1 w-full rounded-md border border-purple-200 p-2 text-sm focus:outline-hidden focus:ring-2 focus:ring-purple-500"
                       />
                     </div>
                   )}
@@ -1911,7 +1911,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                     type="datetime-local"
                     id="completed_date"
                     name="completed_date"
-                    className="w-full p-2.5 sm:p-3 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-2.5 sm:p-3 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   />
                   {errors.completed_date && touched.completed_date && (
                     <p className="mt-1 text-xs sm:text-sm text-red-500">
@@ -1993,7 +1993,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                   id="notes"
                   name="notes"
                   rows={4}
-                  className="w-full p-2.5 sm:p-3 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                  className="w-full p-2.5 sm:p-3 text-base sm:text-sm border border-gray-300 rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500 resize-y"
                   placeholder="Enter any notes for this maintenance task"
                 />
               </div>
@@ -2116,7 +2116,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                                       }: any) => (
                                         <input
                                           type="checkbox"
-                                          className="h-5 w-5 sm:h-4 sm:w-4 mt-0.5 sm:mt-0 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+                                          className="h-5 w-5 sm:h-4 sm:w-4 mt-0.5 sm:mt-0 text-blue-600 bg-gray-100 border-gray-300 rounded-sm focus:ring-blue-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed touch-target"
                                           id={`machine-${machineItem.machine_id}`}
                                           checked={selectedMachinesValue.includes(
                                             machineItem.machine_id,
@@ -2234,7 +2234,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       >
                         <input
                           type="checkbox"
-                          className="h-5 w-5 rounded border-gray-300 text-blue-600"
+                          className="h-5 w-5 rounded-sm border-gray-300 text-blue-600"
                           checked={values.selected_topics.includes(topic.id)}
                           onChange={(event) => {
                             const nextTopics = event.target.checked
@@ -2361,7 +2361,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       <button
                         type="button"
                         onClick={onCancel}
-                        className="w-full sm:w-auto h-12 sm:h-11 px-6 bg-gray-100 text-gray-700 font-medium rounded-md shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors touch-target"
+                        className="w-full sm:w-auto h-12 sm:h-11 px-6 bg-gray-100 text-gray-700 font-medium rounded-md shadow-xs hover:bg-gray-200 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors touch-target"
                         disabled={isSubmitting || isLoading}
                       >
                         Cancel
@@ -2380,7 +2380,7 @@ const PreventiveMaintenanceForm: React.FC<PreventiveMaintenanceFormProps> = ({
                       isSubmitting || isLoading
                         ? "bg-blue-400 cursor-not-allowed"
                         : "bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/30"
-                    } text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors touch-target`}
+                    } text-white font-bold rounded-md focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors touch-target`}
                     disabled={
                       isSubmitting ||
                       isLoading ||

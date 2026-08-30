@@ -246,7 +246,7 @@ export default function PMMasterPlanForm({ planId }: { planId?: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-6 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
+    <form onSubmit={submit} className="space-y-6 rounded-xl border border-border bg-card p-4 shadow-xs sm:p-6">
       {error && <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800" role="alert">{error}</div>}
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
         Active property: <strong>{activePropertyName || selectedPropertyId}</strong>. Only its machines can be selected.

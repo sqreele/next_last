@@ -101,7 +101,7 @@ function CreatePageContent() {
       </div>
 
       {isSubmitted ? (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-sm mb-4">
           <p>Preventive maintenance created successfully! Redirecting...</p>
           {submittedData && submittedData.pm_id && (
             <p className="mt-2 text-sm">Record ID: {submittedData.pm_id}</p>

@@ -320,7 +320,7 @@ export function RoomMaintenanceHistory({
                 <li key={job.job_id} className="relative pl-12">
                   <span
                     className={cn(
-                      "absolute left-2 top-1.5 grid h-9 w-9 place-items-center rounded-full text-white ring-4 ring-white shadow",
+                      "absolute left-2 top-1.5 grid h-9 w-9 place-items-center rounded-full text-white ring-4 ring-white shadow-sm",
                       toneClass,
                     )}
                     aria-hidden="true"

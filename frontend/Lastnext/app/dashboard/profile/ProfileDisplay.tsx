@@ -178,8 +178,8 @@ function LoadingSkeleton() {
               <div className="w-24 h-24 bg-muted rounded-full" />
             </div>
             <div className="space-y-4">
-              <div className="h-4 bg-muted rounded w-3/4 mx-auto" />
-              <div className="h-4 bg-muted rounded w-1/2 mx-auto" />
+              <div className="h-4 bg-muted rounded-sm w-3/4 mx-auto" />
+              <div className="h-4 bg-muted rounded-sm w-1/2 mx-auto" />
             </div>
           </div>
         </CardContent>

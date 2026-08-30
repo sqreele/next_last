@@ -56,7 +56,7 @@ const authErrorMessages: Record<string, string> = {
 function LoadingState({ label = 'Checking your session…' }: { label?: string }) {
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-slate-50/95 px-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 grid place-items-center bg-slate-50/95 px-6 backdrop-blur-xs"
       aria-live="polite"
       aria-busy="true"
       role="status"
@@ -187,7 +187,7 @@ function LoginContent() {
         <div className="flex flex-1 items-center justify-center px-5 py-10 sm:px-8 lg:px-12">
           <div className="w-full max-w-md">
             <div className="mb-8">
-              <div className="mb-6 grid h-12 w-12 place-items-center rounded-2xl border border-blue-100 bg-blue-50 text-blue-700 shadow-sm">
+              <div className="mb-6 grid h-12 w-12 place-items-center rounded-2xl border border-blue-100 bg-blue-50 text-blue-700 shadow-xs">
                 <LockKeyhole className="h-5 w-5" />
               </div>
               <p className="mb-2 text-sm font-semibold text-blue-700">Welcome back</p>
@@ -229,7 +229,7 @@ function LoginContent() {
               <ArrowRight className="ml-auto h-4 w-4" />
             </Button>
 
-            <div className="mt-5 flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
+            <div className="mt-5 flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-xs">
               <span className="mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full bg-emerald-50 text-emerald-700">
                 <Check className="h-3.5 w-3.5" />
               </span>

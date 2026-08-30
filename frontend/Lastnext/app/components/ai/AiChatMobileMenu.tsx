@@ -21,7 +21,7 @@ export default function AiChatMobileMenu() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-border bg-card/95 shadow-soft backdrop-blur desktop:hidden">
+      <header className="sticky top-0 z-50 border-b border-border bg-card/95 shadow-soft backdrop-blur-sm desktop:hidden">
         <div className="flex h-14 items-center justify-between px-3">
           <div className="flex items-center gap-2">
             <Sheet open={open} onOpenChange={setOpen}>
@@ -79,7 +79,7 @@ export default function AiChatMobileMenu() {
                           aria-current={isActive ? "page" : undefined}
                           className={cn(
                             "group flex min-h-12 items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-bold transition-colors",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500",
+                            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-cyan-500",
                             isActive
                               ? "bg-cyan-700 text-white shadow-soft shadow-cyan-700/30"
                               : "text-foreground hover:bg-cyan-50 hover:text-cyan-700 active:bg-cyan-100",

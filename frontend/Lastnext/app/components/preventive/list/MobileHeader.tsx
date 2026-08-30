@@ -46,7 +46,7 @@ export default function MobileHeader({
         <div className="grid grid-cols-3 gap-2">
           <Link
             href="/dashboard/preventive-maintenance/dashboard"
-            className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             title="Dashboard"
             aria-label="Open maintenance dashboard"
           >
@@ -54,7 +54,7 @@ export default function MobileHeader({
           </Link>
           <Link
             href="/dashboard/preventive-maintenance/schedule"
-            className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             title="Calendar"
             aria-label="Open maintenance calendar"
           >
@@ -62,7 +62,7 @@ export default function MobileHeader({
           </Link>
           <Link
             href="/dashboard/preventive-maintenance/plans"
-            className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             title="Master Plans"
             aria-label="Open PM master plans"
           >
@@ -71,7 +71,7 @@ export default function MobileHeader({
           <button
             onClick={onRefresh}
             disabled={isLoading}
-            className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            className="grid min-h-11 place-items-center rounded-lg border border-border bg-background text-muted-foreground shadow-soft transition-colors hover:border-primary/30 hover:bg-primary/10 hover:text-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             title="Refresh"
             aria-label="Refresh maintenance data"
           >
@@ -82,7 +82,7 @@ export default function MobileHeader({
           </button>
           <button
             onClick={onToggleFilters}
-            className={`relative grid min-h-11 place-items-center rounded-lg border shadow-soft transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+            className={`relative grid min-h-11 place-items-center rounded-lg border shadow-soft transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
               showFilters
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-border bg-background text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
@@ -99,7 +99,7 @@ export default function MobileHeader({
           {canOperate && (
             <Link
               href="/dashboard/preventive-maintenance/create"
-              className="grid min-h-11 place-items-center rounded-lg border border-primary bg-primary text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="grid min-h-11 place-items-center rounded-lg border border-primary bg-primary text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               aria-label="Create new maintenance task"
             >
               <Plus className="h-5 w-5" aria-hidden="true" />

@@ -283,7 +283,7 @@ export default function EditProfilePage() {
               ) : null}
             </div>
 
-            <div className="fixed inset-x-0 bottom-0 z-20 grid gap-2 border-t bg-background/95 p-3 backdrop-blur sm:static sm:flex sm:border-0 sm:bg-transparent sm:p-0">
+            <div className="fixed inset-x-0 bottom-0 z-20 grid gap-2 border-t bg-background/95 p-3 backdrop-blur-sm sm:static sm:flex sm:border-0 sm:bg-transparent sm:p-0">
               <Button
                 type="submit"
                 disabled={!dirty || saving}

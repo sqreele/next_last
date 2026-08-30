@@ -436,7 +436,7 @@ export default function MaintenanceTasksPage() {
             <select
               value={frequencyFilter}
               onChange={(e) => setFrequencyFilter(e.target.value)}
-              className="px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-border rounded-md text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Frequencies</option>
               <option value="daily">Daily</option>
@@ -452,7 +452,7 @@ export default function MaintenanceTasksPage() {
             <select
               value={difficultyFilter}
               onChange={(e) => setDifficultyFilter(e.target.value)}
-              className="px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-border rounded-md text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Difficulties</option>
               <option value="beginner">Beginner</option>
@@ -508,7 +508,7 @@ export default function MaintenanceTasksPage() {
               <select
                 value={pageSize}
                 onChange={handlePageSizeChange}
-                className="px-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-border rounded-md text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               >
                 {[10, 20, 50, 100].map((size) => (
                   <option key={size} value={size}>
@@ -606,7 +606,7 @@ export default function MaintenanceTasksPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-start gap-2">
-                          <Settings className="h-5 w-5 text-blue-600 mt-1 flex-shrink-0" />
+                          <Settings className="h-5 w-5 text-blue-600 mt-1 shrink-0" />
                           <div>
                             <h3 className="text-lg font-semibold text-foreground hover:text-blue-600 transition-colors">
                               {task.name}

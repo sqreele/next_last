@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function OfflinePage() {
   return (
     <div className="flex min-h-[100dvh] w-full flex-col items-center justify-center bg-gradient-to-b from-slate-50 to-cyan-50 px-6 py-12 text-center">
-      <div className="mx-auto flex max-w-md flex-col items-center gap-6 rounded-3xl border border-cyan-100 bg-white/85 p-8 shadow-xl backdrop-blur">
+      <div className="mx-auto flex max-w-md flex-col items-center gap-6 rounded-3xl border border-cyan-100 bg-white/85 p-8 shadow-xl backdrop-blur-sm">
         <div className="grid h-16 w-16 place-items-center rounded-2xl bg-rose-100 text-rose-600">
           <WifiOff className="h-8 w-8" />
         </div>

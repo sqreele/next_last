@@ -488,7 +488,7 @@ function PreventiveMaintenanceListPageContent() {
           <div className="relative">
             {/* Show loading overlay when refreshing existing data */}
             {isLoading && maintenanceItems.length > 0 && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/70 backdrop-blur-sm">
+              <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/70 backdrop-blur-xs">
                 <div className="flex flex-col items-center gap-2">
                   <div className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary"></div>
                   <span className="text-sm font-medium text-muted-foreground">Refreshing...</span>
@@ -553,7 +553,7 @@ function PreventiveMaintenanceListPageContent() {
         <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-soft transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold shadow-soft transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
               showFilters ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary'
             }`}
           >
@@ -569,7 +569,7 @@ function PreventiveMaintenanceListPageContent() {
           {canOperate && (
             <Link
               href="/dashboard/preventive-maintenance/create"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-soft transition-colors hover:border-[hsl(var(--primary-hover))] hover:bg-[hsl(var(--primary-hover))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               New Maintenance

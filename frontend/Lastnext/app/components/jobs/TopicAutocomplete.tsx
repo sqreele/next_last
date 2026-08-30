@@ -30,7 +30,7 @@ const TopicAutocomplete: React.FC<TopicAutocompleteProps> = ({
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setIsOpen(true)}
         placeholder={selectedTopic.title || "Select a topic"}
-        className="w-full h-12 text-base px-4 py-3 bg-card border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full h-12 text-base px-4 py-3 bg-card border border-border rounded-md focus:outline-hidden focus:ring-2 focus:ring-blue-500"
       />
 
       {/* Dropdown list of filtered topics */}

@@ -204,7 +204,7 @@ export function PMScheduleCalendar() {
 
   if (!selectedPropertyId) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-xs">
         <CalendarDays className="mx-auto h-10 w-10 text-slate-400" aria-hidden />
         <h1 className="mt-3 text-xl font-bold text-slate-900">Select a property</h1>
         <p className="mt-2 text-sm text-slate-600">
@@ -216,10 +216,10 @@ export function PMScheduleCalendar() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-col gap-3 rounded-[18px] border border-[var(--pcms-border)] bg-white/90 p-4 shadow-[var(--pcms-shadow-sm)] backdrop-blur sm:p-5">
+      <header className="flex flex-col gap-3 rounded-[18px] border border-[var(--pcms-border)] bg-white/90 p-4 shadow-[var(--pcms-shadow-sm)] backdrop-blur-sm sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600 text-white shadow">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-600 text-white shadow-sm">
               <CalendarDays className="h-5 w-5" />
             </span>
             <div>
@@ -368,10 +368,10 @@ export function PMScheduleCalendar() {
       )}
 
       {loading && !visibleData ? (
-        <div className="flex min-h-48 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-6 text-sm font-medium text-slate-600 shadow-sm" role="status">
+        <div className="flex min-h-48 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white p-6 text-sm font-medium text-slate-600 shadow-xs" role="status">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading schedule…
         </div>
-      ) : error && !visibleData ? null : <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+      ) : error && !visibleData ? null : <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-xs sm:p-4">
         <div className="hidden grid-cols-7 gap-1 pb-2 text-center text-[11px] font-bold uppercase tracking-wider text-slate-500 sm:grid">
           {WEEKDAY_LABELS.map((label) => (
             <div key={label}>{label}</div>
@@ -505,7 +505,7 @@ export function PMScheduleCalendar() {
       {selectedBucket && (
         <section
           aria-label={`Items on ${selectedDate}`}
-          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
+          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5"
         >
           <div className="mb-3 flex items-center justify-between">
             <div>

@@ -18,7 +18,7 @@ export default function AiChatDesktopNav() {
       <div className="flex h-16 items-center border-b border-[var(--pcms-border)] px-4">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2.5 group focus-visible:outline-none"
+          className="flex items-center gap-2.5 group focus-visible:outline-hidden"
         >
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--pcms-primary)] text-white shadow-[var(--pcms-shadow-soft)]">
             <Package2 className="h-5 w-5" />
@@ -47,7 +47,7 @@ export default function AiChatDesktopNav() {
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ease-out",
-                  "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30",
+                  "focus-visible:outline-hidden focus-visible:ring-4 focus-visible:ring-blue-500/30",
                   isActive
                     ? "bg-[var(--pcms-primary)] text-white shadow-[var(--pcms-button-shadow)]"
                     : "text-[var(--pcms-text-muted)] hover:bg-[var(--pcms-surface-soft)] hover:text-[var(--pcms-text)]",

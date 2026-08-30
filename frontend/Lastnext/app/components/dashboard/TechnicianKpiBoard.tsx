@@ -387,7 +387,7 @@ function HeaderCell({
         type="button"
         onClick={() => onSort(columnKey)}
         className={cn(
-          "inline-flex min-h-10 items-center gap-1 rounded-md px-1 font-semibold uppercase tracking-wider focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "inline-flex min-h-10 items-center gap-1 rounded-md px-1 font-semibold uppercase tracking-wider focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
           active
             ? "text-foreground"
             : "text-muted-foreground hover:text-muted-foreground",

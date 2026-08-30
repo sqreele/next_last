@@ -224,7 +224,7 @@ export default function PMMasterPlansPage() {
             {plans.map((plan) => {
               const nextProjection = nextProjectionByPlan.get(plan.plan_id);
               return (
-                <article key={plan.plan_id} className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
+                <article key={plan.plan_id} className="rounded-xl border border-border bg-card p-4 shadow-xs sm:p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0"><h2 className="truncate text-lg font-bold">{plan.title}</h2><p className="text-xs text-muted-foreground">#{plan.plan_id}</p></div>
                     <span className={`rounded-full px-3 py-1 text-xs font-bold ${plan.active ? "bg-green-100 text-green-800" : "bg-gray-200 text-gray-700"}`}>{plan.active ? "Active" : "Inactive"}</span>

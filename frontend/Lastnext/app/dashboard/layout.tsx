@@ -133,7 +133,7 @@ function DesktopNav({
         <Link
           href="/dashboard"
           className={cn(
-            "group flex min-h-11 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            "group flex min-h-11 items-center gap-2.5 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             collapsed && "justify-center",
           )}
         >
@@ -181,7 +181,7 @@ function DesktopNav({
                       aria-current={isActive ? "page" : undefined}
                       className={cn(
                         "group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                         collapsed ? "justify-center" : "",
                         isActive
                           ? "bg-primary/10 font-semibold text-primary ring-1 ring-inset ring-primary/20"
@@ -274,7 +274,7 @@ function MobileHeader({ hidden = false }: { hidden?: boolean }) {
           <MobileNav />
           <Link
             href="/dashboard"
-            className="flex min-h-10 min-w-0 items-center gap-1.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex min-h-10 min-w-0 items-center gap-1.5 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Package2 className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
             <span className="hidden truncate text-sm font-bold text-foreground xs:inline">
@@ -341,7 +341,7 @@ function MobileNav() {
             "shadow-soft transition-colors duration-150",
             "hover:border-primary/30 hover:bg-primary/10 hover:text-primary",
             "active:scale-95",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           )}
         >
           <Menu className="h-6 w-6" aria-hidden="true" />
@@ -355,7 +355,7 @@ function MobileNav() {
           <div className="border-b border-border bg-muted/[0.18] px-5 py-5">
             <Link
               href="/dashboard"
-              className="flex min-h-11 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-11 items-center gap-3 rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => setOpen(false)}
             >
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-soft">
@@ -398,7 +398,7 @@ function MobileNav() {
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "group relative flex min-h-12 items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold transition-colors duration-150",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       isActive
                         ? "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20"
                         : "text-foreground hover:bg-muted/70 active:bg-muted",
@@ -563,7 +563,7 @@ function DashboardBreadcrumb() {
         <BreadcrumbItem>
           <BreadcrumbLink
             href="/dashboard"
-            className="rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-xs text-sm text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             Dashboard
           </BreadcrumbLink>
@@ -584,7 +584,7 @@ function DashboardBreadcrumb() {
                 ) : (
                   <BreadcrumbLink
                     href={href}
-                    className="max-w-32 truncate rounded-sm text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="max-w-32 truncate rounded-xs text-sm text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {label}
                   </BreadcrumbLink>
@@ -606,7 +606,7 @@ function MobileBreadcrumb() {
     <div className="flex items-center whitespace-nowrap text-xs overflow-x-auto">
       <Link
         href="/dashboard"
-        className="rounded-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="rounded-xs text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
       >
         Dashboard
       </Link>
@@ -623,7 +623,7 @@ function MobileBreadcrumb() {
             ) : (
               <Link
                 href={href}
-                className="rounded-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="rounded-xs text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {label}
               </Link>

@@ -278,7 +278,7 @@ function JobStatusSummary({
             }
             aria-pressed={activeStatus === metric.status}
             className={cn(
-              "min-h-24 rounded-xl border bg-card p-4 text-left shadow-soft transition-all hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transform-none",
+              "min-h-24 rounded-xl border bg-card p-4 text-left shadow-soft transition-all hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-card focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transform-none",
               activeStatus === metric.status
                 ? "border-blue-500 bg-blue-50/70 ring-1 ring-blue-500 dark:bg-blue-950/30"
                 : "border-border",
@@ -474,7 +474,7 @@ function JobCard({
           <button
             type="button"
             onClick={openDetail}
-            className="mt-2 line-clamp-2 text-left text-base font-semibold leading-6 text-card-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="mt-2 line-clamp-2 text-left text-base font-semibold leading-6 text-card-foreground underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             {getJobTitle(job)}
           </button>
@@ -527,7 +527,7 @@ function JobCard({
         ) : null}
         {canOperate ? (
           <details className="relative col-span-2 sm:ml-auto">
-            <summary className="flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:border-0">
+            <summary className="flex min-h-11 w-full cursor-pointer list-none items-center justify-center gap-2 rounded-lg border border-border px-3 text-sm font-semibold text-muted-foreground hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:border-0">
               <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
               More
             </summary>

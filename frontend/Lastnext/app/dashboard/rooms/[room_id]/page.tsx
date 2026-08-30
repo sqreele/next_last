@@ -36,12 +36,12 @@ function LoadingSkeleton() {
   return (
     <div className="w-full max-w-none px-3 py-4 sm:px-6 sm:py-6 lg:mx-auto lg:max-w-7xl desktop:max-w-[96rem]">
       <div className="animate-pulse">
-        <div className="h-8 w-1/3 bg-gray-200 rounded mb-4"></div>
-        <div className="h-4 w-1/4 bg-gray-200 rounded mb-4"></div>
+        <div className="h-8 w-1/3 bg-gray-200 rounded-sm mb-4"></div>
+        <div className="h-4 w-1/4 bg-gray-200 rounded-sm mb-4"></div>
         <div className="space-y-2">
-          <div className="h-4 w-full bg-gray-200 rounded"></div>
-          <div className="h-4 w-3/4 bg-gray-200 rounded"></div>
-          <div className="h-4 w-1/2 bg-gray-200 rounded"></div>
+          <div className="h-4 w-full bg-gray-200 rounded-sm"></div>
+          <div className="h-4 w-3/4 bg-gray-200 rounded-sm"></div>
+          <div className="h-4 w-1/2 bg-gray-200 rounded-sm"></div>
         </div>
       </div>
     </div>

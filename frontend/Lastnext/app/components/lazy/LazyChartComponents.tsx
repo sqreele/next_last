@@ -10,7 +10,7 @@ export const LazyLineChart = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse bg-gray-200 rounded w-full h-full"></div>
+        <div className="animate-pulse bg-gray-200 rounded-sm w-full h-full"></div>
       </div>
     ),
     ssr: false, // Charts should be client-side only
@@ -22,7 +22,7 @@ export const LazyBarChart = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse bg-gray-200 rounded w-full h-full"></div>
+        <div className="animate-pulse bg-gray-200 rounded-sm w-full h-full"></div>
       </div>
     ),
     ssr: false,
@@ -34,7 +34,7 @@ export const LazyPieChart = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse bg-gray-200 rounded w-full h-full"></div>
+        <div className="animate-pulse bg-gray-200 rounded-sm w-full h-full"></div>
       </div>
     ),
     ssr: false,
@@ -46,7 +46,7 @@ export const LazyAreaChart = dynamic(
   {
     loading: () => (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse bg-gray-200 rounded w-full h-full"></div>
+        <div className="animate-pulse bg-gray-200 rounded-sm w-full h-full"></div>
       </div>
     ),
     ssr: false,

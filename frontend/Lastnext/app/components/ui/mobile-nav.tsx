@@ -80,7 +80,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
               href={item.href}
               onClick={() => triggerHaptic("selection")}
               className={cn(
-                "min-w-0 flex-1 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                "min-w-0 flex-1 rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                 item.name === "Create Job" && "order-none",
               )}
               aria-current={isActive ? "page" : undefined}
@@ -136,7 +136,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
               type="button"
               className={cn(
                 "relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-muted-foreground transition-colors",
-                "hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                "hover:bg-muted/70 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                 hasActiveSecondaryItem &&
                   "bg-primary/10 text-primary ring-1 ring-inset ring-primary/20",
               )}
@@ -179,7 +179,7 @@ export function MobileNav({ className, hidden = false }: MobileNavProps) {
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "relative flex min-h-16 min-w-0 items-center gap-3 rounded-xl border px-3 py-2 text-sm font-medium transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       isActive
                         ? "border-primary/30 bg-primary/10 font-semibold text-primary ring-1 ring-inset ring-primary/20"
                         : "border-border bg-card text-foreground hover:bg-muted/70",

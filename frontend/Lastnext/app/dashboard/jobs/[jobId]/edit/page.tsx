@@ -166,7 +166,7 @@ export default function EditJobPage() {
       {/* Full-screen saving overlay */}
       {isSubmitting && (
         <div
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-card/90 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-card/90 backdrop-blur-xs"
           aria-live="polite"
           aria-busy="true"
           role="status"

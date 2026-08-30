@@ -111,7 +111,7 @@ export function GuestReportForm({ propertyId, roomId }: GuestReportFormProps) {
   return (
     <div className="w-full max-w-none rounded-2xl border border-cyan-100 bg-white p-4 shadow-xl sm:mx-auto sm:max-w-md sm:rounded-3xl sm:p-6">
       <header className="flex items-center gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-white shadow">
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-white shadow-sm">
           <Wrench className="h-6 w-6" />
         </span>
         <div>

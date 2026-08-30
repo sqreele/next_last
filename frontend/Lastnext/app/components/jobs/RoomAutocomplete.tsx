@@ -273,7 +273,7 @@ const RoomAutocomplete = ({
 
       {/* Debug Info */}
       {debug && (
-        <div className="text-xs text-muted-foreground bg-muted p-1 rounded mb-1">
+        <div className="text-xs text-muted-foreground bg-muted p-1 rounded-sm mb-1">
           Debug: Prop: {selectedProperty || "any"} | Rooms: {safeRooms.length} |
           Filtered: {filteredRooms.length}
         </div>

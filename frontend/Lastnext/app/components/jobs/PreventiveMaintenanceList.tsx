@@ -51,7 +51,7 @@ export default function PreventiveMaintenanceList({
         <p className="text-red-600 mb-3">{error}</p>
         <button
           onClick={() => loadJobs(true)} // Force refresh
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          className="px-4 py-2 bg-blue-500 text-white rounded-sm hover:bg-blue-600 transition-colors"
         >
           Retry
         </button>
@@ -70,7 +70,7 @@ export default function PreventiveMaintenanceList({
         </p>
         <Link
           href="/dashboard/create-job"
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors inline-block"
+          className="px-4 py-2 bg-blue-500 text-white rounded-sm hover:bg-blue-600 transition-colors inline-block"
         >
           Create New Job
         </Link>
@@ -85,7 +85,7 @@ export default function PreventiveMaintenanceList({
           <h2 className="text-xl font-bold">Preventive Maintenance Summary</h2>
           <div className="mt-2 sm:mt-0 flex items-center">
             <select
-              className="mr-2 px-2 py-1 border rounded text-sm"
+              className="mr-2 px-2 py-1 border rounded-sm text-sm"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -98,7 +98,7 @@ export default function PreventiveMaintenanceList({
             </select>
             <button
               onClick={() => loadJobs(true)}
-              className="px-3 py-1 bg-muted text-muted-foreground rounded hover:bg-gray-200 text-sm transition-colors"
+              className="px-3 py-1 bg-muted text-muted-foreground rounded-sm hover:bg-gray-200 text-sm transition-colors"
             >
               Refresh
             </button>
@@ -106,19 +106,19 @@ export default function PreventiveMaintenanceList({
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-2">
-          <div className="p-3 bg-muted rounded">
+          <div className="p-3 bg-muted rounded-sm">
             <div className="text-sm text-muted-foreground">Total Jobs</div>
             <div className="text-xl font-bold">{stats.total}</div>
           </div>
-          <div className="p-3 bg-blue-100 rounded">
+          <div className="p-3 bg-blue-100 rounded-sm">
             <div className="text-sm text-blue-500">Active</div>
             <div className="text-xl font-bold">{stats.active}</div>
           </div>
-          <div className="p-3 bg-green-100 rounded">
+          <div className="p-3 bg-green-100 rounded-sm">
             <div className="text-sm text-green-500">Completed</div>
             <div className="text-xl font-bold">{stats.completed}</div>
           </div>
-          <div className="p-3 bg-purple-100 rounded">
+          <div className="p-3 bg-purple-100 rounded-sm">
             <div className="text-sm text-purple-500">Completion Rate</div>
             <div className="text-xl font-bold">
               {stats.completionRate.toFixed(1)}%
@@ -141,7 +141,7 @@ export default function PreventiveMaintenanceList({
           <Link
             href={`/dashboard/jobs/${job.job_id}`}
             key={job.job_id}
-            className="block border p-4 rounded shadow-soft hover:shadow-soft transition-shadow"
+            className="block border p-4 rounded-sm shadow-soft hover:shadow-soft transition-shadow"
           >
             <div className="flex justify-between">
               <h3 className="font-medium">{job.job_id.substring(0, 10)}...</h3>
@@ -171,7 +171,7 @@ export default function PreventiveMaintenanceList({
           </p>
           <button
             onClick={() => setStatusFilter("all")}
-            className="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+            className="px-4 py-2 bg-blue-100 text-blue-700 rounded-sm hover:bg-blue-200 transition-colors"
           >
             Show All Jobs
           </button>

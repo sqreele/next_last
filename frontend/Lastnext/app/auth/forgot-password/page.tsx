@@ -71,7 +71,7 @@ export default function ForgotPasswordPage() {
               onChange={(e) => setEmailOrUsername(e.target.value)}
               required
               disabled={loading}
-              className="mt-1 block min-h-11 w-full rounded-xl border border-[var(--pcms-border)] px-3 py-2 text-gray-900 shadow-sm placeholder-gray-400 focus:border-[var(--pcms-primary)] focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 sm:text-sm"
+              className="mt-1 block min-h-11 w-full rounded-xl border border-[var(--pcms-border)] px-3 py-2 text-gray-900 shadow-xs placeholder-gray-400 focus:border-[var(--pcms-primary)] focus:outline-hidden focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 sm:text-sm"
               placeholder="Enter your email or username"
             />
           </div>
@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
             className={`flex min-h-11 w-full justify-center rounded-full border border-transparent px-4 py-2 text-sm font-semibold text-white shadow-[var(--pcms-button-shadow)] ${
               loading
                 ? 'cursor-not-allowed bg-blue-400'
-                : 'bg-[var(--pcms-primary)] hover:bg-[var(--pcms-primary-hover)] focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2'
+                : 'bg-[var(--pcms-primary)] hover:bg-[var(--pcms-primary-hover)] focus:outline-hidden focus:ring-2 focus:ring-blue-300 focus:ring-offset-2'
             }`}
           >
             {loading ? 'Sending...' : 'Send reset instructions'}
@@ -92,7 +92,7 @@ export default function ForgotPasswordPage() {
         {devToken && (
           <div className="text-sm text-gray-600 mt-4">
             <p className="mb-2">Developer token (for testing):</p>
-            <code className="block p-2 bg-gray-100 rounded text-gray-800 break-all">{devToken}</code>
+            <code className="block p-2 bg-gray-100 rounded-sm text-gray-800 break-all">{devToken}</code>
             <Link
               href={`${ROUTES.resetPassword}?token=${devToken}`}
               className="mt-2 inline-block text-[var(--pcms-primary)] hover:text-[var(--pcms-primary-hover)]"

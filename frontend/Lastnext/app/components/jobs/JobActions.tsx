@@ -307,7 +307,7 @@ export default function JobActions({
                 value={roomSearch}
                 onChange={(e) => setRoomSearch(e.target.value)}
                 placeholder="Search room number, name, or type..."
-                className="w-full h-8 px-3 text-xs rounded-md bg-muted border border-border text-muted-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                className="w-full h-8 px-3 text-xs rounded-md bg-muted border border-border text-muted-foreground placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
               />
             </div>
             <DropdownMenuItem
@@ -431,7 +431,7 @@ export default function JobActions({
                 value={roomSearch}
                 onChange={(e) => setRoomSearch(e.target.value)}
                 placeholder="Search room number, name, or type..."
-                className="w-full h-8 px-3 text-xs rounded-md bg-muted border border-border text-muted-foreground placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:bg-muted disabled:text-muted-foreground"
+                className="w-full h-8 px-3 text-xs rounded-md bg-muted border border-border text-muted-foreground placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors disabled:bg-muted disabled:text-muted-foreground"
               />
             </div>
             <DropdownMenuItem

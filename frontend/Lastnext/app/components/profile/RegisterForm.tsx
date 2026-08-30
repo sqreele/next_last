@@ -17,7 +17,7 @@ export default function RegisterForm() {
         type="button"
         onClick={startSecureSignup}
         disabled={isRedirecting}
-        className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/15 transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200 disabled:pointer-events-none disabled:opacity-60"
+        className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-blue-600/15 transition-colors hover:bg-blue-700 focus-visible:outline-hidden focus-visible:ring-4 focus-visible:ring-blue-200 disabled:pointer-events-none disabled:opacity-60"
       >
         {isRedirecting ? (
           <>
@@ -33,7 +33,7 @@ export default function RegisterForm() {
         )}
       </button>
 
-      <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
+      <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-xs">
         <span className="mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full bg-blue-50 text-blue-700">
           <LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />
         </span>

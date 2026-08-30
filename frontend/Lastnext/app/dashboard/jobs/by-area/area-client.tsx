@@ -187,7 +187,7 @@ export default function JobsByAreaClient({
               id={group.key}
               className="scroll-mt-24 space-y-3"
             >
-              <div className="sticky top-0 z-10 rounded-xl border border-white/80 bg-card/90 px-3 py-3 shadow-soft backdrop-blur sm:static sm:px-4">
+              <div className="sticky top-0 z-10 rounded-xl border border-white/80 bg-card/90 px-3 py-3 shadow-soft backdrop-blur-sm sm:static sm:px-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="min-w-0">
                     <h2 className="flex items-center gap-2 text-xl font-black tracking-tight text-slate-950">

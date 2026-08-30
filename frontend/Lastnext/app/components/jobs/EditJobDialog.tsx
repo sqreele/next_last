@@ -102,7 +102,7 @@ const EditJobDialog: FC<EditDialogProps> = ({
       <DialogContent className="relative max-h-[92vh] w-[calc(100vw-1.5rem)] overflow-y-auto rounded-xl p-0 sm:max-w-lg">
         {isSubmitting && (
           <div
-            className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-card/95 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-card/95 backdrop-blur-xs"
             aria-live="polite"
             aria-busy="true"
             role="status"

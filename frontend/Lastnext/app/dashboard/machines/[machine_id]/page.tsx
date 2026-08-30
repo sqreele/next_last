@@ -516,9 +516,9 @@ export default function MachineDetailPage({
           <CardContent className="pt-6">
             <div className="flex items-start gap-3">
               {propertyVerification.matches ? (
-                <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
               ) : (
-                <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
               )}
               <div className="flex-1">
                 <h3
@@ -558,7 +558,7 @@ export default function MachineDetailPage({
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
             <div
               ref={qrCodeRef}
-              className="mx-auto flex-shrink-0 rounded-lg border-2 border-border bg-card p-4 md:mx-0"
+              className="mx-auto shrink-0 rounded-lg border-2 border-border bg-card p-4 md:mx-0"
               style={{ display: "inline-block" }}
             >
               {machine?.machine_id && getMachineUrl() ? (
@@ -600,7 +600,7 @@ export default function MachineDetailPage({
                 <p className="text-sm font-medium text-muted-foreground mb-2">
                   Quick Access URL
                 </p>
-                <p className="text-xs text-muted-foreground break-all font-mono bg-muted p-2 rounded">
+                <p className="text-xs text-muted-foreground break-all font-mono bg-muted p-2 rounded-sm">
                   {getMachineUrl()}
                 </p>
               </div>
@@ -845,7 +845,7 @@ export default function MachineDetailPage({
                       <div className="grid grid-cols-1 gap-3 text-sm min-[390px]:grid-cols-2 lg:grid-cols-4">
                         {record.pm_id && (
                           <div className="flex items-center gap-2">
-                            <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <Hash className="h-4 w-4 text-muted-foreground shrink-0" />
                             <div>
                               <p className="text-xs text-muted-foreground">
                                 PM ID
@@ -860,7 +860,7 @@ export default function MachineDetailPage({
                           </div>
                         )}
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                          <Calendar className="h-4 w-4 text-blue-500 shrink-0" />
                           <div>
                             <p className="text-xs text-muted-foreground">
                               Scheduled
@@ -875,7 +875,7 @@ export default function MachineDetailPage({
 
                         {record.completed_date && (
                           <div className="flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
+                            <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                             <div>
                               <p className="text-xs text-muted-foreground">
                                 Completed
@@ -891,7 +891,7 @@ export default function MachineDetailPage({
 
                         {record.created_by_details && (
                           <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                            <Users className="h-4 w-4 text-purple-500 shrink-0" />
                             <div>
                               <p className="text-xs text-muted-foreground">
                                 Created By
